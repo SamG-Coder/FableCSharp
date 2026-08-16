@@ -13,10 +13,13 @@ public static class LandscapeTextures
 
     /// <summary>
     /// <c>00B6D6E0</c> compares the first bank u32 to 8 and returns 0
-    /// otherwise. Type 8 then copies the next two u32s. StartOakVale
-    /// sea is 7363; there is no water-prefix STB bank.
+    /// otherwise. Type 8 copies the next two u32s to <c>[this]</c>/
+    /// <c>[this+4]</c> and advances the stream by 8 — no further payload
+    /// in that function. StartOakVale sea is 7363; there is no
+    /// water-prefix STB bank.
     /// </summary>
     public const uint RequiredWaterBankType = 8;
+    public const int WaterType8CopiedDwords = 2;
 
     public static bool IsLoadableWaterBank(ReadOnlySpan<byte> bank) =>
         bank.Length >= 4 && BitConverter.ToUInt32(bank) == RequiredWaterBankType;
