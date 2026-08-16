@@ -20,7 +20,7 @@ parsers and notes.
 | C3D mesh | Positions parse. Packed `POSPACKED3` + scale/offset. Mesh space is centimetres (`* 0.01` to WLD). Apple tree id 5228 has 1699 tris. | `WorldGeometryTests`, `MeshFormatTests` |
 | C3D materials | After the root matrix: `id`, name, `DecalID`, **`DiffuseMapID`**, bump / reflection / illumination. | `MeshFormatTests` |
 | C3D UVs | After packed pos + packed normal. Packed UV is `int16 / 2048 - 8`. Stride-12 static verts put UV at byte 8. Values sit around 0–1 with some tiling. | `MeshFormatTests` |
-| textures.big | 34-byte info: `u16` w/h at 0/2, frame w/h at 6/8, format at 12. Format 31 = DXT1, **35 = DXT3** (exe `DXT3` string; only the 4 `GRAPHIC_ATMOSPHERIC_SKY_*` time-of-day maps), 32 = DXT5, type 4 / format 1 = RGBA8. Payload is framed LZO. Decoding 35 as DXT1 treats the 8-byte alpha as colour and stripes the sky. | `TextureFormatTests` |
+| textures.big | 34-byte info: `u16` w/h at 0/2, frame w/h at 6/8, format at 12. **31 = DXT1**, **32 = DXT5**, **35 = DXT5 16-byte block** (sky only). Type 4 / format 1 = RGBA8. Payload is framed LZO. | `TextureFormatTests` |
 | DiffuseMapID | Mesh material `DiffuseMapID` **is** the `textures.big` entry id. 3880 = oak trunk, 2119 = apple leaves, 414 = `LANDSCAPE_GRASS_PLAIN`. | `MeshFormatTests` |
 | WAD `.lev` | Version 25, constant `0x1904`. 255×132 material table from 179 (`INVALID_THEME_STANDIN`, then `GROUND_*`). Sound themes after 67639. Payload starts with `21`. This file is a material/theme table, **not** a C3D mesh. | `LevFormatTests` |
 | STB coarse height | Runtime `FinalAlbion_RT.stb` copy of `.lev` is ~3 MB. Bytes 0–2047 are pad (`u32[0]=1`). From 2056, 36-byte records hold two WLD-space verts on a **16-unit** lattice. Lookout is 8×8 quads, Picnic 8×6. Heights 20–80 match TNG Z. | `LevFormatTests` |
@@ -94,6 +94,8 @@ parsers and notes.
 | Ignore `ObjectScale` | Rocks/pillars store 0.4–1.2. Without it they instance at 100% mesh size. | `WorldGeometryTests` |
 | Draw STB tiles as a dense 1-unit grid | Adaptive tiles have ~159–280 verts, not 289. Bilinear-filling the rest raised hills through objects (a Lookout rock sat 3.3 m under stamped Z). | `LevFormatTests` |
 | Tile leftover is a triangle *list* | Bytes `0,0,1,2,2,0,0,3…` are a **strip** with degenerate restarts. Reading groups of 3 dropped every other half-quad (flat ground looked like isolated triangles). | `LevFormatTests` |
+| Format 35 is DXT1 | First LZO frame is 262144 bytes (16-byte blocks). DXT1 top mip is 131072. | `TextureFormatTests` |
+| Format 35 is DXT3 | First 8 bytes `FFFF000000000000` are DXT5 `a0=a1=255`. As DXT3, 12/16 texels get alpha 0. Combined with a `discard` the sky became horizontal stripes. Exe `PSHADER_INNER_SKY` has no `texkill`. | `TextureFormatTests` |
 | WAD `Find("Lookout")` for a `.tng` | Stem match hit `LookoutPoint.lev`. Must pass the extension. | `TlcInstallTests` |
 | `FinalAlbion.gtg` is a compiled .lev / C3D | ASCII `NEWMAP 1` / `Version 2;`. First `u32` is not 25. | `DataCatalogTests` |
 | PicnicArea.lug / Dialogue.lut are BIGB | Magic is `LiOnHeAd`, not `BIGB`. | `DataCatalogTests` |
@@ -124,6 +126,17 @@ parsers and notes.
 13. **BWD extra integer lists.** After the named neighbours, remaining u32s (edge indices?) are unread.
 12. **Ten exits pack a MapUID that is not in WLD.** Dest file missing; slot rule still holds when the map exists.
 10. **text.big after the first UTF-16 string.** Some entries append a `.lug` name / extra binary.
+
+## Exe load / render pathway
+
+Traced in `Fable.exe` (file offsets). Do not invent steps.
+
+1. **`CTextureManager`** reads the 34-byte BIG info. `u16` at +12 is the format code (`31` / `32` / `35`).
+2. **Framed LZO** inflates the bank payload. Format 35’s first frame is **262144** bytes (`512×512×16`) — one DXT3/DXT5 top mip — not DXT1’s 131072. Last 3 bytes of the frame are the raw tail (`DecompressFramed`).
+3. **CreateTexture helpers** at `0x5BE800` (push `DXT1`), `0x5BE870` (push `DXT3`), `0x16D20` (push `DXT5`) call `IDirect3DDevice9` with those FourCCs. Format **35 skies are 16-byte blocks**; first 8 bytes `FF FF 00 00 00 00 00 00` are DXT5 alpha (`a0=a1=255`, opaque), not DXT3 nibbles. Reading them as DXT3 makes 75% of texels `alpha=0`.
+4. **`CEngineSkyRenderer`** / `PSHADER_INNER_SKY`: `tex t0..t3` then `lrp` — **no `texkill`**. Discarding `t1.a < 0.08` punched the DXT3-misread alpha into horizontal stripes. `VSHADER_INNER_SKY` transforms `v0` by `c5–c8` and copies UVs from `v2`.
+5. **`CRenderManager` order**: sky → landscape (`CEngineLandscapeRenderer` + `CEngineStateBlockDiffuse2X` + `mul_x2_sat t1,v0`) → static meshes (`VSHADER_STATIC_DIRLIGHT_FOG`) → water / weather / HUD.
+6. **`CEngineLandscapeMeshBuilder` / `CPatchTesselationEdgeStrip`**: 17×17 (`v=289`) is a full grid; other tiles are the stored strip. Still reading those strips; leftover holes are unread tessellation, not a CPU 70% grid.
 
 ## How to add a note
 

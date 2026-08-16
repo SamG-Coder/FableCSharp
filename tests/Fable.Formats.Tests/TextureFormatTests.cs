@@ -40,7 +40,7 @@ public sealed class TextureFormatTests
     {
         Assert.Equal(TextureCompression.Dxt1, TextureFile.Classify(0, 31, 512, 512, 1000));
         Assert.Equal(TextureCompression.Dxt5, TextureFile.Classify(0, 32, 64, 64, 1000));
-        Assert.Equal(TextureCompression.Dxt3, TextureFile.Classify(0, 35, 512, 512, 1000));
+        Assert.Equal(TextureCompression.Dxt5, TextureFile.Classify(0, 35, 512, 512, 1000));
         Assert.Equal(TextureCompression.Rgba8, TextureFile.Classify(4, 1, 64, 64, 1048576));
     }
 
@@ -97,7 +97,7 @@ public sealed class TextureFormatTests
     }
 
     [Fact]
-    public void Atmospheric_sky_midday_is_dxt3_not_striped_dxt1()
+    public void Atmospheric_sky_midday_is_dxt5_512_not_dxt1()
     {
         var (big, entries) = OpenMain();
         using (big)
@@ -106,16 +106,15 @@ public sealed class TextureFormatTests
             var header = TextureFile.ReadHeader(entry.Info.ToArray());
             Assert.Equal(35, header.FormatCode);
             var texture = TextureFile.Parse(entry.Id, entry.Name, entry.Type, entry.Info, big.Read(entry));
-            Assert.Equal(TextureCompression.Dxt3, texture.Compression);
+            Assert.Equal(TextureCompression.Dxt5, texture.Compression);
+            Assert.Equal(512, texture.Width);
             var mid = (texture.Height / 2) * texture.Width * 4;
-            var uniq = new HashSet<int>();
-            for (var x = 0; x < texture.Width; x += 4)
-            {
-                var o = mid + x * 4;
-                uniq.Add(texture.Rgba[o] << 16 | texture.Rgba[o + 1] << 8 | texture.Rgba[o + 2]);
-            }
-
-            Assert.True(uniq.Count > 8, $"sky mid-row looks striped unique={uniq.Count}");
+            Assert.InRange(texture.Rgba[mid + 2], 180, 255);
+            Assert.Equal(255, texture.Rgba[3]);
+            var lowA = 0;
+            for (var i = 3; i < texture.Rgba.Length; i += 16)
+                if (texture.Rgba[i] < 20) lowA++;
+            Assert.True(lowA < 100, $"sky alpha punched out lowA={lowA}");
         }
     }
 

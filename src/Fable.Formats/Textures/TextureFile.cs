@@ -75,7 +75,7 @@ public sealed class TextureFile
         if (formatCode == 31)
             return TextureCompression.Dxt1;
         if (formatCode == 35)
-            return TextureCompression.Dxt3;
+            return TextureCompression.Dxt5;
         if (formatCode == 32)
             return TextureCompression.Dxt5;
         var raw = width * height * 4;
