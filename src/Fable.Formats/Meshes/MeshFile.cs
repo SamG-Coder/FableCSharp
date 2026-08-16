@@ -16,6 +16,8 @@ public sealed class MeshFile
     public int ListFaces { get; init; }
     public int NoBlockFaces { get; init; }
     public int DegenerateSkipped { get; init; }
+    public int PrimitiveCount { get; init; }
+    public IReadOnlyList<MeshPrimitiveReport> PrimitiveReports { get; init; } = [];
 
     public static MeshFile? TryParse(byte[] data, int entryType = -1)
     {
@@ -117,6 +119,7 @@ public sealed class MeshFile
         var listFaces = 0;
         var noBlockFaces = 0;
         var degenerateSkipped = 0;
+        var primitiveReports = new List<MeshPrimitiveReport>(Math.Max(primitiveCount, 0));
 
         for (var i = 0; i < primitiveCount; i++)
         {
@@ -130,6 +133,9 @@ public sealed class MeshFile
             var textureId = materialIndex >= 0 && materialIndex < materials.Count
                 ? materials[materialIndex].DiffuseMapId
                 : 0;
+            var declaredBefore = declaredTriangles;
+            var emitBefore = triangles.Count;
+            var degBefore = degenerateSkipped;
             var reps = ReadI32(data, ref cursor);
             cursor += 12 + 4 + 4;
             var staticBlocks = ReadU32(data, ref cursor);
@@ -295,6 +301,13 @@ public sealed class MeshFile
                     listFaces += triangles.Count - before;
                 }
             }
+
+            primitiveReports.Add(new MeshPrimitiveReport(
+                materialIndex, textureId, (int)vertexCount, (int)indexCount,
+                declaredTriangles - declaredBefore,
+                triangles.Count - emitBefore,
+                degenerateSkipped - degBefore,
+                blocks.Count));
             }
             catch (Exception ex)
             {
@@ -320,6 +333,8 @@ public sealed class MeshFile
             ListFaces = listFaces,
             NoBlockFaces = noBlockFaces,
             DegenerateSkipped = degenerateSkipped,
+            PrimitiveCount = primitiveCount,
+            PrimitiveReports = primitiveReports,
         };
     }
 
@@ -442,6 +457,16 @@ public sealed class MeshFile
         return value;
     }
 }
+
+public readonly record struct MeshPrimitiveReport(
+    int MaterialIndex,
+    int TextureId,
+    int VertexCount,
+    int IndexCount,
+    int DeclaredTriangles,
+    int EmittedTriangles,
+    int DegenerateSkipped,
+    int BlockCount);
 
 public readonly record struct MeshMaterial(
     int Id,

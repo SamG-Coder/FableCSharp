@@ -314,8 +314,11 @@ public sealed class LevFormatTests
         }
 
         Assert.True(pathCells > 100, $"pathCells={pathCells}");
-        Assert.Equal(pathCells, pathCovered);
-        Assert.Equal(usable, usableCovered);
+        // Exe draws STB strips only. Village adaptive tiles omit many PATH
+        // 1 m cells; invented fill is not the landscape pass.
+        Assert.True(pathCovered > pathCells / 2, $"pathCovered={pathCovered}/{pathCells}");
+        Assert.True(pathCovered < pathCells, $"fill must not close every path cell pathCovered={pathCovered}/{pathCells}");
+        Assert.True(usableCovered > usable / 2, $"usableCovered={usableCovered}/{usable}");
     }
 
     private static bool PointInTri(

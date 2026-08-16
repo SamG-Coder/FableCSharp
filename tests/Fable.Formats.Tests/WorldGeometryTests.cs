@@ -217,5 +217,42 @@ public sealed class WorldGeometryTests
             return dx * dx + dy * dy < 4f && t.Layer == Fable.Formats.Meshes.SceneLayer.Prop;
         });
         Assert.True(nearKid > 10, $"kid mesh missing at NOVStartHSP nearKid={nearKid}");
+
+        var house = things.Things.First(t => t.ScriptName == "HerosOldHouse");
+        Assert.Equal("BUILDING_OAKVALE_HOUSE_MEDIUM_SINGLE_FLOOR_BUYABLE", house.DefinitionType);
+        var houseTris = CountPropNear(world, house.PositionX!.Value, house.PositionY!.Value, 20f);
+        Assert.True(houseTris > 100, $"HerosOldHouse mesh missing houseTris={houseTris}");
+        foreach (var def in new[]
+                 {
+                     "OBJECT_KHG_BED_03", "OBJECT_TABLE_LARGE_ROUND_01",
+                     "OBJECT_WOODEN_LAMP_OFF", "OBJECT_BS_RUG_ROUND_DIAMONDS_01",
+                 })
+        {
+            var thing = things.Things.First(t => t.DefinitionType == def && t.PositionX is not null);
+            var n = CountPropNear(world, thing.PositionX!.Value, thing.PositionY!.Value, 3f);
+            Assert.True(n > 0, $"{def} emitted 0 prop tris");
+        }
+
+        var height = levels.LoadHeightField("StartOakValeWest")!;
+        var compiled = levels.LoadCompiledLev("StartOakValeWest")!;
+        var cells = Fable.Formats.Levels.LevCellGrid.TryParse(compiled)!;
+        var enums = Fable.Formats.Defs.HeaderEnums.Load(
+            Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h"));
+        var stripOnly = height.Tiles.ToTriangles(height.OriginX, height.OriginY, cells, compiled.Materials, enums);
+        var drawn = height.ToTileTriangles(cells, compiled.Materials, enums);
+        Assert.Equal(stripOnly.Count, drawn.Count);
+    }
+
+    private static int CountPropNear(WorldGeometry world, float x, float y, float radius)
+    {
+        var r2 = radius * radius;
+        return world.Triangles.Count(t =>
+        {
+            if (t.Layer != Fable.Formats.Meshes.SceneLayer.Prop)
+                return false;
+            var mx = (t.A.X + t.B.X + t.C.X) / 3f - x;
+            var my = (t.A.Y + t.B.Y + t.C.Y) / 3f - y;
+            return mx * mx + my * my < r2;
+        });
     }
 }

@@ -84,9 +84,10 @@ public sealed class LevHeightField
         IReadOnlyList<LevMaterial> materials,
         HeaderEnums? textures = null)
     {
-        var triangles = Tiles.ToTriangles(OriginX, OriginY, cells, materials, textures).ToList();
-        FillUncovered(triangles, cells, materials, textures);
-        return triangles;
+        // STB primary strip + CPatchTesselationEdgeStrip only. Filling 1 m
+        // holes from the cell table is not in the exe draw path (00BF4570
+        // submits stored tessellation). Water/decal passes are UNREAD.
+        return Tiles.ToTriangles(OriginX, OriginY, cells, materials, textures);
     }
 
     public IReadOnlyList<MeshTriangle> ToFineTriangles(
@@ -128,76 +129,6 @@ public sealed class LevHeightField
         return triangles;
     }
 
-    /// <summary>
-    /// Adaptive STB strips omit many 1 m path cells (StartOakValeWest
-    /// village: 514 path holes). Fill those from the stamped fine
-    /// heightfield. Water/sea cells use <see cref="LandscapeTextures.WaterId"/>
-    /// until <c>CEngineWaterRenderer</c> is fed.
-    /// </summary>
-    private void FillUncovered(
-        List<MeshTriangle> triangles,
-        LevCellGrid cells,
-        IReadOnlyList<LevMaterial> materials,
-        HeaderEnums? textures)
-    {
-        var covered = new bool[cells.Width, cells.Height];
-        foreach (var tri in triangles)
-        {
-            var minX = (int)MathF.Floor(MathF.Min(tri.A.X, MathF.Min(tri.B.X, tri.C.X)));
-            var minY = (int)MathF.Floor(MathF.Min(tri.A.Y, MathF.Min(tri.B.Y, tri.C.Y)));
-            var maxX = (int)MathF.Ceiling(MathF.Max(tri.A.X, MathF.Max(tri.B.X, tri.C.X)));
-            var maxY = (int)MathF.Ceiling(MathF.Max(tri.A.Y, MathF.Max(tri.B.Y, tri.C.Y)));
-            for (var y = Math.Max(0, minY); y < Math.Min(cells.Height, maxY); y++)
-            for (var x = Math.Max(0, minX); x < Math.Min(cells.Width, maxX); x++)
-            {
-                if (ContainsCellCenter(tri, x, y))
-                    covered[x, y] = true;
-            }
-        }
-
-        var bySlot = materials.ToDictionary(item => item.Slot);
-        for (var y = 0; y < cells.Height; y++)
-        for (var x = 0; x < cells.Width; x++)
-        {
-            if (covered[x, y])
-                continue;
-            var tex = LayersOf(cells.Cells[x, y], bySlot, textures);
-            if (tex.A < 0)
-                continue;
-            var a = Corner(x, y);
-            var b = Corner(x + 1, y);
-            var c = Corner(x, y + 1);
-            var d = Corner(x + 1, y + 1);
-            Add(triangles, a, b, d, tex.A, tex.B);
-            Add(triangles, a, d, c, tex.A, tex.B);
-        }
-    }
-
-    private static (int A, int B) LayersOf(
-        LevCell cell, Dictionary<int, LevMaterial> bySlot, HeaderEnums? textures)
-    {
-        var found = new int[2];
-        var n = 0;
-        var anyNamed = false;
-        foreach (var slot in new[] { cell.Material0, cell.Material1, cell.Material2 })
-        {
-            if (slot == 0xFF || !bySlot.TryGetValue(slot, out var material))
-                continue;
-            anyNamed = true;
-            var id = LandscapeTextures.TryResolve(material.Name, textures);
-            if (id is null)
-                continue;
-            if (n == 0 || found[n - 1] != id.Value)
-                found[n++] = id.Value;
-            if (n == 2)
-                break;
-        }
-
-        if (n == 0)
-            return anyNamed ? (-1, -1) : (LandscapeTextures.DefaultId, LandscapeTextures.DefaultId);
-        return n == 1 ? (found[0], found[0]) : (found[0], found[1]);
-    }
-
     private Vector3 Corner(int x, int y)
     {
         var z = x >= 0 && y >= 0 && x <= FineWidth && y <= FineHeight
@@ -235,33 +166,6 @@ public sealed class LevHeightField
         }
 
         return LandscapeTextures.DefaultId;
-    }
-
-    /// <summary>
-    /// Strip AABBs overlap 1 m cells they do not actually cover. A cell is
-    /// covered only when its centre sits in a triangle.
-    /// </summary>
-    private static bool ContainsCellCenter(MeshTriangle tri, int x, int y)
-    {
-        var px = x + 0.5f;
-        var py = y + 0.5f;
-        var v0x = tri.C.X - tri.A.X;
-        var v0y = tri.C.Y - tri.A.Y;
-        var v1x = tri.B.X - tri.A.X;
-        var v1y = tri.B.Y - tri.A.Y;
-        var v2x = px - tri.A.X;
-        var v2y = py - tri.A.Y;
-        var dot00 = v0x * v0x + v0y * v0y;
-        var dot01 = v0x * v1x + v0y * v1y;
-        var dot02 = v0x * v2x + v0y * v2y;
-        var dot11 = v1x * v1x + v1y * v1y;
-        var dot12 = v1x * v2x + v1y * v2y;
-        var inv = dot00 * dot11 - dot01 * dot01;
-        if (MathF.Abs(inv) < 1e-12f)
-            return false;
-        var u = (dot11 * dot02 - dot01 * dot12) / inv;
-        var v = (dot00 * dot12 - dot01 * dot02) / inv;
-        return u >= -1e-4f && v >= -1e-4f && u + v <= 1f + 1e-4f;
     }
 
     private static void Add(

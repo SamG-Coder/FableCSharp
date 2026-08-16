@@ -61,6 +61,11 @@ public sealed class GameBinFormatTests
         Assert.Equal(4299, bin.FindMeshId("CREATURE_HERO_TRAINING"));
         Assert.Equal(4300, bin.FindMeshId("CREATURE_HERO_CHILD"));
         Assert.Equal(4300, bin.FindMeshId("CREATURE_YOUNG_HERO"));
+        Assert.Equal(6909, bin.FindMeshId("BUILDING_OAKVALE_HOUSE_MEDIUM_SINGLE_FLOOR_BUYABLE"));
+        Assert.Equal(6556, bin.FindMeshId("OBJECT_KHG_BED_03"));
+        Assert.Equal(7583, bin.FindMeshId("OBJECT_TABLE_LARGE_ROUND_01"));
+        Assert.Equal(7544, bin.FindMeshId("OBJECT_WOODEN_LAMP_OFF"));
+        Assert.Equal(4901, bin.FindMeshId("OBJECT_BS_RUG_ROUND_DIAMONDS_01"));
 
         var path = Path.Combine(install.DataRoot, "graphics", "graphics.big");
         using var big = BigArchive.Open(path);

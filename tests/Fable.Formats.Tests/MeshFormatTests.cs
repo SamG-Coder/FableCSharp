@@ -100,4 +100,26 @@ public sealed class MeshFormatTests
         Assert.Null(enums.FindMeshId("OBJECT_WALL_SMALL_POST_01"));
         Assert.Null(enums.FindMeshId("MARKER_BASIC"));
     }
+
+    [Fact]
+    public void Heros_old_house_c3d_emits_walls_and_floors()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var path = Path.Combine(install.DataRoot, "graphics", "graphics.big");
+        using var big = BigArchive.Open(path);
+        var bank = big.SubBanks.First(item => item.Name.Contains("MESH", StringComparison.OrdinalIgnoreCase));
+        var entry = big.ReadEntries(bank).First(item => item.Id == 6909);
+        var mesh = MeshFile.Parse(big.Read(entry), (int)entry.Type);
+        Assert.Contains(mesh.Materials, m => m.Name.Contains("Wall", StringComparison.OrdinalIgnoreCase) && m.DiffuseMapId == 345);
+        Assert.Contains(mesh.Materials, m => m.DiffuseMapId == 3184);
+        Assert.Equal(2, mesh.PrimitiveCount);
+        Assert.True(mesh.Triangles.Count > 200, $"house tris={mesh.Triangles.Count}");
+        Assert.Contains(mesh.Triangles, t => t.TextureId == 345);
+        Assert.Contains(mesh.Triangles, t => t.TextureId == 3180);
+        Assert.DoesNotContain(mesh.Triangles, t => t.TextureId == 3184);
+        Assert.DoesNotContain(mesh.Triangles, t => t.TextureId == 3182);
+        Assert.Equal(2, mesh.PrimitiveReports.Count);
+        Assert.True(mesh.DeclaredTriangles >= mesh.Triangles.Count);
+    }
 }

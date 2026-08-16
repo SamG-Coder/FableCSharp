@@ -6,7 +6,18 @@ namespace Fable.ExeIndex;
 /// </summary>
 internal static class X86
 {
-    public static List<string> Disassemble(PeImage pe, int fileOffset, int maxInsns = 64)
+    public static List<string> Disassemble(PeImage pe, int fileOffset, int maxInsns = 64) =>
+        DisassembleCore(pe, fileOffset, maxInsns, stopOnRet: true);
+
+    /// <summary>
+    /// Same as <see cref="Disassemble"/> but does not stop at the first
+    /// <c>ret</c>. Needed for functions with an early-out (Diffuse2X
+    /// <c>0098B5E0</c> returns immediately on arg == -1).
+    /// </summary>
+    public static List<string> DisassembleAll(PeImage pe, int fileOffset, int maxInsns = 64) =>
+        DisassembleCore(pe, fileOffset, maxInsns, stopOnRet: false);
+
+    private static List<string> DisassembleCore(PeImage pe, int fileOffset, int maxInsns, bool stopOnRet)
     {
         var lines = new List<string>();
         var ip = fileOffset;
@@ -21,7 +32,7 @@ internal static class X86
             }
 
             lines.Add($"  //{pe.Va(start):X8}: {text}");
-            if (text is "ret" or "retn" || text.StartsWith("ret ", StringComparison.Ordinal))
+            if (stopOnRet && (text is "ret" or "retn" || text.StartsWith("ret ", StringComparison.Ordinal)))
                 break;
         }
 

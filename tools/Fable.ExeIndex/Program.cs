@@ -488,13 +488,18 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "Per-cell SetTexture stage0", 0x00BF50E0, 80),
         WriteFnPart(pe, store, family, "Per-cell SetTexture stage1", 0x00BF5491, 80),
         WriteFnPart(pe, store, family, "Diffuse2X 0098B5E0", 0x0098B5E0, 80),
+        WriteFnPart(pe, store, family, "Diffuse2X full", 0x0098B5E0, 160, stopOnRet: false),
+        WriteFnPart(pe, store, family, "Diffuse2X apply body", 0x0098B601, 120),
         WriteFnPart(pe, store, family, "State apply 00987FE0", 0x00987FE0, 60),
         WriteFnPart(pe, store, family, "State apply 00988110", 0x00988110, 60),
+        WriteFnPart(pe, store, family, "State apply 00A0AA20", 0x00A0AA20, 80),
         WriteFnPart(pe, store, family, "Patch submit bit40 frustum", 0x00BDC2D0, 160),
         WriteFnPart(pe, store, family, "Unbind stages 0/1/2", 0x00B67510, 40),
         WriteFnPart(pe, store, family, "Water draw vtbl+16", 0x00B783F0, 160),
+        WriteFnPart(pe, store, family, "Water draw full", 0x00B783F0, 280, stopOnRet: false),
         WriteFnPart(pe, store, family, "Sky draw vtbl+16", 0x00B662F0, 80),
-        WriteFnPart(pe, store, family, "Static mesh VS bind", 0x00B8B660, 40),
+        WriteFnPart(pe, store, family, "MainScene plus616 draw", 0x00B33010, 120),
+        WriteFnPart(pe, store, family, "Static mesh VS bind", 0x00B8B660, 80),
         WriteFnPart(pe, store, family, "VS bind LANDSCAPE FOREGROUND", 0x00B69330, 80),
     };
     store.WriteIndex(
@@ -504,7 +509,7 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
     Console.WriteLine($"trace  {family}/  parts={links.Count}  v{DumpStore.NewGameTraceVersion}");
 }
 
-static IndexLink WriteFnPart(PeImage pe, DumpStore store, string family, string name, uint va, int n)
+static IndexLink WriteFnPart(PeImage pe, DumpStore store, string family, string name, uint va, int n, bool stopOnRet = true)
 {
     var slug = DumpStore.Slug(name, va);
     var sb = new StringBuilder();
@@ -515,9 +520,14 @@ static IndexLink WriteFnPart(PeImage pe, DumpStore store, string family, string 
     var file = pe.FileOffset(va);
     if (file < 0)
         sb.AppendLine("UNREAD (VA not mapped)");
-    else
+    else if (stopOnRet)
     {
         foreach (var line in X86.Disassemble(pe, file, n))
+            sb.AppendLine(line);
+    }
+    else
+    {
+        foreach (var line in X86.DisassembleAll(pe, file, n))
             sb.AppendLine(line);
     }
 
