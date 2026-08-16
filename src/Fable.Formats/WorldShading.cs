@@ -399,6 +399,13 @@ public static class WorldShading
     public const int LayoutBasicFloat4Count = 2;
     public const uint FirstSeenPalskinDefaultDraw = 0x00BD549D;
     public const bool FirstSeenPalskinUsesA0RelativeC38 = true;
+    /// <summary>
+    /// First-seen static / PALSKIN / landscape BG:
+    /// <c>mov oD0.w, c0.y</c>. FG is the c42 fade instead.
+    /// </summary>
+    public const bool FirstSeenStaticOd0WIsC0Y = true;
+    public const bool FirstSeenPalskinOd0WIsC0Y = true;
+    public const bool FirstSeenBackgroundOd0WIsC0Y = true;
     public const bool FirstSeenAppliesVertexFogBlend = true;
 
     /// <summary>

@@ -178,6 +178,7 @@ public sealed class ShaderFormatTests
         var land = Load("SHADERS_LANDSCAPE_FOREGROUND", "VSHADER_LANDSCAPE_FOREGROUND");
         var stat = Load("SHADERS_STATIC", "VSHADER_STATIC_DIRLIGHT_FOG");
         var skin = Load("SHADERS_PALSKIN", "VSHADER_PALSKIN_DIRLIGHT_FOG");
+        var bgVs = Load("SHADERS_LANDSCAPE_BACKGROUND", "VSHADER_LANDSCAPE_BACKGROUND");
         foreach (var vs in new[] { land, stat, skin })
         {
             Assert.Contains(WorldShading.DirLightStartRegister, vs.ConstRegisters);
@@ -197,6 +198,25 @@ public sealed class ShaderFormatTests
         Assert.True(skin.TryGetPalskinA0RelativeC38());
         Assert.False(land.TryGetPalskinA0RelativeC38());
         Assert.False(stat.TryGetPalskinA0RelativeC38());
+        Assert.True(skin.TryGetOd0WFromC0Y());
+        Assert.True(stat.TryGetOd0WFromC0Y());
+        Assert.True(bgVs.TryGetOd0WFromC0Y());
+        Assert.False(land.TryGetOd0WFromC0Y());
+        Assert.True(land.TryGetForegroundOd0WFromC42());
+        Assert.False(skin.TryGetForegroundOd0WFromC42());
+        Assert.False(stat.TryGetForegroundOd0WFromC42());
+        Assert.True(WorldShading.FirstSeenStaticOd0WIsC0Y);
+        Assert.True(WorldShading.FirstSeenPalskinOd0WIsC0Y);
+        Assert.True(WorldShading.FirstSeenBackgroundOd0WIsC0Y);
+        Assert.True(LandscapeTextures.FirstSeenForegroundOd0WUsesC42);
+        Assert.False(LandscapeTextures.FirstSeenWritesC42);
+        Assert.Equal(Vector4.Zero, LandscapeTextures.FirstSeenC42);
+        Assert.Equal(0f, LandscapeTextures.EvaluateForegroundOd0W(
+            new Vector3(1f, 2f, 3f), LandscapeTextures.FirstSeenC42, 1f));
+        Assert.Contains(42, land.ConstRegisters);
+        Assert.DoesNotContain(42, stat.ConstRegisters);
+        Assert.DoesNotContain(42, skin.ConstRegisters);
+        Assert.False(land.HasConstDef(LandscapeTextures.Od0WFadeRegister));
 
         Assert.Contains(3, land.ConstRegisters);
         Assert.DoesNotContain(1, land.ConstRegisters);
@@ -206,7 +226,6 @@ public sealed class ShaderFormatTests
         Assert.False(LandscapeTextures.FirstSeenUploadsC1LayerFlip);
         Assert.True(land.TryGetOt0FromV3(out var ot0Reg));
         Assert.Equal(3, ot0Reg);
-        var bgVs = Load("SHADERS_LANDSCAPE_BACKGROUND", "VSHADER_LANDSCAPE_BACKGROUND");
         Assert.True(bgVs.TryGetBackgroundOt0FromV3(out var bgOt0));
         Assert.Equal(3, bgOt0);
         Assert.False(bgVs.TryGetOt0FromV3(out _));

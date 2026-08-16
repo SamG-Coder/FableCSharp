@@ -243,6 +243,23 @@ public static class LandscapeTextures
     public static readonly System.Numerics.Vector4 Ot1C41 = System.Numerics.Vector4.Zero;
 
     /// <summary>
+    /// FG VS: <c>dp3 r5, r2, c42</c>; <c>add r4, r5, c42.w</c>;
+    /// <c>mul oD0.w, r4, v3.x</c>. No first-seen <c>push 42</c> /
+    /// <c>def c42</c> / layout field 42. D3D default is 0, so
+    /// first-seen <c>oD0.w=0</c>. Landscape alphablend is off,
+    /// so RGB still draws. BG / static / PALSKIN are
+    /// <c>mov oD0.w, c0.y</c> and do not read c42.
+    /// </summary>
+    public const int Od0WFadeRegister = 42;
+    public const bool FirstSeenForegroundOd0WUsesC42 = true;
+    public const bool FirstSeenWritesC42 = false;
+    public static readonly System.Numerics.Vector4 FirstSeenC42 = System.Numerics.Vector4.Zero;
+
+    public static float EvaluateForegroundOd0W(
+        System.Numerics.Vector3 r2, System.Numerics.Vector4 c42, float v3x) =>
+        (r2.X * c42.X + r2.Y * c42.Y + r2.Z * c42.Z + c42.W) * v3x;
+
+    /// <summary>
     /// FG VS: <c>mov r0.xy, v0</c>; <c>mov r0.z, v1.x</c>;
     /// <c>mov r0.w, c0.y</c>; <c>add r1, r0, -c4</c>;
     /// <c>dp4 oPos, r1, c5–c8</c>. <c>00B54310</c> writes inverse

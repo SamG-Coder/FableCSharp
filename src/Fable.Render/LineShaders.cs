@@ -95,18 +95,21 @@ internal static class LineShaders
             vec3 c3 = vec3(0.0, 0.125, 0.0);
             vec3 v0 = fragColor.rgb * (pc.lightColor.rgb * (ndl * ndl) + litAdd + c3);
             vec3 lit;
+            // STATIC/PALSKIN/BG: mov oD0.w, c0.y (first-seen 1).
+            // FG: (dp3(r2,c42)+c42.w)*v3.x; first-seen c42=0 so 0.
+            float v0a = (mode > 0.5 && mode < 1.5) ? 0.0 : 1.0;
             float alpha = 1.0;
             if (mode < 0.5)
             {
                 // PSHADER_LANDSCAPE_BACKGROUND: mul_x2_sat t0 * v0
                 lit = clamp(t0.rgb * v0 * 2.0, 0.0, 1.0);
-                alpha = clamp(t0.a * fragColor.a, 0.0, 1.0);
+                alpha = clamp(t0.a * v0a, 0.0, 1.0);
             }
             else if (mode < 1.5)
             {
                 // PSHADER_LANDSCAPE_FOREGROUND: mul_x2_sat t1 * v0; mul_sat t0.a * v0.a
                 lit = clamp(t1.rgb * v0 * 2.0, 0.0, 1.0);
-                alpha = clamp(t0.a * fragColor.a, 0.0, 1.0);
+                alpha = clamp(t0.a * v0a, 0.0, 1.0);
             }
             else if (mode < 2.5)
                 lit = t1.rgb * fragColor.rgb;
