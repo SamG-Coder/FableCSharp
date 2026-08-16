@@ -166,6 +166,28 @@ public sealed class ShaderProgram
     }
 
     /// <summary>
+    /// First-seen inner/outer sky: <c>dp4 oPos, v0, c5–c8</c>.
+    /// No <c>c4</c> subtract.
+    /// </summary>
+    public bool TryGetSkyOPosWvp()
+    {
+        var insns = DecodeInstructions();
+        if (insns.Count < 4)
+            return false;
+        for (var k = 0; k < 4; k++)
+        {
+            var dp = insns[k];
+            if (dp.Opcode != Dp4Opcode || dp.DestType != RegTypeRastOut || dp.DestNum != 0)
+                return false;
+            if (dp.Src0Type != RegTypeInput || dp.Src0Num != 0
+                || !dp.Src1Is(RegTypeConst, 5 + k))
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// First-seen landscape FG: <c>mov oT0.xy, v3.yz</c>.
     /// That is t0 (PS alpha), not the albedo UV.
     /// </summary>

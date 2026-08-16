@@ -132,7 +132,9 @@ window.Render += _ =>
         out var cotH, out var cotV);
     var fogPlane = LandscapeFrustum.InverseRow0(
         camera.Position, camera.Forward, Vector3.UnitZ, cotH, cotV);
-    renderer.Draw(camera.ViewProjection(aspect), camera.Position, fogPlane);
+    renderer.Draw(
+        camera.ViewProjection(aspect), camera.Position, fogPlane,
+        camera.SkyViewProjection(aspect));
 };
 
 window.Closing += () =>

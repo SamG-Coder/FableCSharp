@@ -71,6 +71,14 @@ public sealed unsafe partial class VulkanLineRenderer
                 PushMeshConstants(commandBuffer);
             }
 
+            var sky = draw.PassBit == Fable.Formats.Sky.SkyPass.FirstSeenLayerBit;
+            var wanted = sky ? _skyViewProj : _worldViewProj;
+            if (_meshPush.ViewProj != wanted)
+            {
+                _meshPush.ViewProj = wanted;
+                PushMeshConstants(commandBuffer);
+            }
+
             // PSHADER_LANDSCAPE_FOREGROUND: mul_x2 t1 * v0 (RGB), t0.a * v0.a.
             // Stage 1 is the albedo. Primary TextureId must sit on t1 for FG.
             var fg = Math.Abs(draw.ShaderMode - 1f) < 0.01f;

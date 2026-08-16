@@ -56,6 +56,33 @@ public sealed class FlyCamera
 
     public Matrix4x4 ViewProjection(float aspect) => ViewMatrix * ProjectionMatrix(aspect, FovDegrees);
 
+    /// <summary>
+    /// <c>00B662F0</c> else-path <c>00B30B50</c> with sky source
+    /// near 100 / far 10000 / minZ 0.99 / maxZ 1, then
+    /// <c>VSHADER_INNER_SKY</c> <c>dp4 oPos, v0, c5–c8</c>.
+    /// </summary>
+    public static Matrix4x4 SkyProjectionMatrix(float aspect, float fovDegrees = 65f)
+    {
+        aspect = MathF.Max(aspect, 0.01f);
+        LandscapeFrustum.LetterboxCots(
+            float.DegreesToRadians(fovDegrees), aspect, 1f,
+            out var cotH, out var cotV);
+        LandscapeFrustum.ViewportZTerms(
+            Fable.Formats.Sky.SkyPass.FirstSeenNear,
+            Fable.Formats.Sky.SkyPass.FirstSeenFar,
+            Fable.Formats.Sky.SkyPass.FirstSeenMinZ,
+            Fable.Formats.Sky.SkyPass.FirstSeenMaxZ,
+            out var m33, out var m34);
+        return new Matrix4x4(
+            cotH, 0f, 0f, 0f,
+            0f, -cotV, 0f, 0f,
+            0f, 0f, -m33, -1f,
+            0f, 0f, m34, 0f);
+    }
+
+    public Matrix4x4 SkyViewProjection(float aspect) =>
+        ViewMatrix * SkyProjectionMatrix(aspect, FovDegrees);
+
     public void LookAt(Vector3 target)
     {
         var dir = target - Position;

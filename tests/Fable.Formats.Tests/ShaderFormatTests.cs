@@ -5,6 +5,7 @@ using Fable.Formats.Banks;
 using Fable.Formats.Levels;
 using Fable.Formats.Scene;
 using Fable.Formats.Shaders;
+using Fable.Formats.Sky;
 
 namespace Fable.Formats.Tests;
 
@@ -362,5 +363,34 @@ public sealed class ShaderFormatTests
         Assert.Equal(ShaderProgram.MinOpcode, 0x0Au);
         Assert.Equal(ShaderProgram.MadOpcode, 0x04u);
         Assert.Equal(1, ShaderProgram.RastOutFog);
+    }
+
+    [Fact]
+    public void First_seen_inner_sky_opos_is_dp4_v0_c5()
+    {
+        var install = Require();
+        using var big = BigArchive.Open(install.ShadersBigPath);
+        var bank = big.SubBanks.First(s => s.Name == "SHADERS_SKY");
+        var entry = big.ReadEntries(bank).First(e => e.Name == "VSHADER_INNER_SKY");
+        var vs = ShaderProgram.Parse(entry.Name, bank.Name, entry.Type, big.Read(entry));
+        Assert.True(vs.TryGetSkyOPosWvp());
+        Assert.DoesNotContain(4, vs.ConstRegisters);
+        Assert.Contains(5, vs.ConstRegisters);
+        Assert.Contains(8, vs.ConstRegisters);
+        Assert.Equal(0x00B662F0u, SkyPass.Draw);
+        Assert.Equal(0x00B66190u, SkyPass.MeshDraw);
+        Assert.Equal(0x2000u, SkyPass.FirstSeenLayerBit);
+        Assert.False(SkyPass.FirstSeenUses400000);
+        Assert.Equal(100f, SkyPass.FirstSeenNear);
+        Assert.Equal(10000f, SkyPass.FirstSeenFar);
+        Assert.Equal(0.99f, SkyPass.FirstSeenMinZ);
+        Assert.Equal(1f, SkyPass.FirstSeenMaxZ);
+        Assert.Equal(0x42C80000u, SkyPass.NearImm);
+        Assert.Equal(0x461C4000u, SkyPass.FarImm);
+        Assert.Equal(0x0139A704u, SkyPass.MinZConst);
+        var land = big.ReadEntries(big.SubBanks.First(s => s.Name == "SHADERS_LANDSCAPE_FOREGROUND"))
+            .First(e => e.Name == "VSHADER_LANDSCAPE_FOREGROUND");
+        Assert.False(ShaderProgram.Parse(land.Name, "SHADERS_LANDSCAPE_FOREGROUND", land.Type, big.Read(land))
+            .TryGetSkyOPosWvp());
     }
 }

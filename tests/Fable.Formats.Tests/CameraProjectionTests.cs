@@ -1,6 +1,7 @@
 using System.Numerics;
 using Fable.Formats;
 using Fable.Formats.Levels;
+using Fable.Formats.Sky;
 using Fable.Render;
 
 namespace Fable.Formats.Tests;
@@ -193,5 +194,24 @@ public sealed class CameraProjectionTests
         Assert.Equal(Vector3.UnitY, c1);
         Assert.Equal(Vector3.UnitZ, c2);
         Assert.Equal(cam, c3);
+    }
+
+    [Fact]
+    public void First_seen_sky_wvp_uses_100_10000_and_far_slice()
+    {
+        LandscapeFrustum.ViewportZTerms(
+            SkyPass.FirstSeenNear, SkyPass.FirstSeenFar,
+            SkyPass.FirstSeenMinZ, SkyPass.FirstSeenMaxZ,
+            out var m33, out var m34);
+        Assert.Equal(SkyPass.FirstSeenMinZ, m33 + m34 / SkyPass.FirstSeenNear, 4);
+        Assert.Equal(SkyPass.FirstSeenMaxZ, m33 + m34 / SkyPass.FirstSeenFar, 4);
+        var sky = FlyCamera.SkyProjectionMatrix(4f / 3f, 72f);
+        var world = FlyCamera.ProjectionMatrix(4f / 3f, 72f);
+        Assert.NotEqual(world.M33, sky.M33);
+        Assert.Equal(100f, SkyPass.FirstSeenNear);
+        Assert.Equal(10000f, SkyPass.FirstSeenFar);
+        Assert.Equal(0x00B662F0u, SkyPass.Draw);
+        Assert.Equal(0x2000u, SkyPass.FirstSeenLayerBit);
+        Assert.False(SkyPass.FirstSeenUses400000);
     }
 }
