@@ -271,7 +271,7 @@ public sealed class WorldGeometryTests
         Assert.True(dome.Count > 8 * 36 * 2, $"dome tris={dome.Count}");
         var verts = dome.SelectMany(t => new[] { t.A, t.B, t.C }).ToList();
         Assert.Contains(verts, p => p.Z > 3000f && p.LengthSquared() < 3250f * 3250f + 1f);
-        Assert.Contains(verts, p => MathF.Hypot(p.X, p.Y) > 5000f);
+        Assert.Contains(verts, p => MathF.Sqrt(p.X * p.X + p.Y * p.Y) > 5000f);
         Assert.DoesNotContain(verts, p =>
         {
             var d = p - new Vector3(64f, 64f, 0f);
