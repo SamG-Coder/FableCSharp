@@ -21,6 +21,7 @@ public sealed class ScriptRuntime : IScriptHost
     public string? LastAvi { get; private set; }
     public bool SoundsMuted { get; private set; }
     public int TimeCode { get; private set; }
+    public float LastGamePause { get; private set; }
     public string? ActiveCutscene => _interpreters.Count == 0 ? null : _interpreters[^1].Name;
     public ScriptInterpreter? ActiveInterpreter =>
         _interpreters.Count == 0 ? null : _interpreters[^1];
@@ -234,6 +235,12 @@ public sealed class ScriptRuntime : IScriptHost
     /// the leftover increment as a pose clock.
     /// </summary>
     void IScriptHost.StartTimeCode() => TimeCode = 0;
+
+    /// <summary>
+    /// <c>00CC88D1</c> default wait is scaled frames,
+    /// not wall-clock dt. CLOCK arg is unread here.
+    /// </summary>
+    void IScriptHost.GamePause(float seconds) => LastGamePause = seconds;
 
     /// <summary>
     /// <c>00CC86D0</c> default path: <c>00CBF29F</c> with

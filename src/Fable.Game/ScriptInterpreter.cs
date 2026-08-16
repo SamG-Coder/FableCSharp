@@ -17,9 +17,12 @@ public sealed class ScriptInterpreter
     public bool FadeSpecialCaseApplied { get; private set; }
     public string? UnsupportedCommand { get; private set; }
     public int ScriptFrameRemaining { get; private set; }
+    public float GamePauseTarget { get; private set; }
+    public float GamePauseCounter { get; private set; }
     public IReadOnlyList<string> Executed => _executed;
 
     private readonly List<string> _executed = [];
+    private int _gamePausePhase;
 
     public ScriptInterpreter(string name, IReadOnlyList<string> commands)
     {
@@ -46,6 +49,20 @@ public sealed class ScriptInterpreter
                     return;
                 }
 
+                _executed.Add(raw);
+                InstructionPointer++;
+                continue;
+            }
+
+            if (command.Verb.Equals("GamePause", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!TickGamePause(command.Arguments))
+                {
+                    Yielded = true;
+                    return;
+                }
+
+                host?.GamePause(ParseGamePauseSeconds(command.Arguments));
                 _executed.Add(raw);
                 InstructionPointer++;
                 continue;
@@ -116,6 +133,53 @@ public sealed class ScriptInterpreter
 
         ScriptFrameRemaining--;
         return ScriptFrameRemaining == 0;
+    }
+
+    /// <summary>
+    /// <c>00CC88D1</c> default path (no <c>clock</c>):
+    /// <c>0099E690</c> atof, target = seconds *
+    /// <c>[0x124E640]=15</c>, first <c>vtbl+28</c>,
+    /// then loop <c>vtbl+28</c> + add
+    /// <c>[0x122DED8]=1</c> until counter &gt;= target.
+    /// CLOCK path is unread for first-seen 1.6.
+    /// </summary>
+    private bool TickGamePause(string arguments)
+    {
+        if (_gamePausePhase == 0)
+        {
+            GamePauseTarget = ParseGamePauseSeconds(arguments) * RegionTravel.GamePauseScale;
+            GamePauseCounter = 0f;
+            _gamePausePhase = 1;
+            return false;
+        }
+
+        if (_gamePausePhase == 1)
+        {
+            _gamePausePhase = 2;
+            if (GamePauseCounter >= GamePauseTarget)
+            {
+                _gamePausePhase = 0;
+                return true;
+            }
+
+            return false;
+        }
+
+        GamePauseCounter += RegionTravel.GamePauseIncrement;
+        if (GamePauseCounter < GamePauseTarget)
+            return false;
+        _gamePausePhase = 0;
+        return true;
+    }
+
+    public static float ParseGamePauseSeconds(string arguments)
+    {
+        var token = FirstToken(arguments.Trim());
+        if (token.Length == 0)
+            return 0f;
+        return float.TryParse(token, NumberStyles.Float, CultureInfo.InvariantCulture, out var seconds)
+            ? seconds
+            : 0f;
     }
 
     public static int ParseScriptFrameCount(string arguments)
@@ -321,4 +385,5 @@ public interface IScriptHost
     void PlayAvi(string arguments);
     void MuteSounds(string arguments);
     void StartTimeCode();
+    void GamePause(float seconds);
 }

@@ -300,6 +300,13 @@ public sealed class WorldSceneTests
         Assert.Equal(0x013B83C8u, RegionTravel.StartTimeCodeGlobal);
         Assert.True(RegionTravel.FirstSeenStartTimeCodeDoesNotYield);
         Assert.Equal("CAM_OVI_ID_STANDUP", RegionTravel.IntroStandupCamera);
+        Assert.Equal(0x00CC88D1u, RegionTravel.GamePauseOpcode);
+        Assert.Equal(0x0099E690u, RegionTravel.GamePauseAtoi);
+        Assert.Equal(15f, RegionTravel.GamePauseScale);
+        Assert.Equal(1f, RegionTravel.GamePauseIncrement);
+        Assert.False(RegionTravel.FirstSeenGamePauseHasClockArg);
+        Assert.False(RegionTravel.FirstSeenGamePauseUsesFrameDt);
+        Assert.Equal(1.6f, RegionTravel.IntroGamePauseSeconds);
         Assert.Equal(0x00CC4B22u, RegionTravel.ScriptFadeInOut);
         Assert.Equal(0x00CB5D80u, RegionTravel.RegisteringScripts);
         Assert.Equal(0x00CB8110u, RegionTravel.QuestBaseCtor);
@@ -666,8 +673,14 @@ public sealed class WorldSceneTests
         Assert.Equal(RegionTravel.IntroStandupCamera, camera.ActiveName);
         Assert.Contains(intro.Executed, line => line.Equals("FadeIn", StringComparison.Ordinal));
         Assert.Equal("GamePause 1.6", intro.Commands[intro.InstructionPointer]);
-        Assert.Equal("GamePause 1.6", intro.UnsupportedCommand);
+        Assert.Null(intro.UnsupportedCommand);
         Assert.True(intro.Yielded);
+        Assert.False(intro.ExecutedVerb("GamePause"));
+        Assert.Equal(1.6f * RegionTravel.GamePauseScale, intro.GamePauseTarget);
+        Assert.Equal(0f, intro.GamePauseCounter);
+        Assert.Equal(0x00CC88D1u, RegionTravel.GamePauseOpcode);
+        Assert.Equal(15f, RegionTravel.GamePauseScale);
+        Assert.False(RegionTravel.FirstSeenGamePauseUsesFrameDt);
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 
@@ -678,6 +691,29 @@ public sealed class WorldSceneTests
         Assert.NotEqual(RegionTravel.IntroCutscene, other.Name);
         Assert.Equal(attract.Commands[0], other.Commands[0]);
         Assert.Same(intro, runtime.FindInterpreter(RegionTravel.IntroCutscene));
+    }
+
+    [Fact]
+    public void GamePause_1_6_waits_scaled_frames_not_dt()
+    {
+        var interpreter = new ScriptInterpreter("pause", ["GamePause 1.6", "PlayMusic X"]);
+        interpreter.RunUntilYield();
+        Assert.True(interpreter.Yielded);
+        Assert.Equal("GamePause 1.6", interpreter.Commands[interpreter.InstructionPointer]);
+        Assert.Equal(24f, interpreter.GamePauseTarget);
+        Assert.Equal(0f, interpreter.GamePauseCounter);
+        var visits = 1;
+        while (interpreter.Yielded && visits < 40)
+        {
+            interpreter.Resume();
+            visits++;
+        }
+
+        Assert.Equal(26, visits);
+        Assert.Contains("GamePause 1.6", interpreter.Executed);
+        Assert.Contains("PlayMusic X", interpreter.Executed);
+        Assert.True(interpreter.Finished);
+        Assert.False(RegionTravel.FirstSeenGamePauseUsesFrameDt);
     }
 
     [Fact]

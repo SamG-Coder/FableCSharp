@@ -202,6 +202,25 @@ public static class RegionTravel
     public const uint StartTimeCodeGlobal = 0x013B83C8;
     public const bool FirstSeenStartTimeCodeDoesNotYield = true;
     public const string IntroStandupCamera = "CAM_OVI_ID_STANDUP";
+    /// <summary>
+    /// <c>00CC88D1</c> <c>GamePause</c>. First-seen
+    /// <c>1.6</c> has no <c>clock</c> arg so the
+    /// default path runs: <c>0099E690</c> atof,
+    /// target = seconds * <c>[0x124E640]=15</c>,
+    /// one <c>vtbl+28</c>, then loop <c>vtbl+28</c>
+    /// adding <c>[0x122DED8]=1</c> until
+    /// counter &gt;= target. CLOCK path uses
+    /// <c>009E1BC0</c> and is not first-seen.
+    /// </summary>
+    public const uint GamePauseOpcode = 0x00CC88D1;
+    public const uint GamePauseAtoi = 0x0099E690;
+    public const uint GamePauseScaleVa = 0x0124E640;
+    public const float GamePauseScale = 15f;
+    public const uint GamePauseIncrementVa = 0x0122DED8;
+    public const float GamePauseIncrement = 1f;
+    public const bool FirstSeenGamePauseHasClockArg = false;
+    public const bool FirstSeenGamePauseUsesFrameDt = false;
+    public const float IntroGamePauseSeconds = 1.6f;
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;
