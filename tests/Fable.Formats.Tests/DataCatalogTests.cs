@@ -50,6 +50,10 @@ public sealed class DataCatalogTests
         Assert.True(RegionTravel.FirstSeenScriptBinHasIntroCutscene);
         Assert.False(RegionTravel.FirstSeenCallsUseCamera);
         Assert.False(RegionTravel.FirstSeenCallsPlayAnimationDispatcher);
+        Assert.False(RegionTravel.FirstSeenStartsIntroCutscene);
+        Assert.Equal(0x00DB86B0u, RegionTravel.IntroCutsceneStart);
+        Assert.Equal(0x00CBFB7Du, RegionTravel.IntroCutsceneRunner);
+        Assert.Equal("CAM_OVIF_SHOT2", RegionTravel.IntroFirstSeenCamera);
     }
 
     [Fact]

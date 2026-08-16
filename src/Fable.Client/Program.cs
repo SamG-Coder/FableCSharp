@@ -28,10 +28,12 @@ Vector3 startLook = new(64f, 64f, 36f);
 var startFov = 65f;
 using var textures = new TextureLibrary(install);
 NewGameScript? intro = null;
+var gameCam = new ScriptedCamera();
 EnterRegion(region, arrivedFromExit: null);
 
-var camera = new FlyCamera { Position = startPosition, FovDegrees = startFov };
-camera.LookAt(startLook);
+var debugCam = new FlyCamera { Position = gameCam.Position, FovDegrees = gameCam.FovDegrees };
+debugCam.LookAt(gameCam.LookAt);
+var debugFly = false;
 
 var options = WindowOptions.DefaultVulkan with
 {
@@ -47,6 +49,7 @@ IMouse? mouse = null;
 Vector2 lastMouse = Vector2.Zero;
 var looking = false;
 var f1WasDown = false;
+var f2WasDown = false;
 var gWasDown = false;
 
 window.Load += () =>
@@ -66,8 +69,8 @@ window.Load += () =>
 
     Console.WriteLine($"{install.Edition}: {install.Root}");
     Console.WriteLine($"{region}: {scene.ThingCount} things, {scene.Lines.Count} line verts");
-    Console.WriteLine($"camera {camera.Position} -> {startLook}  meshVerts={mesh.Vertices.Length} textures={mesh.Draws.Length}");
-    Console.WriteLine("WASD walk  Q/E up-down  Shift sprint  RMB look  Home reset  G gizmos  F1 dump  Esc quit");
+    Console.WriteLine($"camera {gameCam.ActiveName} {gameCam.Position} -> {gameCam.LookAt}  meshVerts={mesh.Vertices.Length} textures={mesh.Draws.Length}");
+    Console.WriteLine("F2 debug fly  WASD/RMB only in debug  Home reset debug  G gizmos  F1 dump  Esc quit");
     Console.WriteLine($"start {region} at {startPosition.X:0.0},{startPosition.Y:0.0},{startPosition.Z:0.0}  exits={exits.Count}");
 };
 
@@ -86,11 +89,17 @@ window.Update += dt =>
         return;
     }
 
-    if (keyboard.IsKeyPressed(Key.Home))
+    var f2Down = keyboard.IsKeyPressed(Key.F2);
+    if (f2Down && !f2WasDown)
     {
-        camera.Position = startPosition;
-        camera.LookAt(startLook);
+        debugFly = !debugFly;
+        if (debugFly)
+            CopyGameToDebug();
     }
+    f2WasDown = f2Down;
+
+    if (debugFly && keyboard.IsKeyPressed(Key.Home))
+        CopyGameToDebug();
 
     var f1Down = keyboard.IsKeyPressed(Key.F1);
     if (f1Down && !f1WasDown)
@@ -102,21 +111,24 @@ window.Update += dt =>
         renderer.ShowGizmos = !renderer.ShowGizmos;
     gWasDown = gDown;
 
-    var move = Vector3.Zero;
-    if (keyboard.IsKeyPressed(Key.W)) move.Y += 1;
-    if (keyboard.IsKeyPressed(Key.S)) move.Y -= 1;
-    if (keyboard.IsKeyPressed(Key.D)) move.X += 1;
-    if (keyboard.IsKeyPressed(Key.A)) move.X -= 1;
-    if (keyboard.IsKeyPressed(Key.E) || keyboard.IsKeyPressed(Key.Space)) move.Z += 1;
-    if (keyboard.IsKeyPressed(Key.Q) || keyboard.IsKeyPressed(Key.ControlLeft)) move.Z -= 1;
-    if (move.LengthSquared() > 0)
-        camera.Move(Vector3.Normalize(move), (float)dt, keyboard.IsKeyPressed(Key.ShiftLeft));
+    if (debugFly)
+    {
+        var move = Vector3.Zero;
+        if (keyboard.IsKeyPressed(Key.W)) move.Y += 1;
+        if (keyboard.IsKeyPressed(Key.S)) move.Y -= 1;
+        if (keyboard.IsKeyPressed(Key.D)) move.X += 1;
+        if (keyboard.IsKeyPressed(Key.A)) move.X -= 1;
+        if (keyboard.IsKeyPressed(Key.E) || keyboard.IsKeyPressed(Key.Space)) move.Z += 1;
+        if (keyboard.IsKeyPressed(Key.Q) || keyboard.IsKeyPressed(Key.ControlLeft)) move.Z -= 1;
+        if (move.LengthSquared() > 0)
+            debugCam.Move(Vector3.Normalize(move), (float)dt, keyboard.IsKeyPressed(Key.ShiftLeft));
+    }
 
     intro?.Update((float)dt);
 
     TryWalk();
 
-    looking = mouse is not null && mouse.IsButtonPressed(MouseButton.Right);
+    looking = debugFly && mouse is not null && mouse.IsButtonPressed(MouseButton.Right);
     if (mouse is not null)
         mouse.Cursor.CursorMode = looking ? CursorMode.Disabled : CursorMode.Normal;
 
@@ -129,12 +141,24 @@ window.Render += _ =>
         return;
 
     var aspect = window.FramebufferSize.X / (float)window.FramebufferSize.Y;
-    var fogPlane = Fable.Formats.WorldShading.LinearFogPlane(
-        camera.Position, camera.Forward);
-    renderer.Draw(
-        camera.ViewProjection(aspect), camera.Position, fogPlane,
-        camera.SkyViewProjection(aspect),
-        camera.LandscapeViewProjection(aspect));
+    if (debugFly)
+    {
+        var fogPlane = Fable.Formats.WorldShading.LinearFogPlane(
+            debugCam.Position, debugCam.Forward);
+        renderer.Draw(
+            debugCam.ViewProjection(aspect), debugCam.Position, fogPlane,
+            debugCam.SkyViewProjection(aspect),
+            debugCam.LandscapeViewProjection(aspect));
+    }
+    else
+    {
+        var fogPlane = Fable.Formats.WorldShading.LinearFogPlane(
+            gameCam.Position, gameCam.Forward);
+        renderer.Draw(
+            gameCam.ViewProjection(aspect), gameCam.Position, fogPlane,
+            gameCam.SkyViewProjection(aspect),
+            gameCam.LandscapeViewProjection(aspect));
+    }
 };
 
 window.Closing += () =>
@@ -150,14 +174,23 @@ return 0;
 string Title()
 {
     var mapLabel = map is null ? region : $"{map.ScriptName}  ({map.MapX},{map.MapY})";
-    return $"FableCSharp — {mapLabel} — {world.MeshInstances} meshes / {scene.ThingCount} things — cam {camera.Position.X:0.0}, {camera.Position.Y:0.0}, {camera.Position.Z:0.0}";
+    var pos = debugFly ? debugCam.Position : gameCam.Position;
+    var camLabel = debugFly ? "debug" : (gameCam.ActiveName.Length == 0 ? "script" : gameCam.ActiveName);
+    return $"FableCSharp — {mapLabel} — {world.MeshInstances} meshes / {scene.ThingCount} things — {camLabel} {pos.X:0.0}, {pos.Y:0.0}, {pos.Z:0.0}";
 }
 
 void OnMouseMove(Vector2 point)
 {
     if (looking)
-        camera.Look(point.X - lastMouse.X, point.Y - lastMouse.Y);
+        debugCam.Look(point.X - lastMouse.X, point.Y - lastMouse.Y);
     lastMouse = point;
+}
+
+void CopyGameToDebug()
+{
+    debugCam.Position = gameCam.Position;
+    debugCam.FovDegrees = gameCam.FovDegrees;
+    debugCam.LookAt(gameCam.LookAt);
 }
 
 void EnterRegion(string next, RegionExit? arrivedFromExit)
@@ -175,8 +208,20 @@ void EnterRegion(string next, RegionExit? arrivedFromExit)
         spawn = RegionTravel.FindEntrance(things.Things, hit.Link);
     spawn ??= RegionTravel.FindPlayerStart(things.Things);
     if (spawn is not null &&
-        RegionTravel.TryIntroCamera(things.Things, out var introPos, out var introLook, out var introFov))
+        gameCam.UseCamera(things.Things, RegionTravel.IntroFirstSeenCamera))
     {
+        startPosition = gameCam.Position;
+        startLook = gameCam.LookAt;
+        startFov = gameCam.FovDegrees;
+        LandscapeFrustum.LetterboxCots(
+            float.DegreesToRadians(gameCam.FovDegrees), 4f, 3f, out var cotH, out var cotV);
+        planes = LandscapeFrustum.ExtractSidePlanes(
+            gameCam.Position, gameCam.Forward, gameCam.Up, cotH, cotV);
+    }
+    else if (spawn is not null &&
+             RegionTravel.TryIntroCamera(things.Things, out var introPos, out var introLook, out var introFov))
+    {
+        gameCam.Bind(RegionTravel.IntroFirstSeenCamera, introPos, introLook, Vector3.UnitZ, introFov);
         startPosition = introPos;
         startLook = introLook;
         startFov = introFov;
@@ -200,7 +245,7 @@ void EnterRegion(string next, RegionExit? arrivedFromExit)
             $"run 0x{RegionTravel.IntroQuestRun:X} -> 0x{RegionTravel.StartOakValeSetup:X}; " +
             $"VM list 0x{NewGameScript.ListWalk:X} rec {NewGameScript.ListRecordBytes}; " +
             $"phase {intro.Current} {RegionTravel.PreAttackDuration:0}s wait; " +
-            $"+{RegionTravel.PreAttackGateOffset} unread; SHOT2 TNG; kid bind-pose");
+            $"+{RegionTravel.PreAttackGateOffset} unread; {gameCam.ActiveName}; kid bind-pose");
     }
     else
         intro = null;
@@ -211,11 +256,13 @@ void EnterRegion(string next, RegionExit? arrivedFromExit)
         var eye = world.PlayerHeight * 0.5f;
         startPosition = feet + Vector3.UnitZ * eye;
         startLook = feet + RegionTravel.ForwardOf(spawn) * 8f + Vector3.UnitZ * eye;
+        gameCam.Bind(spawn.ScriptName ?? "spawn", startPosition, startLook, Vector3.UnitZ, startFov);
     }
     else if (planes is null)
     {
         startPosition = new Vector3(64f, -40f, 95f);
         startLook = new Vector3(64f, 64f, 36f);
+        gameCam.Bind("overview", startPosition, startLook, Vector3.UnitZ, startFov);
     }
 }
 
@@ -223,7 +270,7 @@ void TryWalk()
 {
     if (renderer is null)
         return;
-    var hit = RegionTravel.HitExit(exits, camera.Position);
+    var hit = RegionTravel.HitExit(exits, gameCam.Position);
     if (hit is not { } crossed)
         return;
     var dest = levels.World.Maps.FirstOrDefault(item => item.MapUid == crossed.Link.MapUid);
@@ -232,9 +279,7 @@ void TryWalk()
 
     Console.WriteLine($"walk {region} -> {dest.ScriptName}  radius={crossed.Radius}");
     EnterRegion(dest.ScriptName, crossed);
-    camera.Position = startPosition;
-    camera.FovDegrees = startFov;
-    camera.LookAt(startLook);
+    CopyGameToDebug();
     renderer.SetLines(CollectionsMarshalAsSpan(scene.Lines));
     var mesh = MeshBatches.Build(world.Triangles);
     renderer.SetTextures(LoadGpuTextures(mesh, textures));

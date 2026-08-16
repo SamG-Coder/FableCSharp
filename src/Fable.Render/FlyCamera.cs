@@ -3,7 +3,12 @@ using Fable.Formats.Levels;
 
 namespace Fable.Render;
 
-/// <summary>Z-up fly camera matching Fable world space (X/Y ground, Z height).</summary>
+/// <summary>
+/// Debug free-fly only. Projection/basis match the scripted
+/// camera (<c>LandscapeFrustum</c> first-seen WVP). Must not
+/// write game / script camera state. Exiting debug restores
+/// the current scripted camera by leaving that object untouched.
+/// </summary>
 public sealed class FlyCamera
 {
     public Vector3 Position;

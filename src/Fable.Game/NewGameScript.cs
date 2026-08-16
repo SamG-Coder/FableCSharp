@@ -11,6 +11,10 @@ namespace Fable.Game;
 /// <c>004045C0</c>) then run slot <c>+8</c>
 /// (<c>00DABAC0</c>). Yield is <c>00A44690</c>.
 /// Do not invent the <c>+80</c> writer.
+/// Cutscene start is <c>00DB86B0</c> →
+/// <c>00CBFB7D("CS_OAKVALE_INTRO_FATHER")</c>; first-seen
+/// <c>00DBDE40</c> does not call it. Camera bind is TNG
+/// <c>CAM_OVIF_SHOT2</c> until that start is proven.
 /// </summary>
 public sealed class NewGameScript
 {

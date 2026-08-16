@@ -88,6 +88,9 @@ internal static class FunctionMap
         (0x00BFDE00, 0x00BFF000, "tile-expand"),
         (0x00A63100, 0x00A63200, "create-vb-wrapper"),
         (0x00DBDE00, 0x00DBF000, "StartOakVale"),
+        (0x00DB8500, 0x00DB9800, "oakvale-intro-father"),
+        (0x00CBFB70, 0x00CC0000, "cutscene-runner-head"),
+        (0x00CC9F00, 0x00CCA220, "UseCamera-activate"),
     ];
 
     public static readonly (string Name, uint Va)[] NewGameSeeds =
@@ -142,6 +145,9 @@ internal static class FunctionMap
         ("S_QNOVI vtbl", 0x012D7A28),
         ("S_QNOVI vtbl1", 0x00DAACE0),
         ("script camera hooks", 0x00CBF29F),
+        ("CS_OAKVALE_INTRO_FATHER start", 0x00DB86B0),
+        ("cutscene runner", 0x00CBFB7D),
+        ("intro-father dtor", 0x00DB8680),
         ("Registering Scripts", 0x00CB5D80),
         ("CActionPlayAnimation", 0x00903570),
         ("render frame", 0x00B25950),

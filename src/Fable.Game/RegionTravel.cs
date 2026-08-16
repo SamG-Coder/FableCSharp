@@ -97,16 +97,20 @@ public static class RegionTravel
     /// <summary>
     /// Text-script camera matcher <c>00CBF29F</c> strcmp-walks
     /// <c>UseCamera</c> / <c>CameraLookAt</c> /
-    /// <c>CameraLookBetween</c> / <c>CameraFOVLookBetween</c>.
+    /// <c>CameraLookBetween</c> / <c>CameraFOVLookBetween</c>
+    /// and preloads each name via context <c>vtbl+1648</c>.
     /// Its <c>E8</c> callers are <c>00CBFE3B</c> /
     /// <c>00CC8782</c> / <c>00CD1837</c> — not
-    /// <c>00DBDE40</c>. <c>.PlayAnimation</c> lives in the
-    /// opcode dispatcher (<c>00CC14B9</c>); that helper
-    /// <c>00CBFACA</c> has only <c>00CD0DB2</c> /
-    /// <c>00CD0E2E</c>. Fade is <c>00CC4B22</c>
-    /// (<c>.FadeIn</c> / <c>.FadeOut</c>). First-seen
-    /// <c>S_QNOVI</c> is the native quest object, not these
-    /// text opcodes.
+    /// <c>00DBDE40</c>. Activate is inside interpreter
+    /// <c>00CBFB7D</c> at <c>00CC9F3A</c>: lookup the
+    /// named TNG camera, then <c>vtbl+1656</c> (thing)
+    /// or <c>vtbl+1648</c> (name). <c>.PlayAnimation</c>
+    /// lives in the opcode dispatcher (<c>00CC14B9</c>);
+    /// that helper <c>00CBFACA</c> has only
+    /// <c>00CD0DB2</c> / <c>00CD0E2E</c>. Fade is
+    /// <c>00CC4B22</c> (<c>.FadeIn</c> / <c>.FadeOut</c>).
+    /// First-seen <c>S_QNOVI</c> is the native quest
+    /// object, not these text opcodes.
     /// </summary>
     public const uint ScriptCameraHooks = 0x00CBF29F;
     public const uint ScriptUseCameraToken = 0x00CBF3AC;
@@ -122,6 +126,26 @@ public static class RegionTravel
     public const bool FirstSeenScriptBinHasSqnovi = false;
     public const string IntroCutscene = "CS_OAKVALE_INTRO_FATHER";
     public const bool FirstSeenScriptBinHasIntroCutscene = true;
+    /// <summary>
+    /// Xref <c>00DB88DE</c> sits in <c>00DB86B0</c>, not
+    /// the dtor <c>00DB8680</c>. <c>00DB86B0</c> looks up
+    /// Hero/Father then <c>00CBFB7D("CS_OAKVALE_INTRO_FATHER")</c>.
+    /// Only static ref is callback table <c>0x012D838C[0]</c>
+    /// (zero <c>E8</c>). <c>00DB8680</c> is the microthread
+    /// dtor at vtbl <c>0x012D95B0</c> (update still
+    /// <c>00A44880</c>). First-seen <c>00DBDE40</c> does
+    /// not call this start.
+    /// </summary>
+    public const uint IntroCutsceneStart = 0x00DB86B0;
+    public const uint IntroCutsceneDtor = 0x00DB8680;
+    public const uint IntroCutsceneRunner = 0x00CBFB7D;
+    public const uint UseCameraActivate = 0x00CC9F3A;
+    public const int UseCameraPreloadVtbl = 1648;
+    public const int UseCameraActivateVtbl = 1656;
+    public const uint IntroCutsceneCallbackTable = 0x012D838C;
+    public const uint IntroCutsceneMicrothreadVtbl = 0x012D95B0;
+    public const bool FirstSeenStartsIntroCutscene = false;
+    public const string IntroFirstSeenCamera = "CAM_OVIF_SHOT2";
     public static float WatchBarrelsInterval =>
         System.BitConverter.Int32BitsToSingle(unchecked((int)WatchBarrelsIntervalBits));
 
@@ -196,24 +220,62 @@ public static class RegionTravel
             best = thing;
         }
 
-        if (best is null)
-            return false;
+        return best is not null && TryCameraFromThing(best, out position, out lookAt, out fovDegrees, out _);
+    }
 
-        position = PositionOf(best);
+    /// <summary>
+    /// <c>UseCamera</c> activate <c>00CC9F3A</c> looks up the
+    /// TNG camera by exact <c>ScriptName</c>.
+    /// </summary>
+    public static bool TryNamedCamera(
+        IEnumerable<ThingInstance> things,
+        string name,
+        out Vector3 position,
+        out Vector3 lookAt,
+        out float fovDegrees,
+        out Vector3 up)
+    {
+        position = default;
+        lookAt = default;
+        fovDegrees = IntroCameraFovDegrees;
+        up = LandscapeFrustum.FirstSeenCameraUp;
+        foreach (var thing in things)
+        {
+            if (thing.PositionX is null || thing.ScriptName is null)
+                continue;
+            if (!thing.ScriptName.Equals(name, StringComparison.OrdinalIgnoreCase))
+                continue;
+            return TryCameraFromThing(thing, out position, out lookAt, out fovDegrees, out up);
+        }
+
+        return false;
+    }
+
+    public static bool TryCameraFromThing(
+        ThingInstance thing,
+        out Vector3 position,
+        out Vector3 lookAt,
+        out float fovDegrees,
+        out Vector3 up)
+    {
+        position = PositionOf(thing);
+        lookAt = default;
+        fovDegrees = IntroCameraFovDegrees;
+        up = IntroCameraUp(thing);
         var look = Vector3.UnitY;
-        if (TryCoord(best, "CTCCameraPointScriptedSpline.KeyCameras[0].Position", out var keyPos))
+        if (TryCoord(thing, "CTCCameraPointScriptedSpline.KeyCameras[0].Position", out var keyPos))
             position += keyPos;
-        if (TryCoord(best, "CTCCameraPointScriptedSpline.KeyCameras[0].LookDirection", out var keyLook) ||
-            TryLook(best, "CTCCameraPointScripted.LookDirection", out keyLook))
+        if (TryCoord(thing, "CTCCameraPointScriptedSpline.KeyCameras[0].LookDirection", out var keyLook) ||
+            TryLook(thing, "CTCCameraPointScripted.LookDirection", out keyLook))
             look = keyLook;
         if (look.LengthSquared() < 1e-8f)
             look = Vector3.UnitY;
         look = Vector3.Normalize(look);
         lookAt = position + look * 8f;
-        if (TryFloatProp(best, "CTCCameraPointScriptedSpline.KeyCameras[0].FOV", out var turns) ||
-            TryFloatProp(best, "CTCCameraPointScriptedSpline.FOV", out turns))
+        if (TryFloatProp(thing, "CTCCameraPointScriptedSpline.KeyCameras[0].FOV", out var turns) ||
+            TryFloatProp(thing, "CTCCameraPointScriptedSpline.FOV", out turns))
             fovDegrees = turns * 360f;
-        else if (best.Properties.TryGetValue("CTCCameraPointScripted.FOV", out var fovText) &&
+        else if (thing.Properties.TryGetValue("CTCCameraPointScripted.FOV", out var fovText) &&
                  TryFloat(fovText, out var fov) && fov is >= 20f and <= 120f)
             fovDegrees = fov;
         return true;

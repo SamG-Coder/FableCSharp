@@ -853,6 +853,11 @@ static void RunExportScriptBank(PeImage pe, DumpStore store, GameInstall? instal
     native.AppendLine("| yield | `[ctx+28]` / `00A44690` | `009D8650` fiber switch |");
     native.AppendLine("| wait 12s | `[ctx+2584](12.0)` | after `[ctx+2592](1,&+76)` |");
     native.AppendLine("| gate | `+80` | persist name **AttackOver**; writer still UNREAD |");
+    native.AppendLine("| cutscene start | `00DB86B0` | pushes `CS_OAKVALE_INTRO_FATHER` into `00CBFB7D`; xref `00DB88DE` is here, not dtor `00DB8680` |");
+    native.AppendLine("| cutscene runner | `00CBFB7D` | CCutsceneDef interpreter; special-cases `FadeOut 0.5,0` then `00CBF29F` preload |");
+    native.AppendLine("| UseCamera preload | `00CBF29F` | collects `UseCamera` / `CameraLookAt` names → `vtbl+1648` |");
+    native.AppendLine("| UseCamera activate | `00CC9F3A` | lookup TNG name; bind `vtbl+1656` (thing) or `vtbl+1648` (name) |");
+    native.AppendLine("| first-seen start | unread | zero `E8` of `00DB86B0`; table `0x012D838C[0]`; `00DBDE40` does not call it |");
     store.WritePart(family, "native-sqnovi", native.ToString());
     links.Insert(4, new IndexLink("native-sqnovi", "native S_QNOVI", 0));
 
@@ -1014,7 +1019,18 @@ static void RunTraceScriptRuntime(PeImage pe, DumpStore store)
         WriteWalkPart(pe, store, family, "watcher ctor 00CDD450", 0x00CDD450, 40),
         WriteWalkPart(pe, store, family, "watcher register 00CB7E50", 0x00CB7E50, 80),
         WriteWalkPart(pe, store, family, "WatchBarrels 00DBE890", 0x00DBE890, 80),
-        WriteWalkPart(pe, store, family, "script camera hooks 00CBF29F", 0x00CBF29F, 120),
+        WriteWalkPart(pe, store, family, "script camera hooks 00CBF29F", 0x00CBF29F, 220),
+        WriteWalkPart(pe, store, family, "cutscene runner 00CBFB7D", 0x00CBFB7D, 200),
+        WriteWalkPart(pe, store, family, "CS_OAKVALE_INTRO_FATHER start 00DB86B0", 0x00DB86B0, 200),
+        WriteWalkPart(pe, store, family, "intro-father dtor 00DB8680", 0x00DB8680, 20),
+        WriteWalkPart(pe, store, family, "intro-father persist 00DB8630", 0x00DB8630, 40),
+        WriteFnPart(pe, store, family, "UseCamera activate 00CC9F3A", 0x00CC9F3A, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "UseCamera bind 00CCA109", 0x00CCA109, 40, stopOnRet: false),
+        WriteVtblPart(pe, store, family, "intro-father callbacks 012D838C", 0x012D838C, 8),
+        WriteVtblPart(pe, store, family, "intro-father microthread 012D95B0", 0x012D95B0, 8),
+        WriteCallsPart(pe, store, family, "calls cutscene runner 00CBFB7D", 0x00CBFB7D),
+        WriteCallsPart(pe, store, family, "calls intro-father start 00DB86B0", 0x00DB86B0),
+        WriteImmPart(pe, store, family, "imm intro-father start 00DB86B0", 0x00DB86B0, 0x012D8000, 0x012DA000),
         WriteWalkPart(pe, store, family, "PlayAnimation splitter 00CBFACA", 0x00CBFACA, 40),
         WriteFnPart(pe, store, family, "PlayAnimation token 00CC14B9", 0x00CC14B9, 30, stopOnRet: false),
         WriteWalkPart(pe, store, family, "FadeIn FadeOut 00CC4B22", 0x00CC4B22, 80),
@@ -1485,7 +1501,15 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "per-cell type-4 cmp 00BF5175", 0x00BF5175, 40, stopOnRet: false),
         WriteCallsPart(pe, store, family, "calls water enqueue 00BF44B3", 0x00BF44B3),
         WriteCallsPart(pe, store, family, "calls water enqueue fn 00BF44A0", 0x00BF44A0),
-        WriteWalkPart(pe, store, family, "script camera hooks 00CBF29F", 0x00CBF29F, 200),
+        WriteWalkPart(pe, store, family, "script camera hooks 00CBF29F", 0x00CBF29F, 220),
+        WriteWalkPart(pe, store, family, "cutscene runner 00CBFB7D", 0x00CBFB7D, 200),
+        WriteWalkPart(pe, store, family, "CS_OAKVALE_INTRO_FATHER start 00DB86B0", 0x00DB86B0, 200),
+        WriteWalkPart(pe, store, family, "intro-father dtor 00DB8680", 0x00DB8680, 20),
+        WriteFnPart(pe, store, family, "UseCamera activate 00CC9F3A", 0x00CC9F3A, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "UseCamera bind 00CCA109", 0x00CCA109, 40, stopOnRet: false),
+        WriteVtblPart(pe, store, family, "intro-father callbacks 012D838C", 0x012D838C, 8),
+        WriteVtblPart(pe, store, family, "intro-father microthread 012D95B0", 0x012D95B0, 8),
+        WriteCallsPart(pe, store, family, "calls cutscene runner 00CBFB7D", 0x00CBFB7D),
         WriteFnPart(pe, store, family, "UseCamera site 00CBF3AC", 0x00CBF3AC, 30, stopOnRet: false),
         WriteFnPart(pe, store, family, "CameraLookAt site 00CBF3FE", 0x00CBF3FE, 30, stopOnRet: false),
         WriteFnPart(pe, store, family, "PlayAnimation site 00CC14B9", 0x00CC14B9, 40, stopOnRet: false),
