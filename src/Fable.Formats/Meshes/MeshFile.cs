@@ -437,4 +437,11 @@ public readonly record struct MeshTriangle(
     Vector2 UvA = default,
     Vector2 UvB = default,
     Vector2 UvC = default,
-    int TextureId = 0);
+    int TextureId = 0,
+    Vector3 ColorA = default,
+    Vector3 ColorB = default,
+    Vector3 ColorC = default,
+    int TextureId1 = 0,
+    Vector3 NormalA = default,
+    Vector3 NormalB = default,
+    Vector3 NormalC = default);

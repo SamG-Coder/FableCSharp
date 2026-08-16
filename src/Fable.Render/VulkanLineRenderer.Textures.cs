@@ -19,7 +19,7 @@ public sealed unsafe partial class VulkanLineRenderer
         _vk.DeviceWaitIdle(_device);
         DestroyTextures();
 
-        var count = 1 + textures.Count;
+        var count = 2 + textures.Count;
         var poolSizes = stackalloc DescriptorPoolSize[]
         {
             new() { Type = DescriptorType.CombinedImageSampler, DescriptorCount = (uint)count },
@@ -34,9 +34,10 @@ public sealed unsafe partial class VulkanLineRenderer
         Check(_vk.CreateDescriptorPool(_device, in poolInfo, null, out _descriptorPool));
 
         _fallbackTexture = UploadTexture(GpuTexture.Fallback());
+        _textures[-1] = UploadTexture(GpuTexture.White());
         foreach (var texture in textures)
         {
-            if (texture.Width <= 0 || texture.Height <= 0 || texture.Rgba.Length < 4)
+            if (texture.Id == -1 || texture.Width <= 0 || texture.Height <= 0 || texture.Rgba.Length < 4)
                 continue;
             _textures[texture.Id] = UploadTexture(texture);
         }
@@ -46,7 +47,8 @@ public sealed unsafe partial class VulkanLineRenderer
     {
         if (_draws.Length == 0)
         {
-            BindTexture(commandBuffer, 0);
+            BindTexture(commandBuffer, 0, 0);
+            BindTexture(commandBuffer, 0, 1);
             _vk.CmdDraw(commandBuffer, _meshCount, 1, 0, 0);
             return;
         }
@@ -55,12 +57,13 @@ public sealed unsafe partial class VulkanLineRenderer
         {
             if (draw.VertexCount == 0)
                 continue;
-            BindTexture(commandBuffer, draw.TextureId);
+            BindTexture(commandBuffer, draw.TextureId, 0);
+            BindTexture(commandBuffer, draw.TextureId1 == 0 ? draw.TextureId : draw.TextureId1, 1);
             _vk.CmdDraw(commandBuffer, draw.VertexCount, 1, draw.FirstVertex, 0);
         }
     }
 
-    private void BindTexture(CommandBuffer commandBuffer, int textureId)
+    private void BindTexture(CommandBuffer commandBuffer, int textureId, uint setIndex)
     {
         var set = _textures.TryGetValue(textureId, out var texture) ? texture.Set : _fallbackTexture.Set;
         if (set.Handle == 0)
@@ -69,7 +72,7 @@ public sealed unsafe partial class VulkanLineRenderer
             commandBuffer,
             PipelineBindPoint.Graphics,
             _meshPipelineLayout,
-            0, 1, in set,
+            setIndex, 1, in set,
             0, null);
     }
 

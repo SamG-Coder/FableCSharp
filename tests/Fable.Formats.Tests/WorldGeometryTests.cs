@@ -167,5 +167,8 @@ public sealed class WorldGeometryTests
         Assert.True(minY < -1f, $"south Greatwood tiles missing, minY={minY}");
         Assert.True(maxY > 129f, $"north Bridge tiles missing, maxY={maxY}");
         Assert.True(world.MeshInstances > 192, $"neighbour props missing; instances={world.MeshInstances}");
+        Assert.Contains(world.Triangles, t => t.TextureId == SkyGeometry.UnlitTextureId);
+        Assert.Contains(world.Triangles, t => t.TextureId1 != 0 && t.TextureId1 != t.TextureId);
+        Assert.True(world.Triangles.Count(t => t.ColorA.LengthSquared() > 0.1f) > 1000);
     }
 }

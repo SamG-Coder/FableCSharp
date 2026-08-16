@@ -10,6 +10,17 @@ public static class LandscapeTextures
 {
     public const int DefaultId = 414;
 
+    public static bool IsUsable(string materialName) =>
+        materialName.Length > 0 &&
+        !materialName.StartsWith("INVALID", StringComparison.OrdinalIgnoreCase);
+
+    public static int? TryResolve(string materialName, HeaderEnums? textures)
+    {
+        if (!IsUsable(materialName))
+            return null;
+        return textures is null ? DefaultId : Resolve(materialName, textures);
+    }
+
     public static int Resolve(string materialName, HeaderEnums textures)
     {
         foreach (var key in Candidates(materialName))
@@ -67,6 +78,10 @@ public static class LandscapeTextures
             yield return "LANDSCAPE_PROC_POPPY";
         if (rest.Contains("DANDELION", StringComparison.Ordinal))
             yield return "LANDSCAPE_PROC_DANDELIONS";
+        if (materialName.StartsWith("WATER_", StringComparison.Ordinal) ||
+            rest.Contains("WATER", StringComparison.Ordinal) ||
+            rest.Contains("LAKE", StringComparison.Ordinal))
+            yield return "LANDSCAPE_WATER";
     }
 
     private static HashSet<string> Tokens(string name)

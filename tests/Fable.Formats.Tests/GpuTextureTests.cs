@@ -16,10 +16,12 @@ public sealed class GpuTextureTests
     [Fact]
     public void Mesh_vertex_carries_uv_not_colour()
     {
-        Assert.Equal(32u, MeshVertex.Stride);
+        Assert.Equal(48u, MeshVertex.Stride);
         Assert.Equal(24u, MeshVertex.UvOffset);
-        Assert.Equal(32, Unsafe.SizeOf<MeshVertex>());
+        Assert.Equal(32u, MeshVertex.ColorOffset);
+        Assert.Equal(48, Unsafe.SizeOf<MeshVertex>());
         Assert.Equal(24, (int)Marshal.OffsetOf<MeshVertex>(nameof(MeshVertex.Uv)));
+        Assert.Equal(32, (int)Marshal.OffsetOf<MeshVertex>(nameof(MeshVertex.Color)));
     }
 
     [Fact]
@@ -29,8 +31,10 @@ public sealed class GpuTextureTests
         var frag = GlslCompiler.Compile(LineShaders.MeshFragment, ShaderKind.FragmentShader, "mesh.frag");
         Assert.True(vert.Length > 16);
         Assert.True(frag.Length > 16);
-        Assert.Contains("sampler2D", LineShaders.MeshFragment, StringComparison.Ordinal);
-        Assert.DoesNotContain("inColor", LineShaders.MeshVertex, StringComparison.Ordinal);
+        Assert.Contains("albedo0", LineShaders.MeshFragment, StringComparison.Ordinal);
+        Assert.Contains("albedo1", LineShaders.MeshFragment, StringComparison.Ordinal);
+        Assert.Contains("inColor", LineShaders.MeshVertex, StringComparison.Ordinal);
+        Assert.Contains("fogColor", LineShaders.MeshFragment, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -63,12 +67,12 @@ public sealed class GpuTextureTests
         var things = levels.LoadThings("LookoutPoint");
         var world = WorldGeometry.Build(install, "LookoutPoint", things.Things);
         var mesh = MeshBatches.Build(world.Triangles);
-        var files = textures.LoadMany(mesh.Draws.Select(draw => draw.TextureId));
+        var files = textures.LoadMany(mesh.Draws.SelectMany(draw => new[] { draw.TextureId, draw.TextureId1 }));
 
         Assert.True(files.Count >= 4, $"decoded={files.Count} draws={mesh.Draws.Length}");
         Assert.Contains(files, file => file.Id is 4133 or 414);
         Assert.Null(textures.TryLoad(int.MinValue));
-        Assert.All(mesh.Draws, draw => textures.TryLoad(draw.TextureId));
+        Assert.All(mesh.Draws.Where(draw => draw.TextureId > 0), draw => textures.TryLoad(draw.TextureId));
         Assert.All(files, file =>
         {
             Assert.True(file.Width >= 1);

@@ -80,6 +80,8 @@ public sealed class WorldGeometry
             loaded.Add(region);
         }
 
+        triangles.AddRange(SkyGeometry.Build(install));
+
         return new WorldGeometry
         {
             Region = region,

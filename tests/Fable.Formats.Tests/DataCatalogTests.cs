@@ -156,6 +156,12 @@ public sealed class DataCatalogTests
         Assert.Equal(1330, count);
         Assert.Equal(4 + count * 24, bytes.Length);
         Assert.False(float.IsNaN(BitConverter.ToSingle(bytes, 4)));
+
+        var stars = Fable.Formats.Sky.StarField.Parse(bytes);
+        Assert.Equal(1330, stars.Stars.Count);
+        Assert.True(stars.Stars.All(s => s.Position.Length() > 100));
+        Assert.True(stars.Stars.All(s => s.Size is >= 0 and <= 120));
+        Assert.Equal(0f, BitConverter.ToSingle(bytes, 16), 3);
     }
 
     [Fact]

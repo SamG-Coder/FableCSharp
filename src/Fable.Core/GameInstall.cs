@@ -30,6 +30,7 @@ public sealed class GameInstall
     public string BonesDirectory => Path.Combine(DataRoot, "Bones");
     public string TextBigPath => Path.Combine(DataRoot, "lang", "English", "text.big");
     public string ShadersBigPath => Path.Combine(DataRoot, "shaders", "pc", "shaders.big");
+    public string StarsPath => Path.Combine(DataRoot, "Misc", "stars.dat");
     public string StartingRegionGraphPath =>
         Path.Combine(DataRoot, "Misc", "FinalAlbion_StartingRegionGraph.txt");
     public string GlobalQuestPath => Path.Combine(LevelsDirectory, "GlobalQuests.qst");

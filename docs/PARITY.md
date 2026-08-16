@@ -61,7 +61,10 @@ parsers and notes.
 | Fable.exe world draw | Direct3D 8/9, not a custom GPU IR. `CEngineLandscapeRenderer` + `CLandscapeBackgroundPatch` draw terrain; `CEngineInternalPrimitiveStaticMesh` draws TNG props with `VSHADER_STATIC_DIRLIGHT_FOG`. `CEngineLightingManager` feeds a directional sun plus 2/4/5 point lights and an optional shadowed spot (`CEngineVSConstantLayoutLights`). `CEngineCamera` / `NCameraModes` own the view. After static maps: water (`CEngineWaterRenderer`), sky (`VSHADER_INNER_SKY` / `OUTER_SKY` / star field), weather, local detail (`CEngineLocalDetailGenerator` / `VSHADER_REPEATED_MESH`), particles, then HUD (`CDraw*` under `NPlayerGui`). | exe RTTI 2026-08-16 |
 | shaders.big | 26 banks, **465** programs. Payload = `u32` size + D3D tokens. **353** `vs_1_1`, **101** `ps_1_1`, **11** `ps_1_4`. `PIXEL_SHADERS` entries are type 1; vertex banks are type 0. | `ShaderFormatTests` |
 | Landscape passes | `SHADERS_LANDSCAPE_FOREGROUND` (33 VS) + `PSHADER_LANDSCAPE_FOREGROUND` (**2** `tex` stages). Background is 1 tex. Proc-texture pass is 2 tex (`VSHADER_LANDSCAPE_PROC_TEXTURE`). Shadow / bump / colbuff variants add more stages. Objects use `PSHADER_TEXTURE_DIFFUSE_FOG` (1 tex). | `ShaderFormatTests` |
-| Cell blend slots | Lookout 128² cells always write M0+M1+M2. M3 is `0xFF` on 16139/16384. `PSHADER_LANDSCAPE_FOREGROUND` samples two maps: usually the same ground twice, or ground + `INVALID_THEME_STANDIN`. **245** cells are a real pair (e.g. dry-mud + `WATER_BWLAKE_1`). We still bind one albedo. | probe 2026-08-16, `LevFormatTests` |
+| Cell blend slots | Lookout 128² cells always write M0+M1+M2. M3 is `0xFF` on 16139/16384. `PSHADER_LANDSCAPE_FOREGROUND` is `tex t0; tex t1; mul_sat r0.xyz, t1, v0; mul_sat r0.w, t0.a, v0.a`. `INVALID_THEME_STANDIN` is skipped. Two real layers (245 Lookout cells, e.g. dry-mud + `WATER_BWLAKE_1`) bind as `TextureId`/`TextureId1`. | `LevFormatTests`, `WorldGeometryTests` |
+| Tile extras | After XYZ: **11-11-10** packed normal (same bits as C3D pos) + RGB8. Lookout tile 0: 289/289 unit Z-up, R always 1.0, G/B vary (warm bake). Fed to the landscape VS as nrm + v0. | `LevFormatTests` |
+| Dirlight + fog | Mesh PS is `VSHADER_STATIC_DIRLIGHT_FOG` / landscape FG: albedo × vertex colour × (0.28+0.72 N·L), then linear fog. Sun `(0.35,0.25,0.90)` Z-up. Fog colour `(0.52,0.58,0.68)` start 70 end 320 (not named in the exe). Clear colour = fog. Sky/unlit skips N·L. | `GpuTextureTests` |
+| Sky | `stars.dat` 1330 points on a ~6500-unit sphere (xyz, unused 0, size, brightness). Drawn with an inner dome (no bank sky mesh). `CEngineLocalDetailGenerator` / water patch tessellators still unread. | `DataCatalogTests`, `WorldGeometryTests` |
 
 ## Did not work
 
@@ -104,13 +107,13 @@ parsers and notes.
 2. **Creature clothing / appearance layers.** Villager Graphic is the unclothed body (`MESH_BS_MALE_MIDDLE_UNCLOTHED_01`). `CAppearanceDef` / morphs are unread.
 3. **Streetlamp lit vs off.** TNG `OBJECT_STREETLAMP_LIT_SINGLE_01` maps to `MESH_OBJECT_STREETLAMP_OFF_02`. Lit state is probably a replaceable / particle, not a second mesh id.
 4. **Tile second object / 7-byte extras.** After verts (and optional indices) a second `59 10` object remains. The 7 bytes after Z are not a simple u8 normal (`FF` at +4 is common; packed 11-11-10 is not unit-length).
-5. **GPU texturing leftovers.** Sampler is 2D RGBA, one draw per texture id. No atlas, no mipmaps, no bump/reflection/illumination maps, no DXT-on-GPU. Terrain UVs still tile every 16 world units. We do not run `PSHADER_LANDSCAPE_FOREGROUND`'s second stage or `PSHADER_TEXTURE_DIFFUSE_FOG`.
+5. **GPU texturing leftovers.** Two albedo samplers, no atlas, no mipmaps, no bump/reflection/illumination maps, no DXT-on-GPU. Terrain UVs still tile every 16 world units. No shadow-buffer / colbuff variants.
 14. **CPatchTesselationEdgeStrip.** Exe stitches adjacent landscape patches with an edge strip. We offset neighbour tiles by MapX/Y; shared 16 m edges are not retessellated.
 15. **LoadWaterData / CEngineWaterRenderer.** `SetStaticMapFileForUse` always loads water after opening the static maps. Sea / river / ice shaders (`VSHADER_WATER_FOREGROUND`, `VSHADER_SEA_BACKGROUND`) are unread.
 16. **Picnic fillers.** `PicnicArea_Filler_02/03` touch Lookout but have no STB `.lev` (`LoadedOnPlayerProximity FALSE`). Likely `CLandscapeBackgroundPatch` only; WAD cells unread.
-17. **CEngineLightingManager constants.** `PSCONST_MAX_FOG_ALPHA`, shadow fade, and `CEngineVSConstantLayoutLights` register maps are unread. No sun / fog / point-light upload yet.
-18. **Sky / weather / local detail.** `VSHADER_INNER_SKY` / `OUTER_SKY` / `SKY_STAR_FIELD`, rain/snow/mist, and `CEngineLocalDetailGenerator` (grass/pebble `REPEATED_MESH`) are not drawn.
-19. **Tile 7-byte extras as landscape VS inputs.** After XYZ, Lookout verts look like packed normal + RGB (`F807C07F FF7D80`). Not yet decoded; `CLandscapeLayerMesh` likely consumes them.
+17. **CEngineLightingManager register maps.** `PSCONST_MAX_FOG_ALPHA` / shadow fade / 2–5 point lights / shadowed spot are unread. Fog distances are inferred.
+18. **Sky mesh / weather / local detail.** Inner/outer sky VS exist but no sky C3D is in the banks; we draw a dome. Rain/snow/mist and `CEngineLocalDetailGenerator` (`REPEATED_MESH`) are not drawn.
+19. **Water patches.** Landscape `WATER_*` cells use the second texture stage. `CEngineWaterRenderer` / `LoadWaterData` sea-ice tessellation is unread.
 6. **WAD cell bytes 4–7 / 14–20.** High-entropy field and flags after the material slots are unread.
 7. **Animation / bones / cloth.** Parser skips the blocks so static positions survive. No skinning.
 8. **Hero, combat, quests, UI, audio.** Frontend UI defs and cutscene defs parse as GameBin entries; fields inside are unread. `.lug`/`.lut` payloads, `.ogg`/`.wmv`, tattoos, and `stars.dat` channels are unread.

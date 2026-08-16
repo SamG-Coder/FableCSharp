@@ -116,7 +116,7 @@ window.Render += _ =>
         return;
 
     var aspect = window.FramebufferSize.X / (float)window.FramebufferSize.Y;
-    renderer.Draw(camera.ViewProjection(aspect));
+    renderer.Draw(camera.ViewProjection(aspect), camera.Position);
 };
 
 window.Closing += () =>
@@ -157,8 +157,11 @@ static ReadOnlySpan<LineVertex> CollectionsMarshalAsSpan(IReadOnlyList<LineVerte
 
 static IReadOnlyList<GpuTexture> LoadGpuTextures(TexturedMesh mesh, TextureLibrary textures)
 {
-    var files = textures.LoadMany(mesh.Draws.Select(draw => draw.TextureId));
-    return files
+    var ids = mesh.Draws.SelectMany(draw => new[] { draw.TextureId, draw.TextureId1 });
+    var files = textures.LoadMany(ids);
+    var list = files
         .Select(file => new GpuTexture(file.Id, file.Width, file.Height, file.Rgba))
         .ToList();
+    list.Add(GpuTexture.White());
+    return list;
 }

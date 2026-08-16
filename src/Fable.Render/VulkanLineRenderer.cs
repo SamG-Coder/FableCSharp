@@ -149,7 +149,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         _vk.UnmapMemory(_device, _meshMemory);
     }
 
-    public void Draw(Matrix4x4 viewProjection)
+    public void Draw(Matrix4x4 viewProjection, Vector3 cameraPosition = default)
     {
         if (_extent.Width == 0 || _extent.Height == 0)
             return;
@@ -170,7 +170,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             throw new InvalidOperationException($"AcquireNextImage failed: {acquire}");
 
         _vk.ResetFences(_device, 1, in _inFlight[_frame]);
-        Record(_commandBuffers[_frame], imageIndex, viewProjection);
+        Record(_commandBuffers[_frame], imageIndex, viewProjection, cameraPosition);
 
         var wait = _imageAvailable[_frame];
         var signal = _renderFinished[_frame];
@@ -611,13 +611,19 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             PPushConstantRanges = &push,
         };
         Check(_vk.CreatePipelineLayout(_device, in lineLayoutInfo, null, out _pipelineLayout));
+        var meshPush = new PushConstantRange
+        {
+            StageFlags = ShaderStageFlags.VertexBit | ShaderStageFlags.FragmentBit,
+            Size = MeshPushConstants.Size,
+        };
+        var setLayouts = stackalloc DescriptorSetLayout[] { setLayout, setLayout };
         var meshLayoutInfo = new PipelineLayoutCreateInfo
         {
             SType = StructureType.PipelineLayoutCreateInfo,
-            SetLayoutCount = 1,
-            PSetLayouts = &setLayout,
+            SetLayoutCount = 2,
+            PSetLayouts = setLayouts,
             PushConstantRangeCount = 1,
-            PPushConstantRanges = &push,
+            PPushConstantRanges = &meshPush,
         };
         Check(_vk.CreatePipelineLayout(_device, in meshLayoutInfo, null, out _meshPipelineLayout));
 
@@ -674,13 +680,14 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             new() { Location = 0, Binding = 0, Format = Format.R32G32B32Sfloat, Offset = 0 },
             new() { Location = 1, Binding = 0, Format = Format.R32G32B32Sfloat, Offset = 12 },
             new() { Location = 2, Binding = 0, Format = Format.R32G32Sfloat, Offset = MeshVertex.UvOffset },
+            new() { Location = 3, Binding = 0, Format = Format.R32G32B32A32Sfloat, Offset = MeshVertex.ColorOffset },
         };
         var meshVertexInput = new PipelineVertexInputStateCreateInfo
         {
             SType = StructureType.PipelineVertexInputStateCreateInfo,
             VertexBindingDescriptionCount = 1,
             PVertexBindingDescriptions = &meshBinding,
-            VertexAttributeDescriptionCount = 3,
+            VertexAttributeDescriptionCount = 4,
             PVertexAttributeDescriptions = meshAttributes,
         };
         inputAssembly.Topology = PrimitiveTopology.TriangleList;
@@ -798,14 +805,14 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         }
     }
 
-    private void Record(CommandBuffer commandBuffer, uint imageIndex, Matrix4x4 viewProjection)
+    private void Record(CommandBuffer commandBuffer, uint imageIndex, Matrix4x4 viewProjection, Vector3 cameraPosition)
     {
         var begin = new CommandBufferBeginInfo { SType = StructureType.CommandBufferBeginInfo };
         Check(_vk.BeginCommandBuffer(commandBuffer, in begin));
 
         var clears = stackalloc ClearValue[]
         {
-            new() { Color = new ClearColorValue(0.08f, 0.10f, 0.14f, 1f) },
+            new() { Color = new ClearColorValue(0.52f, 0.58f, 0.68f, 1f) },
             new() { DepthStencil = new ClearDepthStencilValue { Depth = 1f } },
         };
         var pass = new RenderPassBeginInfo
@@ -830,8 +837,17 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
 
         if (_meshCount > 0 && _meshBuffer.Handle != 0)
         {
+            var push = new MeshPushConstants
+            {
+                ViewProj = viewProjection,
+                CameraPos = new Vector4(cameraPosition, Fable.Formats.WorldShading.FogEnd),
+                FogColor = new Vector4(Fable.Formats.WorldShading.FogColor, Fable.Formats.WorldShading.FogStart),
+                LightDir = new Vector4(Fable.Formats.WorldShading.SunDirection, 0),
+            };
             _vk.CmdBindPipeline(commandBuffer, PipelineBindPoint.Graphics, _meshPipeline);
-            _vk.CmdPushConstants(commandBuffer, _meshPipelineLayout, ShaderStageFlags.VertexBit, 0, 64, &viewProj);
+            _vk.CmdPushConstants(commandBuffer, _meshPipelineLayout,
+                ShaderStageFlags.VertexBit | ShaderStageFlags.FragmentBit,
+                0, MeshPushConstants.Size, &push);
             ulong offset = 0;
             var meshBuffer = _meshBuffer;
             _vk.CmdBindVertexBuffers(commandBuffer, 0, 1, in meshBuffer, in offset);

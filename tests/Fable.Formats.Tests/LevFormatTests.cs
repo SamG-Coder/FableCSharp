@@ -293,6 +293,10 @@ public sealed class LevFormatTests
         Assert.InRange(first.Vertices[0].Z, 20f, 80f);
         Assert.Equal(3264, first.Vertices[288].WorldX);
         Assert.Equal(3504, first.Vertices[288].WorldY);
+        Assert.True(first.Vertices.All(v => v.Normal.Length() is > 0.9f and < 1.1f));
+        Assert.True(first.Vertices.Count(v => v.Normal.Z > 0.7f) > 200);
+        Assert.Equal(1f, first.Vertices[0].Color.X, 2);
+        Assert.InRange(first.Vertices[0].Color.Y, 0.3f, 0.7f);
 
         // Interior 1-unit sample is not just the 16-unit bilinear.
         var pred = Bilinear(lookout, 18 / 16f, 2 / 16f);

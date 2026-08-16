@@ -105,9 +105,13 @@ public sealed class LevTileMesh
                 points[i] = new Vector3(v.WorldX - originX, v.WorldY - originY, v.Z);
             }
 
-            var at = new Dictionary<(int X, int Y), Vector3>();
-            foreach (var p in points)
-                at[((int)MathF.Round(p.X), (int)MathF.Round(p.Y))] = p;
+            var at = new Dictionary<(int X, int Y), (Vector3 P, Vector3 N, Vector3 C)>();
+            for (var i = 0; i < tile.Vertices.Count; i++)
+            {
+                var v = tile.Vertices[i];
+                var p = points[i];
+                at[((int)MathF.Round(p.X), (int)MathF.Round(p.Y))] = (p, v.Normal, v.Color);
+            }
 
             var minX = at.Count == 0 ? 0 : at.Keys.Min(k => k.X);
             var maxX = at.Count == 0 ? 0 : at.Keys.Max(k => k.X);
@@ -127,9 +131,9 @@ public sealed class LevTileMesh
                         !at.TryGetValue((x, y + 1), out var c) ||
                         !at.TryGetValue((x + 1, y + 1), out var d))
                         continue;
-                    var tex = TextureAt(a, cells, bySlot, textures);
-                    Add(triangles, a, b, d, tex);
-                    Add(triangles, a, d, c, tex);
+                    var tex = LayersAt(a.P, cells, bySlot, textures);
+                    Add(triangles, a, b, d, tex.A, tex.B);
+                    Add(triangles, a, d, c, tex.A, tex.B);
                 }
                 continue;
             }
@@ -138,12 +142,16 @@ public sealed class LevTileMesh
             {
                 for (var i = 0; i + 2 < tile.Indices.Count; i++)
                 {
-                    var a = points[tile.Indices[i]];
-                    var b = points[tile.Indices[i + 1]];
-                    var c = points[tile.Indices[i + 2]];
+                    var ia = tile.Indices[i];
+                    var ib = tile.Indices[i + 1];
+                    var ic = tile.Indices[i + 2];
+                    var a = PointOf(tile.Vertices[ia], points[ia]);
+                    var b = PointOf(tile.Vertices[ib], points[ib]);
+                    var c = PointOf(tile.Vertices[ic], points[ic]);
                     if ((i & 1) != 0)
                         (b, c) = (c, b);
-                    Add(triangles, a, b, c, TextureAt(a, cells, bySlot, textures));
+                    var tex = LayersAt(a.P, cells, bySlot, textures);
+                    Add(triangles, a, b, c, tex.A, tex.B);
                 }
             }
         }
@@ -151,25 +159,43 @@ public sealed class LevTileMesh
         return triangles;
     }
 
-    private static int TextureAt(
+    private static (Vector3 P, Vector3 N, Vector3 C) PointOf(LevTileVertex v, Vector3 p) =>
+        (p, v.Normal, v.Color);
+
+    private static (int A, int B) LayersAt(
         Vector3 p, LevCellGrid cells, Dictionary<int, LevMaterial> bySlot, HeaderEnums? textures)
     {
         var x = Math.Clamp((int)MathF.Floor(p.X), 0, cells.Width - 1);
         var y = Math.Clamp((int)MathF.Floor(p.Y), 0, cells.Height - 1);
+        var found = new int[2];
+        var n = 0;
         foreach (var slot in new[] { cells.Cells[x, y].Material0, cells.Cells[x, y].Material1, cells.Cells[x, y].Material2 })
         {
             if (slot == 0xFF || !bySlot.TryGetValue(slot, out var material))
                 continue;
-            if (textures is not null)
-                return LandscapeTextures.Resolve(material.Name, textures);
+            var id = LandscapeTextures.TryResolve(material.Name, textures);
+            if (id is null)
+                continue;
+            if (n == 0 || found[n - 1] != id.Value)
+                found[n++] = id.Value;
+            if (n == 2)
+                break;
         }
 
-        return LandscapeTextures.DefaultId;
+        if (n == 0)
+            return (LandscapeTextures.DefaultId, LandscapeTextures.DefaultId);
+        return n == 1 ? (found[0], found[0]) : (found[0], found[1]);
     }
 
-    private static void Add(List<MeshTriangle> triangles, Vector3 a, Vector3 b, Vector3 c, int textureId)
+    private static void Add(
+        List<MeshTriangle> triangles,
+        (Vector3 P, Vector3 N, Vector3 C) a,
+        (Vector3 P, Vector3 N, Vector3 C) b,
+        (Vector3 P, Vector3 N, Vector3 C) c,
+        int textureId,
+        int textureId1)
     {
-        var n = Vector3.Cross(b - a, c - a);
+        var n = Vector3.Cross(b.P - a.P, c.P - a.P);
         if (n.LengthSquared() < 1e-8f)
             return;
         if (n.Z < 0)
@@ -178,12 +204,16 @@ public sealed class LevTileMesh
             n = -n;
         }
 
+        var face = Vector3.Normalize(n);
         triangles.Add(new MeshTriangle(
-            a, b, c, Vector3.Normalize(n),
-            new Vector2(a.X / LevHeightField.SampleSpacing, a.Y / LevHeightField.SampleSpacing),
-            new Vector2(b.X / LevHeightField.SampleSpacing, b.Y / LevHeightField.SampleSpacing),
-            new Vector2(c.X / LevHeightField.SampleSpacing, c.Y / LevHeightField.SampleSpacing),
-            textureId));
+            a.P, b.P, c.P, face,
+            new Vector2(a.P.X / LevHeightField.SampleSpacing, a.P.Y / LevHeightField.SampleSpacing),
+            new Vector2(b.P.X / LevHeightField.SampleSpacing, b.P.Y / LevHeightField.SampleSpacing),
+            new Vector2(c.P.X / LevHeightField.SampleSpacing, c.P.Y / LevHeightField.SampleSpacing),
+            textureId,
+            a.C, b.C, c.C,
+            textureId1,
+            a.N, b.N, c.N));
     }
 
     internal static LevTile? TryReadPayload(byte[] stbLev, int off, int index)
@@ -216,7 +246,9 @@ public sealed class LevTileMesh
             verts[i] = new LevTileVertex(
                 BitConverter.ToUInt16(dest, o),
                 BitConverter.ToUInt16(dest, o + 2),
-                BitConverter.ToSingle(dest, o + 4));
+                BitConverter.ToSingle(dest, o + 4),
+                PackedDirection.Unpack(BitConverter.ToUInt32(dest, o + 8)),
+                PackedDirection.ColorRgb(dest[o + 12], dest[o + 13], dest[o + 14]));
         }
 
         return new LevTile(
@@ -255,4 +287,9 @@ public readonly record struct LevTile(
     IReadOnlyList<LevTileVertex> Vertices,
     IReadOnlyList<int> Indices);
 
-public readonly record struct LevTileVertex(ushort WorldX, ushort WorldY, float Z);
+public readonly record struct LevTileVertex(
+    ushort WorldX,
+    ushort WorldY,
+    float Z,
+    Vector3 Normal,
+    Vector3 Color);
