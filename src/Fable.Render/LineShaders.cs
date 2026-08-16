@@ -114,13 +114,15 @@ internal static class LineShaders
             else if (mode < 2.5)
             {
                 // PSHADER_INNER_SKY / SIMPLE: mul_sat rgb*v0 then *v0.w.
-                // mul_x2 c2/c1 has no first-seen writer — do not invent 0.
+                // mul_x2 c2/c1 has no first-seen writer; do not invent 0.
                 lit = t1.rgb * fragColor.rgb * fragColor.a;
             }
             else
-                // PSHADER_TEXTURE_DIFFUSE: mul r0,v0,c0; mul_x2 r0.xyz,t0,r0.
-                // First-seen c0 writer unread — identity so 2*t0*v0.
+            {
+                // PSHADER_TEXTURE_DIFFUSE: mul v0*c0 then mul_x2 t0.
+                // First-seen c0 writer unread; identity so two times t0*v0.
                 lit = clamp(t0.rgb * v0 * 2.0, 0.0, 1.0);
+            }
             // FOGENABLE=1, FOGCOLOR black: rgb * oFog + (1-oFog) * 0
             outColor = vec4(lit * fragFog, alpha);
         }
