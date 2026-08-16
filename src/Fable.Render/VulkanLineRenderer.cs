@@ -710,6 +710,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         };
         inputAssembly.Topology = PrimitiveTopology.TriangleList;
         // D3DCULL_CCW (0x01396FB0 = 3) on first-seen landscape/static-lit.
+        // PALSKIN 00BD3070 does not write CULLMODE; it inherits that CCW.
         // FlyCamera flips projection M22 for Vulkan Y-down NDC, so D3D CCW
         // cull keeps the same world faces as Vulkan FrontFace.CCW + Back.
         raster.CullMode = CullModeFlags.BackBit;

@@ -55,6 +55,13 @@ public sealed class ScenePassTests
         Assert.Equal(3, D3dDeviceState.CullCcw);
         Assert.Equal(1, D3dDeviceState.CullNone);
         Assert.Equal(2, D3dDeviceState.CullCw);
+        Assert.Equal(0x01396FB0u, D3dDeviceState.CullTable);
+        Assert.Equal(0x01396FB8u, D3dDeviceState.CullTableNone);
+        Assert.False(WorldShading.FirstSeenPalskinWritesCullMode);
+        Assert.True(WorldShading.FirstSeenPalskinInheritsCullCcw);
+        Assert.Equal(29, D3dDeviceState.SpecularEnable);
+        Assert.Equal(10724, D3dDeviceState.SpecularEnableSlot);
+        Assert.Equal(1, D3dDeviceState.FirstSeenPalskinSpecularEnable);
         Assert.False(WorldShading.FirstSeenAppliesCullNoneFromFlag1);
         Assert.False(WorldShading.FirstSeenStaticPass2ReadsFlag1);
         Assert.False(WorldShading.FirstSeenPlaysAnim);

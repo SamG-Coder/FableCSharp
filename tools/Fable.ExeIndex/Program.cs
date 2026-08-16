@@ -793,6 +793,8 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "First-seen apply CCW cull", 0x00B24BF2, 40),
         WriteFnPart(pe, store, family, "Static-lit apply CCW cull", 0x00BB2DA2, 30),
         WriteU32Part(pe, store, family, "CULL table 01396FB0", 0x01396FB0, 4),
+        WriteFnPart(pe, store, family, "SPECULARENABLE slot init 00A04B2C", 0x00A04B2C, 16, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PALSKIN SPECULARENABLE 00BD30AF", 0x00BD30AF, 20, stopOnRet: false),
         WriteSitePart(pe, store, family, "Q NewOakValeIntro PreAttack", 0x00DBE0C9, 80),
         WriteFnPart(pe, store, family, "WLD NewRegion reader", 0x0050881D, 80),
         WriteFnPart(pe, store, family, "WLD ContainsMap", 0x004FD7F9, 40),

@@ -122,6 +122,20 @@ public static class D3dDeviceState
 
     public const int CullNone = 1;
     public const int CullCw = 2;
+    public const uint CullTable = 0x01396FB0;
+    public const uint CullTableNone = 0x01396FB8;
+
+    /// <summary>
+    /// D3DRS_SPECULARENABLE. Slot init <c>00A04B44</c> writes
+    /// <c>0x1D</c> at wrapper <c>+10736</c>; slot base
+    /// <c>+10724</c>, value <c>+10728</c>. PALSKIN bind
+    /// <c>00BD3070</c> at <c>00BD30AF</c> sets the value to 1.
+    /// First-seen VS families do not write <c>oD1</c>, so the
+    /// FFP specular addend stays 0.
+    /// </summary>
+    public const int SpecularEnable = 29;
+    public const int SpecularEnableSlot = 10724;
+    public const int FirstSeenPalskinSpecularEnable = 1;
 
     /// <summary>
     /// Layer switch <c>00BBC130</c>: <c>type = [obj+8]</c>,

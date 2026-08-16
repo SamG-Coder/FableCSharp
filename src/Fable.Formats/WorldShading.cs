@@ -545,6 +545,18 @@ public static class WorldShading
     public const bool FirstSeenAppliesCullNoneFromFlag1 = false;
 
     /// <summary>
+    /// PALSKIN bind <c>00BD3070</c> / draw <c>00BD71B0</c> /
+    /// default <c>00BD549D</c> never copy <c>0x01396FB0</c> /
+    /// <c>0x01396FB8</c> onto CULLMODE <c>+10384</c>. They
+    /// inherit landscape/static-lit CCW. MainScene
+    /// <c>00B33010</c> first-seen layers <c>0x80</c>/<c>0x100</c>
+    /// drain PALSKIN slots and do not call NONE-pass
+    /// <c>00B89C30</c>.
+    /// </summary>
+    public const bool FirstSeenPalskinWritesCullMode = false;
+    public const bool FirstSeenPalskinInheritsCullCcw = true;
+
+    /// <summary>
     /// Static draw <c>00BA2350</c> tests Flag1 at <c>00BA3637</c>
     /// only after <c>cmp [esp+196], 2</c>. First-seen static-lit
     /// <c>00BB2540</c> and landscape <c>00B24850</c> apply CCW
