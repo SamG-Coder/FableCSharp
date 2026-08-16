@@ -47,7 +47,7 @@ public sealed class WorldGeometry
             var landscapeEnums = File.Exists(textureHeader) ? HeaderEnums.Load(textureHeader) : null;
             if (height is not null && cells is not null && compiled is not null)
             {
-                triangles.AddRange(height.ToFineTriangles(cells, compiled.Materials, landscapeEnums));
+                triangles.AddRange(height.ToTileTriangles(cells, compiled.Materials, landscapeEnums));
             }
             else if (height is not null)
             {

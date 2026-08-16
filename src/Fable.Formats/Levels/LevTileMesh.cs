@@ -1,4 +1,7 @@
+using System.Numerics;
+using Fable.Formats.Defs;
 using Fable.Formats.IO;
+using Fable.Formats.Meshes;
 
 namespace Fable.Formats.Levels;
 
@@ -82,6 +85,93 @@ public sealed class LevTileMesh
         }
 
         return stamped;
+    }
+
+    public IReadOnlyList<MeshTriangle> ToTriangles(
+        float originX,
+        float originY,
+        LevCellGrid cells,
+        IReadOnlyList<LevMaterial> materials,
+        HeaderEnums? textures = null)
+    {
+        var bySlot = materials.ToDictionary(item => item.Slot);
+        var triangles = new List<MeshTriangle>(Tiles.Count * 512);
+        foreach (var tile in Tiles)
+        {
+            var points = new Vector3[tile.Vertices.Count];
+            for (var i = 0; i < tile.Vertices.Count; i++)
+            {
+                var v = tile.Vertices[i];
+                points[i] = new Vector3(v.WorldX - originX, v.WorldY - originY, v.Z);
+            }
+
+            if (tile.Indices.Count >= 3)
+            {
+                for (var i = 0; i + 2 < tile.Indices.Count; i += 3)
+                    Add(triangles, points[tile.Indices[i]], points[tile.Indices[i + 1]], points[tile.Indices[i + 2]],
+                        TextureAt(points[tile.Indices[i]], cells, bySlot, textures));
+                continue;
+            }
+
+            var at = new Dictionary<(int X, int Y), Vector3>();
+            foreach (var p in points)
+                at[((int)MathF.Round(p.X), (int)MathF.Round(p.Y))] = p;
+            if (at.Count < 4)
+                continue;
+            var minX = at.Keys.Min(k => k.X);
+            var maxX = at.Keys.Max(k => k.X);
+            var minY = at.Keys.Min(k => k.Y);
+            var maxY = at.Keys.Max(k => k.Y);
+            for (var y = minY; y < maxY; y++)
+            for (var x = minX; x < maxX; x++)
+            {
+                if (!at.TryGetValue((x, y), out var a) ||
+                    !at.TryGetValue((x + 1, y), out var b) ||
+                    !at.TryGetValue((x, y + 1), out var c) ||
+                    !at.TryGetValue((x + 1, y + 1), out var d))
+                    continue;
+                var tex = TextureAt(a, cells, bySlot, textures);
+                Add(triangles, a, b, d, tex);
+                Add(triangles, a, d, c, tex);
+            }
+        }
+
+        return triangles;
+    }
+
+    private static int TextureAt(
+        Vector3 p, LevCellGrid cells, Dictionary<int, LevMaterial> bySlot, HeaderEnums? textures)
+    {
+        var x = Math.Clamp((int)MathF.Floor(p.X), 0, cells.Width - 1);
+        var y = Math.Clamp((int)MathF.Floor(p.Y), 0, cells.Height - 1);
+        foreach (var slot in new[] { cells.Cells[x, y].Material0, cells.Cells[x, y].Material1, cells.Cells[x, y].Material2 })
+        {
+            if (slot == 0xFF || !bySlot.TryGetValue(slot, out var material))
+                continue;
+            if (textures is not null)
+                return LandscapeTextures.Resolve(material.Name, textures);
+        }
+
+        return LandscapeTextures.DefaultId;
+    }
+
+    private static void Add(List<MeshTriangle> triangles, Vector3 a, Vector3 b, Vector3 c, int textureId)
+    {
+        var n = Vector3.Cross(b - a, c - a);
+        if (n.LengthSquared() < 1e-8f)
+            return;
+        if (n.Z < 0)
+        {
+            (b, c) = (c, b);
+            n = -n;
+        }
+
+        triangles.Add(new MeshTriangle(
+            a, b, c, Vector3.Normalize(n),
+            new Vector2(a.X / LevHeightField.SampleSpacing, a.Y / LevHeightField.SampleSpacing),
+            new Vector2(b.X / LevHeightField.SampleSpacing, b.Y / LevHeightField.SampleSpacing),
+            new Vector2(c.X / LevHeightField.SampleSpacing, c.Y / LevHeightField.SampleSpacing),
+            textureId));
     }
 
     internal static LevTile? TryReadPayload(byte[] stbLev, int off, int index)

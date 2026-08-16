@@ -27,7 +27,7 @@ parsers and notes.
 | STB section 2 offset | `u32` at 2048 is the start of the next blob (Lookout/OakVale **6144**, Picnic **4096**). Zeros fill the gap after the coarse lattice. | `LevFormatTests` |
 | WAD cell table | Payload after the `21` tag is a stream of **21-byte** records, one per 1-unit cell (Lookout 16384). Bytes 10–13 are material-table slots (`0xFF` unused). Lookout is mostly slot 2 `GROUND_PATH_SAND`. | `LevFormatTests` |
 | GROUND_ → LANDSCAPE_ | Material-slot `u32` id is **not** a `textures.big` id (1911 is villager legs). Names map: `GROUND_PATH_SAND` → `LANDSCAPE_PATH_SAND_01` (4133), `GROUND_GRASS` → `LANDSCAPE_GRASS_PLAIN` (414), `PATH_COBBLES_IRREGULAR_ET` → `LANDSCAPE_COBBLES_IRREGULAR_01` (4118). | `LevFormatTests` |
-| Fine terrain mesh | 1-unit quads (Lookout 128×128×2 tris). Z is bilinear from the 16-unit lattice, then STB tile verts overwrite cells they hit. Each cell samples its `GROUND_*` texture. | `LevFormatTests` |
+| Fine terrain mesh | 1-unit quads still exist for sampling. The **drawn** landscape is the STB tile mesh: index tris for adaptive tiles, 17×17 quads when `v=289`. Filling every 1-unit cell with bilinear buried rocks in fake hills. | `LevFormatTests` |
 | GPU texturing | Mesh vertex is pos/normal/UV. Draws are grouped by `textures.big` id. RGBA is uploaded as `R8G8B8A8` with a repeat/linear sampler. Fragment shader samples `albedo`. Some bank ids fail framed LZO and fall back to a 1×1. | `GpuTextureTests` |
 | STB tile table | After the coarse 36-byte lattice, leftover `magic/offset/size` is a tile directory (`0x012EC900`, file offset, packed size). Lookout 63 tiles, Picnic 47. Last record is a 0,0 sentinel. | `LevFormatTests` |
 | STB tile payload | `u32` uncompressed size, `u32` packed size, then **raw LZO** (not framed). Inflated header `u16` at +2 is vertex count (289 = 17×17). | `LevFormatTests` |
@@ -80,6 +80,7 @@ parsers and notes.
 | `CreateWorld(pos, RHSetForward, RHSetUp)` | Numerics CreateWorld is Y-up and **negates** forward. Lamp mesh Z (height) mapped to world Y — props lay on their side and faced backward. | `WorldGeometryTests` |
 | TNG positions are WLD (MapX+local) | Lookout things sit in 29–128, not 3232+. Adding MapX would throw them off the terrain. | `WorldGeometryTests` |
 | Ignore `ObjectScale` | Rocks/pillars store 0.4–1.2. Without it they instance at 100% mesh size. | `WorldGeometryTests` |
+| Draw STB tiles as a dense 1-unit grid | Adaptive tiles have ~159–280 verts, not 289. Bilinear-filling the rest raised hills through objects (a Lookout rock sat 3.3 m under stamped Z). | `LevFormatTests` |
 | WAD `Find("Lookout")` for a `.tng` | Stem match hit `LookoutPoint.lev`. Must pass the extension. | `TlcInstallTests` |
 | `FinalAlbion.gtg` is a compiled .lev / C3D | ASCII `NEWMAP 1` / `Version 2;`. First `u32` is not 25. | `DataCatalogTests` |
 | PicnicArea.lug / Dialogue.lut are BIGB | Magic is `LiOnHeAd`, not `BIGB`. | `DataCatalogTests` |

@@ -27,6 +27,7 @@ public sealed class LevHeightField
     public required float[,] FineHeights { get; init; }
     public required int FineSampleCount { get; init; }
     public required int TileCount { get; init; }
+    public required LevTileMesh Tiles { get; init; }
 
     public static LevHeightField Parse(byte[] stbLev, float mapX, float mapY, int localWidth, int localHeight)
     {
@@ -74,8 +75,15 @@ public sealed class LevHeightField
             FineHeights = fine,
             FineSampleCount = stamped,
             TileCount = tiles.Tiles.Count,
+            Tiles = tiles,
         };
     }
+
+    public IReadOnlyList<MeshTriangle> ToTileTriangles(
+        LevCellGrid cells,
+        IReadOnlyList<LevMaterial> materials,
+        HeaderEnums? textures = null) =>
+        Tiles.ToTriangles(OriginX, OriginY, cells, materials, textures);
 
     public IReadOnlyList<MeshTriangle> ToFineTriangles(
         LevCellGrid cells,

@@ -358,6 +358,27 @@ public sealed class LevFormatTests
     }
 
     [Fact]
+    public void Lookout_tile_mesh_is_not_a_filled_128_grid()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        var height = levels.LoadHeightField("LookoutPoint");
+        var compiled = levels.LoadCompiledLev("LookoutPoint");
+        Assert.NotNull(height);
+        Assert.NotNull(compiled);
+        var cells = LevCellGrid.TryParse(compiled);
+        Assert.NotNull(cells);
+        var tris = height.ToTileTriangles(cells, compiled.Materials);
+        Assert.True(tris.Count > 8_000, $"tris={tris.Count}");
+        Assert.True(tris.Count < 128 * 128 * 2, $"filled grid would clip holes tris={tris.Count}");
+        Assert.True(tris.Count(t => t.Normal.Z > 0) > tris.Count * 9 / 10);
+        Assert.True(tris.Max(t => t.A.X) >= 120);
+        Assert.True(tris.Min(t => t.A.X) <= 2);
+        Assert.Contains(tris, t => t.TextureId is 4133 or 414);
+    }
+
+    [Fact]
     public void Adaptive_tile_leftover_is_a_u16_triangle_list()
     {
         var install = GameInstall.TryLocate();
