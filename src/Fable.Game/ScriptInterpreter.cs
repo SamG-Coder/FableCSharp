@@ -247,6 +247,14 @@ public sealed class ScriptInterpreter
             host.MuteSounds(command.Arguments);
         else if (command.Verb.Equals("StartTimeCode", StringComparison.OrdinalIgnoreCase))
             host.StartTimeCode();
+        else if (command.Verb.Equals("Speak", StringComparison.OrdinalIgnoreCase))
+        {
+            var speech = ScriptCommand.ParseSpeak(command.Arguments);
+            if (speech.Target.Length != 0 &&
+                speech.Text.Length != 0 &&
+                !ScriptCommand.IsNullArg(speech.Text))
+                host.Speak(command.Actor, speech.Target, speech.Text, speech.Mode);
+        }
     }
 
     internal static void ParseFadeArgs(string arguments, out float seconds, out float param)
@@ -293,6 +301,36 @@ public readonly struct ScriptCommand
         if (dot > 0)
             return new ScriptCommand(raw, head[(dot + 1)..], head[..dot], arguments);
         return new ScriptCommand(raw, head, null, arguments);
+    }
+
+    /// <summary>
+    /// <c>00CBEE5E</c>: strcmp arg to <c>null</c>.
+    /// </summary>
+    public static bool IsNullArg(string? text) =>
+        text is not null && text.Equals("null", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// <c>00CC25FD</c> args: target, text, optional
+    /// IsTrue (vtbl+1484), optional random/norepeat/
+    /// sequence mode. First-seen is target+text only.
+    /// </summary>
+    public static (string Target, string Text, int Mode) ParseSpeak(string arguments)
+    {
+        var args = SplitArgs(arguments);
+        var target = args.Length == 0 ? "" : args[0];
+        var text = args.Length < 2 ? "" : args[1];
+        var mode = 0;
+        if (args.Length > 3)
+        {
+            if (args[3].Equals("random", StringComparison.OrdinalIgnoreCase))
+                mode = 1;
+            else if (args[3].Equals("norepeat", StringComparison.OrdinalIgnoreCase))
+                mode = 2;
+            else if (args[3].Equals("sequence", StringComparison.OrdinalIgnoreCase))
+                mode = 3;
+        }
+
+        return (target, text, mode);
     }
 
     /// <summary>
@@ -351,6 +389,15 @@ public readonly struct ScriptCommand
             return ScriptFlow.Continue;
         if (verb.Equals("PlayAnimation", StringComparison.OrdinalIgnoreCase))
             return ScriptFlow.YieldAfter;
+        if (verb.Equals("Speak", StringComparison.OrdinalIgnoreCase))
+        {
+            var speech = ParseSpeak(command.Arguments);
+            if (speech.Target.Length == 0 ||
+                speech.Text.Length == 0 ||
+                IsNullArg(speech.Text))
+                return ScriptFlow.Continue;
+            return ScriptFlow.YieldAfter;
+        }
         if (verb.Equals("LookToThing", StringComparison.OrdinalIgnoreCase))
         {
             var args = SplitArgs(command.Arguments);
@@ -386,4 +433,5 @@ public interface IScriptHost
     void MuteSounds(string arguments);
     void StartTimeCode();
     void GamePause(float seconds);
+    void Speak(string? actor, string target, string text, int mode);
 }

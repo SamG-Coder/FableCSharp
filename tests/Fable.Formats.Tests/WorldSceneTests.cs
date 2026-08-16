@@ -307,6 +307,17 @@ public sealed class WorldSceneTests
         Assert.False(RegionTravel.FirstSeenGamePauseHasClockArg);
         Assert.False(RegionTravel.FirstSeenGamePauseUsesFrameDt);
         Assert.Equal(1.6f, RegionTravel.IntroGamePauseSeconds);
+        Assert.Equal(0x00CC25FDu, RegionTravel.SpeakOpcode);
+        Assert.Equal(0x00CC27EAu, RegionTravel.SpeakApply);
+        Assert.Equal(0x00CC2909u, RegionTravel.SpeakPoll);
+        Assert.Equal(0x00CBEE5Eu, RegionTravel.SpeakIsNull);
+        Assert.Equal(0x0127293Cu, RegionTravel.SpeakThingVtbl);
+        Assert.Equal(0x004CD1B0u, RegionTravel.SpeakApplyStub);
+        Assert.Equal(0x00661A40u, RegionTravel.SpeakPollStub);
+        Assert.Equal(52, RegionTravel.SpeakApplyVtbl);
+        Assert.Equal(104, RegionTravel.SpeakPollVtbl);
+        Assert.True(RegionTravel.FirstSeenSpeakYieldsOnce);
+        Assert.Equal("TEXT_QST_048_FATHER_INTRO_10", RegionTravel.IntroFatherSpeak);
         Assert.Equal(0x00CC4B22u, RegionTravel.ScriptFadeInOut);
         Assert.Equal(0x00CB5D80u, RegionTravel.RegisteringScripts);
         Assert.Equal(0x00CB8110u, RegionTravel.QuestBaseCtor);
@@ -681,6 +692,28 @@ public sealed class WorldSceneTests
         Assert.Equal(0x00CC88D1u, RegionTravel.GamePauseOpcode);
         Assert.Equal(15f, RegionTravel.GamePauseScale);
         Assert.False(RegionTravel.FirstSeenGamePauseUsesFrameDt);
+        Assert.False(intro.ExecutedVerb("Speak"));
+        var pauseVisits = 1;
+        while (intro.Yielded &&
+               intro.Commands[intro.InstructionPointer].StartsWith("GamePause 1.6", StringComparison.Ordinal) &&
+               pauseVisits < 40)
+        {
+            script.Update(0.1f);
+            pauseVisits++;
+        }
+
+        Assert.Contains("GamePause 1.6", intro.Executed);
+        Assert.Contains("Father.Speak Father,'TEXT_QST_048_FATHER_INTRO_10'", intro.Executed);
+        Assert.Equal("GamePause 1.0", intro.Commands[intro.InstructionPointer]);
+        Assert.True(intro.Yielded);
+        Assert.Null(intro.UnsupportedCommand);
+        Assert.True(RegionTravel.FirstSeenSpeakYieldsOnce);
+        Assert.Equal(0x00CC25FDu, RegionTravel.SpeakOpcode);
+        Assert.Contains(runtime.Speeches, s =>
+            s.Actor == "Father" &&
+            s.Target == "Father" &&
+            s.Text.Contains(RegionTravel.IntroFatherSpeak, StringComparison.Ordinal) &&
+            s.Mode == 0);
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 
@@ -714,6 +747,51 @@ public sealed class WorldSceneTests
         Assert.Contains("PlayMusic X", interpreter.Executed);
         Assert.True(interpreter.Finished);
         Assert.False(RegionTravel.FirstSeenGamePauseUsesFrameDt);
+    }
+
+    [Fact]
+    public void Father_Speak_first_seen_yields_once_then_continues()
+    {
+        var interpreter = new ScriptInterpreter("speak",
+        [
+            "Father.Speak Father,'TEXT_QST_048_FATHER_INTRO_10'",
+            "GamePause 1.0",
+        ]);
+        var host = new SpeakProbe();
+        interpreter.RunUntilYield(host);
+        Assert.True(interpreter.Yielded);
+        Assert.Equal("GamePause 1.0", interpreter.Commands[interpreter.InstructionPointer]);
+        Assert.Contains("Father.Speak Father,'TEXT_QST_048_FATHER_INTRO_10'", interpreter.Executed);
+        Assert.Equal("Father", host.Last.Actor);
+        Assert.Equal("Father", host.Last.Target);
+        Assert.Contains("TEXT_QST_048_FATHER_INTRO_10", host.Last.Text);
+        Assert.Equal(0, host.Last.Mode);
+        Assert.True(RegionTravel.FirstSeenSpeakYieldsOnce);
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(
+            ScriptCommand.Parse("Father.Speak Father,null")));
+    }
+
+    private sealed class SpeakProbe : IScriptHost
+    {
+        public ScriptSpeech Last;
+
+        public void PlayMusic(string track) { }
+        public void FadeOut(float seconds, float param) { }
+        public void FadeIn(float seconds, float param) { }
+        public void UseCamera(string name) { }
+        public void NoLoadUseCamera(string name) { }
+        public void PlayAnimation(string? actor, string arguments) { }
+        public void CameraPause(string arguments) { }
+        public void Teleport(string? actor, string arguments) { }
+        public void LookToThing(string? actor, string arguments) { }
+        public void DoCameraPreloading(string arguments) { }
+        public void PlayAvi(string arguments) { }
+        public void MuteSounds(string arguments) { }
+        public void StartTimeCode() { }
+        public void GamePause(float seconds) { }
+
+        public void Speak(string? actor, string target, string text, int mode) =>
+            Last = new ScriptSpeech(actor, target, text, mode);
     }
 
     [Fact]

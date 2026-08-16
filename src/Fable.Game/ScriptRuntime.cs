@@ -30,6 +30,7 @@ public sealed class ScriptRuntime : IScriptHost
     public IReadOnlyDictionary<string, string> NamedScripts => _named;
     public IReadOnlyList<ScriptTeleport> Teleports => _teleports;
     public IReadOnlyList<ScriptAnimation> Animations => _animations;
+    public IReadOnlyList<ScriptSpeech> Speeches => _speeches;
     public IReadOnlyList<string> PreloadedCameras => _preloadedCameras;
 
     private readonly Dictionary<string, string> _named = new(StringComparer.OrdinalIgnoreCase);
@@ -38,6 +39,7 @@ public sealed class ScriptRuntime : IScriptHost
     private readonly List<ScriptInterpreter> _interpreters = [];
     private readonly List<ScriptTeleport> _teleports = [];
     private readonly List<ScriptAnimation> _animations = [];
+    private readonly List<ScriptSpeech> _speeches = [];
     private readonly List<string> _preloadedCameras = [];
     private IReadOnlyList<ThingInstance> _things = [];
     private ScriptedCamera? _camera;
@@ -243,6 +245,17 @@ public sealed class ScriptRuntime : IScriptHost
     void IScriptHost.GamePause(float seconds) => LastGamePause = seconds;
 
     /// <summary>
+    /// <c>00CC25FD</c>: thing <c>vtbl+52</c> then poll
+    /// <c>vtbl+104</c>. Father <c>0x0127293C</c> +52 is
+    /// <c>004CD1B0</c> <c>al=1</c>, +104 is
+    /// <c>00661A40</c> <c>ret 4</c> (leaves al). First
+    /// poll is busy, one <c>vtbl+28</c>, next poll idle.
+    /// Do not invent dialogue UI.
+    /// </summary>
+    void IScriptHost.Speak(string? actor, string target, string text, int mode) =>
+        _speeches.Add(new ScriptSpeech(actor, target, text, mode));
+
+    /// <summary>
     /// <c>00CC86D0</c> default path: <c>00CBF29F</c> with
     /// <c>dl=0</c> collects UseCamera names via
     /// <c>vtbl+1648</c>. First-seen has no TRUE arg so
@@ -315,3 +328,9 @@ public readonly record struct ScriptAnimation(
     bool Flag3,
     bool Flag4,
     bool Flag5);
+
+public readonly record struct ScriptSpeech(
+    string? Actor,
+    string Target,
+    string Text,
+    int Mode);

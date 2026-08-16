@@ -221,6 +221,28 @@ public static class RegionTravel
     public const bool FirstSeenGamePauseHasClockArg = false;
     public const bool FirstSeenGamePauseUsesFrameDt = false;
     public const float IntroGamePauseSeconds = 1.6f;
+    /// <summary>
+    /// <c>00CC25FD</c> <c>.Speak</c>. Skip empty /
+    /// <c>00CBEE5E</c> <c>null</c> text via
+    /// <c>00CC7081</c>. Apply thing <c>vtbl+52</c>,
+    /// poll <c>vtbl+104</c> with <c>vtbl+28</c> until
+    /// <c>al==0</c>. Father vtbl <c>0x0127293C</c>
+    /// +52 is <c>004CD1B0</c> <c>al=1</c>, +104 is
+    /// <c>00661A40</c> <c>ret 4</c> (leaves al) so
+    /// first-seen is one yield then continue.
+    /// Apply body UNREAD — record only.
+    /// </summary>
+    public const uint SpeakOpcode = 0x00CC25FD;
+    public const uint SpeakApply = 0x00CC27EA;
+    public const uint SpeakPoll = 0x00CC2909;
+    public const uint SpeakIsNull = 0x00CBEE5E;
+    public const uint SpeakThingVtbl = 0x0127293C;
+    public const uint SpeakApplyStub = 0x004CD1B0;
+    public const uint SpeakPollStub = 0x00661A40;
+    public const int SpeakApplyVtbl = 52;
+    public const int SpeakPollVtbl = 104;
+    public const bool FirstSeenSpeakYieldsOnce = true;
+    public const string IntroFatherSpeak = "TEXT_QST_048_FATHER_INTRO_10";
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;
