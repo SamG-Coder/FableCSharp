@@ -189,6 +189,13 @@ public sealed class ShaderFormatTests
         }
 
         Assert.Contains(3, land.ConstRegisters);
+        Assert.DoesNotContain(1, land.ConstRegisters);
+        Assert.False(LandscapeTextures.FirstSeenLandscapeVsReadsC1);
+        Assert.False(LandscapeTextures.FirstSeenUploadsC1LayerFlip);
+        Assert.Equal(4, LandscapeTextures.C1LayerType);
+        Assert.Equal(1, LandscapeTextures.LayerFlipRegister);
+        Assert.Equal(new Vector2(1f, 0f), LandscapeTextures.C1OneLayer);
+        Assert.Equal(new Vector2(0f, -1f), LandscapeTextures.C1TwoLayer);
         Assert.Contains(5, stat.ConstRegisters);
         Assert.DoesNotContain(20, Load("SHADERS_STATIC", "VSHADER_STATIC_UNLIT").ConstRegisters);
         Assert.Equal(19, WorldShading.DirLightStartRegister);

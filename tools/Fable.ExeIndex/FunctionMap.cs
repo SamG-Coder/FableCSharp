@@ -97,6 +97,7 @@ internal static class FunctionMap
         ("frustum extract other", 0x00B2FC50),
         ("camera copy 00B4AF50", 0x00B4AF50),
         ("per-cell submit", 0x00BF4570),
+        ("per-cell c1 flip", 0x00BF5175),
         ("water draw", 0x00B783F0),
         ("water type-8 ingest", 0x00B6DAF0),
         ("sea bind 00B6DC40", 0x00B6DC40),

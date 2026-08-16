@@ -316,6 +316,11 @@ public sealed class LevFormatTests
         Assert.Contains(tris, t => t.TextureId is 4130 or 414 or 428 or 412);
         Assert.DoesNotContain(tris, t => t.TextureId == 442);
         Assert.Equal(0.125f, LandscapeTextures.UvScale);
+        Assert.False(LandscapeTextures.FirstSeenUploadsC1LayerFlip);
+        Assert.False(LandscapeTextures.FirstSeenLandscapeVsReadsC1);
+        Assert.Equal(4, LandscapeTextures.C1LayerType);
+        Assert.Equal(0x0139C5D8u, LandscapeTextures.UvTable);
+        Assert.Equal(0x00BF51D4u, LandscapeTextures.PerCellC1Upload);
         var sample = tris.First(t => t.A.X > 1f && t.A.Y > 1f);
         Assert.Equal(sample.A.X * 0.125f, sample.UvA.X, 3);
         Assert.Equal(sample.A.Y * 0.125f, sample.UvA.Y, 3);

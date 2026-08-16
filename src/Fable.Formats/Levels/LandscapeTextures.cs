@@ -151,11 +151,27 @@ public static class LandscapeTextures
 
     /// <summary>
     /// Exe table <c>0x0139C5D8</c> uploaded via <c>00989A60</c> as VS
-    /// float4s: <c>0.125</c> / <c>-0.125</c>. Tile verts have no UV;
-    /// <c>VSHADER_LANDSCAPE_FOREGROUND</c> does <c>mad oT0</c> from world XY.
-    /// Cell lookup still uses <c>&gt;&gt;4</c> (16 m). UV scale is 1/8, not 1/16.
+    /// float4s: <c>0.125</c> / <c>-0.125</c> to <c>c3</c>. First-seen
+    /// <c>VSHADER_LANDSCAPE_FOREGROUND</c> does <c>add r3, r3, c3</c>
+    /// (lighting) and <c>mov oT0.xy, v3</c> — not <c>mad oT0</c> from
+    /// world XY. Cell lookup still uses <c>&gt;&gt;4</c> (16 m).
     /// </summary>
     public const float UvScale = 0.125f;
+    public const uint UvTable = 0x0139C5D8;
+    public const uint UvTable2 = 0x0139C614;
+    public const uint PerCellDraw = 0x00BF4570;
+    public const uint PerCellC1Upload = 0x00BF51D4;
+    public const int LayerFlipRegister = 1;
+    /// <summary>
+    /// <c>00BF5175</c> <c>cmp ebp, 4</c> then <c>00989A60(1)</c>.
+    /// Type 4 is the water enqueue (<c>00BF44B3</c>). First-seen FG
+    /// is not type 4, so c1 is not written.
+    /// </summary>
+    public const int C1LayerType = 4;
+    public const bool FirstSeenUploadsC1LayerFlip = false;
+    public const bool FirstSeenLandscapeVsReadsC1 = false;
+    public static readonly System.Numerics.Vector2 C1OneLayer = new(1f, 0f);
+    public static readonly System.Numerics.Vector2 C1TwoLayer = new(0f, -1f);
 
     public static bool IsUsable(string materialName) =>
         materialName.Length > 0 &&
