@@ -114,6 +114,7 @@ internal static class FunctionMap
         ("sky UV divisor CRT 01224830", 0x01224830),
         ("sky star draw 00B65A20", 0x00B65A20),
         ("sky weather draw 00B64FA0", 0x00B64FA0),
+        ("sky weather all-zero ret", 0x00B659A5),
         ("map manager +408 setter", 0x00B42ED0),
         ("sky gather texture ids 00B63800", 0x00B63800),
         ("ENVIRONMENT NString persist", 0x00431143),

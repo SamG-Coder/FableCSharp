@@ -80,9 +80,18 @@ public static class SkyPass
     public const int StarRecordStrideBytes = 44;
     public const uint OneConst = 0x0122DED8;
     public const uint WeatherDraw = 0x00B64FA0;
+    public const uint WeatherDrawCaller = 0x00B6629D;
+    public const uint WeatherAllZeroRet = 0x00B659A5;
+    public const int WeatherIdPointer0Offset = 472;
+    public const int WeatherIdPointer1Offset = 448;
+    public const int WeatherIdDwordsPerPointer = 2;
+    public const int WeatherIdCount = 4;
+    public const int WeatherSkipCountOffset = 16;
     public const int SkyWeatherByteOffset = 396;
     public const byte FirstSeenSkyWeatherByte = 1;
     public const bool FirstSeenCallsWeatherDraw = true;
+    public const bool WeatherAllZeroIdsSkipDraw = true;
+    public const bool FirstSeenWeatherDrawBuildsMesh = false;
     public const bool FirstSeenStarDrawIteratesStarsDat = false;
     public const bool FirstSeenEmitsInventedStarBillboards = false;
     public const int DomeRings = 9;
@@ -202,6 +211,24 @@ public static class SkyPass
         (float)(UvDivisorScale * Math.Cos(UvDivisorAngle));
 
     public static float FirstSeenInvUvDivisor => 1f / FirstSeenUvDivisor;
+
+    /// <summary>
+    /// <c>00B64FA0</c>: each id <c>== 0</c> increments the skip
+    /// count; count <c>== 4</c> takes <c>00B659A5 ret 4</c>.
+    /// </summary>
+    public static bool WeatherSkipDraw(ReadOnlySpan<int> ids)
+    {
+        if (ids.Length != WeatherIdCount)
+            return false;
+        var skips = 0;
+        foreach (var id in ids)
+        {
+            if (id == 0)
+                skips++;
+        }
+
+        return WeatherAllZeroIdsSkipDraw && skips == WeatherIdCount;
+    }
 
     public static float Elev(int ring) => ElevStart + ring * ElevStep;
 
