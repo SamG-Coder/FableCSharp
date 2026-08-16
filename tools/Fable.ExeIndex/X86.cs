@@ -19,6 +19,38 @@ internal static class X86
     public static List<string> DisassembleAll(PeImage pe, int fileOffset, int maxInsns = 64) =>
         DisassembleCore(pe, fileOffset, maxInsns, stopOnRet: false);
 
+    /// <summary>
+    /// Walk one function: keep going past an early <c>ret</c>, but stop at
+    /// INT3 padding or the next <c>push ebp / mov ebp, esp</c> prologue.
+    /// </summary>
+    public static List<Step> WalkFunction(PeImage pe, int fileOffset, int maxInsns)
+    {
+        var steps = Walk(pe, fileOffset, maxInsns, stopOnRet: false);
+        var d = pe.Data;
+        var keep = steps.Count;
+        for (var i = 1; i < steps.Count; i++)
+        {
+            var file = pe.FileOffset(steps[i].Va);
+            if (file < 0 || file + 2 >= d.Length)
+                continue;
+            if (d[file] == 0xCC)
+            {
+                keep = i;
+                break;
+            }
+
+            if (d[file] == 0x55 && d[file + 1] == 0x8B && d[file + 2] == 0xEC)
+            {
+                keep = i;
+                break;
+            }
+        }
+
+        if (keep < steps.Count)
+            steps.RemoveRange(keep, steps.Count - keep);
+        return steps;
+    }
+
     public static List<Step> Walk(PeImage pe, int fileOffset, int maxInsns, bool stopOnRet)
     {
         var steps = new List<Step>(maxInsns);

@@ -8,9 +8,9 @@ namespace Fable.ExeIndex;
 /// </summary>
 internal static class FunctionMap
 {
-    public const int MaxDepth = 12;
-    public const int MaxFunctions = 8000;
-    public const int MaxInsns = 400;
+    public const int MaxDepth = 8;
+    public const int MaxFunctions = 16000;
+    public const int MaxInsns = 300;
 
     /// <summary>
     /// Code windows used by New Game / StartOakVale first scene only.
@@ -73,6 +73,17 @@ internal static class FunctionMap
         public required IReadOnlyList<string> Strings { get; init; }
     }
 
+    public static bool InNewGameRange(uint va)
+    {
+        foreach (var (lo, hi, _) in NewGameRanges)
+        {
+            if (va >= lo && va < hi)
+                return true;
+        }
+
+        return false;
+    }
+
     public static List<Node> WalkNewGame(PeImage pe)
     {
         var queue = new Queue<(uint Va, int Depth, string Seed)>();
@@ -99,7 +110,7 @@ internal static class FunctionMap
             if (file < 0 || !pe.InCode(file))
                 continue;
 
-            var steps = X86.Walk(pe, file, MaxInsns, stopOnRet: false);
+            var steps = X86.WalkFunction(pe, file, MaxInsns);
             var calls = new List<uint>();
             var strings = new List<string>();
             foreach (var step in steps)
@@ -127,8 +138,11 @@ internal static class FunctionMap
                 if (destFile < 0 || !pe.InCode(destFile))
                     continue;
                 var start = pe.Va(X86.FindPrologue(pe, destFile));
-                if (!seen.Contains(start))
-                    queue.Enqueue((start, depth + 1, seed));
+                if (seen.Contains(start))
+                    continue;
+                if (!InNewGameRange(start))
+                    continue;
+                queue.Enqueue((start, depth + 1, seed));
             }
         }
 
@@ -141,10 +155,19 @@ internal static class FunctionMap
         var sb = new StringBuilder();
         sb.AppendLine("# New Game function map");
         sb.AppendLine();
-        sb.AppendLine("Every function in New Game / `StartOakVale` code ranges, plus callees.");
-        sb.AppendLine("Lookout and later campaign maps are not scanned.");
+        sb.AppendLine("Every function that starts in New Game / `StartOakVale` code ranges.");
+        sb.AppendLine("Callees outside those ranges (CRT, later towns) are listed on the caller only.");
         sb.AppendLine();
         sb.AppendLine($"functions **{nodes.Count}** · depth ≤ {MaxDepth} · ranges {NewGameRanges.Length} · [INDEX](INDEX.md)");
+        sb.AppendLine();
+        sb.AppendLine("## Ranges");
+        sb.AppendLine();
+        foreach (var (lo, hi, name) in NewGameRanges)
+        {
+            var n = nodes.Count(x => x.Va >= lo && x.Va < hi);
+            sb.AppendLine($"- `{name}` `0x{lo:X8}`–`0x{hi:X8}` · **{n}** fns");
+        }
+
         sb.AppendLine();
         sb.AppendLine("## Seeds");
         sb.AppendLine();
@@ -168,6 +191,9 @@ internal static class FunctionMap
         WriteHits(sb, nodes, "VSHADER_LANDSCAPE_FOREGROUND");
         WriteHits(sb, nodes, "MARKER_LIGHT");
         WriteHits(sb, nodes, "ENGINE_WATER");
+        WriteHits(sb, nodes, "00B6CBD0");
+        WriteHits(sb, nodes, "00B68DA0");
+        WriteHits(sb, nodes, "00BB5040");
         sb.AppendLine();
         sb.AppendLine("## Functions");
         sb.AppendLine();
@@ -216,11 +242,24 @@ internal static class FunctionMap
             var b = pe.FileOffset(hi - 1);
             if (a < 0 || b < 0)
                 continue;
-            for (var i = a + 2; i < b; i++)
+            for (var i = a; i < b; i++)
             {
-                if (data[i - 1] != 0xCC || data[i] == 0xCC || !pe.InCode(i))
+                if (!pe.InCode(i))
                     continue;
-                starts.Add(pe.Va(i));
+                if (i + 2 < data.Length && data[i] == 0x55 && data[i + 1] == 0x8B && data[i + 2] == 0xEC)
+                {
+                    var va = pe.Va(i);
+                    if (InNewGameRange(va))
+                        starts.Add(va);
+                    continue;
+                }
+
+                if (i > a && data[i - 1] == 0xCC && data[i] != 0xCC)
+                {
+                    var start = pe.Va(X86.FindPrologue(pe, i));
+                    if (InNewGameRange(start))
+                        starts.Add(start);
+                }
             }
         }
 

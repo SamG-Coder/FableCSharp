@@ -206,5 +206,12 @@ public sealed class ShaderFormatTests
         Assert.Contains(WorldShading.PointAttenRegister, two.ConstRegisters);
         Assert.Equal(21, WorldShading.PointLightStartRegister);
         Assert.Equal(31, WorldShading.PointAttenRegister);
+        Assert.Equal(1, WorldShading.LightingModeDefault);
+        Assert.Equal(6, WorldShading.ShaderFamilySlotCount);
+        Assert.Equal(5, WorldShading.PackedLightCountCap);
+        var land2 = Load("SHADERS_LANDSCAPE_FOREGROUND", "VSHADER_LANDSCAPE_FOREGROUND_2LIGHTS");
+        Assert.Contains(WorldShading.PointLightStartRegister, land2.ConstRegisters);
+        var five = Load("SHADERS_STATIC", "VSHADER_STATIC_DIRLIGHT_5POINTLIGHTS_FOG");
+        Assert.Contains(WorldShading.PointLightStartRegister, five.ConstRegisters);
     }
 }

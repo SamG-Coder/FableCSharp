@@ -629,6 +629,16 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "MainScene plus616 draw", 0x00B33010, 120),
         WriteFnPart(pe, store, family, "Static mesh VS bind", 0x00B8B660, 80),
         WriteFnPart(pe, store, family, "VS bind LANDSCAPE FOREGROUND", 0x00B69330, 80),
+        WriteFnPart(pe, store, family, "Landscape VS family ctor", 0x00B69000, 400, stopOnRet: false),
+        WriteFnPart(pe, store, family, "Landscape VS slot table 00B6CBD0", 0x00B6CBD0, 80),
+        WriteFnPart(pe, store, family, "FG compact bind 00B68DA0", 0x00B68DA0, 200),
+        WriteFnPart(pe, store, family, "Static 2POINTLIGHTS family 00BB5040", 0x00BB5040, 280, stopOnRet: false),
+        WriteFnPart(pe, store, family, "Land layer select 00BE6F70", 0x00BE6F70, 120),
+        WriteFnPart(pe, store, family, "Layer bind 00BE7BE0", 0x00BE7BE0, 160),
+        WriteFnPart(pe, store, family, "Lighting mode setter 00B23C00", 0x00B23C00, 20),
+        WriteFnPart(pe, store, family, "SetVertexShader wrapper 00988020", 0x00988020, 50),
+        WriteFnPart(pe, store, family, "Static count-to-slot 00BA2677", 0x00BA2677, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "Gather body after enable 00B462B4", 0x00B462B4, 160, stopOnRet: false),
         WriteNewGameMap(pe, store, family),
     };
     store.WriteIndex(

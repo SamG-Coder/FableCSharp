@@ -16,9 +16,9 @@ public static class WorldShading
     public const int RegistersPerLight = 2;
     public const int LitRegister = 35;
     /// <summary>
-    /// LayoutLights <c>[+20]</c>. New Game function map does not reach a
-    /// <c>009896D0</c> caller (offset 0 is never written on that graph).
-    /// First-seen kid stays bind-pose; do not invent bone matrices.
+    /// LayoutLights <c>[+20]</c>. New Game map v18 reaches 7 callers of
+    /// <c>009896D0</c> in the static/palskin range. First-frame <c>c38</c>
+    /// values are still UNREAD; kid stays bind-pose.
     /// </summary>
     public const int PaletteSkinStartRegister = 38;
     public const int PaletteSkinRegisterCount = 58;
@@ -28,6 +28,21 @@ public static class WorldShading
     /// <c>VSHADER_*_2POINTLIGHTS_*</c> read those; first-seen 1-light VS do not.
     /// </summary>
     public const int PointLightStartRegister = 21;
+
+    /// <summary>
+    /// Lighting ctor <c>[esi+18068]=1</c>. Setter <c>00B23C00</c> writes 1
+    /// (arg 0) or 2 (arg ≠ 0). Zero <c>E8</c> callers. Not the VS slot index.
+    /// </summary>
+    public const int LightingModeDefault = 1;
+
+    /// <summary>
+    /// Static ctor <c>00BB5040</c> / landscape <c>00B69000</c> resize the
+    /// family vector to 6 via <c>00B6CBD0</c>. Slot 0 = 1-light, 1–2 =
+    /// 2 lights, 3–4 = 4 lights, 5 = 5 lights. Draw <c>00BA2677</c> caps
+    /// packed count at 5 then remaps. Remap dwords at family+32 UNREAD.
+    /// </summary>
+    public const int ShaderFamilySlotCount = 6;
+    public const int PackedLightCountCap = 5;
 
     /// <summary>
     /// LayoutLights <c>[+108]=31</c> count 4. Flush <c>0098A6F6</c> uploads

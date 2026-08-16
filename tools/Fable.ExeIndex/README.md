@@ -7,7 +7,9 @@ The x86 decoder must consume a full instruction. Unknown `0F` / `F6` / x87 used
 to emit `db` and then a fake `ret`. It now covers 0F (jcc/movzx/setcc/imul),
 F6/F7, ADC/SBB `10–1D`, C0/C1/D0–D3 shifts, D8–DF x87, A0–A3 moffs, and 66/F2/F3
 prefixes. `00DBDE40` (`sbb bl, bl`) needs ADC/SBB or the new-game setup looks like
-a 12-instruction stub.
+a 12-instruction stub. `map-newgame` walks real prologues in New Game code
+ranges (`WalkFunction` stops at INT3 / next `push ebp`) and does not BFS into
+CRT or later-town callees.
 
 ```
 dotnet run --project tools/Fable.ExeIndex -- all
