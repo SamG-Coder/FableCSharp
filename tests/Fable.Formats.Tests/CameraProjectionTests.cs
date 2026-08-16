@@ -169,4 +169,29 @@ public sealed class CameraProjectionTests
         Assert.Equal(new Vector4(pos, 1f), seen);
         Assert.NotEqual(seen, invented);
     }
+
+    [Fact]
+    public void First_seen_view_is_camera_plus128_and_landscape_world_is_camera_translation()
+    {
+        Assert.Equal(128u, LandscapeFrustum.ViewSourceOffset);
+        Assert.Equal(0x00B23B50u, LandscapeFrustum.BindCameraUpdate);
+        Assert.Equal(1, LandscapeFrustum.BindCameraUpdateArg);
+        Assert.Equal(0, LandscapeFrustum.PrePassCameraUpdateArg);
+        Assert.Equal(0x00B2FC50u, LandscapeFrustum.ExtractOtherWritesView);
+        Assert.Equal(0x00B66A07u, LandscapeFrustum.ExtractOtherSkyCaller);
+        Assert.Equal(0x01436EA0u, LandscapeFrustum.CameraObject);
+        Assert.Equal(84, LandscapeFrustum.CameraWorldXOffset);
+        Assert.Equal(88, LandscapeFrustum.CameraWorldYOffset);
+        Assert.Equal(92, LandscapeFrustum.CameraWorldZOffset);
+        Assert.Equal(144, LandscapeFrustum.PerCellWorldStack);
+        Assert.Equal(0x00BF46A2u, LandscapeFrustum.PerCellWorldFill);
+        Assert.True(LandscapeFrustum.FirstSeenLandscapeWorldIsCameraTranslation);
+        Assert.True(LandscapeFrustum.FirstSeenBindWritesViewFromCamera128);
+        var cam = new Vector3(40.03f, 130.48f, 16.78f);
+        LandscapeFrustum.LandscapeWorld3x4(cam, out var c0, out var c1, out var c2, out var c3);
+        Assert.Equal(Vector3.UnitX, c0);
+        Assert.Equal(Vector3.UnitY, c1);
+        Assert.Equal(Vector3.UnitZ, c2);
+        Assert.Equal(cam, c3);
+    }
 }

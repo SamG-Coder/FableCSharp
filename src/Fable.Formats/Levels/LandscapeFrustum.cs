@@ -179,6 +179,35 @@ public static class LandscapeFrustum
     public const float FirstSeenMinZ = 0.1f;
     public const float FirstSeenMaxZ = 0.99f;
     public const uint HelperMinZConst = 0x01399D44;
+    /// <summary>
+    /// Bind <c>00B23B50</c> <c>push 1</c> / <c>00B314E0</c> so
+    /// <c>00B30B50</c> arg2≠0 and <c>00B2FC50</c> runs:
+    /// <c>00988350(camera+128)</c> view, <c>00988540(camera+372)</c>
+    /// proj, <c>009881F0</c> identity world. Pre-pass
+    /// <c>00B27994 push 0</c> skips it. Sky
+    /// <c>00B66A01</c> calls <c>00B2FC50</c> on
+    /// <c>[0x1436EA0]</c> again before landscape.
+    /// </summary>
+    public const uint ViewSourceOffset = 128;
+    public const uint BindCameraUpdate = 0x00B23B50;
+    public const int BindCameraUpdateArg = 1;
+    public const int PrePassCameraUpdateArg = 0;
+    public const uint ExtractOtherWritesView = 0x00B2FC50;
+    public const uint ExtractOtherSkyCaller = 0x00B66A07;
+    public const uint CameraObject = 0x1436EA0;
+    /// <summary>
+    /// Per-cell <c>00BF46A2</c> builds a 3x4 at <c>esp+144</c>:
+    /// diagonal 1, then <c>[0x1436EA0]+84/+88/+92</c> into
+    /// +36/+40/+44, and <c>009881F0</c> copies it to wrapper+496.
+    /// After the +20 source copy those slots are helper pos.
+    /// </summary>
+    public const int CameraWorldXOffset = 84;
+    public const int CameraWorldYOffset = 88;
+    public const int CameraWorldZOffset = 92;
+    public const int PerCellWorldStack = 144;
+    public const uint PerCellWorldFill = 0x00BF46A2;
+    public const bool FirstSeenLandscapeWorldIsCameraTranslation = true;
+    public const bool FirstSeenBindWritesViewFromCamera128 = true;
 
     public readonly record struct Plane(Vector3 Normal, float D);
 
@@ -208,6 +237,35 @@ public static class LandscapeFrustum
     {
         m34 = ((minZ - maxZ) * near * far) / (far - near);
         m33 = minZ - m34 / near;
+    }
+
+    /// <summary>
+    /// <c>00988350</c>: 3x4 at camera+128 (column stride 12) into
+    /// wrapper+560 as rows <c>(c0,c1,c2,c3)</c> and bottom
+    /// <c>(0,0,0,1)</c>.
+    /// </summary>
+    public static Matrix4x4 View4x4From3x4(
+        Vector3 row0, Vector3 row1, Vector3 row2, Vector3 translation)
+    {
+        return new Matrix4x4(
+            row0.X, row0.Y, row0.Z, translation.X,
+            row1.X, row1.Y, row1.Z, translation.Y,
+            row2.X, row2.Y, row2.Z, translation.Z,
+            0f, 0f, 0f, 1f);
+    }
+
+    /// <summary>
+    /// <c>00BF46A2</c> / <c>009881F0</c>: identity 3x4 plus
+    /// camera +84/+88/+92 in the last column.
+    /// </summary>
+    public static void LandscapeWorld3x4(
+        Vector3 cameraPos,
+        out Vector3 col0, out Vector3 col1, out Vector3 col2, out Vector3 col3)
+    {
+        col0 = Vector3.UnitX;
+        col1 = Vector3.UnitY;
+        col2 = Vector3.UnitZ;
+        col3 = cameraPos;
     }
 
     /// <summary>

@@ -295,6 +295,12 @@ public sealed class WorldSceneTests
         Assert.Equal(0.99f, LandscapeFrustum.FirstSeenMaxZ);
         Assert.Equal(0x00988A50u, LandscapeFrustum.WvpFlush);
         Assert.Equal(5, LandscapeFrustum.LayoutWvpRegister);
+        Assert.Equal(1, LandscapeFrustum.BindCameraUpdateArg);
+        Assert.Equal(0x00B2FC50u, LandscapeFrustum.ExtractOtherWritesView);
+        Assert.Equal(128u, LandscapeFrustum.ViewSourceOffset);
+        Assert.Equal(84, LandscapeFrustum.CameraWorldXOffset);
+        LandscapeFrustum.LandscapeWorld3x4(introPos, out _, out _, out _, out var worldT);
+        Assert.Equal(introPos, worldT);
         var shotCam = new FlyCamera { Position = introPos, FovDegrees = introFov };
         shotCam.LookAt(introLook);
         var shotNdc = FlyCamera.Project(shotCam.ViewProjection(4f / 3f), introLook);
