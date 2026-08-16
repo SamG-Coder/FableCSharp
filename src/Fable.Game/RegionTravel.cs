@@ -190,6 +190,18 @@ public static class RegionTravel
     public const bool FirstSeenPlayAnimationYields = true;
     public const string IntroWakeLoop = "CS_WAKING_UP_LOOP";
     public const string IntroWakeSteps = "CS_WAKING_UP_ON_STEPS";
+    /// <summary>
+    /// <c>00CD1373</c> push <c>StartTimeCode</c>. Match
+    /// zeros <c>[0x13B83C8]</c> then
+    /// <c>jmp 00CD17FD</c>. No yield. <c>00CBF344</c>
+    /// is the <c>00CBF29F</c> name walk (sets a local).
+    /// </summary>
+    public const uint StartTimeCodeOpcode = 0x00CD1373;
+    public const uint StartTimeCodeApply = 0x00CD13C3;
+    public const uint StartTimeCodeJoin = 0x00CD17FD;
+    public const uint StartTimeCodeGlobal = 0x013B83C8;
+    public const bool FirstSeenStartTimeCodeDoesNotYield = true;
+    public const string IntroStandupCamera = "CAM_OVI_ID_STANDUP";
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;

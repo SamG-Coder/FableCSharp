@@ -20,6 +20,7 @@ public sealed class ScriptRuntime : IScriptHost
     public string? LastMusic { get; private set; }
     public string? LastAvi { get; private set; }
     public bool SoundsMuted { get; private set; }
+    public int TimeCode { get; private set; }
     public string? ActiveCutscene => _interpreters.Count == 0 ? null : _interpreters[^1].Name;
     public ScriptInterpreter? ActiveInterpreter =>
         _interpreters.Count == 0 ? null : _interpreters[^1];
@@ -226,6 +227,13 @@ public sealed class ScriptRuntime : IScriptHost
     /// </summary>
     void IScriptHost.MuteSounds(string arguments) =>
         SoundsMuted = !ScriptCommand.IsFalseArg(ScriptInterpreter.FirstToken(arguments));
+
+    /// <summary>
+    /// <c>00CD1373</c>: <c>and [0x13B83C8], 0</c> then
+    /// <c>jmp 00CD17FD</c>. No yield. Do not invent
+    /// the leftover increment as a pose clock.
+    /// </summary>
+    void IScriptHost.StartTimeCode() => TimeCode = 0;
 
     /// <summary>
     /// <c>00CC86D0</c> default path: <c>00CBF29F</c> with
