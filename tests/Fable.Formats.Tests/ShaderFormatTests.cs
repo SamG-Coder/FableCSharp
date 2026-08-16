@@ -197,6 +197,14 @@ public sealed class ShaderFormatTests
         Assert.Equal(1f, WorldShading.DirLightColor.W);
         Assert.Equal(new Vector4(0f, 0f, 0f, 1f), WorldShading.LitColor);
         Assert.Contains(WorldShading.PaletteSkinStartRegister, skin.ConstRegisters);
-        // New Game fnmap: no 009896D0 caller, so first-seen does not fill c38.
+        Assert.DoesNotContain(WorldShading.PointLightStartRegister, land.ConstRegisters);
+        Assert.DoesNotContain(WorldShading.PointLightStartRegister, stat.ConstRegisters);
+        Assert.DoesNotContain(WorldShading.PointAttenRegister, stat.ConstRegisters);
+        var two = Load("SHADERS_STATIC", "VSHADER_STATIC_DIRLIGHT_2POINTLIGHTS_FOG");
+        Assert.Contains(WorldShading.PointLightStartRegister, two.ConstRegisters);
+        Assert.Contains(WorldShading.PointLightStartRegister + 1, two.ConstRegisters);
+        Assert.Contains(WorldShading.PointAttenRegister, two.ConstRegisters);
+        Assert.Equal(21, WorldShading.PointLightStartRegister);
+        Assert.Equal(31, WorldShading.PointAttenRegister);
     }
 }

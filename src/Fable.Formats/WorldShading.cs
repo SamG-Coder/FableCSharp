@@ -23,6 +23,18 @@ public static class WorldShading
     public const int PaletteSkinStartRegister = 38;
     public const int PaletteSkinRegisterCount = 58;
 
+    /// <summary>
+    /// Light <c>i</c> is <c>c[19+2i]</c>. Slot 1 (first point) is <c>c21</c>/<c>c22</c>.
+    /// <c>VSHADER_*_2POINTLIGHTS_*</c> read those; first-seen 1-light VS do not.
+    /// </summary>
+    public const int PointLightStartRegister = 21;
+
+    /// <summary>
+    /// LayoutLights <c>[+108]=31</c> count 4. Flush <c>0098A6F6</c> uploads
+    /// <c>[wrapper+416]</c> to <c>c31</c> only when packed light count &gt; 1.
+    /// </summary>
+    public const int PointAttenRegister = 31;
+
     /// <summary>Ctor <c>[esi+48]</c> = (0, 1, 0); apply writes w=0.</summary>
     public static readonly Vector4 DirLightDirection = new(0f, 1f, 0f, 0f);
 
