@@ -52,6 +52,17 @@ public sealed class DataCatalogTests
         Assert.False(RegionTravel.FirstSeenCallsPlayAnimationDispatcher);
         Assert.True(RegionTravel.FirstSeenStartsIntroCutscene);
         Assert.Equal("NOVI_LiveFather", RegionTravel.LiveFatherScript);
+        var father = script.Entries.First(e => e.InstanceName == RegionTravel.IntroCutscene);
+        var commands = AsciiCommands(father.Raw);
+        Assert.Equal("PlayMusic MUSIC_SET_NULL", commands[0]);
+        Assert.Contains(RegionTravel.FadeSpecialCase, commands);
+        Assert.NotEqual(RegionTravel.FadeSpecialCase, commands[0]);
+        Assert.Contains(commands, c => c.StartsWith("PlayAVI ", StringComparison.Ordinal)
+                                      && c.Contains(RegionTravel.IntroPlayAvi, StringComparison.Ordinal));
+        Assert.Contains("UseCamera CAM_OVIF_SHOT2", commands);
+        Assert.Contains("Hero.PlayAnimation CS_WAKING_UP_LOOP,FALSE,FALSE,TRUE,FALSE", commands);
+        Assert.False(RegionTravel.FirstSeenFadeSpecialCaseRuns);
+        Assert.False(RegionTravel.FirstSeenPlayAvi);
         Assert.Equal(0x00DB86B0u, RegionTravel.IntroCutsceneStart);
         Assert.Equal(0x00CBFB7Du, RegionTravel.IntroCutsceneRunner);
         Assert.Equal("CAM_OVIF_SHOT2", RegionTravel.IntroFirstSeenCamera);
@@ -214,5 +225,27 @@ public sealed class DataCatalogTests
         Assert.Equal(398, parsed);
         Assert.Equal(399, declared);
         Assert.True(raw.Length > 40_000);
+    }
+
+    private static List<string> AsciiCommands(byte[] raw)
+    {
+        var list = new List<string>();
+        var i = 0;
+        while (i < raw.Length)
+        {
+            if (raw[i] is < 32 or > 126)
+            {
+                i++;
+                continue;
+            }
+
+            var start = i;
+            while (i < raw.Length && raw[i] is >= 32 and <= 126)
+                i++;
+            if (i - start >= 4)
+                list.Add(Encoding.ASCII.GetString(raw, start, i - start));
+        }
+
+        return list;
     }
 }

@@ -857,7 +857,10 @@ static void RunExportScriptBank(PeImage pe, DumpStore store, GameInstall? instal
     native.AppendLine("| cutscene runner | `00CBFB7D` | CCutsceneDef interpreter; special-cases `FadeOut 0.5,0` then `00CBF29F` preload |");
     native.AppendLine("| UseCamera preload | `00CBF29F` | collects `UseCamera` / `CameraLookAt` names → `vtbl+1648` |");
     native.AppendLine("| UseCamera activate | `00CC9F3A` | lookup TNG name; bind `vtbl+1656` (thing) or `vtbl+1648` (name) |");
-    native.AppendLine("| first-seen start | `NOVI_LiveFather` | `00DABAC0` registers name + factory `00DAC2C0` at `+16` (`0x012D8370`). TNG `CREATURE_HERO_FATHER` / `NOVI_LiveFather`. Construct `004C97B0` → `00CB8960` → `00DB8520` → `00DAC2C0` writes vtbl `0x012D8388`. Fiber `00DB8630` calls `[+52].vtbl+4` = `00DB86B0`. Names are registered before `00DBDE40` map-wait. Do not invent `00CBFB7D` playback. |");
+    native.AppendLine("| first-seen start | `NOVI_LiveFather` | `00DABAC0` registers name + factory `00DAC2C0` at `+16` (`0x012D8370`). TNG `CREATURE_HERO_FATHER` / `NOVI_LiveFather`. Construct `004C97B0` → `00CB8960` → `00DB8520` → `00DAC2C0` writes vtbl `0x012D8388`. Fiber `00DB8630` calls `[+52].vtbl+4` = `00DB86B0`. Names are registered before `00DBDE40` map-wait. |");
+    native.AppendLine("| FadeOut special-case | `00CBFDD0` | `[ebp+120]!=1` (00DB86B0 pushes 0,0,0) compares first line to `FadeOut 0.5,0` then `vtbl+1488(0.5,0)`. First line is `PlayMusic` so the call is skipped. |");
+    native.AppendLine("| PlayAVI | `00CCA26E` | prefix `Data\\Video\\` then `vtbl+1476`. Later than first command. |");
+    native.AppendLine("| NoLoadUseCamera | `00CC9E6A` | separate token from `UseCamera`. |");
     store.WritePart(family, "native-sqnovi", native.ToString());
     links.Insert(4, new IndexLink("native-sqnovi", "native S_QNOVI", 0));
 
@@ -1021,6 +1024,14 @@ static void RunTraceScriptRuntime(PeImage pe, DumpStore store)
         WriteWalkPart(pe, store, family, "WatchBarrels 00DBE890", 0x00DBE890, 80),
         WriteWalkPart(pe, store, family, "script camera hooks 00CBF29F", 0x00CBF29F, 220),
         WriteWalkPart(pe, store, family, "cutscene runner 00CBFB7D", 0x00CBFB7D, 200),
+        WriteFnPart(pe, store, family, "cutscene runner exact 00CBFB7D", 0x00CBFB7D, 280, stopOnRet: false),
+        WriteFnPart(pe, store, family, "cutscene FadeOut 0.5 site 00CBFDD0", 0x00CBFDD0, 50, stopOnRet: false),
+        WriteFnPart(pe, store, family, "cutscene arg120 00CBFD95", 0x00CBFD95, 20, stopOnRet: false),
+        WriteFnPart(pe, store, family, "00DB86B0 calls runner 00DB88DB", 0x00DB88DB, 20, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI site 00CCA26E", 0x00CCA26E, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "NoLoadUseCamera site 00CC9E6A", 0x00CC9E6A, 50, stopOnRet: false),
+        WriteCallDispPart(pe, store, family, "calldisp vtbl+1488 fade runner", 0x5D0, 0x00CBFD00, 0x00CBFE50),
+        WriteImmPart(pe, store, family, "imm fade 0.5 122F59C", 0x122F59C, 0x00CBFD00, 0x00CBFE50),
         WriteWalkPart(pe, store, family, "CS_OAKVALE_INTRO_FATHER start 00DB86B0", 0x00DB86B0, 200),
         WriteWalkPart(pe, store, family, "intro-father dtor 00DB8680", 0x00DB8680, 20),
         WriteWalkPart(pe, store, family, "intro-father persist 00DB8630", 0x00DB8630, 40),
@@ -1522,6 +1533,13 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteCallsPart(pe, store, family, "calls water enqueue fn 00BF44A0", 0x00BF44A0),
         WriteWalkPart(pe, store, family, "script camera hooks 00CBF29F", 0x00CBF29F, 220),
         WriteWalkPart(pe, store, family, "cutscene runner 00CBFB7D", 0x00CBFB7D, 200),
+        WriteFnPart(pe, store, family, "cutscene runner exact 00CBFB7D", 0x00CBFB7D, 280, stopOnRet: false),
+        WriteFnPart(pe, store, family, "cutscene FadeOut 0.5 site 00CBFDD0", 0x00CBFDD0, 50, stopOnRet: false),
+        WriteFnPart(pe, store, family, "cutscene arg120 00CBFD95", 0x00CBFD95, 20, stopOnRet: false),
+        WriteFnPart(pe, store, family, "00DB86B0 calls runner 00DB88DB", 0x00DB88DB, 20, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI site 00CCA26E", 0x00CCA26E, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "NoLoadUseCamera site 00CC9E6A", 0x00CC9E6A, 50, stopOnRet: false),
+        WriteCallDispPart(pe, store, family, "calldisp vtbl+1488 fade runner", 0x5D0, 0x00CBFD00, 0x00CBFE50),
         WriteWalkPart(pe, store, family, "CS_OAKVALE_INTRO_FATHER start 00DB86B0", 0x00DB86B0, 200),
         WriteWalkPart(pe, store, family, "intro-father dtor 00DB8680", 0x00DB8680, 20),
         WriteWalkPart(pe, store, family, "NOVI_LiveFather factory 00DAC2C0", 0x00DAC2C0, 60),

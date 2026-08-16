@@ -252,6 +252,16 @@ public sealed class WorldSceneTests
         Assert.Equal(2584, RegionTravel.ScriptWaitVtbl);
         Assert.False(RegionTravel.FirstSeenPlus80WrittenInStartOakVale);
         Assert.False(RegionTravel.FirstSeenFadeOpcodeInStartOakVale);
+        Assert.False(RegionTravel.FirstSeenFadeSpecialCaseRuns);
+        Assert.Equal("FadeOut 0.5,0", RegionTravel.FadeSpecialCase);
+        Assert.Equal(0.5f, RegionTravel.FadeSpecialCaseSeconds);
+        Assert.Equal(1488, RegionTravel.FadeSpecialCaseVtbl);
+        Assert.Equal(0x00CCA26Eu, RegionTravel.PlayAviSite);
+        Assert.Equal(1476, RegionTravel.PlayAviVtbl);
+        Assert.Equal(@"Data\Video\", RegionTravel.PlayAviPrefix);
+        Assert.Equal("dream_sequence_comp.xmv", RegionTravel.IntroPlayAvi);
+        Assert.Equal(0x00CC9E6Au, RegionTravel.NoLoadUseCameraSite);
+        Assert.False(RegionTravel.FirstSeenPlayAvi);
         Assert.False(RegionTravel.FirstSeenWatchBarrelsSpawnsBeetle);
         Assert.False(RegionTravel.FirstSeenHandsPlayerControl);
         Assert.False(RegionTravel.FirstSeenCameraNameInExe);
@@ -314,6 +324,7 @@ public sealed class WorldSceneTests
         Assert.Equal(NewGameScript.Phase.NotStarted, script.Current);
         script.Start();
         Assert.True(script.CutsceneStarted);
+        Assert.False(script.FadeSpecialCaseApplied);
         Assert.Equal(NewGameScript.LiveFatherScript, RegionTravel.LiveFatherScript);
         Assert.Equal(0x00DAC2C0u, NewGameScript.LiveFatherFactory);
         Assert.Equal(NewGameScript.Phase.PreAttackWait, script.Current);

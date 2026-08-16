@@ -90,6 +90,31 @@ public static class RegionTravel
     public const int ScriptWaitVtbl = 2584;
     public const bool FirstSeenPlus80WrittenInStartOakVale = false;
     public const bool FirstSeenFadeOpcodeInStartOakVale = false;
+    /// <summary>
+    /// <c>00CBFB7D</c> at <c>00CBFD95</c>:
+    /// <c>[ebp+120]!=1</c> (00DB86B0 pushes 0,0,0 after
+    /// <c>push 1</c>) takes def+60 and compares the first
+    /// line to <c>FadeOut 0.5,0</c>. On match it calls
+    /// context <c>vtbl+1488</c> with <c>0.5</c>
+    /// (<c>0x122F59C</c>) and <c>0</c>.
+    /// <c>CS_OAKVALE_INTRO_FATHER</c> first line is
+    /// <c>PlayMusic MUSIC_SET_NULL</c>, so that compare
+    /// misses and the call is skipped (<c>00CBFE31</c>).
+    /// PlayAVI is later in the same interpreter
+    /// (<c>00CCA26E</c>, prefix <c>Data\Video\</c>,
+    /// <c>vtbl+1476</c>). Wake is <c>.PlayAnimation</c>.
+    /// </summary>
+    public const bool FirstSeenFadeSpecialCaseRuns = false;
+    public const string FadeSpecialCase = "FadeOut 0.5,0";
+    public const uint FadeSpecialCaseHalfConst = 0x0122F59C;
+    public const float FadeSpecialCaseSeconds = 0.5f;
+    public const int FadeSpecialCaseVtbl = 1488;
+    public const uint PlayAviSite = 0x00CCA26E;
+    public const int PlayAviVtbl = 1476;
+    public const string PlayAviPrefix = @"Data\Video\";
+    public const string IntroPlayAvi = "dream_sequence_comp.xmv";
+    public const uint NoLoadUseCameraSite = 0x00CC9E6A;
+    public const bool FirstSeenPlayAvi = false;
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;

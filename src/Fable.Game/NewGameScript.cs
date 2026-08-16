@@ -15,7 +15,9 @@ namespace Fable.Game;
 /// <c>00CBFB7D("CS_OAKVALE_INTRO_FATHER")</c>. First-seen
 /// <c>00DABAC0</c> registers <c>NOVI_LiveFather</c> then
 /// waits the map; TNG Father construct starts that body.
-/// Do not invent <c>00CBFB7D</c> fade/AVI/wake playback.
+/// <c>00CBFB7D</c> FadeOut 0.5,0 special-case does not
+/// run: first cutscene line is PlayMusic. PlayAVI / wake
+/// are later interpreter tokens. Do not invent them.
 /// </summary>
 public sealed class NewGameScript
 {
@@ -66,6 +68,11 @@ public sealed class NewGameScript
     /// TNG Father construct then starts <c>00DB86B0</c>.
     /// </summary>
     public bool CutsceneStarted { get; private set; }
+    /// <summary>
+    /// Runner special-case at <c>00CBFDD0</c> is off for
+    /// first-seen <c>CS_OAKVALE_INTRO_FATHER</c>.
+    /// </summary>
+    public bool FadeSpecialCaseApplied { get; private set; }
 
     public void Start()
     {
