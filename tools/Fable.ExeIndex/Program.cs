@@ -2,7 +2,7 @@ using System.Text;
 using Fable.Core;
 using Fable.ExeIndex;
 
-var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "trace-render" or "trace-landscape" or "trace-newgame" or "map-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp") ?? "all";
+var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "fn" or "trace-render" or "trace-landscape" or "trace-newgame" or "map-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp") ?? "all";
 var force = args.Any(a => a is "--force" or "-f");
 var install = GameInstall.TryLocate();
 var exePath = args.FirstOrDefault(a => a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
@@ -46,6 +46,9 @@ switch (cmd)
         break;
     case "disasm":
         RunDisasm(pe, args);
+        break;
+    case "fn":
+        RunFn(pe, args);
         break;
     case "trace-render":
         if (!File.Exists(Path.Combine(outDir, "00-index", "xrefs.tsv")))
@@ -469,6 +472,50 @@ static void RunDisasm(PeImage pe, string[] args)
         Console.WriteLine(line);
 }
 
+static void RunFn(PeImage pe, string[] args)
+{
+    var vaTok = args.FirstOrDefault(a => a.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                                         || (a.Length >= 6 && a.All(char.IsAsciiHexDigit)));
+    var countTok = args.SkipWhile(a => a != vaTok).Skip(1).FirstOrDefault();
+    if (vaTok is null || !TryParseHex(vaTok, out var va))
+    {
+        Console.Error.WriteLine("usage: fn <va> [max-insns]");
+        return;
+    }
+
+    var n = 2000;
+    if (countTok is not null && int.TryParse(countTok, out var parsed))
+        n = parsed;
+    var file = pe.FileOffset(va);
+    if (file < 0)
+    {
+        Console.Error.WriteLine($"VA 0x{va:X8} is not in a mapped section.");
+        return;
+    }
+
+    var startFile = X86.FindPrologue(pe, file);
+    var startVa = pe.Va(startFile);
+    var steps = X86.WalkFunction(pe, startFile, n);
+    Console.WriteLine($"fn  0x{startVa:X8}  insns={steps.Count}  from 0x{va:X8}");
+    var calls = new List<uint>();
+    foreach (var step in steps)
+    {
+        Console.WriteLine($"  //{step.Va:X8}: {step.Text}");
+        if (step.DirectCall is { } dest)
+            calls.Add(dest);
+    }
+
+    if (calls.Count > 0)
+    {
+        Console.WriteLine("calls");
+        foreach (var c in calls.Distinct())
+            Console.WriteLine($"  0x{c:X8}");
+    }
+
+    if (steps.Count >= n)
+        Console.WriteLine($"truncated at {n} insns");
+}
+
 static void RunTraceRender(PeImage pe, DumpStore store)
 {
     const string family = "render-trace";
@@ -679,6 +726,15 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "PALSKIN offset0 c38 00BD4591", 0x00BD456F, 30, stopOnRet: false),
         WriteFnPart(pe, store, family, "Attach LayoutLights layout 2", 0x00B3CDB5, 30, stopOnRet: false),
         WriteFnPart(pe, store, family, "Light flush uses inner+84", 0x0098A5B3, 20, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "PALSKIN draw entry 00BD71B0", 0x00BD71B0, 2000),
+        WriteWalkPart(pe, store, family, "PALSKIN helper 00BD7110", 0x00BD7110, 400),
+        WriteWalkPart(pe, store, family, "PALSKIN bind/c38 function", 0x00BD4591, 2000),
+        WriteWalkPart(pe, store, family, "Slot table ctor 00B8FAA0", 0x00B8FAA0, 80),
+        WriteWalkPart(pe, store, family, "Slot table register 00B8FAD0", 0x00B8FAD0, 80),
+        WriteWalkPart(pe, store, family, "Slot 33 getter 00B9CED0", 0x00B9CED0, 20),
+        WriteFnPart(pe, store, family, "Lighting slot list 15 16", 0x00B48220, 40),
+        WriteFnPart(pe, store, family, "Static slot list 36", 0x00BA7770, 20),
+        WriteFnPart(pe, store, family, "PALSKIN slot list 37 38", 0x00BD28A0, 40),
         WriteNewGameMap(pe, store, family),
     };
     store.WriteIndex(
@@ -705,6 +761,56 @@ static IndexLink WriteNewGameMap(PeImage pe, DumpStore store, string family)
     store.WritePart(family, "fnmap-tsv", "```\n" + FunctionMap.ToTsv(nodes) + "```\n");
     Console.WriteLine($"map    newgame functions={nodes.Count}");
     return new IndexLink("fnmap", "New Game function map", 0);
+}
+
+static IndexLink WriteWalkPart(PeImage pe, DumpStore store, string family, string name, uint va, int n = 2000)
+{
+    var slug = DumpStore.Slug(name, va);
+    var sb = new StringBuilder();
+    var file = pe.FileOffset(va);
+    var startVa = va;
+    var startFile = file;
+    if (file >= 0)
+    {
+        startFile = X86.FindPrologue(pe, file);
+        startVa = pe.Va(startFile);
+    }
+
+    sb.AppendLine($"# {name}");
+    sb.AppendLine();
+    if (startFile < 0)
+        sb.AppendLine("UNREAD (VA not mapped)");
+    else
+    {
+        var steps = X86.WalkFunction(pe, startFile, n);
+        sb.AppendLine($"VA `0x{startVa:X8}` · `{steps.Count}` insns (walk to next prologue). [INDEX](INDEX.md)");
+        sb.AppendLine();
+        var calls = new List<uint>();
+        foreach (var step in steps)
+        {
+            sb.AppendLine($"  //{step.Va:X8}: {step.Text}");
+            if (step.DirectCall is { } dest)
+                calls.Add(dest);
+        }
+
+        if (calls.Count > 0)
+        {
+            sb.AppendLine();
+            sb.AppendLine("## Direct calls");
+            sb.AppendLine();
+            foreach (var c in calls.Distinct())
+                sb.AppendLine($"- `{c:X8}`");
+        }
+
+        if (steps.Count >= n)
+        {
+            sb.AppendLine();
+            sb.AppendLine($"truncated at {n} insns");
+        }
+    }
+
+    store.WritePart(family, slug, sb.ToString());
+    return new IndexLink(slug, name, startVa);
 }
 
 static IndexLink WriteFnPart(PeImage pe, DumpStore store, string family, string name, uint va, int n, bool stopOnRet = true)
