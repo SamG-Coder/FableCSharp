@@ -18,6 +18,7 @@ public sealed class WorldGeometry
     public required IReadOnlyList<MeshTriangle> Triangles { get; init; }
     public required int MeshInstances { get; init; }
     public required int MissingMeshes { get; init; }
+    public IReadOnlyList<string> MissingMeshDefs { get; init; } = [];
     public int PlayerMeshId { get; init; }
     public float PlayerHeight { get; init; }
 
@@ -49,6 +50,7 @@ public sealed class WorldGeometry
         var loaded = new List<string>();
         var instances = 0;
         var missing = 0;
+        var missingDefs = new List<string>();
 
         using var levels = new LevelLibrary(install);
         var textureHeader = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h");
@@ -68,7 +70,7 @@ public sealed class WorldGeometry
             var mapThings = IsPrimary(map, region)
                 ? primaryThings
                 : levels.TryLoadThings(map.ScriptName)?.Things ?? [];
-            AddInstances(mapThings, dx, dy, defs, enums, big, byId, cache, triangles, ref instances, ref missing);
+            AddInstances(mapThings, dx, dy, defs, enums, big, byId, cache, triangles, ref instances, ref missing, missingDefs);
 
             // OpenStaticMaps still opens Sees/Contains maps when they emit
             // no landscape tris (sea/water cells are not landscape FG).
@@ -78,7 +80,7 @@ public sealed class WorldGeometry
         if (loaded.Count == 0)
         {
             AddTerrain(levels, region, 0, 0, triangles, landscapeEnums, landscapePlanes);
-            AddInstances(primaryThings, 0, 0, defs, enums, big, byId, cache, triangles, ref instances, ref missing);
+            AddInstances(primaryThings, 0, 0, defs, enums, big, byId, cache, triangles, ref instances, ref missing, missingDefs);
             loaded.Add(region);
         }
 
@@ -93,7 +95,7 @@ public sealed class WorldGeometry
             if (playerMeshId != 0)
             {
                 var hero = CloneAs(start, RegionTravel.KidCreature);
-                AddInstances([hero], 0, 0, defs, enums, big, byId, cache, triangles, ref instances, ref missing);
+                AddInstances([hero], 0, 0, defs, enums, big, byId, cache, triangles, ref instances, ref missing, missingDefs);
                 if (cache.TryGetValue((uint)playerMeshId, out var kid) && kid is not null)
                     playerHeight = (kid.BoundsMax.Z - kid.BoundsMin.Z) * MeshToWorld;
             }
@@ -108,6 +110,7 @@ public sealed class WorldGeometry
             Triangles = triangles,
             MeshInstances = instances,
             MissingMeshes = missing,
+            MissingMeshDefs = missingDefs,
             PlayerMeshId = playerMeshId,
             PlayerHeight = playerHeight,
         };
@@ -241,7 +244,8 @@ public sealed class WorldGeometry
         Dictionary<uint, MeshFile?> cache,
         List<MeshTriangle> triangles,
         ref int instances,
-        ref int missing)
+        ref int missing,
+        List<string> missingDefs)
     {
         var shift = dx == 0 && dy == 0
             ? Matrix4x4.Identity
@@ -262,7 +266,12 @@ public sealed class WorldGeometry
 
             if (meshIds.Count == 0)
             {
-                missing++;
+                var typeName = defs?.FindEntry(thing.DefinitionType)?.TypeName;
+                if (GameBin.FirstSeenInstancesAsC3d(typeName, thing.DefinitionType))
+                {
+                    missing++;
+                    missingDefs.Add(thing.DefinitionType);
+                }
                 continue;
             }
 
@@ -300,7 +309,14 @@ public sealed class WorldGeometry
             }
 
             if (!any)
-                missing++;
+            {
+                var typeName = defs?.FindEntry(thing.DefinitionType)?.TypeName;
+                if (GameBin.FirstSeenInstancesAsC3d(typeName, thing.DefinitionType))
+                {
+                    missing++;
+                    missingDefs.Add(thing.DefinitionType);
+                }
+            }
         }
     }
 

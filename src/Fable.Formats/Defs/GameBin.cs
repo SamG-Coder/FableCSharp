@@ -393,13 +393,36 @@ public sealed class GameBin
         return [];
     }
 
-    private static bool IsEditorOnly(GameBinEntry entry)
+    public const uint ParticleEmitterCreate = 0x006E0880;
+    public const uint TrackNodeTypeName = 0x004C76A5;
+
+    /// <summary>
+    /// First-seen C3D instance is Graphic / CMultiStatic /
+    /// CReplaceable only. Markers, cameras, track nodes, and
+    /// particle emitters have no first-seen C3D. New Game's
+    /// 276 "missing" were those gizmos, not house props.
+    /// </summary>
+    public const bool FirstSeenMissingMeshesAreGizmos = true;
+
+    private static bool IsEditorOnly(GameBinEntry entry) =>
+        !FirstSeenInstancesAsC3d(entry.TypeName, entry.InstanceName);
+
+    public static bool FirstSeenInstancesAsC3d(string? typeName, string? instanceName)
     {
-        var name = entry.InstanceName ?? entry.TypeName ?? "";
-        return entry.TypeName is "MARKER" ||
-               name.StartsWith("MARKER_", StringComparison.OrdinalIgnoreCase) ||
-               name.StartsWith("CAMERA_", StringComparison.OrdinalIgnoreCase) ||
-               name.Contains("CAMERA_POINT", StringComparison.OrdinalIgnoreCase);
+        var name = instanceName ?? typeName ?? "";
+        if (typeName is "MARKER")
+            return false;
+        if (name.StartsWith("MARKER_", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (name.StartsWith("CAMERA_", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (name.Contains("CAMERA_POINT", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (name.StartsWith("TRACK_NODE", StringComparison.OrdinalIgnoreCase))
+            return false;
+        if (name.StartsWith("PARTICLE_EMITTER", StringComparison.OrdinalIgnoreCase))
+            return false;
+        return true;
     }
 
     private static List<GameBinEntry> ParseChunkEntries(

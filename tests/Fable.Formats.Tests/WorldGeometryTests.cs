@@ -299,6 +299,17 @@ public sealed class WorldGeometryTests
         Assert.Equal(-1, GameBin.FirstSeenSkipGlobal);
         Assert.False(GameBin.FirstSeenSkipGlobalHasWriter);
         Assert.Equal(0x0137B530u, GameBin.MultiStaticEntryRtti);
+        Assert.True(GameBin.FirstSeenMissingMeshesAreGizmos);
+        Assert.False(GameBin.FirstSeenInstancesAsC3d("MARKER", "MARKER_BASIC"));
+        Assert.False(GameBin.FirstSeenInstancesAsC3d("MARKER", "GAZE_OUT_OF_BUILDING_MARKER"));
+        Assert.False(GameBin.FirstSeenInstancesAsC3d("MARKER", "GAZE_AT_WORK_MARKER"));
+        Assert.False(GameBin.FirstSeenInstancesAsC3d("THING", "PARTICLE_EMITTER_PLACEABLE"));
+        Assert.False(GameBin.FirstSeenInstancesAsC3d("THING", "TRACK_NODE_BASIC"));
+        Assert.False(GameBin.FirstSeenInstancesAsC3d("THING", "CAMERA_POINT_SCRIPTED_SPLINE"));
+        Assert.True(GameBin.FirstSeenInstancesAsC3d("BUILDING", house.DefinitionType));
+        Assert.True(world.MissingMeshes == 0,
+            "first-seen C3D holes: " + string.Join(", ", world.MissingMeshDefs.Take(20))
+            + $" count={world.MissingMeshes}");
     }
 
     [Fact]

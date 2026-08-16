@@ -848,6 +848,8 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "PS name to slot 0098A9A0", 0x0098A9A0, 80),
         WriteImmPart(pe, store, family, "imm PSCONST_OUTPUT_FACTOR", 0x0129A104, 0x00980000, 0x00990000),
         WriteFnPart(pe, store, family, "PALSKIN attach PS +DC 00BD5486", 0x00BD5480, 20, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "PARTICLE_EMITTER_NORMAL create 006E0880", 0x006E0880, 80),
+        WriteFnPart(pe, store, family, "THING_TYPE_TRACK_NODE name 004C76A5", 0x004C76A5, 16, stopOnRet: false),
         WriteCallDispPart(pe, store, family, "SetTexture 0x104 static-lit", 0x104, 0x00BB2000, 0x00BB8000),
         WriteFnPart(pe, store, family, "Static-lit FVF 0x112 00BB2633", 0x00BB2631, 20, stopOnRet: false),
         WriteWalkPart(pe, store, family, "CreateVertexBuffer wrapper 00A63150", 0x00A63150, 40),
