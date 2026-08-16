@@ -493,10 +493,11 @@ static void RunFn(PeImage pe, string[] args)
         return;
     }
 
-    var startFile = X86.FindPrologue(pe, file);
+    var exact = args.Any(a => a is "--exact");
+    var startFile = exact ? file : X86.FindPrologue(pe, file);
     var startVa = pe.Va(startFile);
     var steps = X86.WalkFunction(pe, startFile, n);
-    Console.WriteLine($"fn  0x{startVa:X8}  insns={steps.Count}  from 0x{va:X8}");
+    Console.WriteLine($"fn  0x{startVa:X8}  insns={steps.Count}  from 0x{va:X8}{(exact ? "  exact" : "")}");
     var calls = new List<uint>();
     foreach (var step in steps)
     {
@@ -728,10 +729,14 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "Light flush uses inner+84", 0x0098A5B3, 20, stopOnRet: false),
         WriteWalkPart(pe, store, family, "PALSKIN draw entry 00BD71B0", 0x00BD71B0, 2000),
         WriteWalkPart(pe, store, family, "PALSKIN helper 00BD7110", 0x00BD7110, 400),
-        WriteWalkPart(pe, store, family, "PALSKIN bind/c38 function", 0x00BD4591, 2000),
+        WriteWalkPart(pe, store, family, "PALSKIN bone pack 00BD2D90", 0x00BD2D90, 400),
+        WriteWalkPart(pe, store, family, "PALSKIN bind switch 00BD3070", 0x00BD3070, 4000),
+        WriteFnPart(pe, store, family, "PALSKIN first-seen tail 00BD3E17", 0x00BD3E17, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PALSKIN common tail 00BD4DA6", 0x00BD4DA6, 80, stopOnRet: false),
         WriteWalkPart(pe, store, family, "Slot table ctor 00B8FAA0", 0x00B8FAA0, 80),
         WriteWalkPart(pe, store, family, "Slot table register 00B8FAD0", 0x00B8FAD0, 80),
         WriteWalkPart(pe, store, family, "Slot 33 getter 00B9CED0", 0x00B9CED0, 20),
+        WriteWalkPart(pe, store, family, "Slot 33 AABB test 00B9CEE0", 0x00B9CEE0, 80),
         WriteFnPart(pe, store, family, "Lighting slot list 15 16", 0x00B48220, 40),
         WriteFnPart(pe, store, family, "Static slot list 36", 0x00BA7770, 20),
         WriteFnPart(pe, store, family, "PALSKIN slot list 37 38", 0x00BD28A0, 40),

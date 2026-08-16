@@ -226,6 +226,9 @@ public sealed class ShaderFormatTests
         Assert.Equal("VSHADER_STATIC_DIRLIGHT_FOG", WorldShading.StaticFamilyShader(2));
         Assert.Equal("VSHADER_LANDSCAPE_FOREGROUND", WorldShading.LandscapeFamilyShader(2));
         Assert.Equal(2, WorldShading.PaletteSkinLayoutIndex);
+        Assert.False(WorldShading.FirstSeenUploadsPaletteC38);
+        Assert.Equal(33, WorldShading.PaletteC38SlotIndex);
+        Assert.Equal(16 + WorldShading.PaletteC38SlotIndex * 4, 148);
         Assert.Equal("VSHADER_PALSKIN_DIRLIGHT_FOG", WorldShading.PalskinFamilyShader(0));
         Assert.Equal("VSHADER_PALSKIN_DIRLIGHT_FOG", WorldShading.PalskinFamilyShader(2));
         Assert.Contains(WorldShading.PaletteSkinStartRegister,

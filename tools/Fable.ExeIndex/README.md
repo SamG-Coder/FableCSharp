@@ -21,6 +21,7 @@ dotnet run --project tools/Fable.ExeIndex -- map-newgame
 ```
 dotnet run --project tools/Fable.ExeIndex -- disasm 0x00B25950 80
 dotnet run --project tools/Fable.ExeIndex -- fn 0x00BD71B0
+dotnet run --project tools/Fable.ExeIndex -- fn 0x00BD3070 --exact
 dotnet run --project tools/Fable.ExeIndex -- calls 0x00B25950
 dotnet run --project tools/Fable.ExeIndex -- vtbl 0x012A2B54 16
 dotnet run --project tools/Fable.ExeIndex -- imm 0x013962A0
@@ -34,7 +35,7 @@ dotnet run --project tools/Fable.ExeIndex -- trace-landscape
 
 Each dump family lives in `out/01-sections/<family>/` as one markdown file per VA, plus `INDEX.md` that links them. A stub `01-sections/<family>.md` points at that index. `out/manifest.json` stores the exe identity (`TimeDateStamp-SizeOfImage-fileLength`) and a **recipe version** per family. Re-running the same command skips a family unless the exe changed, the version constant in `DumpStore.cs` was bumped, or you pass `--force`.
 
-`calldisp` finds both `FF 5x disp8` and `FF 9x disp32` vtbl calls. `fn` walks one function past early `ret` and stops at INT3 or the next `push ebp`. Steps (`index` / `split` / `translate` / `all` / `disasm` / `fn` / `calls` / `trace-render` / `trace-landscape` / `trace-newgame` / `map-newgame` / `imm` / `vtbl` / `disp` / `scanff` / `floats` / `calldisp`):
+`calldisp` finds both `FF 5x disp8` and `FF 9x disp32` vtbl calls. `fn` walks one function past early `ret` and stops at INT3 or the next frame prologue (`push ebp; mov ebp, esp` or `push ebp; lea ebp, [esp+disp]`). `--exact` skips prologue search. New Game map covers first-scene ranges only (not the rest of the exe). Steps (`index` / `split` / `translate` / `all` / `disasm` / `fn` / `calls` / `trace-render` / `trace-landscape` / `trace-newgame` / `map-newgame` / `imm` / `vtbl` / `disp` / `scanff` / `floats` / `calldisp`):
 
 | Dir | What |
 |---|---|

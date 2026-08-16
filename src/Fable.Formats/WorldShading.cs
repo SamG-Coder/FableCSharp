@@ -25,6 +25,18 @@ public static class WorldShading
     public const int PaletteSkinRegisterCount = 58;
 
     /// <summary>
+    /// First-seen PALSKIN case <c>00BD3C36</c> binds family slot 0 then
+    /// <c>jmp 00BD3E17</c> / <c>00BD4DA6</c>. That path does not call
+    /// <c>00989A60(0)</c>. The c38 writer is only the
+    /// <c>[0x1436E84]+148</c> case at <c>00BD42CD</c>. Slot 33 has no
+    /// New Game registrar (lighting writes 15/16, static 36, PALSKIN
+    /// 37/38; zero <c>mov [rm], 33</c> in the render window). Do not
+    /// invent the four floats.
+    /// </summary>
+    public const bool FirstSeenUploadsPaletteC38 = false;
+    public const int PaletteC38SlotIndex = 33;
+
+    /// <summary>
     /// Offsets pushed to <c>009896D0</c>. Offset 0 (c38) is absent.
     /// </summary>
     public static bool PaletteSkinOffsetIsUploaded(int offset) =>
@@ -92,8 +104,8 @@ public static class WorldShading
     /// PALSKIN family ctor <c>00BD01B8</c> stores the same 6-slot names.
     /// Draw <c>00BD3C36</c> uses family+32 remap then +56. Shader-manager
     /// <c>00B3CDD4</c> attaches LayoutLights as wrapper layout index 2
-    /// so <c>00989A60(0)</c> at <c>00BD4591</c> is <c>c38</c>. The four
-    /// floats come from a runtime object; first-frame values UNREAD.
+    /// so <c>00989A60(0)</c> at <c>00BD4591</c> is <c>c38</c>. First-seen
+    /// does not take that case (<see cref="FirstSeenUploadsPaletteC38"/>).
     /// </summary>
     public const int PaletteSkinLayoutIndex = 2;
 

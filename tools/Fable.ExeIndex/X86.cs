@@ -39,7 +39,7 @@ internal static class X86
                 break;
             }
 
-            if (d[file] == 0x55 && d[file + 1] == 0x8B && d[file + 2] == 0xEC)
+            if (IsFramePrologue(d, file))
             {
                 keep = i;
                 break;
@@ -93,14 +93,30 @@ internal static class X86
         return lines;
     }
 
-    public static int FindPrologue(PeImage pe, int from, int maxBack = 2048)
+    /// <summary>
+    /// Standard <c>push ebp; mov ebp, esp</c>, MSVC large-frame
+    /// <c>push ebp; lea ebp, [esp+disp]</c>, or the first non-INT3 byte
+    /// after padding. Stops at INT3 so a mid-function VA does not walk
+    /// into the previous function (PALSKIN bind <c>00BD3070</c> is
+    /// <c>lea ebp</c>, not <c>mov ebp, esp</c>).
+    /// </summary>
+    public static int FindPrologue(PeImage pe, int from, int maxBack = 16384)
     {
         var data = pe.Data;
         var lo = Math.Max(0, from - maxBack);
         for (var i = from; i >= lo + 2; i--)
         {
-            if (data[i] == 0x55 && data[i + 1] == 0x8B && data[i + 2] == 0xEC)
+            if (IsFramePrologue(data, i))
                 return i;
+            if (i < from && data[i] == 0xCC)
+            {
+                var start = i + 1;
+                while (start < data.Length && data[start] == 0xCC)
+                    start++;
+                if (start <= from && pe.InCode(start))
+                    return start;
+                break;
+            }
         }
 
         for (var i = from; i > lo + 1; i--)
@@ -110,6 +126,22 @@ internal static class X86
         }
 
         return FindImmInsn(pe, from);
+    }
+
+    public static bool IsFramePrologue(byte[] data, int i)
+    {
+        if (i + 2 >= data.Length || data[i] != 0x55)
+            return false;
+        // push ebp; mov ebp, esp
+        if (data[i + 1] == 0x8B && data[i + 2] == 0xEC)
+            return true;
+        if (i + 3 >= data.Length || data[i + 1] != 0x8D)
+            return false;
+        // push ebp; lea ebp, [esp+disp8]
+        if (data[i + 2] == 0x6C && data[i + 3] == 0x24)
+            return true;
+        // push ebp; lea ebp, [esp+disp32]
+        return i + 4 < data.Length && data[i + 2] == 0xAC && data[i + 3] == 0x24;
     }
 
     public static int FindImmInsn(PeImage pe, int immSite)

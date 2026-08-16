@@ -10,7 +10,7 @@ internal static class FunctionMap
 {
     public const int MaxDepth = 8;
     public const int MaxFunctions = 16000;
-    public const int MaxInsns = 300;
+    public const int MaxInsns = 2500;
 
     /// <summary>
     /// Code windows used by New Game / StartOakVale first scene only.
@@ -28,7 +28,7 @@ internal static class FunctionMap
         (0x00B32000, 0x00B34000, "MainScene-prims"),
         (0x00B41000, 0x00B4A000, "maps-lighting"),
         (0x00B66000, 0x00B7F000, "landscape-water"),
-        (0x00B8B000, 0x00BD4000, "static-palskin"),
+        (0x00B8B000, 0x00BDB000, "static-palskin"),
         (0x00BDB000, 0x00BDC800, "LayoutLights"),
         (0x00BF4000, 0x00BF6000, "per-cell"),
         (0x00DBDE00, 0x00DBF000, "StartOakVale"),
@@ -59,6 +59,9 @@ internal static class FunctionMap
         ("water draw", 0x00B783F0),
         ("static VS bind", 0x00B8B660),
         ("PALSKIN VS bind", 0x00BD01B8),
+        ("PALSKIN bone pack", 0x00BD2D90),
+        ("PALSKIN bind switch", 0x00BD3070),
+        ("PALSKIN draw entry", 0x00BD71B0),
         ("MARKER LIGHT", 0x0089FAA8),
         ("CAM intro writer", 0x004FD040),
     ];
@@ -246,7 +249,7 @@ internal static class FunctionMap
             {
                 if (!pe.InCode(i))
                     continue;
-                if (i + 2 < data.Length && data[i] == 0x55 && data[i + 1] == 0x8B && data[i + 2] == 0xEC)
+                if (X86.IsFramePrologue(data, i))
                 {
                     var va = pe.Va(i);
                     if (InNewGameRange(va))
@@ -254,7 +257,8 @@ internal static class FunctionMap
                     continue;
                 }
 
-                if (i > a && data[i - 1] == 0xCC && data[i] != 0xCC)
+                // Two INT3s — skip lone 0xCC immediates inside instructions.
+                if (i > a + 1 && data[i - 2] == 0xCC && data[i - 1] == 0xCC && data[i] != 0xCC)
                 {
                     var start = pe.Va(X86.FindPrologue(pe, i));
                     if (InNewGameRange(start))
