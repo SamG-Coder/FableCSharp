@@ -11,6 +11,11 @@ public sealed class MeshFile
     public required IReadOnlyList<MeshTriangle> Triangles { get; init; }
     public required Vector3 BoundsMin { get; init; }
     public required Vector3 BoundsMax { get; init; }
+    public int DeclaredTriangles { get; init; }
+    public int StripFaces { get; init; }
+    public int ListFaces { get; init; }
+    public int NoBlockFaces { get; init; }
+    public int DegenerateSkipped { get; init; }
 
     public static MeshFile? TryParse(byte[] data, int entryType = -1)
     {
@@ -107,6 +112,11 @@ public sealed class MeshFile
         var triangles = new List<MeshTriangle>(1024);
         var boundsMin = new Vector3(float.MaxValue);
         var boundsMax = new Vector3(float.MinValue);
+        var declaredTriangles = 0;
+        var stripFaces = 0;
+        var listFaces = 0;
+        var noBlockFaces = 0;
+        var degenerateSkipped = 0;
 
         for (var i = 0; i < primitiveCount; i++)
         {
@@ -125,7 +135,7 @@ public sealed class MeshFile
             var staticBlocks = ReadU32(data, ref cursor);
             var animatedBlocks = ReadU32(data, ref cursor);
             vertexCount = ReadU32(data, ref cursor);
-            ReadU32(data, ref cursor); // triangles
+            declaredTriangles += (int)ReadU32(data, ref cursor);
             indexCount = ReadU32(data, ref cursor);
             var initFlags = ReadU32(data, ref cursor);
             cursor += 8;
@@ -233,21 +243,27 @@ public sealed class MeshFile
                 var pc = positions[c];
                 var n = Vector3.Cross(pb - pa, pc - pa);
                 if (n.LengthSquared() < 1e-10f)
+                {
+                    degenerateSkipped++;
                     return;
+                }
                 n = Vector3.Normalize(n);
                 triangles.Add(new MeshTriangle(pa, pb, pc, n, uvs[a], uvs[b], uvs[c], textureId));
             }
 
             if (blocks.Count == 0)
             {
+                var before = triangles.Count;
                 for (var t = 0; t + 2 < indexCount16; t += 3)
                     AddTri(IndexAt(t), IndexAt(t + 1), IndexAt(t + 2));
+                noBlockFaces += triangles.Count - before;
                 continue;
             }
 
             foreach (var block in blocks)
             {
                 var start = (int)block.Start;
+                var before = triangles.Count;
                 if (block.Strip)
                 {
                     var count = (int)block.Count;
@@ -264,6 +280,7 @@ public sealed class MeshFile
                         else
                             AddTri(a, b, c);
                     }
+                    stripFaces += triangles.Count - before;
                 }
                 else
                 {
@@ -275,6 +292,7 @@ public sealed class MeshFile
                             break;
                         AddTri(IndexAt(i0), IndexAt(i0 + 1), IndexAt(i0 + 2));
                     }
+                    listFaces += triangles.Count - before;
                 }
             }
             }
@@ -297,6 +315,11 @@ public sealed class MeshFile
             Triangles = triangles,
             BoundsMin = boundsMin,
             BoundsMax = boundsMax,
+            DeclaredTriangles = declaredTriangles,
+            StripFaces = stripFaces,
+            ListFaces = listFaces,
+            NoBlockFaces = noBlockFaces,
+            DegenerateSkipped = degenerateSkipped,
         };
     }
 

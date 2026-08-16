@@ -290,14 +290,16 @@ public sealed class LevTileMesh
                 PackedDirection.ColorRgb(dest[o + 12], dest[o + 13], dest[o + 14]));
         }
 
-        var declared = BitConverter.ToUInt16(dest, 4);
+        var primitiveCount = BitConverter.ToUInt16(dest, 4);
         var extraCount = BitConverter.ToUInt16(dest, 0);
         var flag = BitConverter.ToUInt16(dest, 18);
         var hasPrimaryStrip = flag != 256;
+        // D3D triangle-strip PrimitiveCount = IndexCount - 2.
+        var indexCount = hasPrimaryStrip ? primitiveCount + 2 : 0;
         var indices = hasPrimaryStrip
-            ? ReadIndices(dest, count, need, declared)
+            ? ReadIndices(dest, count, need, indexCount)
             : [];
-        var extraStart = hasPrimaryStrip ? need + declared * 2 : need;
+        var extraStart = hasPrimaryStrip ? need + indexCount * 2 : need;
         return new LevTile(
             index,
             0, 0,
@@ -305,17 +307,17 @@ public sealed class LevTileMesh
             verts[0].WorldY,
             verts,
             indices,
-            ReadExtras(dest, extraStart, extraCount, hasPrimaryStrip));
+            ReadExtras(dest, extraStart, extraCount));
     }
 
-    internal static IReadOnlyList<int> ReadIndices(byte[] dest, int vertCount, int start, int declared = -1)
+    internal static IReadOnlyList<int> ReadIndices(byte[] dest, int vertCount, int start, int count = -1)
     {
         if (start + 6 > dest.Length)
             return [];
 
         var limit = dest.Length;
-        if (declared > 0)
-            limit = Math.Min(limit, start + declared * 2);
+        if (count > 0)
+            limit = Math.Min(limit, start + count * 2);
 
         var indices = new List<int>();
         for (var o = start; o + 2 <= limit; o += 2)
@@ -331,29 +333,26 @@ public sealed class LevTileMesh
 
     /// <summary>
     /// CPatchTesselationEdgeStrip blobs after the primary strip.
-    /// Flag 256 (full grid) extras start immediately and have no attach pair
-    /// (30-byte header). Adaptive extras are attach0/attach1 + 30 bytes (34).
+    /// 30-byte header: vert count, primitive count, format… then 15-byte
+    /// world verts and PrimitiveCount+2 strip indices.
     /// </summary>
-    internal static IReadOnlyList<LevTileExtra> ReadExtras(
-        byte[] dest, int start, int declaredObjects, bool hasAttach)
+    internal static IReadOnlyList<LevTileExtra> ReadExtras(byte[] dest, int start, int declaredObjects)
     {
+        const int header = 30;
         var extras = new List<LevTileExtra>();
         var cursor = start;
-        var header = hasAttach ? 34 : 30;
         var budget = Math.Max(declaredObjects, 0) + 2;
         while (cursor + header + 15 <= dest.Length && extras.Count < budget)
         {
-            var attachOff = hasAttach ? 4 : 0;
-            var attach0 = hasAttach ? BitConverter.ToUInt16(dest, cursor) : (ushort)0xFFFF;
-            var attach1 = hasAttach ? BitConverter.ToUInt16(dest, cursor + 2) : (ushort)0xFFFF;
-            var v = BitConverter.ToUInt16(dest, cursor + attachOff);
-            var ix = BitConverter.ToUInt16(dest, cursor + attachOff + 2);
-            var fmt = BitConverter.ToUInt16(dest, cursor + attachOff + 4);
-            if (v is < 3 or > 400 || ix < 3 || ix > 4000)
+            var v = BitConverter.ToUInt16(dest, cursor);
+            var primitives = BitConverter.ToUInt16(dest, cursor + 2);
+            var fmt = BitConverter.ToUInt16(dest, cursor + 4);
+            if (v is < 3 or > 400 || primitives < 3 || primitives > 4000)
                 break;
 
+            var indexCount = primitives + 2;
             var vertAt = cursor + header;
-            var end = vertAt + v * VertexStride + ix * 2;
+            var end = vertAt + v * VertexStride + indexCount * 2;
             if (end > dest.Length)
                 break;
 
@@ -376,11 +375,11 @@ public sealed class LevTileMesh
             }
 
             extras.Add(new LevTileExtra(
-                attach0,
-                attach1,
+                0xFFFF,
+                0xFFFF,
                 fmt,
                 verts,
-                ReadIndices(dest, v, vertAt + v * VertexStride, ix)));
+                ReadIndices(dest, v, vertAt + v * VertexStride, indexCount)));
             cursor = end;
         }
 
@@ -400,7 +399,6 @@ public readonly record struct LevTile(
 
 /// <summary>
 /// One CPatchTesselationEdgeStrip after the primary tile mesh.
-/// Attach0/1 are primary-vert indices the strip welds to (0xFFFF if none).
 /// </summary>
 public readonly record struct LevTileExtra(
     int Attach0,

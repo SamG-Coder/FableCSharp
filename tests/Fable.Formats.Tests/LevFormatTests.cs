@@ -404,6 +404,23 @@ public sealed class LevFormatTests
             Assert.All(tile.Indices, index => Assert.InRange(index, 0, tile.Vertices.Count - 1));
         });
 
+        // Header u16@+4 is D3D PrimitiveCount. The two indices after it finish
+        // the last 1 m triangle of the 16 m strip (area ~1, not a sliver).
+        Assert.Contains(adaptive, tile =>
+        {
+            if (tile.Indices.Count < 5)
+                return false;
+            var a = tile.Vertices[tile.Indices[^3]];
+            var b = tile.Vertices[tile.Indices[^2]];
+            var c = tile.Vertices[tile.Indices[^1]];
+            var abx = b.WorldX - a.WorldX;
+            var aby = b.WorldY - a.WorldY;
+            var acx = c.WorldX - a.WorldX;
+            var acy = c.WorldY - a.WorldY;
+            var area = Math.Abs(abx * acy - aby * acx);
+            return area > 0.5f && area < 4f;
+        });
+
         var full = tiles.Tiles.Where(tile => tile.Vertices.Count == 289).ToList();
         Assert.True(full.Count >= 8);
         Assert.Contains(full, tile => tile.Indices.Count == 0);

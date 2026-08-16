@@ -1,12 +1,13 @@
 using System.Numerics;
 using Fable.Core;
+using Fable.Formats.Tng;
+using Fable.Formats.Wld;
 using Fable.Game;
 using Fable.Render;
 using Silk.NET.Input;
 using Silk.NET.Maths;
 using Silk.NET.Windowing;
 
-var region = args.FirstOrDefault(arg => !arg.StartsWith('-')) ?? "LookoutPoint";
 var install = GameInstall.TryLocate();
 if (install is null)
 {
@@ -15,21 +16,19 @@ if (install is null)
 }
 
 using var levels = new LevelLibrary(install);
-var things = levels.LoadThings(region);
-var scene = GizmoScene.FromMarkers(region, things.Things
-    .Where(t => t.PositionX is not null)
-    .Select(t => new SceneMarker(
-        new Vector3(t.PositionX!.Value, t.PositionY!.Value, t.PositionZ!.Value),
-        t.DefinitionType ?? t.Kind)));
-Console.WriteLine("Building world meshes...");
-var world = WorldGeometry.Build(install, region, things.Things);
-Console.WriteLine($"Instanced {world.MeshInstances} meshes ({world.Triangles.Count} tris), missing {world.MissingMeshes}");
+var region = args.FirstOrDefault(arg => !arg.StartsWith('-')) ?? RegionTravel.StartingRegion(levels.World);
+ThingFile things = null!;
+GizmoScene scene = null!;
+WorldGeometry world = null!;
+WorldMap? map = null;
+IReadOnlyList<RegionExit> exits = [];
+Vector3 startPosition = new(64f, -40f, 95f);
+Vector3 startLook = new(64f, 64f, 36f);
 using var textures = new TextureLibrary(install);
-var map = levels.World.FindMap(region);
+EnterRegion(region, arrivedFromExit: null);
 
-var lookTarget = new Vector3(64f, 64f, 36f);
-var camera = new FlyCamera { Position = new Vector3(64f, -40f, 95f) };
-camera.LookAt(lookTarget);
+var camera = new FlyCamera { Position = startPosition };
+camera.LookAt(startLook);
 
 var options = WindowOptions.DefaultVulkan with
 {
@@ -64,8 +63,9 @@ window.Load += () =>
 
     Console.WriteLine($"{install.Edition}: {install.Root}");
     Console.WriteLine($"{region}: {scene.ThingCount} things, {scene.Lines.Count} line verts");
-    Console.WriteLine($"camera {camera.Position} -> {lookTarget}  meshVerts={mesh.Vertices.Length} textures={mesh.Draws.Length}");
-    Console.WriteLine("WASD move  Q/E up-down  Shift sprint  RMB look  Home reset  G gizmos  F1 dump  Esc quit");
+    Console.WriteLine($"camera {camera.Position} -> {startLook}  meshVerts={mesh.Vertices.Length} textures={mesh.Draws.Length}");
+    Console.WriteLine("WASD walk  Q/E up-down  Shift sprint  RMB look  Home reset  G gizmos  F1 dump  Esc quit");
+    Console.WriteLine($"start {region} at {startPosition.X:0.0},{startPosition.Y:0.0},{startPosition.Z:0.0}  exits={exits.Count}");
 };
 
 window.Update += dt =>
@@ -85,8 +85,8 @@ window.Update += dt =>
 
     if (keyboard.IsKeyPressed(Key.Home))
     {
-        camera.Position = new Vector3(64f, -40f, 95f);
-        camera.LookAt(lookTarget);
+        camera.Position = startPosition;
+        camera.LookAt(startLook);
     }
 
     var f1Down = keyboard.IsKeyPressed(Key.F1);
@@ -108,6 +108,8 @@ window.Update += dt =>
     if (keyboard.IsKeyPressed(Key.Q) || keyboard.IsKeyPressed(Key.ControlLeft)) move.Z -= 1;
     if (move.LengthSquared() > 0)
         camera.Move(Vector3.Normalize(move), (float)dt, keyboard.IsKeyPressed(Key.ShiftLeft));
+
+    TryWalk();
 
     looking = mouse is not null && mouse.IsButtonPressed(MouseButton.Right);
     if (mouse is not null)
@@ -146,6 +148,58 @@ void OnMouseMove(Vector2 point)
     if (looking)
         camera.Look(point.X - lastMouse.X, point.Y - lastMouse.Y);
     lastMouse = point;
+}
+
+void EnterRegion(string next, RegionExit? arrivedFromExit)
+{
+    region = next;
+    things = levels.LoadThings(region);
+    scene = GizmoScene.FromMarkers(region, things.Things
+        .Where(t => t.PositionX is not null)
+        .Select(t => new SceneMarker(
+            new Vector3(t.PositionX!.Value, t.PositionY!.Value, t.PositionZ!.Value),
+            t.DefinitionType ?? t.Kind)));
+    Console.WriteLine($"Building {region}...");
+    world = WorldGeometry.Build(install, region, things.Things);
+    map = levels.World.FindMap(region);
+    exits = RegionTravel.ActiveExits(things.Things);
+    Console.WriteLine($"Instanced {world.MeshInstances} meshes ({world.Triangles.Count} tris), missing {world.MissingMeshes}");
+
+    ThingInstance? spawn = null;
+    if (arrivedFromExit is { } hit)
+        spawn = RegionTravel.FindEntrance(things.Things, hit.Link);
+    spawn ??= RegionTravel.FindPlayerStart(things.Things);
+    if (spawn is not null)
+    {
+        startPosition = RegionTravel.PositionOf(spawn);
+        startLook = startPosition + RegionTravel.ForwardOf(spawn) * 8f;
+    }
+    else
+    {
+        startPosition = new Vector3(64f, -40f, 95f);
+        startLook = new Vector3(64f, 64f, 36f);
+    }
+}
+
+void TryWalk()
+{
+    if (renderer is null)
+        return;
+    var hit = RegionTravel.HitExit(exits, camera.Position);
+    if (hit is not { } crossed)
+        return;
+    var dest = levels.World.Maps.FirstOrDefault(item => item.MapUid == crossed.Link.MapUid);
+    if (dest is null)
+        return;
+
+    Console.WriteLine($"walk {region} -> {dest.ScriptName}  radius={crossed.Radius}");
+    EnterRegion(dest.ScriptName, crossed);
+    camera.Position = startPosition;
+    camera.LookAt(startLook);
+    renderer.SetLines(CollectionsMarshalAsSpan(scene.Lines));
+    var mesh = MeshBatches.Build(world.Triangles);
+    renderer.SetTextures(LoadGpuTextures(mesh, textures));
+    renderer.SetMesh(mesh.Vertices, mesh.Draws);
 }
 
 void DumpThings()

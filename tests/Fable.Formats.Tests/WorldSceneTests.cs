@@ -89,6 +89,36 @@ public sealed class WorldSceneTests
     }
 
     [Fact]
+    public void Nearby_guild_tng_is_lo_poly_active_guild_tng_is_high_poly_parts()
+    {
+        var install = Require();
+        using var levels = new LevelLibrary(install);
+        var world = WorldFile.Load(install.WorldPath);
+        var near = world.FindMap("GuildExterior")!;
+        var active = world.FindMap("HeroGuildComplexInside")!;
+        Assert.True(near.LoadedOnPlayerProximity);
+        Assert.True(active.LoadedOnPlayerProximity);
+        Assert.True(near.MapX < active.MapX, $"near={near.MapX} active={active.MapX}");
+
+        var exterior = levels.LoadThings("GuildExterior").Things
+            .Select(t => t.DefinitionType)
+            .Where(n => n is not null)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var inside = levels.LoadThings("HeroGuildComplexInside").Things
+            .Select(t => t.DefinitionType)
+            .Where(n => n is not null)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        Assert.Contains("BUILDING_GUILD_LO_POLY_01", exterior);
+        Assert.DoesNotContain("BUILDING_GUILD_EXTERIOR_01", exterior);
+        Assert.Contains("BUILDING_GUILD_EXTERIOR_01", inside);
+        Assert.Contains("BUILDING_GUILD_EXTERIOR_02", inside);
+        Assert.Contains("BUILDING_GUILD_EXTERIOR_05", inside);
+        Assert.Contains("BUILDING_GUILD_EXTERIOR_06", inside);
+        Assert.DoesNotContain("BUILDING_GUILD_LO_POLY_01", inside);
+    }
+
+    [Fact]
     public void Lookout_exit_uids_pack_neighbour_map_uids()
     {
         var install = Require();
@@ -113,6 +143,42 @@ public sealed class WorldSceneTests
 
         Assert.Contains("PicnicArea", linked);
         Assert.Contains("Greatwood_1", linked);
+    }
+
+    [Fact]
+    public void Lookout_main_start_and_active_exits_follow_ctcd_region_exit()
+    {
+        var install = Require();
+        using var levels = new LevelLibrary(install);
+        var world = WorldFile.Load(install.WorldPath);
+        Assert.Equal("LookoutPoint", RegionTravel.StartingRegion(world));
+
+        var things = levels.LoadThings("LookoutPoint").Things.ToList();
+        var start = RegionTravel.FindPlayerStart(things);
+        Assert.NotNull(start);
+        Assert.Equal("MAIN_START_POSITION", start.ScriptName);
+        Assert.InRange(start.PositionX!.Value, 100f, 105f);
+        Assert.InRange(start.PositionY!.Value, 72f, 76f);
+
+        var exits = RegionTravel.ActiveExits(things);
+        Assert.Equal(2, exits.Count);
+        Assert.Contains(exits, e => world.Maps.Any(m => m.MapUid == e.Link.MapUid && m.ScriptName == "PicnicArea"));
+        Assert.Contains(exits, e => world.Maps.Any(m => m.MapUid == e.Link.MapUid && m.ScriptName == "Greatwood_1"));
+        Assert.All(exits, e => Assert.InRange(e.Radius, 2f, 6f));
+
+        var picnicExit = exits.First(e => world.Maps.First(m => m.MapUid == e.Link.MapUid).ScriptName == "PicnicArea");
+        Assert.NotNull(RegionTravel.HitExit(exits, picnicExit.Position));
+        Assert.Null(RegionTravel.HitExit(exits, RegionTravel.PositionOf(start)));
+
+        var picnicThings = levels.LoadThings("PicnicArea").Things.ToList();
+        var entrance = RegionTravel.FindEntrance(picnicThings, picnicExit.Link);
+        Assert.NotNull(entrance);
+        Assert.InRange(entrance.PositionX!.Value, 75f, 85f);
+
+        var back = RegionTravel.ActiveExits(picnicThings)
+            .First(e => world.Maps.First(m => m.MapUid == e.Link.MapUid).ScriptName == "LookoutPoint");
+        var backEntrance = RegionTravel.FindEntrance(things, back.Link);
+        Assert.NotNull(backEntrance);
     }
 
     [Fact]

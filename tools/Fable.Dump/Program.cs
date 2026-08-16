@@ -327,7 +327,7 @@ static void DumpMesh(GameInstall install, string? query)
     try
     {
         var mesh = MeshFile.Parse(bytes, (int)entry.Type);
-        Console.WriteLine($"name={mesh.Name} tris={mesh.Triangles.Count} bounds {mesh.BoundsMin} .. {mesh.BoundsMax}");
+        Console.WriteLine($"name={mesh.Name} tris={mesh.Triangles.Count} declared={mesh.DeclaredTriangles} strip={mesh.StripFaces} list={mesh.ListFaces} noblock={mesh.NoBlockFaces} deg={mesh.DegenerateSkipped} bounds {mesh.BoundsMin} .. {mesh.BoundsMax}");
         foreach (var mat in mesh.Materials)
             Console.WriteLine($"  mat '{mat.Name}' diffuse={mat.DiffuseMapId} bump={mat.BumpMapId}");
         if (mesh.Triangles.Count > 0)
