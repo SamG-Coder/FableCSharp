@@ -292,5 +292,22 @@ public sealed class ShaderFormatTests
         Assert.Equal(LandscapeFrustum.InverseRow0Register, WorldShading.FogPlaneRegister);
         Assert.Equal(LandscapeFrustum.LayoutFogRegister, WorldShading.FogColorRegister);
         Assert.Equal(LandscapeFrustum.FogRecordColor, WorldShading.FogRecordColor);
+        foreach (var vs in new[] { land, stat, skin })
+            Assert.True(vs.TryGetVertexFogSequence(out _), vs.Name);
+        Assert.True(land.TryGetVertexFogSequence(out var fog));
+        Assert.Equal(0, fog.PosType);
+        Assert.Equal(0, fog.PosRegister);
+        Assert.Equal(1f, WorldShading.FirstSeenC0.Y);
+        Assert.Equal(1f, WorldShading.EvaluateVertexFog(0f, 1f, 1f));
+        Assert.Equal(1f, WorldShading.EvaluateVertexFog(0f, 1f, 0f));
+        Assert.Equal(0f, WorldShading.EvaluateVertexFog(2f, 1f, 1f));
+        Assert.Equal(0.5f, WorldShading.EvaluateVertexFog(0.5f, 1f, 1f));
+        Assert.False(WorldShading.FirstSeenAppliesVertexFogBlend);
+        Assert.Equal(0.75f, WorldShading.EvaluateVertexFog(
+            0.25f, WorldShading.FirstSeenC0.Y, WorldShading.FogRecordColor.W), 5);
+        Assert.Equal(ShaderProgram.Dp4Opcode, 0x09u);
+        Assert.Equal(ShaderProgram.MinOpcode, 0x0Au);
+        Assert.Equal(ShaderProgram.MadOpcode, 0x04u);
+        Assert.Equal(1, ShaderProgram.RastOutFog);
     }
 }

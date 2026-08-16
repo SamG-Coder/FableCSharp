@@ -9,10 +9,10 @@ namespace Fable.Formats;
 /// <c>[+84]=19</c>, <c>[+76]=2</c> so light 0 is <c>c19</c>/<c>c20</c>.
 /// <c>[+96]=35</c>, <c>[+100]=1</c>. TOD bytes at ctor are 0 so record 0
 /// is copied. <c>c35</c> is the VS MAD addend, not a LIT source.
-/// Fog: <c>00B54310</c> uploads camera inverse row 0 to <c>c2</c>.
-/// LayoutBasic <c>00BDBB70</c> maps <c>c18</c> at <c>[+56]=18</c>
-/// count 1. First-seen record colour is <c>(0,0,0,1)</c>; start
-/// 1000 / end 2000. Far 7000 is SKY_DEF, not the fog record.
+/// Fog: first-seen VS is <c>mad oFog, min(dp4(pos,c2),c0.y), -c18.w, c0.y</c>.
+/// <c>c2</c> is inverse row 0. <c>c18</c> is record <c>(0,0,0,1)</c>.
+/// LayoutBasic <c>c0=(0,1,2,0.5)</c> after dirty-2 flush. Far 7000
+/// is SKY_DEF, not the fog record. D3DRS_FOGENABLE still UNREAD.
 /// </summary>
 public static class WorldShading
 {
@@ -365,6 +365,23 @@ public static class WorldShading
     public const float FogRecordEnd = 2000f;
     /// <summary>SKY_DEF max flare radius 6000 plus slack; not fog end.</summary>
     public const float FogEnd = 7000f;
+
+    /// <summary>
+    /// LayoutBasic <c>00BDBB70</c> first float4 is (0, 1, 2, 0.5).
+    /// Dirty-bit 2 flush <c>00989BF0</c> uploads count 2 from
+    /// register 0, so first-seen landscape <c>c0.y=1</c> after
+    /// <c>00B47630</c> ORs bit 2. D3DRS_FOGENABLE still UNREAD —
+    /// oFog is computed but not applied as a colour blend here.
+    /// </summary>
+    public static readonly Vector4 FirstSeenC0 = new(0f, 1f, 2f, 0.5f);
+    public const bool FirstSeenAppliesVertexFogBlend = false;
+
+    /// <summary>
+    /// First-seen VS: <c>mad oFog, min(dp4(pos,c2), c0.y), -c18.w, c0.y</c>.
+    /// Not <c>min(dot,1)*c18.w+1</c>.
+    /// </summary>
+    public static float EvaluateVertexFog(float posDotC2, float c0y, float c18w) =>
+        MathF.Min(posDotC2, c0y) * (-c18w) + c0y;
 
     /// <summary>
     /// <c>00DBDE40</c>, Create <c>006AC910</c>, ConstructFromParams

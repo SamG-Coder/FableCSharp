@@ -809,6 +809,7 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteWalkPart(pe, store, family, "Camera setup FOV inverse 00B30B50", 0x00B30B50, 600),
         WriteWalkPart(pe, store, family, "Camera constant upload c2 00B54310", 0x00B54310, 400),
         WriteWalkPart(pe, store, family, "Fog compute 00B47630", 0x00B47630, 220),
+        WriteFnPart(pe, store, family, "Landscape fog slot 00B46890", 0x00B46890, 30),
         WriteWalkPart(pe, store, family, "LayoutBasic 00BDBB70", 0x00BDBB70, 250),
         WriteFnPart(pe, store, family, "Fog colour setter 009886C0", 0x009886C0, 20),
         WriteFnPart(pe, store, family, "Fog colour flush c18 009897C0", 0x009897C0, 40),

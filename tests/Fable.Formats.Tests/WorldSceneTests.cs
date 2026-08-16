@@ -287,6 +287,8 @@ public sealed class WorldSceneTests
         Assert.Equal(new Vector4(0f, 0f, 0f, 1f), WorldShading.FogRecordColor);
         Assert.Equal(1000f, WorldShading.FogStart);
         Assert.Equal(2000f, WorldShading.FogRecordEnd);
+        Assert.Equal(1f, WorldShading.EvaluateVertexFog(0f, WorldShading.FirstSeenC0.Y, WorldShading.FogRecordColor.W));
+        Assert.False(WorldShading.FirstSeenAppliesVertexFogBlend);
         Assert.Equal(
             LandscapeFrustum.CotHalfAngle(float.DegreesToRadians(72f)),
             LandscapeFrustum.CotHalfAngle(LandscapeFrustum.TurnsToRadians(0.2f)), 4);
