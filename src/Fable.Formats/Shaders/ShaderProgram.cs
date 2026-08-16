@@ -11,6 +11,7 @@ public sealed class ShaderProgram
     public const uint TexOpcode = 0x42;
     public const uint MulOpcode = 0x05;
     public const uint MovOpcode = 0x01;
+    public const uint AddOpcode = 0x02;
     public const uint MadOpcode = 0x04;
     public const uint RsqOpcode = 0x07;
     public const uint Dp3Opcode = 0x08;
@@ -24,9 +25,13 @@ public sealed class ShaderProgram
     /// <summary>D3D vs_1_1 <c>LIT</c>. First-seen FG/static/PALSKIN use <c>MAD</c> <c>c35</c> instead.</summary>
     public const uint LitOpcode = 0x10;
     public const int RegTypeConst = 2;
+    public const int RegTypeInput = 1;
     public const int RegTypeRastOut = 4;
+    public const int RegTypeTexCrdOut = 6;
     public const int RastOutFog = 1;
     public const int SrcModNeg = 1;
+    public const int SwizzleY = 1;
+    public const int SwizzleZ = 2;
 
     public required string Name { get; init; }
     public required string Bank { get; init; }
@@ -160,6 +165,62 @@ public sealed class ShaderProgram
         return false;
     }
 
+    /// <summary>
+    /// First-seen landscape FG: <c>mov oT0.xy, v3.yz</c>.
+    /// That is t0 (PS alpha), not the albedo UV.
+    /// </summary>
+    public bool TryGetOt0FromV3(out int vReg)
+    {
+        vReg = 0;
+        foreach (var insn in DecodeInstructions())
+        {
+            if (insn.Opcode != MovOpcode)
+                continue;
+            if (insn.DestType != RegTypeTexCrdOut || insn.DestNum != 0 || !insn.DestMaskXYOnly)
+                continue;
+            if (insn.Src0Type != RegTypeInput)
+                continue;
+            if (insn.Src0Swizzle0 != SwizzleY || insn.Src0Swizzle1 != SwizzleZ)
+                continue;
+            vReg = insn.Src0Num;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// First-seen landscape FG albedo: <c>dp4 r.x, pos, c40</c>;
+    /// <c>dp4 r.y, pos, c41</c>; <c>mov oT1, r</c>.
+    /// </summary>
+    public bool TryGetOt1Projected(out Ot1Projected seq)
+    {
+        seq = default;
+        var insns = DecodeInstructions();
+        for (var i = 0; i + 2 < insns.Count; i++)
+        {
+            var dpX = insns[i];
+            var dpY = insns[i + 1];
+            var mov = insns[i + 2];
+            if (dpX.Opcode != Dp4Opcode || dpY.Opcode != Dp4Opcode || mov.Opcode != MovOpcode)
+                continue;
+            if (dpX.DestType != 0 || dpY.DestType != 0 || dpX.DestNum != dpY.DestNum)
+                continue;
+            if (!dpX.DestMaskX || !dpY.DestMaskY)
+                continue;
+            if (!dpX.Src1Is(RegTypeConst, 40) || !dpY.Src1Is(RegTypeConst, 41))
+                continue;
+            if (mov.DestType != RegTypeTexCrdOut || mov.DestNum != 1)
+                continue;
+            if (mov.Src0Type != 0 || mov.Src0Num != dpX.DestNum)
+                continue;
+            seq = new Ot1Projected(dpX.Src0Num, dpX.Src0Type);
+            return true;
+        }
+
+        return false;
+    }
+
     public IReadOnlyList<DecodedInsn> DecodeInstructions()
     {
         var list = new List<DecodedInsn>();
@@ -217,14 +278,22 @@ public sealed class ShaderProgram
 
     public readonly record struct VertexFogSequence(int PosRegister, int PosType);
 
+    public readonly record struct Ot1Projected(int PosRegister, int PosType);
+
     public readonly record struct DecodedInsn(uint Opcode, uint Dest, uint Src0, uint Src1, uint Src2)
     {
         public int DestNum => (int)(Dest & 0x7FF);
         public int DestType => (int)((Dest >> 28) & 7);
+        public int DestMask => (int)((Dest >> 16) & 0xF);
+        public bool DestMaskX => (DestMask & 1) != 0;
+        public bool DestMaskY => (DestMask & 2) != 0;
         public bool DestMaskW => (Dest & 0x00080000) != 0;
+        public bool DestMaskXYOnly => DestMask == 3;
         public int Src0Num => (int)(Src0 & 0x7FF);
         public int Src0Type => (int)((Src0 >> 28) & 7);
-        public bool Src0SwizzleY => ((Src0 >> 16) & 3) == 1;
+        public int Src0Swizzle0 => (int)((Src0 >> 16) & 3);
+        public int Src0Swizzle1 => (int)((Src0 >> 18) & 3);
+        public bool Src0SwizzleY => Src0Swizzle0 == 1;
         public int Src1Num => (int)(Src1 & 0x7FF);
         public int Src1Mod => (int)((Src1 >> 24) & 0xF);
         public bool Src1SwizzleW => ((Src1 >> 16) & 3) == 3;

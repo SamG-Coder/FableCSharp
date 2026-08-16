@@ -41,6 +41,9 @@ internal static class FunctionMap
         (0x00BDB000, 0x00BDC800, "LayoutLights"),
         (0x00BF4000, 0x00BF6000, "per-cell"),
         (0x00BF6E00, 0x00BF7200, "patch-aabb-fill"),
+        (0x00BDA000, 0x00BDB000, "landscape-vb"),
+        (0x00BFDE00, 0x00BFF000, "tile-expand"),
+        (0x00A63100, 0x00A63200, "create-vb-wrapper"),
         (0x00DBDE00, 0x00DBF000, "StartOakVale"),
     ];
 
@@ -98,6 +101,10 @@ internal static class FunctionMap
         ("camera copy 00B4AF50", 0x00B4AF50),
         ("per-cell submit", 0x00BF4570),
         ("per-cell c1 flip", 0x00BF5175),
+        ("tile expand 00BFE050", 0x00BFE050),
+        ("unpack tile normal 00BFDEC0", 0x00BFDEC0),
+        ("create landscape VB 00BDA3D0", 0x00BDA3D0),
+        ("CreateVertexBuffer wrapper", 0x00A63150),
         ("water draw", 0x00B783F0),
         ("water type-8 ingest", 0x00B6DAF0),
         ("sea bind 00B6DC40", 0x00B6DC40),

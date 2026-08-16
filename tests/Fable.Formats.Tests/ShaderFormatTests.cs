@@ -190,8 +190,22 @@ public sealed class ShaderFormatTests
 
         Assert.Contains(3, land.ConstRegisters);
         Assert.DoesNotContain(1, land.ConstRegisters);
+        Assert.Contains(LandscapeTextures.Ot1RegisterX, land.ConstRegisters);
+        Assert.Contains(LandscapeTextures.Ot1RegisterY, land.ConstRegisters);
         Assert.False(LandscapeTextures.FirstSeenLandscapeVsReadsC1);
         Assert.False(LandscapeTextures.FirstSeenUploadsC1LayerFlip);
+        Assert.True(land.TryGetOt0FromV3(out var ot0Reg));
+        Assert.Equal(3, ot0Reg);
+        Assert.True(land.TryGetOt1Projected(out var ot1));
+        Assert.Equal(0, ot1.PosType);
+        Assert.True(LandscapeTextures.FirstSeenOt0FromV3);
+        Assert.False(LandscapeTextures.FirstSeenOt0IsAlbedo);
+        Assert.True(LandscapeTextures.FirstSeenOt1Projected);
+        Assert.True(LandscapeTextures.FirstSeenOt1ConstantsUnread);
+        Assert.Equal(24, LandscapeTextures.GpuVertexStrideBytes);
+        Assert.Equal(6, ShaderProgram.RegTypeTexCrdOut);
+        Assert.Equal(1, ShaderProgram.SwizzleY);
+        Assert.Equal(2, ShaderProgram.SwizzleZ);
         Assert.Equal(4, LandscapeTextures.C1LayerType);
         Assert.Equal(1, LandscapeTextures.LayerFlipRegister);
         Assert.Equal(new Vector2(1f, 0f), LandscapeTextures.C1OneLayer);

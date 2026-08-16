@@ -321,9 +321,32 @@ public sealed class LevFormatTests
         Assert.Equal(4, LandscapeTextures.C1LayerType);
         Assert.Equal(0x0139C5D8u, LandscapeTextures.UvTable);
         Assert.Equal(0x00BF51D4u, LandscapeTextures.PerCellC1Upload);
+        Assert.Equal(24, LandscapeTextures.GpuVertexStrideBytes);
+        Assert.Equal(20, LandscapeTextures.GpuExtraOffset);
+        Assert.Equal(15, LevTileMesh.VertexStride);
+        Assert.Equal(0x00BFE050u, LandscapeTextures.ExpandVerts);
+        Assert.Equal(0x00BF3E17u, LandscapeTextures.ExpandVertsCaller);
+        Assert.Equal(0x00BFDEC0u, LandscapeTextures.UnpackNormal);
+        Assert.Equal(0x00BDA3D0u, LandscapeTextures.CreateVertexBuffer);
+        Assert.Equal(0x00A63150u, LandscapeTextures.CreateVertexBufferWrapper);
+        Assert.True(LandscapeTextures.FirstSeenOt0FromV3);
+        Assert.False(LandscapeTextures.FirstSeenOt0IsAlbedo);
+        Assert.Equal(40, LandscapeTextures.Ot1RegisterX);
+        Assert.Equal(41, LandscapeTextures.Ot1RegisterY);
+        Assert.True(LandscapeTextures.FirstSeenOt1Projected);
+        Assert.True(LandscapeTextures.FirstSeenOt1ConstantsUnread);
         var sample = tris.First(t => t.A.X > 1f && t.A.Y > 1f);
         Assert.Equal(sample.A.X * 0.125f, sample.UvA.X, 3);
         Assert.Equal(sample.A.Y * 0.125f, sample.UvA.Y, 3);
+        var tile = height.Tiles.Tiles.First(t => t.Vertices.Count >= 16);
+        Assert.True(tile.Vertices.All(v => Math.Abs(v.ExtraRgb.X - 1f) < 0.02f));
+        Assert.True(tile.Vertices.All(v => v.ExtraRgb.Y is > 0.4f and < 0.6f));
+        Assert.True(tile.Vertices.All(v => v.ExtraRgb.Z is > 0.4f and < 0.6f));
+        var extra0 = tile.Vertices[0];
+        Assert.Equal(extra0.ExtraRgb.Y, LandscapeTextures.Ot0FromExtra(extra0.ExtraRgb).X, 5);
+        Assert.True(
+            Math.Abs(extra0.WorldX * LandscapeTextures.UvScale - extra0.ExtraRgb.Y) > 1f,
+            $"extraY={extra0.ExtraRgb.Y} world*scale={extra0.WorldX * LandscapeTextures.UvScale}");
         Assert.Equal(4, LandscapeFrustum.PlaneCount);
         Assert.Equal(16, LandscapeFrustum.PlaneStrideBytes);
         Assert.Equal(448, LandscapeFrustum.PlaneBaseOffset);

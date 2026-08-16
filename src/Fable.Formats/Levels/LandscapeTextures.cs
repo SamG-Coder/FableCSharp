@@ -153,8 +153,9 @@ public static class LandscapeTextures
     /// Exe table <c>0x0139C5D8</c> uploaded via <c>00989A60</c> as VS
     /// float4s: <c>0.125</c> / <c>-0.125</c> to <c>c3</c>. First-seen
     /// <c>VSHADER_LANDSCAPE_FOREGROUND</c> does <c>add r3, r3, c3</c>
-    /// (lighting) and <c>mov oT0.xy, v3</c> — not <c>mad oT0</c> from
-    /// world XY. Cell lookup still uses <c>&gt;&gt;4</c> (16 m).
+    /// (lighting) and <c>mov oT0.xy, v3.yz</c> — not <c>mad oT0</c>
+    /// from world XY. Albedo is <c>oT1</c> from <c>dp4(pos,c40/c41)</c>.
+    /// Cell lookup still uses <c>&gt;&gt;4</c> (16 m).
     /// </summary>
     public const float UvScale = 0.125f;
     public const uint UvTable = 0x0139C5D8;
@@ -172,6 +173,48 @@ public static class LandscapeTextures
     public const bool FirstSeenLandscapeVsReadsC1 = false;
     public static readonly System.Numerics.Vector2 C1OneLayer = new(1f, 0f);
     public static readonly System.Numerics.Vector2 C1TwoLayer = new(0f, -1f);
+
+    /// <summary>
+    /// <c>00BFE050</c> (only <c>E8</c> from <c>00BF3E17</c>) locks a
+    /// VB via <c>00BDA3D0</c> → <c>00A63150</c> with a literal
+    /// stride <c>24</c> (<c>mov [esi+16], bl</c>). File verts stay
+    /// 15 bytes. Per vert: u16 X / u16 Y / f32 Z, then
+    /// <c>00BFDEC0</c> unpacks the 11-11-10 normal to float3 at
+    /// dest+8, then extra bytes land at dest+20/+21/+22 as
+    /// extra[2], extra[1], extra[0] (D3DCOLOR BGR). dest+23 is not
+    /// written.
+    /// </summary>
+    public const int GpuVertexStrideBytes = 24;
+    public const int GpuExtraOffset = 20;
+    public const uint ExpandVerts = 0x00BFE050;
+    public const uint ExpandVertsCaller = 0x00BF3E17;
+    public const uint UnpackNormal = 0x00BFDEC0;
+    public const uint CreateVertexBuffer = 0x00BDA3D0;
+    public const uint CreateVertexBufferWrapper = 0x00A63150;
+
+    /// <summary>
+    /// FG VS <c>mov oT0.xy, v3.yz</c> / <c>mul oD0.w, …, v3.x</c>.
+    /// v3 is the dest+20 D3DCOLOR: R = extra[0] = 0xFF so
+    /// <c>v3.x=1</c>; G/B = extra[1]/extra[2]. Oakvale extras sit
+    /// near 0.5. That is t0 (PS <c>t0.a</c>), not albedo.
+    /// </summary>
+    public const bool FirstSeenOt0FromV3 = true;
+    public const bool FirstSeenOt0IsAlbedo = false;
+
+    /// <summary>
+    /// FG VS albedo: <c>dp4 r5.x, pos, c40</c>;
+    /// <c>dp4 r5.y, pos, c41</c>; <c>mov oT1, r5</c>.
+    /// PS RGB is <c>t1 * v0</c>, so the visible UV is oT1.
+    /// c40/c41 writers are still UNREAD — <see cref="UvScale"/>
+    /// remains the emit stand-in, not a proven first-seen c40.
+    /// </summary>
+    public const int Ot1RegisterX = 40;
+    public const int Ot1RegisterY = 41;
+    public const bool FirstSeenOt1Projected = true;
+    public const bool FirstSeenOt1ConstantsUnread = true;
+
+    public static System.Numerics.Vector2 Ot0FromExtra(System.Numerics.Vector3 extraRgb) =>
+        new(extraRgb.Y, extraRgb.Z);
 
     public static bool IsUsable(string materialName) =>
         materialName.Length > 0 &&
