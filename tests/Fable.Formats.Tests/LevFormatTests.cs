@@ -270,6 +270,73 @@ public sealed class LevFormatTests
     }
 
     [Fact]
+    public void Stb_tiles_are_lzo_meshes_of_world_xy_and_z()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        using var stb = StbArchive.Open(install.RuntimeStbPath);
+        var lookout = levels.LoadHeightField("LookoutPoint");
+        Assert.NotNull(lookout);
+        Assert.Equal(63, lookout.TileCount);
+        Assert.True(lookout.FineSampleCount > 2000, $"fine={lookout.FineSampleCount}");
+        Assert.Equal(128, lookout.FineWidth);
+        Assert.Equal(128, lookout.FineHeight);
+
+        var bytes = stb.Read(stb.FindLev("LookoutPoint")!);
+        var tiles = LevTileMesh.Parse(bytes, lookout.OriginX, lookout.OriginY, lookout.CellsX, lookout.CellsY);
+        Assert.Equal(63, tiles.Tiles.Count);
+        var first = tiles.Tiles[0];
+        Assert.Equal(289, first.Vertices.Count);
+        Assert.Equal(3248, first.Vertices[0].WorldX);
+        Assert.Equal(3488, first.Vertices[0].WorldY);
+        Assert.InRange(first.Vertices[0].Z, 20f, 80f);
+        Assert.Equal(3264, first.Vertices[288].WorldX);
+        Assert.Equal(3504, first.Vertices[288].WorldY);
+
+        // Interior 1-unit sample is not just the 16-unit bilinear.
+        var pred = Bilinear(lookout, 18 / 16f, 2 / 16f);
+        Assert.True(
+            Math.Abs(lookout.FineHeights[18, 2] - pred) > 0.2f,
+            $"fine[18,2]={lookout.FineHeights[18, 2]} bilinear={pred}");
+    }
+
+    [Fact]
+    public void Stb_picnic_tiles_decompress_to_world_verts()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        var picnic = levels.LoadHeightField("PicnicArea");
+        Assert.NotNull(picnic);
+        Assert.Equal(47, picnic.TileCount);
+        Assert.True(picnic.FineSampleCount > 1000, $"fine={picnic.FineSampleCount}");
+        Assert.Equal(128, picnic.FineWidth);
+        Assert.Equal(96, picnic.FineHeight);
+        Assert.InRange(picnic.FineHeights[16, 0], 15f, 80f);
+    }
+
+    [Fact]
+    public void Compressed_tile_payload_is_not_a_17_by_17_float_grid()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var stb = StbArchive.Open(install.RuntimeStbPath);
+        var bytes = stb.Read(stb.FindLev("LookoutPoint")!);
+        var off = (int)BitConverter.ToUInt32(bytes, 2056 + 28);
+        var size = (int)BitConverter.ToUInt32(bytes, 2056 + 32);
+        var ok = 0;
+        for (var i = 0; i < 17 * 17 && 8 + i * 4 + 4 <= size; i++)
+        {
+            var z = BitConverter.ToSingle(bytes, off + 8 + i * 4);
+            if (z is >= 15f and <= 80f)
+                ok++;
+        }
+
+        Assert.True(ok < 80, $"unexpected dense f32 grid without LZO ok={ok}");
+    }
+
+    [Fact]
     public void Stb_section_two_is_not_a_regular_xyz_stream()
     {
         var install = GameInstall.TryLocate();
@@ -308,6 +375,18 @@ public sealed class LevFormatTests
 
         // Document the negative: framed LZO at payload start is not the heightfield.
         Assert.True(inRange < lev.CellCount / 4, $"unexpectedly dense height decode inRange={inRange}");
+    }
+
+    private static float Bilinear(LevHeightField field, float fx, float fy)
+    {
+        var x0 = Math.Clamp((int)MathF.Floor(fx), 0, field.CellsX);
+        var y0 = Math.Clamp((int)MathF.Floor(fy), 0, field.CellsY);
+        var x1 = Math.Min(x0 + 1, field.CellsX);
+        var y1 = Math.Min(y0 + 1, field.CellsY);
+        var tx = Math.Clamp(fx - x0, 0f, 1f);
+        var ty = Math.Clamp(fy - y0, 0f, 1f);
+        return (field.Heights[x0, y0] * (1 - tx) + field.Heights[x1, y0] * tx) * (1 - ty)
+             + (field.Heights[x0, y1] * (1 - tx) + field.Heights[x1, y1] * tx) * ty;
     }
 
     private static string ReadZ(byte[] data, int offset)

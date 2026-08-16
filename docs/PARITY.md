@@ -27,7 +27,10 @@ parsers and notes.
 | STB section 2 offset | `u32` at 2048 is the start of the next blob (Lookout/OakVale **6144**, Picnic **4096**). Zeros fill the gap after the coarse lattice. | `LevFormatTests` |
 | WAD cell table | Payload after the `21` tag is a stream of **21-byte** records, one per 1-unit cell (Lookout 16384). Bytes 10–13 are material-table slots (`0xFF` unused). Lookout is mostly slot 2 `GROUND_PATH_SAND`. | `LevFormatTests` |
 | GROUND_ → LANDSCAPE_ | Material-slot `u32` id is **not** a `textures.big` id (1911 is villager legs). Names map: `GROUND_PATH_SAND` → `LANDSCAPE_PATH_SAND_01` (4133), `GROUND_GRASS` → `LANDSCAPE_GRASS_PLAIN` (414), `PATH_COBBLES_IRREGULAR_ET` → `LANDSCAPE_COBBLES_IRREGULAR_01` (4118). | `LevFormatTests` |
-| Fine terrain mesh | 1-unit quads (Lookout 128×128×2 tris). Z is bilinear from the 16-unit lattice. Each cell samples its `GROUND_*` texture. | `LevFormatTests` |
+| Fine terrain mesh | 1-unit quads (Lookout 128×128×2 tris). Z is bilinear from the 16-unit lattice, then STB tile verts overwrite cells they hit. Each cell samples its `GROUND_*` texture. | `LevFormatTests` |
+| STB tile table | After the coarse 36-byte lattice, leftover `magic/offset/size` is a tile directory (`0x012EC900`, file offset, packed size). Lookout 63 tiles, Picnic 47. Last record is a 0,0 sentinel. | `LevFormatTests` |
+| STB tile payload | `u32` uncompressed size, `u32` packed size, then **raw LZO** (not framed). Inflated header `u16` at +2 is vertex count (289 = 17×17). | `LevFormatTests` |
+| STB tile verts | 32-byte header, then `count` × **15-byte** records: `u16` world X, `u16` world Y, `f32` Z, 7 unread bytes (packed normal / colour). Mesh origin is the coarse cell's **east** edge. | `LevFormatTests` |
 | Camera | System.Numerics row-major is uploaded as-is (no extra transpose). Z-up. Overview `(64,-40,95)` looks at `(64,64,36)`. | `CameraProjectionTests` |
 | TNG → mesh (partial) | `meshdata.h` name match: `DefinitionType`, `MESH_` + type, or `MESH_` + stem after `OBJECT_` / `CREATURE_` / `BUILDING_`. Skip `[PHYSICS]`. Still useful as a fallback. | `MeshFormatTests` |
 | names.bin offsets | Each name is `(u32 CRC, cstring)`. The game.bin name-ref is the string's offset after the 20-byte header (first string is 4). CRC is Fable polynomial `0xEDB88320` init 0. | `GameBinFormatTests` |
@@ -50,6 +53,8 @@ parsers and notes.
 | WAD 21-byte `u16` at +8 is height | Every Lookout/Picnic cell stores **60**. It is a constant, not Z. | `LevFormatTests` |
 | Material slot `u32` is a textures.big id | Lookout sand slot id 1911 decodes as `TEXTURE_BOWER_FEMALE_MIDDLE_LEGS_03C`. | `LevFormatTests` |
 | STB section 2 is a packed xyz stream | `stride=12` from the section header does not yield a dense height point cloud. | `LevFormatTests` |
+| Compressed tile bytes are a 17×17 f32 grid | Without LZO, almost no values sit in the TNG Z range. | `LevFormatTests.Compressed_tile_payload_is_not_a_17_by_17_float_grid` |
+| 15-byte verts on the packed tile | Z floats appear at ~15-byte gaps, but XY is not packed local. The stream is LZO; verts are world `u16` after inflate. | probe 2026-08-16 |
 | STB `.lev` is the same format as WAD `.lev` | STB blob starts `u32=1`, not version 25 / `0x1904`. | `LevFormatTests` |
 | Extra `Matrix4x4.Transpose` on VP | Double transpose. Screen was solid clear-color. | `CameraProjectionTests` |
 | WAD `Find("Lookout")` for a `.tng` | Stem match hit `LookoutPoint.lev`. Must pass the extension. | `TlcInstallTests` |
@@ -59,7 +64,7 @@ parsers and notes.
 1. **Full game.bin field tables.** We read `Graphic.bank_index` and `CReplaceableMeshDef`. Other controls (health, physics, inventory, quests) are still raw bytes.
 2. **Creature clothing / appearance layers.** Villager Graphic is the unclothed body (`MESH_BS_MALE_MIDDLE_UNCLOTHED_01`). `CAppearanceDef` / morphs are unread.
 3. **Streetlamp lit vs off.** TNG `OBJECT_STREETLAMP_LIT_SINGLE_01` maps to `MESH_OBJECT_STREETLAMP_OFF_02`. Lit state is probably a replaceable / particle, not a second mesh id.
-4. **True per-unit heights.** Fine mesh Z is still interpolated from the 16-unit STB lattice. Section 2 (~3 MB) is unread.
+4. **Tile leftovers / west strip.** After the 15-byte vertex array the inflated tile still has a large tail (indices / extra LOD). The first 16 units of X often stay bilinear because tile meshes start on the coarse cell's east edge. Section 2's 4 KB header is unread.
 5. **GPU texturing.** UVs and RGBA decode. The client currently *samples* those textures onto vertex color. A Vulkan atlas / sampler is the next renderer step.
 6. **WAD cell bytes 4–7 / 14–20.** High-entropy field and flags after the material slots are unread.
 7. **Animation / bones / cloth.** Parser skips the blocks so static positions survive. No skinning.

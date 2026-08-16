@@ -5,8 +5,9 @@ using Fable.Formats.Meshes;
 namespace Fable.Formats.Levels;
 
 /// <summary>
-/// Coarse landscape lattice stored in the runtime STB copy of a .lev.
-/// Vertices sit on a 16-unit grid in WLD space (MapX/MapY origin).
+/// Landscape heights from the runtime STB copy of a .lev.
+/// Coarse vertices sit on a 16-unit WLD lattice. Fine 1-unit samples start
+/// as bilinear from that lattice, then STB tile verts overwrite cells they hit.
 /// </summary>
 public sealed class LevHeightField
 {
@@ -21,6 +22,11 @@ public sealed class LevHeightField
     public required float OriginY { get; init; }
     public required float[,] Heights { get; init; }
     public required int SampleCount { get; init; }
+    public required int FineWidth { get; init; }
+    public required int FineHeight { get; init; }
+    public required float[,] FineHeights { get; init; }
+    public required int FineSampleCount { get; init; }
+    public required int TileCount { get; init; }
 
     public static LevHeightField Parse(byte[] stbLev, float mapX, float mapY, int localWidth, int localHeight)
     {
@@ -44,6 +50,17 @@ public sealed class LevHeightField
         }
 
         FillMissing(heights, filled, cellsX, cellsY);
+
+        var fineWidth = localWidth;
+        var fineHeight = localHeight;
+        var fine = new float[fineWidth + 1, fineHeight + 1];
+        for (var y = 0; y <= fineHeight; y++)
+        for (var x = 0; x <= fineWidth; x++)
+            fine[x, y] = SampleBilinear(heights, cellsX, cellsY, x / SampleSpacing, y / SampleSpacing);
+
+        var tiles = LevTileMesh.Parse(stbLev, mapX, mapY, cellsX, cellsY);
+        var stamped = tiles.StampOnto(fine, mapX, mapY, fineWidth, fineHeight);
+
         return new LevHeightField
         {
             CellsX = cellsX,
@@ -52,6 +69,11 @@ public sealed class LevHeightField
             OriginY = mapY,
             Heights = heights,
             SampleCount = samples,
+            FineWidth = fineWidth,
+            FineHeight = fineHeight,
+            FineHeights = fine,
+            FineSampleCount = stamped,
+            TileCount = tiles.Tiles.Count,
         };
     }
 
@@ -96,23 +118,27 @@ public sealed class LevHeightField
 
     private Vector3 Corner(int x, int y)
     {
-        var fx = x / SampleSpacing;
-        var fy = y / SampleSpacing;
-        return new Vector3(x, y, SampleBilinear(fx, fy));
+        var z = x >= 0 && y >= 0 && x <= FineWidth && y <= FineHeight
+            ? FineHeights[x, y]
+            : SampleBilinear(Heights, CellsX, CellsY, x / SampleSpacing, y / SampleSpacing);
+        return new Vector3(x, y, z);
     }
 
-    private float SampleBilinear(float fx, float fy)
+    private float SampleBilinear(float fx, float fy) =>
+        SampleBilinear(Heights, CellsX, CellsY, fx, fy);
+
+    private static float SampleBilinear(float[,] heights, int cellsX, int cellsY, float fx, float fy)
     {
-        var x0 = Math.Clamp((int)MathF.Floor(fx), 0, CellsX);
-        var y0 = Math.Clamp((int)MathF.Floor(fy), 0, CellsY);
-        var x1 = Math.Min(x0 + 1, CellsX);
-        var y1 = Math.Min(y0 + 1, CellsY);
+        var x0 = Math.Clamp((int)MathF.Floor(fx), 0, cellsX);
+        var y0 = Math.Clamp((int)MathF.Floor(fy), 0, cellsY);
+        var x1 = Math.Min(x0 + 1, cellsX);
+        var y1 = Math.Min(y0 + 1, cellsY);
         var tx = Math.Clamp(fx - x0, 0f, 1f);
         var ty = Math.Clamp(fy - y0, 0f, 1f);
-        var a = Heights[x0, y0];
-        var b = Heights[x1, y0];
-        var c = Heights[x0, y1];
-        var d = Heights[x1, y1];
+        var a = heights[x0, y0];
+        var b = heights[x1, y0];
+        var c = heights[x0, y1];
+        var d = heights[x1, y1];
         return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
     }
 
