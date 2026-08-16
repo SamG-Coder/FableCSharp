@@ -213,7 +213,8 @@ public sealed class LevTileMesh
             textureId,
             Vector3.One, Vector3.One, Vector3.One,
             textureId1,
-            a.N, b.N, c.N));
+            a.N, b.N, c.N,
+            SceneLayer.Landscape));
     }
 
     internal static LevTile? TryReadPayload(byte[] stbLev, int off, int index)

@@ -35,7 +35,7 @@ public sealed class FlyCamera
             float.DegreesToRadians(fovDegrees),
             MathF.Max(aspect, 0.01f),
             0.15f,
-            2500f);
+            7000f);
         proj.M22 *= -1f; // Vulkan NDC is Y-down
         return proj;
     }

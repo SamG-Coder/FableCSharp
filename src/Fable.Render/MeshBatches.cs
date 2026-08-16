@@ -17,9 +17,10 @@ public static class MeshBatches
     public static TexturedMesh Build(IReadOnlyList<MeshTriangle> triangles)
     {
         var grouped = triangles
-            .GroupBy(tri => (tri.TextureId, tri.TextureId1 == 0 ? tri.TextureId : tri.TextureId1))
-            .OrderBy(group => group.Key.TextureId)
-            .ThenBy(group => group.Key.Item2)
+            .GroupBy(tri => (tri.Layer, tri.TextureId, tri.TextureId1 == 0 ? tri.TextureId : tri.TextureId1))
+            .OrderBy(group => group.Key.Layer)
+            .ThenBy(group => group.Key.TextureId)
+            .ThenBy(group => group.Key.Item3)
             .ToList();
         var vertices = new MeshVertex[triangles.Count * 3];
         var draws = new MeshDraw[grouped.Count];
@@ -35,7 +36,7 @@ public static class MeshBatches
                 vertices[cursor++] = Vert(tri.C, tri.NormalC, tri.Normal, tri.UvC, tri.ColorC);
             }
 
-            draws[draw++] = new MeshDraw(group.Key.TextureId, (uint)first, (uint)(cursor - first), group.Key.Item2);
+            draws[draw++] = new MeshDraw(group.Key.TextureId, (uint)first, (uint)(cursor - first), group.Key.Item3);
         }
 
         return new TexturedMesh { Vertices = vertices, Draws = draws };

@@ -444,4 +444,16 @@ public readonly record struct MeshTriangle(
     int TextureId1 = 0,
     Vector3 NormalA = default,
     Vector3 NormalB = default,
-    Vector3 NormalC = default);
+    Vector3 NormalC = default,
+    SceneLayer Layer = SceneLayer.Prop);
+
+/// <summary>
+/// CRenderManager pass order from Fable.exe: CEngineSkyRenderer,
+/// CEngineLandscapeRenderer, then CEnginePrimitiveManagerStaticMeshes.
+/// </summary>
+public enum SceneLayer
+{
+    Sky = 0,
+    Landscape = 1,
+    Prop = 2,
+}

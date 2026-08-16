@@ -165,6 +165,26 @@ public sealed class DataCatalogTests
     }
 
     [Fact]
+    public void Sky_def_names_sun_star_and_flare_textures()
+    {
+        var install = Require();
+        var names = NamesBin.Load(install.FindCompiledDef("names.bin")!);
+        var bin = GameBin.Load(install.FindCompiledDef("game.bin")!, names);
+        var sky = Fable.Formats.Sky.SkyDef.TryLoadFromGameBin(bin);
+        Assert.NotNull(sky);
+        Assert.Equal(384, sky.SunTextureId);
+        Assert.Equal(401, sky.StarTextureId);
+        Assert.Contains(sky.Flares, f => f.TextureId == 393);
+        Assert.True(sky.MaxRadius >= 6000f, $"maxRadius={sky.MaxRadius}");
+
+        using var tex = BigArchive.Open(Path.Combine(install.DataRoot, "graphics", "pc", "textures.big"));
+        var entries = tex.ReadEntries(tex.SubBanks.First(b => b.Name.Contains("MAIN")));
+        Assert.Equal("GRAPHIC_ATMOSPHERIC_SUN", entries.First(e => e.Id == 384).Name);
+        Assert.Equal("GRAPHIC_ATMOSPHERIC_STAR_01", entries.First(e => e.Id == 401).Name);
+        Assert.Equal("GRAPHIC_ATMOSPHERIC_SKY_MIDDAY", entries.First(e => e.Id == 391).Name);
+    }
+
+    [Fact]
     public void Bwd_count_field_is_not_one_more_full_region()
     {
         var install = Require();

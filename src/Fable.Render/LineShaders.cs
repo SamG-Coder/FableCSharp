@@ -71,11 +71,9 @@ internal static class LineShaders
             float ndl = nlen < 0.1 ? 1.0 : max(dot(normalize(n), normalize(pc.lightDir.xyz)), 0.0);
             vec3 v0 = fragColor.rgb * (0.28 + 0.72 * ndl);
             vec3 lit = clamp(t1.rgb * v0 * 2.0, 0.0, 1.0);
-            float fogEnd = max(pc.cameraPos.w, pc.fogColor.w + 1.0);
-            float fog = clamp((length(pc.cameraPos.xyz - fragWorld) - pc.fogColor.w) / (fogEnd - pc.fogColor.w), 0.0, 1.0);
             if (nlen < 0.1)
-                fog *= 0.35;
-            outColor = vec4(mix(lit, pc.fogColor.rgb, fog), 1.0);
+                lit = t1.rgb * fragColor.rgb;
+            outColor = vec4(lit, 1.0);
         }
         """;
 }

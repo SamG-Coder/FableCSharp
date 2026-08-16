@@ -1,52 +1,54 @@
 using System.Numerics;
 using Fable.Core;
-using Fable.Formats;
+using Fable.Formats.Defs;
 using Fable.Formats.Meshes;
 using Fable.Formats.Sky;
 
 namespace Fable.Game;
 
 /// <summary>
-/// Fable.exe CEngine sky: inner/outer dome plus stars.dat on a sphere.
-/// We have no sky mesh in the banks, so the dome is a hemisphere whose
-/// horizon matches the fog colour and whose stars come from stars.dat.
+/// CEngineSkyRenderer. Dome uses GRAPHIC_ATMOSPHERIC_SKY_MIDDAY (time-of-day
+/// set in textures.big). Stars use SKY_DEF.StarTexture + stars.dat.
+/// Lens-flare sprites stay unread (CEngineSkyRenderer flare list).
 /// </summary>
 public static class SkyGeometry
 {
     public const int UnlitTextureId = -1;
-    public const float Radius = 180f;
 
     public static IReadOnlyList<MeshTriangle> Build(GameInstall install)
     {
-        var triangles = new List<MeshTriangle>(3_200);
-        AddDome(triangles);
+        var triangles = new List<MeshTriangle>(8_000);
+        SkyDef? def = null;
+        var namesPath = install.FindCompiledDef("names.bin");
+        var binPath = install.FindCompiledDef("game.bin");
+        if (namesPath is not null && binPath is not null)
+            def = SkyDef.TryLoadFromGameBin(GameBin.Load(binPath, NamesBin.Load(namesPath)));
+
+        AddDome(triangles, SkyDef.MiddaySkyTextureId);
         if (File.Exists(install.StarsPath))
-            AddStars(triangles, StarField.Load(install.StarsPath));
+            AddStars(triangles, StarField.Load(install.StarsPath), def?.StarTextureId ?? SkyDef.StarTextureIdDefault);
         return triangles;
     }
 
-    private static void AddDome(List<MeshTriangle> triangles)
+    private static void AddDome(List<MeshTriangle> triangles, int textureId)
     {
-        const int rings = 8;
-        const int segments = 24;
-        var zenith = new Vector3(0.28f, 0.42f, 0.68f);
-        var horizon = WorldShading.FogColor;
+        const int rings = 12;
+        const int segments = 32;
+        const float radius = 1800f;
+        var origin = new Vector3(64f, 64f, 0f);
         Vector3 Point(int ring, int seg)
         {
             var t = ring / (float)rings;
-            var elev = (1f - t) * MathF.PI * 0.5f;
+            var elev = (0.5f - t) * MathF.PI;
             var az = seg / (float)segments * MathF.PI * 2f;
-            return new Vector3(
+            return origin + new Vector3(
                 MathF.Cos(elev) * MathF.Cos(az),
                 MathF.Cos(elev) * MathF.Sin(az),
-                MathF.Sin(elev)) * Radius;
+                MathF.Sin(elev)) * radius;
         }
 
-        Vector3 Color(int ring)
-        {
-            var t = ring / (float)rings;
-            return Vector3.Lerp(zenith, horizon, t * t);
-        }
+        Vector2 Uv(int ring, int seg) =>
+            new(seg / (float)segments, ring / (float)rings);
 
         for (var r = 0; r < rings; r++)
         for (var s = 0; s < segments; s++)
@@ -56,17 +58,14 @@ public static class SkyGeometry
             var b = Point(r, s1);
             var c = Point(r + 1, s);
             var d = Point(r + 1, s1);
-            var ca = Color(r);
-            var cb = Color(r);
-            var cc = Color(r + 1);
-            var cd = Color(r + 1);
-            Unlit(triangles, a, b, d, ca, cb, cd);
-            Unlit(triangles, a, d, c, ca, cd, cc);
+            Textured(triangles, a, b, d, Uv(r, s), Uv(r, s1), Uv(r + 1, s1), textureId);
+            Textured(triangles, a, d, c, Uv(r, s), Uv(r + 1, s1), Uv(r + 1, s), textureId);
         }
     }
 
-    private static void AddStars(List<MeshTriangle> triangles, StarField field)
+    private static void AddStars(List<MeshTriangle> triangles, StarField field, int textureId)
     {
+        var origin = new Vector3(64f, 64f, 0f);
         foreach (var star in field.Stars)
         {
             if (star.Position.LengthSquared() < 1f)
@@ -74,29 +73,29 @@ public static class SkyGeometry
             var dir = Vector3.Normalize(star.Position);
             if (dir.Z < -0.05f)
                 continue;
-            var pos = dir * (Radius - 2f);
+            var pos = origin + dir * 1700f;
             var right = Vector3.Normalize(Vector3.Cross(dir, MathF.Abs(dir.Z) > 0.9f ? Vector3.UnitY : Vector3.UnitZ));
             var up = Vector3.Normalize(Vector3.Cross(right, dir));
-            var size = Math.Clamp(0.12f + star.Size * 0.004f, 0.12f, 0.7f);
-            var bright = Math.Clamp(0.35f + star.Brightness * 0.16f, 0.35f, 1f);
-            var color = new Vector3(bright, bright, bright * 0.95f);
+            var size = Math.Clamp(0.8f + star.Size * 0.02f, 0.8f, 4f);
             var a = pos + (-right - up) * size;
             var b = pos + (right - up) * size;
             var c = pos + (right + up) * size;
             var d = pos + (-right + up) * size;
-            Unlit(triangles, a, b, c, color, color, color);
-            Unlit(triangles, a, c, d, color, color, color);
+            Textured(triangles, a, b, c, new Vector2(0, 0), new Vector2(1, 0), new Vector2(1, 1), textureId);
+            Textured(triangles, a, c, d, new Vector2(0, 0), new Vector2(1, 1), new Vector2(0, 1), textureId);
         }
     }
 
-    private static void Unlit(
+    private static void Textured(
         List<MeshTriangle> triangles,
         Vector3 a, Vector3 b, Vector3 c,
-        Vector3 ca, Vector3 cb, Vector3 cc)
+        Vector2 ua, Vector2 ub, Vector2 uc,
+        int textureId)
     {
         triangles.Add(new MeshTriangle(
             a, b, c, Vector3.Zero,
-            default, default, default,
-            UnlitTextureId, ca, cb, cc, UnlitTextureId));
+            ua, ub, uc,
+            textureId, Vector3.One, Vector3.One, Vector3.One, textureId,
+            default, default, default, SceneLayer.Sky));
     }
 }
