@@ -82,8 +82,12 @@ public sealed class LevHeightField
     public IReadOnlyList<MeshTriangle> ToTileTriangles(
         LevCellGrid cells,
         IReadOnlyList<LevMaterial> materials,
-        HeaderEnums? textures = null) =>
-        Tiles.ToTriangles(OriginX, OriginY, cells, materials, textures);
+        HeaderEnums? textures = null)
+    {
+        var triangles = Tiles.ToTriangles(OriginX, OriginY, cells, materials, textures).ToList();
+        FillUncovered(triangles, cells, materials, textures);
+        return triangles;
+    }
 
     public IReadOnlyList<MeshTriangle> ToFineTriangles(
         LevCellGrid cells,
@@ -122,6 +126,71 @@ public sealed class LevHeightField
         }
 
         return triangles;
+    }
+
+    /// <summary>
+    /// Adaptive STB strips omit many 1 m path cells (StartOakValeWest
+    /// village: 514 path holes). Fill those from the stamped fine
+    /// heightfield. Water/sea cells use <see cref="LandscapeTextures.WaterId"/>
+    /// until <c>CEngineWaterRenderer</c> is fed.
+    /// </summary>
+    private void FillUncovered(
+        List<MeshTriangle> triangles,
+        LevCellGrid cells,
+        IReadOnlyList<LevMaterial> materials,
+        HeaderEnums? textures)
+    {
+        var covered = new bool[cells.Width, cells.Height];
+        foreach (var tri in triangles)
+        {
+            var minX = (int)MathF.Floor(MathF.Min(tri.A.X, MathF.Min(tri.B.X, tri.C.X)));
+            var minY = (int)MathF.Floor(MathF.Min(tri.A.Y, MathF.Min(tri.B.Y, tri.C.Y)));
+            var maxX = (int)MathF.Ceiling(MathF.Max(tri.A.X, MathF.Max(tri.B.X, tri.C.X)));
+            var maxY = (int)MathF.Ceiling(MathF.Max(tri.A.Y, MathF.Max(tri.B.Y, tri.C.Y)));
+            for (var y = Math.Max(0, minY); y < Math.Min(cells.Height, maxY); y++)
+            for (var x = Math.Max(0, minX); x < Math.Min(cells.Width, maxX); x++)
+                covered[x, y] = true;
+        }
+
+        var bySlot = materials.ToDictionary(item => item.Slot);
+        for (var y = 0; y < cells.Height; y++)
+        for (var x = 0; x < cells.Width; x++)
+        {
+            if (covered[x, y])
+                continue;
+            var tex = LayersOf(cells.Cells[x, y], bySlot, textures);
+            if (tex.A < 0)
+                continue;
+            var a = Corner(x, y);
+            var b = Corner(x + 1, y);
+            var c = Corner(x, y + 1);
+            var d = Corner(x + 1, y + 1);
+            Add(triangles, a, b, d, tex.A, tex.B);
+            Add(triangles, a, d, c, tex.A, tex.B);
+        }
+    }
+
+    private static (int A, int B) LayersOf(
+        LevCell cell, Dictionary<int, LevMaterial> bySlot, HeaderEnums? textures)
+    {
+        var found = new int[2];
+        var n = 0;
+        foreach (var slot in new[] { cell.Material0, cell.Material1, cell.Material2 })
+        {
+            if (slot == 0xFF || !bySlot.TryGetValue(slot, out var material))
+                continue;
+            var id = LandscapeTextures.TryResolve(material.Name, textures);
+            if (id is null)
+                continue;
+            if (n == 0 || found[n - 1] != id.Value)
+                found[n++] = id.Value;
+            if (n == 2)
+                break;
+        }
+
+        if (n == 0)
+            return (-1, -1);
+        return n == 1 ? (found[0], found[0]) : (found[0], found[1]);
     }
 
     private Vector3 Corner(int x, int y)
@@ -163,7 +232,8 @@ public sealed class LevHeightField
         return LandscapeTextures.DefaultId;
     }
 
-    private static void Add(List<MeshTriangle> triangles, Vector3 a, Vector3 b, Vector3 c, int textureId = 0)
+    private static void Add(
+        List<MeshTriangle> triangles, Vector3 a, Vector3 b, Vector3 c, int textureId = 0, int textureId1 = 0)
     {
         var n = Vector3.Cross(b - a, c - a);
         if (n.LengthSquared() < 1e-8f)
@@ -173,7 +243,11 @@ public sealed class LevHeightField
             new Vector2(a.X * LandscapeTextures.UvScale, a.Y * LandscapeTextures.UvScale),
             new Vector2(b.X * LandscapeTextures.UvScale, b.Y * LandscapeTextures.UvScale),
             new Vector2(c.X * LandscapeTextures.UvScale, c.Y * LandscapeTextures.UvScale),
-            textureId));
+            textureId,
+            Vector3.One, Vector3.One, Vector3.One,
+            textureId1 == 0 ? textureId : textureId1,
+            default, default, default,
+            SceneLayer.Landscape));
     }
 
     private static bool TryReadSample(

@@ -18,14 +18,15 @@ dotnet run --project tools/Fable.ExeIndex -- vtbl 0x012A2B54 16
 dotnet run --project tools/Fable.ExeIndex -- imm 0x013962A0
 dotnet run --project tools/Fable.ExeIndex -- disp 348 0x00B20000 0x00B80000
 dotnet run --project tools/Fable.ExeIndex -- scanff 16
+dotnet run --project tools/Fable.ExeIndex -- trace-landscape
 ```
 
-Steps (`index` / `split` / `translate` / `all` / `disasm` / `calls` / `trace-render` / `imm` / `vtbl` / `disp` / `scanff`):
+Steps (`index` / `split` / `translate` / `all` / `disasm` / `calls` / `trace-render` / `trace-landscape` / `imm` / `vtbl` / `disp` / `scanff`):
 
 | Dir | What |
 |---|---|
 | `out/00-index` | PE sections, imports, strings, RTTI, string xrefs, DXT FourCCs |
-| `out/01-sections` | Per-topic packets (texture, sky, landscape, render, water, world, shaders) |
+| `out/01-sections` | Per-topic packets + `trace-render.md` / `landscape-trace.md` |
 | `out/02-translate` | AI prompt wrapping each packet |
 | `out/03-pseudo` | C-like pathway + pseudocode (write these from the packets; do not invent) |
 

@@ -2,7 +2,7 @@ using System.Text;
 using Fable.Core;
 using Fable.ExeIndex;
 
-var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "trace-render" or "calls" or "imm" or "vtbl" or "disp" or "scanff") ?? "all";
+var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "trace-render" or "trace-landscape" or "calls" or "imm" or "vtbl" or "disp" or "scanff") ?? "all";
 var install = GameInstall.TryLocate();
 var exePath = args.FirstOrDefault(a => a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
               ?? (install is null ? null : Path.Combine(install.Root, "Fable.exe"));
@@ -48,6 +48,11 @@ switch (cmd)
         if (!File.Exists(Path.Combine(outDir, "00-index", "xrefs.tsv")))
             RunIndex(pe, outDir);
         RunTraceRender(pe, outDir);
+        break;
+    case "trace-landscape":
+        if (!File.Exists(Path.Combine(outDir, "00-index", "xrefs.tsv")))
+            RunIndex(pe, outDir);
+        RunTraceLandscape(pe, outDir);
         break;
     case "calls":
         RunCalls(pe, args);
@@ -388,6 +393,92 @@ static void RunTraceRender(PeImage pe, string outDir)
     var path = Path.Combine(dest, "render-trace.md");
     File.WriteAllText(path, sb.ToString());
     Console.WriteLine($"trace  {path}");
+}
+
+static void RunTraceLandscape(PeImage pe, string outDir)
+{
+    var dest = Path.Combine(outDir, "01-sections");
+    Directory.CreateDirectory(dest);
+    var sb = new StringBuilder();
+    sb.AppendLine("# landscape-trace");
+    sb.AppendLine();
+    sb.AppendLine("New-game landscape load + draw + cull + UV/texture bind.");
+    sb.AppendLine("Written by `trace-landscape`. Do not invent.");
+    sb.AppendLine();
+
+    void DumpVtbl(string name, uint va, int n)
+    {
+        sb.AppendLine();
+        sb.AppendLine($"## vtbl {name} @ 0x{va:X8}");
+        var file = pe.FileOffset(va);
+        if (file < 0)
+        {
+            sb.AppendLine("UNREAD (VA not mapped)");
+            return;
+        }
+
+        for (var i = 0; i < n; i++)
+        {
+            var off = file + i * 4;
+            if (off + 4 > pe.Data.Length)
+                break;
+            var slot = BitConverter.ToUInt32(pe.Data, off);
+            var mapped = pe.FileOffset(slot) >= 0;
+            sb.AppendLine($"[{i,2}] +{i * 4,3}  0x{slot:X8}{(mapped ? "" : "  (unmapped)")}");
+        }
+    }
+
+    void DumpFn(string name, uint va, int n)
+    {
+        sb.AppendLine();
+        sb.AppendLine($"## {name} @ 0x{va:X8}");
+        var file = pe.FileOffset(va);
+        if (file < 0)
+        {
+            sb.AppendLine("UNREAD (VA not mapped)");
+            return;
+        }
+
+        foreach (var line in X86.Disassemble(pe, file, n))
+            sb.AppendLine(line);
+    }
+
+    DumpVtbl("CEngineLandscapeRenderer", 0x012A2B54, 16);
+    DumpVtbl("CEngineLandscapePatch", 0x012A8200, 16);
+    DumpVtbl("CLandscapeBackgroundPatch", 0x012A803C, 16);
+
+    DumpFn("SetStaticMapFileForUse", 0x00B428E0, 80);
+    DumpFn("OpenStaticMaps", 0x00B42750, 120);
+    DumpFn("OpenOneMap", 0x00B42530, 180);
+    DumpFn("ParseMapHeader 00B3EFA0", 0x00B3EFA0, 80);
+    DumpFn("LoadWaterData", 0x00B41FA0, 80);
+    DumpFn("Sea name onto water renderer", 0x00B6D4D0, 40);
+    DumpFn("Activate Topology", 0x004FCBB0, 20);
+    DumpFn("Build current patch 00BDD0E0", 0x00BDD0E0, 160);
+    DumpFn("Attach patch 00BDF010", 0x00BDF010, 80);
+    DumpFn("Create background patch 00BE03A0", 0x00BE03A0, 80);
+    DumpFn("Tile stream 00BF9290", 0x00BF9290, 80);
+    DumpFn("Tile vector 00BF97A0", 0x00BF97A0, 60);
+    DumpFn("Background patch ctor", 0x00BE6090, 80);
+    DumpFn("Landscape draw vtbl+16", 0x00B6B0B0, 160);
+    DumpFn("Shared lighting setup", 0x00B67480, 40);
+    DumpFn("BG bit4 setup", 0x00B671A0, 40);
+    DumpFn("FG compact+bind 00B68DA0", 0x00B68DA0, 200);
+    DumpFn("FG device dirty 00B677D0", 0x00B677D0, 80);
+    DumpFn("Unbind stages 0/1/2", 0x00B67510, 80);
+    DumpFn("Patch submit bit4", 0x00BDC060, 20);
+    DumpFn("Patch submit bit40 frustum", 0x00BDC2D0, 120);
+    DumpFn("BG draw frustum 00BF71D0", 0x00BF71D0, 100);
+    DumpFn("Per-cell submit 00BF4570", 0x00BF4570, 200);
+    DumpFn("Per-cell SetTexture stage0", 0x00BF50E0, 80);
+    DumpFn("SetVSConstantF wrapper", 0x00989A60, 40);
+    DumpFn("Layer bind 00BE7BE0", 0x00BE7BE0, 100);
+    DumpFn("Land layer select 00BE6F70", 0x00BE6F70, 80);
+    DumpFn("VS bind BLACKOUT + FOREGROUND", 0x00B69330, 80);
+
+    var path = Path.Combine(dest, "landscape-trace.md");
+    File.WriteAllText(path, sb.ToString());
+    Console.WriteLine($"trace  {path}  bytes={sb.Length}");
 }
 
 static string ResolveOutDir(string[] args)

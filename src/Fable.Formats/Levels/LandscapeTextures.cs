@@ -9,6 +9,7 @@ namespace Fable.Formats.Levels;
 public static class LandscapeTextures
 {
     public const int DefaultId = 414;
+    public const int WaterId = 442;
 
     /// <summary>
     /// Exe table <c>0x0139C5D8</c> uploaded via <c>00989A60</c> as VS
@@ -35,10 +36,17 @@ public static class LandscapeTextures
 
     public static int? TryResolve(string materialName, HeaderEnums? textures)
     {
-        if (!IsUsable(materialName) || IsWaterOrSeaPass(materialName))
+        if (!IsUsable(materialName))
             return null;
+        if (IsWaterOrSeaPass(materialName))
+            return WaterTexture(textures);
         return textures is null ? DefaultId : Resolve(materialName, textures);
     }
+
+    public static int WaterTexture(HeaderEnums? textures) =>
+        textures is not null && textures.ByName.TryGetValue("LANDSCAPE_WATER", out var id)
+            ? id
+            : WaterId;
 
     public static int Resolve(string materialName, HeaderEnums textures)
     {

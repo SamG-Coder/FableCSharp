@@ -231,9 +231,10 @@ public sealed class LevFormatTests
         Assert.NotEqual(1911, LandscapeTextures.Resolve("GROUND_PATH_SAND", enums));
         Assert.True(LandscapeTextures.IsWaterOrSeaPass("SEA_OAKVALE_2"));
         Assert.True(LandscapeTextures.IsWaterOrSeaPass("WATER_GREYCLIFF_ET"));
-        Assert.Null(LandscapeTextures.TryResolve("SEA_OAKVALE_2", enums));
-        Assert.Null(LandscapeTextures.TryResolve("WATER_GREYCLIFF_ET", enums));
-        Assert.Null(LandscapeTextures.TryResolve("WATER_BWLAKE_0", enums));
+        Assert.Equal(442, LandscapeTextures.TryResolve("SEA_OAKVALE_2", enums));
+        Assert.Equal(442, LandscapeTextures.TryResolve("WATER_GREYCLIFF_ET", enums));
+        Assert.Equal(442, LandscapeTextures.TryResolve("WATER_BWLAKE_0", enums));
+        Assert.NotEqual(4106, LandscapeTextures.TryResolve("SEA_OAKVALE_2", enums));
     }
 
     [Fact]
@@ -265,10 +266,40 @@ public sealed class LevFormatTests
         Assert.True(tris.Count > 1000, $"tris={tris.Count}");
         Assert.DoesNotContain(tris, t => t.TextureId is 4106 or 4107 or 4108);
         Assert.Contains(tris, t => t.TextureId is 4130 or 414 or 428 or 412);
+        Assert.Contains(tris, t => t.TextureId == 442);
         Assert.Equal(0.125f, LandscapeTextures.UvScale);
         var sample = tris.First(t => t.A.X > 1f && t.A.Y > 1f);
         Assert.Equal(sample.A.X * 0.125f, sample.UvA.X, 3);
         Assert.Equal(sample.A.Y * 0.125f, sample.UvA.Y, 3);
+
+        var covered = new bool[cells.Width, cells.Height];
+        foreach (var t in tris)
+        {
+            var x = (int)MathF.Floor(MathF.Min(t.A.X, MathF.Min(t.B.X, t.C.X)));
+            var y = (int)MathF.Floor(MathF.Min(t.A.Y, MathF.Min(t.B.Y, t.C.Y)));
+            if ((uint)x < (uint)cells.Width && (uint)y < (uint)cells.Height)
+                covered[x, y] = true;
+        }
+
+        var bySlot = compiled.Materials.ToDictionary(m => m.Slot);
+        var pathCells = 0;
+        var pathCovered = 0;
+        for (var y = 90; y < 160 && y < cells.Height; y++)
+        for (var x = 10; x < 90 && x < cells.Width; x++)
+        {
+            var slot = cells.Cells[x, y].Material0;
+            if (slot == 0xFF || !bySlot.TryGetValue(slot, out var mat))
+                continue;
+            if (!mat.Name.Contains("PATH", StringComparison.Ordinal) &&
+                !mat.Name.Contains("PAVING", StringComparison.Ordinal))
+                continue;
+            pathCells++;
+            if (covered[x, y])
+                pathCovered++;
+        }
+
+        Assert.True(pathCells > 100, $"pathCells={pathCells}");
+        Assert.True(pathCovered * 2 > pathCells, $"pathCovered={pathCovered}/{pathCells}");
     }
 
     [Fact]
