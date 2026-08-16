@@ -93,6 +93,18 @@ internal static class X86
             case 0x0B: return ModRm(pe, d, ref ip, "or", rmFirst: false, out text);
             case 0x0C: return AlImm8(d, ref ip, "or al", out text);
             case 0x0D: return AlImm32(pe, d, ref ip, "or eax", out text, opsize16);
+            case 0x10: return ModRm(pe, d, ref ip, "adc", rmFirst: true, out text, r8: true);
+            case 0x11: return ModRm(pe, d, ref ip, "adc", rmFirst: true, out text);
+            case 0x12: return ModRm(pe, d, ref ip, "adc", rmFirst: false, out text, r8: true);
+            case 0x13: return ModRm(pe, d, ref ip, "adc", rmFirst: false, out text);
+            case 0x14: return AlImm8(d, ref ip, "adc al", out text);
+            case 0x15: return AlImm32(pe, d, ref ip, "adc eax", out text, opsize16);
+            case 0x18: return ModRm(pe, d, ref ip, "sbb", rmFirst: true, out text, r8: true);
+            case 0x19: return ModRm(pe, d, ref ip, "sbb", rmFirst: true, out text);
+            case 0x1A: return ModRm(pe, d, ref ip, "sbb", rmFirst: false, out text, r8: true);
+            case 0x1B: return ModRm(pe, d, ref ip, "sbb", rmFirst: false, out text);
+            case 0x1C: return AlImm8(d, ref ip, "sbb al", out text);
+            case 0x1D: return AlImm32(pe, d, ref ip, "sbb eax", out text, opsize16);
             case 0x20: return ModRm(pe, d, ref ip, "and", rmFirst: true, out text, r8: true);
             case 0x21: return ModRm(pe, d, ref ip, "and", rmFirst: true, out text);
             case 0x22: return ModRm(pe, d, ref ip, "and", rmFirst: false, out text, r8: true);

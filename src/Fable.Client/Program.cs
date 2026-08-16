@@ -171,8 +171,10 @@ void EnterRegion(string next, RegionExit? arrivedFromExit)
     spawn ??= RegionTravel.FindPlayerStart(things.Things);
     if (spawn is not null)
     {
-        startPosition = RegionTravel.PositionOf(spawn);
-        startLook = startPosition + RegionTravel.ForwardOf(spawn) * 8f;
+        var feet = RegionTravel.PositionOf(spawn);
+        var eye = world.PlayerHeight * 0.5f;
+        startPosition = feet + Vector3.UnitZ * eye;
+        startLook = feet + RegionTravel.ForwardOf(spawn) * 8f + Vector3.UnitZ * eye;
     }
     else
     {

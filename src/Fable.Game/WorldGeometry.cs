@@ -19,6 +19,7 @@ public sealed class WorldGeometry
     public required int MeshInstances { get; init; }
     public required int MissingMeshes { get; init; }
     public int PlayerMeshId { get; init; }
+    public float PlayerHeight { get; init; }
 
     public static WorldGeometry Build(
         GameInstall install,
@@ -82,6 +83,7 @@ public sealed class WorldGeometry
         }
 
         var playerMeshId = 0;
+        var playerHeight = 0f;
         if (IsPrimaryStart(region) &&
             RegionTravel.FindPlayerStart(primaryThings) is { } start)
         {
@@ -92,6 +94,8 @@ public sealed class WorldGeometry
             {
                 var hero = CloneAs(start, RegionTravel.KidCreature);
                 AddInstances([hero], 0, 0, defs, enums, big, byId, cache, triangles, ref instances, ref missing);
+                if (cache.TryGetValue((uint)playerMeshId, out var kid) && kid is not null)
+                    playerHeight = (kid.BoundsMax.Z - kid.BoundsMin.Z) * MeshToWorld;
             }
         }
 
@@ -105,6 +109,7 @@ public sealed class WorldGeometry
             MeshInstances = instances,
             MissingMeshes = missing,
             PlayerMeshId = playerMeshId,
+            PlayerHeight = playerHeight,
         };
     }
 

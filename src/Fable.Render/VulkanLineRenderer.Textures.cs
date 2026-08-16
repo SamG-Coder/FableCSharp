@@ -63,8 +63,13 @@ public sealed unsafe partial class VulkanLineRenderer
                 PushMeshConstants(commandBuffer);
             }
 
-            BindTexture(commandBuffer, draw.TextureId, 0);
-            BindTexture(commandBuffer, draw.TextureId1 == 0 ? draw.TextureId : draw.TextureId1, 1);
+            // PSHADER_LANDSCAPE_FOREGROUND: mul_x2 t1 * v0 (RGB), t0.a * v0.a.
+            // Stage 1 is the albedo. Primary TextureId must sit on t1 for FG.
+            var fg = Math.Abs(draw.ShaderMode - 1f) < 0.01f;
+            var albedo = draw.TextureId;
+            var mask = draw.TextureId1 == 0 ? draw.TextureId : draw.TextureId1;
+            BindTexture(commandBuffer, fg ? mask : albedo, 0);
+            BindTexture(commandBuffer, fg ? albedo : mask, 1);
             _vk.CmdDraw(commandBuffer, draw.VertexCount, 1, draw.FirstVertex, 0);
         }
     }

@@ -194,7 +194,8 @@ public sealed class LevTileMesh
             var c = PointOf(verts[ic], points[ic]);
             if ((i & 1) != 0)
                 (b, c) = (c, b);
-            var tex = LayersAt(a.P, cells, bySlot, textures);
+            var mid = (a.P + b.P + c.P) / 3f;
+            var tex = LayersAt(mid, cells, bySlot, textures);
             if (tex.A < 0)
                 continue;
             Add(triangles, a, b, c, tex.A, tex.B);

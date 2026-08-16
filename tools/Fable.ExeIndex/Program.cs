@@ -461,21 +461,38 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
 
     var links = new List<IndexLink>
     {
-        WriteSitePart(pe, store, family, "StartOakVale string", 0x00DBDE4A, 80),
-        WriteSitePart(pe, store, family, "StartOakVale second site", 0x00DBDE9B, 40),
-        WriteSitePart(pe, store, family, "CREATURE_HERO_CHILD", 0x00DBDF09, 80),
-        WriteSitePart(pe, store, family, "FollowDistance persist", 0x007AD4D2, 60),
-        WriteSitePart(pe, store, family, "CHeroMorphDef Teenager", 0x0071D102, 40),
-        WriteFnPart(pe, store, family, "OpenStaticMaps", 0x00B42750, 80),
-        WriteFnPart(pe, store, family, "LoadWaterData", 0x00B41FA0, 80),
+        WriteSitePart(pe, store, family, "UI TEXT NEW GAME", 0x00595B42, 120),
+        WriteFnPart(pe, store, family, "UI FRONTEND MAIN MENU", 0x0059899A, 80),
+        WriteFnPart(pe, store, family, "START NEW QUEST", 0x004B5080, 80),
+        WriteSitePart(pe, store, family, "AddTestQuest", 0x004A0E93, 80),
+        WriteSitePart(pe, store, family, "Q NewOakValeIntro", 0x00CD6E28, 80),
+        WriteSitePart(pe, store, family, "Q NewOakValeIntro script", 0x00CE791E, 80),
+        WriteFnPart(pe, store, family, "StartOakVale new game", 0x00DBDE40, 200),
+        WriteSitePart(pe, store, family, "Q NewOakValeIntro PreAttack", 0x00DBE0C9, 80),
         WriteFnPart(pe, store, family, "WLD NewRegion reader", 0x0050881D, 80),
-        WriteFnPart(pe, store, family, "Landscape draw vtbl+16", 0x00B6B0B0, 80),
-        WriteFnPart(pe, store, family, "Water draw vtbl+16", 0x00B783F0, 80),
+        WriteFnPart(pe, store, family, "WLD ContainsMap", 0x004FD7F9, 40),
+        WriteFnPart(pe, store, family, "WLD SeesMap", 0x004FD996, 40),
+        WriteFnPart(pe, store, family, "SetStaticMapFileForUse", 0x00B428E0, 80),
+        WriteFnPart(pe, store, family, "OpenStaticMaps", 0x00B42750, 120),
+        WriteFnPart(pe, store, family, "OpenOneMap", 0x00B42530, 120),
+        WriteFnPart(pe, store, family, "LoadWaterData", 0x00B41FA0, 80),
+        WriteFnPart(pe, store, family, "Sea name onto water renderer", 0x00B6D4D0, 40),
+        WriteFnPart(pe, store, family, "Activate Topology", 0x004FCBB0, 20),
+        WriteFnPart(pe, store, family, "Build current patch", 0x00BDD0E0, 160),
+        WriteFnPart(pe, store, family, "Tile stream", 0x00BF9290, 160),
+        WriteVtblPart(pe, store, family, "CEngineLandscapeRenderer", 0x012A2B54, 16),
+        WriteFnPart(pe, store, family, "Landscape draw vtbl+16", 0x00B6B0B0, 160),
+        WriteFnPart(pe, store, family, "Per-cell submit", 0x00BF4570, 200),
+        WriteFnPart(pe, store, family, "Per-cell SetTexture stage0", 0x00BF50E0, 80),
+        WriteFnPart(pe, store, family, "Unbind stages 0/1/2", 0x00B67510, 40),
+        WriteFnPart(pe, store, family, "Water draw vtbl+16", 0x00B783F0, 160),
+        WriteFnPart(pe, store, family, "Sky draw vtbl+16", 0x00B662F0, 80),
         WriteFnPart(pe, store, family, "Static mesh VS bind", 0x00B8B660, 40),
+        WriteFnPart(pe, store, family, "VS bind LANDSCAPE FOREGROUND", 0x00B69330, 80),
     };
     store.WriteIndex(
         family, DumpStore.NewGameTraceVersion, "newgame-trace",
-        "First-seen new-game path: StartOakVale, kid creature, camera persist, load, draw.",
+        "Click New through first-seen StartOakVale: UI, quest, kid, NewRegion, static maps, tiles, draw.",
         links);
     Console.WriteLine($"trace  {family}/  parts={links.Count}  v{DumpStore.NewGameTraceVersion}");
 }
