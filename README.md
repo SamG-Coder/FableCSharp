@@ -33,7 +33,7 @@ dotnet run --project src\Fable.Client -- PicnicArea
 | F1 | Dump the first 40 things to the console |
 | Esc | Quit |
 
-Each TNG thing is an RGB axis gizmo. Objects resolve through `game.bin` `Graphic.bank_index` (with a `meshdata.h` name fallback) and are drawn as lit triangles, colored by sampling the mesh `DiffuseMapID` out of `textures.big` (UVs from the C3D vertex). Landscape comes from the runtime `FinalAlbion_RT.stb` copy of the `.lev` (16-unit height lattice; Lookout is 8×8 quads) using `LANDSCAPE_GRASS_PLAIN`. The smaller WAD `.lev` is a compiled material/theme table, not the mesh.
+Each TNG thing is an RGB axis gizmo. Objects resolve through `game.bin` `Graphic.bank_index` (with a `meshdata.h` name fallback) and are drawn as lit triangles, colored by sampling the mesh `DiffuseMapID` out of `textures.big` (UVs from the C3D vertex). Landscape is a 1-unit mesh: Z is interpolated from the STB 16-unit lattice, and each cell uses the WAD `.lev` `GROUND_*` material mapped onto a `LANDSCAPE_*` texture. The remaining ~3 MB STB section is unread.
 
 What has decoded and what has not is in [docs/PARITY.md](docs/PARITY.md). New facts go there as tests.
 
@@ -76,7 +76,7 @@ Texture payloads are Fable-framed LZO. Format code 31 is DXT1, 32 is DXT5. `LAND
 
 ## Next
 
-1. Finer landscape (the STB blob is 3MB; we only sample the 16-unit lattice)
+1. Decode STB section 2 for true 1-unit heights
 2. GPU sample textures (UVs already land as vertex color)
 3. Creature clothing / appearance layers
 4. Walkable hero instead of a fly camera

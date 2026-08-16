@@ -49,6 +49,12 @@ public sealed class LevelLibrary : IDisposable
 
     public IReadOnlyList<BankEntry> WadEntries => _wad?.Entries ?? [];
 
+    public LevFile? LoadCompiledLev(string region)
+    {
+        var entry = _wad?.Find(region + ".lev");
+        return entry is null ? null : LevFile.Parse(_wad!.Read(entry));
+    }
+
     public LevHeightField? LoadHeightField(string region)
     {
         if (_stb is null)

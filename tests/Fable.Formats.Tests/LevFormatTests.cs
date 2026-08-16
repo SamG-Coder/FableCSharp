@@ -1,5 +1,6 @@
 using Fable.Core;
 using Fable.Formats.Banks;
+using Fable.Formats.Defs;
 using Fable.Formats.Levels;
 using Fable.Game;
 
@@ -164,6 +165,131 @@ public sealed class LevFormatTests
         Assert.Equal(8, field.CellsX);
         Assert.Equal(6, field.CellsY);
         Assert.True(field.ToLocalTriangles().Count >= 48);
+    }
+
+    [Fact]
+    public void Wad_payload_is_21_byte_cells_with_constant_60_not_height()
+    {
+        foreach (var (region, width, height) in new[]
+                 {
+                     ("LookoutPoint", 128, 128),
+                     ("PicnicArea", 128, 96),
+                     ("OakValeEast_v2", 96, 160),
+                 })
+        {
+            var lev = LevFile.Parse(Load(region).Bytes);
+            var grid = LevCellGrid.TryParse(lev);
+            Assert.NotNull(grid);
+            Assert.Equal(width, grid.Width);
+            Assert.Equal(height, grid.Height);
+            Assert.Equal(width * height, grid.RecordCount);
+            Assert.All(Enumerable.Range(0, 64), i =>
+            {
+                var cell = grid.Cells[i % width, i / width];
+                Assert.InRange(cell.Constant60, 50, 70);
+            });
+            Assert.Contains(
+                Enumerable.Range(0, width * height).Select(i => grid.Cells[i % width, i / width].Material0),
+                slot => slot is > 0 and < 255);
+        }
+    }
+
+    [Fact]
+    public void Cell_material_slots_index_the_ground_table()
+    {
+        var (_, bytes) = Load("LookoutPoint");
+        var lev = LevFile.Parse(bytes);
+        var grid = LevCellGrid.TryParse(lev);
+        Assert.NotNull(grid);
+        var bySlot = lev.Materials.ToDictionary(m => m.Slot);
+        var used = 0;
+        var named = 0;
+        for (var y = 0; y < grid.Height; y++)
+        for (var x = 0; x < grid.Width; x++)
+        {
+            var slot = grid.Cells[x, y].Material0;
+            if (slot == 0xFF)
+                continue;
+            used++;
+            if (bySlot.TryGetValue(slot, out var material) &&
+                material.Name.StartsWith("GROUND_", StringComparison.Ordinal))
+                named++;
+        }
+
+        Assert.True(used > 1000, $"used={used}");
+        Assert.True(named > used / 2, $"named={named} used={used}");
+        var sand = lev.Materials.First(m => m.Name == "GROUND_PATH_SAND");
+        Assert.Equal(2, sand.Slot);
+        Assert.Equal(1911u, sand.Id);
+        Assert.Equal(2, grid.Cells[0, 0].Material0);
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var enums = HeaderEnums.Load(Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h"));
+        Assert.Equal(4133, LandscapeTextures.Resolve("GROUND_PATH_SAND", enums));
+        Assert.Equal(414, LandscapeTextures.Resolve("GROUND_GRASS", enums));
+        Assert.Equal(4118, LandscapeTextures.Resolve("PATH_COBBLES_IRREGULAR_ET", enums));
+        Assert.NotEqual(1911, LandscapeTextures.Resolve("GROUND_PATH_SAND", enums));
+    }
+
+    [Fact]
+    public void Fine_lookout_mesh_is_128_by_128_interpolated_from_coarse()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        var height = levels.LoadHeightField("LookoutPoint");
+        var compiled = levels.LoadCompiledLev("LookoutPoint");
+        Assert.NotNull(height);
+        Assert.NotNull(compiled);
+        var cells = LevCellGrid.TryParse(compiled);
+        Assert.NotNull(cells);
+        var tris = height.ToFineTriangles(cells, compiled.Materials);
+        Assert.Equal(128 * 128 * 2, tris.Count);
+        Assert.InRange(tris[0].A.Z, 20f, 80f);
+        Assert.Equal(0f, tris[0].A.X);
+        Assert.True(tris.Max(t => t.A.X) <= 128.1f);
+        Assert.True(tris.Count(t => t.TextureId is 4133 or 414 or 428 or 4118) > 1000);
+    }
+
+    [Fact]
+    public void Stb_section_two_starts_at_u32_2048()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var stb = StbArchive.Open(install.RuntimeStbPath);
+        foreach (var (region, expected) in new[] { ("LookoutPoint", 6144u), ("PicnicArea", 4096u) })
+        {
+            var entry = stb.FindLev(region);
+            Assert.NotNull(entry);
+            var bytes = stb.Read(entry);
+            Assert.Equal(1u, BitConverter.ToUInt32(bytes, 0));
+            Assert.Equal(expected, BitConverter.ToUInt32(bytes, 2048));
+            Assert.NotEqual(0, bytes[expected]);
+            Assert.Equal(0, bytes[expected - 1]);
+        }
+    }
+
+    [Fact]
+    public void Stb_section_two_is_not_a_regular_xyz_stream()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var stb = StbArchive.Open(install.RuntimeStbPath);
+        var bytes = stb.Read(stb.FindLev("LookoutPoint")!);
+        var start = (int)BitConverter.ToUInt32(bytes, 2048);
+        var count = BitConverter.ToInt32(bytes, start + 4);
+        var zOk = 0;
+        for (var i = 0; i < Math.Min(count, 4000); i++)
+        {
+            var o = start + 8 + i * 12;
+            if (o + 12 > bytes.Length)
+                break;
+            var z = BitConverter.ToSingle(bytes, o + 8);
+            if (z is >= 15f and <= 80f)
+                zOk++;
+        }
+
+        Assert.True(zOk < 400, $"unexpected dense xyz zOk={zOk}");
     }
 
     [Fact]

@@ -2,6 +2,7 @@ using System.Numerics;
 using Fable.Core;
 using Fable.Formats.Banks;
 using Fable.Formats.Defs;
+using Fable.Formats.Levels;
 using Fable.Formats.Meshes;
 using Fable.Formats.Tng;
 
@@ -40,7 +41,15 @@ public sealed class WorldGeometry
         using (var levels = new LevelLibrary(install))
         {
             var height = levels.LoadHeightField(region);
-            if (height is not null)
+            var compiled = levels.LoadCompiledLev(region);
+            var cells = compiled is null ? null : LevCellGrid.TryParse(compiled);
+            var textureHeader = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h");
+            var landscapeEnums = File.Exists(textureHeader) ? HeaderEnums.Load(textureHeader) : null;
+            if (height is not null && cells is not null && compiled is not null)
+            {
+                triangles.AddRange(height.ToFineTriangles(cells, compiled.Materials, landscapeEnums));
+            }
+            else if (height is not null)
             {
                 foreach (var tri in height.ToLocalTriangles())
                     triangles.Add(tri with { TextureId = TextureLibrary.LandscapeGrassPlainId });

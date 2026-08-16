@@ -1,4 +1,5 @@
 using System.Numerics;
+using Fable.Formats.Defs;
 using Fable.Formats.Meshes;
 
 namespace Fable.Formats.Levels;
@@ -54,6 +55,28 @@ public sealed class LevHeightField
         };
     }
 
+    public IReadOnlyList<MeshTriangle> ToFineTriangles(
+        LevCellGrid cells,
+        IReadOnlyList<LevMaterial> materials,
+        HeaderEnums? textures = null)
+    {
+        var bySlot = materials.ToDictionary(item => item.Slot);
+        var triangles = new List<MeshTriangle>(cells.Width * cells.Height * 2);
+        for (var y = 0; y < cells.Height; y++)
+        for (var x = 0; x < cells.Width; x++)
+        {
+            var a = Corner(x, y);
+            var b = Corner(x + 1, y);
+            var c = Corner(x, y + 1);
+            var d = Corner(x + 1, y + 1);
+            var tex = ResolveTexture(cells.Cells[x, y], bySlot, textures);
+            Add(triangles, a, b, d, tex);
+            Add(triangles, a, d, c, tex);
+        }
+
+        return triangles;
+    }
+
     public IReadOnlyList<MeshTriangle> ToLocalTriangles()
     {
         var triangles = new List<MeshTriangle>(CellsX * CellsY * 2);
@@ -71,7 +94,42 @@ public sealed class LevHeightField
         return triangles;
     }
 
-    private static void Add(List<MeshTriangle> triangles, Vector3 a, Vector3 b, Vector3 c)
+    private Vector3 Corner(int x, int y)
+    {
+        var fx = x / SampleSpacing;
+        var fy = y / SampleSpacing;
+        return new Vector3(x, y, SampleBilinear(fx, fy));
+    }
+
+    private float SampleBilinear(float fx, float fy)
+    {
+        var x0 = Math.Clamp((int)MathF.Floor(fx), 0, CellsX);
+        var y0 = Math.Clamp((int)MathF.Floor(fy), 0, CellsY);
+        var x1 = Math.Min(x0 + 1, CellsX);
+        var y1 = Math.Min(y0 + 1, CellsY);
+        var tx = Math.Clamp(fx - x0, 0f, 1f);
+        var ty = Math.Clamp(fy - y0, 0f, 1f);
+        var a = Heights[x0, y0];
+        var b = Heights[x1, y0];
+        var c = Heights[x0, y1];
+        var d = Heights[x1, y1];
+        return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
+    }
+
+    private static int ResolveTexture(LevCell cell, Dictionary<int, LevMaterial> bySlot, HeaderEnums? textures)
+    {
+        foreach (var slot in new[] { cell.Material0, cell.Material1, cell.Material2 })
+        {
+            if (slot == 0xFF || !bySlot.TryGetValue(slot, out var material))
+                continue;
+            if (textures is not null)
+                return LandscapeTextures.Resolve(material.Name, textures);
+        }
+
+        return LandscapeTextures.DefaultId;
+    }
+
+    private static void Add(List<MeshTriangle> triangles, Vector3 a, Vector3 b, Vector3 c, int textureId = 0)
     {
         var n = Vector3.Cross(b - a, c - a);
         if (n.LengthSquared() < 1e-8f)
@@ -80,7 +138,8 @@ public sealed class LevHeightField
             a, b, c, Vector3.Normalize(n),
             new Vector2(a.X / SampleSpacing, a.Y / SampleSpacing),
             new Vector2(b.X / SampleSpacing, b.Y / SampleSpacing),
-            new Vector2(c.X / SampleSpacing, c.Y / SampleSpacing)));
+            new Vector2(c.X / SampleSpacing, c.Y / SampleSpacing),
+            textureId));
     }
 
     private static bool TryReadSample(

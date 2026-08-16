@@ -1,6 +1,7 @@
 using Fable.Core;
 using Fable.Formats.Banks;
 using Fable.Formats.Defs;
+using Fable.Formats.Levels;
 using Fable.Formats.Meshes;
 using Fable.Formats.Qst;
 using Fable.Formats.Textures;
@@ -399,6 +400,33 @@ static void DumpLev(GameInstall install, string region)
     Console.WriteLine(asMesh is null
         ? "Not a C3D mesh."
         : $"Parsed as mesh '{asMesh.Name}' tris={asMesh.Triangles.Count} bounds {asMesh.BoundsMin} .. {asMesh.BoundsMax}");
+
+    var lev = LevFile.Parse(bytes);
+    Console.WriteLine($"grid {lev.GridWidth}x{lev.GridHeight} materials={lev.Materials.Count} payload={lev.PayloadOffset}");
+    var cells = LevCellGrid.TryParse(lev);
+    if (cells is null)
+    {
+        Console.WriteLine("No 21-byte cell table.");
+        return;
+    }
+
+    var hist = new Dictionary<byte, int>();
+    for (var y = 0; y < cells.Height; y++)
+    for (var x = 0; x < cells.Width; x++)
+    {
+        var slot = cells.Cells[x, y].Material0;
+        hist[slot] = hist.GetValueOrDefault(slot) + 1;
+    }
+    Console.WriteLine($"cells {cells.Width}x{cells.Height} const60={cells.Cells[0, 0].Constant60}");
+    foreach (var kv in hist.OrderByDescending(item => item.Value).Take(12))
+    {
+        var mat = lev.Materials.FirstOrDefault(m => m.Slot == kv.Key);
+        var texHeader = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h");
+        var mapped = File.Exists(texHeader)
+            ? LandscapeTextures.Resolve(mat.Name ?? "", HeaderEnums.Load(texHeader))
+            : 0;
+        Console.WriteLine($"  slot {kv.Key,3} x{kv.Value,-6} {mat.Name} slotId={mat.Id} tex={mapped}");
+    }
 }
 
 static void DumpTex(GameInstall install, string? query)
