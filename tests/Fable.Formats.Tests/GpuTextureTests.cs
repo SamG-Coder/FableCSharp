@@ -35,6 +35,8 @@ public sealed class GpuTextureTests
         Assert.Contains("albedo1", LineShaders.MeshFragment, StringComparison.Ordinal);
         Assert.Contains("inColor", LineShaders.MeshVertex, StringComparison.Ordinal);
         Assert.Contains("fogColor", LineShaders.MeshFragment, StringComparison.Ordinal);
+        Assert.Contains("* 2.0", LineShaders.MeshFragment, StringComparison.Ordinal);
+        Assert.DoesNotContain("mix(t0.rgb, t1.rgb, t1.a)", LineShaders.MeshFragment, StringComparison.Ordinal);
     }
 
     [Fact]

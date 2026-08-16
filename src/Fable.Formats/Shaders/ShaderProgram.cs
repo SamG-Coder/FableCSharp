@@ -9,6 +9,7 @@ public sealed class ShaderProgram
     public const uint VertexVersionTag = 0xFFFE;
     public const uint PixelVersionTag = 0xFFFF;
     public const uint TexOpcode = 0x42;
+    public const uint MulOpcode = 0x05;
 
     public required string Name { get; init; }
     public required string Bank { get; init; }
@@ -36,6 +37,27 @@ public sealed class ShaderProgram
             }
 
             return n;
+        }
+    }
+
+    /// <summary>
+    /// ps_1.1 dest shift 1 is <c>_x2</c>: <c>sat(2 * src0 * src1)</c>.
+    /// Landscape FG and the object fog shaders use this, not a lerp.
+    /// </summary>
+    public bool HasMulX2
+    {
+        get
+        {
+            for (var i = 0; i + 8 <= Tokens.Length; i += 4)
+            {
+                if (BitConverter.ToUInt32(Tokens, i) != MulOpcode)
+                    continue;
+                var dest = BitConverter.ToUInt32(Tokens, i + 4);
+                if (((dest >> 24) & 0xF) == 1)
+                    return true;
+            }
+
+            return false;
         }
     }
 

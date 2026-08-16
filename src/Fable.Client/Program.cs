@@ -45,6 +45,7 @@ IMouse? mouse = null;
 Vector2 lastMouse = Vector2.Zero;
 var looking = false;
 var f1WasDown = false;
+var gWasDown = false;
 
 window.Load += () =>
 {
@@ -64,7 +65,7 @@ window.Load += () =>
     Console.WriteLine($"{install.Edition}: {install.Root}");
     Console.WriteLine($"{region}: {scene.ThingCount} things, {scene.Lines.Count} line verts");
     Console.WriteLine($"camera {camera.Position} -> {lookTarget}  meshVerts={mesh.Vertices.Length} textures={mesh.Draws.Length}");
-    Console.WriteLine("WASD move  Q/E up-down  Shift sprint  RMB look  Home reset  F1 dump  Esc quit");
+    Console.WriteLine("WASD move  Q/E up-down  Shift sprint  RMB look  Home reset  G gizmos  F1 dump  Esc quit");
 };
 
 window.Update += dt =>
@@ -92,6 +93,11 @@ window.Update += dt =>
     if (f1Down && !f1WasDown)
         DumpThings();
     f1WasDown = f1Down;
+
+    var gDown = keyboard.IsKeyPressed(Key.G);
+    if (gDown && !gWasDown && renderer is not null)
+        renderer.ShowGizmos = !renderer.ShowGizmos;
+    gWasDown = gDown;
 
     var move = Vector3.Zero;
     if (keyboard.IsKeyPressed(Key.W)) move.Y += 1;

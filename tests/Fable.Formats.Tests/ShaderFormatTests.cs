@@ -97,6 +97,8 @@ public sealed class ShaderFormatTests
         Assert.Equal(2, proc.TexCount);
         Assert.Equal(1, obj.TexCount);
         Assert.Equal(0, unlit.TexCount);
+        Assert.True(fg.HasMulX2, "landscape FG is mul_x2_sat t1 * v0, not a lerp");
+        Assert.False(obj.HasMulX2, "PSHADER_TEXTURE_DIFFUSE_FOG is mul, not _x2");
 
         var landscapeVs = big.SubBanks.First(b => b.Name == "SHADERS_LANDSCAPE_FOREGROUND");
         Assert.Equal(33, big.ReadEntries(landscapeVs).Count);

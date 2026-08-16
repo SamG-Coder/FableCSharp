@@ -149,6 +149,8 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         _vk.UnmapMemory(_device, _meshMemory);
     }
 
+    public bool ShowGizmos { get; set; }
+
     public void Draw(Matrix4x4 viewProjection, Vector3 cameraPosition = default)
     {
         if (_extent.Width == 0 || _extent.Height == 0)
@@ -854,7 +856,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             DrawMeshBatches(commandBuffer);
         }
 
-        if (_vertexCount > 0 && _vertexBuffer.Handle != 0)
+        if (ShowGizmos && _vertexCount > 0 && _vertexBuffer.Handle != 0)
         {
             _vk.CmdBindPipeline(commandBuffer, PipelineBindPoint.Graphics, _linePipeline);
             _vk.CmdPushConstants(commandBuffer, _pipelineLayout, ShaderStageFlags.VertexBit, 0, 64, &viewProj);
