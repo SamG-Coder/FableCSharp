@@ -36,12 +36,13 @@ public sealed class BwdFile
             var minY = BitConverter.ToInt32(data, cursor); cursor += 4;
             var maxY = BitConverter.ToInt32(data, cursor); cursor += 4;
             var extra = data.AsSpan(cursor, 9).ToArray();
+            var mapUid = extra.Length >= 5 ? BitConverter.ToInt32(extra, 1) : 0;
             cursor += 9;
 
             if (name.Length == 0 || minX is < 0 or > 20_000 || maxX <= minX)
                 break;
 
-            regions.Add(new BwdRegion(name, levPath, minX, maxX, minY, maxY, flags, extra));
+            regions.Add(new BwdRegion(name, levPath, minX, maxX, minY, maxY, mapUid, flags, extra));
         }
 
         return new BwdFile { Regions = regions };
@@ -85,5 +86,6 @@ public readonly record struct BwdRegion(
     int MaxX,
     int MinY,
     int MaxY,
+    int MapUid,
     byte[] Flags,
     byte[] Extra);
