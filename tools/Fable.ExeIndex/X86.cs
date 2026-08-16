@@ -108,7 +108,9 @@ internal static class X86
         {
             if (IsFramePrologue(data, i))
                 return i;
-            if (i < from && data[i] == 0xCC)
+            // Two INT3s — a lone 0xCC is often a displacement (PALSKIN
+            // `mov edx, [eax+0x3CC]` at 00BD41E4 is not a function start).
+            if (i < from && data[i] == 0xCC && data[i - 1] == 0xCC)
             {
                 var start = i + 1;
                 while (start < data.Length && data[start] == 0xCC)
