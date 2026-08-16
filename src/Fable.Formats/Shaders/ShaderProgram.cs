@@ -221,6 +221,46 @@ public sealed class ShaderProgram
         return false;
     }
 
+    /// <summary>
+    /// vs_1_1 <c>def cN</c> tokens. First-seen landscape FG has none
+    /// for c40/c41 — those registers are not baked into the program.
+    /// </summary>
+    public bool HasConstDef(int register)
+    {
+        var i = 4;
+        while (i + 4 <= Tokens.Length)
+        {
+            var head = BitConverter.ToUInt32(Tokens, i);
+            var op = head & 0xFFFF;
+            if (op == EndOpcode)
+                break;
+            if (op == CommentOpcode)
+            {
+                i += 4 + (int)((head >> 16) & 0x7FFF) * 4;
+                continue;
+            }
+            if (op == DclOpcode)
+            {
+                i += 12;
+                continue;
+            }
+            if (op == DefOpcode)
+            {
+                if (i + 24 > Tokens.Length)
+                    break;
+                var dest = BitConverter.ToUInt32(Tokens, i + 4);
+                if ((int)(dest & 0x7FF) == register)
+                    return true;
+                i += 24;
+                continue;
+            }
+
+            i += 8 + SrcCount(op) * 4;
+        }
+
+        return false;
+    }
+
     public IReadOnlyList<DecodedInsn> DecodeInstructions()
     {
         var list = new List<DecodedInsn>();

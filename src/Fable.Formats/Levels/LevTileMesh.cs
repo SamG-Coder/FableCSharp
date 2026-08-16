@@ -250,14 +250,11 @@ public sealed class LevTileMesh
         }
 
         var face = Vector3.Normalize(n);
-        // Albedo is VS oT1 = dp4(pos, c40/c41). c40/c41 are UNREAD, so
-        // UvScale 0.125 is a stand-in, not the proven first-seen oT0.
-        // oT0 is ExtraRgb.YZ (t0 alpha). Do not emit that as albedo.
         triangles.Add(new MeshTriangle(
             a.P, b.P, c.P, face,
-            new Vector2(a.P.X * LandscapeTextures.UvScale, a.P.Y * LandscapeTextures.UvScale),
-            new Vector2(b.P.X * LandscapeTextures.UvScale, b.P.Y * LandscapeTextures.UvScale),
-            new Vector2(c.P.X * LandscapeTextures.UvScale, c.P.Y * LandscapeTextures.UvScale),
+            LandscapeTextures.ProjectOt1(a.P),
+            LandscapeTextures.ProjectOt1(b.P),
+            LandscapeTextures.ProjectOt1(c.P),
             textureId,
             Vector3.One, Vector3.One, Vector3.One,
             textureId1,
@@ -422,7 +419,7 @@ public readonly record struct LevTileExtra(
 /// GPU expand <c>00BFE050</c> copies them into a 24-byte VB: u16 X/Y,
 /// f32 Z, float3 normal from <c>00BFDEC0</c>, then extra as D3DCOLOR
 /// at +20 (BGR). VS <c>oT0.xy = v3.yz</c> is ExtraRgb.YZ (t0);
-/// albedo is oT1 from c40/c41. Byte 0 of the triple is 0xFF (v3.x).
+/// albedo is oT1 from first-seen c40=c41=0. Byte 0 of the triple is 0xFF (v3.x).
 /// </summary>
 public readonly record struct LevTileVertex(
     ushort WorldX,

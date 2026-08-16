@@ -201,7 +201,15 @@ public sealed class ShaderFormatTests
         Assert.True(LandscapeTextures.FirstSeenOt0FromV3);
         Assert.False(LandscapeTextures.FirstSeenOt0IsAlbedo);
         Assert.True(LandscapeTextures.FirstSeenOt1Projected);
-        Assert.True(LandscapeTextures.FirstSeenOt1ConstantsUnread);
+        Assert.False(LandscapeTextures.FirstSeenOt1HasExplicitWriter);
+        Assert.True(LandscapeTextures.FirstSeenOt1UsesDeviceDefault);
+        Assert.Equal(Vector4.Zero, LandscapeTextures.Ot1C40);
+        Assert.Equal(Vector4.Zero, LandscapeTextures.Ot1C41);
+        Assert.False(land.HasConstDef(LandscapeTextures.Ot1RegisterX));
+        Assert.False(land.HasConstDef(LandscapeTextures.Ot1RegisterY));
+        Assert.Equal(2, LandscapeTextures.PerCellFirstSlot);
+        Assert.Equal(3, LandscapeTextures.PerCellSecondSlot);
+        Assert.Equal(0, LandscapeTextures.FirstSeenInnerRegisterBase);
         Assert.Equal(24, LandscapeTextures.GpuVertexStrideBytes);
         Assert.Equal(6, ShaderProgram.RegTypeTexCrdOut);
         Assert.Equal(1, ShaderProgram.SwizzleY);

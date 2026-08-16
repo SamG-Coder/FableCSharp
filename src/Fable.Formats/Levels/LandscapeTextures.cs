@@ -205,16 +205,46 @@ public static class LandscapeTextures
     /// FG VS albedo: <c>dp4 r5.x, pos, c40</c>;
     /// <c>dp4 r5.y, pos, c41</c>; <c>mov oT1, r5</c>.
     /// PS RGB is <c>t1 * v0</c>, so the visible UV is oT1.
-    /// c40/c41 writers are still UNREAD — <see cref="UvScale"/>
-    /// remains the emit stand-in, not a proven first-seen c40.
+    /// Per-cell <c>00BF514F</c> <c>push edi</c> with <c>edi=2</c>
+    /// then <c>00989A60</c> writes table <c>0x0139C5D8</c> to
+    /// <c>[inner+20]+2</c>; <c>push 3</c> writes
+    /// <c>0x0139C614</c> to <c>+3</c>. Inner ctor
+    /// <c>0098D4A0</c> leaves <c>[esi+20]=0</c> (record at
+    /// <c>+16</c>), so those go to <c>c2</c>/<c>c3</c>. Fog
+    /// flush restores <c>c2</c>; <c>c3</c> stays the table
+    /// (lighting <c>add r3,r3,c3</c>). No <c>def c40</c> in
+    /// the FG VS. No layout field 40. No <c>push 40</c> /
+    /// <c>mov r,40</c> SetVSConstantF on the first-seen path.
+    /// D3D9 default for an unwritten VS constant is 0, so
+    /// first-seen <c>c40=c41=(0,0,0,0)</c> and
+    /// <c>oT1=(0,0)</c>. <see cref="UvScale"/> is the <c>c3</c>
+    /// table, not oT1.
     /// </summary>
     public const int Ot1RegisterX = 40;
     public const int Ot1RegisterY = 41;
+    public const int PerCellFirstSlot = 2;
+    public const int PerCellSecondSlot = 3;
+    public const uint PerCellFirstSlotSet = 0x00BF4EB7;
+    public const uint SetVsConstantF1 = 0x00989A60;
+    public const uint InnerVsObjectCtor = 0x0098D4A0;
+    public const int InnerRegisterBaseOffset = 20;
+    public const int FirstSeenInnerRegisterBase = 0;
     public const bool FirstSeenOt1Projected = true;
-    public const bool FirstSeenOt1ConstantsUnread = true;
+    public const bool FirstSeenOt1HasExplicitWriter = false;
+    public const bool FirstSeenOt1UsesDeviceDefault = true;
+    public static readonly System.Numerics.Vector4 Ot1C40 = System.Numerics.Vector4.Zero;
+    public static readonly System.Numerics.Vector4 Ot1C41 = System.Numerics.Vector4.Zero;
 
     public static System.Numerics.Vector2 Ot0FromExtra(System.Numerics.Vector3 extraRgb) =>
         new(extraRgb.Y, extraRgb.Z);
+
+    public static System.Numerics.Vector2 ProjectOt1(System.Numerics.Vector3 pos)
+    {
+        var p = new System.Numerics.Vector4(pos, 1f);
+        return new System.Numerics.Vector2(
+            System.Numerics.Vector4.Dot(p, Ot1C40),
+            System.Numerics.Vector4.Dot(p, Ot1C41));
+    }
 
     public static bool IsUsable(string materialName) =>
         materialName.Length > 0 &&
