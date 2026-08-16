@@ -20,6 +20,12 @@ namespace Fable.Formats.Levels;
 /// only; <c>00BE9C80</c> ctor-zeros the same slots.
 /// <c>00B54310</c> uploads inverse rows to <c>c2/c3/c4</c>; first-seen
 /// fog colour <c>c18</c> is record <c>(0,0,0,1)</c>, start 1000, end 2000.
+/// First-seen <c>c5–c8</c> WVP is <c>00988A50</c>: world
+/// wrapper+496 * view +560 * proj +624 → +752, then
+/// <c>SetVSConstantF(c5, count=4)</c>. Proj is <c>009883F0</c> /
+/// camera+372: XY identity, <c>M33/M34</c> from helper
+/// near 0.1 / far 4000 / minZ 0.1 / maxZ 0.99. View XY already
+/// holds the letterbox cots from <c>00B30B50</c>.
 /// </summary>
 public static class LandscapeFrustum
 {
@@ -136,6 +142,37 @@ public static class LandscapeFrustum
     public const float FogRecordEnd = 2000f;
     public static readonly Vector4 FogRecordColor = new(0f, 0f, 0f, 1f);
     public const bool FirstSeenUploadsInverseRow0AsC2 = true;
+    /// <summary>
+    /// <c>00988A50</c> multiplies wrapper world+496 * view+560 *
+    /// proj+624 into +752, then <c>SetVSConstantF</c>
+    /// register <c>[inner+120]=5</c> count 4.
+    /// </summary>
+    public const uint WvpFlush = 0x00988A50;
+    public const uint ProjBuilder = 0x009883F0;
+    public const uint ViewCopy = 0x00988350;
+    public const uint WorldCopy = 0x009881F0;
+    public const uint WorldIdentity = 0x00988290;
+    public const uint ProjCopy = 0x00988540;
+    public const int WrapperWorldOffset = 496;
+    public const int WrapperViewOffset = 560;
+    public const int WrapperProjOffset = 624;
+    public const int WrapperWvpOffset = 752;
+    public const int CameraProjOffset = 372;
+    public const int CameraZTermM34Offset = 220;
+    public const int CameraZTermM33Offset = 224;
+    public const int LayoutWvpRegisterOffset = 120;
+    public const int LayoutWvpRegister = 5;
+    public const int LayoutWvpCount = 4;
+    /// <summary>
+    /// <c>00B314E0</c> stack <c>0x3DCCCCCD</c> / <c>0x457A0000</c>
+    /// then helper +88/+92. <c>0x01399D44</c> is minZ 0.1;
+    /// <c>0x3F7D70A4</c> is maxZ 0.99.
+    /// </summary>
+    public const float FirstSeenNear = 0.1f;
+    public const float FirstSeenFar = 4000f;
+    public const float FirstSeenMinZ = 0.1f;
+    public const float FirstSeenMaxZ = 0.99f;
+    public const uint HelperMinZConst = 0x01399D44;
 
     public readonly record struct Plane(Vector3 Normal, float D);
 
@@ -152,6 +189,20 @@ public static class LandscapeFrustum
     /// </summary>
     public static float CotHalfAngle(float radians) =>
         1f / MathF.Tan(radians * FovHalfScale);
+
+    /// <summary>
+    /// <c>009883F0</c> / <c>00B3106C</c>:
+    /// <c>Q = ((minZ-maxZ)*near*far)/(far-near)</c> is <c>M34</c>
+    /// (+220 / wrapper+668). <c>M33 = minZ - Q/near</c> (+224 /
+    /// wrapper+664). <c>FDIVR</c> then <c>FSUBR minZ</c>.
+    /// </summary>
+    public static void ViewportZTerms(
+        float near, float far, float minZ, float maxZ,
+        out float m33, out float m34)
+    {
+        m34 = ((minZ - maxZ) * near * far) / (far - near);
+        m33 = minZ - m34 / near;
+    }
 
     /// <summary>
     /// <c>00B30B50</c> +84 clear: <c>0.75 - h/w</c> letterbox, then

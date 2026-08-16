@@ -1,4 +1,5 @@
 using System.Numerics;
+using Fable.Formats.Levels;
 
 namespace Fable.Render;
 
@@ -32,13 +33,25 @@ public sealed class FlyCamera
 
     public static Matrix4x4 ProjectionMatrix(float aspect, float fovDegrees = 65f)
     {
-        var proj = Matrix4x4.CreatePerspectiveFieldOfView(
-            float.DegreesToRadians(fovDegrees),
-            MathF.Max(aspect, 0.01f),
-            0.15f,
-            7000f);
-        proj.M22 *= -1f; // Vulkan NDC is Y-down
-        return proj;
+        aspect = MathF.Max(aspect, 0.01f);
+        LandscapeFrustum.LetterboxCots(
+            float.DegreesToRadians(fovDegrees), aspect, 1f,
+            out var cotH, out var cotV);
+        LandscapeFrustum.ViewportZTerms(
+            LandscapeFrustum.FirstSeenNear,
+            LandscapeFrustum.FirstSeenFar,
+            LandscapeFrustum.FirstSeenMinZ,
+            LandscapeFrustum.FirstSeenMaxZ,
+            out var m33, out var m34);
+        // RH CreateLookAt view.z = -fwd·delta. 009883F0 is XY
+        // identity with clip.z = M33*z + M34, clip.w = z after the
+        // cot-scaled view. Numerics Transform matches that when
+        // M33 = -A, M34 = -1, M43 = B. M22 is negated for Vulkan.
+        return new Matrix4x4(
+            cotH, 0f, 0f, 0f,
+            0f, -cotV, 0f, 0f,
+            0f, 0f, -m33, -1f,
+            0f, 0f, m34, 0f);
     }
 
     public Matrix4x4 ViewProjection(float aspect) => ViewMatrix * ProjectionMatrix(aspect, FovDegrees);

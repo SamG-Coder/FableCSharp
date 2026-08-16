@@ -102,4 +102,48 @@ public sealed class CameraProjectionTests
         Assert.Equal(444, LandscapeFrustum.WrapperFogColorOffset);
         Assert.Equal(0x20000, LandscapeFrustum.FogDirtyBit);
     }
+
+    [Fact]
+    public void First_seen_wvp_uses_helper_near_far_and_viewport_z()
+    {
+        LandscapeFrustum.ViewportZTerms(
+            LandscapeFrustum.FirstSeenNear,
+            LandscapeFrustum.FirstSeenFar,
+            LandscapeFrustum.FirstSeenMinZ,
+            LandscapeFrustum.FirstSeenMaxZ,
+            out var m33, out var m34);
+        Assert.Equal(0.1f, LandscapeFrustum.FirstSeenNear);
+        Assert.Equal(4000f, LandscapeFrustum.FirstSeenFar);
+        Assert.Equal(0.1f, LandscapeFrustum.FirstSeenMinZ);
+        Assert.Equal(0.99f, LandscapeFrustum.FirstSeenMaxZ);
+        Assert.Equal(0x00988A50u, LandscapeFrustum.WvpFlush);
+        Assert.Equal(0x009883F0u, LandscapeFrustum.ProjBuilder);
+        Assert.Equal(0x00988350u, LandscapeFrustum.ViewCopy);
+        Assert.Equal(0x009881F0u, LandscapeFrustum.WorldCopy);
+        Assert.Equal(5, LandscapeFrustum.LayoutWvpRegister);
+        Assert.Equal(4, LandscapeFrustum.LayoutWvpCount);
+        Assert.Equal(496, LandscapeFrustum.WrapperWorldOffset);
+        Assert.Equal(560, LandscapeFrustum.WrapperViewOffset);
+        Assert.Equal(624, LandscapeFrustum.WrapperProjOffset);
+        Assert.Equal(752, LandscapeFrustum.WrapperWvpOffset);
+        Assert.Equal(372, LandscapeFrustum.CameraProjOffset);
+        Assert.Equal(0x01399D44u, LandscapeFrustum.HelperMinZConst);
+        Assert.Equal(LandscapeFrustum.FirstSeenMinZ, m33 + m34 / LandscapeFrustum.FirstSeenNear, 4);
+        Assert.Equal(LandscapeFrustum.FirstSeenMaxZ, m33 + m34 / LandscapeFrustum.FirstSeenFar, 4);
+
+        LandscapeFrustum.LetterboxCots(
+            float.DegreesToRadians(72f), 4f, 3f, out var cotH, out var cotV);
+        var proj = FlyCamera.ProjectionMatrix(4f / 3f, 72f);
+        Assert.Equal(cotH, proj.M11, 4);
+        Assert.Equal(-cotV, proj.M22, 4);
+        Assert.Equal(-m33, proj.M33, 4);
+        Assert.Equal(-1f, proj.M34, 4);
+        Assert.Equal(m34, proj.M43, 4);
+
+        var invented = Matrix4x4.CreatePerspectiveFieldOfView(
+            float.DegreesToRadians(72f), 16f / 9f, 0.15f, 7000f);
+        var firstSeenWide = FlyCamera.ProjectionMatrix(16f / 9f, 72f);
+        Assert.NotEqual(invented.M11, firstSeenWide.M11);
+        Assert.NotEqual(invented.M33, firstSeenWide.M33);
+    }
 }

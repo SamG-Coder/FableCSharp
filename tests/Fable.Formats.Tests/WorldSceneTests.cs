@@ -7,6 +7,7 @@ using Fable.Formats.Scene;
 using Fable.Formats.Tng;
 using Fable.Formats.Wld;
 using Fable.Game;
+using Fable.Render;
 
 namespace Fable.Formats.Tests;
 
@@ -288,6 +289,19 @@ public sealed class WorldSceneTests
         Assert.Equal("0.2", shot.Properties["CTCCameraPointScriptedSpline.KeyCameras[0].FOV"]);
         Assert.False(shot.Properties.ContainsKey("CTCCameraPointScripted.FOV"));
         Assert.Equal(72f, LandscapeFrustum.FirstSeenFovTurns * LandscapeFrustum.FovTurnsToDegrees, 3);
+        Assert.Equal(0.1f, LandscapeFrustum.FirstSeenNear);
+        Assert.Equal(4000f, LandscapeFrustum.FirstSeenFar);
+        Assert.Equal(0.1f, LandscapeFrustum.FirstSeenMinZ);
+        Assert.Equal(0.99f, LandscapeFrustum.FirstSeenMaxZ);
+        Assert.Equal(0x00988A50u, LandscapeFrustum.WvpFlush);
+        Assert.Equal(5, LandscapeFrustum.LayoutWvpRegister);
+        var shotCam = new FlyCamera { Position = introPos, FovDegrees = introFov };
+        shotCam.LookAt(introLook);
+        var shotNdc = FlyCamera.Project(shotCam.ViewProjection(4f / 3f), introLook);
+        Assert.True(shotNdc.W > 0f, $"SHOT2 W={shotNdc.W}");
+        Assert.InRange(shotNdc.X, -1f, 1f);
+        Assert.InRange(shotNdc.Y, -1f, 1f);
+        Assert.InRange(shotNdc.Z, LandscapeFrustum.FirstSeenMinZ, LandscapeFrustum.FirstSeenMaxZ);
         LandscapeFrustum.LetterboxCots(
             LandscapeFrustum.TurnsToRadians(LandscapeFrustum.FirstSeenFovTurns), 4f, 3f,
             out var introCotH, out var introCotV);
