@@ -674,6 +674,11 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "Water draw empty je 00B7851D", 0x00B78513, 20, stopOnRet: false),
         WriteFnPart(pe, store, family, "PALSKIN upload offset 8 00BAB312", 0x00BAB300, 20, stopOnRet: false),
         WriteFnPart(pe, store, family, "PALSKIN upload offset 1 00BBFFD1", 0x00BBFFC7, 20, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PALSKIN family ctor 00BD01B8", 0x00BD01B8, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PALSKIN count-to-slot 00BD3C36", 0x00BD3C36, 30, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PALSKIN offset0 c38 00BD4591", 0x00BD456F, 30, stopOnRet: false),
+        WriteFnPart(pe, store, family, "Attach LayoutLights layout 2", 0x00B3CDB5, 30, stopOnRet: false),
+        WriteFnPart(pe, store, family, "Light flush uses inner+84", 0x0098A5B3, 20, stopOnRet: false),
         WriteNewGameMap(pe, store, family),
     };
     store.WriteIndex(

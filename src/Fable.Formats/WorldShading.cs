@@ -89,6 +89,25 @@ public static class WorldShading
     ];
 
     /// <summary>
+    /// PALSKIN family ctor <c>00BD01B8</c> stores the same 6-slot names.
+    /// Draw <c>00BD3C36</c> uses family+32 remap then +56. Shader-manager
+    /// <c>00B3CDD4</c> attaches LayoutLights as wrapper layout index 2
+    /// so <c>00989A60(0)</c> at <c>00BD4591</c> is <c>c38</c>. The four
+    /// floats come from a runtime object; first-frame values UNREAD.
+    /// </summary>
+    public const int PaletteSkinLayoutIndex = 2;
+
+    public static readonly string[] PalskinFamilySlotShaders =
+    [
+        "VSHADER_PALSKIN_DIRLIGHT_FOG",
+        "VSHADER_PALSKIN_DIRLIGHT_2POINTLIGHTS_FOG",
+        "VSHADER_PALSKIN_DIRLIGHT_2POINTLIGHTS_FOG",
+        "VSHADER_PALSKIN_DIRLIGHT_4POINTLIGHTS_FOG",
+        "VSHADER_PALSKIN_DIRLIGHT_4POINTLIGHTS_FOG",
+        "VSHADER_PALSKIN_DIRLIGHT_5POINTLIGHTS_FOG",
+    ];
+
+    /// <summary>
     /// Draw <c>00BA2606</c> does <c>min(count, 5)</c>. Remap at +32 is
     /// ctor-zero on the family object, so the index is 0. First-seen
     /// packed count is 0.
@@ -115,6 +134,9 @@ public static class WorldShading
 
     public static string LandscapeFamilyShader(int packedCount) =>
         LandscapeFamilySlotShaders[SelectFamilySlot(packedCount)];
+
+    public static string PalskinFamilyShader(int packedCount) =>
+        PalskinFamilySlotShaders[SelectFamilySlot(packedCount)];
 
     /// <summary>
     /// Same compares as <c>00B480E0</c>. Colour channels are 0..1.

@@ -1,4 +1,5 @@
 using Fable.Core;
+using Fable.Formats;
 using Fable.Formats.Banks;
 using Fable.Formats.Defs;
 using Fable.Formats.Meshes;
@@ -144,6 +145,8 @@ public sealed class MeshFormatTests
         var mesh = MeshFile.Parse(big.Read(entry), (int)entry.Type);
         Assert.Equal("MESH_YOUNGHERO_02", mesh.Name);
         Assert.True(mesh.BoneCount > 0, $"kid bones={mesh.BoneCount}");
+        Assert.Equal("VSHADER_PALSKIN_DIRLIGHT_FOG",
+            WorldShading.PalskinFamilyShader(WorldShading.FirstSeenPackedLightCount));
         var hair = mesh.Materials.Single(m => m.Name.Contains("Hair", StringComparison.OrdinalIgnoreCase));
         Assert.Equal(1, hair.Flag1);
         Assert.Equal(0, hair.Flag3);
