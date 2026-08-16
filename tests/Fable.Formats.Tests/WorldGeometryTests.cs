@@ -370,6 +370,9 @@ public sealed class WorldGeometryTests
         Assert.True(SkyPass.FirstSeenCallsWeatherDraw);
         Assert.False(SkyPass.FirstSeenStarDrawIteratesStarsDat);
         Assert.False(SkyPass.FirstSeenEmitsInventedStarBillboards);
+        Assert.Equal(0x00B62BA8u, SkyPass.InnerSkyPsBind);
+        Assert.False(SkyPass.FirstSeenSkyPsC2HasWriter);
+        Assert.True(SkyPass.FirstSeenSkyMode2IsStandIn);
         Assert.DoesNotContain(installDome, t => t.TextureId == SkyDef.StarTextureIdDefault);
         var invented = new Vector2(0f / 36f, 0f / 8f);
         Assert.Equal(Vector2.Zero, SkyPass.DomeUv(0, 0, 0f, 0f, SkyPass.FirstSeenInvUvDivisor));

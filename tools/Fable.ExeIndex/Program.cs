@@ -1,8 +1,10 @@
 using System.Text;
 using Fable.Core;
 using Fable.ExeIndex;
+using Fable.Formats.Banks;
+using Fable.Formats.Shaders;
 
-var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "fn" or "trace-render" or "trace-landscape" or "trace-newgame" or "map-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp" or "scan" or "datascan") ?? "all";
+var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "fn" or "trace-render" or "trace-landscape" or "trace-newgame" or "trace-shaders" or "map-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp" or "scan" or "datascan") ?? "all";
 var force = args.Any(a => a is "--force" or "-f");
 var install = GameInstall.TryLocate();
 var exePath = args.FirstOrDefault(a => a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
@@ -64,6 +66,10 @@ switch (cmd)
         if (!File.Exists(Path.Combine(outDir, "00-index", "xrefs.tsv")))
             RunIndex(pe, store);
         RunTraceNewGame(pe, store);
+        RunTraceShaders(pe, store);
+        break;
+    case "trace-shaders":
+        RunTraceShaders(pe, store);
         break;
     case "map-newgame":
         RunMapNewGame(pe, store);
@@ -971,6 +977,12 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "ENVIRONMENT Transfer +448 NString", 0x00430F2D, 16, stopOnRet: false),
         WriteFnPart(pe, store, family, "ENVIRONMENT dtor NString +448", 0x00431820, 20, stopOnRet: false),
         WriteWalkPart(pe, store, family, "Sky gather texture ids 00B63800", 0x00B63800, 80),
+        WriteFnPart(pe, store, family, "Sky inner PS bind 00B62BA8", 0x00B62B90, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "Sky inner SIMPLE name 00B62BB6", 0x00B62BB6, 16, stopOnRet: false),
+        WriteFnPart(pe, store, family, "Sky inner FULL name 00B62C2D", 0x00B62C2D, 16, stopOnRet: false),
+        WriteCallDispPart(pe, store, family, "SetPixelShaderConstantF 0x1B4 sky", 0x1B4, 0x00B62000, 0x00B67000),
+        WriteCallDispPart(pe, store, family, "SetTexture 0x104 sky", 0x104, 0x00B62000, 0x00B67000),
+        WriteCallDispPart(pe, store, family, "SetPixelShaderConstantF 0x1B4 wrappers", 0x1B4, 0x00988000, 0x0098C000),
         WriteFnPart(pe, store, family, "ENVIRONMENT NString persist 00431143", 0x00431143, 40),
         WriteFnPart(pe, store, family, "ENVIRONMENT Transfer +424", 0x00430DC1, 12, stopOnRet: false),
         WriteFnPart(pe, store, family, "Sky mesh draw calls stars", 0x00B6627A, 20, stopOnRet: false),
@@ -1110,6 +1122,161 @@ static IndexLink WriteNewGameMap(PeImage pe, DumpStore store, string family)
     store.WritePart(family, "fnmap-tsv", "```\n" + FunctionMap.ToTsv(nodes) + "```\n");
     Console.WriteLine($"map    newgame functions={nodes.Count}");
     return new IndexLink("fnmap", "New Game function map", 0);
+}
+
+static void RunTraceShaders(PeImage pe, DumpStore store)
+{
+    const string family = "shader-tokens";
+    if (!store.ShouldWrite(family, DumpStore.ShaderTokensVersion))
+    {
+        Console.WriteLine($"skip  {family}  v{DumpStore.ShaderTokensVersion} (exe unchanged)");
+        return;
+    }
+
+    var install = GameInstall.TryLocate();
+    if (install is null || !File.Exists(install.ShadersBigPath))
+    {
+        Console.Error.WriteLine("shaders.big not found; skip shader-tokens");
+        return;
+    }
+
+    var wanted = new (string Bank, string Name)[]
+    {
+        ("PIXEL_SHADERS", "PSHADER_INNER_SKY"),
+        ("PIXEL_SHADERS", "PSHADER_INNER_SKY_SIMPLE"),
+        ("PIXEL_SHADERS", "PSHADER_OUTER_SKY"),
+        ("PIXEL_SHADERS", "PSHADER_SKY_STAR_FIELD"),
+        ("PIXEL_SHADERS", "PSHADER_TEXTURE_DIFFUSE_FOG"),
+        ("PIXEL_SHADERS", "PSHADER_LANDSCAPE_FOREGROUND"),
+        ("PIXEL_SHADERS", "PSHADER_LANDSCAPE_BACKGROUND"),
+        ("SHADERS_SKY", "VSHADER_INNER_SKY"),
+        ("SHADERS_SKY", "VSHADER_OUTER_SKY"),
+        ("SHADERS_SKY", "VSHADER_SKY_STAR_FIELD"),
+        ("SHADERS_LANDSCAPE_FOREGROUND", "VSHADER_LANDSCAPE_FOREGROUND"),
+        ("SHADERS_LANDSCAPE_BACKGROUND", "VSHADER_LANDSCAPE_BACKGROUND"),
+        ("SHADERS_STATIC", "VSHADER_STATIC_DIRLIGHT_FOG"),
+        ("SHADERS_PALSKIN", "VSHADER_PALSKIN_DIRLIGHT_FOG"),
+    };
+
+    var links = new List<IndexLink>();
+    var tsv = new StringBuilder();
+    tsv.AppendLine("bank\tname\tprofile\ttex\tconst\tops");
+    using (var big = BigArchive.Open(install.ShadersBigPath))
+    {
+        foreach (var (bankName, name) in wanted)
+        {
+            var bank = big.SubBanks.FirstOrDefault(b => b.Name == bankName);
+            if (bank is null)
+                continue;
+            var entry = big.ReadEntries(bank).FirstOrDefault(e => e.Name == name);
+            if (entry is null)
+                continue;
+            var program = ShaderProgram.Parse(name, bankName, entry.Type, big.Read(entry));
+            var slug = DumpStore.Slug(name, 0);
+            var sb = new StringBuilder();
+            sb.AppendLine($"# {name}");
+            sb.AppendLine();
+            sb.AppendLine($"bank `{bankName}` · `{program.Profile}` · tex **{program.TexCount}** · declared **{program.DeclaredSize}**.");
+            sb.AppendLine();
+            sb.AppendLine("const: " + string.Join(", ", program.ConstRegisters.Select(r => "c" + r)));
+            sb.AppendLine();
+            sb.AppendLine("```");
+            sb.Append(program.ToListing());
+            sb.AppendLine("```");
+            store.WritePart(family, slug, sb.ToString());
+            links.Add(new IndexLink(slug, name, 0));
+            tsv.Append(bankName).Append('\t').Append(name).Append('\t')
+                .Append(program.Profile).Append('\t').Append(program.TexCount).Append('\t')
+                .Append(string.Join(",", program.ConstRegisters)).Append('\t')
+                .Append(string.Join(" ", program.DecodeInstructions().Select(i => $"0x{i.Opcode:X}")))
+                .AppendLine();
+        }
+    }
+
+    store.WritePart(family, "tokens-tsv", "```\n" + tsv + "```\n");
+    links.Add(new IndexLink("tokens-tsv", "Token opcode TSV", 0));
+    links.Add(WriteFnPart(pe, store, family, "Sky inner PS bind 00B62BA8", 0x00B62B90, 50, stopOnRet: false));
+    links.Add(WriteCallDispPart(pe, store, family, "SetPixelShaderConstantF 0x1B4 sky", 0x1B4, 0x00B62000, 0x00B67000));
+    links.Add(WriteCallDispPart(pe, store, family, "SetTexture 0x104 sky", 0x104, 0x00B62000, 0x00B67000));
+    links.Add(WriteCallDispPart(pe, store, family, "SetPixelShaderConstantF 0x1B4 wrappers", 0x1B4, 0x00988000, 0x0098C000));
+    links.Add(WriteCallDispPart(pe, store, family, "SetPixelShaderConstantF 0x1B4 first-scene", 0x1B4, 0x00B20000, 0x00B80000));
+    store.WriteIndex(
+        family, DumpStore.ShaderTokensVersion, "shader-tokens",
+        "First-seen New Game shader token listings from shaders.big plus bind/PS-constant opcode hits. This is the opcode database — dump here instead of grepping.",
+        links);
+    Console.WriteLine($"trace  {family}/  parts={links.Count}  v{DumpStore.ShaderTokensVersion}");
+}
+
+static IndexLink WriteCallDispPart(
+    PeImage pe, DumpStore store, string family, string name, uint disp, uint lo, uint hi)
+{
+    var slug = DumpStore.Slug(name, disp);
+    var sb = new StringBuilder();
+    sb.AppendLine($"# {name}");
+    sb.AppendLine();
+    sb.AppendLine($"`call [r+0x{disp:X}]` in `0x{lo:X8}`–`0x{hi:X8}`. [INDEX](INDEX.md)");
+    sb.AppendLine();
+    byte[] mods32 = [0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97];
+    byte[] mods8 = [0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57];
+    var data = pe.Data;
+    var hits = 0;
+    foreach (var sec in pe.Sections)
+    {
+        if (!pe.InCode((int)sec.FileOffset))
+            continue;
+        var end = Math.Min(data.Length, (int)(sec.FileOffset + sec.FileSize) - 6);
+        for (var i = (int)sec.FileOffset; i < end; i++)
+        {
+            if (data[i] != 0xFF)
+                continue;
+            uint va;
+            var is32 = false;
+            foreach (var m in mods32)
+            {
+                if (data[i + 1] == m)
+                {
+                    is32 = true;
+                    break;
+                }
+            }
+
+            if (is32)
+            {
+                if (BitConverter.ToUInt32(data, i + 2) != disp)
+                    continue;
+                va = pe.Va(i);
+                if (va < lo || va > hi)
+                    continue;
+                sb.AppendLine($"- `0x{va:X8}` call [r+0x{disp:X}]");
+                hits++;
+            }
+            else if (disp <= 0x7F)
+            {
+                var is8 = false;
+                foreach (var m in mods8)
+                {
+                    if (data[i + 1] == m)
+                    {
+                        is8 = true;
+                        break;
+                    }
+                }
+
+                if (!is8 || data[i + 2] != (byte)disp)
+                    continue;
+                va = pe.Va(i);
+                if (va < lo || va > hi)
+                    continue;
+                sb.AppendLine($"- `0x{va:X8}` call [r+0x{disp:X}]8");
+                hits++;
+            }
+        }
+    }
+
+    sb.AppendLine();
+    sb.AppendLine($"hits **{hits}**");
+    store.WritePart(family, slug, sb.ToString());
+    return new IndexLink(slug, name, disp);
 }
 
 static IndexLink WriteWalkPart(PeImage pe, DumpStore store, string family, string name, uint va, int n = 2000)

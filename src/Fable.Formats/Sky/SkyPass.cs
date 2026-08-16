@@ -116,6 +116,35 @@ public static class SkyPass
     public const int ThemeSlotVectorOffset = 428;
     public const bool FirstSeenStarListPointerCtorZero = true;
     public const bool FirstSeenStarPointerPayloadsAreNumericIds = false;
+
+    /// <summary>
+    /// Sky ctor bind at <c>00B62BA8</c>: <c>mov eax, [ecx+96]</c>
+    /// then <c>test ah, 1</c>. Set → <c>PSHADER_INNER_SKY_SIMPLE</c>
+    /// at <c>00B62BB6</c> into <c>this+292</c>. Clear →
+    /// <c>PSHADER_INNER_SKY</c> at <c>00B62C2D</c>. <c>ah</c> is
+    /// byte <c>[ecx+97]</c>, i.e. dword bit 8. Token listings live
+    /// in ExeIndex <c>out/01-sections/shader-tokens/</c>. Neither
+    /// program has <c>def c0/c1/c2</c>. IDirect3DDevice9
+    /// <c>SetPixelShaderConstantF</c> is vtbl slot 109
+    /// (<c>[dev+436]</c> / <c>0x1B4</c>), not the earlier
+    /// <c>0x1A8/0x1AC</c> miss. First-seen writer of those PS
+    /// constants is still unread — do not invent <c>*c2=0</c>.
+    /// Live mode 2 <c>t1*v0</c> is a stand-in.
+    /// </summary>
+    public const uint InnerSkyPsBind = 0x00B62BA8;
+    public const uint InnerSkySimpleBind = 0x00B62BB6;
+    public const uint InnerSkyFullBind = 0x00B62C2D;
+    public const int InnerSkyShaderStoreOffset = 292;
+    public const int QualityDwordOffset = 96;
+    public const int QualitySimpleAhMask = 1;
+    public const int QualitySimpleBit = 8;
+    public const int SetPixelShaderConstantFSlot = 436;
+    public const int SetPixelShaderConstantFVtbl = 109;
+    public const int SetTextureSlot = 260;
+    public const bool FirstSeenInnerSkyHasConstDef = false;
+    public const bool FirstSeenSkyPsC2HasWriter = false;
+    public const bool FirstSeenSkyMode2IsStandIn = true;
+    public const bool FirstSeenQualityBitKnown = false;
     public const int DomeRings = 9;
     public const int DomeSegments = 36;
     public const int DomeVertsPerRing = 37;

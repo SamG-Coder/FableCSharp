@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\..\src\Fable.Core\Fable.Core.csproj" />
+    <ProjectReference Include="..\..\src\Fable.Formats\Fable.Formats.csproj" />
   </ItemGroup>
   <PropertyGroup>
     <OutputType>Exe</OutputType>

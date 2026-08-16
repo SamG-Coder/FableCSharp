@@ -24,6 +24,8 @@ public sealed class ShaderProgram
     public const uint EndOpcode = 0xFFFF;
     /// <summary>D3D vs_1_1 <c>LIT</c>. First-seen FG/static/PALSKIN use <c>MAD</c> <c>c35</c> instead.</summary>
     public const uint LitOpcode = 0x10;
+    /// <summary>D3D <c>LRP</c>. <c>PSHADER_INNER_SKY</c> uses this; landscape FG does not.</summary>
+    public const uint LrpOpcode = 0x12;
     public const int RegTypeConst = 2;
     public const int RegTypeInput = 1;
     public const int RegTypeRastOut = 4;
@@ -456,6 +458,198 @@ public sealed class ShaderProgram
         return list;
     }
 
+    /// <summary>
+    /// Human-readable vs_1_1 / ps_1_1 listing for ExeIndex <c>out/</c>.
+    /// Includes <c>def</c> so missing first-seen constants stay visible.
+    /// </summary>
+    public string ToListing()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine(Profile);
+        var i = 4;
+        while (i + 4 <= Tokens.Length)
+        {
+            var head = BitConverter.ToUInt32(Tokens, i);
+            var op = head & 0xFFFF;
+            if (op == EndOpcode)
+            {
+                sb.AppendLine("end");
+                break;
+            }
+
+            if (op == CommentOpcode)
+            {
+                var n = (int)((head >> 16) & 0x7FFF);
+                sb.AppendLine($"; comment {n} dwords");
+                i += 4 + n * 4;
+                continue;
+            }
+
+            if (op == DclOpcode)
+            {
+                i += 12;
+                continue;
+            }
+
+            if (op == DefOpcode)
+            {
+                if (i + 24 > Tokens.Length)
+                    break;
+                var dest = BitConverter.ToUInt32(Tokens, i + 4);
+                var x = BitConverter.ToSingle(Tokens, i + 8);
+                var y = BitConverter.ToSingle(Tokens, i + 12);
+                var z = BitConverter.ToSingle(Tokens, i + 16);
+                var w = BitConverter.ToSingle(Tokens, i + 20);
+                sb.AppendLine($"def {FormatReg((int)((dest >> 28) & 7), (int)(dest & 0x7FF))}, {x}, {y}, {z}, {w}");
+                i += 24;
+                continue;
+            }
+
+            var srcs = SrcCount(op);
+            var need = 8 + srcs * 4;
+            if (i + need > Tokens.Length)
+                break;
+            var d = BitConverter.ToUInt32(Tokens, i + 4);
+            sb.Append(OpcodeName(op));
+            sb.Append(DestShiftName((int)((d >> 24) & 0xF)));
+            if (((d >> 20) & 0xF) == 1)
+                sb.Append("_sat");
+            sb.Append(' ');
+            sb.Append(FormatDest(d));
+            for (var s = 0; s < srcs; s++)
+            {
+                sb.Append(", ");
+                sb.Append(FormatSrc(BitConverter.ToUInt32(Tokens, i + 8 + s * 4)));
+            }
+
+            sb.AppendLine();
+            i += need;
+        }
+
+        return sb.ToString();
+    }
+
+    /// <summary>
+    /// <c>PSHADER_INNER_SKY</c>: four <c>tex</c>, <c>lrp</c> on
+    /// <c>c0.w</c>/<c>c1.w</c>, then <c>mul_x2 …, c2</c>. No
+    /// <c>def c0/c1/c2</c> — those come from the device.
+    /// </summary>
+    public bool TryGetInnerSkyPs()
+    {
+        if (TexCount != 4 || HasConstDef(0) || HasConstDef(1) || HasConstDef(2))
+            return false;
+        var sawLrpC0 = false;
+        var sawLrpC1 = false;
+        var sawMulX2C2 = false;
+        foreach (var insn in DecodeInstructions())
+        {
+            if (insn.Opcode == LrpOpcode && insn.Src0Is(RegTypeConst, 0) && insn.Src0SwizzleW == 3)
+                sawLrpC0 = true;
+            if (insn.Opcode == LrpOpcode && insn.Src0Is(RegTypeConst, 1) && insn.Src0SwizzleW == 3)
+                sawLrpC1 = true;
+            if (insn.Opcode == MulOpcode && insn.DestShift == 1 && insn.Src1Is(RegTypeConst, 2))
+                sawMulX2C2 = true;
+        }
+
+        return sawLrpC0 && sawLrpC1 && sawMulX2C2;
+    }
+
+    /// <summary>
+    /// <c>PSHADER_INNER_SKY_SIMPLE</c>: two <c>tex</c>, last
+    /// <c>mul_x2 …, c1</c>. No <c>def c0/c1</c>.
+    /// </summary>
+    public bool TryGetInnerSkySimplePs()
+    {
+        if (TexCount != 2 || HasConstDef(0) || HasConstDef(1))
+            return false;
+        foreach (var insn in DecodeInstructions())
+        {
+            if (insn.Opcode == MulOpcode && insn.DestShift == 1 && insn.Src1Is(RegTypeConst, 1))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static string OpcodeName(uint op) => op switch
+    {
+        MovOpcode => "mov",
+        AddOpcode => "add",
+        0x03 => "sub",
+        MadOpcode => "mad",
+        MulOpcode => "mul",
+        0x06 => "rcp",
+        RsqOpcode => "rsq",
+        Dp3Opcode => "dp3",
+        Dp4Opcode => "dp4",
+        MinOpcode => "min",
+        MaxOpcode => "max",
+        LitOpcode => "lit",
+        LrpOpcode => "lrp",
+        TexOpcode => "tex",
+        0x41 => "texkill",
+        _ => $"op_{op:X}",
+    };
+
+    private static string DestShiftName(int shift) => shift switch
+    {
+        1 => "_x2",
+        2 => "_x4",
+        3 => "_x8",
+        0xF => "_d2",
+        0xE => "_d4",
+        0xD => "_d8",
+        _ => "",
+    };
+
+    private static string FormatDest(uint dest)
+    {
+        var name = FormatReg((int)((dest >> 28) & 7), (int)(dest & 0x7FF));
+        var mask = (int)((dest >> 16) & 0xF);
+        if (mask == 0xF)
+            return name;
+        var sb = new System.Text.StringBuilder(name);
+        sb.Append('.');
+        if ((mask & 1) != 0) sb.Append('x');
+        if ((mask & 2) != 0) sb.Append('y');
+        if ((mask & 4) != 0) sb.Append('z');
+        if ((mask & 8) != 0) sb.Append('w');
+        return sb.ToString();
+    }
+
+    private static string FormatSrc(uint src)
+    {
+        var name = FormatReg((int)((src >> 28) & 7), (int)(src & 0x7FF));
+        var mod = (int)((src >> 24) & 0xF);
+        var prefix = mod switch
+        {
+            SrcModNeg => "-",
+            6 => "1-",
+            _ => "",
+        };
+        var x = (int)((src >> 16) & 3);
+        var y = (int)((src >> 18) & 3);
+        var z = (int)((src >> 20) & 3);
+        var w = (int)((src >> 22) & 3);
+        if (x == 0 && y == 1 && z == 2 && w == 3)
+            return prefix + name;
+        if (x == y && y == z && z == w)
+            return prefix + name + "." + "xyzw"[x];
+        return prefix + name + "." + "xyzw"[x] + "xyzw"[y] + "xyzw"[z] + "xyzw"[w];
+    }
+
+    private static string FormatReg(int type, int num) => type switch
+    {
+        0 => "r" + num,
+        RegTypeInput => "v" + num,
+        RegTypeConst => "c" + num,
+        3 => "t" + num,
+        RegTypeRastOut => num == RastOutFog ? "oFog" : "oPos",
+        RegTypeAttrOut => "oD" + num,
+        RegTypeTexCrdOut => "oT" + num,
+        _ => "r" + type + "_" + num,
+    };
+
     private static int SrcCount(uint op) => op switch
     {
         MovOpcode or 0x06 or RsqOpcode or 0x0E or 0x0F or LitOpcode or 0x13
@@ -564,6 +758,8 @@ public sealed class ShaderProgram
         public int DestNum => (int)(Dest & 0x7FF);
         public int DestType => (int)((Dest >> 28) & 7);
         public int DestMask => (int)((Dest >> 16) & 0xF);
+        public int DestShift => (int)((Dest >> 24) & 0xF);
+        public int Src2Type => (int)((Src2 >> 28) & 7);
         public bool DestMaskX => (DestMask & 1) != 0;
         public bool DestMaskY => (DestMask & 2) != 0;
         public bool DestMaskZ => (DestMask & 4) != 0;

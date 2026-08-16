@@ -456,4 +456,49 @@ public sealed class ShaderFormatTests
         Assert.False(ShaderProgram.Parse(land.Name, "SHADERS_LANDSCAPE_FOREGROUND", land.Type, big.Read(land))
             .TryGetSkyOPosWvp());
     }
+
+    [Fact]
+    public void First_seen_inner_sky_ps_is_four_tex_lrp_mulx2_c2()
+    {
+        var install = Require();
+        using var big = BigArchive.Open(install.ShadersBigPath);
+        var pixel = big.SubBanks.First(s => s.Name == "PIXEL_SHADERS");
+        var byName = big.ReadEntries(pixel).ToDictionary(e => e.Name, StringComparer.Ordinal);
+        var inner = ShaderProgram.Parse("PSHADER_INNER_SKY", pixel.Name, 1, big.Read(byName["PSHADER_INNER_SKY"]));
+        var simple = ShaderProgram.Parse("PSHADER_INNER_SKY_SIMPLE", pixel.Name, 1, big.Read(byName["PSHADER_INNER_SKY_SIMPLE"]));
+        var fog = ShaderProgram.Parse("PSHADER_TEXTURE_DIFFUSE_FOG", pixel.Name, 1, big.Read(byName["PSHADER_TEXTURE_DIFFUSE_FOG"]));
+        Assert.True(inner.TryGetInnerSkyPs());
+        Assert.False(simple.TryGetInnerSkyPs());
+        Assert.False(fog.TryGetInnerSkyPs());
+        Assert.True(simple.TryGetInnerSkySimplePs());
+        Assert.False(inner.TryGetInnerSkySimplePs());
+        Assert.Equal(4, inner.TexCount);
+        Assert.Equal(2, simple.TexCount);
+        Assert.Contains(0, inner.ConstRegisters);
+        Assert.Contains(1, inner.ConstRegisters);
+        Assert.Contains(2, inner.ConstRegisters);
+        Assert.False(inner.HasConstDef(0));
+        Assert.False(inner.HasConstDef(1));
+        Assert.False(inner.HasConstDef(2));
+        Assert.Contains("lrp", inner.ToListing());
+        Assert.Contains("mul_x2", inner.ToListing());
+        Assert.Contains("c2", inner.ToListing());
+        Assert.DoesNotContain("def c2", inner.ToListing());
+        Assert.Equal(0x12u, ShaderProgram.LrpOpcode);
+        Assert.Equal(0x00B62BA8u, SkyPass.InnerSkyPsBind);
+        Assert.Equal(0x00B62BB6u, SkyPass.InnerSkySimpleBind);
+        Assert.Equal(0x00B62C2Du, SkyPass.InnerSkyFullBind);
+        Assert.Equal(292, SkyPass.InnerSkyShaderStoreOffset);
+        Assert.Equal(96, SkyPass.QualityDwordOffset);
+        Assert.Equal(1, SkyPass.QualitySimpleAhMask);
+        Assert.Equal(8, SkyPass.QualitySimpleBit);
+        Assert.Equal(436, SkyPass.SetPixelShaderConstantFSlot);
+        Assert.Equal(109, SkyPass.SetPixelShaderConstantFVtbl);
+        Assert.Equal(260, SkyPass.SetTextureSlot);
+        Assert.False(SkyPass.FirstSeenInnerSkyHasConstDef);
+        Assert.False(SkyPass.FirstSeenSkyPsC2HasWriter);
+        Assert.True(SkyPass.FirstSeenSkyMode2IsStandIn);
+        Assert.False(SkyPass.FirstSeenQualityBitKnown);
+        Assert.Equal(2f, ScenePasses.ShaderMode(SceneSubmit.SkyElse));
+    }
 }
