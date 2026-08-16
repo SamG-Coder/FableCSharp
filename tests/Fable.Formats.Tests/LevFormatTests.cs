@@ -376,6 +376,10 @@ public sealed class LevFormatTests
         Assert.True(tris.Max(t => t.A.X) >= 120);
         Assert.True(tris.Min(t => t.A.X) <= 2);
         Assert.Contains(tris, t => t.TextureId is 4133 or 414);
+
+        var full = height.Tiles.Tiles.Count(tile => tile.Vertices.Count == 289);
+        Assert.True(full >= 8, $"fullTiles={full}");
+        Assert.True(tris.Count > full * 16 * 16, $"expected both halves of each quad tris={tris.Count} full={full}");
     }
 
     [Fact]
@@ -392,7 +396,7 @@ public sealed class LevFormatTests
         Assert.True(adaptive.Count >= 8, $"adaptive={adaptive.Count}");
         Assert.All(adaptive, tile =>
         {
-            Assert.Equal(0, tile.Indices.Count % 3);
+            Assert.True(tile.Indices.Count >= 9);
             Assert.All(tile.Indices, index => Assert.InRange(index, 0, tile.Vertices.Count - 1));
         });
 

@@ -81,6 +81,7 @@ parsers and notes.
 | TNG positions are WLD (MapX+local) | Lookout things sit in 29–128, not 3232+. Adding MapX would throw them off the terrain. | `WorldGeometryTests` |
 | Ignore `ObjectScale` | Rocks/pillars store 0.4–1.2. Without it they instance at 100% mesh size. | `WorldGeometryTests` |
 | Draw STB tiles as a dense 1-unit grid | Adaptive tiles have ~159–280 verts, not 289. Bilinear-filling the rest raised hills through objects (a Lookout rock sat 3.3 m under stamped Z). | `LevFormatTests` |
+| Tile leftover is a triangle *list* | Bytes `0,0,1,2,2,0,0,3…` are a **strip** with degenerate restarts. Reading groups of 3 dropped every other half-quad (flat ground looked like isolated triangles). | `LevFormatTests` |
 | WAD `Find("Lookout")` for a `.tng` | Stem match hit `LookoutPoint.lev`. Must pass the extension. | `TlcInstallTests` |
 | `FinalAlbion.gtg` is a compiled .lev / C3D | ASCII `NEWMAP 1` / `Version 2;`. First `u32` is not 25. | `DataCatalogTests` |
 | PicnicArea.lug / Dialogue.lut are BIGB | Magic is `LiOnHeAd`, not `BIGB`. | `DataCatalogTests` |

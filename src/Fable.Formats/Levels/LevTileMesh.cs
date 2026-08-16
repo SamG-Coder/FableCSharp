@@ -105,34 +105,46 @@ public sealed class LevTileMesh
                 points[i] = new Vector3(v.WorldX - originX, v.WorldY - originY, v.Z);
             }
 
-            if (tile.Indices.Count >= 3)
-            {
-                for (var i = 0; i + 2 < tile.Indices.Count; i += 3)
-                    Add(triangles, points[tile.Indices[i]], points[tile.Indices[i + 1]], points[tile.Indices[i + 2]],
-                        TextureAt(points[tile.Indices[i]], cells, bySlot, textures));
-                continue;
-            }
-
             var at = new Dictionary<(int X, int Y), Vector3>();
             foreach (var p in points)
                 at[((int)MathF.Round(p.X), (int)MathF.Round(p.Y))] = p;
-            if (at.Count < 4)
-                continue;
-            var minX = at.Keys.Min(k => k.X);
-            var maxX = at.Keys.Max(k => k.X);
-            var minY = at.Keys.Min(k => k.Y);
-            var maxY = at.Keys.Max(k => k.Y);
-            for (var y = minY; y < maxY; y++)
-            for (var x = minX; x < maxX; x++)
+
+            var minX = at.Count == 0 ? 0 : at.Keys.Min(k => k.X);
+            var maxX = at.Count == 0 ? 0 : at.Keys.Max(k => k.X);
+            var minY = at.Count == 0 ? 0 : at.Keys.Min(k => k.Y);
+            var maxY = at.Count == 0 ? 0 : at.Keys.Max(k => k.Y);
+            var span = Math.Max(1, (maxX - minX + 1) * (maxY - minY + 1));
+            var filled = at.Count / (float)span;
+            var useGrid = at.Count >= 4 && (maxX - minX) >= 8 && (maxY - minY) >= 8 && filled >= 0.7f;
+
+            if (useGrid)
             {
-                if (!at.TryGetValue((x, y), out var a) ||
-                    !at.TryGetValue((x + 1, y), out var b) ||
-                    !at.TryGetValue((x, y + 1), out var c) ||
-                    !at.TryGetValue((x + 1, y + 1), out var d))
-                    continue;
-                var tex = TextureAt(a, cells, bySlot, textures);
-                Add(triangles, a, b, d, tex);
-                Add(triangles, a, d, c, tex);
+                for (var y = minY; y < maxY; y++)
+                for (var x = minX; x < maxX; x++)
+                {
+                    if (!at.TryGetValue((x, y), out var a) ||
+                        !at.TryGetValue((x + 1, y), out var b) ||
+                        !at.TryGetValue((x, y + 1), out var c) ||
+                        !at.TryGetValue((x + 1, y + 1), out var d))
+                        continue;
+                    var tex = TextureAt(a, cells, bySlot, textures);
+                    Add(triangles, a, b, d, tex);
+                    Add(triangles, a, d, c, tex);
+                }
+                continue;
+            }
+
+            if (tile.Indices.Count >= 3)
+            {
+                for (var i = 0; i + 2 < tile.Indices.Count; i++)
+                {
+                    var a = points[tile.Indices[i]];
+                    var b = points[tile.Indices[i + 1]];
+                    var c = points[tile.Indices[i + 2]];
+                    if ((i & 1) != 0)
+                        (b, c) = (c, b);
+                    Add(triangles, a, b, c, TextureAt(a, cells, bySlot, textures));
+                }
             }
         }
 
@@ -222,16 +234,12 @@ public sealed class LevTileMesh
             return [];
 
         var indices = new List<int>();
-        for (var o = start; o + 6 <= dest.Length; o += 6)
+        for (var o = start; o + 2 <= dest.Length; o += 2)
         {
-            var a = BitConverter.ToUInt16(dest, o);
-            var b = BitConverter.ToUInt16(dest, o + 2);
-            var c = BitConverter.ToUInt16(dest, o + 4);
-            if (a >= vertCount || b >= vertCount || c >= vertCount)
+            var index = BitConverter.ToUInt16(dest, o);
+            if (index >= vertCount)
                 break;
-            indices.Add(a);
-            indices.Add(b);
-            indices.Add(c);
+            indices.Add(index);
         }
 
         return indices.Count >= 3 ? indices : [];
