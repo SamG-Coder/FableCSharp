@@ -243,6 +243,24 @@ public static class RegionTravel
     public const int SpeakPollVtbl = 104;
     public const bool FirstSeenSpeakYieldsOnce = true;
     public const string IntroFatherSpeak = "TEXT_QST_048_FATHER_INTRO_10";
+    /// <summary>
+    /// <c>00CC2EAA</c> <c>.InteractiveSpeak</c>.
+    /// Context <c>vtbl+1456/1460/1464</c> then
+    /// <c>00CBEDBA</c> on arg2. First-seen
+    /// <c>FALSE</c> takes one <c>vtbl+28</c> and
+    /// <c>jmp 00CC707C</c>. TRUE polls unread
+    /// <c>vtbl+1472</c>.
+    /// </summary>
+    public const uint InteractiveSpeakOpcode = 0x00CC2EAA;
+    public const uint InteractiveSpeakApply = 0x00CC2F50;
+    public const int InteractiveSpeakBeginVtbl = 1456;
+    public const int InteractiveSpeakBindVtbl = 1460;
+    public const int InteractiveSpeakLineVtbl = 1464;
+    public const int InteractiveSpeakWaitVtbl = 1472;
+    public const bool FirstSeenInteractiveSpeakArgIsTrue = false;
+    public const bool FirstSeenInteractiveSpeakYieldsOnce = true;
+    public const string IntroFatherPrompt = "TEXT_QST_048_FATHER_INTRO_20";
+    public const string IntroFatherResponse = "TEXT_QST_048_FATHER_INTRO_30";
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;

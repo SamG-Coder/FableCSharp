@@ -255,6 +255,12 @@ public sealed class ScriptInterpreter
                 !ScriptCommand.IsNullArg(speech.Text))
                 host.Speak(command.Actor, speech.Target, speech.Text, speech.Mode);
         }
+        else if (command.Verb.Equals("InteractiveSpeak", StringComparison.OrdinalIgnoreCase))
+        {
+            var speech = ScriptCommand.ParseInteractiveSpeak(command.Arguments);
+            host.InteractiveSpeak(
+                command.Actor, speech.Listener, speech.Prompt, speech.Wait, speech.Response);
+        }
     }
 
     internal static void ParseFadeArgs(string arguments, out float seconds, out float param)
@@ -334,6 +340,25 @@ public readonly struct ScriptCommand
     }
 
     /// <summary>
+    /// <c>00CC2EAA</c>: listener, prompt, optional
+    /// IsTrue wait, optional extra lines via
+    /// <c>vtbl+1464</c>. First-seen third arg is
+    /// FALSE so one <c>vtbl+28</c> then
+    /// <c>00CC707C</c>. TRUE wait polls unread
+    /// <c>vtbl+1472</c>.
+    /// </summary>
+    public static (string Listener, string Prompt, bool Wait, string Response)
+        ParseInteractiveSpeak(string arguments)
+    {
+        var args = SplitArgs(arguments);
+        var listener = args.Length == 0 ? "" : args[0];
+        var prompt = args.Length < 2 ? "" : args[1];
+        var wait = args.Length > 2 && IsTrueArg(args[2]);
+        var response = args.Length < 4 ? "" : args[3];
+        return (listener, prompt, wait, response);
+    }
+
+    /// <summary>
     /// <c>00CBEE0C</c>: strcmp arg to <c>false</c>.
     /// </summary>
     public static bool IsFalseArg(string? text) =>
@@ -398,6 +423,14 @@ public readonly struct ScriptCommand
                 return ScriptFlow.Continue;
             return ScriptFlow.YieldAfter;
         }
+
+        if (verb.Equals("InteractiveSpeak", StringComparison.OrdinalIgnoreCase))
+        {
+            var speech = ParseInteractiveSpeak(command.Arguments);
+            if (speech.Listener.Length == 0 || speech.Prompt.Length == 0)
+                return ScriptFlow.Continue;
+            return speech.Wait ? ScriptFlow.Yield : ScriptFlow.YieldAfter;
+        }
         if (verb.Equals("LookToThing", StringComparison.OrdinalIgnoreCase))
         {
             var args = SplitArgs(command.Arguments);
@@ -434,4 +467,6 @@ public interface IScriptHost
     void StartTimeCode();
     void GamePause(float seconds);
     void Speak(string? actor, string target, string text, int mode);
+    void InteractiveSpeak(
+        string? actor, string listener, string prompt, bool wait, string response);
 }

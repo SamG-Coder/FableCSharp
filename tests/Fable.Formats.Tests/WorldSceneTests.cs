@@ -318,6 +318,14 @@ public sealed class WorldSceneTests
         Assert.Equal(104, RegionTravel.SpeakPollVtbl);
         Assert.True(RegionTravel.FirstSeenSpeakYieldsOnce);
         Assert.Equal("TEXT_QST_048_FATHER_INTRO_10", RegionTravel.IntroFatherSpeak);
+        Assert.Equal(0x00CC2EAAu, RegionTravel.InteractiveSpeakOpcode);
+        Assert.Equal(1456, RegionTravel.InteractiveSpeakBeginVtbl);
+        Assert.Equal(1460, RegionTravel.InteractiveSpeakBindVtbl);
+        Assert.Equal(1464, RegionTravel.InteractiveSpeakLineVtbl);
+        Assert.False(RegionTravel.FirstSeenInteractiveSpeakArgIsTrue);
+        Assert.True(RegionTravel.FirstSeenInteractiveSpeakYieldsOnce);
+        Assert.Equal("TEXT_QST_048_FATHER_INTRO_20", RegionTravel.IntroFatherPrompt);
+        Assert.Equal("TEXT_QST_048_FATHER_INTRO_30", RegionTravel.IntroFatherResponse);
         Assert.Equal(0x00CC4B22u, RegionTravel.ScriptFadeInOut);
         Assert.Equal(0x00CB5D80u, RegionTravel.RegisteringScripts);
         Assert.Equal(0x00CB8110u, RegionTravel.QuestBaseCtor);
@@ -714,6 +722,30 @@ public sealed class WorldSceneTests
             s.Target == "Father" &&
             s.Text.Contains(RegionTravel.IntroFatherSpeak, StringComparison.Ordinal) &&
             s.Mode == 0);
+        Assert.Equal("GamePause 1.0", intro.Commands[intro.InstructionPointer]);
+        var pause1Visits = 0;
+        while (intro.Yielded &&
+               intro.Commands[intro.InstructionPointer].StartsWith("GamePause 1.0", StringComparison.Ordinal) &&
+               pause1Visits < 40)
+        {
+            script.Update(0.1f);
+            pause1Visits++;
+        }
+
+        Assert.Contains("GamePause 1.0", intro.Executed);
+        Assert.Contains(
+            "Father.InteractiveSpeak Hero,'TEXT_QST_048_FATHER_INTRO_20',FALSE,'TEXT_QST_048_FATHER_INTRO_30'",
+            intro.Executed);
+        Assert.Equal("GamePause 1.2", intro.Commands[intro.InstructionPointer]);
+        Assert.True(intro.Yielded);
+        Assert.Null(intro.UnsupportedCommand);
+        Assert.True(RegionTravel.FirstSeenInteractiveSpeakYieldsOnce);
+        Assert.Contains(runtime.InteractiveSpeeches, s =>
+            s.Actor == "Father" &&
+            s.Listener == "Hero" &&
+            s.Prompt.Contains(RegionTravel.IntroFatherPrompt, StringComparison.Ordinal) &&
+            !s.Wait &&
+            s.Response.Contains(RegionTravel.IntroFatherResponse, StringComparison.Ordinal));
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 
@@ -792,6 +824,31 @@ public sealed class WorldSceneTests
 
         public void Speak(string? actor, string target, string text, int mode) =>
             Last = new ScriptSpeech(actor, target, text, mode);
+
+        public void InteractiveSpeak(
+            string? actor, string listener, string prompt, bool wait, string response) { }
+    }
+
+    [Fact]
+    public void Father_InteractiveSpeak_false_yields_once()
+    {
+        var command =
+            "Father.InteractiveSpeak Hero,'TEXT_QST_048_FATHER_INTRO_20',FALSE,'TEXT_QST_048_FATHER_INTRO_30'";
+        var parsed = ScriptCommand.ParseInteractiveSpeak(
+            ScriptCommand.Parse(command).Arguments);
+        Assert.Equal("Hero", parsed.Listener);
+        Assert.Contains("TEXT_QST_048_FATHER_INTRO_20", parsed.Prompt);
+        Assert.False(parsed.Wait);
+        Assert.Contains("TEXT_QST_048_FATHER_INTRO_30", parsed.Response);
+        Assert.Equal(ScriptFlow.YieldAfter, ScriptCommand.Classify(ScriptCommand.Parse(command)));
+        Assert.Equal(ScriptFlow.Yield, ScriptCommand.Classify(
+            ScriptCommand.Parse("Father.InteractiveSpeak Hero,'A',TRUE,'B'")));
+        var interpreter = new ScriptInterpreter("ispeak", [command, "GamePause 1.2"]);
+        interpreter.RunUntilYield();
+        Assert.Contains(command, interpreter.Executed);
+        Assert.Equal("GamePause 1.2", interpreter.Commands[interpreter.InstructionPointer]);
+        Assert.True(interpreter.Yielded);
+        Assert.True(RegionTravel.FirstSeenInteractiveSpeakYieldsOnce);
     }
 
     [Fact]
