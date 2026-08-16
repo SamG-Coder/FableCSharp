@@ -17,6 +17,9 @@ public sealed class ScriptRuntime : IScriptHost
     public float DtAtPlus8 { get; private set; }
     public float FadeDuration { get; private set; }
     public float FadeParam { get; private set; }
+    public bool FadeActive { get; private set; }
+    public bool FadeLocked { get; private set; }
+    public (byte R, byte G, byte B, byte A) FadeColor { get; private set; }
     public string? LastMusic { get; private set; }
     public string? LastAvi { get; private set; }
     public bool SoundsMuted { get; private set; }
@@ -168,10 +171,21 @@ public sealed class ScriptRuntime : IScriptHost
 
     void IScriptHost.PlayMusic(string track) => LastMusic = track;
 
+    /// <summary>
+    /// <c>008907E0</c> <c>vtbl+1488</c>: pack
+    /// <c>(0,0,0,255)</c>, call <c>vtbl+1492</c> →
+    /// <c>00434C00</c>. If <c>[+216]</c> already set,
+    /// only <c>[+232]=0</c>. Overlay draw UNREAD.
+    /// </summary>
     void IScriptHost.FadeOut(float seconds, float param)
     {
         FadeDuration = seconds;
         FadeParam = param;
+        FadeColor = (0, 0, 0, 255);
+        if (FadeLocked)
+            return;
+        FadeActive = true;
+        FadeLocked = true;
     }
 
     void IScriptHost.FadeIn(float seconds, float param)

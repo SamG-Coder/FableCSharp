@@ -261,6 +261,11 @@ public sealed class WorldSceneTests
         Assert.Equal(0x00CC012Eu, RegionTravel.CommandLoopNext);
         Assert.Equal(0x00CD0987u, RegionTravel.FadeOutOpcode);
         Assert.Equal(1488, RegionTravel.FadeApplyVtbl);
+        Assert.Equal(0x008907E0u, RegionTravel.FadeApplyFn);
+        Assert.Equal(0x00434C00u, RegionTravel.FadeStateWrite);
+        Assert.Equal(0x01260F0Cu, RegionTravel.FadeInterfaceVtbl);
+        Assert.True(RegionTravel.FirstSeenFadeOutIsBlack);
+        Assert.True(RegionTravel.FirstSeenFadeOverlayDrawUnread);
         Assert.False(RegionTravel.FirstSeenFadeSpecialCaseRuns);
         Assert.Equal("FadeOut 0.5,0", RegionTravel.FadeSpecialCase);
         Assert.Equal(0.5f, RegionTravel.FadeSpecialCaseSeconds);
@@ -584,6 +589,13 @@ public sealed class WorldSceneTests
         Assert.True(script.FadeOutReached);
         Assert.Equal(0.5f, script.FadeDuration);
         Assert.Equal(0f, script.FadeParam);
+        Assert.True(runtime.FadeActive);
+        Assert.True(runtime.FadeLocked);
+        Assert.Equal((byte)0, runtime.FadeColor.R);
+        Assert.Equal((byte)0, runtime.FadeColor.G);
+        Assert.Equal((byte)0, runtime.FadeColor.B);
+        Assert.Equal((byte)255, runtime.FadeColor.A);
+        Assert.True(RegionTravel.FirstSeenFadeOutIsBlack);
         Assert.Equal(RegionTravel.IntroPlayMusic, intro.Executed[0]);
         Assert.Contains(RegionTravel.FadeSpecialCase, intro.Executed);
         Assert.Contains(intro.Executed, line => line.StartsWith("CameraPause", StringComparison.Ordinal));
@@ -898,6 +910,23 @@ public sealed class WorldSceneTests
         Assert.True(RegionTravel.FirstSeenUseCameraYields);
         Assert.Equal(0x00CC9F39u, RegionTravel.UseCameraOpcode);
         Assert.Equal(0x00CBFD53u, RegionTravel.UseCameraYieldFlagWrite);
+    }
+
+    [Fact]
+    public void FadeOut_packs_black_and_locks_second_apply()
+    {
+        var install = Require();
+        using var levels = new LevelLibrary(install);
+        var things = levels.LoadThings("StartOakValeWest").Things.ToList();
+        var runtime = ScriptRuntime.StartNewGame(install, things);
+        Assert.True(runtime.FadeActive);
+        Assert.True(runtime.FadeLocked);
+        Assert.Equal((0, 0, 0, 255), runtime.FadeColor);
+        Assert.Equal(0.5f, runtime.FadeDuration);
+        Assert.Equal(0x008907E0u, RegionTravel.FadeApplyFn);
+        Assert.Equal(188, RegionTravel.FadeActiveOffset);
+        Assert.Equal(216, RegionTravel.FadeLockOffset);
+        Assert.True(RegionTravel.FirstSeenFadeOverlayDrawUnread);
     }
 
     [Fact]
