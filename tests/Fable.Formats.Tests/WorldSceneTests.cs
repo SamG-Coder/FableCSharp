@@ -260,6 +260,26 @@ public sealed class WorldSceneTests
         Assert.InRange(introPos.X, 38f, 42f);
         Assert.InRange(introPos.Y, 128f, 132f);
         Assert.InRange(introFov, 65f, 80f);
+        Assert.Equal(0.2f, LandscapeFrustum.FirstSeenFovTurns);
+        Assert.False(LandscapeFrustum.FirstSeenTwoFovFlag);
+        Assert.False(LandscapeFrustum.FirstSeenSplineEnabled);
+        Assert.Equal(0x00B314E0u, LandscapeFrustum.CameraUpdate);
+        Assert.Equal(0x00B31160u, LandscapeFrustum.SplineUpdate);
+        Assert.Equal(0x00B31700u, LandscapeFrustum.CameraCtor);
+        Assert.Equal(0x00B2FC10u, LandscapeFrustum.SplineEnable);
+        Assert.Equal(0x00A0BE80u, LandscapeFrustum.FovFlagGetter);
+        Assert.Equal(0x00A0BE90u, LandscapeFrustum.FovHGetter);
+        Assert.Equal(2, LandscapeFrustum.TwoFovFlagBit);
+        Assert.Equal(536, LandscapeFrustum.SplineFlagOffset);
+        var shot = things.First(t => t.ScriptName == "CAM_OVIF_SHOT2");
+        Assert.Equal("CAMERA_POINT_SCRIPTED_SPLINE", shot.DefinitionType);
+        Assert.Equal("0.2", shot.Properties["CTCCameraPointScriptedSpline.FOV"]);
+        Assert.Equal("0.2", shot.Properties["CTCCameraPointScriptedSpline.KeyCameras[0].FOV"]);
+        Assert.False(shot.Properties.ContainsKey("CTCCameraPointScripted.FOV"));
+        Assert.Equal(72f, LandscapeFrustum.FirstSeenFovTurns * LandscapeFrustum.FovTurnsToDegrees, 3);
+        Assert.Equal(
+            LandscapeFrustum.CotHalfAngle(float.DegreesToRadians(72f)),
+            LandscapeFrustum.CotHalfAngle(LandscapeFrustum.TurnsToRadians(0.2f)), 4);
         Assert.True((introLook - introPos).Length() > 1f);
         LandscapeFrustum.LetterboxCots(
             float.DegreesToRadians(introFov), 4f, 3f, out var shotCotH, out var shotCotV);

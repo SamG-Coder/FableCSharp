@@ -93,8 +93,11 @@ public static class RegionTravel
             look = Vector3.UnitY;
         look = Vector3.Normalize(look);
         lookAt = position + look * 8f;
-        if (best.Properties.TryGetValue("CTCCameraPointScripted.FOV", out var fovText) &&
-            TryFloat(fovText, out var fov) && fov is >= 20f and <= 120f)
+        if (TryFloatProp(best, "CTCCameraPointScriptedSpline.KeyCameras[0].FOV", out var turns) ||
+            TryFloatProp(best, "CTCCameraPointScriptedSpline.FOV", out turns))
+            fovDegrees = turns * 360f;
+        else if (best.Properties.TryGetValue("CTCCameraPointScripted.FOV", out var fovText) &&
+                 TryFloat(fovText, out var fov) && fov is >= 20f and <= 120f)
             fovDegrees = fov;
         return true;
     }
@@ -190,6 +193,12 @@ public static class RegionTravel
         if (!thing.Properties.TryGetValue(key, out var text) || !TryFloat(text, out var value))
             return null;
         return value;
+    }
+
+    private static bool TryFloatProp(ThingInstance thing, string key, out float value)
+    {
+        value = 0f;
+        return thing.Properties.TryGetValue(key, out var text) && TryFloat(text, out value);
     }
 
     private static bool TryFloat(string text, out float value) =>

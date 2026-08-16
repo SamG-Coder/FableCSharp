@@ -26,7 +26,7 @@ internal static class FunctionMap
         (0x0089FA00, 0x0089FC00, "MARKER-LIGHT"),
         (0x00988000, 0x0098C000, "VS-wrapper"),
         (0x00B23800, 0x00B24000, "water-name-setter"),
-        (0x00B2FC00, 0x00B31800, "frustum-extract"),
+        (0x00B2FC00, 0x00B31D00, "frustum-extract"),
         (0x00B32000, 0x00B34000, "MainScene-prims"),
         (0x00B84000, 0x00B84C00, "prim-queue-drain"),
         (0x00B91000, 0x00B91400, "palskin-drain-unwrap"),
@@ -74,6 +74,11 @@ internal static class FunctionMap
         ("tessellator ctor", 0x00BF6E20),
         ("frustum extract", 0x00B2FD60),
         ("camera setup FOV inverse", 0x00B30B50),
+        ("camera update helper FOV", 0x00B314E0),
+        ("camera spline update", 0x00B31160),
+        ("camera ctor", 0x00B31700),
+        ("spline enable +536", 0x00B2FC10),
+        ("FOV flag getter", 0x00A0BE80),
         ("frustum extract other", 0x00B2FC50),
         ("camera copy 00B4AF50", 0x00B4AF50),
         ("per-cell submit", 0x00BF4570),
@@ -228,6 +233,8 @@ internal static class FunctionMap
         WriteHits(sb, nodes, "00BDC2D0");
         WriteHits(sb, nodes, "00B2FD60");
         WriteHits(sb, nodes, "00B30B50");
+        WriteHits(sb, nodes, "00B314E0");
+        WriteHits(sb, nodes, "00B31160");
         WriteHits(sb, nodes, "00B2FC50");
         WriteHits(sb, nodes, "00BF6F80");
         WriteHits(sb, nodes, "00BDC180");

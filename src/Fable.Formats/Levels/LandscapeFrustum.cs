@@ -50,6 +50,24 @@ public static class LandscapeFrustum
     public const float NormalizeDivisor = 1f;
     public const float FovHalfScale = 0.5f;
     public const float LetterboxFourByThree = 0.75f;
+    public const uint CameraUpdate = 0x00B314E0;
+    public const uint SplineUpdate = 0x00B31160;
+    public const uint CameraCtor = 0x00B31700;
+    public const uint SplineEnable = 0x00B2FC10;
+    public const uint FovFlagGetter = 0x00A0BE80;
+    public const uint FovHGetter = 0x00A0BE90;
+    public const uint FovVGetter = 0x00A0BEA0;
+    public const int HelperFlagsOffset = 40;
+    public const int HelperFovHOffset = 44;
+    public const int HelperFovVOffset = 48;
+    public const int TwoFovFlagBit = 2;
+    public const int SplineFlagOffset = 536;
+    public const float FovTurnsToDegrees = 360f;
+    public const float Inv360 = 1f / 360f;
+    public const float TwoPi = 6.283185307179586f;
+    public const float FirstSeenFovTurns = 0.2f;
+    public const bool FirstSeenTwoFovFlag = false;
+    public const bool FirstSeenSplineEnabled = false;
     public const int ViewMatrixOffset = 128;
     public const int InverseOffset = 228;
     public const int ViewportWidthOffset = 176;
@@ -64,6 +82,14 @@ public static class LandscapeFrustum
     public const bool FirstSeenUsesFourPlaneAabb = true;
 
     public readonly record struct Plane(Vector3 Normal, float D);
+
+    /// <summary>
+    /// <c>00B314E0</c>: <c>00A0BE90</c> <c>[helper+44]</c> times
+    /// <c>360 * 1/360 * 2π</c> (<c>0x1238020</c> / <c>0x1238E00</c> /
+    /// <c>0x128F608</c>). TNG spline FOV <c>0.2</c> is turns.
+    /// </summary>
+    public static float TurnsToRadians(float turns) =>
+        turns * FovTurnsToDegrees * Inv360 * TwoPi;
 
     /// <summary>
     /// <c>00B30B50</c> +84 set: <c>1/tan(fov*0.5)</c> from source+76 / +80.

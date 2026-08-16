@@ -363,7 +363,12 @@ public sealed class LevFormatTests
         Assert.Equal(height.FineWidth, patchMax.X);
         Assert.Equal(height.FineHeight, patchMax.Y);
         Assert.True(height.FineWidth >= 128, $"oakFineW={height.FineWidth}");
-        LandscapeFrustum.LetterboxCots(float.DegreesToRadians(72f), 4f, 3f, out var cotH, out var cotV);
+        Assert.False(LandscapeFrustum.FirstSeenTwoFovFlag);
+        Assert.Equal(0.2f, LandscapeFrustum.FirstSeenFovTurns);
+        Assert.Equal(360f, LandscapeFrustum.FovTurnsToDegrees);
+        Assert.Equal(LandscapeFrustum.TurnsToRadians(0.2f), float.DegreesToRadians(72f), 4);
+        LandscapeFrustum.LetterboxCots(
+            LandscapeFrustum.TurnsToRadians(LandscapeFrustum.FirstSeenFovTurns), 4f, 3f, out var cotH, out var cotV);
         Assert.Equal(LandscapeFrustum.CotHalfAngle(float.DegreesToRadians(72f)), cotH, 5);
         Assert.Equal(cotH * (4f / 3f), cotV, 5);
         var left = new LandscapeFrustum.Plane(new Vector3(1f, 0f, 0f), 0f);
