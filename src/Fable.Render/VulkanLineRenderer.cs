@@ -634,8 +634,29 @@ public sealed unsafe class VulkanLineRenderer : IDisposable
         var meshFrag = CreateShaderModule(meshFragSpv);
         stages[0].Module = meshVert;
         stages[1].Module = meshFrag;
+        var meshBinding = new VertexInputBindingDescription
+        {
+            Binding = 0,
+            Stride = MeshVertex.Stride,
+            InputRate = VertexInputRate.Vertex,
+        };
+        var meshAttributes = stackalloc VertexInputAttributeDescription[]
+        {
+            new() { Location = 0, Binding = 0, Format = Format.R32G32B32Sfloat, Offset = 0 },
+            new() { Location = 1, Binding = 0, Format = Format.R32G32B32Sfloat, Offset = 12 },
+            new() { Location = 2, Binding = 0, Format = Format.R32G32B32Sfloat, Offset = 24 },
+        };
+        var meshVertexInput = new PipelineVertexInputStateCreateInfo
+        {
+            SType = StructureType.PipelineVertexInputStateCreateInfo,
+            VertexBindingDescriptionCount = 1,
+            PVertexBindingDescriptions = &meshBinding,
+            VertexAttributeDescriptionCount = 3,
+            PVertexAttributeDescriptions = meshAttributes,
+        };
         inputAssembly.Topology = PrimitiveTopology.TriangleList;
         raster.CullMode = CullModeFlags.None;
+        pipelineInfo.PVertexInputState = &meshVertexInput;
         pipelineInfo.PDepthStencilState = &meshDepth;
         Check(_vk.CreateGraphicsPipelines(_device, default, 1, in pipelineInfo, null, out _meshPipeline));
 

@@ -30,5 +30,8 @@ public sealed class WorldGeometryTests
         Assert.True(world.MeshInstances > 5, $"instances={world.MeshInstances} missing={world.MissingMeshes}");
         Assert.True(world.Triangles.Count > 100);
         Assert.True(world.Triangles.Count > 128, "expected terrain quads plus props");
+        Assert.Contains(world.Triangles, tri => tri.TextureId == TextureLibrary.LandscapeGrassPlainId);
+        Assert.Contains(world.Triangles, tri => tri.TextureId > 0 && tri.TextureId != TextureLibrary.LandscapeGrassPlainId);
+        Assert.True(world.MeshInstances >= 41, $"OBJECT_/CREATURE_ prefix strip should add BIGROCK and beggar/trader; instances={world.MeshInstances} missing={world.MissingMeshes}");
     }
 }

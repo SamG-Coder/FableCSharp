@@ -36,7 +36,10 @@ public sealed class WorldGeometry
         {
             var height = levels.LoadHeightField(region);
             if (height is not null)
-                triangles.AddRange(height.ToLocalTriangles());
+            {
+                foreach (var tri in height.ToLocalTriangles())
+                    triangles.Add(tri with { TextureId = TextureLibrary.LandscapeGrassPlainId });
+            }
         }
         var instances = 0;
         var missing = 0;
@@ -76,7 +79,7 @@ public sealed class WorldGeometry
                     n = Vector3.UnitZ;
                 else
                     n = Vector3.Normalize(n);
-                triangles.Add(new MeshTriangle(a, b, c, n));
+                triangles.Add(new MeshTriangle(a, b, c, n, tri.UvA, tri.UvB, tri.UvC, tri.TextureId));
             }
 
             instances++;

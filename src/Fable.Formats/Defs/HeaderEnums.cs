@@ -33,16 +33,29 @@ public sealed class HeaderEnums
 
     public int? FindMeshId(string definitionType)
     {
-        foreach (var key in new[]
-                 {
-                     definitionType,
-                     "MESH_" + definitionType,
-                 })
+        foreach (var key in MeshNameCandidates(definitionType))
         {
-            if (ByName.TryGetValue(key, out var id) && !key.Contains("[PHYSICS]", StringComparison.OrdinalIgnoreCase))
+            if (ByName.TryGetValue(key, out var id) &&
+                !key.Contains("[PHYSICS]", StringComparison.OrdinalIgnoreCase))
                 return id;
         }
 
         return null;
+    }
+
+    public static IEnumerable<string> MeshNameCandidates(string definitionType)
+    {
+        yield return definitionType;
+        yield return "MESH_" + definitionType;
+        foreach (var prefix in new[] { "OBJECT_", "CREATURE_", "BUILDING_" })
+        {
+            if (!definitionType.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                continue;
+            var stem = definitionType[prefix.Length..];
+            if (stem.Length == 0)
+                continue;
+            yield return stem;
+            yield return "MESH_" + stem;
+        }
     }
 }

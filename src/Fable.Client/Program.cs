@@ -24,6 +24,7 @@ var scene = GizmoScene.FromMarkers(region, things.Things
 Console.WriteLine("Building world meshes...");
 var world = WorldGeometry.Build(install, region, things.Things);
 Console.WriteLine($"Instanced {world.MeshInstances} meshes ({world.Triangles.Count} tris), missing {world.MissingMeshes}");
+using var textures = new TextureLibrary(install);
 var map = levels.World.FindMap(region);
 
 var lookTarget = new Vector3(64f, 64f, 36f);
@@ -52,7 +53,7 @@ window.Load += () =>
 
     renderer = new VulkanLineRenderer(window);
     renderer.SetLines(CollectionsMarshalAsSpan(scene.Lines));
-    renderer.SetMesh(BuildMeshVertices(world.Triangles));
+    renderer.SetMesh(BuildMeshVertices(world.Triangles, textures));
     input = window.CreateInput();
     mouse = input.Mice.Count > 0 ? input.Mice[0] : null;
     if (mouse is not null)
@@ -152,15 +153,20 @@ void DumpThings()
 static ReadOnlySpan<LineVertex> CollectionsMarshalAsSpan(IReadOnlyList<LineVertex> lines) =>
     lines is List<LineVertex> list ? System.Runtime.InteropServices.CollectionsMarshal.AsSpan(list) : lines.ToArray();
 
-static MeshVertex[] BuildMeshVertices(IReadOnlyList<Fable.Formats.Meshes.MeshTriangle> triangles)
+static MeshVertex[] BuildMeshVertices(
+    IReadOnlyList<Fable.Formats.Meshes.MeshTriangle> triangles,
+    TextureLibrary textures)
 {
     var vertices = new MeshVertex[triangles.Count * 3];
     var i = 0;
     foreach (var tri in triangles)
     {
-        vertices[i++] = new MeshVertex(tri.A, tri.Normal);
-        vertices[i++] = new MeshVertex(tri.B, tri.Normal);
-        vertices[i++] = new MeshVertex(tri.C, tri.Normal);
+        var ca = textures.Sample(tri.TextureId, tri.UvA);
+        var cb = textures.Sample(tri.TextureId, tri.UvB);
+        var cc = textures.Sample(tri.TextureId, tri.UvC);
+        vertices[i++] = new MeshVertex(tri.A, tri.Normal, ca);
+        vertices[i++] = new MeshVertex(tri.B, tri.Normal, cb);
+        vertices[i++] = new MeshVertex(tri.C, tri.Normal, cc);
     }
     return vertices;
 }

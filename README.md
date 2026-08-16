@@ -33,7 +33,9 @@ dotnet run --project src\Fable.Client -- PicnicArea
 | F1 | Dump the first 40 things to the console |
 | Esc | Quit |
 
-Each TNG thing is an RGB axis gizmo. Objects with a matching `MESH_*` entry in `graphics.big` are drawn as lit triangles. Landscape comes from the runtime `FinalAlbion_RT.stb` copy of the `.lev` (16-unit height lattice; Lookout is 8×8 quads). The smaller WAD `.lev` is a compiled material/theme table, not the mesh.
+Each TNG thing is an RGB axis gizmo. Objects with a matching `MESH_*` entry in `graphics.big` are drawn as lit triangles, colored by sampling the mesh `DiffuseMapID` out of `textures.big` (UVs from the C3D vertex). Landscape comes from the runtime `FinalAlbion_RT.stb` copy of the `.lev` (16-unit height lattice; Lookout is 8×8 quads) using `LANDSCAPE_GRASS_PLAIN`. The smaller WAD `.lev` is a compiled material/theme table, not the mesh.
+
+What has decoded and what has not is in [docs/PARITY.md](docs/PARITY.md). New facts go there as tests.
 
 ## Dump the install
 
@@ -61,16 +63,17 @@ Tests read the live TLC install.
 | Project | Role |
 |---|---|
 | `src/Fable.Core` | Install locator |
-| `src/Fable.Formats` | WLD, TNG, QST, WAD/BBB, BIG, names.bin, UPK header |
-| `src/Fable.Game` | Region / TNG resolution |
+| `src/Fable.Formats` | WLD, TNG, QST, WAD/BBB, BIG, names.bin, C3D, textures, UPK header |
+| `src/Fable.Game` | Region / TNG resolution, texture library |
 | `tools/Fable.Dump` | CLI inspector |
 | `src/Fable.Render` | Silk.NET Vulkan line renderer + fly camera |
 | `src/Fable.Client` | Lookout Point gizmo viewer |
 
-Texture payloads are Fable-framed LZO. Format code 31 is DXT1, 32 is DXT5. `LANDSCAPE_GRASS_PLAIN` decodes to 512×512 RGBA.
+Texture payloads are Fable-framed LZO. Format code 31 is DXT1, 32 is DXT5. `LANDSCAPE_GRASS_PLAIN` decodes to 512×512 RGBA. Mesh `DiffuseMapID` is that bank's entry id.
 
 ## Next
 
-1. Bind decoded textures onto mesh UVs
-2. Finer landscape (the STB blob is 3MB; we only sample the 16-unit lattice)
-3. Walkable hero instead of a fly camera
+1. Decode `game.bin` so walls / rocks / lamps resolve to the right `MESH_*`
+2. GPU sample textures (UVs already land as vertex color)
+3. Finer landscape (the STB blob is 3MB; we only sample the 16-unit lattice)
+4. Walkable hero instead of a fly camera

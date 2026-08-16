@@ -319,6 +319,14 @@ static void DumpMesh(GameInstall install, string? query)
     {
         var mesh = MeshFile.Parse(bytes, (int)entry.Type);
         Console.WriteLine($"name={mesh.Name} tris={mesh.Triangles.Count} bounds {mesh.BoundsMin} .. {mesh.BoundsMax}");
+        foreach (var mat in mesh.Materials)
+            Console.WriteLine($"  mat '{mat.Name}' diffuse={mat.DiffuseMapId} bump={mat.BumpMapId}");
+        if (mesh.Triangles.Count > 0)
+        {
+            var uvMin = mesh.Triangles.Min(tri => Math.Min(tri.UvA.X, tri.UvA.Y));
+            var uvMax = mesh.Triangles.Max(tri => Math.Max(tri.UvA.X, tri.UvA.Y));
+            Console.WriteLine($"  uv range [{uvMin:0.###},{uvMax:0.###}] textured={mesh.Triangles.Count(tri => tri.TextureId > 0)}");
+        }
     }
     catch (Exception ex)
     {

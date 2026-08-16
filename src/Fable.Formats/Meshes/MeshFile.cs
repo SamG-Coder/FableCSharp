@@ -7,6 +7,7 @@ public sealed class MeshFile
 {
     public required string Name { get; init; }
     public required int EntryType { get; init; }
+    public required IReadOnlyList<MeshMaterial> Materials { get; init; }
     public required IReadOnlyList<MeshTriangle> Triangles { get; init; }
     public required Vector3 BoundsMin { get; init; }
     public required Vector3 BoundsMax { get; init; }
@@ -81,17 +82,26 @@ public sealed class MeshFile
         cursor += 48; // root matrix
         var afterBones = cursor;
 
+        var materials = new List<MeshMaterial>(Math.Max(materialCount, 0));
         for (var i = 0; i < materialCount; i++)
         {
-            cursor += 4;
-            ReadCString(data, ref cursor);
-            cursor += 4 * 7 + 5;
-            var useFilenames = data[cursor - 1] != 0;
+            var id = ReadI32(data, ref cursor);
+            var matName = ReadCString(data, ref cursor);
+            var decal = ReadI32(data, ref cursor);
+            var diffuse = ReadI32(data, ref cursor);
+            var bump = ReadI32(data, ref cursor);
+            var reflection = ReadI32(data, ref cursor);
+            var illumination = ReadI32(data, ref cursor);
+            cursor += 4 + 4; // MapFlags + SelfIllumination
+            cursor += 4; // two-sided / transparent / boolean-alpha / degenerate
+            var useFilenames = data[cursor++] != 0;
             if (useFilenames)
             {
                 for (var j = 0; j < 4; j++)
                     ReadCString(data, ref cursor);
             }
+
+            materials.Add(new MeshMaterial(id, matName, diffuse, bump, decal, reflection, illumination));
         }
 
         var triangles = new List<MeshTriangle>(1024);
@@ -106,7 +116,10 @@ public sealed class MeshFile
             var iBytes = 0;
             try
             {
-            ReadI32(data, ref cursor); // material
+            var materialIndex = ReadI32(data, ref cursor);
+            var textureId = materialIndex >= 0 && materialIndex < materials.Count
+                ? materials[materialIndex].DiffuseMapId
+                : 0;
             var reps = ReadI32(data, ref cursor);
             cursor += 12 + 4 + 4;
             var staticBlocks = ReadU32(data, ref cursor);
@@ -168,11 +181,20 @@ public sealed class MeshFile
                 continue;
 
             var packedPos = (initFlags & 4) != 0 && (initFlags & 0x10) == 0;
+            var packedNorm = (initFlags & 4) != 0;
+            var hasBones = animatedBlocks > 0;
             if (entryType == 4 || (stride == 36 && animatedBlocks == 0) || repeat > 1)
+            {
                 packedPos = false;
+                if (entryType == 4 || stride == 36)
+                    packedNorm = false;
+            }
 
-            var positions = new Vector3[vertices.Length / Math.Max(stride, 1)];
-            for (var v = 0; v < positions.Length; v++)
+            var uvOffset = PackedUvOffset(entryType, stride, initFlags, hasBones);
+            var vertCount = vertices.Length / Math.Max(stride, 1);
+            var positions = new Vector3[vertCount];
+            var uvs = new Vector2[vertCount];
+            for (var v = 0; v < vertCount; v++)
             {
                 var o = v * stride;
                 if (o + 12 > vertices.Length)
@@ -192,6 +214,7 @@ public sealed class MeshFile
                 }
 
                 positions[v] = p;
+                uvs[v] = ReadUv(vertices, o + uvOffset, packedNorm, entryType);
                 boundsMin = Vector3.Min(boundsMin, p);
                 boundsMax = Vector3.Max(boundsMax, p);
             }
@@ -212,7 +235,7 @@ public sealed class MeshFile
                 if (n.LengthSquared() < 1e-10f)
                     return;
                 n = Vector3.Normalize(n);
-                triangles.Add(new MeshTriangle(pa, pb, pc, n));
+                triangles.Add(new MeshTriangle(pa, pb, pc, n, uvs[a], uvs[b], uvs[c], textureId));
             }
 
             if (blocks.Count == 0)
@@ -270,11 +293,55 @@ public sealed class MeshFile
         {
             Name = name,
             EntryType = entryType,
+            Materials = materials,
             Triangles = triangles,
             BoundsMin = boundsMin,
             BoundsMax = boundsMax,
         };
     }
+
+    internal static int PackedUvOffset(int entryType, int stride, uint initFlags, bool hasBones)
+    {
+        var packedPos = (initFlags & 4) != 0 && (initFlags & 0x10) == 0;
+        var packedNorm = (initFlags & 4) != 0;
+        if (entryType == 4 || (stride == 36 && !hasBones))
+            return 24;
+        if (!hasBones && stride == 24 && !packedPos && !packedNorm)
+            return 16;
+        if (!hasBones && stride == 20 && packedPos && !packedNorm)
+            return 12;
+
+        var posSize = packedPos ? 4 : 12;
+        var normOff = posSize + (hasBones ? 8 : 0);
+        return normOff + (packedNorm ? 4 : 12);
+    }
+
+    internal static Vector2 ReadUv(byte[] vertices, int offset, bool packedNorm, int entryType)
+    {
+        if (offset < 0 || offset + 4 > vertices.Length)
+            return Vector2.Zero;
+        if (packedNorm && entryType == 4)
+        {
+            return new Vector2(
+                BitConverter.ToUInt16(vertices, offset) / 65535f,
+                BitConverter.ToUInt16(vertices, offset + 2) / 65535f);
+        }
+
+        if (packedNorm)
+        {
+            return new Vector2(
+                DecompressUv(BitConverter.ToInt16(vertices, offset)),
+                DecompressUv(BitConverter.ToInt16(vertices, offset + 2)));
+        }
+
+        if (offset + 8 > vertices.Length)
+            return Vector2.Zero;
+        return new Vector2(
+            BitConverter.ToSingle(vertices, offset),
+            BitConverter.ToSingle(vertices, offset + 4));
+    }
+
+    internal static float DecompressUv(short value) => value / 2048f - 8f;
 
     private static Vector3 UnpackPosition(uint packed, Vector3 scale, Vector3 offset)
     {
@@ -353,4 +420,21 @@ public sealed class MeshFile
     }
 }
 
-public readonly record struct MeshTriangle(Vector3 A, Vector3 B, Vector3 C, Vector3 Normal);
+public readonly record struct MeshMaterial(
+    int Id,
+    string Name,
+    int DiffuseMapId,
+    int BumpMapId,
+    int DecalId,
+    int ReflectionMapId,
+    int IlluminationMapId);
+
+public readonly record struct MeshTriangle(
+    Vector3 A,
+    Vector3 B,
+    Vector3 C,
+    Vector3 Normal,
+    Vector2 UvA = default,
+    Vector2 UvB = default,
+    Vector2 UvC = default,
+    int TextureId = 0);

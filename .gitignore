@@ -7,6 +7,7 @@ obj/
 TestResults/
 tools/_texprobe/
 tools/_peek/
+tools/_probe/
 *.exe
 client-out.txt
 client-err.txt

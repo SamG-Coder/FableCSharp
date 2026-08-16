@@ -76,7 +76,11 @@ public sealed class LevHeightField
         var n = Vector3.Cross(b - a, c - a);
         if (n.LengthSquared() < 1e-8f)
             return;
-        triangles.Add(new MeshTriangle(a, b, c, Vector3.Normalize(n)));
+        triangles.Add(new MeshTriangle(
+            a, b, c, Vector3.Normalize(n),
+            new Vector2(a.X / SampleSpacing, a.Y / SampleSpacing),
+            new Vector2(b.X / SampleSpacing, b.Y / SampleSpacing),
+            new Vector2(c.X / SampleSpacing, c.Y / SampleSpacing)));
     }
 
     private static bool TryReadSample(
