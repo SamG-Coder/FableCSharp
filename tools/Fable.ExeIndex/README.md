@@ -3,6 +3,10 @@
 Turns a local `Fable.exe` into a searchable dump, then splits that dump into
 section packets an agent can rewrite as C-like pseudocode.
 
+The x86 decoder must consume a full instruction. Unknown `0F` / `F6` / x87 used
+to emit `db` and then a fake `ret`. It now covers 0F (jcc/movzx/setcc/imul),
+F6/F7, C0/C1/D0–D3 shifts, D8–DF x87, A0–A3 moffs, and 66/F2/F3 prefixes.
+
 ```
 dotnet run --project tools/Fable.ExeIndex -- all
 ```
