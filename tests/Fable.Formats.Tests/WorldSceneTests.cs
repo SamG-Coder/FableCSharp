@@ -362,6 +362,14 @@ public sealed class WorldSceneTests
         Assert.True(RegionTravel.FirstSeenWaitTaskYieldsOnce);
         Assert.False(RegionTravel.FirstSeenWaitTaskReadsName);
         Assert.Equal("FOO", RegionTravel.IntroWaitTask);
+        Assert.Equal(0x00CC0CB5u, RegionTravel.SneakToOpcode);
+        Assert.Equal(20, RegionTravel.SneakToApplyVtbl);
+        Assert.Equal(0x004C72B0u, RegionTravel.SneakToApplyStub);
+        Assert.Equal(2, RegionTravel.SneakToMode);
+        Assert.False(RegionTravel.FirstSeenSneakToAppliesMove);
+        Assert.False(RegionTravel.FirstSeenSneakToWaitsForArrival);
+        Assert.Equal("MK_OVIF_HERO4", RegionTravel.IntroSneakMarker);
+        Assert.Equal(0f, RegionTravel.IntroSneakSpeed);
         Assert.Equal(0x00CC4B22u, RegionTravel.ScriptFadeInOut);
         Assert.Equal(0x00CB5D80u, RegionTravel.RegisteringScripts);
         Assert.Equal(0x00CB8110u, RegionTravel.QuestBaseCtor);
@@ -868,6 +876,20 @@ public sealed class WorldSceneTests
         Assert.Contains(runtime.WaitTasks, w =>
             w.Actor == "Hero" && w.Name == RegionTravel.IntroWaitTask);
         Assert.False(intro.ExecutedVerb("SneakTo"));
+        Assert.Equal(0x00CC0CB5u, RegionTravel.SneakToOpcode);
+        Assert.False(RegionTravel.FirstSeenSneakToAppliesMove);
+        Assert.False(RegionTravel.FirstSeenSneakToWaitsForArrival);
+        script.Update(0.1f);
+        Assert.Contains("Hero.SneakTo MK_OVIF_HERO4,0.0,FALSE,FALSE,FALSE", intro.Executed);
+        Assert.Equal("GamePause 1.0", intro.Commands[intro.InstructionPointer]);
+        Assert.True(intro.Yielded);
+        Assert.Null(intro.UnsupportedCommand);
+        Assert.Contains(runtime.SneakTos, s =>
+            s.Actor == "Hero" &&
+            s.Marker == RegionTravel.IntroSneakMarker &&
+            s.Speed == RegionTravel.IntroSneakSpeed &&
+            !s.Wait);
+        Assert.False(intro.ExecutedVerb("PlayCombatAnimation"));
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 
@@ -979,6 +1001,34 @@ public sealed class WorldSceneTests
         public void DialogSpeak(string? actor, string listener, string text) { }
 
         public void WaitTask(string? actor, string name) { }
+
+        public void SneakTo(string? actor, string marker, float speed, bool wait) { }
+    }
+
+    [Fact]
+    public void Hero_SneakTo_first_seen_yields_once_without_move()
+    {
+        var command = "Hero.SneakTo MK_OVIF_HERO4,0.0,FALSE,FALSE,FALSE";
+        var parsed = ScriptCommand.ParseSneakTo(ScriptCommand.Parse(command).Arguments);
+        Assert.Equal("MK_OVIF_HERO4", parsed.Marker);
+        Assert.Equal(0f, parsed.Speed);
+        Assert.False(parsed.Wait);
+        Assert.Equal(ScriptFlow.YieldAfter, ScriptCommand.Classify(ScriptCommand.Parse(command)));
+        Assert.Equal(ScriptFlow.Yield, ScriptCommand.Classify(
+            ScriptCommand.Parse("Hero.SneakTo MK_OVIF_HERO4,0.0,TRUE")));
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(
+            ScriptCommand.Parse("Hero.SneakTo")));
+        Assert.Equal(0x00CC0CB5u, RegionTravel.SneakToOpcode);
+        Assert.Equal(0x004C72B0u, RegionTravel.SneakToApplyStub);
+        Assert.Equal(2, RegionTravel.SneakToMode);
+        Assert.False(RegionTravel.FirstSeenSneakToAppliesMove);
+        Assert.False(RegionTravel.FirstSeenSneakToWaitsForArrival);
+        var interpreter = new ScriptInterpreter("sneak", [command, "GamePause 1.0"]);
+        interpreter.RunUntilYield();
+        Assert.True(interpreter.Yielded);
+        Assert.Contains(command, interpreter.Executed);
+        Assert.Equal("GamePause 1.0", interpreter.Commands[interpreter.InstructionPointer]);
+        Assert.Null(interpreter.UnsupportedCommand);
     }
 
     [Fact]

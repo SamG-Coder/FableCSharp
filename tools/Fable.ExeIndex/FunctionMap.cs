@@ -187,6 +187,8 @@ internal static class FunctionMap
         ("dialog wait body", 0x006E5660),
         ("WaitTask token", 0x00CC0783),
         ("WaitTask hero poll", 0x006A9550),
+        ("SneakTo token", 0x00CC0CB5),
+        ("SneakTo thing vtbl+20 stub", 0x004C72B0),
         ("PlayAnimation thing vtbl+72", 0x004C7470),
         ("CTCAnimationComplex factory", 0x0070B3F0),
         ("CTCAnimationComplex +68 stub", 0x00686920),

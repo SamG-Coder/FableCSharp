@@ -274,6 +274,12 @@ public sealed class ScriptInterpreter
             if (!string.IsNullOrEmpty(command.Actor))
                 host.WaitTask(command.Actor, ScriptInterpreter.FirstToken(command.Arguments));
         }
+        else if (command.Verb.Equals("SneakTo", StringComparison.OrdinalIgnoreCase))
+        {
+            var sneak = ScriptCommand.ParseSneakTo(command.Arguments);
+            if (sneak.Marker.Length != 0)
+                host.SneakTo(command.Actor, sneak.Marker, sneak.Speed, sneak.Wait);
+        }
     }
 
     internal static void ParseFadeArgs(string arguments, out float seconds, out float param)
@@ -385,6 +391,25 @@ public readonly struct ScriptCommand
     }
 
     /// <summary>
+    /// <c>00CC0CB5</c>: marker, optional speed
+    /// (default 0.3), arg2/arg3 IsTrue wait-for
+    /// arrival. First-seen is not wait.
+    /// </summary>
+    public static (string Marker, float Speed, bool Wait) ParseSneakTo(string arguments)
+    {
+        var args = SplitArgs(arguments);
+        var marker = args.Length == 0 ? "" : args[0];
+        var speed = RegionTravel.SneakToDefaultSpeed;
+        if (args.Length > 1 &&
+            float.TryParse(args[1], System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+            speed = parsed;
+        var wait = (args.Length > 2 && IsTrueArg(args[2])) ||
+                   (args.Length > 3 && IsTrueArg(args[3]));
+        return (marker, speed, wait);
+    }
+
+    /// <summary>
     /// <c>00CBEE0C</c>: strcmp arg to <c>false</c>.
     /// </summary>
     public static bool IsFalseArg(string? text) =>
@@ -475,6 +500,13 @@ public readonly struct ScriptCommand
         }
         if (verb.Equals("WaitTask", StringComparison.OrdinalIgnoreCase))
             return string.IsNullOrEmpty(command.Actor) ? ScriptFlow.Continue : ScriptFlow.YieldAfter;
+        if (verb.Equals("SneakTo", StringComparison.OrdinalIgnoreCase))
+        {
+            var sneak = ParseSneakTo(command.Arguments);
+            if (sneak.Marker.Length == 0)
+                return ScriptFlow.Continue;
+            return sneak.Wait ? ScriptFlow.Yield : ScriptFlow.YieldAfter;
+        }
         if (verb.Equals("LookToThing", StringComparison.OrdinalIgnoreCase))
         {
             var args = SplitArgs(command.Arguments);
@@ -515,4 +547,5 @@ public interface IScriptHost
         string? actor, string listener, string prompt, bool wait, string response);
     void DialogSpeak(string? actor, string listener, string text);
     void WaitTask(string? actor, string name);
+    void SneakTo(string? actor, string marker, float speed, bool wait);
 }

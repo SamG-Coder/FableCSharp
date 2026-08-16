@@ -361,6 +361,29 @@ public static class RegionTravel
     public const bool FirstSeenWaitTaskReadsName = false;
     public const bool FirstSeenWaitTaskYieldsOnce = true;
     public const string IntroWaitTask = "FOO";
+    /// <summary>
+    /// <c>00CC0CB5</c> <c>.SneakTo</c>. Empty actor /
+    /// marker → <c>00CC7081</c>. Speed default
+    /// <c>0x3E99999A</c> (0.3). First-seen
+    /// <c>0.0,FALSE,FALSE,FALSE</c> so arg2/arg3
+    /// IsTrue is false: one <c>vtbl+28</c> then
+    /// <c>00CC7081</c> (does not poll arrival).
+    /// Thing <c>vtbl+20</c> is <c>004C72B0</c>
+    /// <c>al=1; ret 4</c> — no mesh move.
+    /// Mode push is 2 (WalkTo 0, RunTo 1).
+    /// </summary>
+    public const uint SneakToOpcode = 0x00CC0CB5;
+    public const uint SneakToApply = 0x00CC0E5A;
+    public const uint SneakToYieldOnce = 0x00CC0E96;
+    public const int SneakToApplyVtbl = 20;
+    public const uint SneakToApplyStub = 0x004C72B0;
+    public const int SneakToMode = 2;
+    public const float SneakToDefaultSpeed = 0.3f;
+    public const uint SneakToDefaultSpeedBits = 0x3E99999A;
+    public const bool FirstSeenSneakToWaitsForArrival = false;
+    public const bool FirstSeenSneakToAppliesMove = false;
+    public const string IntroSneakMarker = "MK_OVIF_HERO4";
+    public const float IntroSneakSpeed = 0f;
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;
