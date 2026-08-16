@@ -235,6 +235,18 @@ public sealed class GameBin
     public const bool FirstSeenHouseSkipDropsExterior = false;
     public const bool FirstSeenMultiStaticAppliesBothHouseMeshes = true;
     /// <summary>
+    /// StartOakValeWest TNG OBJECT/BUILDING/CREATURE/GENERIC
+    /// within 25 m of HerosOldHouse all have Graphic /
+    /// CMultiStaticMeshDef / CReplaceableMeshDef bank ids.
+    /// Apply vtbl <c>0x126FFB4</c> persist slots are
+    /// <c>ret</c> stubs; file CRC immediates are not in
+    /// <c>007E0000–007E2000</c>. Runtime +44/+52 persist
+    /// stays unread. First-seen still instances both house
+    /// meshes because <c>[thing+64]=0</c>.
+    /// </summary>
+    public const bool FirstSeenHouseAreaDefsResolveGraphic = true;
+    public const uint MultiStaticEntryRtti = 0x0137B530;
+    /// <summary>
     /// <c>007E17AB</c> if runtime <c>+45 != 0</c> copies
     /// <c>+48</c> over <c>[esp+36]</c>, which was
     /// <c>004BC180</c>'s leftover float

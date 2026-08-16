@@ -262,6 +262,40 @@ public sealed class WorldGeometryTests
         var stripOnly = height.Tiles.ToTriangles(height.OriginX, height.OriginY, cells, compiled.Materials, enums);
         var drawn = height.ToTileTriangles(cells, compiled.Materials, enums);
         Assert.Equal(stripOnly.Count, drawn.Count);
+
+        var namesPath = install.FindCompiledDef("names.bin");
+        var binPath = install.FindCompiledDef("game.bin");
+        Assert.NotNull(namesPath);
+        Assert.NotNull(binPath);
+        var bin = GameBin.Load(binPath, NamesBin.Load(namesPath));
+        var nearHouse = things.Things
+            .Where(t => t.DefinitionType is not null && t.PositionX is not null
+                && MathF.Abs(t.PositionX.Value - hx) < 25f
+                && MathF.Abs(t.PositionY!.Value - hy) < 25f)
+            .ToList();
+        var worldTypes = nearHouse
+            .Select(t => t.DefinitionType!)
+            .Where(d => d.StartsWith("OBJECT_", StringComparison.Ordinal)
+                || d.StartsWith("BUILDING_", StringComparison.Ordinal)
+                || d.StartsWith("CREATURE_", StringComparison.Ordinal)
+                || d.StartsWith("GENERIC_", StringComparison.Ordinal))
+            .Distinct()
+            .OrderBy(d => d)
+            .ToList();
+        var unresolved = worldTypes.Where(d => bin.FindMeshIds(d).Count == 0).ToList();
+        Assert.True(unresolved.Count == 0,
+            "first-seen house-area OBJECT/BUILDING/CREATURE/GENERIC without Graphic: "
+            + string.Join(", ", unresolved));
+        var kid = bin.FindEntry(RegionTravel.KidCreature);
+        Assert.NotNull(kid);
+        Assert.Equal(4300, kid.MeshId);
+        var kidChildTypes = kid.SubDefs
+            .Where(s => (uint)s.DefIndex < (uint)bin.Entries.Count)
+            .Select(s => bin.Entries[s.DefIndex].TypeName ?? "")
+            .ToList();
+        Assert.DoesNotContain("CMultiStaticMeshDef", kidChildTypes);
+        Assert.True(GameBin.FirstSeenHouseAreaDefsResolveGraphic);
+        Assert.Equal(0x0137B530u, GameBin.MultiStaticEntryRtti);
     }
 
     [Fact]

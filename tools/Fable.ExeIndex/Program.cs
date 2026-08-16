@@ -744,6 +744,17 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteWalkPart(pe, store, family, "CMultiStaticMeshDef lookup 007E1400", 0x007E1400, 80),
         WriteWalkPart(pe, store, family, "CMultiStaticMeshDef ctor 007E14C0", 0x007E14C0, 40),
         WriteWalkPart(pe, store, family, "CMultiStaticMeshDef apply 007E15C0", 0x007E15C0, 400),
+        WriteImmPart(pe, store, family, "imm MultiStatic FlagA CRC", 0x7CA90715, 0x007E0000, 0x007E2000),
+        WriteImmPart(pe, store, family, "imm MultiStatic FlagB CRC", 0x97595FC1, 0x007E0000, 0x007E2000),
+        WriteImmPart(pe, store, family, "imm MultiStatic FlagA CRC defs", 0x7CA90715, 0x00430000, 0x00440000),
+        WriteWalkPart(pe, store, family, "CMultiStaticMeshDef lookup 007E1400 persist", 0x007E1400, 120),
+        WriteWalkPart(pe, store, family, "CMultiStatic index 007E1370", 0x007E1370, 40),
+        WriteWalkPart(pe, store, family, "CMultiStatic parent ctor 00686800", 0x00686800, 80),
+        WriteVtblPart(pe, store, family, "CMultiStatic apply vtbl 126FFB4 full", 0x0126FFB4, 12),
+        WriteFnPart(pe, store, family, "CMultiStatic vtbl1 007E1590", 0x007E1590, 40),
+        WriteWalkPart(pe, store, family, "CMultiStatic vtbl2 persist 007E1990", 0x007E1990, 200),
+        WriteWalkPart(pe, store, family, "CMultiStatic vtbl6 007E1AA0", 0x007E1AA0, 80),
+        WriteFnPart(pe, store, family, "CMultiStatic vtbl10 007E1570", 0x007E1570, 20),
         WriteFnPart(pe, store, family, "MultiStatic +45 override 007E17AB", 0x007E17AB, 20, stopOnRet: false),
         WriteWalkPart(pe, store, family, "Default float 004BC180", 0x004BC180, 20),
         WriteWalkPart(pe, store, family, "SetVSConstantF1 00989A60", 0x00989A60, 30),
@@ -1212,6 +1223,10 @@ static void RunTraceShaders(PeImage pe, DumpStore store)
     links.Add(WriteImmPart(pe, store, family, "imm c92 sky", 92, 0x00B62000, 0x00B67000));
     links.Add(WriteImmPart(pe, store, family, "imm c92 wrappers", 92, 0x00988000, 0x0098C000));
     links.Add(WriteScanPart(pe, store, family, "push 92 sky", "6A5C", 0x00B62000, 0x00B67000));
+    links.Add(WriteScanPart(pe, store, family, "push 40 landscape", "6A28", 0x00B60000, 0x00C00000));
+    links.Add(WriteImmPart(pe, store, family, "imm 40 landscape", 40, 0x00B60000, 0x00C00000));
+    links.Add(WriteImmPart(pe, store, family, "imm 41 landscape", 41, 0x00B60000, 0x00C00000));
+    links.Add(WriteScanPart(pe, store, family, "push 40 wrappers", "6A28", 0x00988000, 0x0098C000));
     store.WriteIndex(
         family, DumpStore.ShaderTokensVersion, "shader-tokens",
         "First-seen New Game shader token listings from shaders.big plus bind/PS-constant opcode hits. This is the opcode database — dump here instead of grepping.",
