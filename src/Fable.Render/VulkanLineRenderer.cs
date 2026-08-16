@@ -642,7 +642,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             SType = StructureType.PipelineDepthStencilStateCreateInfo,
             DepthTestEnable = true,
             DepthWriteEnable = true,
-            DepthCompareOp = CompareOp.Less,
+            DepthCompareOp = CompareOp.LessOrEqual,
         };
 
         var pipelineInfo = new GraphicsPipelineCreateInfo

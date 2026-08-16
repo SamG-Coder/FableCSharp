@@ -24,10 +24,11 @@ WorldMap? map = null;
 IReadOnlyList<RegionExit> exits = [];
 Vector3 startPosition = new(64f, -40f, 95f);
 Vector3 startLook = new(64f, 64f, 36f);
+var startFov = 65f;
 using var textures = new TextureLibrary(install);
 EnterRegion(region, arrivedFromExit: null);
 
-var camera = new FlyCamera { Position = startPosition };
+var camera = new FlyCamera { Position = startPosition, FovDegrees = startFov };
 camera.LookAt(startLook);
 
 var options = WindowOptions.DefaultVulkan with
@@ -171,10 +172,19 @@ void EnterRegion(string next, RegionExit? arrivedFromExit)
     spawn ??= RegionTravel.FindPlayerStart(things.Things);
     if (spawn is not null)
     {
-        var feet = RegionTravel.PositionOf(spawn);
-        var eye = world.PlayerHeight * 0.5f;
-        startPosition = feet + Vector3.UnitZ * eye;
-        startLook = feet + RegionTravel.ForwardOf(spawn) * 8f + Vector3.UnitZ * eye;
+        if (RegionTravel.TryIntroCamera(things.Things, out var introPos, out var introLook, out var introFov))
+        {
+            startPosition = introPos;
+            startLook = introLook;
+            startFov = introFov;
+        }
+        else
+        {
+            var feet = RegionTravel.PositionOf(spawn);
+            var eye = world.PlayerHeight * 0.5f;
+            startPosition = feet + Vector3.UnitZ * eye;
+            startLook = feet + RegionTravel.ForwardOf(spawn) * 8f + Vector3.UnitZ * eye;
+        }
     }
     else
     {
@@ -197,6 +207,7 @@ void TryWalk()
     Console.WriteLine($"walk {region} -> {dest.ScriptName}  radius={crossed.Radius}");
     EnterRegion(dest.ScriptName, crossed);
     camera.Position = startPosition;
+    camera.FovDegrees = startFov;
     camera.LookAt(startLook);
     renderer.SetLines(CollectionsMarshalAsSpan(scene.Lines));
     var mesh = MeshBatches.Build(world.Triangles);

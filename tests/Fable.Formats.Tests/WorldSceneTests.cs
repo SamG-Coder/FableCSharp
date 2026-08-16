@@ -254,6 +254,11 @@ public sealed class WorldSceneTests
         Assert.Equal("NOVStartHSP", start.ScriptName);
         Assert.InRange(start.PositionX!.Value, 33f, 36f);
         Assert.InRange(start.PositionY!.Value, 127f, 131f);
+        Assert.True(RegionTravel.TryIntroCamera(things, out var introPos, out var introLook, out var introFov));
+        Assert.InRange(introPos.X, 38f, 42f);
+        Assert.InRange(introPos.Y, 128f, 132f);
+        Assert.InRange(introFov, 65f, 80f);
+        Assert.True((introLook - introPos).Length() > 1f);
         Assert.Contains(things, t => t.ScriptName == "HerosOldHouse");
         Assert.Empty(RegionTravel.ActiveExits(things));
 

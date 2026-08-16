@@ -11,6 +11,7 @@ public sealed class FlyCamera
     public float MoveSpeed = 18f;
     public float LookSpeed = 0.0055f;
     public float FastMultiplier = 4f;
+    public float FovDegrees = 65f;
 
     public Vector3 Forward
     {
@@ -40,7 +41,7 @@ public sealed class FlyCamera
         return proj;
     }
 
-    public Matrix4x4 ViewProjection(float aspect) => ViewMatrix * ProjectionMatrix(aspect);
+    public Matrix4x4 ViewProjection(float aspect) => ViewMatrix * ProjectionMatrix(aspect, FovDegrees);
 
     public void LookAt(Vector3 target)
     {
