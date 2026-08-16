@@ -190,6 +190,10 @@ public sealed class ShaderFormatTests
         Assert.Equal(35, WorldShading.LitRegister);
         Assert.Equal(38, WorldShading.PaletteSkinStartRegister);
         Assert.Equal(58, WorldShading.PaletteSkinRegisterCount);
+        Assert.False(WorldShading.PaletteSkinOffsetIsUploaded(0));
+        Assert.True(WorldShading.PaletteSkinOffsetIsUploaded(1));
+        Assert.True(WorldShading.PaletteSkinOffsetIsUploaded(8));
+        Assert.False(WorldShading.PaletteSkinOffsetIsUploaded(38));
         Assert.Equal(new Vector4(0f, 1f, 0f, 0f), WorldShading.DirLightDirection);
         Assert.Equal(0.25f, WorldShading.DirLightColor.X);
         Assert.Equal(0.25f, WorldShading.DirLightColor.Y);

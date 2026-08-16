@@ -179,7 +179,9 @@ static void RunCallDisp(PeImage pe, string[] args)
     }
 
     // call [reg+disp32]: FF 90/91/92/93/96/97 xx xx xx xx
-    byte[] mods = [0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97];
+    // call [reg+disp8]:  FF 50/51/52/53/54/55/56/57 xx
+    byte[] mods32 = [0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97];
+    byte[] mods8 = [0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57];
     var data = pe.Data;
     var hits = 0;
     foreach (var sec in pe.Sections)
@@ -191,22 +193,43 @@ static void RunCallDisp(PeImage pe, string[] args)
         {
             if (data[i] != 0xFF)
                 continue;
-            var ok = false;
-            foreach (var m in mods)
+            var is32 = false;
+            foreach (var m in mods32)
             {
                 if (data[i + 1] == m)
                 {
-                    ok = true;
+                    is32 = true;
                     break;
                 }
             }
 
-            if (!ok)
+            if (is32)
+            {
+                if (BitConverter.ToUInt32(data, i + 2) != disp)
+                    continue;
+                Console.WriteLine($"0x{pe.Va(i):X8}  call [r+0x{disp:X}]");
+                hits++;
+            }
+            else if (disp <= 0x7F)
+            {
+                var is8 = false;
+                foreach (var m in mods8)
+                {
+                    if (data[i + 1] == m)
+                    {
+                        is8 = true;
+                        break;
+                    }
+                }
+
+                if (!is8 || data[i + 2] != (byte)disp)
+                    continue;
+                Console.WriteLine($"0x{pe.Va(i):X8}  call [r+0x{disp:X}]8");
+                hits++;
+            }
+            else
                 continue;
-            if (BitConverter.ToUInt32(data, i + 2) != disp)
-                continue;
-            Console.WriteLine($"0x{pe.Va(i):X8}  call [r+0x{disp:X}]");
-            hits++;
+
             if (hits >= 60)
             {
                 Console.WriteLine($"calldisp  {hits}+");
@@ -645,6 +668,12 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "Grid rebuild 00B46660", 0x00B46660, 80),
         WriteFnPart(pe, store, family, "MainScene construct static family", 0x00B34619, 30),
         WriteU32Part(pe, store, family, "Count-to-slot jump table", 0x00BA48A8, 8),
+        WriteFnPart(pe, store, family, "Water type-8 reject 00B6D6E0", 0x00B6D6E0, 20),
+        WriteFnPart(pe, store, family, "Water type-8 accept 00B6D6F4", 0x00B6D6F4, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "Water ingest 00B6DAF0", 0x00B6DAF0, 40),
+        WriteFnPart(pe, store, family, "Water draw empty je 00B7851D", 0x00B78513, 20, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PALSKIN upload offset 8 00BAB312", 0x00BAB300, 20, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PALSKIN upload offset 1 00BBFFD1", 0x00BBFFC7, 20, stopOnRet: false),
         WriteNewGameMap(pe, store, family),
     };
     store.WriteIndex(

@@ -12,6 +12,16 @@ public static class LandscapeTextures
     public const int WaterId = 442;
 
     /// <summary>
+    /// <c>00B6D6E0</c> compares the first bank u32 to 8 and returns 0
+    /// otherwise. Type 8 then copies the next two u32s. StartOakVale
+    /// sea is 7363; there is no water-prefix STB bank.
+    /// </summary>
+    public const uint RequiredWaterBankType = 8;
+
+    public static bool IsLoadableWaterBank(ReadOnlySpan<byte> bank) =>
+        bank.Length >= 4 && BitConverter.ToUInt32(bank) == RequiredWaterBankType;
+
+    /// <summary>
     /// Exe table <c>0x0139C5D8</c> uploaded via <c>00989A60</c> as VS
     /// float4s: <c>0.125</c> / <c>-0.125</c>. Tile verts have no UV;
     /// <c>VSHADER_LANDSCAPE_FOREGROUND</c> does <c>mad oT0</c> from world XY.

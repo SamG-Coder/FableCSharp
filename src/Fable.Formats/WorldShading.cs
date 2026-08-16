@@ -16,12 +16,19 @@ public static class WorldShading
     public const int RegistersPerLight = 2;
     public const int LitRegister = 35;
     /// <summary>
-    /// LayoutLights <c>[+20]</c>. New Game map v18 reaches 7 callers of
-    /// <c>009896D0</c> in the static/palskin range. First-frame <c>c38</c>
-    /// values are still UNREAD; kid stays bind-pose.
+    /// LayoutLights <c>[+20]</c>. All 11 <c>E8</c> callers of
+    /// <c>009896D0</c> push offset 1, 4, 5, 8, or 16 — never 0.
+    /// First-frame <c>c38</c> is not written by that wrapper; kid stays
+    /// bind-pose.
     /// </summary>
     public const int PaletteSkinStartRegister = 38;
     public const int PaletteSkinRegisterCount = 58;
+
+    /// <summary>
+    /// Offsets pushed to <c>009896D0</c>. Offset 0 (c38) is absent.
+    /// </summary>
+    public static bool PaletteSkinOffsetIsUploaded(int offset) =>
+        offset is 1 or 4 or 5 or 8 or 16;
 
     /// <summary>
     /// Light <c>i</c> is <c>c[19+2i]</c>. Slot 1 (first point) is <c>c21</c>/<c>c22</c>.

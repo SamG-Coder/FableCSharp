@@ -249,7 +249,10 @@ public sealed class LevFormatTests
         Assert.Equal(25, sea.Count);
         var oak = sea.Single(e => e.Name.EndsWith("StartOakVale", StringComparison.Ordinal));
         Assert.Equal(129966u, oak.Size);
-        Assert.Equal(7363u, BitConverter.ToUInt32(stb.Read(oak), 0));
+        var oakBytes = stb.Read(oak);
+        Assert.Equal(7363u, BitConverter.ToUInt32(oakBytes, 0));
+        Assert.Equal(8u, LandscapeTextures.RequiredWaterBankType);
+        Assert.False(LandscapeTextures.IsLoadableWaterBank(oakBytes));
         Assert.DoesNotContain(stb.Entries, e =>
             e.Name.Contains("__ENGINE_WATER_STATIC_MAP_BANK_FILE__", StringComparison.Ordinal));
 
