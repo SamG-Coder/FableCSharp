@@ -468,6 +468,8 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteSitePart(pe, store, family, "Q NewOakValeIntro", 0x00CD6E28, 80),
         WriteSitePart(pe, store, family, "Q NewOakValeIntro script", 0x00CE791E, 80),
         WriteFnPart(pe, store, family, "StartOakVale new game", 0x00DBDE40, 200),
+        WriteFnPart(pe, store, family, "Hero spawn helper 00CB7940", 0x00CB7940, 80),
+        WriteFnPart(pe, store, family, "Creature construct 004AA840", 0x004AA840, 80),
         WriteSitePart(pe, store, family, "Q NewOakValeIntro PreAttack", 0x00DBE0C9, 80),
         WriteFnPart(pe, store, family, "WLD NewRegion reader", 0x0050881D, 80),
         WriteFnPart(pe, store, family, "WLD ContainsMap", 0x004FD7F9, 40),
