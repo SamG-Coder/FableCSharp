@@ -70,11 +70,7 @@ internal static class LineShaders
             float nlen = length(n);
             float ndl = nlen < 0.1 ? 1.0 : max(dot(normalize(n), normalize(pc.lightDir.xyz)), 0.0);
             vec3 v0 = fragColor.rgb * (0.28 + 0.72 * ndl);
-            // PSHADER_LANDSCAPE_FOREGROUND: mul_x2_sat r0.xyz, t1, v0
-            //                               mul_sat    r0.w,   t0.a, v0.a
-            vec3 over = t1.rgb * v0 * 2.0;
-            vec3 base = t0.rgb * v0 * 2.0;
-            vec3 lit = clamp(mix(base, over, t0.a), 0.0, 1.0);
+            vec3 lit = clamp(t1.rgb * v0 * 2.0, 0.0, 1.0);
             float fogEnd = max(pc.cameraPos.w, pc.fogColor.w + 1.0);
             float fog = clamp((length(pc.cameraPos.xyz - fragWorld) - pc.fogColor.w) / (fogEnd - pc.fogColor.w), 0.0, 1.0);
             if (nlen < 0.1)

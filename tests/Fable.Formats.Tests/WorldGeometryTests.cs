@@ -169,6 +169,9 @@ public sealed class WorldGeometryTests
         Assert.True(world.MeshInstances > 192, $"neighbour props missing; instances={world.MeshInstances}");
         Assert.Contains(world.Triangles, t => t.TextureId == SkyGeometry.UnlitTextureId);
         Assert.Contains(world.Triangles, t => t.TextureId1 != 0 && t.TextureId1 != t.TextureId);
-        Assert.True(world.Triangles.Count(t => t.ColorA.LengthSquared() > 0.1f) > 1000);
+        var sand = world.Triangles.First(t => t.TextureId == 4133);
+        Assert.Equal(1f, sand.ColorA.X, 2);
+        Assert.Equal(1f, sand.ColorA.Y, 2);
+        Assert.Equal(1f, sand.ColorA.Z, 2);
     }
 }

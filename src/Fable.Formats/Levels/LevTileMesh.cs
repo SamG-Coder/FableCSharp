@@ -105,12 +105,12 @@ public sealed class LevTileMesh
                 points[i] = new Vector3(v.WorldX - originX, v.WorldY - originY, v.Z);
             }
 
-            var at = new Dictionary<(int X, int Y), (Vector3 P, Vector3 N, Vector3 C)>();
+            var at = new Dictionary<(int X, int Y), (Vector3 P, Vector3 N)>();
             for (var i = 0; i < tile.Vertices.Count; i++)
             {
                 var v = tile.Vertices[i];
                 var p = points[i];
-                at[((int)MathF.Round(p.X), (int)MathF.Round(p.Y))] = (p, v.Normal, v.Color);
+                at[((int)MathF.Round(p.X), (int)MathF.Round(p.Y))] = (p, v.Normal);
             }
 
             var minX = at.Count == 0 ? 0 : at.Keys.Min(k => k.X);
@@ -159,8 +159,8 @@ public sealed class LevTileMesh
         return triangles;
     }
 
-    private static (Vector3 P, Vector3 N, Vector3 C) PointOf(LevTileVertex v, Vector3 p) =>
-        (p, v.Normal, v.Color);
+    private static (Vector3 P, Vector3 N) PointOf(LevTileVertex v, Vector3 p) =>
+        (p, v.Normal);
 
     private static (int A, int B) LayersAt(
         Vector3 p, LevCellGrid cells, Dictionary<int, LevMaterial> bySlot, HeaderEnums? textures)
@@ -189,9 +189,9 @@ public sealed class LevTileMesh
 
     private static void Add(
         List<MeshTriangle> triangles,
-        (Vector3 P, Vector3 N, Vector3 C) a,
-        (Vector3 P, Vector3 N, Vector3 C) b,
-        (Vector3 P, Vector3 N, Vector3 C) c,
+        (Vector3 P, Vector3 N) a,
+        (Vector3 P, Vector3 N) b,
+        (Vector3 P, Vector3 N) c,
         int textureId,
         int textureId1)
     {
@@ -211,7 +211,7 @@ public sealed class LevTileMesh
             new Vector2(b.P.X / LevHeightField.SampleSpacing, b.P.Y / LevHeightField.SampleSpacing),
             new Vector2(c.P.X / LevHeightField.SampleSpacing, c.P.Y / LevHeightField.SampleSpacing),
             textureId,
-            a.C, b.C, c.C,
+            Vector3.One, Vector3.One, Vector3.One,
             textureId1,
             a.N, b.N, c.N));
     }
@@ -287,9 +287,14 @@ public readonly record struct LevTile(
     IReadOnlyList<LevTileVertex> Vertices,
     IReadOnlyList<int> Indices);
 
+/// <summary>
+/// 15-byte STB vert. Extra 7 = packed 11-11-10 normal + 3 bytes.
+/// VSHADER_LANDSCAPE_FOREGROUND writes oD0.xyz from light constants, not
+/// those 3 bytes. Byte 0 of the triple is 0xFF (v3.x, oD0.w scale).
+/// </summary>
 public readonly record struct LevTileVertex(
     ushort WorldX,
     ushort WorldY,
     float Z,
     Vector3 Normal,
-    Vector3 Color);
+    Vector3 ExtraRgb);

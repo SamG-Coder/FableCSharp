@@ -62,6 +62,40 @@ public sealed class TextureFormatTests
     }
 
     [Fact]
+    public void Landscape_sand_and_grass_are_tan_and_olive_not_magenta()
+    {
+        var (big, entries) = OpenMain();
+        using (big)
+        {
+            static (double R, double G, double B) Mean(TextureFile t)
+            {
+                double r = 0, g = 0, b = 0;
+                var n = t.Rgba.Length / 4;
+                for (var i = 0; i < t.Rgba.Length; i += 4)
+                {
+                    r += t.Rgba[i];
+                    g += t.Rgba[i + 1];
+                    b += t.Rgba[i + 2];
+                }
+
+                return (r / n, g / n, b / n);
+            }
+
+            var sand = TextureFile.Parse(0, "s", 0,
+                entries.First(e => e.Name == "LANDSCAPE_PATH_SAND_01").Info,
+                big.Read(entries.First(e => e.Name == "LANDSCAPE_PATH_SAND_01")));
+            var grass = TextureFile.Parse(0, "g", 0,
+                entries.First(e => e.Name == "LANDSCAPE_GRASS_PLAIN").Info,
+                big.Read(entries.First(e => e.Name == "LANDSCAPE_GRASS_PLAIN")));
+            var sm = Mean(sand);
+            var gm = Mean(grass);
+            Assert.True(sm.R > sm.B && sm.G > sm.B, $"sand should be tan, got {sm}");
+            Assert.True(sm.R < sm.G * 1.4, $"sand R/G too magenta {sm}");
+            Assert.True(gm.G >= gm.B && gm.R < gm.G + 15, $"grass should be olive, got {gm}");
+        }
+    }
+
+    [Fact]
     public void Grassblade_32bit_decodes_as_dxt5_with_alpha()
     {
         var (big, entries) = OpenMain();
