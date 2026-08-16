@@ -44,7 +44,7 @@ parsers and notes.
 | FinalAlbion.bwd | Region index: 398 records matching every WLD map. Record = path + name + 3 flag bytes + `u32` min/max X/Y (Lookout `3232,3488`–`3360,3616`) + 9 bytes whose `u32` at +1 is the WLD **MapUID** (Lookout 162441). Declared count is 399; leftover after 398 is a second unread blob. | `DataCatalogTests`, `WorldSceneTests` |
 | Starting region graph | `Misc\FinalAlbion_StartingRegionGraph.txt` is `"Region": "Neighbour", …`. Lookout lists Picnic, BowerstoneSlums, GreatwoodEntrance, guild, demon door. Picnic AABB shares Lookout's west edge. | `WorldSceneTests` |
 | TNG region exits | Lookout has `REGION_ENTRANCE_POINT`, `REGION_EXIT_POINT`, `OBJECT_REGION_TRANSITION_GATE`. `EntranceConnectedToUID` packs `(MapUID << 40) \| entranceSlot`. Slot is the low 32 bits of the dest `REGION_ENTRANCE_POINT.UID` (`0xFFFFFE00_00000000 \| slot`). Lookout→Picnic is slot `0x21` at local (79.6, 55.6). ≥120 WAD exits resolve. | `WorldSceneTests` |
-| BWD display names | After the 398 region records, leftover starts with 4 strings per overworld map: script name, `TXT_REGION_*` (text.big, Lookout = "Lookout Point"), `REGION_*`, `MINIMAP_*`. Extra bytes after the four strings are unread. | `WorldSceneTests` |
+| BWD display names | After the 398 AABB records: ~94 overworld blocks of 4 strings (script, `TXT_REGION_*`, `REGION_*`, `MINIMAP_*`). **72** of those script names are WLD maps (`MapUIDCount`). Extra starts `01 01 01` + `f32` scale (Lookout 1.0) + four `i32`s; the last two are minimap XY (Picnic X < Lookout X). Then length-prefixed neighbour names (Lookout lists PicnicArea and HeroGuildComplexInside). | `WorldSceneTests` |
 | GTG kick points | `REGION_KICK_TO_POINT.ScriptData` is a region name (`BowerstonePosh` / `BowerstoneSlums`). | `WorldSceneTests` |
 | GlobalQuests.qst | Same `AddQuest` text as the master table. Includes `Global_WatchForHeroDeath`. | `WorldSceneTests` |
 | FinalAlbion.gtg | Version-2 thing text (`NEWMAP 1`), not a .lev. Parses with the TNG reader. Global `REGION_ENTRANCE_POINT` / `HOLY_SITE_PLAYER_START`. | `DataCatalogTests` |
@@ -93,7 +93,8 @@ parsers and notes.
 7. **Animation / bones / cloth.** Parser skips the blocks so static positions survive. No skinning.
 8. **Hero, combat, quests, UI, audio.** Frontend UI defs and cutscene defs parse as GameBin entries; fields inside are unread. `.lug`/`.lut` payloads, `.ogg`/`.wmv`, tattoos, and `stars.dat` channels are unread.
 9. **BWD second blob.** After the 398 region records (~22 KB). The 9-byte trailer is now MapUID plus 5 unread bytes.
-11. **BWD display-record extras.** After each 4-string name block (~28+ bytes, includes a `1.0` float). Not a fixed stride. Graph names such as `GreatwoodEntrance` are not always a WLD `LevelScriptName`.
+11. **BWD leftover header.** `u32=142` plus ~16 integers before the first display name. Graph names such as `GreatwoodEntrance` are not always a WLD `LevelScriptName`.
+13. **BWD extra integer lists.** After the named neighbours, remaining u32s (edge indices?) are unread.
 12. **Ten exits pack a MapUID that is not in WLD.** Dest file missing; slot rule still holds when the map exists.
 10. **text.big after the first UTF-16 string.** Some entries append a `.lug` name / extra binary.
 

@@ -169,15 +169,28 @@ public sealed class WorldSceneTests
     }
 
     [Fact]
-    public void Bwd_tail_names_lookout_via_text_big()
+    public void Bwd_display_table_titles_and_minimap_coords()
     {
         var install = Require();
-        var ascii = System.Text.Encoding.ASCII.GetString(File.ReadAllBytes(install.BwdPath));
-        Assert.Contains("TXT_REGION_LOOKOUT_POINT", ascii);
-        Assert.Contains("MINIMAP_LOOKOUTPOINT", ascii);
+        var world = WorldFile.Load(install.WorldPath);
+        var bwd = BwdFile.Load(install.BwdPath);
+        Assert.True(bwd.Displays.Count >= 90, $"displays={bwd.Displays.Count}");
+        Assert.Equal(world.MapUidCount, bwd.Displays.Count(d => world.FindMap(d.ScriptName) is not null));
+
+        var lookout = bwd.FindDisplay("LookoutPoint");
+        var picnic = bwd.FindDisplay("PicnicArea");
+        Assert.NotNull(lookout);
+        Assert.NotNull(picnic);
+        Assert.Equal("TXT_REGION_LOOKOUT_POINT", lookout.Value.TextKey);
+        Assert.Equal("MINIMAP_LOOKOUTPOINT", lookout.Value.MinimapName);
+        Assert.Equal(1f, lookout.Value.Scale, 2);
+        Assert.True(picnic.Value.MapX < lookout.Value.MapX, $"picnic={picnic.Value.MapX} lookout={lookout.Value.MapX}");
+        Assert.Contains("PicnicArea", lookout.Value.LinkedNames);
+        Assert.Contains("HeroGuildComplexInside", lookout.Value.LinkedNames);
+
         using var big = Fable.Formats.Banks.BigArchive.Open(install.TextBigPath);
         var entry = big.ReadEntries(big.SubBanks[0])
-            .First(e => e.Name == "TXT_REGION_LOOKOUT_POINT");
+            .First(e => e.Name == lookout.Value.TextKey);
         Assert.Equal("Lookout Point", Fable.Formats.Text.TextPayload.ReadUtf16(big.Read(entry)));
     }
 
