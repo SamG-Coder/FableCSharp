@@ -1,6 +1,7 @@
 using System.Numerics;
 using Fable.Core;
 using Fable.Formats.Meshes;
+using Fable.Formats.Sky;
 using Fable.Game;
 
 namespace Fable.Formats.Tests;
@@ -245,6 +246,37 @@ public sealed class WorldGeometryTests
         var stripOnly = height.Tiles.ToTriangles(height.OriginX, height.OriginY, cells, compiled.Materials, enums);
         var drawn = height.ToTileTriangles(cells, compiled.Materials, enums);
         Assert.Equal(stripOnly.Count, drawn.Count);
+    }
+
+    [Fact]
+    public void First_seen_sky_dome_is_6500_by_3250_ellipsoid()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var zenith = SkyPass.EllipsoidPoint(0, 0);
+        Assert.InRange(zenith.X, -1f, 1f);
+        Assert.InRange(zenith.Y, -1f, 1f);
+        Assert.Equal(SkyPass.VertRadius, zenith.Z, 0);
+        Assert.Equal(9, SkyPass.DomeRings);
+        Assert.Equal(36, SkyPass.DomeSegments);
+        Assert.Equal(6500f, SkyPass.HorizRadius);
+        Assert.Equal(3250f, SkyPass.VertRadius);
+        Assert.Equal(Vector3.Zero, SkyPass.FirstSeenOrigin);
+        Assert.Equal(0x00B61DD0u, SkyPass.DomeFill);
+        Assert.Equal(0x00B620A0u, SkyPass.DomeSetup);
+        Assert.Equal(0x1BB, SkyPass.VertexCount);
+        Assert.Equal(24, SkyPass.VertexStrideBytes);
+        var sky = SkyGeometry.Build(install);
+        var dome = sky.Where(t => t.TextureId == SkyDef.MiddaySkyTextureId).ToList();
+        Assert.True(dome.Count > 8 * 36 * 2, $"dome tris={dome.Count}");
+        var verts = dome.SelectMany(t => new[] { t.A, t.B, t.C }).ToList();
+        Assert.Contains(verts, p => p.Z > 3000f && p.LengthSquared() < 3250f * 3250f + 1f);
+        Assert.Contains(verts, p => MathF.Hypot(p.X, p.Y) > 5000f);
+        Assert.DoesNotContain(verts, p =>
+        {
+            var d = p - new Vector3(64f, 64f, 0f);
+            return MathF.Abs(d.Length() - 1800f) < 5f;
+        });
     }
 
     private static int CountPropNear(WorldGeometry world, float x, float y, float radius)
