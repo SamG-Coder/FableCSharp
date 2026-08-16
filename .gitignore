@@ -13,3 +13,4 @@ tools/Fable.ExeIndex/out/
 *.exe
 client-out.txt
 client-err.txt
+/implementer/stars
