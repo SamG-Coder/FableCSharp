@@ -213,5 +213,20 @@ public sealed class ShaderFormatTests
         Assert.Contains(WorldShading.PointLightStartRegister, land2.ConstRegisters);
         var five = Load("SHADERS_STATIC", "VSHADER_STATIC_DIRLIGHT_5POINTLIGHTS_FOG");
         Assert.Contains(WorldShading.PointLightStartRegister, five.ConstRegisters);
+        Assert.Equal(0, WorldShading.FirstSeenPackedLightCount);
+        Assert.Equal(0, WorldShading.CapPackedLightCount(-3));
+        Assert.Equal(5, WorldShading.CapPackedLightCount(9));
+        Assert.Equal(2, WorldShading.CapPackedLightCount(2));
+        Assert.Equal(0, WorldShading.SelectFamilySlot(0));
+        Assert.Equal(0, WorldShading.SelectFamilySlot(2));
+        Assert.Equal("VSHADER_STATIC_DIRLIGHT_FOG", WorldShading.StaticFamilyShader(2));
+        Assert.Equal("VSHADER_LANDSCAPE_FOREGROUND", WorldShading.LandscapeFamilyShader(2));
+        Assert.Equal(WorldShading.StaticFamilySlotShaders[0], Load("SHADERS_STATIC", WorldShading.StaticFamilyShader(0)).Name);
+        Assert.Equal(WorldShading.LandscapeFamilySlotShaders[0], Load("SHADERS_LANDSCAPE_FOREGROUND", WorldShading.LandscapeFamilyShader(0)).Name);
+        Assert.Equal(0.1f, WorldShading.AddLightMin);
+        Assert.Equal(1f / 255f, WorldShading.AddLightChannelMin, 6);
+        Assert.True(WorldShading.QualifiesAsAddableLight(130f / 255f, 60f / 255f, 5f / 255f, 8f, 9f));
+        Assert.False(WorldShading.QualifiesAsAddableLight(130f / 255f, 60f / 255f, 5f / 255f, 0.05f, 9f));
+        Assert.False(WorldShading.QualifiesAsAddableLight(0f, 60f / 255f, 5f / 255f, 8f, 9f));
     }
 }

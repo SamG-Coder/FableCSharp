@@ -39,10 +39,88 @@ public static class WorldShading
     /// Static ctor <c>00BB5040</c> / landscape <c>00B69000</c> resize the
     /// family vector to 6 via <c>00B6CBD0</c>. Slot 0 = 1-light, 1–2 =
     /// 2 lights, 3–4 = 4 lights, 5 = 5 lights. Draw <c>00BA2677</c> caps
-    /// packed count at 5 then remaps. Remap dwords at family+32 UNREAD.
+    /// packed count at 5 then <c>remap[count]</c> at family+32.
+    /// MainScene <c>00B34619</c> allocs 0xF0 and calls the ctor; +32..+52
+    /// stay the ctor zeros. Init bind <c>00B8B660</c> is slot 0.
     /// </summary>
     public const int ShaderFamilySlotCount = 6;
     public const int PackedLightCountCap = 5;
+
+    /// <summary>
+    /// Lighting ctor writes packed count <c>[+160]=0</c>. Add-light is
+    /// message 16 on vtbl[7] <c>00B481E0</c> → <c>00B480E0</c>.
+    /// MARKER_LIGHT apply does not call that path. First-seen count is 0.
+    /// </summary>
+    public const int FirstSeenPackedLightCount = 0;
+
+    /// <summary>
+    /// <c>00B480E0</c> rejects when <c>[arg+112]</c> or <c>[arg+120]</c>
+    /// compares below 0.1 (<c>0x12A20D0</c>), or a colour channel at
+    /// +96/+100/+104 compares below 1/255 (<c>0x1231724</c>).
+    /// </summary>
+    public const float AddLightMin = 0.1f;
+    public const float AddLightChannelMin = 1f / 255f;
+
+    public static readonly string[] StaticFamilySlotShaders =
+    [
+        "VSHADER_STATIC_DIRLIGHT_FOG",
+        "VSHADER_STATIC_DIRLIGHT_2POINTLIGHTS_FOG",
+        "VSHADER_STATIC_DIRLIGHT_2POINTLIGHTS_FOG",
+        "VSHADER_STATIC_DIRLIGHT_4POINTLIGHTS_FOG",
+        "VSHADER_STATIC_DIRLIGHT_4POINTLIGHTS_FOG",
+        "VSHADER_STATIC_DIRLIGHT_5POINTLIGHTS_FOG",
+    ];
+
+    public static readonly string[] LandscapeFamilySlotShaders =
+    [
+        "VSHADER_LANDSCAPE_FOREGROUND",
+        "VSHADER_LANDSCAPE_FOREGROUND_2LIGHTS",
+        "VSHADER_LANDSCAPE_FOREGROUND_2LIGHTS",
+        "VSHADER_LANDSCAPE_FOREGROUND_4LIGHTS",
+        "VSHADER_LANDSCAPE_FOREGROUND_4LIGHTS",
+        "VSHADER_LANDSCAPE_FOREGROUND_5LIGHTS",
+    ];
+
+    /// <summary>
+    /// Draw <c>00BA2606</c> does <c>min(count, 5)</c>. Remap at +32 is
+    /// ctor-zero on the family object, so the index is 0. First-seen
+    /// packed count is 0.
+    /// </summary>
+    public static int CapPackedLightCount(int packedCount)
+    {
+        if (packedCount < 0)
+            return 0;
+        return packedCount > PackedLightCountCap ? PackedLightCountCap : packedCount;
+    }
+
+    /// <summary>
+    /// Family+32 remap dwords are the ctor zeros (MainScene does not
+    /// refill them). Slot is 0. Do not invent remap[i]=i.
+    /// </summary>
+    public static int SelectFamilySlot(int packedCount)
+    {
+        _ = CapPackedLightCount(packedCount);
+        return 0;
+    }
+
+    public static string StaticFamilyShader(int packedCount) =>
+        StaticFamilySlotShaders[SelectFamilySlot(packedCount)];
+
+    public static string LandscapeFamilyShader(int packedCount) =>
+        LandscapeFamilySlotShaders[SelectFamilySlot(packedCount)];
+
+    /// <summary>
+    /// Same compares as <c>00B480E0</c>. Colour channels are 0..1.
+    /// </summary>
+    public static bool QualifiesAsAddableLight(
+        float red, float green, float blue, float field112, float field120)
+    {
+        if (field112 < AddLightMin || field120 < AddLightMin)
+            return false;
+        return red >= AddLightChannelMin
+            && green >= AddLightChannelMin
+            && blue >= AddLightChannelMin;
+    }
 
     /// <summary>
     /// LayoutLights <c>[+108]=31</c> count 4. Flush <c>0098A6F6</c> uploads

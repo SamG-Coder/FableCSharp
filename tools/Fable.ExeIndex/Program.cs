@@ -639,6 +639,12 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "SetVertexShader wrapper 00988020", 0x00988020, 50),
         WriteFnPart(pe, store, family, "Static count-to-slot 00BA2677", 0x00BA2677, 40, stopOnRet: false),
         WriteFnPart(pe, store, family, "Gather body after enable 00B462B4", 0x00B462B4, 160, stopOnRet: false),
+        WriteFnPart(pe, store, family, "Add light message 16 handler", 0x00B481E0, 30),
+        WriteFnPart(pe, store, family, "Add light 00B480E0", 0x00B480E0, 80),
+        WriteFnPart(pe, store, family, "Collect lights 00B47BC0", 0x00B47BC0, 80),
+        WriteFnPart(pe, store, family, "Grid rebuild 00B46660", 0x00B46660, 80),
+        WriteFnPart(pe, store, family, "MainScene construct static family", 0x00B34619, 30),
+        WriteU32Part(pe, store, family, "Count-to-slot jump table", 0x00BA48A8, 8),
         WriteNewGameMap(pe, store, family),
     };
     store.WriteIndex(

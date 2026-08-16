@@ -1,4 +1,5 @@
 using Fable.Core;
+using Fable.Formats;
 using Fable.Formats.Levels;
 using Fable.Formats.Qst;
 using Fable.Formats.Tng;
@@ -269,6 +270,9 @@ public sealed class WorldSceneTests
         Assert.Equal("CRGBColour(130,60,5,255)", indoorLight.Properties["CTCLight.Colour"]);
         Assert.Equal("8.0", indoorLight.Properties["CTCLight.InnerRadius"]);
         Assert.Equal("9.0", indoorLight.Properties["CTCLight.OuterRadius"]);
+        Assert.True(WorldShading.QualifiesAsAddableLight(130f / 255f, 60f / 255f, 5f / 255f, 8f, 9f));
+        Assert.Equal(0, WorldShading.SelectFamilySlot(WorldShading.FirstSeenPackedLightCount));
+        Assert.Equal("VSHADER_STATIC_DIRLIGHT_FOG", WorldShading.StaticFamilyShader(WorldShading.FirstSeenPackedLightCount));
         Assert.Contains(things, t => t.DefinitionType == "GENERIC_INTERNAL_FIREPLACE");
         Assert.Contains(things, t => t.DefinitionType == "OBJECT_BUILDING_DOOR_3");
         Assert.Empty(RegionTravel.ActiveExits(things));
