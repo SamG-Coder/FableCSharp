@@ -218,15 +218,16 @@ public sealed class WorldGeometry
         else
             local = height.ToLocalTriangles().Select(tri => tri with { TextureId = TextureLibrary.LandscapeGrassPlainId });
 
-        var offset = new Vector3(dx, dy, 0);
-        var shifted = local
-            .Select(tri => tri with { A = tri.A + offset, B = tri.B + offset, C = tri.C + offset })
-            .ToList();
-        if (landscapePlanes is { Length: > 0 } &&
-            LandscapeFrustum.AabbIsOutside(shifted.Select(tri => (tri.A, tri.B, tri.C)), landscapePlanes))
-            return;
+        if (landscapePlanes is { Length: > 0 })
+        {
+            LandscapeFrustum.PatchAabb(dx, dy, height.FineWidth, height.FineHeight, out var min, out var max);
+            if (LandscapeFrustum.AabbIsOutside(min, max, landscapePlanes))
+                return;
+        }
 
-        triangles.AddRange(shifted);
+        var offset = new Vector3(dx, dy, 0);
+        foreach (var tri in local)
+            triangles.Add(tri with { A = tri.A + offset, B = tri.B + offset, C = tri.C + offset });
     }
 
     private static void AddInstances(

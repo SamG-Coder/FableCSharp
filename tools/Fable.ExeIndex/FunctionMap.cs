@@ -38,6 +38,7 @@ internal static class FunctionMap
         (0x00BE9100, 0x00BE9500, "sea-mesh-builder"),
         (0x00BDB000, 0x00BDC800, "LayoutLights"),
         (0x00BF4000, 0x00BF6000, "per-cell"),
+        (0x00BF6E00, 0x00BF7200, "patch-aabb-fill"),
         (0x00DBDE00, 0x00DBF000, "StartOakVale"),
     ];
 
@@ -68,6 +69,9 @@ internal static class FunctionMap
         ("LoadWaterData", 0x00B41FA0),
         ("landscape draw", 0x00B6B0B0),
         ("patch frustum AABB", 0x00BDC2D0),
+        ("patch AABB fill", 0x00BF6F80),
+        ("patch AABB setup", 0x00BDC180),
+        ("tessellator ctor", 0x00BF6E20),
         ("frustum extract", 0x00B2FD60),
         ("camera setup FOV inverse", 0x00B30B50),
         ("frustum extract other", 0x00B2FC50),
@@ -225,6 +229,8 @@ internal static class FunctionMap
         WriteHits(sb, nodes, "00B2FD60");
         WriteHits(sb, nodes, "00B30B50");
         WriteHits(sb, nodes, "00B2FC50");
+        WriteHits(sb, nodes, "00BF6F80");
+        WriteHits(sb, nodes, "00BDC180");
         WriteHits(sb, nodes, "00B41FA0");
         WriteHits(sb, nodes, "00B7A865");
         WriteHits(sb, nodes, "00BBC130");

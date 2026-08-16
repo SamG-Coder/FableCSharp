@@ -13,7 +13,11 @@ namespace Fable.Formats.Levels;
 /// length, <c>0x122DED8=1</c>). AABB on the patch object: +168 is the
 /// n&gt;0 corner (min), +180 the n≤0 corner (max) — the n-vertex for a
 /// fully-outside test. <c>0x122DEDC=0</c>. Reject when <c>n·p &gt; d</c>.
-/// Missing AABB (<c>[patch+4]==0</c>) submits every cell.
+/// Missing AABB (<c>[patch+4]==0</c>) submits every cell. Fill is
+/// <c>00BF6F80</c> (only <c>E8</c> from <c>00BDC280</c>): first-seen
+/// start is <c>0,0</c>, size is map +92/+94, origin map +96/+98,
+/// <c>min.z=max.z=0</c>. Getter <c>00BDBFC0</c> is <c>&this+168</c>
+/// only; <c>00BE9C80</c> ctor-zeros the same slots.
 /// </summary>
 public static class LandscapeFrustum
 {
@@ -30,6 +34,17 @@ public static class LandscapeFrustum
     public const uint CameraCopy = 0x00B4AF50;
     public const uint PatchSubmit = 0x00BDC2D0;
     public const uint PatchSubmitCaller = 0x00B6B1A5;
+    public const uint AabbFill = 0x00BF6F80;
+    public const uint AabbFillCaller = 0x00BDC280;
+    public const uint AabbFillSetup = 0x00BDC180;
+    public const uint TessellatorCtor = 0x00BF6E20;
+    public const int MapSizeXOffset = 92;
+    public const int MapSizeYOffset = 94;
+    public const int MapOriginXOffset = 96;
+    public const int MapOriginYOffset = 98;
+    public const float AabbZ = 0f;
+    public const int FirstSeenAabbStartX = 0;
+    public const int FirstSeenAabbStartY = 0;
     public const int LandscapeBit40 = 0x40;
     public const float CompareZero = 0f;
     public const float NormalizeDivisor = 1f;
@@ -131,19 +146,17 @@ public static class LandscapeFrustum
         return false;
     }
 
-    public static bool AabbIsOutside(IEnumerable<(Vector3 A, Vector3 B, Vector3 C)> triangles, ReadOnlySpan<Plane> planes)
+    /// <summary>
+    /// <c>00BF6F80</c>: <c>min=(ox+sx0, oy+sy0, 0)</c>,
+    /// <c>max=(ox+sx0+w, oy+sy0+h, 0)</c>. First-seen
+    /// <c>00BDC27A</c> pushes start <c>0,0</c>.
+    /// </summary>
+    public static void PatchAabb(
+        float originX, float originY, float sizeX, float sizeY,
+        out Vector3 min, out Vector3 max)
     {
-        var min = new Vector3(float.PositiveInfinity);
-        var max = new Vector3(float.NegativeInfinity);
-        var any = false;
-        foreach (var (a, b, c) in triangles)
-        {
-            any = true;
-            min = Vector3.Min(min, Vector3.Min(a, Vector3.Min(b, c)));
-            max = Vector3.Max(max, Vector3.Max(a, Vector3.Max(b, c)));
-        }
-
-        return any && AabbIsOutside(min, max, planes);
+        min = new Vector3(originX + FirstSeenAabbStartX, originY + FirstSeenAabbStartY, AabbZ);
+        max = new Vector3(min.X + sizeX, min.Y + sizeY, AabbZ);
     }
 
     private static Vector3 Unproject(Vector3 i0, Vector3 i1, Vector3 i2, Vector3 it, Vector3 dir) =>

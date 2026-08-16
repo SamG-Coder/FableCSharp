@@ -266,10 +266,13 @@ public sealed class WorldSceneTests
         var shotPlanes = LandscapeFrustum.ExtractSidePlanes(
             introPos, introLook - introPos, Vector3.UnitZ, shotCotH, shotCotV);
         Assert.Equal(4, shotPlanes.Length);
-        Assert.False(LandscapeFrustum.AabbIsOutside(
-            new Vector3(28f, 122f, 8f), new Vector3(46f, 138f, 28f), shotPlanes));
-        Assert.True(LandscapeFrustum.AabbIsOutside(
-            new Vector3(2000f, 2000f, 0f), new Vector3(2016f, 2016f, 16f), shotPlanes));
+        var oakHeight = levels.LoadHeightField("StartOakValeWest")!;
+        LandscapeFrustum.PatchAabb(0f, 0f, oakHeight.FineWidth, oakHeight.FineHeight, out var oakMin, out var oakMax);
+        Assert.Equal(0f, oakMin.Z);
+        Assert.Equal(0f, oakMax.Z);
+        Assert.False(LandscapeFrustum.AabbIsOutside(oakMin, oakMax, shotPlanes));
+        LandscapeFrustum.PatchAabb(2000f, 2000f, 16f, 16f, out var farMin, out var farMax);
+        Assert.True(LandscapeFrustum.AabbIsOutside(farMin, farMax, shotPlanes));
         var culled = WorldGeometry.Build(
             install, "StartOakValeWest", things, landscapePlanes: shotPlanes);
         Assert.Contains("StartOakValeWest", culled.Regions);
