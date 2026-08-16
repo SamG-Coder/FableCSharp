@@ -106,6 +106,7 @@ internal static class FunctionMap
         ("ENGINE_VIDEO_OPTIONS lookup", 0x00B2640F),
         ("ENVIRONMENT lookup 00B26828", 0x00B26828),
         ("sky UV divisor CRT 01224830", 0x01224830),
+        ("sky star draw 00B65A20", 0x00B65A20),
         ("sky cap fill 00B61B30", 0x00B61B30),
         ("sky skirt fill 00B61CD0", 0x00B61CD0),
         ("sky mesh draw 00B66190", 0x00B66190),

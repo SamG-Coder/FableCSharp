@@ -899,6 +899,8 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteU32Part(pe, store, family, "Sky UV divisor angle 12A1140", 0x012A1140, 2),
         WriteU32Part(pe, store, family, "Sky UV divisor scale 12A1138", 0x012A1138, 1),
         WriteFnPart(pe, store, family, "ENVIRONMENT lookup 00B26828", 0x00B26826, 20, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "Sky star draw 00B65A20", 0x00B65A20, 80),
+        WriteFnPart(pe, store, family, "Sky mesh draw calls stars", 0x00B6627A, 20, stopOnRet: false),
         WriteFnPart(pe, store, family, "MainScene plus616 draw", 0x00B33010, 120),
         WriteFnPart(pe, store, family, "Static mesh VS bind", 0x00B8B660, 80),
         WriteFnPart(pe, store, family, "VS bind LANDSCAPE FOREGROUND", 0x00B69330, 80),

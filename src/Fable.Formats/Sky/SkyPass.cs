@@ -51,6 +51,10 @@ public static class SkyPass
     public const uint DomeFillCaller = 0x00B62156;
     public const uint CapFill = 0x00B61B30;
     public const uint SkirtFill = 0x00B61CD0;
+    public const uint StarDraw = 0x00B65A20;
+    public const uint StarDrawCaller = 0x00B66284;
+    public const uint StarDrawCallerFn = 0x00B66190;
+    public const bool FirstSeenCallsStarDraw = true;
     public const int DomeRings = 9;
     public const int DomeSegments = 36;
     public const int DomeVertsPerRing = 37;

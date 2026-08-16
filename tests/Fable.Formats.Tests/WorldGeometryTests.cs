@@ -316,6 +316,9 @@ public sealed class WorldGeometryTests
             SkyPass.FirstSeenUvDivisor, 3);
         Assert.False(SkyPass.FirstSeenThis16HasNumeric);
         Assert.False(SkyPass.FirstSeenThis20HasNumeric);
+        Assert.Equal(0x00B65A20u, SkyPass.StarDraw);
+        Assert.Equal(0x00B66190u, SkyPass.StarDrawCallerFn);
+        Assert.True(SkyPass.FirstSeenCallsStarDraw);
         var invented = new Vector2(0f / 36f, 0f / 8f);
         Assert.Equal(Vector2.Zero, SkyPass.DomeUv(0, 0, 0f, 0f, SkyPass.FirstSeenInvUvDivisor));
         Assert.NotEqual(invented, SkyPass.DomeUv(1, 9, 1f, 1f, SkyPass.FirstSeenInvUvDivisor));
