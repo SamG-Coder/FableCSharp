@@ -204,5 +204,17 @@ public sealed class WorldGeometryTests
         Assert.True(minY < -1f, $"south sea missing, minY={minY}");
         Assert.True(maxY > 224f, $"north filler missing, maxY={maxY}");
         Assert.Contains(world.Triangles, t => t.TextureId == 442);
+        Assert.Equal(4300, world.PlayerMeshId);
+        var start = RegionTravel.FindPlayerStart(things.Things);
+        Assert.NotNull(start);
+        var nearKid = world.Triangles.Count(t =>
+        {
+            var mx = (t.A.X + t.B.X + t.C.X) / 3f;
+            var my = (t.A.Y + t.B.Y + t.C.Y) / 3f;
+            var dx = mx - start.PositionX!.Value;
+            var dy = my - start.PositionY!.Value;
+            return dx * dx + dy * dy < 4f && t.Layer == Fable.Formats.Meshes.SceneLayer.Prop;
+        });
+        Assert.True(nearKid > 10, $"kid mesh missing at NOVStartHSP nearKid={nearKid}");
     }
 }

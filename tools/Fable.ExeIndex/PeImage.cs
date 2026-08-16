@@ -5,8 +5,13 @@ internal sealed class PeImage
 {
     public required byte[] Data { get; init; }
     public required uint ImageBase { get; init; }
+    public required uint TimeDateStamp { get; init; }
+    public required uint SizeOfImage { get; init; }
     public required IReadOnlyList<PeSection> Sections { get; init; }
     public required IReadOnlyList<string> Imports { get; init; }
+
+    /// <summary>Identity for dump-cache: stamp + image size + file length.</summary>
+    public string Identity => $"{TimeDateStamp:X8}-{SizeOfImage:X8}-{Data.Length}";
 
     public static PeImage Load(string path)
     {
@@ -24,6 +29,8 @@ internal sealed class PeImage
         if (BitConverter.ToUInt16(data, opt) != 0x10B)
             throw new InvalidDataException($"Need PE32 (got 0x{BitConverter.ToUInt16(data, opt):X}).");
         var imageBase = BitConverter.ToUInt32(data, opt + 28);
+        var timeDateStamp = BitConverter.ToUInt32(data, coff + 4);
+        var sizeOfImage = BitConverter.ToUInt32(data, opt + 56);
         var importRva = BitConverter.ToUInt32(data, opt + 104);
         var sectionOff = opt + optSize;
         var sections = new List<PeSection>(sectionCount);
@@ -44,6 +51,8 @@ internal sealed class PeImage
         {
             Data = data,
             ImageBase = imageBase,
+            TimeDateStamp = timeDateStamp,
+            SizeOfImage = sizeOfImage,
             Sections = sections,
             Imports = ReadImports(data, sections, importRva),
         };

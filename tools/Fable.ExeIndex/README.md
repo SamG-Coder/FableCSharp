@@ -9,6 +9,8 @@ F6/F7, C0/C1/D0–D3 shifts, D8–DF x87, A0–A3 moffs, and 66/F2/F3 prefixes.
 
 ```
 dotnet run --project tools/Fable.ExeIndex -- all
+dotnet run --project tools/Fable.ExeIndex -- trace-newgame
+dotnet run --project tools/Fable.ExeIndex -- --force trace-landscape
 ```
 
 ```
@@ -21,13 +23,16 @@ dotnet run --project tools/Fable.ExeIndex -- scanff 16
 dotnet run --project tools/Fable.ExeIndex -- trace-landscape
 ```
 
-Steps (`index` / `split` / `translate` / `all` / `disasm` / `calls` / `trace-render` / `trace-landscape` / `imm` / `vtbl` / `disp` / `scanff`):
+Each dump family lives in `out/01-sections/<family>/` as one markdown file per VA, plus `INDEX.md` that links them. A stub `01-sections/<family>.md` points at that index. `out/manifest.json` stores the exe identity (`TimeDateStamp-SizeOfImage-fileLength`) and a **recipe version** per family. Re-running the same command skips a family unless the exe changed, the version constant in `DumpStore.cs` was bumped, or you pass `--force`.
+
+Steps (`index` / `split` / `translate` / `all` / `disasm` / `calls` / `trace-render` / `trace-landscape` / `trace-newgame` / `imm` / `vtbl` / `disp` / `scanff`):
 
 | Dir | What |
 |---|---|
+| `out/manifest.json` | Exe id + per-family dump versions |
 | `out/00-index` | PE sections, imports, strings, RTTI, string xrefs, DXT FourCCs |
-| `out/01-sections` | Per-topic packets + `trace-render.md` / `landscape-trace.md` |
-| `out/02-translate` | AI prompt wrapping each packet |
+| `out/01-sections/<family>/` | One part file per VA + `INDEX.md` |
+| `out/02-translate` | Prompt wrapping each family's INDEX |
 | `out/03-pseudo` | C-like pathway + pseudocode (write these from the packets; do not invent) |
 
 `out/` is gitignored at the repo root **and** in this folder. Do not commit it.

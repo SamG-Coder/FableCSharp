@@ -2,7 +2,8 @@ using System.Text;
 using Fable.Core;
 using Fable.ExeIndex;
 
-var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "trace-render" or "trace-landscape" or "calls" or "imm" or "vtbl" or "disp" or "scanff") ?? "all";
+var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "trace-render" or "trace-landscape" or "trace-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff") ?? "all";
+var force = args.Any(a => a is "--force" or "-f");
 var install = GameInstall.TryLocate();
 var exePath = args.FirstOrDefault(a => a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
               ?? (install is null ? null : Path.Combine(install.Root, "Fable.exe"));
@@ -21,22 +22,24 @@ Console.WriteLine($"out  {outDir}");
 Console.WriteLine($"step {cmd}");
 
 var pe = PeImage.Load(exePath);
+var store = new DumpStore(outDir, pe.Identity, force);
+Console.WriteLine($"exeId {pe.Identity}{(force ? "  force" : "")}");
 
 switch (cmd)
 {
     case "index":
-        RunIndex(pe, outDir);
+        RunIndex(pe, store);
         break;
     case "split":
         if (!File.Exists(Path.Combine(outDir, "00-index", "strings.tsv")))
-            RunIndex(pe, outDir);
-        RunSplit(pe, outDir);
+            RunIndex(pe, store);
+        RunSplit(pe, store);
         break;
     case "translate":
         if (!Directory.Exists(Path.Combine(outDir, "01-sections")))
         {
-            RunIndex(pe, outDir);
-            RunSplit(pe, outDir);
+            RunIndex(pe, store);
+            RunSplit(pe, store);
         }
 
         RunTranslatePackets(outDir);
@@ -46,13 +49,18 @@ switch (cmd)
         break;
     case "trace-render":
         if (!File.Exists(Path.Combine(outDir, "00-index", "xrefs.tsv")))
-            RunIndex(pe, outDir);
-        RunTraceRender(pe, outDir);
+            RunIndex(pe, store);
+        RunTraceRender(pe, store);
         break;
     case "trace-landscape":
         if (!File.Exists(Path.Combine(outDir, "00-index", "xrefs.tsv")))
-            RunIndex(pe, outDir);
-        RunTraceLandscape(pe, outDir);
+            RunIndex(pe, store);
+        RunTraceLandscape(pe, store);
+        break;
+    case "trace-newgame":
+        if (!File.Exists(Path.Combine(outDir, "00-index", "xrefs.tsv")))
+            RunIndex(pe, store);
+        RunTraceNewGame(pe, store);
         break;
     case "calls":
         RunCalls(pe, args);
@@ -70,14 +78,15 @@ switch (cmd)
         RunScanFf(pe, args);
         break;
     default:
-        RunIndex(pe, outDir);
-        RunSplit(pe, outDir);
+        RunIndex(pe, store);
+        RunSplit(pe, store);
         RunTranslatePackets(outDir);
         break;
 }
 
+store.SaveManifest();
 Console.WriteLine("done.");
-Console.WriteLine("Next: translate each out/02-translate/<section>.prompt.md into out/03-pseudo/<section>.md");
+Console.WriteLine("Next: read out/01-sections/<family>/INDEX.md (parts are linked, not one file).");
 Console.WriteLine("(out/ is gitignored — do not commit dumps)");
 return 0;
 
@@ -349,74 +358,176 @@ static void RunDisasm(PeImage pe, string[] args)
         Console.WriteLine(line);
 }
 
-static void RunTraceRender(PeImage pe, string outDir)
+static void RunTraceRender(PeImage pe, DumpStore store)
 {
-    var dest = Path.Combine(outDir, "01-sections");
-    Directory.CreateDirectory(dest);
-    uint[] vas =
-    [
-        0x00B29880, // just before first "Engine: Add Engine Component"
-        0x00B262C0, // Add Render Layer
-        0x00B33B50, // MainScene
-        0x00B3D200, // shader bank registrar (LANDSCAPE_FOREGROUND nearby)
-        0x00B66DC0, // EnableSky
-        0x00B6CA20, // EnableLandscape
-        0x00B7ED80, // EnableWater
-        0x00B56650, // EnableWeather
-        0x00B38C90, // EnablePrimitives
-        0x00B50B50, // EnableShadows
-        0x00B4B6F0, // Enable2DPrimitives
-        0x00B625E0, // CEngineSkyRenderer init
-        0x00B69330, // VSHADER_LANDSCAPE_FOREGROUND_BLACKOUT_PASS bind
-        0x00B8B660, // VSHADER_STATIC_DIRLIGHT_FOG bind
-    ];
-    var sb = new StringBuilder();
-    sb.AppendLine("# render-trace");
-    sb.AppendLine();
-    sb.AppendLine("Raw decode of engine register / scene / enable sites. Do not invent.");
-    foreach (var va in vas)
+    const string family = "render-trace";
+    if (!store.ShouldWrite(family, DumpStore.RenderTraceVersion))
     {
-        var file = pe.FileOffset(va);
-        sb.AppendLine();
-        sb.AppendLine($"## 0x{va:X8}");
-        if (file < 0)
-        {
-            sb.AppendLine("UNREAD (VA not mapped)");
-            continue;
-        }
+        Console.WriteLine($"skip  {family}  v{DumpStore.RenderTraceVersion} (exe unchanged)");
+        return;
+    }
 
-        var n = va == 0x00B29880 || va == 0x00B3D200 ? 220 : 80;
+    (string Name, uint Va, int N)[] parts =
+    [
+        ("Add Engine Component", 0x00B29880, 220),
+        ("Add Render Layer", 0x00B262C0, 80),
+        ("MainScene", 0x00B33B50, 80),
+        ("Shader bank registrar", 0x00B3D200, 220),
+        ("EnableSky", 0x00B66DC0, 80),
+        ("EnableLandscape", 0x00B6CA20, 80),
+        ("EnableWater", 0x00B7ED80, 80),
+        ("EnableWeather", 0x00B56650, 80),
+        ("EnablePrimitives", 0x00B38C90, 80),
+        ("EnableShadows", 0x00B50B50, 80),
+        ("Enable2DPrimitives", 0x00B4B6F0, 80),
+        ("CEngineSkyRenderer init", 0x00B625E0, 80),
+        ("VSHADER LANDSCAPE BLACKOUT bind", 0x00B69330, 80),
+        ("VSHADER STATIC DIRLIGHT FOG bind", 0x00B8B660, 80),
+    ];
+    var links = new List<IndexLink>();
+    foreach (var part in parts)
+        links.Add(WriteFnPart(pe, store, family, part.Name, part.Va, part.N));
+    store.WriteIndex(
+        family, DumpStore.RenderTraceVersion, "render-trace",
+        "Engine register / scene / enable sites. One file per VA. Do not invent.",
+        links);
+    Console.WriteLine($"trace  {family}/  parts={links.Count}  v{DumpStore.RenderTraceVersion}");
+}
+
+static void RunTraceLandscape(PeImage pe, DumpStore store)
+{
+    const string family = "landscape-trace";
+    if (!store.ShouldWrite(family, DumpStore.LandscapeTraceVersion))
+    {
+        Console.WriteLine($"skip  {family}  v{DumpStore.LandscapeTraceVersion} (exe unchanged)");
+        return;
+    }
+
+    var links = new List<IndexLink>
+    {
+        WriteVtblPart(pe, store, family, "CEngineLandscapeRenderer", 0x012A2B54, 16),
+        WriteVtblPart(pe, store, family, "CEngineLandscapePatch", 0x012A8200, 16),
+        WriteVtblPart(pe, store, family, "CLandscapeBackgroundPatch", 0x012A803C, 16),
+        WriteFnPart(pe, store, family, "SetStaticMapFileForUse", 0x00B428E0, 80),
+        WriteFnPart(pe, store, family, "OpenStaticMaps", 0x00B42750, 120),
+        WriteFnPart(pe, store, family, "OpenOneMap", 0x00B42530, 180),
+        WriteFnPart(pe, store, family, "ParseMapHeader", 0x00B3EFA0, 80),
+        WriteFnPart(pe, store, family, "LoadWaterData", 0x00B41FA0, 80),
+        WriteFnPart(pe, store, family, "Sea name onto water renderer", 0x00B6D4D0, 40),
+        WriteFnPart(pe, store, family, "Activate Topology", 0x004FCBB0, 20),
+        WriteFnPart(pe, store, family, "Build current patch", 0x00BDD0E0, 160),
+        WriteFnPart(pe, store, family, "Attach patch", 0x00BDF010, 80),
+        WriteFnPart(pe, store, family, "Create background patch", 0x00BE03A0, 80),
+        WriteFnPart(pe, store, family, "Tile stream", 0x00BF9290, 160),
+        WriteFnPart(pe, store, family, "Tile vector", 0x00BF97A0, 60),
+        WriteFnPart(pe, store, family, "Tile vector erase", 0x00BF9420, 40),
+        WriteFnPart(pe, store, family, "Tile vector helper", 0x00BF8E50, 80),
+        WriteFnPart(pe, store, family, "WLD NewRegion writer", 0x004FD040, 120),
+        WriteFnPart(pe, store, family, "WLD NewRegion reader", 0x0050881D, 80),
+        WriteFnPart(pe, store, family, "WLD ContainsMap", 0x004FD7F9, 40),
+        WriteFnPart(pe, store, family, "WLD SeesMap", 0x004FD996, 40),
+        WriteFnPart(pe, store, family, "Background patch ctor", 0x00BE6090, 80),
+        WriteFnPart(pe, store, family, "Landscape draw vtbl+16", 0x00B6B0B0, 160),
+        WriteFnPart(pe, store, family, "Shared lighting setup", 0x00B67480, 40),
+        WriteFnPart(pe, store, family, "BG bit4 setup", 0x00B671A0, 40),
+        WriteFnPart(pe, store, family, "FG compact+bind", 0x00B68DA0, 200),
+        WriteFnPart(pe, store, family, "FG device dirty", 0x00B677D0, 80),
+        WriteFnPart(pe, store, family, "Unbind stages 0/1/2", 0x00B67510, 80),
+        WriteFnPart(pe, store, family, "Patch submit bit4", 0x00BDC060, 20),
+        WriteFnPart(pe, store, family, "Patch submit bit40 frustum", 0x00BDC2D0, 120),
+        WriteFnPart(pe, store, family, "BG draw frustum", 0x00BF71D0, 100),
+        WriteFnPart(pe, store, family, "Per-cell submit", 0x00BF4570, 200),
+        WriteFnPart(pe, store, family, "Per-cell SetTexture stage0", 0x00BF50E0, 80),
+        WriteFnPart(pe, store, family, "SetVSConstantF wrapper", 0x00989A60, 40),
+        WriteFnPart(pe, store, family, "Layer bind", 0x00BE7BE0, 100),
+        WriteFnPart(pe, store, family, "Land layer select", 0x00BE6F70, 80),
+        WriteFnPart(pe, store, family, "VS bind BLACKOUT + FOREGROUND", 0x00B69330, 80),
+    };
+    store.WriteIndex(
+        family, DumpStore.LandscapeTraceVersion, "landscape-trace",
+        "New-game landscape load + draw + cull + UV/texture bind. One file per VA.",
+        links);
+    Console.WriteLine($"trace  {family}/  parts={links.Count}  v{DumpStore.LandscapeTraceVersion}");
+}
+
+static void RunTraceNewGame(PeImage pe, DumpStore store)
+{
+    const string family = "newgame-trace";
+    if (!store.ShouldWrite(family, DumpStore.NewGameTraceVersion))
+    {
+        Console.WriteLine($"skip  {family}  v{DumpStore.NewGameTraceVersion} (exe unchanged)");
+        return;
+    }
+
+    var links = new List<IndexLink>
+    {
+        WriteSitePart(pe, store, family, "StartOakVale string", 0x00DBDE4A, 80),
+        WriteSitePart(pe, store, family, "StartOakVale second site", 0x00DBDE9B, 40),
+        WriteSitePart(pe, store, family, "CREATURE_HERO_CHILD", 0x00DBDF09, 80),
+        WriteSitePart(pe, store, family, "FollowDistance persist", 0x007AD4D2, 60),
+        WriteSitePart(pe, store, family, "CHeroMorphDef Teenager", 0x0071D102, 40),
+        WriteFnPart(pe, store, family, "OpenStaticMaps", 0x00B42750, 80),
+        WriteFnPart(pe, store, family, "LoadWaterData", 0x00B41FA0, 80),
+        WriteFnPart(pe, store, family, "WLD NewRegion reader", 0x0050881D, 80),
+        WriteFnPart(pe, store, family, "Landscape draw vtbl+16", 0x00B6B0B0, 80),
+        WriteFnPart(pe, store, family, "Water draw vtbl+16", 0x00B783F0, 80),
+        WriteFnPart(pe, store, family, "Static mesh VS bind", 0x00B8B660, 40),
+    };
+    store.WriteIndex(
+        family, DumpStore.NewGameTraceVersion, "newgame-trace",
+        "First-seen new-game path: StartOakVale, kid creature, camera persist, load, draw.",
+        links);
+    Console.WriteLine($"trace  {family}/  parts={links.Count}  v{DumpStore.NewGameTraceVersion}");
+}
+
+static IndexLink WriteFnPart(PeImage pe, DumpStore store, string family, string name, uint va, int n)
+{
+    var slug = DumpStore.Slug(name, va);
+    var sb = new StringBuilder();
+    sb.AppendLine($"# {name}");
+    sb.AppendLine();
+    sb.AppendLine($"VA `0x{va:X8}` · `{n}` insns. [INDEX](INDEX.md)");
+    sb.AppendLine();
+    var file = pe.FileOffset(va);
+    if (file < 0)
+        sb.AppendLine("UNREAD (VA not mapped)");
+    else
+    {
         foreach (var line in X86.Disassemble(pe, file, n))
             sb.AppendLine(line);
     }
 
-    var path = Path.Combine(dest, "render-trace.md");
-    File.WriteAllText(path, sb.ToString());
-    Console.WriteLine($"trace  {path}");
+    store.WritePart(family, slug, sb.ToString());
+    return new IndexLink(slug, name, va);
 }
 
-static void RunTraceLandscape(PeImage pe, string outDir)
+static IndexLink WriteSitePart(PeImage pe, DumpStore store, string family, string name, uint siteVa, int n)
 {
-    var dest = Path.Combine(outDir, "01-sections");
-    Directory.CreateDirectory(dest);
-    var sb = new StringBuilder();
-    sb.AppendLine("# landscape-trace");
-    sb.AppendLine();
-    sb.AppendLine("New-game landscape load + draw + cull + UV/texture bind.");
-    sb.AppendLine("Written by `trace-landscape`. Do not invent.");
-    sb.AppendLine();
-
-    void DumpVtbl(string name, uint va, int n)
+    var file = pe.FileOffset(siteVa);
+    var startVa = siteVa;
+    var startFile = file;
+    if (file >= 0)
     {
-        sb.AppendLine();
-        sb.AppendLine($"## vtbl {name} @ 0x{va:X8}");
-        var file = pe.FileOffset(va);
-        if (file < 0)
-        {
-            sb.AppendLine("UNREAD (VA not mapped)");
-            return;
-        }
+        startFile = X86.FindPrologue(pe, file);
+        startVa = pe.Va(startFile);
+    }
 
+    return WriteFnPart(pe, store, family, name, startVa, n);
+}
+
+static IndexLink WriteVtblPart(PeImage pe, DumpStore store, string family, string name, uint va, int n)
+{
+    var slug = DumpStore.Slug("vtbl-" + name, va);
+    var sb = new StringBuilder();
+    sb.AppendLine($"# vtbl {name}");
+    sb.AppendLine();
+    sb.AppendLine($"VA `0x{va:X8}`. [INDEX](INDEX.md)");
+    sb.AppendLine();
+    var file = pe.FileOffset(va);
+    if (file < 0)
+        sb.AppendLine("UNREAD (VA not mapped)");
+    else
+    {
         for (var i = 0; i < n; i++)
         {
             var off = file + i * 4;
@@ -428,63 +539,8 @@ static void RunTraceLandscape(PeImage pe, string outDir)
         }
     }
 
-    void DumpFn(string name, uint va, int n)
-    {
-        sb.AppendLine();
-        sb.AppendLine($"## {name} @ 0x{va:X8}");
-        var file = pe.FileOffset(va);
-        if (file < 0)
-        {
-            sb.AppendLine("UNREAD (VA not mapped)");
-            return;
-        }
-
-        foreach (var line in X86.Disassemble(pe, file, n))
-            sb.AppendLine(line);
-    }
-
-    DumpVtbl("CEngineLandscapeRenderer", 0x012A2B54, 16);
-    DumpVtbl("CEngineLandscapePatch", 0x012A8200, 16);
-    DumpVtbl("CLandscapeBackgroundPatch", 0x012A803C, 16);
-
-    DumpFn("SetStaticMapFileForUse", 0x00B428E0, 80);
-    DumpFn("OpenStaticMaps", 0x00B42750, 120);
-    DumpFn("OpenOneMap", 0x00B42530, 180);
-    DumpFn("ParseMapHeader 00B3EFA0", 0x00B3EFA0, 80);
-    DumpFn("LoadWaterData", 0x00B41FA0, 80);
-    DumpFn("Sea name onto water renderer", 0x00B6D4D0, 40);
-    DumpFn("Activate Topology", 0x004FCBB0, 20);
-    DumpFn("Build current patch 00BDD0E0", 0x00BDD0E0, 160);
-    DumpFn("Attach patch 00BDF010", 0x00BDF010, 80);
-    DumpFn("Create background patch 00BE03A0", 0x00BE03A0, 80);
-    DumpFn("Tile stream 00BF9290", 0x00BF9290, 160);
-    DumpFn("Tile vector 00BF97A0", 0x00BF97A0, 60);
-    DumpFn("Tile vector erase 00BF9420", 0x00BF9420, 40);
-    DumpFn("Tile vector helper 00BF8E50", 0x00BF8E50, 80);
-    DumpFn("WLD NewRegion writer 004FD040", 0x004FD040, 120);
-    DumpFn("WLD NewRegion reader 0050881D", 0x0050881D, 80);
-    DumpFn("WLD ContainsMap 004FD7F9", 0x004FD7F9, 40);
-    DumpFn("WLD SeesMap 004FD996", 0x004FD996, 40);
-    DumpFn("Background patch ctor", 0x00BE6090, 80);
-    DumpFn("Landscape draw vtbl+16", 0x00B6B0B0, 160);
-    DumpFn("Shared lighting setup", 0x00B67480, 40);
-    DumpFn("BG bit4 setup", 0x00B671A0, 40);
-    DumpFn("FG compact+bind 00B68DA0", 0x00B68DA0, 200);
-    DumpFn("FG device dirty 00B677D0", 0x00B677D0, 80);
-    DumpFn("Unbind stages 0/1/2", 0x00B67510, 80);
-    DumpFn("Patch submit bit4", 0x00BDC060, 20);
-    DumpFn("Patch submit bit40 frustum", 0x00BDC2D0, 120);
-    DumpFn("BG draw frustum 00BF71D0", 0x00BF71D0, 100);
-    DumpFn("Per-cell submit 00BF4570", 0x00BF4570, 200);
-    DumpFn("Per-cell SetTexture stage0", 0x00BF50E0, 80);
-    DumpFn("SetVSConstantF wrapper", 0x00989A60, 40);
-    DumpFn("Layer bind 00BE7BE0", 0x00BE7BE0, 100);
-    DumpFn("Land layer select 00BE6F70", 0x00BE6F70, 80);
-    DumpFn("VS bind BLACKOUT + FOREGROUND", 0x00B69330, 80);
-
-    var path = Path.Combine(dest, "landscape-trace.md");
-    File.WriteAllText(path, sb.ToString());
-    Console.WriteLine($"trace  {path}  bytes={sb.Length}");
+    store.WritePart(family, slug, sb.ToString());
+    return new IndexLink(slug, "vtbl " + name, va);
 }
 
 static string ResolveOutDir(string[] args)
@@ -520,9 +576,16 @@ static void WarnIfDumpLooksTracked(string dir)
     Console.Error.WriteLine($"warning: dump dir {dir} is not tools/Fable.ExeIndex/out — keep it gitignored.");
 }
 
-static void RunIndex(PeImage pe, string outDir)
+static void RunIndex(PeImage pe, DumpStore store)
 {
-    var dir = Path.Combine(outDir, "00-index");
+    const string family = "index";
+    if (!store.ShouldWrite(family, DumpStore.IndexVersion))
+    {
+        Console.WriteLine($"skip  {family}  v{DumpStore.IndexVersion} (exe unchanged)");
+        return;
+    }
+
+    var dir = Path.Combine(store.OutDir, "00-index");
     Directory.CreateDirectory(dir);
     var data = pe.Data;
 
@@ -571,6 +634,7 @@ static void RunIndex(PeImage pe, string outDir)
     File.WriteAllLines(Path.Combine(dir, "xrefs.tsv"), xrefs);
     File.WriteAllLines(Path.Combine(dir, "fourcc.tsv"), ScanFourCc(pe));
     Console.WriteLine($"index  strings={strings.Count} rtti={rtti.Count} xrefs={xrefs.Count}");
+    store.MarkWritten(family, DumpStore.IndexVersion);
 }
 
 static List<string> ScanFourCc(PeImage pe)
@@ -604,11 +668,9 @@ static List<string> ScanFourCc(PeImage pe)
     return lines;
 }
 
-static void RunSplit(PeImage pe, string outDir)
+static void RunSplit(PeImage pe, DumpStore store)
 {
-    var index = Path.Combine(outDir, "00-index");
-    var dest = Path.Combine(outDir, "01-sections");
-    Directory.CreateDirectory(dest);
+    var index = Path.Combine(store.OutDir, "00-index");
     var fourccFile = Path.Combine(index, "fourcc.tsv");
     if (!File.Exists(fourccFile))
         File.WriteAllLines(fourccFile, ScanFourCc(pe));
@@ -619,46 +681,49 @@ static void RunSplit(PeImage pe, string outDir)
 
     foreach (var section in AllSections())
     {
+        var family = section.Name;
+        if (!store.ShouldWrite("split-" + family, DumpStore.SplitVersion))
+        {
+            Console.WriteLine($"skip  {family}  v{DumpStore.SplitVersion} (exe unchanged)");
+            continue;
+        }
+
         var hits = xrefs.Where(l => section.Keys.Any(k =>
             l.Contains(k, StringComparison.OrdinalIgnoreCase))).Take(80).ToList();
         var types = rtti.Where(l => section.Keys.Any(k =>
             l.Contains(k, StringComparison.OrdinalIgnoreCase))).Take(40).ToList();
+        var links = new List<IndexLink>();
 
-        var sb = new StringBuilder();
-        sb.AppendLine($"# {section.Name}");
-        sb.AppendLine();
-        sb.AppendLine(section.Blurb);
-        sb.AppendLine();
-        sb.AppendLine("## RTTI");
+        var rttiMd = new StringBuilder();
+        rttiMd.AppendLine($"# {section.Name} RTTI");
+        rttiMd.AppendLine();
         foreach (var t in types)
-            sb.AppendLine("- " + t);
-        sb.AppendLine();
-        sb.AppendLine("## String xrefs");
+            rttiMd.AppendLine("- " + t);
+        store.WritePart(family, "rtti", rttiMd.ToString());
+        links.Add(new IndexLink("rtti", "RTTI", 0));
+
+        var xrefMd = new StringBuilder();
+        xrefMd.AppendLine($"# {section.Name} string xrefs");
+        xrefMd.AppendLine();
         foreach (var h in hits)
-            sb.AppendLine("- " + h);
-        var fourccPath = Path.Combine(index, "fourcc.tsv");
-        if (File.Exists(fourccPath) && section.Name == "texture")
+            xrefMd.AppendLine("- " + h);
+        store.WritePart(family, "xrefs", xrefMd.ToString());
+        links.Add(new IndexLink("xrefs", "String xrefs", 0));
+
+        if (section.Name == "texture" && File.Exists(fourccFile))
         {
-            sb.AppendLine();
-            sb.AppendLine("## FourCC immediates (DXT1/3/5)");
-            foreach (var line in File.ReadAllLines(fourccPath))
+            foreach (var line in File.ReadAllLines(fourccFile))
             {
-                sb.AppendLine("- " + line);
                 var parts = line.Split('\t');
                 if (parts.Length < 3 || !TryParseHex(parts[1], out var va))
                     continue;
                 var file = pe.FileOffset(va);
                 if (file < 0)
                     continue;
-                sb.AppendLine();
-                sb.AppendLine($"### {parts[2]} @ {va:X8}");
-                foreach (var dis in X86.Disassemble(pe, file, 24))
-                    sb.AppendLine(dis);
+                links.Add(WriteFnPart(pe, store, family, parts[2], va, 24));
             }
         }
 
-        sb.AppendLine();
-        sb.AppendLine("## Xref sites (decode from the push/mov that owns the string)");
         var seenSite = new HashSet<uint>();
         foreach (var line in hits)
         {
@@ -673,16 +738,12 @@ static void RunSplit(PeImage pe, string outDir)
             if (file < 0)
                 continue;
             var start = X86.FindImmInsn(pe, file);
-            sb.AppendLine();
-            sb.AppendLine($"### {parts[3]} @ {pe.Va(start):X8}");
-            foreach (var dis in X86.Disassemble(pe, start, 28))
-                sb.AppendLine(dis);
+            var label = parts[3].Length > 48 ? parts[3][..48] : parts[3];
+            links.Add(WriteFnPart(pe, store, family, "site " + label, pe.Va(start), 28));
             if (seenSite.Count >= 16)
                 break;
         }
 
-        sb.AppendLine();
-        sb.AppendLine("## Functions (prologue if found)");
         var fns = new HashSet<int>();
         foreach (var siteVa in seenSite)
         {
@@ -695,15 +756,10 @@ static void RunSplit(PeImage pe, string outDir)
         }
 
         foreach (var fn in fns.OrderBy(v => v).Take(10))
-        {
-            sb.AppendLine();
-            sb.AppendLine($"### fn_{pe.Va(fn):X8}");
-            foreach (var dis in X86.Disassemble(pe, fn, 40))
-                sb.AppendLine(dis);
-        }
+            links.Add(WriteFnPart(pe, store, family, "fn", pe.Va(fn), 40));
 
-        File.WriteAllText(Path.Combine(dest, section.File), sb.ToString());
-        Console.WriteLine($"split  {section.File} xrefs={hits.Count} fns={fns.Count}");
+        store.WriteIndex(family, DumpStore.SplitVersion, section.Name, section.Blurb, links);
+        Console.WriteLine($"split  {family}/  xrefs={hits.Count} parts={links.Count}");
     }
 }
 
@@ -714,9 +770,16 @@ static void RunTranslatePackets(string outDir)
     var pseudo = Path.Combine(outDir, "03-pseudo");
     Directory.CreateDirectory(dest);
     Directory.CreateDirectory(pseudo);
-    foreach (var file in Directory.EnumerateFiles(src, "*.md"))
+    var indexes = Directory.Exists(src)
+        ? Directory.GetFiles(src, "INDEX.md", SearchOption.AllDirectories)
+        : [];
+    if (indexes.Length == 0)
+        indexes = Directory.Exists(src) ? Directory.GetFiles(src, "*.md") : [];
+    foreach (var file in indexes)
     {
-        var name = Path.GetFileNameWithoutExtension(file);
+        var name = Path.GetFileName(file).Equals("INDEX.md", StringComparison.OrdinalIgnoreCase)
+            ? new DirectoryInfo(Path.GetDirectoryName(file)!).Name
+            : Path.GetFileNameWithoutExtension(file);
         var packet = File.ReadAllText(file);
         var prompt = """
             You are translating a Fable.exe index packet into readable C-like pseudocode.

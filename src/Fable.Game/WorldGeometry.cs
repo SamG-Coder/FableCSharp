@@ -18,6 +18,7 @@ public sealed class WorldGeometry
     public required IReadOnlyList<MeshTriangle> Triangles { get; init; }
     public required int MeshInstances { get; init; }
     public required int MissingMeshes { get; init; }
+    public int PlayerMeshId { get; init; }
 
     public static WorldGeometry Build(
         GameInstall install,
@@ -80,6 +81,20 @@ public sealed class WorldGeometry
             loaded.Add(region);
         }
 
+        var playerMeshId = 0;
+        if (IsPrimaryStart(region) &&
+            RegionTravel.FindPlayerStart(primaryThings) is { } start)
+        {
+            playerMeshId = defs?.FindMeshId(RegionTravel.KidCreature)
+                           ?? enums?.FindMeshId(RegionTravel.KidCreature)
+                           ?? 0;
+            if (playerMeshId != 0)
+            {
+                var hero = CloneAs(start, RegionTravel.KidCreature);
+                AddInstances([hero], 0, 0, defs, enums, big, byId, cache, triangles, ref instances, ref missing);
+            }
+        }
+
         triangles.AddRange(SkyGeometry.Build(install));
 
         return new WorldGeometry
@@ -89,8 +104,27 @@ public sealed class WorldGeometry
             Triangles = triangles,
             MeshInstances = instances,
             MissingMeshes = missing,
+            PlayerMeshId = playerMeshId,
         };
     }
+
+    private static bool IsPrimaryStart(string region) =>
+        region.Equals(RegionTravel.NewGameRegion, StringComparison.OrdinalIgnoreCase);
+
+    private static ThingInstance CloneAs(ThingInstance source, string definitionType) =>
+        new()
+        {
+            Kind = source.Kind,
+            Section = source.Section,
+            DefinitionType = definitionType,
+            ScriptName = source.ScriptName,
+            Uid = source.Uid,
+            Player = source.Player,
+            PositionX = source.PositionX,
+            PositionY = source.PositionY,
+            PositionZ = source.PositionZ,
+            Properties = source.Properties,
+        };
 
     /// <summary>
     /// New-game / region load set. WLD <c>NewRegion</c> <c>ContainsMap</c> +
