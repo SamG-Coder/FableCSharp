@@ -1,0 +1,12 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.cache
+TestResults/
+tools/_texprobe/
+tools/_peek/
+*.exe
+client-out.txt
+client-err.txt

@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Fable.Client/Fable.Client.csproj" />
+    <Project Path="src/Fable.Core/Fable.Core.csproj" />
+    <Project Path="src/Fable.Formats/Fable.Formats.csproj" />
+    <Project Path="src/Fable.Game/Fable.Game.csproj" />
+    <Project Path="src/Fable.Render/Fable.Render.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Fable.Formats.Tests/Fable.Formats.Tests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Fable.Dump/Fable.Dump.csproj" />
+  </Folder>
+</Solution>

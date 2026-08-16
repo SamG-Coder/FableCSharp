@@ -1,0 +1,356 @@
+using System.Numerics;
+using Fable.Formats.IO;
+
+namespace Fable.Formats.Meshes;
+
+public sealed class MeshFile
+{
+    public required string Name { get; init; }
+    public required int EntryType { get; init; }
+    public required IReadOnlyList<MeshTriangle> Triangles { get; init; }
+    public required Vector3 BoundsMin { get; init; }
+    public required Vector3 BoundsMax { get; init; }
+
+    public static MeshFile? TryParse(byte[] data, int entryType = -1)
+    {
+        try
+        {
+            return Parse(data, entryType);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public static MeshFile Parse(byte[] data, int entryType = -1)
+    {
+        var cursor = 0;
+        var name = ReadCString(data, ref cursor);
+        cursor += 1; // AnimatedFlag
+        cursor += 12 + 4 + 12 + 12; // sphere + radius + aabb
+        var helperCount = ReadU16(data, ref cursor);
+        var dummyCount = ReadU16(data, ref cursor);
+        var packedNamesSize = ReadU16(data, ref cursor);
+        var volumeCount = ReadU16(data, ref cursor);
+        var generatorCount = ReadU16(data, ref cursor);
+
+        if (helperCount > 0)
+            Lzo.DecompressFramed(data, ref cursor, 20 * helperCount);
+        if (dummyCount > 0)
+            Lzo.DecompressFramed(data, ref cursor, 56 * dummyCount);
+        if (packedNamesSize > 0)
+            Lzo.DecompressFramed(data, ref cursor, packedNamesSize);
+
+        for (var i = 0; i < volumeCount; i++)
+        {
+            cursor += 4;
+            ReadCString(data, ref cursor);
+            var planeCount = ReadU32(data, ref cursor);
+            if (planeCount > 0)
+                Lzo.DecompressFramed(data, ref cursor, 16 * (int)planeCount);
+        }
+
+        for (var i = 0; i < generatorCount; i++)
+        {
+            cursor += 48 + 4;
+            ReadCString(data, ref cursor);
+            cursor += 4 + 1;
+        }
+
+        var materialCount = ReadI32(data, ref cursor);
+        var primitiveCount = ReadI32(data, ref cursor);
+        var boneCount = ReadI32(data, ref cursor);
+        var boneNameSize = ReadI32(data, ref cursor);
+        cursor += 1; // cloth
+        cursor += 4; // static/animated block totals
+
+        if (boneCount is < 0 or > 1000)
+            throw new InvalidDataException($"Invalid bone count {boneCount} at {cursor}.");
+        if (boneCount > 0)
+        {
+            Need(data, cursor, 2 * boneCount);
+            cursor += 2 * boneCount;
+            Lzo.DecompressFramed(data, ref cursor, boneNameSize);
+            Lzo.DecompressFramed(data, ref cursor, 60 * boneCount);
+            Lzo.DecompressFramed(data, ref cursor, 48 * boneCount);
+            Lzo.DecompressFramed(data, ref cursor, 64 * boneCount);
+        }
+
+        Need(data, cursor, 48);
+        cursor += 48; // root matrix
+        var afterBones = cursor;
+
+        for (var i = 0; i < materialCount; i++)
+        {
+            cursor += 4;
+            ReadCString(data, ref cursor);
+            cursor += 4 * 7 + 5;
+            var useFilenames = data[cursor - 1] != 0;
+            if (useFilenames)
+            {
+                for (var j = 0; j < 4; j++)
+                    ReadCString(data, ref cursor);
+            }
+        }
+
+        var triangles = new List<MeshTriangle>(1024);
+        var boundsMin = new Vector3(float.MaxValue);
+        var boundsMax = new Vector3(float.MinValue);
+
+        for (var i = 0; i < primitiveCount; i++)
+        {
+            uint vertexCount = 0, indexCount = 0;
+            var stride = 0;
+            var vBytes = 0;
+            var iBytes = 0;
+            try
+            {
+            ReadI32(data, ref cursor); // material
+            var reps = ReadI32(data, ref cursor);
+            cursor += 12 + 4 + 4;
+            var staticBlocks = ReadU32(data, ref cursor);
+            var animatedBlocks = ReadU32(data, ref cursor);
+            vertexCount = ReadU32(data, ref cursor);
+            ReadU32(data, ref cursor); // triangles
+            indexCount = ReadU32(data, ref cursor);
+            var initFlags = ReadU32(data, ref cursor);
+            cursor += 8;
+
+            var blocks = new List<(uint Count, uint Start, bool Strip)>();
+            for (var b = 0; b < staticBlocks; b++)
+            {
+                var count = ReadU32(data, ref cursor);
+                var start = ReadU32(data, ref cursor);
+                var strip = data[cursor++] != 0;
+                cursor += 2;
+                cursor += 4;
+                blocks.Add((count, start, strip));
+            }
+
+            for (var b = 0; b < animatedBlocks; b++)
+            {
+                cursor += 8 + 3 + 4 + 2 + 1;
+                var groupCount = data[cursor++];
+                cursor += groupCount;
+            }
+
+            var scale = new Vector3(ReadF32(data, ref cursor), ReadF32(data, ref cursor), ReadF32(data, ref cursor));
+            cursor += 4;
+            var offset = new Vector3(ReadF32(data, ref cursor), ReadF32(data, ref cursor), ReadF32(data, ref cursor));
+            cursor += 4;
+
+            Need(data, cursor, 8);
+            stride = (int)ReadU32(data, ref cursor);
+            ReadU32(data, ref cursor);
+            if (stride <= 0)
+                stride = EstimateStride((int)initFlags, animatedBlocks > 0);
+
+            var repeat = reps <= 1 ? 1 : reps;
+            vBytes = stride * (int)vertexCount * repeat;
+            var beforeVerts = cursor;
+            var vertices = vBytes > 0 ? Lzo.DecompressFramed(data, ref cursor, vBytes) : [];
+            var afterVerts = cursor;
+            iBytes = 2 * repeat * (int)indexCount;
+            var indices = iBytes > 0 ? Lzo.DecompressFramed(data, ref cursor, iBytes) : [];
+            var afterIdx = cursor;
+
+            var clothCount = ReadU32(data, ref cursor);
+            for (var c = 0; c < clothCount; c++)
+            {
+                cursor += 8;
+                var progLen = (int)ReadU32(data, ref cursor);
+                if (progLen > 0)
+                    Lzo.DecompressFramed(data, ref cursor, progLen);
+            }
+
+            if (vertices.Length == 0 || indices.Length < 6)
+                continue;
+
+            var packedPos = (initFlags & 4) != 0 && (initFlags & 0x10) == 0;
+            if (entryType == 4 || (stride == 36 && animatedBlocks == 0) || repeat > 1)
+                packedPos = false;
+
+            var positions = new Vector3[vertices.Length / Math.Max(stride, 1)];
+            for (var v = 0; v < positions.Length; v++)
+            {
+                var o = v * stride;
+                if (o + 12 > vertices.Length)
+                    break;
+                Vector3 p;
+                if (packedPos)
+                {
+                    var packed = BitConverter.ToUInt32(vertices, o);
+                    p = UnpackPosition(packed, scale, offset);
+                }
+                else
+                {
+                    p = new Vector3(
+                        BitConverter.ToSingle(vertices, o),
+                        BitConverter.ToSingle(vertices, o + 4),
+                        BitConverter.ToSingle(vertices, o + 8));
+                }
+
+                positions[v] = p;
+                boundsMin = Vector3.Min(boundsMin, p);
+                boundsMax = Vector3.Max(boundsMax, p);
+            }
+
+            var indexCount16 = indices.Length / 2;
+            ushort IndexAt(int idx) => BitConverter.ToUInt16(indices, idx * 2);
+
+            void AddTri(int a, int b, int c)
+            {
+                if ((uint)a >= (uint)positions.Length ||
+                    (uint)b >= (uint)positions.Length ||
+                    (uint)c >= (uint)positions.Length)
+                    return;
+                var pa = positions[a];
+                var pb = positions[b];
+                var pc = positions[c];
+                var n = Vector3.Cross(pb - pa, pc - pa);
+                if (n.LengthSquared() < 1e-10f)
+                    return;
+                n = Vector3.Normalize(n);
+                triangles.Add(new MeshTriangle(pa, pb, pc, n));
+            }
+
+            if (blocks.Count == 0)
+            {
+                for (var t = 0; t + 2 < indexCount16; t += 3)
+                    AddTri(IndexAt(t), IndexAt(t + 1), IndexAt(t + 2));
+                continue;
+            }
+
+            foreach (var block in blocks)
+            {
+                var start = (int)block.Start;
+                if (block.Strip)
+                {
+                    var count = (int)block.Count;
+                    for (var t = 0; t < count; t++)
+                    {
+                        var i0 = start + t;
+                        if (i0 + 2 >= indexCount16)
+                            break;
+                        var a = IndexAt(i0);
+                        var b = IndexAt(i0 + 1);
+                        var c = IndexAt(i0 + 2);
+                        if ((t & 1) == 1)
+                            AddTri(b, a, c);
+                        else
+                            AddTri(a, b, c);
+                    }
+                }
+                else
+                {
+                    var count = (int)block.Count;
+                    for (var t = 0; t < count; t++)
+                    {
+                        var i0 = start + t * 3;
+                        if (i0 + 2 >= indexCount16)
+                            break;
+                        AddTri(IndexAt(i0), IndexAt(i0 + 1), IndexAt(i0 + 2));
+                    }
+                }
+            }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidDataException(
+                    $"primitive {i}/{primitiveCount} at {cursor}/{data.Length} afterBones={afterBones} verts={vertexCount} idx={indexCount} stride={stride} vBytes={vBytes} iBytes={iBytes}: {ex.Message}", ex);
+            }
+        }
+
+        if (triangles.Count == 0)
+            throw new InvalidDataException(
+                $"Mesh contained no triangles (cursor={cursor}/{data.Length}, afterBones={afterBones}, mats={materialCount}, prims={primitiveCount}, bones={boneCount}).");
+
+        return new MeshFile
+        {
+            Name = name,
+            EntryType = entryType,
+            Triangles = triangles,
+            BoundsMin = boundsMin,
+            BoundsMax = boundsMax,
+        };
+    }
+
+    private static Vector3 UnpackPosition(uint packed, Vector3 scale, Vector3 offset)
+    {
+        var ix = (int)(packed & 0x7FF);
+        if ((ix & 0x400) != 0) ix |= unchecked((int)0xFFFFF800);
+        var iy = (int)((packed >> 11) & 0x7FF);
+        if ((iy & 0x400) != 0) iy |= unchecked((int)0xFFFFF800);
+        var iz = (int)(packed >> 22);
+        if ((iz & 0x200) != 0) iz |= unchecked((int)0xFFFFFC00);
+        return new Vector3(
+            ix * 0.0009775171f * scale.X + offset.X,
+            iy * 0.0009775171f * scale.Y + offset.Y,
+            iz * 0.0019569471f * scale.Z + offset.Z);
+    }
+
+    private static int EstimateStride(int initFlags, bool animated)
+    {
+        var posComp = (initFlags & 4) != 0 && (initFlags & 0x10) == 0;
+        var normComp = (initFlags & 4) != 0;
+        var bump = (initFlags & 2) != 0;
+        var stride = posComp ? 4 : 12;
+        if (animated) stride += 8;
+        stride += normComp ? 4 : 12;
+        stride += normComp ? 4 : 8;
+        if (bump) stride += normComp ? 8 : 16;
+        return stride;
+    }
+
+    private static void Need(byte[] data, int cursor, int bytes)
+    {
+        if (cursor < 0 || cursor + bytes > data.Length)
+            throw new InvalidDataException($"Truncated mesh at {cursor}+{bytes} / {data.Length}.");
+    }
+
+    private static string ReadCString(byte[] data, ref int cursor)
+    {
+        var start = cursor;
+        while (cursor < data.Length && data[cursor] != 0)
+            cursor++;
+        var text = System.Text.Encoding.ASCII.GetString(data, start, cursor - start);
+        if (cursor < data.Length)
+            cursor++;
+        return text;
+    }
+
+    private static ushort ReadU16(byte[] data, ref int cursor)
+    {
+        Need(data, cursor, 2);
+        var value = BitConverter.ToUInt16(data, cursor);
+        cursor += 2;
+        return value;
+    }
+
+    private static uint ReadU32(byte[] data, ref int cursor)
+    {
+        Need(data, cursor, 4);
+        var value = BitConverter.ToUInt32(data, cursor);
+        cursor += 4;
+        return value;
+    }
+
+    private static int ReadI32(byte[] data, ref int cursor)
+    {
+        Need(data, cursor, 4);
+        var value = BitConverter.ToInt32(data, cursor);
+        cursor += 4;
+        return value;
+    }
+
+    private static float ReadF32(byte[] data, ref int cursor)
+    {
+        Need(data, cursor, 4);
+        var value = BitConverter.ToSingle(data, cursor);
+        cursor += 4;
+        return value;
+    }
+}
+
+public readonly record struct MeshTriangle(Vector3 A, Vector3 B, Vector3 C, Vector3 Normal);
