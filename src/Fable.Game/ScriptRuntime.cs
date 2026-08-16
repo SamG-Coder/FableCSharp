@@ -38,6 +38,7 @@ public sealed class ScriptRuntime : IScriptHost
     public IReadOnlyList<ScriptDialogSpeech> DialogSpeeches => _dialogs;
     public IReadOnlyList<ScriptWaitTask> WaitTasks => _waits;
     public IReadOnlyList<ScriptSneakTo> SneakTos => _sneaks;
+    public IReadOnlyList<ScriptCombatAnimation> CombatAnimations => _combatAnims;
     public IReadOnlyList<string> PreloadedCameras => _preloadedCameras;
 
     private readonly Dictionary<string, string> _named = new(StringComparer.OrdinalIgnoreCase);
@@ -51,6 +52,7 @@ public sealed class ScriptRuntime : IScriptHost
     private readonly List<ScriptDialogSpeech> _dialogs = [];
     private readonly List<ScriptWaitTask> _waits = [];
     private readonly List<ScriptSneakTo> _sneaks = [];
+    private readonly List<ScriptCombatAnimation> _combatAnims = [];
     private readonly List<string> _preloadedCameras = [];
     private IReadOnlyList<ThingInstance> _things = [];
     private ScriptedCamera? _camera;
@@ -316,6 +318,15 @@ public sealed class ScriptRuntime : IScriptHost
         _sneaks.Add(new ScriptSneakTo(actor, marker, speed, wait));
 
     /// <summary>
+    /// <c>00CC15E3</c>: thing <c>vtbl+76</c> does not
+    /// read the name. Record only — no TURNING_AC90
+    /// pose. <c>[ebp-22]</c> one <c>vtbl+28</c>.
+    /// </summary>
+    void IScriptHost.PlayCombatAnimation(
+        string? actor, string name, bool flagA, bool flagB, bool flagC, bool flagD, bool flagE, int count) =>
+        _combatAnims.Add(new ScriptCombatAnimation(actor, name, flagA, flagB, flagC, flagD, flagE, count));
+
+    /// <summary>
     /// <c>00CC86D0</c> default path: <c>00CBF29F</c> with
     /// <c>dl=0</c> collects UseCamera names via
     /// <c>vtbl+1648</c>. First-seen has no TRUE arg so
@@ -410,3 +421,13 @@ public readonly record struct ScriptDialogSpeech(
 public readonly record struct ScriptWaitTask(string? Actor, string Name);
 
 public readonly record struct ScriptSneakTo(string? Actor, string Marker, float Speed, bool Wait);
+
+public readonly record struct ScriptCombatAnimation(
+    string? Actor,
+    string Name,
+    bool FlagA,
+    bool FlagB,
+    bool FlagC,
+    bool FlagD,
+    bool FlagE,
+    int Count);

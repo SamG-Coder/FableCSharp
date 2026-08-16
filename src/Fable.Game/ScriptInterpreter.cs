@@ -280,6 +280,13 @@ public sealed class ScriptInterpreter
             if (sneak.Marker.Length != 0)
                 host.SneakTo(command.Actor, sneak.Marker, sneak.Speed, sneak.Wait);
         }
+        else if (ScriptCommand.IsPlayCombatAnimation(command.Verb))
+        {
+            var anim = ScriptCommand.ParsePlayCombatAnimation(command.Arguments);
+            if (anim.Name.Length != 0)
+                host.PlayCombatAnimation(
+                    command.Actor, anim.Name, anim.FlagA, anim.FlagB, anim.FlagC, anim.FlagD, anim.FlagE, anim.Count);
+        }
     }
 
     internal static void ParseFadeArgs(string arguments, out float seconds, out float param)
@@ -410,6 +417,39 @@ public readonly struct ScriptCommand
     }
 
     /// <summary>
+    /// Persist verb is <c>PlayCombatAnimation</c>; exe
+    /// token is <c>.PlayCombatAnim</c>.
+    /// </summary>
+    public static bool IsPlayCombatAnimation(string verb) =>
+        verb.Equals("PlayCombatAnimation", StringComparison.OrdinalIgnoreCase) ||
+        verb.Equals("PlayCombatAnim", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// <c>00CC15E3</c>: name required. Arg1 IsTrue is
+    /// discarded. Arg2/3 IsTrue set flags; arg4/5
+    /// IsFalse clear defaults 1; arg6 atoi is count
+    /// (default 1); arg7 IsTrue.
+    /// </summary>
+    public static (string Name, bool FlagA, bool FlagB, bool FlagC, bool FlagD, bool FlagE, int Count)
+        ParsePlayCombatAnimation(string arguments)
+    {
+        var args = SplitArgs(arguments);
+        var name = args.Length == 0 ? "" : args[0];
+        var flagA = args.Length <= 5 || !IsFalseArg(args[5]);
+        var flagB = args.Length > 2 && IsTrueArg(args[2]);
+        var flagC = args.Length > 3 && IsTrueArg(args[3]);
+        var flagD = args.Length <= 4 || !IsFalseArg(args[4]);
+        var flagE = args.Length > 7 && IsTrueArg(args[7]);
+        var count = 1;
+        if (args.Length > 6 &&
+            int.TryParse(args[6], System.Globalization.NumberStyles.Integer,
+                System.Globalization.CultureInfo.InvariantCulture, out var parsed) &&
+            parsed > 0)
+            count = parsed;
+        return (name, flagA, flagB, flagC, flagD, flagE, count);
+    }
+
+    /// <summary>
     /// <c>00CBEE0C</c>: strcmp arg to <c>false</c>.
     /// </summary>
     public static bool IsFalseArg(string? text) =>
@@ -507,6 +547,13 @@ public readonly struct ScriptCommand
                 return ScriptFlow.Continue;
             return sneak.Wait ? ScriptFlow.Yield : ScriptFlow.YieldAfter;
         }
+        if (IsPlayCombatAnimation(verb))
+        {
+            var anim = ParsePlayCombatAnimation(command.Arguments);
+            if (anim.Name.Length == 0)
+                return ScriptFlow.Continue;
+            return ScriptFlow.YieldAfter;
+        }
         if (verb.Equals("LookToThing", StringComparison.OrdinalIgnoreCase))
         {
             var args = SplitArgs(command.Arguments);
@@ -548,4 +595,6 @@ public interface IScriptHost
     void DialogSpeak(string? actor, string listener, string text);
     void WaitTask(string? actor, string name);
     void SneakTo(string? actor, string marker, float speed, bool wait);
+    void PlayCombatAnimation(
+        string? actor, string name, bool flagA, bool flagB, bool flagC, bool flagD, bool flagE, int count);
 }

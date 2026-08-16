@@ -384,6 +384,26 @@ public static class RegionTravel
     public const bool FirstSeenSneakToAppliesMove = false;
     public const string IntroSneakMarker = "MK_OVIF_HERO4";
     public const float IntroSneakSpeed = 0f;
+    /// <summary>
+    /// <c>00CC15E3</c> <c>.PlayCombatAnim</c> (persist
+    /// <c>PlayCombatAnimation</c>). Empty actor / name
+    /// → <c>00CC7081</c>. Defaults then arg2/3 IsTrue
+    /// and arg4/5 IsFalse; arg1 IsTrue is discarded;
+    /// arg6 atoi is the call count (default 1). Thing
+    /// <c>vtbl+76</c>: Father <c>00834760</c> / player
+    /// <c>006AD9D0</c> do not read the name. Then
+    /// <c>00CC186F</c> / <c>00CC5691</c> one
+    /// <c>vtbl+28</c>.
+    /// </summary>
+    public const uint PlayCombatAnimationOpcode = 0x00CC15E3;
+    public const uint PlayCombatAnimationApply = 0x00CC16FD;
+    public const int PlayCombatAnimationApplyVtbl = 76;
+    public const uint PlayCombatAnimationFatherFn = 0x00834760;
+    public const uint PlayCombatAnimationPlayerFn = 0x006AD9D0;
+    public const uint ActionPlayCombatAnimationName = 0x009035F0;
+    public const bool FirstSeenPlayCombatAnimationYields = true;
+    public const bool FirstSeenPlayCombatAnimationAppliesPose = false;
+    public const string IntroFatherCombatAnim = "TURNING_AC90";
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;

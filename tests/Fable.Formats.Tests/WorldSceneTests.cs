@@ -370,6 +370,12 @@ public sealed class WorldSceneTests
         Assert.False(RegionTravel.FirstSeenSneakToWaitsForArrival);
         Assert.Equal("MK_OVIF_HERO4", RegionTravel.IntroSneakMarker);
         Assert.Equal(0f, RegionTravel.IntroSneakSpeed);
+        Assert.Equal(0x00CC15E3u, RegionTravel.PlayCombatAnimationOpcode);
+        Assert.Equal(76, RegionTravel.PlayCombatAnimationApplyVtbl);
+        Assert.Equal(0x00834760u, RegionTravel.PlayCombatAnimationFatherFn);
+        Assert.True(RegionTravel.FirstSeenPlayCombatAnimationYields);
+        Assert.False(RegionTravel.FirstSeenPlayCombatAnimationAppliesPose);
+        Assert.Equal("TURNING_AC90", RegionTravel.IntroFatherCombatAnim);
         Assert.Equal(0x00CC4B22u, RegionTravel.ScriptFadeInOut);
         Assert.Equal(0x00CB5D80u, RegionTravel.RegisteringScripts);
         Assert.Equal(0x00CB8110u, RegionTravel.QuestBaseCtor);
@@ -890,6 +896,49 @@ public sealed class WorldSceneTests
             s.Speed == RegionTravel.IntroSneakSpeed &&
             !s.Wait);
         Assert.False(intro.ExecutedVerb("PlayCombatAnimation"));
+        Assert.Equal(0x00CC15E3u, RegionTravel.PlayCombatAnimationOpcode);
+        Assert.False(RegionTravel.FirstSeenPlayCombatAnimationAppliesPose);
+        Assert.True(RegionTravel.FirstSeenPlayCombatAnimationYields);
+        var pauseAfterSneak = 0;
+        while (intro.Yielded &&
+               !intro.ExecutedVerb("PlayCombatAnimation") &&
+               intro.Commands[intro.InstructionPointer].StartsWith("GamePause 1.0", StringComparison.Ordinal) &&
+               pauseAfterSneak < 50)
+        {
+            script.Update(0.1f);
+            pauseAfterSneak++;
+        }
+
+        Assert.Contains("GamePause 1.0", intro.Executed);
+        Assert.Contains("Father.PlayCombatAnimation TURNING_AC90,FALSE,TRUE", intro.Executed);
+        Assert.Equal("GamePause 1.0", intro.Commands[intro.InstructionPointer]);
+        Assert.True(intro.Yielded);
+        Assert.Null(intro.UnsupportedCommand);
+        Assert.Contains(runtime.CombatAnimations, a =>
+            a.Actor == "Father" &&
+            a.Name == RegionTravel.IntroFatherCombatAnim &&
+            a.FlagA && a.FlagB && !a.FlagC && a.FlagD && !a.FlagE && a.Count == 1);
+        Assert.False(WorldShading.FirstSeenPlaysAnim);
+        Assert.False(intro.ExecutedVerb("PlayCombatAnim"));
+        var pauseAfterCombat = 0;
+        while (intro.Yielded &&
+               !intro.Executed.Any(line => line.Contains("CS_LOOK_LEFT", StringComparison.Ordinal)) &&
+               intro.Commands[intro.InstructionPointer].StartsWith("GamePause 1.0", StringComparison.Ordinal) &&
+               pauseAfterCombat < 50)
+        {
+            script.Update(0.1f);
+            pauseAfterCombat++;
+        }
+
+        Assert.Contains("Hero.PlayAnimation CS_LOOK_LEFT,TRUE", intro.Executed);
+        Assert.Equal(
+            "Create CREATURE_OAKVALE_VILLAGER_FEMALE_NORMAL_MESH,MK_OVI_ID_VS1,VILL1",
+            intro.Commands[intro.InstructionPointer]);
+        Assert.True(intro.Yielded);
+        Assert.Null(intro.UnsupportedCommand);
+        Assert.Contains(runtime.Animations, a =>
+            a.Actor == "Hero" && a.Name == "CS_LOOK_LEFT" && a.Flag1 && !a.Flag2);
+        Assert.False(intro.ExecutedVerb("Create"));
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 
@@ -1003,6 +1052,40 @@ public sealed class WorldSceneTests
         public void WaitTask(string? actor, string name) { }
 
         public void SneakTo(string? actor, string marker, float speed, bool wait) { }
+
+        public void PlayCombatAnimation(
+            string? actor, string name, bool flagA, bool flagB, bool flagC, bool flagD, bool flagE, int count) { }
+    }
+
+    [Fact]
+    public void Father_PlayCombatAnimation_yields_once_without_pose()
+    {
+        var command = "Father.PlayCombatAnimation TURNING_AC90,FALSE,TRUE";
+        var parsed = ScriptCommand.ParsePlayCombatAnimation(ScriptCommand.Parse(command).Arguments);
+        Assert.Equal("TURNING_AC90", parsed.Name);
+        Assert.True(parsed.FlagA);
+        Assert.True(parsed.FlagB);
+        Assert.False(parsed.FlagC);
+        Assert.True(parsed.FlagD);
+        Assert.False(parsed.FlagE);
+        Assert.Equal(1, parsed.Count);
+        Assert.Equal(ScriptFlow.YieldAfter, ScriptCommand.Classify(ScriptCommand.Parse(command)));
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(
+            ScriptCommand.Parse("Father.PlayCombatAnimation")));
+        Assert.True(ScriptCommand.IsPlayCombatAnimation("PlayCombatAnim"));
+        Assert.Equal(0x00CC15E3u, RegionTravel.PlayCombatAnimationOpcode);
+        Assert.Equal(76, RegionTravel.PlayCombatAnimationApplyVtbl);
+        Assert.Equal(0x00834760u, RegionTravel.PlayCombatAnimationFatherFn);
+        Assert.Equal(0x006AD9D0u, RegionTravel.PlayCombatAnimationPlayerFn);
+        Assert.True(RegionTravel.FirstSeenPlayCombatAnimationYields);
+        Assert.False(RegionTravel.FirstSeenPlayCombatAnimationAppliesPose);
+        Assert.False(WorldShading.FirstSeenPlaysAnim);
+        var interpreter = new ScriptInterpreter("combat", [command, "GamePause 1.0"]);
+        interpreter.RunUntilYield();
+        Assert.True(interpreter.Yielded);
+        Assert.Contains(command, interpreter.Executed);
+        Assert.Equal("GamePause 1.0", interpreter.Commands[interpreter.InstructionPointer]);
+        Assert.Null(interpreter.UnsupportedCommand);
     }
 
     [Fact]
