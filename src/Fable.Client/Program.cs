@@ -188,6 +188,15 @@ void EnterRegion(string next, RegionExit? arrivedFromExit)
     map = levels.World.FindMap(region);
     exits = RegionTravel.ActiveExits(things.Things);
     Console.WriteLine($"Instanced {world.MeshInstances} meshes ({world.Triangles.Count} tris), missing {world.MissingMeshes}");
+    if (region == RegionTravel.NewGameRegion)
+    {
+        Console.WriteLine(
+            $"Intro {RegionTravel.IntroQuest}/{RegionTravel.IntroScriptName} " +
+            $"run 0x{RegionTravel.IntroQuestRun:X} -> 0x{RegionTravel.StartOakValeSetup:X}; " +
+            $"phase PreAttack {RegionTravel.PreAttackDuration:0}s wait on +{RegionTravel.PreAttackGateOffset}; " +
+            $"WatchBarrels idle (no beetle); fade opcode unused; " +
+            $"SHOT2 TNG camera; kid bind-pose; no player handoff");
+    }
 
     if (planes is null && spawn is not null)
     {

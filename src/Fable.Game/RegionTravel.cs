@@ -56,6 +56,44 @@ public static class RegionTravel
     public const float PreAttackDuration = 12f;
     public const int PreAttackDurationVtbl = 2584;
     public const bool FirstSeenFollowsNoviLiveFather = false;
+    /// <summary>
+    /// Registrar <c>00CD6E27</c> binds <c>Q_NewOakValeIntro</c> to
+    /// script <c>S_QNOVI</c> and factory <c>00DBEF70</c>.
+    /// Factory allocs <c>0x10C</c> and calls ctor <c>00DAAC00</c>
+    /// (vtbl <c>0x12D7A28</c>, context at <c>+64</c>).
+    /// Slot 0 is the dtor. Slot 1 builds the <c>Main</c> watcher
+    /// (<c>00CDD450</c>, callback <c>00CDD440</c>) — not a frame
+    /// tick. Slot 2 <c>00DABAC0</c> registers <c>NOVI_*</c> names
+    /// then <c>E8 00DBDE40</c> (only caller). Slot 3
+    /// <c>00DAADD0</c> clears <c>+80</c>. No <c>E8</c> of slot 2;
+    /// the script VM calls <c>[vtbl+8]</c>.
+    /// </summary>
+    public const string IntroQuest = "Q_NewOakValeIntro";
+    public const string IntroQuestPreAttack = "Q_NewOakValeIntro_PreAttack";
+    public const string IntroScriptName = "S_QNOVI";
+    public const uint IntroQuestFactory = 0x00DBEF70;
+    public const uint IntroQuestCtor = 0x00DAAC00;
+    public const uint IntroQuestVtbl = 0x012D7A28;
+    public const int IntroQuestSize = 0x10C;
+    public const uint IntroQuestDtor = 0x00DBEFA0;
+    public const uint IntroQuestMainWatcher = 0x00DAACE0;
+    public const uint IntroQuestRun = 0x00DABAC0;
+    public const uint IntroQuestReset = 0x00DAADD0;
+    public const int IntroQuestRunSlot = 2;
+    public const uint IntroQuestRunCallsSetup = 0x00DAC295;
+    public const uint IntroMainWatcherCallback = 0x00CDD440;
+    public const string IntroMainWatcherName = "Main";
+    public const uint RenderFrame = 0x00B25950;
+    public const int ScriptYieldVtbl = 28;
+    public const int ScriptContextOffset = 64;
+    public const int PreAttackGateOffset = 80;
+    public const int ScriptWaitVtbl = 2584;
+    public const bool FirstSeenPlus80WrittenInStartOakVale = false;
+    public const bool FirstSeenFadeOpcodeInStartOakVale = false;
+    public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
+    public const bool FirstSeenHandsPlayerControl = false;
+    public const bool FirstSeenCameraNameInExe = false;
+    public const string WatchBarrelsThing = "NOVI_Barrel";
     public static float WatchBarrelsInterval =>
         System.BitConverter.Int32BitsToSingle(unchecked((int)WatchBarrelsIntervalBits));
 

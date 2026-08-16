@@ -87,6 +87,12 @@ public static class LandscapeFrustum
     public const bool FirstSeenUsesThirdPersonView = false;
     public const uint BindSource = 0x00B23B50;
     public const uint StoreSource = 0x00B2FBF0;
+    /// <summary>
+    /// <c>00B314E0</c> has two <c>E8</c> callers: bind
+    /// <c>00B23B6C</c> and pre-pass <c>00B2799D</c>. Neither
+    /// names <c>CAM_OVIF_SHOT2</c> — that string is TNG only.
+    /// </summary>
+    public const int CameraUpdateCallerCount = 2;
     public const uint PrePassUpdate = 0x00B277A0;
     public const int HelperPosOffset = 0;
     public const int HelperLookOffset = 12;
