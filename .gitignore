@@ -8,6 +8,8 @@ TestResults/
 tools/_texprobe/
 tools/_peek/
 tools/_probe/
+# Fable.exe string/disasm/pseudocode dumps — never commit
+tools/Fable.ExeIndex/out/
 *.exe
 client-out.txt
 client-err.txt

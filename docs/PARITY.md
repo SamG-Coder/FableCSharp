@@ -138,6 +138,10 @@ Traced in `Fable.exe` (file offsets). Do not invent steps.
 5. **`CRenderManager` order**: sky → landscape (`CEngineLandscapeRenderer` + `CEngineStateBlockDiffuse2X` + `mul_x2_sat t1,v0`) → static meshes (`VSHADER_STATIC_DIRLIGHT_FOG`) → water / weather / HUD.
 6. **`CEngineLandscapeMeshBuilder` / `CPatchTesselationEdgeStrip`**: 17×17 (`v=289`) is a full grid; other tiles are the stored strip. Still reading those strips; leftover holes are unread tessellation, not a CPU 70% grid.
 
+## Exe dump tool
+
+`tools/Fable.ExeIndex` indexes a local `Fable.exe` (`index` → `split` → `translate` packets). Dumps land in `tools/Fable.ExeIndex/out/` and **stay gitignored** (root + tool `.gitignore`). Do not commit strings, disasm, or the AI packets. After a dump, translate each `out/02-translate/*.prompt.md` into `out/03-pseudo/*.md`.
+
 ## How to add a note
 
 - Prove a positive with a test against the live install.
