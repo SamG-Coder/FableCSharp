@@ -287,7 +287,8 @@ public sealed class MeshFile
                     return;
                 }
                 n = Vector3.Normalize(n);
-                triangles.Add(new MeshTriangle(pa, pb, pc, n, uvs[a], uvs[b], uvs[c], textureId));
+                triangles.Add(new MeshTriangle(pa, pb, pc, n, uvs[a], uvs[b], uvs[c], textureId,
+                    SrcAlphaBlend: hasBones));
             }
 
             if (blocks.Count == 0)
@@ -659,7 +660,8 @@ public readonly record struct MeshTriangle(
     Vector3 NormalA = default,
     Vector3 NormalB = default,
     Vector3 NormalC = default,
-    SceneLayer Layer = SceneLayer.Prop);
+    SceneLayer Layer = SceneLayer.Prop,
+    bool SrcAlphaBlend = false);
 
 /// <summary>
 /// Geometry bucket. <see cref="Fable.Formats.Scene.ScenePasses"/> maps these

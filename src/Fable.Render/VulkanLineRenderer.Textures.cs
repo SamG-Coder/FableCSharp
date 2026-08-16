@@ -53,10 +53,18 @@ public sealed unsafe partial class VulkanLineRenderer
             return;
         }
 
+        var alpha = false;
         foreach (var draw in _draws)
         {
             if (draw.VertexCount == 0)
                 continue;
+            if (draw.SrcAlphaBlend != alpha)
+            {
+                alpha = draw.SrcAlphaBlend;
+                _vk.CmdBindPipeline(commandBuffer, PipelineBindPoint.Graphics,
+                    alpha ? _meshAlphaPipeline : _meshPipeline);
+                PushMeshConstants(commandBuffer);
+            }
             if (Math.Abs(_meshPush.Pass.X - draw.ShaderMode) > 0.01f)
             {
                 _meshPush.Pass = MeshPushConstants.PackPass(draw.ShaderMode);

@@ -371,4 +371,12 @@ public static class WorldShading
     /// Flag1 on hair 793 / house 3180 does not write type 20.
     /// </summary>
     public const bool FirstSeenFlag1WritesLayerType20 = false;
+
+    /// <summary>
+    /// First-seen PALSKIN bind writes SRCALPHA/INVSRCALPHA
+    /// (<see cref="Fable.Formats.Scene.D3dDeviceState.FirstSeenPalskinSrcBlend"/>)
+    /// with no Flag1 test. Kid hair Flag1 does not select that blend.
+    /// </summary>
+    public const bool FirstSeenPalskinSrcAlphaBlend = true;
+    public const bool FirstSeenFlag1SelectsAlphaBlend = false;
 }

@@ -22,7 +22,8 @@ public readonly record struct MeshDraw(
     uint VertexCount,
     int TextureId1 = 0,
     uint PassBit = 0,
-    float ShaderMode = 1f);
+    float ShaderMode = 1f,
+    bool SrcAlphaBlend = false);
 
 public readonly record struct GpuTexture(int Id, int Width, int Height, byte[] Rgba)
 {

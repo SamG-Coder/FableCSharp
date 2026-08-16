@@ -133,6 +133,7 @@ public sealed class MeshFormatTests
         var walls3180 = mesh.Materials.Single(m => m.DiffuseMapId == 3180);
         Assert.Equal(1, walls3180.Flag1);
         Assert.False(WorldShading.FirstSeenFlag1WritesLayerType20);
+        Assert.DoesNotContain(mesh.Triangles, t => t.SrcAlphaBlend);
     }
 
     [Fact]
@@ -189,6 +190,9 @@ public sealed class MeshFormatTests
         Assert.DoesNotContain(mesh.Materials, m => m.Flag1 == 1 && m != hair);
         Assert.False(WorldShading.FirstSeenAppliesCullNoneFromFlag1);
         Assert.False(WorldShading.FirstSeenFlag1WritesLayerType20);
+        Assert.False(WorldShading.FirstSeenFlag1SelectsAlphaBlend);
+        Assert.True(WorldShading.FirstSeenPalskinSrcAlphaBlend);
+        Assert.Contains(mesh.Triangles, t => t.SrcAlphaBlend);
         Assert.False(WorldShading.FirstSeenPlaysAnim);
         Assert.DoesNotContain(mesh.Materials, m => m.Name == "DegenerateTriangles");
     }

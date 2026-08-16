@@ -44,6 +44,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     private PipelineLayout _meshPipelineLayout;
     private Pipeline _linePipeline;
     private Pipeline _meshPipeline;
+    private Pipeline _meshAlphaPipeline;
     private DescriptorSetLayout _descriptorSetLayout;
     private DescriptorPool _descriptorPool;
     private Sampler _sampler;
@@ -237,6 +238,8 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         DestroyTextures();
         _vk.DestroyPipeline(_device, _linePipeline, null);
         _vk.DestroyPipeline(_device, _meshPipeline, null);
+        if (_meshAlphaPipeline.Handle != 0)
+            _vk.DestroyPipeline(_device, _meshAlphaPipeline, null);
         _vk.DestroyPipelineLayout(_device, _pipelineLayout, null);
         if (_meshPipelineLayout.Handle != 0)
             _vk.DestroyPipelineLayout(_device, _meshPipelineLayout, null);
@@ -703,6 +706,15 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         pipelineInfo.PDepthStencilState = &meshDepth;
         pipelineInfo.Layout = _meshPipelineLayout;
         Check(_vk.CreateGraphicsPipelines(_device, default, 1, in pipelineInfo, null, out _meshPipeline));
+        // PALSKIN 00BD3867/00BD38D4: SRCALPHA / INVSRCALPHA, no Flag1 test.
+        blendAttachment.BlendEnable = true;
+        blendAttachment.SrcColorBlendFactor = BlendFactor.SrcAlpha;
+        blendAttachment.DstColorBlendFactor = BlendFactor.OneMinusSrcAlpha;
+        blendAttachment.ColorBlendOp = BlendOp.Add;
+        blendAttachment.SrcAlphaBlendFactor = BlendFactor.SrcAlpha;
+        blendAttachment.DstAlphaBlendFactor = BlendFactor.OneMinusSrcAlpha;
+        blendAttachment.AlphaBlendOp = BlendOp.Add;
+        Check(_vk.CreateGraphicsPipelines(_device, default, 1, in pipelineInfo, null, out _meshAlphaPipeline));
 
         _vk.DestroyShaderModule(_device, meshVert, null);
         _vk.DestroyShaderModule(_device, meshFrag, null);

@@ -273,7 +273,7 @@ public sealed class WorldGeometry
                     n = Vector3.UnitZ;
                 else
                     n = Vector3.Normalize(n);
-                triangles.Add(new MeshTriangle(a, b, c, n, tri.UvA, tri.UvB, tri.UvC, tri.TextureId));
+                triangles.Add(tri with { A = a, B = b, C = c, Normal = n });
             }
 
             instances++;

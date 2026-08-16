@@ -19,7 +19,7 @@ public static class MeshBatches
     public static TexturedMesh Build(IReadOnlyList<MeshTriangle> triangles)
     {
         var grouped = triangles
-            .GroupBy(tri => (tri.Layer, tri.TextureId, tri.TextureId1 == 0 ? tri.TextureId : tri.TextureId1))
+            .GroupBy(tri => (tri.Layer, tri.TextureId, tri.TextureId1 == 0 ? tri.TextureId : tri.TextureId1, tri.SrcAlphaBlend))
             .ToList();
         var vertices = new MeshVertex[triangles.Count * 3];
         var draws = new List<MeshDraw>(grouped.Count * 2);
@@ -43,7 +43,8 @@ public static class MeshBatches
                     count,
                     group.Key.Item3,
                     pass.Bit,
-                    ScenePasses.ShaderMode(pass.Submit)));
+                    ScenePasses.ShaderMode(pass.Submit),
+                    group.Key.SrcAlphaBlend));
             }
         }
 

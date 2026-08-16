@@ -60,6 +60,13 @@ public sealed class ScenePassTests
         Assert.True(D3dDeviceState.PrimitiveTypeUsesNoneDraw(20));
         Assert.False(D3dDeviceState.PrimitiveTypeUsesNoneDraw(7));
         Assert.False(WorldShading.FirstSeenFlag1WritesLayerType20);
+        Assert.Equal(19, D3dDeviceState.SrcBlend);
+        Assert.Equal(20, D3dDeviceState.DestBlend);
+        Assert.Equal(27, D3dDeviceState.AlphaBlendEnable);
+        Assert.Equal(5, D3dDeviceState.FirstSeenPalskinSrcBlend);
+        Assert.Equal(6, D3dDeviceState.FirstSeenPalskinDestBlend);
+        Assert.True(WorldShading.FirstSeenPalskinSrcAlphaBlend);
+        Assert.False(WorldShading.FirstSeenFlag1SelectsAlphaBlend);
         var install = GameInstall.TryLocate();
         Assert.NotNull(install);
         using var levels = new LevelLibrary(install);

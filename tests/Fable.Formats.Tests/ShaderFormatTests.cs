@@ -253,6 +253,8 @@ public sealed class ShaderFormatTests
         Assert.False(WorldShading.FirstSeenPlaysAnim);
         Assert.False(WorldShading.FirstSeenAppliesCullNoneFromFlag1);
         Assert.False(WorldShading.FirstSeenFlag1WritesLayerType20);
+        Assert.True(WorldShading.FirstSeenPalskinSrcAlphaBlend);
+        Assert.False(WorldShading.FirstSeenFlag1SelectsAlphaBlend);
         Assert.Contains(WorldShading.PaletteSkinStartRegister,
             Load("SHADERS_PALSKIN", WorldShading.PalskinFamilyShader(0)).ConstRegisters);
         Assert.Equal(WorldShading.StaticFamilySlotShaders[0], Load("SHADERS_STATIC", WorldShading.StaticFamilyShader(0)).Name);

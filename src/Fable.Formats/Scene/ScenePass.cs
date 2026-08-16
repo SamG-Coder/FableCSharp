@@ -135,4 +135,31 @@ public static class D3dDeviceState
 
     public static bool PrimitiveTypeUsesNoneDraw(int type) =>
         type == PrimitiveTypeNoneDraw;
+
+    /// <summary>D3DRS_SRCBLEND. Slot init <c>00A047EA</c> writes <c>0x13</c>.</summary>
+    public const int SrcBlend = 19;
+
+    /// <summary>D3DRS_DESTBLEND. Slot init <c>00A04825</c> writes <c>0x14</c>.</summary>
+    public const int DestBlend = 20;
+
+    /// <summary>D3DRS_ALPHABLENDENABLE. Slot init <c>00A04860</c> writes <c>0x1B</c>.</summary>
+    public const int AlphaBlendEnable = 27;
+
+    /// <summary>D3DRS_ALPHATESTENABLE. Slot init <c>00A0489B</c> writes <c>0x0F</c>.</summary>
+    public const int AlphaTestEnable = 15;
+
+    public const int BlendZero = 1;
+    public const int BlendOne = 2;
+    public const int BlendSrcAlpha = 5;
+    public const int BlendInvSrcAlpha = 6;
+
+    /// <summary>
+    /// PALSKIN bind <c>00BD3070</c> pass 4 falls through
+    /// <c>00BD35ED</c> → <c>00BD3867</c> <c>[0x01396F78]=5</c>
+    /// SRCALPHA and <c>00BD38D4</c> <c>[0x01396F7C]=6</c>
+    /// INVSRCALPHA. <c>+10424</c> alphablend enable is 1.
+    /// No Flag1 test.
+    /// </summary>
+    public const int FirstSeenPalskinSrcBlend = BlendSrcAlpha;
+    public const int FirstSeenPalskinDestBlend = BlendInvSrcAlpha;
 }
