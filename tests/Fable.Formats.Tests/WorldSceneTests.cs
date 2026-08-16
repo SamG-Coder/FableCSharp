@@ -274,6 +274,16 @@ public sealed class WorldSceneTests
         Assert.Equal(536, LandscapeFrustum.SplineFlagOffset);
         var shot = things.First(t => t.ScriptName == "CAM_OVIF_SHOT2");
         Assert.Equal("CAMERA_POINT_SCRIPTED_SPLINE", shot.DefinitionType);
+        Assert.False(RegionTravel.IntroHeroIsSubject(shot));
+        Assert.False(RegionTravel.FirstSeenHeroIsSubject);
+        Assert.False(LandscapeFrustum.FirstSeenUsesThirdPersonView);
+        Assert.Equal(new Vector3(0f, 0f, 1f), RegionTravel.IntroCameraUp(shot));
+        Assert.Equal(LandscapeFrustum.FirstSeenCameraUp, RegionTravel.IntroCameraUp(shot));
+        Assert.Equal(0x00B23B50u, LandscapeFrustum.BindSource);
+        Assert.Equal(0x00B2FBF0u, LandscapeFrustum.StoreSource);
+        Assert.Equal(12, LandscapeFrustum.HelperLookOffset);
+        Assert.Equal(24, LandscapeFrustum.HelperUpOffset);
+        Assert.Equal(0x0137F67Cu, LandscapeFrustum.ViewThirdPersonRtti);
         Assert.Equal("0.2", shot.Properties["CTCCameraPointScriptedSpline.FOV"]);
         Assert.Equal("0.2", shot.Properties["CTCCameraPointScriptedSpline.KeyCameras[0].FOV"]);
         Assert.False(shot.Properties.ContainsKey("CTCCameraPointScripted.FOV"));

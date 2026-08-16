@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Numerics;
+using Fable.Formats.Levels;
 using Fable.Formats.Tng;
 using Fable.Formats.Wld;
 
@@ -25,6 +26,9 @@ public static class RegionTravel
     public const string AdultCreature = "CREATURE_HERO";
     public const string IntroCameraPrefix = "CAM_OVIF_SHOT";
     public const float IntroCameraFovDegrees = 72f;
+    public const string IntroHeroIsSubjectKey = "CTCCameraPointScriptedSpline.HeroIsSubject";
+    public const string IntroAxisUpKey = "CTCCameraPointScriptedSpline.CoordAxisUp";
+    public const bool FirstSeenHeroIsSubject = false;
 
     public static string StartingRegion(WorldFile world) =>
         world.FindMap(NewGameRegion)?.ScriptName
@@ -48,6 +52,24 @@ public static class RegionTravel
 
     public static Vector3 PositionOf(ThingInstance thing) =>
         new(thing.PositionX!.Value, thing.PositionY!.Value, thing.PositionZ ?? 0);
+
+    /// <summary>
+    /// <c>00B314E0</c> copies helper <c>+24</c> as up. SHOT2
+    /// <c>CoordAxisUp</c> is <c>(0,0,1)</c>.
+    /// </summary>
+    public static Vector3 IntroCameraUp(ThingInstance thing) =>
+        TryCoord(thing, IntroAxisUpKey, out var up) && up.LengthSquared() > 1e-8f
+            ? Vector3.Normalize(up)
+            : LandscapeFrustum.FirstSeenCameraUp;
+
+    /// <summary>
+    /// SHOT2 <c>HeroIsSubject=FALSE</c>. A TRUE subject would be
+    /// follow-cam; first-seen <c>00B314E0</c> does not add a hero
+    /// offset (<see cref="LandscapeFrustum.FirstSeenUsesThirdPersonView"/>).
+    /// </summary>
+    public static bool IntroHeroIsSubject(ThingInstance thing) =>
+        thing.Properties.TryGetValue(IntroHeroIsSubjectKey, out var value)
+        && value.Equals("TRUE", StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// First-seen Oakvale intro view from TNG <c>CAM_OVIF_SHOT*</c> next to

@@ -88,6 +88,8 @@ public sealed class CameraProjectionTests
         Assert.Equal(0x00B54310u, LandscapeFrustum.CameraConstantUpload);
         Assert.Equal(0x00989B00u, LandscapeFrustum.SetVsConstantF4);
         Assert.True(LandscapeFrustum.FirstSeenUploadsInverseRow0AsC2);
+        Assert.False(LandscapeFrustum.FirstSeenUsesThirdPersonView);
+        Assert.Equal(new Vector3(0f, 0f, 1f), LandscapeFrustum.FirstSeenCameraUp);
         Assert.Equal(18, LandscapeFrustum.LayoutFogRegister);
         Assert.Equal(1, LandscapeFrustum.LayoutFogCount);
         Assert.Equal(56, LandscapeFrustum.LayoutFogRegisterOffset);

@@ -88,6 +88,8 @@ internal static class FunctionMap
         ("LayoutBasic fog +56", 0x00BDBB70),
         ("lighting record alloc", 0x00B4A4C0),
         ("camera update helper FOV", 0x00B314E0),
+        ("bind camera source", 0x00B23B50),
+        ("store camera helper +12", 0x00B2FBF0),
         ("camera spline update", 0x00B31160),
         ("camera ctor", 0x00B31700),
         ("spline enable +536", 0x00B2FC10),

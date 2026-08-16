@@ -70,6 +70,24 @@ public static class LandscapeFrustum
     public const float FirstSeenFovTurns = 0.2f;
     public const bool FirstSeenTwoFovFlag = false;
     public const bool FirstSeenSplineEnabled = false;
+    /// <summary>
+    /// <c>00B314E0</c> with <c>+536==0</c> copies helper
+    /// <c>+0/+12/+24</c> as pos/look/up then <c>00B30B50</c>.
+    /// No hero-follow offset. <c>00B2FBF0</c> only stores the
+    /// helper pointer at camera <c>+12</c>. <c>00B2FC10</c> has
+    /// zero <c>E8</c> callers. SHOT2 TNG
+    /// <c>HeroIsSubject=FALSE</c>.
+    /// </summary>
+    public const bool FirstSeenUsesThirdPersonView = false;
+    public const uint BindSource = 0x00B23B50;
+    public const uint StoreSource = 0x00B2FBF0;
+    public const uint PrePassUpdate = 0x00B277A0;
+    public const int HelperPosOffset = 0;
+    public const int HelperLookOffset = 12;
+    public const int HelperUpOffset = 24;
+    public const int SourcePointerOffset = 12;
+    public static readonly Vector3 FirstSeenCameraUp = new(0f, 0f, 1f);
+    public const uint ViewThirdPersonRtti = 0x0137F67C;
     public const int ViewMatrixOffset = 128;
     public const int InverseOffset = 228;
     public const int ViewportWidthOffset = 176;
