@@ -21,6 +21,64 @@ public sealed class WorldGeometryTests
     }
 
     [Fact]
+    public void Lookout_tng_is_local_region_space_on_the_heightfield()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        var map = levels.World.FindMap("LookoutPoint")!;
+        var height = levels.LoadHeightField("LookoutPoint")!;
+        var things = levels.LoadThings("LookoutPoint").Things.Where(t => t.PositionX is not null).ToList();
+        Assert.True(things.Max(t => t.PositionX) < 130);
+        Assert.True(things.Max(t => t.PositionY) < 130);
+        Assert.True(things.Min(t => t.PositionX) > -1);
+        Assert.DoesNotContain(things, t => t.PositionX > map.MapX);
+        var objs = things.Where(t => (t.DefinitionType ?? "").StartsWith("OBJECT_")).ToList();
+        var near = 0;
+        foreach (var thing in objs)
+        {
+            var x = (int)MathF.Round(thing.PositionX!.Value);
+            var y = (int)MathF.Round(thing.PositionY!.Value);
+            if (x < 0 || y < 0 || x > height.FineWidth || y > height.FineHeight)
+                continue;
+            if (Math.Abs(thing.PositionZ!.Value - height.FineHeights[x, y]) < 1.5f)
+                near++;
+        }
+
+        Assert.True(near > objs.Count * 3 / 4, $"onGround={near}/{objs.Count}");
+    }
+
+    [Fact]
+    public void ObjectScale_shrinks_the_instance()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        var rock = levels.LoadThings("LookoutPoint").Things
+            .First(t => t.DefinitionType == "OBJECT_BRIGHTWOOD_LARGEROCK_04" &&
+                        t.Properties.GetValueOrDefault("ObjectScale") == "0.4");
+        var scaled = WorldGeometry.ObjectTransform(rock);
+        var props = new Dictionary<string, string>(rock.Properties, StringComparer.OrdinalIgnoreCase);
+        props["ObjectScale"] = "1.0";
+        var clone = new Fable.Formats.Tng.ThingInstance
+        {
+            Kind = rock.Kind,
+            Section = rock.Section,
+            DefinitionType = rock.DefinitionType,
+            ScriptName = rock.ScriptName,
+            Uid = rock.Uid,
+            Player = rock.Player,
+            PositionX = rock.PositionX,
+            PositionY = rock.PositionY,
+            PositionZ = rock.PositionZ,
+            Properties = props,
+        };
+        var full = WorldGeometry.ObjectTransform(clone);
+        var s = scaled.M11 / full.M11;
+        Assert.InRange(Math.Abs(s), 0.35f, 0.45f);
+    }
+
+    [Fact]
     public void Streetlamp_stands_on_world_z_not_createworld_y()
     {
         var install = GameInstall.TryLocate();

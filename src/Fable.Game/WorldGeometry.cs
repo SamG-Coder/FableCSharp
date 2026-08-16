@@ -116,6 +116,7 @@ public sealed class WorldGeometry
     public static Matrix4x4 ObjectTransform(ThingInstance thing)
     {
         var position = new Vector3(thing.PositionX!.Value, thing.PositionY!.Value, thing.PositionZ!.Value);
+        var scale = MeshToWorld * ReadObjectScale(thing);
         var forward = ReadAxis(thing, "CTCPhysicsStandard.RHSetForward", Vector3.UnitY);
         var up = ReadAxis(thing, "CTCPhysicsStandard.RHSetUp", Vector3.UnitZ);
         if (forward.LengthSquared() < 1e-6f)
@@ -137,7 +138,17 @@ public sealed class WorldGeometry
             forward.X, forward.Y, forward.Z, 0,
             up.X, up.Y, up.Z, 0,
             position.X, position.Y, position.Z, 1);
-        return Matrix4x4.CreateScale(MeshToWorld) * basis;
+        return Matrix4x4.CreateScale(scale) * basis;
+    }
+
+    private static float ReadObjectScale(ThingInstance thing)
+    {
+        if (thing.Properties.TryGetValue("ObjectScale", out var text) &&
+            float.TryParse(text, System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out var value) &&
+            value is > 0.01f and < 20f)
+            return value;
+        return 1f;
     }
 
     private static Vector3 ReadAxis(ThingInstance thing, string prefix, Vector3 fallback)
