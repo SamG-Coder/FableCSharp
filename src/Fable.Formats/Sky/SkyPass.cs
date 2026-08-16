@@ -55,6 +55,36 @@ public static class SkyPass
     public const uint StarDrawCaller = 0x00B66284;
     public const uint StarDrawCallerFn = 0x00B66190;
     public const bool FirstSeenCallsStarDraw = true;
+    /// <summary>
+    /// <c>00B65A20</c> hops <c>[0x1436E8C]+408</c> twice via
+    /// vtbl+4, then <c>D = [C+84]</c>. <c>[D+424]</c> is a
+    /// pointer to two dwords. First dword <c>== 0</c> takes
+    /// <c>00B65A87 ret 4</c>. The first dword is then an index
+    /// into a <c>44</c>-byte record table
+    /// (<c>imul 0x2E8BA2E9</c>), not a <c>stars.dat</c> walk.
+    /// Map-manager <c>+424</c> is OpenStaticMaps mode (0/1/2),
+    /// a different object. Fade is
+    /// <c>1.0 - *[D+436]</c> uploaded as VS colour via
+    /// wrapper+80. Sky ctor writes <c>[this+396]=1</c> so
+    /// <c>00B66190</c> also calls weather <c>00B64FA0</c>.
+    /// </summary>
+    public const uint MapManagerGlobal = 0x01436E8C;
+    public const int MapManagerWorldOffset = 408;
+    public const int StarObjectFromHopOffset = 84;
+    public const int StarListPointerOffset = 424;
+    public const int StarFadePointerOffset = 436;
+    public const int MapManagerModeOffset = 424;
+    public const uint StarEmptyRet = 0x00B65A87;
+    public const bool StarEmptyFirstDwordSkipsDraw = true;
+    public const uint StarRecordReciprocal = 0x2E8BA2E9;
+    public const int StarRecordStrideBytes = 44;
+    public const uint OneConst = 0x0122DED8;
+    public const uint WeatherDraw = 0x00B64FA0;
+    public const int SkyWeatherByteOffset = 396;
+    public const byte FirstSeenSkyWeatherByte = 1;
+    public const bool FirstSeenCallsWeatherDraw = true;
+    public const bool FirstSeenStarDrawIteratesStarsDat = false;
+    public const bool FirstSeenEmitsInventedStarBillboards = false;
     public const int DomeRings = 9;
     public const int DomeSegments = 36;
     public const int DomeVertsPerRing = 37;

@@ -1,6 +1,5 @@
 using System.Numerics;
 using Fable.Core;
-using Fable.Formats.Defs;
 using Fable.Formats.Meshes;
 using Fable.Formats.Sky;
 
@@ -8,8 +7,9 @@ namespace Fable.Game;
 
 /// <summary>
 /// CEngineSkyRenderer. Dome uses GRAPHIC_ATMOSPHERIC_SKY_MIDDAY (time-of-day
-/// set in textures.big). Stars use SKY_DEF.StarTexture + stars.dat.
-/// Lens-flare sprites stay unread (CEngineSkyRenderer flare list).
+/// set in textures.big). First-seen <c>00B65A20</c> does not emit
+/// <c>stars.dat</c> billboards (44-byte texture-id records + already-bound
+/// sky stream). Lens-flare sprites stay unread.
 /// </summary>
 public static class SkyGeometry
 {
@@ -17,16 +17,9 @@ public static class SkyGeometry
 
     public static IReadOnlyList<MeshTriangle> Build(GameInstall install)
     {
+        _ = install;
         var triangles = new List<MeshTriangle>(8_000);
-        SkyDef? def = null;
-        var namesPath = install.FindCompiledDef("names.bin");
-        var binPath = install.FindCompiledDef("game.bin");
-        if (namesPath is not null && binPath is not null)
-            def = SkyDef.TryLoadFromGameBin(GameBin.Load(binPath, NamesBin.Load(namesPath)));
-
         AddDome(triangles, SkyDef.MiddaySkyTextureId);
-        if (File.Exists(install.StarsPath))
-            AddStars(triangles, StarField.Load(install.StarsPath), def?.StarTextureId ?? SkyDef.StarTextureIdDefault);
         return triangles;
     }
 
@@ -69,29 +62,6 @@ public static class SkyGeometry
 
     private static Vector3 Ring(float radius, float az, float z) =>
         new(radius * MathF.Sin(az), radius * MathF.Cos(az), z);
-
-    private static void AddStars(List<MeshTriangle> triangles, StarField field, int textureId)
-    {
-        var origin = new Vector3(64f, 64f, 0f);
-        foreach (var star in field.Stars)
-        {
-            if (star.Position.LengthSquared() < 1f)
-                continue;
-            var dir = Vector3.Normalize(star.Position);
-            if (dir.Z < -0.05f)
-                continue;
-            var pos = origin + dir * 1700f;
-            var right = Vector3.Normalize(Vector3.Cross(dir, MathF.Abs(dir.Z) > 0.9f ? Vector3.UnitY : Vector3.UnitZ));
-            var up = Vector3.Normalize(Vector3.Cross(right, dir));
-            var size = Math.Clamp(0.8f + star.Size * 0.02f, 0.8f, 4f);
-            var a = pos + (-right - up) * size;
-            var b = pos + (right - up) * size;
-            var c = pos + (right + up) * size;
-            var d = pos + (-right + up) * size;
-            Textured(triangles, a, b, c, new Vector2(0, 0), new Vector2(1, 0), new Vector2(1, 1), textureId);
-            Textured(triangles, a, c, d, new Vector2(0, 0), new Vector2(1, 1), new Vector2(0, 1), textureId);
-        }
-    }
 
     private static void Textured(
         List<MeshTriangle> triangles,

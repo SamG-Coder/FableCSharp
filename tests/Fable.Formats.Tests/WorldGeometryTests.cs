@@ -332,9 +332,47 @@ public sealed class WorldGeometryTests
         Assert.Equal(0x00B65A20u, SkyPass.StarDraw);
         Assert.Equal(0x00B66190u, SkyPass.StarDrawCallerFn);
         Assert.True(SkyPass.FirstSeenCallsStarDraw);
+        Assert.Equal(0x01436E8Cu, SkyPass.MapManagerGlobal);
+        Assert.Equal(408, SkyPass.MapManagerWorldOffset);
+        Assert.Equal(84, SkyPass.StarObjectFromHopOffset);
+        Assert.Equal(424, SkyPass.StarListPointerOffset);
+        Assert.Equal(436, SkyPass.StarFadePointerOffset);
+        Assert.Equal(0x00B65A87u, SkyPass.StarEmptyRet);
+        Assert.True(SkyPass.StarEmptyFirstDwordSkipsDraw);
+        Assert.Equal(0x2E8BA2E9u, SkyPass.StarRecordReciprocal);
+        Assert.Equal(44, SkyPass.StarRecordStrideBytes);
+        Assert.Equal(0x00B64FA0u, SkyPass.WeatherDraw);
+        Assert.Equal(396, SkyPass.SkyWeatherByteOffset);
+        Assert.Equal(1, SkyPass.FirstSeenSkyWeatherByte);
+        Assert.True(SkyPass.FirstSeenCallsWeatherDraw);
+        Assert.False(SkyPass.FirstSeenStarDrawIteratesStarsDat);
+        Assert.False(SkyPass.FirstSeenEmitsInventedStarBillboards);
+        Assert.DoesNotContain(installDome, t => t.TextureId == SkyDef.StarTextureIdDefault);
         var invented = new Vector2(0f / 36f, 0f / 8f);
         Assert.Equal(Vector2.Zero, SkyPass.DomeUv(0, 0, 0f, 0f, SkyPass.FirstSeenInvUvDivisor));
         Assert.NotEqual(invented, SkyPass.DomeUv(1, 9, 1f, 1f, SkyPass.FirstSeenInvUvDivisor));
+    }
+
+    [Fact]
+    public void First_seen_star_draw_does_not_emit_stars_dat_billboards()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        Assert.True(SkyPass.StarEmptyFirstDwordSkipsDraw);
+        Assert.False(SkyPass.FirstSeenStarDrawIteratesStarsDat);
+        Assert.False(SkyPass.FirstSeenEmitsInventedStarBillboards);
+        Assert.Equal(44, SkyPass.StarRecordStrideBytes);
+        Assert.Equal(1, SkyPass.FirstSeenSkyWeatherByte);
+        Assert.True(SkyPass.FirstSeenCallsWeatherDraw);
+        var sky = SkyGeometry.Build(install);
+        Assert.DoesNotContain(sky, t => t.TextureId == SkyDef.StarTextureIdDefault);
+        var inventedOrigin = new Vector3(64f, 64f, 0f);
+        Assert.DoesNotContain(sky, t =>
+        {
+            var mid = (t.A + t.B + t.C) / 3f;
+            return Vector3.Distance(new Vector3(mid.X, mid.Y, 0f), inventedOrigin) < 200f
+                   && mid.Z > 1000f;
+        });
     }
 
     private static int CountPropNear(WorldGeometry world, float x, float y, float radius)
