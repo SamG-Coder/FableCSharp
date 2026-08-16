@@ -107,8 +107,9 @@ public static class WorldShading
 
     /// <summary>
     /// Exe <c>00BD2F91</c>: <c>dest.M11 = S.row0 · C3D.col0</c> =
-    /// hierarchy world × 64-byte inverse-bind. First-seen (no
-    /// <c>00DBDE40</c> play-anim) is that product, ≈ identity.
+    /// hierarchy world × 64-byte inverse-bind. First-seen
+    /// (<see cref="FirstSeenPlaysAnim"/> is false) is that product,
+    /// ≈ identity.
     /// </summary>
     public static Matrix4x4 MultiplyWorldByInverseBind(Matrix4x4 world, Matrix4x4 inverseBind)
     {
@@ -340,4 +341,24 @@ public static class WorldShading
     public static readonly Vector3 FogColor = new(0.52f, 0.58f, 0.68f);
     public const float FogStart = 0f;
     public const float FogEnd = 7000f;
+
+    /// <summary>
+    /// <c>00DBDE40</c>, Create <c>006AC910</c>, ConstructFromParams
+    /// <c>006A9DD0</c>, parent <c>00662880</c> / <c>008388D0</c> /
+    /// <c>006A5950</c>, and activate <c>004C9CA0</c> have no
+    /// PlayAnimation / STAND / CTCIdle call. <c>STAND</c> has zero
+    /// code xrefs. <c>.PlayAnimation</c> lives in script dispatcher
+    /// <c>00CBFACA</c>, not on the first-seen create path.
+    /// </summary>
+    public const bool FirstSeenPlaysAnim = false;
+
+    /// <summary>
+    /// First-seen landscape <c>00B24850</c> and static-lit
+    /// <c>00BB2540</c> apply <c>0x01396FB0</c> CCW with no Flag1
+    /// test. <c>0x01396FB8</c> NONE is applied unconditionally at
+    /// the start of other primitive passes (<c>00B89C30</c> /
+    /// <c>00BBE090</c> / <c>00BC3F30</c>) and restored to CCW
+    /// after the draw. Flag1 is not that selector.
+    /// </summary>
+    public const bool FirstSeenAppliesCullNoneFromFlag1 = false;
 }

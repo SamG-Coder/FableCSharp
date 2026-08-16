@@ -1,4 +1,5 @@
 using Fable.Core;
+using Fable.Formats;
 using Fable.Formats.Meshes;
 using Fable.Formats.Scene;
 using Fable.Game;
@@ -53,6 +54,8 @@ public sealed class ScenePassTests
         Assert.Equal(3, D3dDeviceState.CullCcw);
         Assert.Equal(1, D3dDeviceState.CullNone);
         Assert.Equal(2, D3dDeviceState.CullCw);
+        Assert.False(WorldShading.FirstSeenAppliesCullNoneFromFlag1);
+        Assert.False(WorldShading.FirstSeenPlaysAnim);
         var install = GameInstall.TryLocate();
         Assert.NotNull(install);
         using var levels = new LevelLibrary(install);

@@ -114,7 +114,9 @@ public static class D3dDeviceState
     /// Dword at <c>0x01396FB0</c>. Landscape <c>00B24BF7</c> and static-lit
     /// <c>00BB2DA2</c> copy it onto slot <c>+10388</c>. <c>3</c> is
     /// <c>D3DCULL_CCW</c>. <c>0x01396FB8</c> is <c>1</c> (NONE) for other
-    /// primitive passes, not this first-seen path.
+    /// primitive passes that apply it unconditionally and then restore
+    /// CCW after the draw. C3D Flag1 is not the first-seen NONE selector
+    /// (<see cref="Fable.Formats.WorldShading.FirstSeenAppliesCullNoneFromFlag1"/>).
     /// </summary>
     public const int CullCcw = 3;
 

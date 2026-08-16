@@ -184,6 +184,8 @@ public sealed class MeshFormatTests
         var hair = mesh.Materials.Single(m => m.Name.Contains("Hair", StringComparison.OrdinalIgnoreCase));
         Assert.Equal(1, hair.Flag1);
         Assert.Equal(0, hair.Flag3);
+        Assert.False(WorldShading.FirstSeenAppliesCullNoneFromFlag1);
+        Assert.False(WorldShading.FirstSeenPlaysAnim);
         Assert.DoesNotContain(mesh.Materials, m => m.Name == "DegenerateTriangles");
     }
 

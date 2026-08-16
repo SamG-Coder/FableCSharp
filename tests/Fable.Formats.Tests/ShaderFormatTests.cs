@@ -250,6 +250,8 @@ public sealed class ShaderFormatTests
         Assert.Equal(6, WorldShading.BoneConstantCount(2));
         Assert.Equal("VSHADER_PALSKIN_DIRLIGHT_FOG", WorldShading.PalskinFamilyShader(0));
         Assert.Equal("VSHADER_PALSKIN_DIRLIGHT_FOG", WorldShading.PalskinFamilyShader(2));
+        Assert.False(WorldShading.FirstSeenPlaysAnim);
+        Assert.False(WorldShading.FirstSeenAppliesCullNoneFromFlag1);
         Assert.Contains(WorldShading.PaletteSkinStartRegister,
             Load("SHADERS_PALSKIN", WorldShading.PalskinFamilyShader(0)).ConstRegisters);
         Assert.Equal(WorldShading.StaticFamilySlotShaders[0], Load("SHADERS_STATIC", WorldShading.StaticFamilyShader(0)).Name);

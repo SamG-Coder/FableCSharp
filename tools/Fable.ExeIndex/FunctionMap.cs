@@ -22,13 +22,13 @@ internal static class FunctionMap
         (0x004B5000, 0x004B5200, "start-new-quest"),
         (0x00489D00, 0x0048A200, "CreateCharacter"),
         (0x004FD000, 0x004FE000, "WLD-region"),
-        (0x006A9D00, 0x006AD200, "PlayerCreature"),
+        (0x006A5900, 0x006AD200, "PlayerCreature"),
         (0x0089FA00, 0x0089FC00, "MARKER-LIGHT"),
         (0x00988000, 0x0098C000, "VS-wrapper"),
         (0x00B32000, 0x00B34000, "MainScene-prims"),
         (0x00B41000, 0x00B4A000, "maps-lighting"),
         (0x00B66000, 0x00B7F000, "landscape-water"),
-        (0x00B8B000, 0x00BDB000, "static-palskin"),
+        (0x00B89C00, 0x00BDB000, "static-palskin"),
         (0x00BDB000, 0x00BDC800, "LayoutLights"),
         (0x00BF4000, 0x00BF6000, "per-cell"),
         (0x00DBDE00, 0x00DBF000, "StartOakVale"),
@@ -45,6 +45,10 @@ internal static class FunctionMap
         ("CThingPlayerCreature Create", 0x006AC910),
         ("CPlayer CreateCharacter", 0x00489D40),
         ("ConstructFromParams", 0x006A9DD0),
+        ("Thing construct", 0x006A5950),
+        ("NONE primitive pass", 0x00B89C30),
+        ("NONE-draw layer", 0x00BBE090),
+        ("Primitive layer switch", 0x00BBC130),
         ("LayoutLights ctor", 0x00BDB400),
         ("lighting ctor", 0x00B482A0),
         ("TOD blend", 0x00B46C80),
@@ -187,6 +191,10 @@ internal static class FunctionMap
         WriteHits(sb, nodes, "WatchBarrels");
         WriteHits(sb, nodes, "CThingPlayerCreature");
         WriteHits(sb, nodes, "CTCAnimation");
+        WriteHits(sb, nodes, "CTCIdle");
+        WriteHits(sb, nodes, "PlayAnimation");
+        WriteHits(sb, nodes, "STAND");
+        WriteHits(sb, nodes, "01396FB8");
         WriteHits(sb, nodes, "009896D0");
         WriteHits(sb, nodes, "2LIGHTS");
         WriteHits(sb, nodes, "2POINTLIGHTS");

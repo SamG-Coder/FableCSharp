@@ -634,6 +634,11 @@ public readonly record struct MeshMaterial(
     uint MapFlags = 0,
     float SelfIllumination = 0,
     byte Flag0 = 0,
+    /// <summary>
+    /// Stored after SelfIllumination. Kid hair / house 3180 are 1.
+    /// First-seen cull does not select NONE from this byte
+    /// (<see cref="WorldShading.FirstSeenAppliesCullNoneFromFlag1"/>).
+    /// </summary>
     byte Flag1 = 0,
     byte Flag2 = 0,
     byte Flag3 = 0);
