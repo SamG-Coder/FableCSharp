@@ -198,6 +198,26 @@ public sealed class ShaderFormatTests
         Assert.Equal(3, ot0Reg);
         Assert.True(land.TryGetOt1Projected(out var ot1));
         Assert.Equal(0, ot1.PosType);
+        Assert.True(land.TryGetOPosSubtractC4(out var opos));
+        Assert.Equal(0, opos.XyInput);
+        Assert.Equal(1, opos.ZInput);
+        Assert.True(LandscapeTextures.FirstSeenOPosSubtractsC4);
+        Assert.False(LandscapeTextures.FirstSeenUploadsC4InverseRow2OnLandscape);
+        Assert.True(LandscapeTextures.FirstSeenC4UsesDeviceDefault);
+        Assert.Equal(Vector4.Zero, LandscapeTextures.FirstSeenC4);
+        Assert.Equal(4, LandscapeTextures.OPosC4Register);
+        Assert.Equal(0x00B545D5u, LandscapeTextures.C4InverseRow2Upload);
+        Assert.Equal(0x00B54310u, LandscapeTextures.C4InverseRow2UploadFn);
+        Assert.Equal(0x00B555A0u, LandscapeTextures.C4InverseRow2UploadCaller);
+        Assert.False(stat.TryGetOPosSubtractC4(out _));
+        Assert.False(skin.TryGetOPosSubtractC4(out _));
+        Assert.DoesNotContain(4, stat.ConstRegisters);
+        Assert.DoesNotContain(4, skin.ConstRegisters);
+        Assert.Contains(4, land.ConstRegisters);
+        Assert.Equal(
+            new Vector4(40f, 130f, 16f, 1f),
+            LandscapeTextures.LandscapeOPosPosition(new Vector3(40f, 130f, 16f), LandscapeTextures.FirstSeenC4, WorldShading.FirstSeenC0.Y));
+        Assert.False(LandscapeFrustum.FirstSeenUploadsInverseRow2AsC4OnLandscape);
         Assert.True(LandscapeTextures.FirstSeenOt0FromV3);
         Assert.False(LandscapeTextures.FirstSeenOt0IsAlbedo);
         Assert.True(LandscapeTextures.FirstSeenOt1Projected);

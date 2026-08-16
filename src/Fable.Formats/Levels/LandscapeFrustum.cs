@@ -143,6 +143,12 @@ public static class LandscapeFrustum
     public static readonly Vector4 FogRecordColor = new(0f, 0f, 0f, 1f);
     public const bool FirstSeenUploadsInverseRow0AsC2 = true;
     /// <summary>
+    /// <c>00B54310</c> <c>push ebx</c> with <c>ebx=4</c> writes
+    /// inverse row 2 to <c>c4</c>. That site is only reached from
+    /// mesh draw <c>00B555A0</c>, not first-seen landscape.
+    /// </summary>
+    public const bool FirstSeenUploadsInverseRow2AsC4OnLandscape = false;
+    /// <summary>
     /// <c>00988A50</c> multiplies wrapper world+496 * view+560 *
     /// proj+624 into +752, then <c>SetVSConstantF</c>
     /// register <c>[inner+120]=5</c> count 4.

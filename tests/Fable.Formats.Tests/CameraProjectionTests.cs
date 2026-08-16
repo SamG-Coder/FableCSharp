@@ -1,4 +1,5 @@
 using System.Numerics;
+using Fable.Formats;
 using Fable.Formats.Levels;
 using Fable.Render;
 
@@ -145,5 +146,27 @@ public sealed class CameraProjectionTests
         var firstSeenWide = FlyCamera.ProjectionMatrix(16f / 9f, 72f);
         Assert.NotEqual(invented.M11, firstSeenWide.M11);
         Assert.NotEqual(invented.M33, firstSeenWide.M33);
+    }
+
+    [Fact]
+    public void First_seen_landscape_opos_subtracts_default_zero_c4_not_inverse_row2()
+    {
+        Assert.True(LandscapeTextures.FirstSeenOPosSubtractsC4);
+        Assert.False(LandscapeTextures.FirstSeenUploadsC4InverseRow2OnLandscape);
+        Assert.Equal(Vector4.Zero, LandscapeTextures.FirstSeenC4);
+        Assert.Equal(4, LandscapeFrustum.InverseRow2Register);
+        LandscapeFrustum.LetterboxCots(
+            float.DegreesToRadians(72f), 4f, 3f, out var cotH, out var cotV);
+        LandscapeFrustum.CotScaledInverse(
+            new Vector3(40f, 130.5f, 16.8f), new Vector3(0f, 1f, 0f), Vector3.UnitZ,
+            cotH, cotV, out _, out _, out var row2);
+        Assert.True(row2.LengthSquared() > 0.01f, $"row2={row2}");
+        var pos = new Vector3(34f, 129f, 14f);
+        var seen = LandscapeTextures.LandscapeOPosPosition(
+            pos, LandscapeTextures.FirstSeenC4, WorldShading.FirstSeenC0.Y);
+        var invented = LandscapeTextures.LandscapeOPosPosition(
+            pos, row2, WorldShading.FirstSeenC0.Y);
+        Assert.Equal(new Vector4(pos, 1f), seen);
+        Assert.NotEqual(seen, invented);
     }
 }

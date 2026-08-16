@@ -235,6 +235,32 @@ public static class LandscapeTextures
     public static readonly System.Numerics.Vector4 Ot1C40 = System.Numerics.Vector4.Zero;
     public static readonly System.Numerics.Vector4 Ot1C41 = System.Numerics.Vector4.Zero;
 
+    /// <summary>
+    /// FG VS: <c>mov r0.xy, v0</c>; <c>mov r0.z, v1.x</c>;
+    /// <c>mov r0.w, c0.y</c>; <c>add r1, r0, -c4</c>;
+    /// <c>dp4 oPos, r1, c5–c8</c>. <c>00B54310</c> writes inverse
+    /// row 2 to <c>c4</c> only from mesh draw <c>00B555A0</c>
+    /// (0 <c>E8</c>). Landscape draw <c>00B6B0B0</c> / per-cell
+    /// <c>00BF4570</c> do not call it and do not
+    /// <c>00989A60(4)</c>. D3D default <c>c4=(0,0,0,0)</c>.
+    /// </summary>
+    public const int OPosC4Register = 4;
+    public const uint C4InverseRow2Upload = 0x00B545D5;
+    public const uint C4InverseRow2UploadFn = 0x00B54310;
+    public const uint C4InverseRow2UploadCaller = 0x00B555A0;
+    public const bool FirstSeenOPosSubtractsC4 = true;
+    public const bool FirstSeenUploadsC4InverseRow2OnLandscape = false;
+    public const bool FirstSeenC4UsesDeviceDefault = true;
+    public static readonly System.Numerics.Vector4 FirstSeenC4 = System.Numerics.Vector4.Zero;
+
+    /// <summary>
+    /// First-seen <c>c0.y=1</c>, so <c>r0.w=1</c> then
+    /// <c>r1 = (pos, 1) - c4</c>.
+    /// </summary>
+    public static System.Numerics.Vector4 LandscapeOPosPosition(
+        System.Numerics.Vector3 pos, System.Numerics.Vector4 c4, float c0y) =>
+        new System.Numerics.Vector4(pos, c0y) - c4;
+
     public static System.Numerics.Vector2 Ot0FromExtra(System.Numerics.Vector3 extraRgb) =>
         new(extraRgb.Y, extraRgb.Z);
 

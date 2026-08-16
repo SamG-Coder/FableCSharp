@@ -81,6 +81,8 @@ internal static class FunctionMap
         ("frustum extract", 0x00B2FD60),
         ("camera setup FOV inverse", 0x00B30B50),
         ("camera constant upload c2", 0x00B54310),
+        ("c4 inverse row2 00B545D5", 0x00B545D5),
+        ("mesh draw 00B555A0", 0x00B555A0),
         ("FOGENABLE setter", 0x00B46890),
         ("landscape setup FOGENABLE", 0x00B67480),
         ("MainScene FOGENABLE bits", 0x00B32AD0),

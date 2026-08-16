@@ -190,6 +190,63 @@ public sealed class ShaderProgram
     }
 
     /// <summary>
+    /// First-seen landscape FG:
+    /// <c>mov r0.xy, v0</c>; <c>mov r0.z, v1.x</c>;
+    /// <c>mov r0.w, c0.y</c>; <c>add r1, r0, -c4</c>;
+    /// <c>dp4 oPos, r1, c5–c8</c>. Static / PALSKIN have no
+    /// <c>c4</c> and do not take this sequence.
+    /// </summary>
+    public bool TryGetOPosSubtractC4(out OPosSubtractC4 seq)
+    {
+        seq = default;
+        var insns = DecodeInstructions();
+        for (var i = 0; i + 7 < insns.Count; i++)
+        {
+            var xy = insns[i];
+            var z = insns[i + 1];
+            var w = insns[i + 2];
+            var sub = insns[i + 3];
+            if (xy.Opcode != MovOpcode || z.Opcode != MovOpcode || w.Opcode != MovOpcode
+                || sub.Opcode != AddOpcode)
+                continue;
+            if (xy.DestType != 0 || !xy.DestMaskXYOnly || xy.Src0Type != RegTypeInput)
+                continue;
+            if (z.DestType != 0 || z.DestNum != xy.DestNum || !z.DestMaskZ || z.DestMaskX
+                || z.Src0Type != RegTypeInput)
+                continue;
+            if (w.DestType != 0 || w.DestNum != xy.DestNum || !w.DestMaskW
+                || !w.Src0Is(RegTypeConst, 0) || !w.Src0SwizzleY)
+                continue;
+            if (sub.DestType != 0 || !sub.DestMaskXYZW || sub.Src0Num != xy.DestNum
+                || !sub.Src1Is(RegTypeConst, 4) || sub.Src1Mod != SrcModNeg)
+                continue;
+            var ok = true;
+            for (var k = 0; k < 4; k++)
+            {
+                var dp = insns[i + 4 + k];
+                if (dp.Opcode != Dp4Opcode || dp.DestType != RegTypeRastOut || dp.DestNum != 0)
+                {
+                    ok = false;
+                    break;
+                }
+
+                if (dp.Src0Num != sub.DestNum || !dp.Src1Is(RegTypeConst, 5 + k))
+                {
+                    ok = false;
+                    break;
+                }
+            }
+
+            if (!ok)
+                continue;
+            seq = new OPosSubtractC4(xy.Src0Num, z.Src0Num, sub.DestNum);
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// First-seen landscape FG albedo: <c>dp4 r.x, pos, c40</c>;
     /// <c>dp4 r.y, pos, c41</c>; <c>mov oT1, r</c>.
     /// </summary>
@@ -320,6 +377,8 @@ public sealed class ShaderProgram
 
     public readonly record struct Ot1Projected(int PosRegister, int PosType);
 
+    public readonly record struct OPosSubtractC4(int XyInput, int ZInput, int SubtractDest);
+
     public readonly record struct DecodedInsn(uint Opcode, uint Dest, uint Src0, uint Src1, uint Src2)
     {
         public int DestNum => (int)(Dest & 0x7FF);
@@ -327,8 +386,10 @@ public sealed class ShaderProgram
         public int DestMask => (int)((Dest >> 16) & 0xF);
         public bool DestMaskX => (DestMask & 1) != 0;
         public bool DestMaskY => (DestMask & 2) != 0;
+        public bool DestMaskZ => (DestMask & 4) != 0;
         public bool DestMaskW => (Dest & 0x00080000) != 0;
         public bool DestMaskXYOnly => DestMask == 3;
+        public bool DestMaskXYZW => DestMask == 0xF;
         public int Src0Num => (int)(Src0 & 0x7FF);
         public int Src0Type => (int)((Src0 >> 28) & 7);
         public int Src0Swizzle0 => (int)((Src0 >> 16) & 3);
