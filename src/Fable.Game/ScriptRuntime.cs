@@ -199,11 +199,15 @@ public sealed class ScriptRuntime : IScriptHost
     void IScriptHost.NoLoadUseCamera(string name) => BindCamera(name);
 
     /// <summary>
-    /// <c>00CC14B8</c>: thing <c>vtbl+72</c> with name +
-    /// five flags + <c>[0x1375748]</c> + 0. Body UNREAD —
-    /// record only. <c>[ebp-22]</c> ctor 1 at
-    /// <c>00CBFD57</c> then <c>00CC186F</c> →
-    /// <c>00CC5691</c> one <c>vtbl+28</c>.
+    /// <c>00CC14B8</c>: thing <c>vtbl+72</c>
+    /// (<c>004C7470</c>) walks components and calls
+    /// <c>[comp.vtbl+68](name)</c>. CTCAnimationComplex
+    /// <c>+68</c> is <c>00686920</c> <c>al=1</c> (not
+    /// handled). Inner play <c>0070D580</c> is not on
+    /// this path — record name+flags only.
+    /// <c>[ebp-22]</c> ctor 1 at <c>00CBFD57</c> then
+    /// <c>00CC186F</c> → <c>00CC5691</c> one
+    /// <c>vtbl+28</c>.
     /// </summary>
     void IScriptHost.PlayAnimation(string? actor, string arguments)
     {

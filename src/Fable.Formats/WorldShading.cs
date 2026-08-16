@@ -588,8 +588,10 @@ public static class WorldShading
     /// <c>006A9DD0</c>, parent <c>00662880</c> / <c>008388D0</c> /
     /// <c>006A5950</c>, and activate <c>004C9CA0</c> have no
     /// PlayAnimation / STAND / CTCIdle call. <c>STAND</c> has zero
-    /// code xrefs. <c>.PlayAnimation</c> lives in script dispatcher
-    /// <c>00CBFACA</c>, not on the first-seen create path.
+    /// code xrefs. Script <c>.PlayAnimation</c> is thing
+    /// <c>vtbl+72</c> <c>004C7470</c>; CTCAnimationComplex
+    /// <c>+68</c> is a not-handled stub, so that path also
+    /// does not write a palette.
     /// </summary>
     public const bool FirstSeenPlaysAnim = false;
 

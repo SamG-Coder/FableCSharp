@@ -300,11 +300,23 @@ public sealed class WorldSceneTests
         Assert.Equal(0x00CC0EBCu, RegionTravel.PlayAnimationLeftover);
         Assert.Equal(0x00CBFD57u, RegionTravel.PlayAnimationYieldAfterWrite);
         Assert.Equal(72, RegionTravel.PlayAnimationApplyVtbl);
+        Assert.Equal(0x004C7470u, RegionTravel.PlayAnimationThingFn);
+        Assert.Equal(68, RegionTravel.PlayAnimationComponentVtbl);
         Assert.Equal(0x01375748u, RegionTravel.PlayAnimationFlagByte);
         Assert.Equal(0x01010101u, RegionTravel.PlayAnimationFlagByteDword);
+        Assert.Equal(0x012650A4u, RegionTravel.AnimationComplexVtbl);
+        Assert.Equal(0x0070B3F0u, RegionTravel.AnimationComplexFactory);
+        Assert.Equal(0x00686920u, RegionTravel.AnimationComplexPlus68);
+        Assert.Equal(90, RegionTravel.AnimationComplexTypeId);
+        Assert.Equal(0x0070D580u, RegionTravel.AnimationPlayInner);
         Assert.True(RegionTravel.FirstSeenPlayAnimationYields);
+        Assert.False(RegionTravel.FirstSeenPlayAnimationAppliesPose);
+        Assert.False(RegionTravel.FirstSeenPlayAnimationCallsInnerPlay);
+        Assert.False(WorldShading.FirstSeenPlaysAnim);
         Assert.Equal("CS_WAKING_UP_LOOP", RegionTravel.IntroWakeLoop);
         Assert.Equal("CS_WAKING_UP_ON_STEPS", RegionTravel.IntroWakeSteps);
+        Assert.Equal("CS_TIRED", RegionTravel.IntroTired);
+        Assert.Equal(5.2f, RegionTravel.IntroGamePauseAfterShot2);
         Assert.Equal(0x00CD1373u, RegionTravel.StartTimeCodeOpcode);
         Assert.Equal(0x00CD13C3u, RegionTravel.StartTimeCodeApply);
         Assert.Equal(0x00CD17FDu, RegionTravel.StartTimeCodeJoin);
@@ -785,6 +797,31 @@ public sealed class WorldSceneTests
         Assert.Null(intro.UnsupportedCommand);
         Assert.True(RegionTravel.FirstSeenUseCameraYields);
         Assert.Equal(0x00CC9F39u, RegionTravel.UseCameraOpcode);
+        Assert.False(RegionTravel.FirstSeenPlayAnimationAppliesPose);
+        Assert.False(RegionTravel.FirstSeenPlayAnimationCallsInnerPlay);
+        Assert.False(WorldShading.FirstSeenPlaysAnim);
+        Assert.Equal(0x004C7470u, RegionTravel.PlayAnimationThingFn);
+        Assert.Equal(0x00686920u, RegionTravel.AnimationComplexPlus68);
+        Assert.Equal(0x0070D580u, RegionTravel.AnimationPlayInner);
+        Assert.DoesNotContain(runtime.Animations, a => a.Name == RegionTravel.IntroTired);
+        var pause52Visits = 0;
+        while (intro.Yielded &&
+               intro.Commands[intro.InstructionPointer].StartsWith("GamePause 5.2", StringComparison.Ordinal) &&
+               pause52Visits < 100)
+        {
+            script.Update(0.1f);
+            pause52Visits++;
+        }
+
+        Assert.Contains("GamePause 5.2", intro.Executed);
+        Assert.Contains("Hero.PlayAnimation CS_TIRED", intro.Executed);
+        Assert.Equal("GamePause 2.0", intro.Commands[intro.InstructionPointer]);
+        Assert.True(intro.Yielded);
+        Assert.Null(intro.UnsupportedCommand);
+        Assert.Contains(runtime.Animations, a =>
+            a.Actor == "Hero" && a.Name == RegionTravel.IntroTired && a.Flag4);
+        Assert.False(WorldShading.FirstSeenPlaysAnim);
+        Assert.False(intro.ExecutedVerb("DialogSpeak"));
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 
@@ -795,6 +832,32 @@ public sealed class WorldSceneTests
         Assert.NotEqual(RegionTravel.IntroCutscene, other.Name);
         Assert.Equal(attract.Commands[0], other.Commands[0]);
         Assert.Same(intro, runtime.FindInterpreter(RegionTravel.IntroCutscene));
+    }
+
+    [Fact]
+    public void PlayAnimation_vtbl72_does_not_apply_pose()
+    {
+        Assert.Equal(0x004C7470u, RegionTravel.PlayAnimationThingFn);
+        Assert.Equal(72, RegionTravel.PlayAnimationApplyVtbl);
+        Assert.Equal(68, RegionTravel.PlayAnimationComponentVtbl);
+        Assert.Equal(0x012650A4u, RegionTravel.AnimationComplexVtbl);
+        Assert.Equal(0x0070B3F0u, RegionTravel.AnimationComplexFactory);
+        Assert.Equal(0x00686920u, RegionTravel.AnimationComplexPlus68);
+        Assert.Equal(0x0070B3C0u, RegionTravel.AnimationComplexTypeIdFn);
+        Assert.Equal(90, RegionTravel.AnimationComplexTypeId);
+        Assert.Equal(0x0070E710u, RegionTravel.AnimationComplexInnerCtor);
+        Assert.Equal(0xBC, RegionTravel.AnimationComplexInnerSize);
+        Assert.Equal(0x0070B460u, RegionTravel.AnimationComplexInnerGetter);
+        Assert.Equal(0x0070D580u, RegionTravel.AnimationPlayInner);
+        Assert.Equal(0x0070C050u, RegionTravel.AnimationPlayRequest);
+        Assert.Equal(0x0070B600u, RegionTravel.AnimationComplexPostAttach);
+        Assert.False(RegionTravel.FirstSeenPlayAnimationAppliesPose);
+        Assert.False(RegionTravel.FirstSeenPlayAnimationCallsInnerPlay);
+        Assert.False(WorldShading.FirstSeenPlaysAnim);
+        Assert.Equal("CS_TIRED", RegionTravel.IntroTired);
+        var tired = ScriptCommand.ParsePlayAnimationFlags(RegionTravel.IntroTired);
+        Assert.True(tired.Flag4);
+        Assert.False(tired.Flag1);
     }
 
     [Fact]

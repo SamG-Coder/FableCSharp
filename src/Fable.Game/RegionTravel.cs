@@ -201,12 +201,19 @@ public static class RegionTravel
     /// <c>00CC14B8</c> push <c>.PlayAnimation</c>. Apply
     /// <c>00CC1527</c> defaults (0,0,0,1,0) then
     /// <c>00CBEDBA</c> args 1/2/3/5 and <c>00CBEE0C</c>
-    /// arg 4. Thing <c>vtbl+72</c> plus
-    /// <c>[0x1375748]</c> (file dword <c>0x01010101</c>)
-    /// and 0. Body UNREAD. <c>00CBFD57</c> writes
-    /// <c>[ebp-22]=1</c>, so <c>00CC186F</c> takes
-    /// <c>00CC5691</c> one <c>vtbl+28</c> then
-    /// <c>00CC0EBC</c> → <c>00CC7081</c>.
+    /// arg 4. Thing <c>vtbl+72</c> is
+    /// <c>004C7470</c>: walk <c>[this+68]→[this+72]</c>
+    /// 8-byte records and, when <c>[comp+8]==0</c>,
+    /// call <c>[comp.vtbl+68](name)</c>. <c>ret 4</c>
+    /// leaves the five flags on the stack.
+    /// CTCAnimationComplex <c>+68</c> is
+    /// <c>00686920</c> <c>mov al,1; ret 4</c> (not
+    /// handled). Real play <c>0070D580</c> is not on
+    /// this path. Record name+flags only.
+    /// <c>00CBFD57</c> writes <c>[ebp-22]=1</c>, so
+    /// <c>00CC186F</c> takes <c>00CC5691</c> one
+    /// <c>vtbl+28</c> then <c>00CC0EBC</c> →
+    /// <c>00CC7081</c>.
     /// </summary>
     public const uint PlayAnimationOpcode = 0x00CC14B8;
     public const uint PlayAnimationApply = 0x00CC1527;
@@ -215,11 +222,28 @@ public static class RegionTravel
     public const uint PlayAnimationLeftover = 0x00CC0EBC;
     public const uint PlayAnimationYieldAfterWrite = 0x00CBFD57;
     public const int PlayAnimationApplyVtbl = 72;
+    public const uint PlayAnimationThingFn = 0x004C7470;
+    public const int PlayAnimationComponentVtbl = 68;
     public const uint PlayAnimationFlagByte = 0x01375748;
     public const uint PlayAnimationFlagByteDword = 0x01010101;
+    public const uint AnimationComplexVtbl = 0x012650A4;
+    public const uint AnimationComplexFactory = 0x0070B3F0;
+    public const uint AnimationComplexPlus68 = 0x00686920;
+    public const uint AnimationComplexTypeIdFn = 0x0070B3C0;
+    public const int AnimationComplexTypeId = 90;
+    public const uint AnimationComplexInnerCtor = 0x0070E710;
+    public const int AnimationComplexInnerSize = 0xBC;
+    public const uint AnimationComplexInnerGetter = 0x0070B460;
+    public const uint AnimationPlayInner = 0x0070D580;
+    public const uint AnimationPlayRequest = 0x0070C050;
+    public const uint AnimationComplexPostAttach = 0x0070B600;
     public const bool FirstSeenPlayAnimationYields = true;
+    public const bool FirstSeenPlayAnimationAppliesPose = false;
+    public const bool FirstSeenPlayAnimationCallsInnerPlay = false;
     public const string IntroWakeLoop = "CS_WAKING_UP_LOOP";
     public const string IntroWakeSteps = "CS_WAKING_UP_ON_STEPS";
+    public const string IntroTired = "CS_TIRED";
+    public const float IntroGamePauseAfterShot2 = 5.2f;
     /// <summary>
     /// <c>00CD1373</c> push <c>StartTimeCode</c>. Match
     /// zeros <c>[0x13B83C8]</c> then
