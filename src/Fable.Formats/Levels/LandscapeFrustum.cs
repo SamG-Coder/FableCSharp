@@ -315,15 +315,50 @@ public static class LandscapeFrustum
     public static Matrix4x4 IdentityWorld() => Matrix4x4.Identity;
 
     /// <summary>
-    /// Camera+128 after <c>00B30B50</c>: look-at with +Z along
-    /// look, translation <c>-R*pos</c>, then row-0/row-1 (view
-    /// X/Y) scaled by letterbox cots. Stored here in the Numerics
-    /// CreateLookAt layout so <c>p * view</c> matches the VS.
+    /// <c>00B314E0</c> copies helper +0/+12/+24, normalizes look
+    /// and up with <c>00A14440</c>, then
+    /// <c>right = normalize(up × look)</c>. Look is not
+    /// re-orthogonalized against up. Packed at source+16 as
+    /// column-stride-12 <c>(right, look, up)</c> with translation
+    /// 0; <c>00B30B50</c> overwrites translation as
+    /// <c>-dot(axis, pos)</c>. Not <c>CreateLookAt</c>
+    /// (<c>right, up, -forward</c>).
+    /// </summary>
+    public const int HelperBasisOffset = 16;
+    public const uint HelperNormalize = 0x00A14440;
+    public const bool FirstSeenViewUsesCreateLookAt = false;
+    public const bool FirstSeenViewReorthogonalizesLook = false;
+
+    public static void HelperViewAxes(
+        Vector3 look, Vector3 up, out Vector3 right, out Vector3 lookN, out Vector3 upN)
+    {
+        lookN = Vector3.Normalize(look);
+        upN = Vector3.Normalize(up);
+        right = Vector3.Cross(upN, lookN);
+        if (right.LengthSquared() < 1e-12f)
+            right = Vector3.UnitX;
+        else
+            right = Vector3.Normalize(right);
+    }
+
+    /// <summary>
+    /// Camera+128 after <c>00B30B50</c>: helper
+    /// <c>(right, look, up)</c> 3x4, then rows 0/1 scaled by
+    /// letterbox cots. Numerics columns are those three axes so
+    /// <c>p * view</c> matches VS <c>dp4</c> against wrapper rows.
     /// </summary>
     public static Matrix4x4 CotScaledView(
         Vector3 position, Vector3 look, Vector3 up, float cotH, float cotV)
     {
-        var view = Matrix4x4.CreateLookAt(position, position + look, up);
+        HelperViewAxes(look, up, out var right, out var lookN, out var upN);
+        var view = new Matrix4x4(
+            right.X, lookN.X, upN.X, 0f,
+            right.Y, lookN.Y, upN.Y, 0f,
+            right.Z, lookN.Z, upN.Z, 0f,
+            -Vector3.Dot(right, position),
+            -Vector3.Dot(lookN, position),
+            -Vector3.Dot(upN, position),
+            1f);
         view.M11 *= cotH; view.M21 *= cotH; view.M31 *= cotH; view.M41 *= cotH;
         view.M12 *= cotV; view.M22 *= cotV; view.M32 *= cotV; view.M42 *= cotV;
         return view;

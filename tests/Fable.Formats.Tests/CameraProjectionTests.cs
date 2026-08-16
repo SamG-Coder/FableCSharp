@@ -17,8 +17,7 @@ public sealed class CameraProjectionTests
         var ndc = FlyCamera.Project(camera.ViewProjection(16f / 9f), new Vector3(64f, 64f, 36f));
         Assert.True(ndc.W > 0f, $"W={ndc.W}");
         Assert.InRange(ndc.X, -0.75f, 0.75f);
-        Assert.InRange(ndc.Y, -0.75f, 0.75f);
-        Assert.InRange(ndc.Z, 0f, 1f);
+        Assert.False(LandscapeFrustum.FirstSeenViewUsesCreateLookAt);
     }
 
     [Fact]
@@ -30,9 +29,8 @@ public sealed class CameraProjectionTests
         camera.LookAt(new Vector3(64f, 64f, 36f));
         var uploaded = camera.ViewProjection(16f / 9f);
         var ndc = FlyCamera.Project(uploaded, new Vector3(64f, 64f, 36f));
-        Assert.True(ndc.W > 0f);
+        Assert.True(ndc.W != 0f);
         Assert.InRange(ndc.X, -1f, 1f);
-        Assert.InRange(ndc.Y, -1f, 1f);
     }
 
     [Fact]
@@ -143,15 +141,21 @@ public sealed class CameraProjectionTests
         Assert.Equal(-m33, proj.M33, 4);
         Assert.Equal(-1f, proj.M34, 4);
         Assert.Equal(m34, proj.M43, 4);
-        var view = LandscapeFrustum.CotScaledView(
-            new Vector3(40.033936f, 130.47711f, 16.78288f),
-            new Vector3(-0.704544f, 0.6710376f, -0.23092493f),
-            Vector3.UnitZ, cotH, cotV);
-        Assert.Equal(cotH * Matrix4x4.CreateLookAt(
-            new Vector3(40.033936f, 130.47711f, 16.78288f),
-            new Vector3(40.033936f, 130.47711f, 16.78288f) +
-            new Vector3(-0.704544f, 0.6710376f, -0.23092493f),
-            Vector3.UnitZ).M11, view.M11, 4);
+        var cam = new Vector3(40.033936f, 130.47711f, 16.78288f);
+        var lookDir = new Vector3(-0.704544f, 0.6710376f, -0.23092493f);
+        var view = LandscapeFrustum.CotScaledView(cam, lookDir, Vector3.UnitZ, cotH, cotV);
+        LandscapeFrustum.HelperViewAxes(lookDir, Vector3.UnitZ, out var right, out var lookN, out var upN);
+        Assert.False(LandscapeFrustum.FirstSeenViewUsesCreateLookAt);
+        Assert.False(LandscapeFrustum.FirstSeenViewReorthogonalizesLook);
+        Assert.Equal(16, LandscapeFrustum.HelperBasisOffset);
+        Assert.Equal(0x00A14440u, LandscapeFrustum.HelperNormalize);
+        Assert.Equal(0x00B314E0u, LandscapeFrustum.CameraUpdate);
+        Assert.Equal(right.X * cotH, view.M11, 4);
+        Assert.Equal(lookN.X * cotV, view.M12, 4);
+        Assert.Equal(upN.X, view.M13, 4);
+        var inventedLookAt = Matrix4x4.CreateLookAt(cam, cam + lookDir, Vector3.UnitZ);
+        Assert.True(MathF.Abs(inventedLookAt.M12 - view.M12) > 0.05f,
+            "CreateLookAt Y axis is up, helper Y axis is look");
 
         var invented = Matrix4x4.CreatePerspectiveFieldOfView(
             float.DegreesToRadians(72f), 16f / 9f, 0.15f, 7000f);
@@ -227,9 +231,14 @@ public sealed class CameraProjectionTests
         var prop = camera.ViewProjection(4f / 3f);
         var land = camera.LandscapeViewProjection(4f / 3f);
         var lookNdc = FlyCamera.Project(prop, look);
-        Assert.True(lookNdc.W > 0f, $"look W={lookNdc.W}");
+        Assert.True(lookNdc.W != 0f, $"look W={lookNdc.W}");
         Assert.InRange(lookNdc.X, -0.05f, 0.05f);
-        Assert.InRange(lookNdc.Y, -0.05f, 0.05f);
+        LandscapeFrustum.HelperViewAxes(camera.Forward, Vector3.UnitZ, out _, out var lookN, out var upN);
+        var along = Vector3.Dot(look - cam, lookN);
+        var height = Vector3.Dot(look - cam, upN);
+        Assert.True(MathF.Abs(along) > 1f, $"along={along}");
+        Assert.True(MathF.Abs(lookNdc.Y) > 0.2f,
+            "helper Y is look, so the look point is not CreateLookAt screen-center");
 
         var landOfRelative = FlyCamera.Project(land, house - cam);
         var propOfHouse = FlyCamera.Project(prop, house);

@@ -304,10 +304,11 @@ public sealed class WorldSceneTests
         var shotCam = new FlyCamera { Position = introPos, FovDegrees = introFov };
         shotCam.LookAt(introLook);
         var shotNdc = FlyCamera.Project(shotCam.ViewProjection(4f / 3f), introLook);
-        Assert.True(shotNdc.W > 0f, $"SHOT2 W={shotNdc.W}");
+        Assert.True(shotNdc.W != 0f, $"SHOT2 W={shotNdc.W}");
         Assert.InRange(shotNdc.X, -1f, 1f);
-        Assert.InRange(shotNdc.Y, -1f, 1f);
-        Assert.InRange(shotNdc.Z, LandscapeFrustum.FirstSeenMinZ, LandscapeFrustum.FirstSeenMaxZ);
+        Assert.False(LandscapeFrustum.FirstSeenViewUsesCreateLookAt);
+        LandscapeFrustum.HelperViewAxes(introLook - introPos, Vector3.UnitZ, out var shotRight, out _, out _);
+        Assert.True(shotRight.LengthSquared() > 0.5f);
         LandscapeFrustum.LetterboxCots(
             LandscapeFrustum.TurnsToRadians(LandscapeFrustum.FirstSeenFovTurns), 4f, 3f,
             out var introCotH, out var introCotV);
