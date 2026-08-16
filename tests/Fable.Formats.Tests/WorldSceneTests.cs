@@ -276,7 +276,17 @@ public sealed class WorldSceneTests
         Assert.Equal(1656, RegionTravel.UseCameraActivateVtbl);
         Assert.Equal(0x012D838Cu, RegionTravel.IntroCutsceneCallbackTable);
         Assert.Equal(0x012D95B0u, RegionTravel.IntroCutsceneMicrothreadVtbl);
-        Assert.False(RegionTravel.FirstSeenStartsIntroCutscene);
+        Assert.True(RegionTravel.FirstSeenStartsIntroCutscene);
+        Assert.Equal("NOVI_LiveFather", RegionTravel.LiveFatherScript);
+        Assert.Equal("CREATURE_HERO_FATHER", RegionTravel.LiveFatherCreature);
+        Assert.Equal(0x00DAC2C0u, RegionTravel.LiveFatherFactory);
+        Assert.Equal(0x012D8388u, RegionTravel.LiveFatherVtbl);
+        Assert.Equal(0x012D8370u, RegionTravel.NoviNameRecordVtbl);
+        Assert.Equal(0x00CB8230u, RegionTravel.NoviNameRegister);
+        Assert.Equal(0x00DB8520u, RegionTravel.NoviNameRecordCreate);
+        Assert.Equal(0x004C97B0u, RegionTravel.ThingConstructBind);
+        Assert.Equal(0x004C7CF0u, RegionTravel.ThingScriptActivate);
+        Assert.Equal(0x00CB8960u, RegionTravel.ConstructNameBind);
         Assert.Equal("CAM_OVIF_SHOT2", RegionTravel.IntroFirstSeenCamera);
         Assert.Equal(0x00DB86B0u, ScriptedCamera.CutsceneStart);
         Assert.Equal(0x00CBFB7Du, ScriptedCamera.CutsceneRunner);
@@ -303,6 +313,9 @@ public sealed class WorldSceneTests
         var script = new NewGameScript();
         Assert.Equal(NewGameScript.Phase.NotStarted, script.Current);
         script.Start();
+        Assert.True(script.CutsceneStarted);
+        Assert.Equal(NewGameScript.LiveFatherScript, RegionTravel.LiveFatherScript);
+        Assert.Equal(0x00DAC2C0u, NewGameScript.LiveFatherFactory);
         Assert.Equal(NewGameScript.Phase.PreAttackWait, script.Current);
         script.Update(0.1f);
         Assert.Equal(0.1f, script.DtAtPlus8);
@@ -348,6 +361,9 @@ public sealed class WorldSceneTests
         Assert.Equal("NOVStartHSP", start.ScriptName);
         Assert.InRange(start.PositionX!.Value, 33f, 36f);
         Assert.InRange(start.PositionY!.Value, 127f, 131f);
+        Assert.Contains(things, t =>
+            t.DefinitionType == RegionTravel.LiveFatherCreature
+            && t.ScriptName == RegionTravel.LiveFatherScript);
         Assert.True(RegionTravel.TryIntroCamera(things, out var introPos, out var introLook, out var introFov));
         Assert.InRange(introPos.X, 38f, 42f);
         Assert.InRange(introPos.Y, 128f, 132f);

@@ -932,7 +932,10 @@ internal static class X86
         if (value is 0x33545844) return "DXT3";
         if (value is 0x35545844) return "DXT5";
         var file = pe.FileOffset(value);
-        if (file >= 0 && file < pe.Data.Length && pe.Data[file] is >= 32 and <= 126)
+        // Code bytes are often printable (push ebx = 'S'). Only
+        // data-section immediates may be named as strings.
+        if (file >= 0 && file < pe.Data.Length && !pe.InCode(file)
+            && pe.Data[file] is >= 32 and <= 126)
         {
             var end = file;
             while (end < pe.Data.Length && end - file < 48 && pe.Data[end] is >= 32 and <= 126)

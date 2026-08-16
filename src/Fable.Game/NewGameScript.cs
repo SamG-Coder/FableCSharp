@@ -12,9 +12,10 @@ namespace Fable.Game;
 /// (<c>00DABAC0</c>). Yield is <c>00A44690</c>.
 /// Do not invent the <c>+80</c> writer.
 /// Cutscene start is <c>00DB86B0</c> →
-/// <c>00CBFB7D("CS_OAKVALE_INTRO_FATHER")</c>; first-seen
-/// <c>00DBDE40</c> does not call it. Camera bind is TNG
-/// <c>CAM_OVIF_SHOT2</c> until that start is proven.
+/// <c>00CBFB7D("CS_OAKVALE_INTRO_FATHER")</c>. First-seen
+/// <c>00DABAC0</c> registers <c>NOVI_LiveFather</c> then
+/// waits the map; TNG Father construct starts that body.
+/// Do not invent <c>00CBFB7D</c> fade/AVI/wake playback.
 /// </summary>
 public sealed class NewGameScript
 {
@@ -44,6 +45,9 @@ public sealed class NewGameScript
     public const int FiberSetupVtbl = 16;
     public const int FiberRunVtbl = 8;
     public const uint Scheduler = 0x013D2828;
+    public const uint LiveFatherFactory = 0x00DAC2C0;
+    public const uint LiveFatherVtbl = 0x012D8388;
+    public const string LiveFatherScript = "NOVI_LiveFather";
 
     public enum Phase
     {
@@ -56,6 +60,12 @@ public sealed class NewGameScript
     public Phase Current { get; private set; } = Phase.NotStarted;
     public float DtAtPlus8 { get; private set; }
     public bool Gate80 { get; private set; }
+    /// <summary>
+    /// <c>00DABAC0</c> always registers
+    /// <c>NOVI_LiveFather</c> before the map-wait.
+    /// TNG Father construct then starts <c>00DB86B0</c>.
+    /// </summary>
+    public bool CutsceneStarted { get; private set; }
 
     public void Start()
     {
@@ -63,6 +73,8 @@ public sealed class NewGameScript
         DtAtPlus8 = 0f;
         // 00A447D0 creates the fiber. 00A446A0 then
         // 00DAADA0 persist AttackOver and 00DABAC0 run.
+        // 00DABAC0 registers NOVI_LiveFather + 00DAC2C0.
+        CutsceneStarted = true;
         ApplyPersist(Gate80);
         Current = Phase.PreAttackWait;
     }

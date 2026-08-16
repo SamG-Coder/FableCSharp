@@ -130,11 +130,18 @@ public static class RegionTravel
     /// Xref <c>00DB88DE</c> sits in <c>00DB86B0</c>, not
     /// the dtor <c>00DB8680</c>. <c>00DB86B0</c> looks up
     /// Hero/Father then <c>00CBFB7D("CS_OAKVALE_INTRO_FATHER")</c>.
-    /// Only static ref is callback table <c>0x012D838C[0]</c>
-    /// (zero <c>E8</c>). <c>00DB8680</c> is the microthread
-    /// dtor at vtbl <c>0x012D95B0</c> (update still
-    /// <c>00A44880</c>). First-seen <c>00DBDE40</c> does
-    /// not call this start.
+    /// First-seen reach: <c>00DABAC0</c> registers
+    /// <c>NOVI_LiveFather</c> with factory <c>00DAC2C0</c>
+    /// at record <c>+16</c> (vtbl <c>0x012D8370</c>) before
+    /// <c>00DBDE40</c> map-wait. StartOakValeWest TNG has
+    /// <c>CREATURE_HERO_FATHER</c> / <c>NOVI_LiveFather</c>.
+    /// Construct <c>004C97B0</c> → <c>00CB8960</c> →
+    /// <c>00DB8520</c> → <c>00DAC2C0</c> writes vtbl
+    /// <c>0x012D8388</c>. Fiber persist <c>00DB8630</c>
+    /// calls <c>[+52].vtbl+4</c> = <c>00DB86B0</c>.
+    /// Activate <c>004C7CF0</c> → <c>004AFB00</c> →
+    /// <c>00CB88B0</c> is the same name match.
+    /// Do not invent <c>00CBFB7D</c> fade/AVI/wake playback.
     /// </summary>
     public const uint IntroCutsceneStart = 0x00DB86B0;
     public const uint IntroCutsceneDtor = 0x00DB8680;
@@ -144,7 +151,17 @@ public static class RegionTravel
     public const int UseCameraActivateVtbl = 1656;
     public const uint IntroCutsceneCallbackTable = 0x012D838C;
     public const uint IntroCutsceneMicrothreadVtbl = 0x012D95B0;
-    public const bool FirstSeenStartsIntroCutscene = false;
+    public const string LiveFatherScript = "NOVI_LiveFather";
+    public const string LiveFatherCreature = "CREATURE_HERO_FATHER";
+    public const uint LiveFatherFactory = 0x00DAC2C0;
+    public const uint LiveFatherVtbl = 0x012D8388;
+    public const uint NoviNameRecordVtbl = 0x012D8370;
+    public const uint NoviNameRegister = 0x00CB8230;
+    public const uint NoviNameRecordCreate = 0x00DB8520;
+    public const uint ThingConstructBind = 0x004C97B0;
+    public const uint ThingScriptActivate = 0x004C7CF0;
+    public const uint ConstructNameBind = 0x00CB8960;
+    public const bool FirstSeenStartsIntroCutscene = true;
     public const string IntroFirstSeenCamera = "CAM_OVIF_SHOT2";
     public static float WatchBarrelsInterval =>
         System.BitConverter.Int32BitsToSingle(unchecked((int)WatchBarrelsIntervalBits));

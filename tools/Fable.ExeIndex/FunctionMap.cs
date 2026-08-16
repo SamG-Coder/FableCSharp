@@ -91,6 +91,11 @@ internal static class FunctionMap
         (0x00DB8500, 0x00DB9800, "oakvale-intro-father"),
         (0x00CBFB70, 0x00CC0000, "cutscene-runner-head"),
         (0x00CC9F00, 0x00CCA220, "UseCamera-activate"),
+        (0x00DAC2B0, 0x00DAC360, "NOVI-LiveFather-factory"),
+        (0x00CB8230, 0x00CB8B40, "NOVI-name-bind"),
+        (0x004C7CF0, 0x004C7D50, "thing-script-activate"),
+        (0x004C97B0, 0x004C9830, "thing-construct-bind"),
+        (0x004AFA60, 0x004AFBB0, "thing-script-match"),
     ];
 
     public static readonly (string Name, uint Va)[] NewGameSeeds =
@@ -148,6 +153,11 @@ internal static class FunctionMap
         ("CS_OAKVALE_INTRO_FATHER start", 0x00DB86B0),
         ("cutscene runner", 0x00CBFB7D),
         ("intro-father dtor", 0x00DB8680),
+        ("NOVI_LiveFather factory", 0x00DAC2C0),
+        ("NOVI name register", 0x00CB8230),
+        ("construct name bind", 0x00CB8960),
+        ("thing construct bind", 0x004C97B0),
+        ("thing script activate", 0x004C7CF0),
         ("Registering Scripts", 0x00CB5D80),
         ("CActionPlayAnimation", 0x00903570),
         ("render frame", 0x00B25950),

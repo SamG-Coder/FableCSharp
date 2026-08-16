@@ -26,6 +26,8 @@ public sealed class ScriptedCamera
     public const int PreloadVtbl = 1648;
     public const int ActivateVtbl = 1656;
     public const uint CallbackTable = 0x012D838C;
+    public const uint LiveFatherVtbl = 0x012D8388;
+    public const uint LiveFatherFactory = 0x00DAC2C0;
     public const uint MicrothreadVtbl = 0x012D95B0;
     public const uint MicrothreadPersist = 0x00DB8630;
 
