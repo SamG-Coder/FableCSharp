@@ -12,7 +12,7 @@ namespace Fable.Formats;
 /// Fog: first-seen VS is <c>mad oFog, min(dp4(pos,c2),c0.y), -c18.w, c0.y</c>.
 /// <c>c2</c> is inverse row 0. <c>c18</c> is record <c>(0,0,0,1)</c>.
 /// LayoutBasic <c>c0=(0,1,2,0.5)</c> after dirty-2 flush. Far 7000
-/// is SKY_DEF, not the fog record. D3DRS_FOGENABLE still UNREAD.
+/// is SKY_DEF, not the fog record. First-seen <c>FOGENABLE=1</c>.
 /// </summary>
 public static class WorldShading
 {
@@ -370,11 +370,12 @@ public static class WorldShading
     /// LayoutBasic <c>00BDBB70</c> first float4 is (0, 1, 2, 0.5).
     /// Dirty-bit 2 flush <c>00989BF0</c> uploads count 2 from
     /// register 0, so first-seen landscape <c>c0.y=1</c> after
-    /// <c>00B47630</c> ORs bit 2. D3DRS_FOGENABLE still UNREAD —
-    /// oFog is computed but not applied as a colour blend here.
+    /// <c>00B47630</c> ORs bit 2. D3DRS_FOGENABLE is 1 on first-seen
+    /// landscape bits 4 / 0x40 (<c>00B46890</c>). VS writes oFog so
+    /// FOGTABLEMODE/FOGVERTEXMODE NONE still blend toward FOGCOLOR.
     /// </summary>
     public static readonly Vector4 FirstSeenC0 = new(0f, 1f, 2f, 0.5f);
-    public const bool FirstSeenAppliesVertexFogBlend = false;
+    public const bool FirstSeenAppliesVertexFogBlend = true;
 
     /// <summary>
     /// First-seen VS: <c>mad oFog, min(dp4(pos,c2), c0.y), -c18.w, c0.y</c>.
@@ -382,6 +383,13 @@ public static class WorldShading
     /// </summary>
     public static float EvaluateVertexFog(float posDotC2, float c0y, float c18w) =>
         MathF.Min(posDotC2, c0y) * (-c18w) + c0y;
+
+    /// <summary>
+    /// D3D vertex fog: <c>oFog * rgb + (1-oFog) * FogColor</c>.
+    /// First-seen FogColor is black so this is <c>rgb * oFog</c>.
+    /// </summary>
+    public static Vector3 BlendVertexFog(Vector3 rgb, float oFog) =>
+        rgb * oFog + FogColor * (1f - oFog);
 
     /// <summary>
     /// <c>00DBDE40</c>, Create <c>006AC910</c>, ConstructFromParams

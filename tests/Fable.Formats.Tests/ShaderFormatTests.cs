@@ -3,6 +3,7 @@ using Fable.Core;
 using Fable.Formats;
 using Fable.Formats.Banks;
 using Fable.Formats.Levels;
+using Fable.Formats.Scene;
 using Fable.Formats.Shaders;
 
 namespace Fable.Formats.Tests;
@@ -302,7 +303,10 @@ public sealed class ShaderFormatTests
         Assert.Equal(1f, WorldShading.EvaluateVertexFog(0f, 1f, 0f));
         Assert.Equal(0f, WorldShading.EvaluateVertexFog(2f, 1f, 1f));
         Assert.Equal(0.5f, WorldShading.EvaluateVertexFog(0.5f, 1f, 1f));
-        Assert.False(WorldShading.FirstSeenAppliesVertexFogBlend);
+        Assert.True(WorldShading.FirstSeenAppliesVertexFogBlend);
+        Assert.Equal(28, D3dDeviceState.FogEnable);
+        Assert.Equal(1, D3dDeviceState.FirstSeenFogEnable);
+        Assert.Equal(0xFF000000u, D3dDeviceState.FirstSeenFogColorArgb);
         Assert.Equal(0.75f, WorldShading.EvaluateVertexFog(
             0.25f, WorldShading.FirstSeenC0.Y, WorldShading.FogRecordColor.W), 5);
         Assert.Equal(ShaderProgram.Dp4Opcode, 0x09u);

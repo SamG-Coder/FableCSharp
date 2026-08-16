@@ -3,6 +3,7 @@ using Fable.Core;
 using Fable.Formats;
 using Fable.Formats.Levels;
 using Fable.Formats.Qst;
+using Fable.Formats.Scene;
 using Fable.Formats.Tng;
 using Fable.Formats.Wld;
 using Fable.Game;
@@ -288,7 +289,8 @@ public sealed class WorldSceneTests
         Assert.Equal(1000f, WorldShading.FogStart);
         Assert.Equal(2000f, WorldShading.FogRecordEnd);
         Assert.Equal(1f, WorldShading.EvaluateVertexFog(0f, WorldShading.FirstSeenC0.Y, WorldShading.FogRecordColor.W));
-        Assert.False(WorldShading.FirstSeenAppliesVertexFogBlend);
+        Assert.True(WorldShading.FirstSeenAppliesVertexFogBlend);
+        Assert.Equal(1, D3dDeviceState.FirstSeenFogEnable);
         Assert.Equal(
             LandscapeFrustum.CotHalfAngle(float.DegreesToRadians(72f)),
             LandscapeFrustum.CotHalfAngle(LandscapeFrustum.TurnsToRadians(0.2f)), 4);

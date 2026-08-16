@@ -33,6 +33,7 @@ internal static class LineShaders
         layout(location = 1) out vec2 fragUv;
         layout(location = 2) out vec4 fragColor;
         layout(location = 3) out vec3 fragWorld;
+        layout(location = 4) out float fragFog;
         layout(push_constant) uniform Push {
             mat4 viewProj;
             vec4 cameraPos;
@@ -46,6 +47,11 @@ internal static class LineShaders
             fragUv = inUv;
             fragColor = inColor;
             fragWorld = inPosition;
+            // VS: dp4 r.x, pos, c2; min with c0.y; mad oFog, r.x, -c18.w, c0.y
+            float dp = dot(vec4(inPosition, 1.0), pc.cameraPos);
+            float c0y = 1.0;
+            float c18w = 1.0;
+            fragFog = min(dp, c0y) * (-c18w) + c0y;
         }
         """;
 
@@ -55,6 +61,7 @@ internal static class LineShaders
         layout(location = 1) in vec2 fragUv;
         layout(location = 2) in vec4 fragColor;
         layout(location = 3) in vec3 fragWorld;
+        layout(location = 4) in float fragFog;
         layout(location = 0) out vec4 outColor;
         layout(set = 0, binding = 0) uniform sampler2D albedo0;
         layout(set = 1, binding = 0) uniform sampler2D albedo1;
@@ -83,7 +90,8 @@ internal static class LineShaders
                 lit = t1.rgb * fragColor.rgb;
             else
                 lit = t1.rgb * v0;
-            outColor = vec4(lit, 1.0);
+            // FOGENABLE=1, FOGCOLOR black: rgb * oFog + (1-oFog) * 0
+            outColor = vec4(lit * fragFog, 1.0);
         }
         """;
 }

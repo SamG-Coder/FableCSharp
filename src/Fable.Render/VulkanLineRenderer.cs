@@ -153,7 +153,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
 
     public bool ShowGizmos { get; set; }
 
-    public void Draw(Matrix4x4 viewProjection, Vector3 cameraPosition = default)
+    public void Draw(Matrix4x4 viewProjection, Vector3 cameraPosition = default, Vector4 fogPlane = default)
     {
         if (_extent.Width == 0 || _extent.Height == 0)
             return;
@@ -174,7 +174,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             throw new InvalidOperationException($"AcquireNextImage failed: {acquire}");
 
         _vk.ResetFences(_device, 1, in _inFlight[_frame]);
-        Record(_commandBuffers[_frame], imageIndex, viewProjection, cameraPosition);
+        Record(_commandBuffers[_frame], imageIndex, viewProjection, cameraPosition, fogPlane);
 
         var wait = _imageAvailable[_frame];
         var signal = _renderFinished[_frame];
@@ -824,7 +824,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         }
     }
 
-    private void Record(CommandBuffer commandBuffer, uint imageIndex, Matrix4x4 viewProjection, Vector3 cameraPosition)
+    private void Record(CommandBuffer commandBuffer, uint imageIndex, Matrix4x4 viewProjection, Vector3 cameraPosition, Vector4 fogPlane)
     {
         var begin = new CommandBufferBeginInfo { SType = StructureType.CommandBufferBeginInfo };
         Check(_vk.BeginCommandBuffer(commandBuffer, in begin));
@@ -859,7 +859,9 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             _meshPush = new MeshPushConstants
             {
                 ViewProj = viewProjection,
-                CameraPos = new Vector4(cameraPosition, Fable.Formats.WorldShading.FogEnd),
+                CameraPos = fogPlane == default
+                    ? new Vector4(0f, 0f, 0f, 0f)
+                    : fogPlane,
                 LightDir = Fable.Formats.WorldShading.DirLightDirection,
                 LightColor = Fable.Formats.WorldShading.DirLightColor,
                 Pass = MeshPushConstants.PackPass(0f),

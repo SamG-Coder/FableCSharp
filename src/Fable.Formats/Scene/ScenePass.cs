@@ -148,6 +148,41 @@ public static class D3dDeviceState
     /// <summary>D3DRS_ALPHATESTENABLE. Slot init <c>00A0489B</c> writes <c>0x0F</c>.</summary>
     public const int AlphaTestEnable = 15;
 
+    /// <summary>
+    /// D3DRS_FOGENABLE. Slot init <c>00A0495C</c> writes <c>0x1C</c>
+    /// at wrapper <c>+10576</c>; slot base <c>+10564</c>, value
+    /// <c>+10568</c>. Ctor <c>00A04654</c> <c>xor eax,eax</c> so
+    /// default 0. Setter <c>00B46890</c> writes 1. First-seen
+    /// landscape <c>00B67480</c> and MainScene <c>00B32AD0</c> (bits
+    /// 4 and 0x40) both call it.
+    /// </summary>
+    public const int FogEnable = 28;
+    public const int FogEnableSlot = 10564;
+    public const int FogEnableValueOffset = 10568;
+    public const int FirstSeenFogEnable = 1;
+    public const uint FogEnableSetter = 0x00B46890;
+    public const uint FogEnableLandscape = 0x00B67480;
+    public const uint FogEnableMainScene = 0x00B32AD0;
+
+    /// <summary>
+    /// D3DRS_FOGCOLOR. Slot <c>+10584</c>, RS at <c>+10596</c> =
+    /// <c>0x22</c>. <c>00B47630</c> packs record <c>+64..+76</c> *
+    /// 255 as ARGB. First-seen (0,0,0,1) → <c>0xFF000000</c>.
+    /// </summary>
+    public const int FogColor = 34;
+    public const int FogColorSlot = 10584;
+    public const uint FirstSeenFogColorArgb = 0xFF000000;
+
+    /// <summary>D3DRS_FOGTABLEMODE. Slot <c>+10664</c>, default 0 (NONE).</summary>
+    public const int FogTableMode = 35;
+    public const int FogTableModeSlot = 10664;
+    public const int FirstSeenFogTableMode = 0;
+
+    /// <summary>D3DRS_FOGVERTEXMODE. Slot <c>+10684</c>, default 0 (NONE).</summary>
+    public const int FogVertexMode = 140;
+    public const int FogVertexModeSlot = 10684;
+    public const int FirstSeenFogVertexMode = 0;
+
     public const int BlendZero = 1;
     public const int BlendOne = 2;
     public const int BlendSrcAlpha = 5;

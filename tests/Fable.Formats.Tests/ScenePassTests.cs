@@ -1,3 +1,4 @@
+using System.Numerics;
 using Fable.Core;
 using Fable.Formats;
 using Fable.Formats.Meshes;
@@ -70,6 +71,22 @@ public sealed class ScenePassTests
         Assert.False(WorldShading.FirstSeenFlag1SelectsAlphaBlend);
         Assert.True(WorldShading.FirstSeenPalskinReadsFlag1);
         Assert.False(WorldShading.FirstSeenStaticLitReadsFlag1);
+        Assert.Equal(28, D3dDeviceState.FogEnable);
+        Assert.Equal(10564, D3dDeviceState.FogEnableSlot);
+        Assert.Equal(1, D3dDeviceState.FirstSeenFogEnable);
+        Assert.Equal(0x00B46890u, D3dDeviceState.FogEnableSetter);
+        Assert.Equal(0x00B67480u, D3dDeviceState.FogEnableLandscape);
+        Assert.Equal(0x00B32AD0u, D3dDeviceState.FogEnableMainScene);
+        Assert.Equal(34, D3dDeviceState.FogColor);
+        Assert.Equal(10584, D3dDeviceState.FogColorSlot);
+        Assert.Equal(0xFF000000u, D3dDeviceState.FirstSeenFogColorArgb);
+        Assert.Equal(35, D3dDeviceState.FogTableMode);
+        Assert.Equal(0, D3dDeviceState.FirstSeenFogTableMode);
+        Assert.Equal(140, D3dDeviceState.FogVertexMode);
+        Assert.Equal(0, D3dDeviceState.FirstSeenFogVertexMode);
+        Assert.True(WorldShading.FirstSeenAppliesVertexFogBlend);
+        Assert.Equal(Vector3.Zero, WorldShading.BlendVertexFog(new Vector3(1f, 1f, 1f), 0f));
+        Assert.Equal(new Vector3(1f, 1f, 1f), WorldShading.BlendVertexFog(new Vector3(1f, 1f, 1f), 1f));
         var install = GameInstall.TryLocate();
         Assert.NotNull(install);
         using var levels = new LevelLibrary(install);
