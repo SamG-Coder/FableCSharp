@@ -1,3 +1,4 @@
+using System.Numerics;
 using Fable.Core;
 using Fable.Formats.Banks;
 using Fable.Formats.Defs;
@@ -318,6 +319,18 @@ public sealed class LevFormatTests
         var sample = tris.First(t => t.A.X > 1f && t.A.Y > 1f);
         Assert.Equal(sample.A.X * 0.125f, sample.UvA.X, 3);
         Assert.Equal(sample.A.Y * 0.125f, sample.UvA.Y, 3);
+        Assert.Equal(4, LandscapeFrustum.PlaneCount);
+        Assert.Equal(16, LandscapeFrustum.PlaneStrideBytes);
+        Assert.Equal(448, LandscapeFrustum.PlaneBaseOffset);
+        Assert.Equal(168, LandscapeFrustum.AabbMaxOffset);
+        Assert.Equal(180, LandscapeFrustum.AabbMinOffset);
+        Assert.Equal(0x00BDC2D0u, LandscapeFrustum.PatchSubmit);
+        Assert.Equal(0x00B6B1A5u, LandscapeFrustum.PatchSubmitCaller);
+        Assert.Equal(0x40, LandscapeFrustum.LandscapeBit40);
+        Assert.True(LandscapeFrustum.FirstSeenUsesFourPlaneAabb);
+        var left = new LandscapeFrustum.Plane(new Vector3(1f, 0f, 0f), 0f);
+        Assert.False(LandscapeFrustum.AabbIsOutside(new Vector3(-1f, -1f, -1f), new Vector3(1f, 1f, 1f), [left]));
+        Assert.True(LandscapeFrustum.AabbIsOutside(new Vector3(2f, -1f, -1f), new Vector3(3f, 1f, 1f), [left]));
 
         var covered = new bool[cells.Width, cells.Height];
         foreach (var t in tris)

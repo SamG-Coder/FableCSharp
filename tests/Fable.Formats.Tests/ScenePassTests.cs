@@ -55,6 +55,7 @@ public sealed class ScenePassTests
         Assert.Equal(1, D3dDeviceState.CullNone);
         Assert.Equal(2, D3dDeviceState.CullCw);
         Assert.False(WorldShading.FirstSeenAppliesCullNoneFromFlag1);
+        Assert.False(WorldShading.FirstSeenStaticPass2ReadsFlag1);
         Assert.False(WorldShading.FirstSeenPlaysAnim);
         Assert.Equal(20, D3dDeviceState.PrimitiveTypeNoneDraw);
         Assert.True(D3dDeviceState.PrimitiveTypeUsesNoneDraw(20));

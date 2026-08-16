@@ -213,6 +213,7 @@ public sealed class MeshFormatTests
         Assert.Equal(0x00BD3C04u, WorldShading.PalskinJumpTarget(4));
         Assert.DoesNotContain(mesh.Materials, m => m.Flag1 == 1 && m != hair);
         Assert.False(WorldShading.FirstSeenAppliesCullNoneFromFlag1);
+        Assert.False(WorldShading.FirstSeenStaticPass2ReadsFlag1);
         Assert.False(WorldShading.FirstSeenFlag1WritesLayerType20);
         Assert.False(WorldShading.FirstSeenFlag1SelectsAlphaBlend);
         Assert.True(WorldShading.FirstSeenPalskinSrcAlphaBlend);

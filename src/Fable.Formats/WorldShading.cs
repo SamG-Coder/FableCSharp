@@ -363,6 +363,14 @@ public static class WorldShading
     public const bool FirstSeenAppliesCullNoneFromFlag1 = false;
 
     /// <summary>
+    /// Static draw <c>00BA2350</c> tests Flag1 at <c>00BA3637</c>
+    /// only after <c>cmp [esp+196], 2</c>. First-seen static-lit
+    /// <c>00BB2540</c> and landscape <c>00B24850</c> apply CCW
+    /// with no Flag1 test. Pass 2 is not the first-seen path.
+    /// </summary>
+    public const bool FirstSeenStaticPass2ReadsFlag1 = false;
+
+    /// <summary>
     /// Layer type 20 is NONE-draw <c>00BBE090</c>, only called from
     /// <c>00BBC210</c> (jump-table case of <c>00BBC130</c>).
     /// First-seen PALSKIN <c>00BD71B0</c> tests <c>[this+8]</c> as an
