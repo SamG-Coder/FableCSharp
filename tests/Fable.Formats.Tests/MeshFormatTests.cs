@@ -171,11 +171,34 @@ public sealed class MeshFormatTests
         Assert.Equal(6.10849f, bip.Matrix.M14, 4);
         Assert.Equal(0.28064f, bip.Matrix.M24, 4);
         Assert.Equal(-103.51969f, bip.Matrix.M34, 4);
+        var palettes = WorldShading.FirstSeenPalettes(mesh.Bones);
+        Assert.Equal(76, palettes.Length);
+        AssertNearIdentity(palettes[0]);
+        AssertNearIdentity(palettes[3]);
+        AssertNearIdentity(palettes[20]);
+        var raw = new Vector3(-11.42f, 11.39f, 180.37f);
+        Assert.Equal(raw, WorldShading.SkinPosition(
+            raw, new byte[] { 0, 0, 0, 0 }, new byte[] { 255, 0, 0, 0 }, palettes));
         Assert.Equal("VSHADER_PALSKIN_DIRLIGHT_FOG",
             WorldShading.PalskinFamilyShader(WorldShading.FirstSeenPackedLightCount));
         var hair = mesh.Materials.Single(m => m.Name.Contains("Hair", StringComparison.OrdinalIgnoreCase));
         Assert.Equal(1, hair.Flag1);
         Assert.Equal(0, hair.Flag3);
         Assert.DoesNotContain(mesh.Materials, m => m.Name == "DegenerateTriangles");
+    }
+
+    private static void AssertNearIdentity(Matrix4x4 m)
+    {
+        Assert.Equal(1f, m.M11, 3);
+        Assert.Equal(1f, m.M22, 3);
+        Assert.Equal(1f, m.M33, 3);
+        Assert.Equal(1f, m.M44, 3);
+        Assert.Equal(0f, m.M12, 3);
+        Assert.Equal(0f, m.M13, 3);
+        Assert.Equal(0f, m.M14, 3);
+        Assert.Equal(0f, m.M21, 3);
+        Assert.Equal(0f, m.M24, 3);
+        Assert.Equal(0f, m.M31, 3);
+        Assert.Equal(0f, m.M34, 3);
     }
 }

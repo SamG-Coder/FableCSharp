@@ -412,10 +412,24 @@ internal static class X86
             _ => $"0F_{op2:X2}",
         };
 
+        // movzx/movsx dest is 32-bit; only the r/m source is 8-bit (B6/BE).
+        if (op2 is 0xB6 or 0xB7 or 0xBE or 0xBF)
+        {
+            if (ip >= d.Length)
+                return false;
+            var modrm = d[ip++];
+            var dest = Reg((modrm >> 3) & 7);
+            var src8 = op2 is 0xB6 or 0xBE;
+            if (!TryMem(pe, d, ref ip, modrm, out var mem, r8: src8 && (modrm >> 6) == 3))
+                return false;
+            text = $"{name} {dest}, {mem}";
+            return true;
+        }
+
         // Almost every remaining 0F opcode takes ModR/M. Consume it so we
         // never return success with the IP still sitting on the operand.
         var rmFirst = op2 is 0xA3 or 0xAB or 0xB3 or 0xBB;
-        if (!ModRm(pe, d, ref ip, name, rmFirst, out text, r8: op2 is 0xB6 or 0xBE))
+        if (!ModRm(pe, d, ref ip, name, rmFirst, out text))
             return false;
 
         // shufps / cmpps / pshufd / shld / shrd / bt-imm take an extra imm8.

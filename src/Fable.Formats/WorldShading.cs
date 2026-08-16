@@ -1,4 +1,5 @@
 using System.Numerics;
+using Fable.Formats.Meshes;
 
 namespace Fable.Formats;
 
@@ -89,6 +90,103 @@ public static class WorldShading
         if (influenceCount < 0)
             return 0;
         return influenceCount * BoneFloat4sPerInfluence;
+    }
+
+    /// <summary>
+    /// Local 48-byte TRS in the C3D/exe layout: rotation/scale in the
+    /// 3×3, translation in <c>M14/M24/M34</c> (not Numerics
+    /// <c>M41</c>). <c>00A9E1E0</c> walks parent from the 60-byte
+    /// block and writes this layout into the 64-byte dest.
+    /// </summary>
+    public static Matrix4x4 ComposeLocalBone(Matrix4x4 rotation, Vector3 scale, Vector3 translation) =>
+        new(
+            rotation.M11 * scale.X, rotation.M12 * scale.Y, rotation.M13 * scale.Z, translation.X,
+            rotation.M21 * scale.X, rotation.M22 * scale.Y, rotation.M23 * scale.Z, translation.Y,
+            rotation.M31 * scale.X, rotation.M32 * scale.Y, rotation.M33 * scale.Z, translation.Z,
+            0f, 0f, 0f, 1f);
+
+    /// <summary>
+    /// Exe <c>00BD2F91</c>: <c>dest.M11 = S.row0 · C3D.col0</c> =
+    /// hierarchy world × 64-byte inverse-bind. First-seen (no
+    /// <c>00DBDE40</c> play-anim) is that product, ≈ identity.
+    /// </summary>
+    public static Matrix4x4 MultiplyWorldByInverseBind(Matrix4x4 world, Matrix4x4 inverseBind)
+    {
+        static float DotCol(float a1, float a2, float a3, float a4,
+            float b1, float b2, float b3, float b4) =>
+            a1 * b1 + a2 * b2 + a3 * b3 + a4 * b4;
+
+        return new Matrix4x4(
+            DotCol(world.M11, world.M12, world.M13, world.M14, inverseBind.M11, inverseBind.M21, inverseBind.M31, inverseBind.M41),
+            DotCol(world.M11, world.M12, world.M13, world.M14, inverseBind.M12, inverseBind.M22, inverseBind.M32, inverseBind.M42),
+            DotCol(world.M11, world.M12, world.M13, world.M14, inverseBind.M13, inverseBind.M23, inverseBind.M33, inverseBind.M43),
+            DotCol(world.M11, world.M12, world.M13, world.M14, inverseBind.M14, inverseBind.M24, inverseBind.M34, inverseBind.M44),
+            DotCol(world.M21, world.M22, world.M23, world.M24, inverseBind.M11, inverseBind.M21, inverseBind.M31, inverseBind.M41),
+            DotCol(world.M21, world.M22, world.M23, world.M24, inverseBind.M12, inverseBind.M22, inverseBind.M32, inverseBind.M42),
+            DotCol(world.M21, world.M22, world.M23, world.M24, inverseBind.M13, inverseBind.M23, inverseBind.M33, inverseBind.M43),
+            DotCol(world.M21, world.M22, world.M23, world.M24, inverseBind.M14, inverseBind.M24, inverseBind.M34, inverseBind.M44),
+            DotCol(world.M31, world.M32, world.M33, world.M34, inverseBind.M11, inverseBind.M21, inverseBind.M31, inverseBind.M41),
+            DotCol(world.M31, world.M32, world.M33, world.M34, inverseBind.M12, inverseBind.M22, inverseBind.M32, inverseBind.M42),
+            DotCol(world.M31, world.M32, world.M33, world.M34, inverseBind.M13, inverseBind.M23, inverseBind.M33, inverseBind.M43),
+            DotCol(world.M31, world.M32, world.M33, world.M34, inverseBind.M14, inverseBind.M24, inverseBind.M34, inverseBind.M44),
+            DotCol(world.M41, world.M42, world.M43, world.M44, inverseBind.M11, inverseBind.M21, inverseBind.M31, inverseBind.M41),
+            DotCol(world.M41, world.M42, world.M43, world.M44, inverseBind.M12, inverseBind.M22, inverseBind.M32, inverseBind.M42),
+            DotCol(world.M41, world.M42, world.M43, world.M44, inverseBind.M13, inverseBind.M23, inverseBind.M33, inverseBind.M43),
+            DotCol(world.M41, world.M42, world.M43, world.M44, inverseBind.M14, inverseBind.M24, inverseBind.M34, inverseBind.M44));
+    }
+
+    public static Matrix4x4[] FirstSeenPalettes(IReadOnlyList<MeshBone> bones)
+    {
+        var palettes = new Matrix4x4[bones.Count];
+        var world = new Matrix4x4[bones.Count];
+        for (var i = 0; i < bones.Count; i++)
+        {
+            var bone = bones[i];
+            var local = ComposeLocalBone(
+                Matrix4x4.CreateFromQuaternion(bone.LocalRotation),
+                bone.LocalScale,
+                bone.LocalTranslation);
+            world[i] = bone.Parent < 0 || bone.Parent >= i
+                ? local
+                : MultiplyWorldByInverseBind(world[bone.Parent], local);
+            palettes[i] = MultiplyWorldByInverseBind(world[i], bone.Matrix);
+        }
+
+        return palettes;
+    }
+
+    /// <summary>
+    /// VS <c>m4x3</c> / <c>00BCFB00</c> 3-row upload: <c>dot(pos.xyzw, row)</c>
+    /// with <c>w=1</c>. Weights are UBYTE/255. Missing bones leave the
+    /// position unchanged.
+    /// </summary>
+    public static Vector3 SkinPosition(
+        Vector3 position, ReadOnlySpan<byte> indices, ReadOnlySpan<byte> weights, Matrix4x4[] palettes)
+    {
+        var n = Math.Min(indices.Length, weights.Length);
+        var sum = 0;
+        for (var i = 0; i < n; i++)
+            sum += weights[i];
+        if (sum == 0 || palettes.Length == 0)
+            return position;
+
+        var acc = Vector3.Zero;
+        var p = new Vector4(position, 1f);
+        for (var i = 0; i < n; i++)
+        {
+            if (weights[i] == 0)
+                continue;
+            var bone = indices[i];
+            if (bone >= palettes.Length)
+                continue;
+            var m = palettes[bone];
+            var w = weights[i] / 255f;
+            acc.X += w * (p.X * m.M11 + p.Y * m.M12 + p.Z * m.M13 + p.W * m.M14);
+            acc.Y += w * (p.X * m.M21 + p.Y * m.M22 + p.Z * m.M23 + p.W * m.M24);
+            acc.Z += w * (p.X * m.M31 + p.Y * m.M32 + p.Z * m.M33 + p.W * m.M34);
+        }
+
+        return acc;
     }
 
     /// <summary>

@@ -232,6 +232,8 @@ public sealed class MeshFile
             var vertCount = vertices.Length / Math.Max(stride, 1);
             var positions = new Vector3[vertCount];
             var uvs = new Vector2[vertCount];
+            var palettes = hasBones && bones.Length > 0 ? WorldShading.FirstSeenPalettes(bones) : [];
+            var posSize = packedPos ? 4 : 12;
             for (var v = 0; v < vertCount; v++)
             {
                 var o = v * stride;
@@ -249,6 +251,15 @@ public sealed class MeshFile
                         BitConverter.ToSingle(vertices, o),
                         BitConverter.ToSingle(vertices, o + 4),
                         BitConverter.ToSingle(vertices, o + 8));
+                }
+
+                if (hasBones && palettes.Length > 0 && o + posSize + 8 <= vertices.Length)
+                {
+                    p = WorldShading.SkinPosition(
+                        p,
+                        vertices.AsSpan(o + posSize, 4),
+                        vertices.AsSpan(o + posSize + 4, 4),
+                        palettes);
                 }
 
                 positions[v] = p;
