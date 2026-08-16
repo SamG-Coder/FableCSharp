@@ -338,6 +338,29 @@ public static class RegionTravel
     public const string IntroFatherDialog = "TEXT_QST_048_FATHER_INTRO_60";
     public const string IntroDialogListener = "HERO";
     public const float IntroGamePauseAfterTired = 2.0f;
+    /// <summary>
+    /// <c>00CC0783</c> <c>.WaitTask</c>. Arg is unused.
+    /// No actor → <c>00CC7081</c>. Else poll thing
+    /// <c>vtbl+104</c>. Hero/player <c>0x012457FC</c>
+    /// +104 is <c>006A9550</c> <c>jmp 00661A40</c>
+    /// <c>ret 4</c> (leaves al). First poll leftover
+    /// after token dtor is non-zero so one
+    /// <c>vtbl+28</c>, then <c>00CBF7FE</c> empty
+    /// path leaves al=0 and the next poll continues.
+    /// Fiber <c>[0x13D2838]+5</c> is 0 while running
+    /// so that abort does not fire.
+    /// </summary>
+    public const uint WaitTaskOpcode = 0x00CC0783;
+    public const uint WaitTaskPoll = 0x00CC082C;
+    public const uint WaitTaskYieldLoop = 0x00CC07E0;
+    public const int WaitTaskPollVtbl = 104;
+    public const uint WaitTaskHeroVtbl = 0x012457FC;
+    public const uint WaitTaskHeroPoll = 0x006A9550;
+    public const uint WaitTaskPollStub = 0x00661A40;
+    public const uint WaitTaskFiberGlobal = 0x013D2838;
+    public const bool FirstSeenWaitTaskReadsName = false;
+    public const bool FirstSeenWaitTaskYieldsOnce = true;
+    public const string IntroWaitTask = "FOO";
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;

@@ -269,6 +269,11 @@ public sealed class ScriptInterpreter
                 !ScriptCommand.IsNullArg(speech.Text))
                 host.DialogSpeak(command.Actor, speech.Listener, speech.Text);
         }
+        else if (command.Verb.Equals("WaitTask", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!string.IsNullOrEmpty(command.Actor))
+                host.WaitTask(command.Actor, ScriptInterpreter.FirstToken(command.Arguments));
+        }
     }
 
     internal static void ParseFadeArgs(string arguments, out float seconds, out float param)
@@ -468,6 +473,8 @@ public readonly struct ScriptCommand
                 return ScriptFlow.Continue;
             return ScriptFlow.YieldAfter;
         }
+        if (verb.Equals("WaitTask", StringComparison.OrdinalIgnoreCase))
+            return string.IsNullOrEmpty(command.Actor) ? ScriptFlow.Continue : ScriptFlow.YieldAfter;
         if (verb.Equals("LookToThing", StringComparison.OrdinalIgnoreCase))
         {
             var args = SplitArgs(command.Arguments);
@@ -507,4 +514,5 @@ public interface IScriptHost
     void InteractiveSpeak(
         string? actor, string listener, string prompt, bool wait, string response);
     void DialogSpeak(string? actor, string listener, string text);
+    void WaitTask(string? actor, string name);
 }

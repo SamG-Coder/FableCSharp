@@ -356,6 +356,12 @@ public sealed class WorldSceneTests
         Assert.Equal("TEXT_QST_048_FATHER_INTRO_60", RegionTravel.IntroFatherDialog);
         Assert.Equal("HERO", RegionTravel.IntroDialogListener);
         Assert.Equal(2.0f, RegionTravel.IntroGamePauseAfterTired);
+        Assert.Equal(0x00CC0783u, RegionTravel.WaitTaskOpcode);
+        Assert.Equal(104, RegionTravel.WaitTaskPollVtbl);
+        Assert.Equal(0x006A9550u, RegionTravel.WaitTaskHeroPoll);
+        Assert.True(RegionTravel.FirstSeenWaitTaskYieldsOnce);
+        Assert.False(RegionTravel.FirstSeenWaitTaskReadsName);
+        Assert.Equal("FOO", RegionTravel.IntroWaitTask);
         Assert.Equal(0x00CC4B22u, RegionTravel.ScriptFadeInOut);
         Assert.Equal(0x00CB5D80u, RegionTravel.RegisteringScripts);
         Assert.Equal(0x00CB8110u, RegionTravel.QuestBaseCtor);
@@ -851,6 +857,17 @@ public sealed class WorldSceneTests
             s.Listener.Equals(RegionTravel.IntroDialogListener, StringComparison.OrdinalIgnoreCase) &&
             s.Text.Contains(RegionTravel.IntroFatherDialog, StringComparison.Ordinal));
         Assert.False(intro.ExecutedVerb("WaitTask"));
+        Assert.Equal(0x00CC0783u, RegionTravel.WaitTaskOpcode);
+        Assert.True(RegionTravel.FirstSeenWaitTaskYieldsOnce);
+        Assert.False(RegionTravel.FirstSeenWaitTaskReadsName);
+        script.Update(0.1f);
+        Assert.Contains("Hero.WaitTask FOO", intro.Executed);
+        Assert.Equal("Hero.SneakTo MK_OVIF_HERO4,0.0,FALSE,FALSE,FALSE", intro.Commands[intro.InstructionPointer]);
+        Assert.True(intro.Yielded);
+        Assert.Null(intro.UnsupportedCommand);
+        Assert.Contains(runtime.WaitTasks, w =>
+            w.Actor == "Hero" && w.Name == RegionTravel.IntroWaitTask);
+        Assert.False(intro.ExecutedVerb("SneakTo"));
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 
@@ -960,6 +977,37 @@ public sealed class WorldSceneTests
             string? actor, string listener, string prompt, bool wait, string response) { }
 
         public void DialogSpeak(string? actor, string listener, string text) { }
+
+        public void WaitTask(string? actor, string name) { }
+    }
+
+    [Fact]
+    public void Hero_WaitTask_FOO_yields_once_and_ignores_name()
+    {
+        var command = "Hero.WaitTask FOO";
+        Assert.Equal(ScriptFlow.YieldAfter, ScriptCommand.Classify(ScriptCommand.Parse(command)));
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(ScriptCommand.Parse("WaitTask FOO")));
+        Assert.Equal(0x00CC0783u, RegionTravel.WaitTaskOpcode);
+        Assert.Equal(104, RegionTravel.WaitTaskPollVtbl);
+        Assert.Equal(0x012457FCu, RegionTravel.WaitTaskHeroVtbl);
+        Assert.Equal(0x006A9550u, RegionTravel.WaitTaskHeroPoll);
+        Assert.Equal(0x00661A40u, RegionTravel.WaitTaskPollStub);
+        Assert.Equal(0x013D2838u, RegionTravel.WaitTaskFiberGlobal);
+        Assert.True(RegionTravel.FirstSeenWaitTaskYieldsOnce);
+        Assert.False(RegionTravel.FirstSeenWaitTaskReadsName);
+        Assert.Equal("FOO", RegionTravel.IntroWaitTask);
+        var interpreter = new ScriptInterpreter("wait",
+        [
+            command,
+            "Hero.SneakTo MK_OVIF_HERO4,0.0,FALSE,FALSE,FALSE",
+        ]);
+        interpreter.RunUntilYield();
+        Assert.True(interpreter.Yielded);
+        Assert.Contains(command, interpreter.Executed);
+        Assert.Equal(
+            "Hero.SneakTo MK_OVIF_HERO4,0.0,FALSE,FALSE,FALSE",
+            interpreter.Commands[interpreter.InstructionPointer]);
+        Assert.Null(interpreter.UnsupportedCommand);
     }
 
     [Fact]
