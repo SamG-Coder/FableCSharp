@@ -73,6 +73,20 @@ public static class LandscapeTextures
     public const bool FirstSeenWaterWantedNameIsZero = true;
     public const bool FirstSeenSeaBindRuns = false;
 
+    /// <summary>
+    /// Only assigner of water <c>+636</c>: <c>00B23F00</c> does
+    /// <c>ecx = [0x1436E54] + 0x27C</c> then <c>0099EFB0</c>.
+    /// Sibling <c>00B23900</c> is <c>this+636</c>. Zero <c>E8</c>
+    /// callers. Zero <c>call [r+0x38]</c> (vtbl slot 14) in
+    /// OpenStaticMaps / landscape-water / MainScene / StartOakVale.
+    /// Ctor zeros the dword; dtor <c>00B71994</c> calls
+    /// <c>0099EAE0</c>. First-seen never writes a map name here.
+    /// </summary>
+    public const uint WaterWantedNameSetter = 0x00B23F00;
+    public const uint WaterWantedNameThisSetter = 0x00B23900;
+    public const int WaterWantedNameSetterVtblSlot = 14;
+    public const bool FirstSeenCallsWantedNameSetter = false;
+
     public static bool IsLoadableWaterBank(ReadOnlySpan<byte> bank) =>
         bank.Length >= 4 && BitConverter.ToUInt32(bank) == RequiredWaterBankType;
 

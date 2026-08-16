@@ -177,8 +177,21 @@ static void RunCallDisp(PeImage pe, string[] args)
     var tok = args.SkipWhile(a => a is "calldisp").FirstOrDefault();
     if (tok is null || !TryParseHex(tok, out var disp))
     {
-        Console.Error.WriteLine("usage: calldisp <disp32>");
+        Console.Error.WriteLine("usage: calldisp <disp32> [lo hi]");
         return;
+    }
+
+    uint lo = 0, hi = uint.MaxValue;
+    var extra = args.SkipWhile(a => a != tok).Skip(1).ToArray();
+    if (extra.Length >= 2 && TryParseHex(extra[0], out lo) && TryParseHex(extra[1], out hi))
+    {
+        // ranged: keep going past the default 60-hit cap
+    }
+    else
+    {
+        extra = [];
+        lo = 0;
+        hi = uint.MaxValue;
     }
 
     // call [reg+disp32]: FF 90/91/92/93/96/97 xx xx xx xx
@@ -206,11 +219,15 @@ static void RunCallDisp(PeImage pe, string[] args)
                 }
             }
 
+            uint va;
             if (is32)
             {
                 if (BitConverter.ToUInt32(data, i + 2) != disp)
                     continue;
-                Console.WriteLine($"0x{pe.Va(i):X8}  call [r+0x{disp:X}]");
+                va = pe.Va(i);
+                if (va < lo || va > hi)
+                    continue;
+                Console.WriteLine($"0x{va:X8}  call [r+0x{disp:X}]");
                 hits++;
             }
             else if (disp <= 0x7F)
@@ -227,13 +244,16 @@ static void RunCallDisp(PeImage pe, string[] args)
 
                 if (!is8 || data[i + 2] != (byte)disp)
                     continue;
-                Console.WriteLine($"0x{pe.Va(i):X8}  call [r+0x{disp:X}]8");
+                va = pe.Va(i);
+                if (va < lo || va > hi)
+                    continue;
+                Console.WriteLine($"0x{va:X8}  call [r+0x{disp:X}]8");
                 hits++;
             }
             else
                 continue;
 
-            if (hits >= 60)
+            if (extra.Length < 2 && hits >= 60)
             {
                 Console.WriteLine($"calldisp  {hits}+");
                 return;
@@ -739,6 +759,10 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteWalkPart(pe, store, family, "Sea bind 00B6DC40", 0x00B6DC40, 300),
         WriteWalkPart(pe, store, family, "Water rebuild vtbl1 00B71FB0", 0x00B71FB0, 200),
         WriteWalkPart(pe, store, family, "NString ctor zeros 0099E4B0", 0x0099E4B0, 10),
+        WriteFnPart(pe, store, family, "Water +636 setter 00B23F00", 0x00B23F00, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "Water +636 this-setter 00B23900", 0x00B23900, 20, stopOnRet: false),
+        WriteFnPart(pe, store, family, "Water +636 dtor 00B71994", 0x00B71994, 40, stopOnRet: false),
+        WriteVtblPart(pe, store, family, "Engine +636 setter table", 0x012A1000, 20),
         WriteWalkPart(pe, store, family, "Sea mesh copy 00B6D420", 0x00B6D420, 40),
         WriteVtblPart(pe, store, family, "CEngineWaterRenderer vtbl", 0x012A3364, 16),
         WriteFnPart(pe, store, family, "Water ctor vector zero 00B7397F", 0x00B7397F, 40, stopOnRet: false),
