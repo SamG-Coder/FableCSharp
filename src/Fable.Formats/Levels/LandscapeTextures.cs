@@ -70,8 +70,30 @@ public static class LandscapeTextures
     public const int WaterWantedNameOffset = 636;
     public const int SeaBankObjectOffset = 1464;
     public const int WaterMeshReadyOffset = 630;
+    /// <summary>
+    /// Draw <c>00B783F0</c> at <c>00B784D1</c>: mesh-ready is
+    /// <c>[+630] &amp;&amp; [+645]</c>. Either byte 0 keeps the
+    /// flag clear. First-seen ctor leaves both 0.
+    /// </summary>
+    public const int WaterMeshReadySecondOffset = 645;
     public const bool FirstSeenWaterWantedNameIsZero = true;
     public const bool FirstSeenSeaBindRuns = false;
+
+    /// <summary>
+    /// When bind does run, <c>00B6DC40</c> → <c>009D6100</c>
+    /// allocs 72 bytes and <c>009D5DF0</c> wraps the whole sea
+    /// blob (first u32 still 7363) as a stream. It does not call
+    /// <c>00B6D6E0</c> / type 8.
+    /// </summary>
+    public const int SeaStreamObjectBytes = 72;
+    public const bool SeaBindUsesType8Check = false;
+
+    /// <summary>
+    /// StartOakVale sea bank first five u32s. Meaning of words
+    /// 1–4 is UNREAD; word 0 is not type 8.
+    /// </summary>
+    public static readonly uint[] StartOakValeSeaPrefix =
+        [7363, 44259, 58022, 1135617, 4340736];
 
     /// <summary>
     /// Only assigner of water <c>+636</c>: <c>00B23F00</c> does

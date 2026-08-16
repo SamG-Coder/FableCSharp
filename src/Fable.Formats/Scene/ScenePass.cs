@@ -122,4 +122,16 @@ public static class D3dDeviceState
 
     public const int CullNone = 1;
     public const int CullCw = 2;
+
+    /// <summary>
+    /// Layer switch <c>00BBC130</c>: <c>type = [obj+8]</c>,
+    /// <c>index = type-7</c>, byte table <c>0x00BBC2EC</c>,
+    /// jump <c>0x00BBC2D8</c>. Type <c>20</c> is table byte 1
+    /// → <c>00BBC1DB</c> → NONE-draw <c>00BBE090</c>.
+    /// Flag1 is not proven to write this type.
+    /// </summary>
+    public const int PrimitiveTypeNoneDraw = 20;
+
+    public static bool PrimitiveTypeUsesNoneDraw(int type) =>
+        type == PrimitiveTypeNoneDraw;
 }

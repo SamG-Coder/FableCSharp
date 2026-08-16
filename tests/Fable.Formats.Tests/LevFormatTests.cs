@@ -252,6 +252,13 @@ public sealed class LevFormatTests
         var oakBytes = stb.Read(oak);
         Assert.Equal(7363u, BitConverter.ToUInt32(oakBytes, 0));
         Assert.Equal(LandscapeTextures.SeaBankFirstU32, BitConverter.ToUInt32(oakBytes, 0));
+        Assert.Equal(5, LandscapeTextures.StartOakValeSeaPrefix.Length);
+        for (var i = 0; i < LandscapeTextures.StartOakValeSeaPrefix.Length; i++)
+            Assert.Equal(LandscapeTextures.StartOakValeSeaPrefix[i], BitConverter.ToUInt32(oakBytes, i * 4));
+        Assert.NotEqual(LandscapeTextures.RequiredWaterBankType, LandscapeTextures.StartOakValeSeaPrefix[0]);
+        Assert.Equal(72, LandscapeTextures.SeaStreamObjectBytes);
+        Assert.False(LandscapeTextures.SeaBindUsesType8Check);
+        Assert.Equal(645, LandscapeTextures.WaterMeshReadySecondOffset);
         Assert.Equal(8u, LandscapeTextures.RequiredWaterBankType);
         Assert.Equal(2, LandscapeTextures.WaterType8CopiedDwords);
         Assert.Equal(508, LandscapeTextures.WaterDrawVectorFirst);

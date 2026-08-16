@@ -200,6 +200,8 @@ internal static class FunctionMap
         WriteHits(sb, nodes, "PlayAnimation");
         WriteHits(sb, nodes, "STAND");
         WriteHits(sb, nodes, "01396FB8");
+        WriteHits(sb, nodes, "00B783F0");
+        WriteHits(sb, nodes, "00BBC130");
         WriteHits(sb, nodes, "009896D0");
         WriteHits(sb, nodes, "2LIGHTS");
         WriteHits(sb, nodes, "2POINTLIGHTS");

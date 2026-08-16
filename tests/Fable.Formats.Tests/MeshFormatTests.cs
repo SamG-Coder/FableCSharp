@@ -183,7 +183,9 @@ public sealed class MeshFormatTests
             WorldShading.PalskinFamilyShader(WorldShading.FirstSeenPackedLightCount));
         var hair = mesh.Materials.Single(m => m.Name.Contains("Hair", StringComparison.OrdinalIgnoreCase));
         Assert.Equal(1, hair.Flag1);
+        Assert.Equal(1u, hair.MapFlags);
         Assert.Equal(0, hair.Flag3);
+        Assert.DoesNotContain(mesh.Materials, m => m.Flag1 == 1 && m != hair);
         Assert.False(WorldShading.FirstSeenAppliesCullNoneFromFlag1);
         Assert.False(WorldShading.FirstSeenPlaysAnim);
         Assert.DoesNotContain(mesh.Materials, m => m.Name == "DegenerateTriangles");
