@@ -148,8 +148,9 @@ parsers and notes.
 ## Exe load / render pathway
 
 Traced in `Fable.exe` with `tools/Fable.ExeIndex` (`disasm` / `calls` / `trace-render`). Do not invent steps. `map-newgame` / `trace-newgame` writes every function reachable
-from New Game / `StartOakVale` seeds into `newgame-trace/fnmap.md` (Lookout is
-not a seed). Use that map before hunting a single VA.
+from New Game / `StartOakVale` seeds **and every function in those first-scene
+code ranges** into `newgame-trace/fnmap.md` (Lookout is not scanned). Parse more
+functions in those ranges before chasing a single VA.
 
 1. **`CTextureManager`** reads the 34-byte BIG info. `u16` at +12 is the format code (`31` / `32` / `35`).
 2. **Framed LZO** inflates the bank payload. Format 35’s first frame is **262144** bytes (`512×512×16`) — one DXT3/DXT5 top mip — not DXT1’s 131072. Last 3 bytes of the frame are the raw tail (`DecompressFramed`).

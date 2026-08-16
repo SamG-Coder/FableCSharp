@@ -8,9 +8,31 @@ namespace Fable.ExeIndex;
 /// </summary>
 internal static class FunctionMap
 {
-    public const int MaxDepth = 10;
-    public const int MaxFunctions = 2500;
-    public const int MaxInsns = 240;
+    public const int MaxDepth = 12;
+    public const int MaxFunctions = 8000;
+    public const int MaxInsns = 400;
+
+    /// <summary>
+    /// Code windows used by New Game / StartOakVale first scene only.
+    /// Menu-wide frontend and later-town ranges are omitted.
+    /// </summary>
+    public static readonly (uint Lo, uint Hi, string Name)[] NewGameRanges =
+    [
+        (0x00595B00, 0x00595D00, "UI-new-game"),
+        (0x004B5000, 0x004B5200, "start-new-quest"),
+        (0x00489D00, 0x0048A200, "CreateCharacter"),
+        (0x004FD000, 0x004FE000, "WLD-region"),
+        (0x006A9D00, 0x006AD200, "PlayerCreature"),
+        (0x0089FA00, 0x0089FC00, "MARKER-LIGHT"),
+        (0x00988000, 0x0098C000, "VS-wrapper"),
+        (0x00B32000, 0x00B34000, "MainScene-prims"),
+        (0x00B41000, 0x00B4A000, "maps-lighting"),
+        (0x00B66000, 0x00B7F000, "landscape-water"),
+        (0x00B8B000, 0x00BD4000, "static-palskin"),
+        (0x00BDB000, 0x00BDC800, "LayoutLights"),
+        (0x00BF4000, 0x00BF6000, "per-cell"),
+        (0x00DBDE00, 0x00DBF000, "StartOakVale"),
+    ];
 
     public static readonly (string Name, uint Va)[] NewGameSeeds =
     [
@@ -63,6 +85,9 @@ internal static class FunctionMap
             queue.Enqueue((start, 0, name));
         }
 
+        foreach (var start in ScanRangeStarts(pe))
+            queue.Enqueue((start, 0, "range"));
+
         var seen = new HashSet<uint>();
         var nodes = new List<Node>();
         while (queue.Count > 0 && nodes.Count < MaxFunctions)
@@ -74,7 +99,7 @@ internal static class FunctionMap
             if (file < 0 || !pe.InCode(file))
                 continue;
 
-            var steps = X86.Walk(pe, file, MaxInsns, stopOnRet: true);
+            var steps = X86.Walk(pe, file, MaxInsns, stopOnRet: false);
             var calls = new List<uint>();
             var strings = new List<string>();
             foreach (var step in steps)
@@ -116,10 +141,10 @@ internal static class FunctionMap
         var sb = new StringBuilder();
         sb.AppendLine("# New Game function map");
         sb.AppendLine();
-        sb.AppendLine("Every function reachable from New Game / `StartOakVale` seeds.");
-        sb.AppendLine("Lookout and later campaign maps are not seeds.");
+        sb.AppendLine("Every function in New Game / `StartOakVale` code ranges, plus callees.");
+        sb.AppendLine("Lookout and later campaign maps are not scanned.");
         sb.AppendLine();
-        sb.AppendLine($"functions **{nodes.Count}** · depth ≤ {MaxDepth} · [INDEX](INDEX.md)");
+        sb.AppendLine($"functions **{nodes.Count}** · depth ≤ {MaxDepth} · ranges {NewGameRanges.Length} · [INDEX](INDEX.md)");
         sb.AppendLine();
         sb.AppendLine("## Seeds");
         sb.AppendLine();
@@ -137,6 +162,12 @@ internal static class FunctionMap
         WriteHits(sb, nodes, "CThingPlayerCreature");
         WriteHits(sb, nodes, "CTCAnimation");
         WriteHits(sb, nodes, "009896D0");
+        WriteHits(sb, nodes, "2LIGHTS");
+        WriteHits(sb, nodes, "2POINTLIGHTS");
+        WriteHits(sb, nodes, "VSHADER_STATIC_DIRLIGHT_FOG");
+        WriteHits(sb, nodes, "VSHADER_LANDSCAPE_FOREGROUND");
+        WriteHits(sb, nodes, "MARKER_LIGHT");
+        WriteHits(sb, nodes, "ENGINE_WATER");
         sb.AppendLine();
         sb.AppendLine("## Functions");
         sb.AppendLine();
@@ -173,6 +204,27 @@ internal static class FunctionMap
         }
 
         return sb.ToString();
+    }
+
+    public static IReadOnlyList<uint> ScanRangeStarts(PeImage pe)
+    {
+        var starts = new HashSet<uint>();
+        var data = pe.Data;
+        foreach (var (lo, hi, _) in NewGameRanges)
+        {
+            var a = pe.FileOffset(lo);
+            var b = pe.FileOffset(hi - 1);
+            if (a < 0 || b < 0)
+                continue;
+            for (var i = a + 2; i < b; i++)
+            {
+                if (data[i - 1] != 0xCC || data[i] == 0xCC || !pe.InCode(i))
+                    continue;
+                starts.Add(pe.Va(i));
+            }
+        }
+
+        return starts.OrderBy(v => v).ToList();
     }
 
     private static void WriteHits(StringBuilder sb, IReadOnlyList<Node> nodes, string key)
