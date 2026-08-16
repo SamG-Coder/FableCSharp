@@ -558,6 +558,28 @@ public sealed class ShaderProgram
     /// <c>PSHADER_INNER_SKY_SIMPLE</c>: two <c>tex</c>, last
     /// <c>mul_x2 …, c1</c>. No <c>def c0/c1</c>.
     /// </summary>
+    /// <summary>
+    /// <c>PSHADER_TEXTURE_DIFFUSE</c>: one <c>tex</c>,
+    /// <c>mul r0, v0, c0</c>, then <c>mul_x2 … t0</c>.
+    /// </summary>
+    public bool TryGetTextureDiffusePs()
+    {
+        if (TexCount != 1 || !HasMulX2)
+            return false;
+        var sawMulV0C0 = false;
+        var sawMulX2T0 = false;
+        foreach (var insn in DecodeInstructions())
+        {
+            if (insn.Opcode == MulOpcode && insn.DestShift == 0
+                && insn.Src0Is(RegTypeInput, 0) && insn.Src1Is(RegTypeConst, 0))
+                sawMulV0C0 = true;
+            if (insn.Opcode == MulOpcode && insn.DestShift == 1)
+                sawMulX2T0 = true;
+        }
+
+        return sawMulV0C0 && sawMulX2T0;
+    }
+
     public bool TryGetInnerSkySimplePs()
     {
         if (TexCount != 2 || HasConstDef(0) || HasConstDef(1))

@@ -426,7 +426,16 @@ public static class WorldShading
     /// Static-lit <c>00BB2540</c> <c>CreateVertexBuffer</c> is
     /// FVF <c>0x112</c> (<c>XYZ|NORMAL|TEX1</c>) stride <c>32</c>.
     /// VS is <c>mov oT0, v2</c>. PALSKIN first-seen is
-    /// <c>mov oT0, v4</c>. Object PS is 1-tex <c>mul t0, v0</c>.
+    /// <c>mov oT0, v4</c>. Compact ctor <c>00B8B630</c> looks
+    /// up <c>PSHADER_TEXTURE_DIFFUSE</c>: <c>tex t0</c>;
+    /// <c>mul r0, v0, c0</c>; <c>mul r0.w, t0, r0</c>;
+    /// <c>mul_x2 r0.xyz, t0, r0</c>. Caller <c>00BB30A0</c>
+    /// pushes texture-count <c>1</c>; bind <c>00BB301E</c>
+    /// is <c>SetTexture(stage, [array+4*stage])</c>.
+    /// First-seen PS <c>c0</c> writer is unread — do not
+    /// invent LayoutBasic <c>(0,1,2,0.5)</c> as that PS
+    /// constant. Live treats unread <c>c0</c> as 1 so the
+    /// proven <c>mul_x2</c> is <c>2 * t0 * v0</c>.
     /// </summary>
     public const uint FirstSeenStaticFvf = 0x112;
     public const int FirstSeenStaticStrideBytes = 32;
@@ -435,7 +444,31 @@ public static class WorldShading
     public const bool FirstSeenStaticOt0IsV2 = true;
     public const bool FirstSeenPalskinOt0IsV4 = true;
     public const uint FirstSeenStaticLitDraw = 0x00BB2540;
+    public const uint FirstSeenStaticLitCaller = 0x00BB30A0;
+    public const uint FirstSeenStaticCompactCtor = 0x00B8B630;
+    public const uint FirstSeenStaticSetTexture = 0x00BB301E;
+    public const uint FirstSeenStaticSetVertexShader = 0x00988020;
+    public const uint FirstSeenStaticAttachPixelShader = 0x00988140;
+    public const int FirstSeenStaticTextureStages = 1;
+    public const string FirstSeenStaticPsName = "PSHADER_TEXTURE_DIFFUSE";
+    public const string FirstSeenStaticVsName = "VSHADER_STATIC_DIRLIGHT_FOG";
+    public const bool FirstSeenStaticPsMulX2 = true;
+    public const bool FirstSeenStaticPsC0HasWriter = false;
     public const bool FirstSeenAppliesVertexFogBlend = true;
+
+    /// <summary>
+    /// <c>PSHADER_TEXTURE_DIFFUSE</c> RGB:
+    /// <c>sat(2 * t0 * (v0 * c0))</c>. First-seen <c>c0</c>
+    /// unread; pass identity when the writer is unknown.
+    /// </summary>
+    public static Vector3 EvaluateTextureDiffuseRgb(Vector3 t0, Vector3 v0, Vector4 c0)
+    {
+        var scaled = new Vector3(v0.X * c0.X, v0.Y * c0.Y, v0.Z * c0.Z);
+        return Vector3.Clamp(t0 * scaled * 2f, Vector3.Zero, Vector3.One);
+    }
+
+    public static Vector3 FirstSeenEvaluateTextureDiffuseRgb(Vector3 t0, Vector3 v0) =>
+        EvaluateTextureDiffuseRgb(t0, v0, Vector4.One);
 
     /// <summary>
     /// First-seen VS: <c>mad oFog, min(dp4(pos,c2), c0.y), -c18.w, c0.y</c>.

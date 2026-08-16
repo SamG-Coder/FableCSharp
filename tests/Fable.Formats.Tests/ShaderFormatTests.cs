@@ -239,6 +239,16 @@ public sealed class ShaderFormatTests
         Assert.Equal(0x112u, WorldShading.FirstSeenStaticFvf);
         Assert.Equal(32, WorldShading.FirstSeenStaticStrideBytes);
         Assert.Equal(0x00BB2540u, WorldShading.FirstSeenStaticLitDraw);
+        Assert.Equal(0x00BB30A0u, WorldShading.FirstSeenStaticLitCaller);
+        Assert.Equal(0x00B8B630u, WorldShading.FirstSeenStaticCompactCtor);
+        Assert.Equal(0x00BB301Eu, WorldShading.FirstSeenStaticSetTexture);
+        Assert.Equal(1, WorldShading.FirstSeenStaticTextureStages);
+        Assert.Equal("PSHADER_TEXTURE_DIFFUSE", WorldShading.FirstSeenStaticPsName);
+        Assert.Equal("VSHADER_STATIC_DIRLIGHT_FOG", WorldShading.FirstSeenStaticVsName);
+        Assert.True(WorldShading.FirstSeenStaticPsMulX2);
+        Assert.False(WorldShading.FirstSeenStaticPsC0HasWriter);
+        Assert.Equal(new Vector3(1f, 1f, 1f),
+            WorldShading.FirstSeenEvaluateTextureDiffuseRgb(new Vector3(0.5f, 0.5f, 0.5f), Vector3.One));
 
         Assert.Contains(3, land.ConstRegisters);
         Assert.DoesNotContain(1, land.ConstRegisters);
@@ -455,6 +465,36 @@ public sealed class ShaderFormatTests
             .First(e => e.Name == "VSHADER_LANDSCAPE_FOREGROUND");
         Assert.False(ShaderProgram.Parse(land.Name, "SHADERS_LANDSCAPE_FOREGROUND", land.Type, big.Read(land))
             .TryGetSkyOPosWvp());
+    }
+
+    [Fact]
+    public void First_seen_static_ps_is_texture_diffuse_mul_v0_c0_mulx2_t0()
+    {
+        var install = Require();
+        using var big = BigArchive.Open(install.ShadersBigPath);
+        var pixel = big.SubBanks.First(s => s.Name == "PIXEL_SHADERS");
+        var byName = big.ReadEntries(pixel).ToDictionary(e => e.Name, StringComparer.Ordinal);
+        Assert.True(byName.ContainsKey(WorldShading.FirstSeenStaticPsName));
+        var diffuse = ShaderProgram.Parse(
+            WorldShading.FirstSeenStaticPsName, pixel.Name, 1, big.Read(byName[WorldShading.FirstSeenStaticPsName]));
+        var fog = ShaderProgram.Parse(
+            "PSHADER_TEXTURE_DIFFUSE_FOG", pixel.Name, 1, big.Read(byName["PSHADER_TEXTURE_DIFFUSE_FOG"]));
+        Assert.True(diffuse.TryGetTextureDiffusePs());
+        Assert.Equal(1, diffuse.TexCount);
+        Assert.True(diffuse.HasMulX2);
+        Assert.Contains("mul_x2", diffuse.ToListing());
+        Assert.Contains("c0", diffuse.ToListing());
+        Assert.DoesNotContain("def c0", diffuse.ToListing());
+        Assert.False(fog.TryGetTextureDiffusePs());
+        Assert.Equal(1, WorldShading.FirstSeenStaticTextureStages);
+        Assert.Equal(0x00BB301Eu, WorldShading.FirstSeenStaticSetTexture);
+        Assert.Equal(0x00BB30A0u, WorldShading.FirstSeenStaticLitCaller);
+        Assert.Equal(0x00B8B630u, WorldShading.FirstSeenStaticCompactCtor);
+        Assert.Equal(0x00988020u, WorldShading.FirstSeenStaticSetVertexShader);
+        Assert.Equal(0x00988140u, WorldShading.FirstSeenStaticAttachPixelShader);
+        Assert.False(WorldShading.FirstSeenStaticPsC0HasWriter);
+        Assert.Equal(new Vector3(1f, 1f, 1f),
+            WorldShading.FirstSeenEvaluateTextureDiffuseRgb(new Vector3(0.5f, 0.5f, 0.5f), Vector3.One));
     }
 
     [Fact]
