@@ -1,10 +1,12 @@
 using Fable.Formats.Meshes;
+using Fable.Formats.Scene;
 
 namespace Fable.Render;
 
 /// <summary>
 /// Groups world triangles by textures.big id so the renderer can bind one
-/// sampler and draw a contiguous vertex range.
+/// sampler and draw a contiguous vertex range. Draw order follows
+/// <see cref="ScenePasses.Registration"/>.
 /// </summary>
 public sealed class TexturedMesh
 {
@@ -18,14 +20,10 @@ public static class MeshBatches
     {
         var grouped = triangles
             .GroupBy(tri => (tri.Layer, tri.TextureId, tri.TextureId1 == 0 ? tri.TextureId : tri.TextureId1))
-            .OrderBy(group => group.Key.Layer)
-            .ThenBy(group => group.Key.TextureId)
-            .ThenBy(group => group.Key.Item3)
             .ToList();
         var vertices = new MeshVertex[triangles.Count * 3];
-        var draws = new MeshDraw[grouped.Count];
+        var draws = new List<MeshDraw>(grouped.Count * 2);
         var cursor = 0;
-        var draw = 0;
         foreach (var group in grouped)
         {
             var first = cursor;
@@ -36,10 +34,29 @@ public static class MeshBatches
                 vertices[cursor++] = Vert(tri.C, tri.NormalC, tri.Normal, tri.UvC, tri.ColorC);
             }
 
-            draws[draw++] = new MeshDraw(group.Key.TextureId, (uint)first, (uint)(cursor - first), group.Key.Item3);
+            var count = (uint)(cursor - first);
+            foreach (var pass in ScenePasses.DrawnPasses(group.Key.Layer))
+            {
+                draws.Add(new MeshDraw(
+                    group.Key.TextureId,
+                    (uint)first,
+                    count,
+                    group.Key.Item3,
+                    pass.Bit,
+                    ScenePasses.ShaderMode(pass.Submit)));
+            }
         }
 
-        return new TexturedMesh { Vertices = vertices, Draws = draws };
+        draws.Sort((a, b) =>
+        {
+            var rank = ScenePasses.Rank(a.PassBit).CompareTo(ScenePasses.Rank(b.PassBit));
+            if (rank != 0)
+                return rank;
+            var tex = a.TextureId.CompareTo(b.TextureId);
+            return tex != 0 ? tex : a.TextureId1.CompareTo(b.TextureId1);
+        });
+
+        return new TexturedMesh { Vertices = vertices, Draws = [.. draws] };
     }
 
     private static MeshVertex Vert(System.Numerics.Vector3 p, System.Numerics.Vector3 n, System.Numerics.Vector3 face, System.Numerics.Vector2 uv, System.Numerics.Vector3 color)

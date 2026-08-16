@@ -10,6 +10,7 @@ public struct MeshPushConstants
     public Vector4 CameraPos;
     public Vector4 FogColor;
     public Vector4 LightDir;
+    public Vector4 Pass;
 
-    public const uint Size = 112;
+    public const uint Size = 128;
 }

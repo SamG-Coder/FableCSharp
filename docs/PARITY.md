@@ -242,6 +242,7 @@ Traced `00B27D90` → `00B25950` → layer `00B2AB80`. Do not invent VS register
 6. **Patch submit** `00BDC2D0` / `00BDC060`: require `[patch+8]` and `[patch+4]`, touch `0x1436EA0+0x1C8`, then x87 (`fld`). Exact DrawIndexed path UNREAD.
 7. **Pre-pass `00B277A0`**: `00B3B4A0(shader manager)` releases caches at +2288/+2296/+2304 and calls `00BD9B50([0x1436EA8]+1712)` — same pool object as `EnablePoolAllocation`.
 8. **`CEngineStateBlockDiffuse2X` apply** — still RTTI only. `0098B5E0(n)` is a device-wrapper call used with **2** (landscape 0x40) and **3** (earlier in `00B25882`).
+9. **Client walk.** `ScenePasses.Registration` is the 34-layer table. We submit landscape on bits **4** (1-tex `PSHADER_LANDSCAPE_BACKGROUND` shape) and **0x40** (proven `mul_x2` FG), static meshes once on **0x20** (first MainScene+616 bit after FG; other +616 bits unread), sky else-path on **0x2000**. Water / shadows / `0x400000` sky stay out. Locked by `ScenePassTests`.
 
 10. **Per-renderer shader stores**
     - Sky: `PSHADER_INNER_SKY` / `_SIMPLE` → `this+292`; `PSHADER_OUTER_SKY` → `+300`; `PSHADER_SKY_STAR_FIELD` → `+260`; `VSHADER_OUTER_SKY` → `+244`; `VSHADER_SKY_STAR_FIELD` → `+252`.

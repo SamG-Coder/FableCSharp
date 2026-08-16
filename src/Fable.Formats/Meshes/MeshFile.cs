@@ -448,8 +448,8 @@ public readonly record struct MeshTriangle(
     SceneLayer Layer = SceneLayer.Prop);
 
 /// <summary>
-/// CRenderManager pass order from Fable.exe: CEngineSkyRenderer,
-/// CEngineLandscapeRenderer, then CEnginePrimitiveManagerStaticMeshes.
+/// Geometry bucket. <see cref="Fable.Formats.Scene.ScenePasses"/> maps these
+/// onto exe layer bits (landscape 4 / 0x40, sky 0x2000, props 0x20).
 /// </summary>
 public enum SceneLayer
 {

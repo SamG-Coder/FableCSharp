@@ -57,6 +57,12 @@ public sealed unsafe partial class VulkanLineRenderer
         {
             if (draw.VertexCount == 0)
                 continue;
+            if (Math.Abs(_meshPush.Pass.X - draw.ShaderMode) > 0.01f)
+            {
+                _meshPush.Pass = new System.Numerics.Vector4(draw.ShaderMode, 0, 0, 0);
+                PushMeshConstants(commandBuffer);
+            }
+
             BindTexture(commandBuffer, draw.TextureId, 0);
             BindTexture(commandBuffer, draw.TextureId1 == 0 ? draw.TextureId : draw.TextureId1, 1);
             _vk.CmdDraw(commandBuffer, draw.VertexCount, 1, draw.FirstVertex, 0);

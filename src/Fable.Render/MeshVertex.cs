@@ -16,7 +16,13 @@ public readonly struct MeshVertex(Vector3 position, Vector3 normal, Vector2 uv, 
     public const uint ColorOffset = 32;
 }
 
-public readonly record struct MeshDraw(int TextureId, uint FirstVertex, uint VertexCount, int TextureId1 = 0);
+public readonly record struct MeshDraw(
+    int TextureId,
+    uint FirstVertex,
+    uint VertexCount,
+    int TextureId1 = 0,
+    uint PassBit = 0,
+    float ShaderMode = 1f);
 
 public readonly record struct GpuTexture(int Id, int Width, int Height, byte[] Rgba)
 {

@@ -1,0 +1,48 @@
+using Fable.Core;
+using Fable.Formats.Meshes;
+using Fable.Formats.Scene;
+using Fable.Game;
+using Fable.Render;
+
+namespace Fable.Formats.Tests;
+
+public sealed class ScenePassTests
+{
+    [Fact]
+    public void Registration_is_34_layers_and_walks_landscape_before_sky()
+    {
+        Assert.Equal(34, ScenePasses.Registration.Length);
+        Assert.True(ScenePasses.Rank(0x4) < ScenePasses.Rank(0x40));
+        Assert.True(ScenePasses.Rank(0x40) < ScenePasses.Rank(0x20));
+        Assert.True(ScenePasses.Rank(0x20) < ScenePasses.Rank(0x2000));
+        Assert.True(ScenePasses.Rank(0x2000) < ScenePasses.Rank(0x20000));
+        Assert.Equal(SceneSubmit.LandscapeBit4, ScenePasses.Registration[2].Submit);
+        Assert.Equal(SceneSubmit.LandscapeBit40, ScenePasses.Registration[5].Submit);
+        Assert.Equal(SceneSubmit.Primitives, ScenePasses.Registration[6].Submit);
+        Assert.Equal(SceneSubmit.SkyElse, ScenePasses.Registration[10].Submit);
+        Assert.Equal(SceneSubmit.None, ScenePasses.Registration.First(p => p.Bit == 0x02000000).Submit);
+    }
+
+    [Fact]
+    public void Lookout_draws_follow_exe_layer_bits()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        var things = levels.LoadThings("LookoutPoint");
+        var world = WorldGeometry.Build(install, "LookoutPoint", things.Things);
+        var mesh = MeshBatches.Build(world.Triangles);
+        Assert.Contains(mesh.Draws, d => d.PassBit == 0x4);
+        Assert.Contains(mesh.Draws, d => d.PassBit == 0x40);
+        Assert.Contains(mesh.Draws, d => d.PassBit == 0x20);
+        Assert.Contains(mesh.Draws, d => d.PassBit == 0x2000);
+        var ranks = mesh.Draws.Select(d => ScenePasses.Rank(d.PassBit)).ToList();
+        Assert.Equal(ranks.OrderBy(r => r), ranks);
+        var firstLand = mesh.Draws.First(d => d.PassBit == 0x4);
+        var fg = mesh.Draws.First(d => d.PassBit == 0x40);
+        var sky = mesh.Draws.First(d => d.PassBit == 0x2000);
+        Assert.Equal(0f, firstLand.ShaderMode);
+        Assert.Equal(1f, fg.ShaderMode);
+        Assert.Equal(2f, sky.ShaderMode);
+    }
+}

@@ -50,6 +50,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     private readonly Dictionary<int, DeviceTexture> _textures = new();
     private DeviceTexture _fallbackTexture;
     private MeshDraw[] _draws = [];
+    private MeshPushConstants _meshPush;
     private Image _depthImage;
     private DeviceMemory _depthMemory;
     private ImageView _depthView;
@@ -839,17 +840,16 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
 
         if (_meshCount > 0 && _meshBuffer.Handle != 0)
         {
-            var push = new MeshPushConstants
+            _meshPush = new MeshPushConstants
             {
                 ViewProj = viewProjection,
                 CameraPos = new Vector4(cameraPosition, Fable.Formats.WorldShading.FogEnd),
                 FogColor = new Vector4(Fable.Formats.WorldShading.FogColor, Fable.Formats.WorldShading.FogStart),
                 LightDir = new Vector4(Fable.Formats.WorldShading.SunDirection, 0),
+                Pass = Vector4.Zero,
             };
             _vk.CmdBindPipeline(commandBuffer, PipelineBindPoint.Graphics, _meshPipeline);
-            _vk.CmdPushConstants(commandBuffer, _meshPipelineLayout,
-                ShaderStageFlags.VertexBit | ShaderStageFlags.FragmentBit,
-                0, MeshPushConstants.Size, &push);
+            PushMeshConstants(commandBuffer);
             ulong offset = 0;
             var meshBuffer = _meshBuffer;
             _vk.CmdBindVertexBuffers(commandBuffer, 0, 1, in meshBuffer, in offset);
@@ -868,6 +868,14 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
 
         _vk.CmdEndRenderPass(commandBuffer);
         Check(_vk.EndCommandBuffer(commandBuffer));
+    }
+
+    private void PushMeshConstants(CommandBuffer commandBuffer)
+    {
+        var push = _meshPush;
+        _vk.CmdPushConstants(commandBuffer, _meshPipelineLayout,
+            ShaderStageFlags.VertexBit | ShaderStageFlags.FragmentBit,
+            0, MeshPushConstants.Size, &push);
     }
 
     private void RecreateSwapchain()
