@@ -8,9 +8,10 @@ namespace Fable.Formats.Levels;
 /// camera <c>[0x1436EA0]+448</c>, stride 16. Extract <c>00B2FD60</c>
 /// writes them via <c>00A42140</c> at +448/+464/+480/+496 after
 /// normalize <c>00A14440</c> (divide by length, <c>0x122DED8=1</c>).
-/// AABB on the patch object: +168 is the n&gt;0 corner (max), +180
-/// the n≤0 corner (min). <c>0x122DEDC=0</c>. Reject when
-/// <c>n·p &gt; d</c>. Missing AABB (<c>[patch+4]==0</c>) submits every
+/// AABB on the patch object: +168 is the n&gt;0 corner (min), +180
+/// the n≤0 corner (max) — the n-vertex for a fully-outside test.
+/// <c>0x122DEDC=0</c>. Reject when <c>n·p &gt; d</c>. Missing AABB
+/// (<c>[patch+4]==0</c>) submits every
 /// cell. Plane values themselves stay in the camera object; this
 /// type only encodes the compare.
 /// </summary>
@@ -19,8 +20,8 @@ public static class LandscapeFrustum
     public const int PlaneCount = 4;
     public const int PlaneStrideBytes = 16;
     public const int PlaneBaseOffset = 448;
-    public const int AabbMaxOffset = 168;
-    public const int AabbMinOffset = 180;
+    public const int AabbMinOffset = 168;
+    public const int AabbMaxOffset = 180;
     public const uint Extract = 0x00B2FD60;
     public const uint Normalize = 0x00A14440;
     public const uint StorePlane = 0x00A42140;
@@ -33,18 +34,18 @@ public static class LandscapeFrustum
     public readonly record struct Plane(Vector3 Normal, float D);
 
     /// <summary>
-    /// <c>00BDC2D0</c>: for each axis, <c>n[i] &gt; 0</c> picks max
-    /// else min. <c>fcomp d</c> / <c>test ah, 0x41</c> / <c>je</c>
-    /// reject is <c>n·p &gt; d</c>.
+    /// <c>00BDC2D0</c>: for each axis, <c>n[i] &gt; 0</c> picks min
+    /// else max (n-vertex). <c>fcomp d</c> / <c>test ah, 0x41</c> /
+    /// <c>je</c> reject is <c>n·p &gt; d</c> (fully outside).
     /// </summary>
     public static bool AabbIsOutside(Vector3 min, Vector3 max, ReadOnlySpan<Plane> planes)
     {
         foreach (var plane in planes)
         {
             var p = new Vector3(
-                plane.Normal.X > CompareZero ? max.X : min.X,
-                plane.Normal.Y > CompareZero ? max.Y : min.Y,
-                plane.Normal.Z > CompareZero ? max.Z : min.Z);
+                plane.Normal.X > CompareZero ? min.X : max.X,
+                plane.Normal.Y > CompareZero ? min.Y : max.Y,
+                plane.Normal.Z > CompareZero ? min.Z : max.Z);
             if (Vector3.Dot(plane.Normal, p) > plane.D)
                 return true;
         }

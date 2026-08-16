@@ -322,8 +322,8 @@ public sealed class LevFormatTests
         Assert.Equal(4, LandscapeFrustum.PlaneCount);
         Assert.Equal(16, LandscapeFrustum.PlaneStrideBytes);
         Assert.Equal(448, LandscapeFrustum.PlaneBaseOffset);
-        Assert.Equal(168, LandscapeFrustum.AabbMaxOffset);
-        Assert.Equal(180, LandscapeFrustum.AabbMinOffset);
+        Assert.Equal(168, LandscapeFrustum.AabbMinOffset);
+        Assert.Equal(180, LandscapeFrustum.AabbMaxOffset);
         Assert.Equal(0x00BDC2D0u, LandscapeFrustum.PatchSubmit);
         Assert.Equal(0x00B6B1A5u, LandscapeFrustum.PatchSubmitCaller);
         Assert.Equal(0x40, LandscapeFrustum.LandscapeBit40);
