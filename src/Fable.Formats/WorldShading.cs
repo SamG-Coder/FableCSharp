@@ -10,9 +10,11 @@ namespace Fable.Formats;
 /// <c>[+96]=35</c>, <c>[+100]=1</c>. TOD bytes at ctor are 0 so record 0
 /// is copied. <c>c35</c> is the VS MAD addend, not a LIT source.
 /// Fog: first-seen VS is <c>mad oFog, min(dp4(pos,c2),c0.y), -c18.w, c0.y</c>.
-/// <c>c2</c> is inverse row 0. <c>c18</c> is record <c>(0,0,0,1)</c>.
-/// LayoutBasic <c>c0=(0,1,2,0.5)</c> after dirty-2 flush. Far 7000
-/// is SKY_DEF, not the fog record. First-seen <c>FOGENABLE=1</c>.
+/// First-seen <c>c2</c> is the <c>00B47630</c> linear view-Z plane
+/// (start 1000 / end 2000), not inverse row 0. <c>c18</c> is record
+/// <c>(0,0,0,1)</c>. LayoutBasic <c>c0=(0,1,2,0.5)</c> after dirty-2
+/// flush. Far 7000 is SKY_DEF, not the fog record. First-seen
+/// <c>FOGENABLE=1</c>. D3D <c>oFog</c> saturates to <c>[0,1]</c>.
 /// </summary>
 public static class WorldShading
 {
@@ -385,11 +387,86 @@ public static class WorldShading
         MathF.Min(posDotC2, c0y) * (-c18w) + c0y;
 
     /// <summary>
+    /// D3D9 vertex-fog interpolator clamps <c>oFog</c> to
+    /// <c>[0,1]</c>. The VS <c>mad</c> itself has no <c>_sat</c>.
+    /// Live mesh VS does the same clamp.
+    /// </summary>
+    public const bool FirstSeenFogSaturates = true;
+
+    /// <summary>
+    /// First-seen fog <c>c2</c> is <see cref="LinearFogPlane"/> from
+    /// <c>00B47630</c>. <c>00B54310</c> inverse row 0 is mesh-path
+    /// <c>00B555A0</c> only — not the New Game first frame.
+    /// </summary>
+    public const bool FirstSeenFogC2IsLinearViewZ = true;
+
+    public static float SaturateFog(float oFog) =>
+        Math.Clamp(oFog, 0f, 1f);
+
+    /// <summary>
+    /// <c>00B47630</c> builds the fog plane from record
+    /// start/end (<c>+80/+84</c> = 1000/2000) and camera
+    /// <c>+276</c> (view 3x4 copy).
+    /// <c>dp4(world, plane) = (viewZ - start) / (end - start)</c>
+    /// with view +Z = look.
+    /// Inverse row 0 is not this plane: at SHOT2 it dots to ~35
+    /// and would force <c>oFog=0</c> on the whole house.
+    /// </summary>
+    public const int FogComputeCameraMatrixOffset = 276;
+
+    public static Vector4 LinearFogPlane(Vector3 cameraPos, Vector3 look)
+    {
+        var forward = Vector3.Normalize(look);
+        var denom = FogRecordEnd - FogStart;
+        var scale = 1f / denom;
+        return new Vector4(
+            forward.X * scale,
+            forward.Y * scale,
+            forward.Z * scale,
+            -(Vector3.Dot(forward, cameraPos) + FogStart) * scale);
+    }
+
+    public static float WorldDotFogPlane(Vector3 world, Vector4 plane) =>
+        plane.X * world.X + plane.Y * world.Y + plane.Z * world.Z + plane.W;
+
+    /// <summary>
+    /// First-seen live path: saturate
+    /// <c>EvaluateVertexFog(world · LinearFogPlane, c0.y, c18.w)</c>.
+    /// </summary>
+    public static float EvaluateWorldFog(Vector3 world, Vector3 cameraPos, Vector3 look) =>
+        SaturateFog(EvaluateVertexFog(
+            WorldDotFogPlane(world, LinearFogPlane(cameraPos, look)),
+            FirstSeenC0.Y,
+            FogRecordColor.W));
+
+    /// <summary>
+    /// First-seen FG/static: <c>dp3 r, n, -c19</c>;
+    /// <c>max r.x, r, c0.x</c>; <c>mul r.x, r.x, r.x</c>;
+    /// <c>mul r, r.x, c20</c>; <c>mad r, -r.y, c35, r</c>.
+    /// <c>c35.rgb=0</c> so RGB is <c>max(n·-c19, 0)² * c20</c>.
+    /// </summary>
+    public static float DirLightNdotL(Vector3 normal)
+    {
+        var n = normal.LengthSquared() < 1e-8f ? Vector3.UnitZ : Vector3.Normalize(normal);
+        var ndl = Vector3.Dot(n, new Vector3(
+            -DirLightDirection.X, -DirLightDirection.Y, -DirLightDirection.Z));
+        return MathF.Max(ndl, FirstSeenC0.X);
+    }
+
+    public static Vector3 EvaluateDirLightRgb(Vector3 normal)
+    {
+        var t = DirLightNdotL(normal);
+        t *= t;
+        return new Vector3(DirLightColor.X, DirLightColor.Y, DirLightColor.Z) * t
+               + new Vector3(LitColor.X, LitColor.Y, LitColor.Z);
+    }
+
+    /// <summary>
     /// D3D vertex fog: <c>oFog * rgb + (1-oFog) * FogColor</c>.
     /// First-seen FogColor is black so this is <c>rgb * oFog</c>.
     /// </summary>
     public static Vector3 BlendVertexFog(Vector3 rgb, float oFog) =>
-        rgb * oFog + FogColor * (1f - oFog);
+        rgb * SaturateFog(oFog) + FogColor * (1f - SaturateFog(oFog));
 
     /// <summary>
     /// <c>00DBDE40</c>, Create <c>006AC910</c>, ConstructFromParams

@@ -87,6 +87,9 @@ public sealed class ScenePassTests
         Assert.True(WorldShading.FirstSeenAppliesVertexFogBlend);
         Assert.Equal(Vector3.Zero, WorldShading.BlendVertexFog(new Vector3(1f, 1f, 1f), 0f));
         Assert.Equal(new Vector3(1f, 1f, 1f), WorldShading.BlendVertexFog(new Vector3(1f, 1f, 1f), 1f));
+        Assert.Equal(new Vector3(1f, 1f, 1f), WorldShading.BlendVertexFog(new Vector3(1f, 1f, 1f), 2f));
+        Assert.Equal(Vector3.Zero, WorldShading.BlendVertexFog(new Vector3(1f, 1f, 1f), -1f));
+        Assert.True(WorldShading.FirstSeenFogSaturates);
         var install = GameInstall.TryLocate();
         Assert.NotNull(install);
         using var levels = new LevelLibrary(install);

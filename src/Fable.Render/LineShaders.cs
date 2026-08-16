@@ -47,11 +47,12 @@ internal static class LineShaders
             fragUv = inUv;
             fragColor = inColor;
             fragWorld = inPosition;
-            // VS: dp4 r.x, pos, c2; min with c0.y; mad oFog, r.x, -c18.w, c0.y
+            // 00B47630 plane: dp4 world, c2. mad oFog, min(dp,c0.y), -c18.w, c0.y
+            // D3D fog interpolator saturates; the mad has no _sat.
             float dp = dot(vec4(inPosition, 1.0), pc.cameraPos);
             float c0y = 1.0;
             float c18w = 1.0;
-            fragFog = min(dp, c0y) * (-c18w) + c0y;
+            fragFog = clamp(min(dp, c0y) * (-c18w) + c0y, 0.0, 1.0);
         }
         """;
 
@@ -77,9 +78,12 @@ internal static class LineShaders
             vec4 t1 = texture(albedo1, fragUv);
             vec3 n = fragNormal;
             float nlen = length(n);
-            float ndl = nlen < 0.1 ? 1.0 : max(dot(normalize(n), pc.lightDir.xyz), 0.0);
-            // VS: mul r3, NdotL, c20; mad r3, *, c35, r3. c35 rgb is 0 at TOD 0.
-            vec3 v0 = fragColor.rgb * (pc.lightColor.rgb * ndl + pc.pass.yzw);
+            // VS: dp3 r, n, -c19; max r.x, r, c0.x; mul r.x, r.x, r.x;
+            // mul r, r.x, c20; mad r, -r.y, c35, r. c35.rgb = 0.
+            vec3 ldir = -pc.lightDir.xyz;
+            float ndl = nlen < 1e-8 ? 0.0 : max(dot(normalize(n), ldir), 0.0);
+            vec3 litAdd = pc.pass.yzw;
+            vec3 v0 = fragColor.rgb * (pc.lightColor.rgb * (ndl * ndl) + litAdd);
             float mode = pc.pass.x;
             vec3 lit;
             if (mode < 0.5)

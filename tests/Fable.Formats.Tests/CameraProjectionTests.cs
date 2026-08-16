@@ -89,7 +89,8 @@ public sealed class CameraProjectionTests
         Assert.Equal(12, LandscapeFrustum.InverseColumnStrideBytes);
         Assert.Equal(0x00B54310u, LandscapeFrustum.CameraConstantUpload);
         Assert.Equal(0x00989B00u, LandscapeFrustum.SetVsConstantF4);
-        Assert.True(LandscapeFrustum.FirstSeenUploadsInverseRow0AsC2);
+        Assert.False(LandscapeFrustum.FirstSeenUploadsInverseRow0AsC2);
+        Assert.True(WorldShading.FirstSeenFogC2IsLinearViewZ);
         Assert.False(LandscapeFrustum.FirstSeenUsesThirdPersonView);
         Assert.Equal(new Vector3(0f, 0f, 1f), LandscapeFrustum.FirstSeenCameraUp);
         Assert.Equal(18, LandscapeFrustum.LayoutFogRegister);
@@ -213,5 +214,41 @@ public sealed class CameraProjectionTests
         Assert.Equal(0x00B662F0u, SkyPass.Draw);
         Assert.Equal(0x2000u, SkyPass.FirstSeenLayerBit);
         Assert.False(SkyPass.FirstSeenUses400000);
+    }
+
+    [Fact]
+    public void First_seen_fog_c2_is_linear_view_z_not_inverse_row0()
+    {
+        var cam = new Vector3(40.033936f, 130.47711f, 16.78288f);
+        var look = new Vector3(-0.704544f, 0.6710376f, -0.23092493f);
+        var house = new Vector3(34f, 129f, 14f);
+
+        Assert.True(WorldShading.FirstSeenFogC2IsLinearViewZ);
+        Assert.True(WorldShading.FirstSeenFogSaturates);
+        Assert.False(LandscapeFrustum.FirstSeenUploadsInverseRow0AsC2);
+        Assert.Equal(276, WorldShading.FogComputeCameraMatrixOffset);
+        Assert.Equal(0x00B47630u, LandscapeFrustum.FogCompute);
+
+        var plane = WorldShading.LinearFogPlane(cam, look);
+        var dp = WorldShading.WorldDotFogPlane(house, plane);
+        Assert.True(dp < 0f, $"linear dp={dp}");
+        Assert.Equal(1f, WorldShading.EvaluateWorldFog(house, cam, look), 3);
+        Assert.Equal(1f, WorldShading.EvaluateWorldFog(cam, cam, look), 3);
+
+        LandscapeFrustum.LetterboxCots(
+            float.DegreesToRadians(72f), 4f, 3f, out var cotH, out var cotV);
+        var inverse = LandscapeFrustum.InverseRow0(cam, look, Vector3.UnitZ, cotH, cotV);
+        var inverseDp = WorldShading.WorldDotFogPlane(house, inverse);
+        Assert.True(inverseDp > 1f, $"inverse dp={inverseDp}");
+        Assert.Equal(0f, WorldShading.SaturateFog(
+            WorldShading.EvaluateVertexFog(inverseDp, WorldShading.FirstSeenC0.Y, WorldShading.FogRecordColor.W)), 3);
+
+        Assert.Equal(0f, WorldShading.DirLightNdotL(Vector3.UnitY), 5);
+        Assert.Equal(1f, WorldShading.DirLightNdotL(-Vector3.UnitY), 5);
+        Assert.Equal(0f, WorldShading.DirLightNdotL(Vector3.UnitZ), 5);
+        Assert.Equal(new Vector3(0.25f, 0.25f, 0.25f), WorldShading.EvaluateDirLightRgb(-Vector3.UnitY));
+        Assert.Equal(Vector3.Zero, WorldShading.EvaluateDirLightRgb(Vector3.UnitZ));
+        Assert.Equal(1f, WorldShading.SaturateFog(2f));
+        Assert.Equal(0f, WorldShading.SaturateFog(-1f));
     }
 }

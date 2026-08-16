@@ -320,6 +320,15 @@ public sealed class WorldSceneTests
         Assert.Equal(2000f, WorldShading.FogRecordEnd);
         Assert.Equal(1f, WorldShading.EvaluateVertexFog(0f, WorldShading.FirstSeenC0.Y, WorldShading.FogRecordColor.W));
         Assert.True(WorldShading.FirstSeenAppliesVertexFogBlend);
+        Assert.True(WorldShading.FirstSeenFogC2IsLinearViewZ);
+        Assert.Equal(1f, WorldShading.EvaluateWorldFog(
+            introPos, introPos, introLook - introPos), 3);
+        var houseNearCam = introPos + (introLook - introPos) * 8f;
+        Assert.Equal(1f, WorldShading.EvaluateWorldFog(
+            houseNearCam, introPos, introLook - introPos), 3);
+        Assert.True(
+            WorldShading.WorldDotFogPlane(houseNearCam, introC2) > 1f,
+            $"SHOT2 InverseRow0 would black the house dp={WorldShading.WorldDotFogPlane(houseNearCam, introC2)}");
         Assert.Equal(1, D3dDeviceState.FirstSeenFogEnable);
         Assert.Equal(
             LandscapeFrustum.CotHalfAngle(float.DegreesToRadians(72f)),

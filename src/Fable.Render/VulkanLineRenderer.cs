@@ -833,7 +833,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
 
         var clears = stackalloc ClearValue[]
         {
-            new() { Color = new ClearColorValue(0.52f, 0.58f, 0.68f, 1f) },
+            new() { Color = new ClearColorValue(0f, 0f, 0f, 1f) },
             new() { DepthStencil = new ClearDepthStencilValue { Depth = 1f } },
         };
         var pass = new RenderPassBeginInfo

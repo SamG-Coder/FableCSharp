@@ -110,8 +110,10 @@ public static class LandscapeFrustum
     /// <c>00B54310</c> <c>add edi, 0xE4</c> then
     /// <c>00989B00(2, [+228], [+240], [+252], [+264])</c>.
     /// Column stride 12 gathers inverse row 0 as <c>c2</c>.
-    /// <c>c3</c>/<c>c4</c> are rows 1/2; landscape per-cell
-    /// <c>00989A60(3)</c> later overwrites <c>c3</c> with UV.
+    /// Only caller is mesh <c>00B555A0</c>. First-seen fog
+    /// <c>c2</c> is <c>00B47630</c> linear view-Z, flushed to
+    /// wrapper+880. Per-cell <c>00989A60(3)</c> still overwrites
+    /// <c>c3</c> with the UV table; fog flush restores <c>c2</c>.
     /// </summary>
     public const uint CameraConstantUpload = 0x00B54310;
     public const uint CameraConstantUploadCaller = 0x00B555A0;
@@ -141,7 +143,12 @@ public static class LandscapeFrustum
     public const float FogRecordStart = 1000f;
     public const float FogRecordEnd = 2000f;
     public static readonly Vector4 FogRecordColor = new(0f, 0f, 0f, 1f);
-    public const bool FirstSeenUploadsInverseRow0AsC2 = true;
+    /// <summary>
+    /// Mesh-path <c>00B54310</c> writes inverse row 0 to <c>c2</c>.
+    /// First-seen New Game never calls it. Fog <c>c2</c> is
+    /// <see cref="Fable.Formats.WorldShading.LinearFogPlane"/>.
+    /// </summary>
+    public const bool FirstSeenUploadsInverseRow0AsC2 = false;
     /// <summary>
     /// <c>00B54310</c> <c>push ebx</c> with <c>ebx=4</c> writes
     /// inverse row 2 to <c>c4</c>. That site is only reached from

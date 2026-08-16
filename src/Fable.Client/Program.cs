@@ -126,12 +126,8 @@ window.Render += _ =>
         return;
 
     var aspect = window.FramebufferSize.X / (float)window.FramebufferSize.Y;
-    LandscapeFrustum.LetterboxCots(
-        float.DegreesToRadians(camera.FovDegrees),
-        window.FramebufferSize.X, window.FramebufferSize.Y,
-        out var cotH, out var cotV);
-    var fogPlane = LandscapeFrustum.InverseRow0(
-        camera.Position, camera.Forward, Vector3.UnitZ, cotH, cotV);
+    var fogPlane = Fable.Formats.WorldShading.LinearFogPlane(
+        camera.Position, camera.Forward);
     renderer.Draw(
         camera.ViewProjection(aspect), camera.Position, fogPlane,
         camera.SkyViewProjection(aspect));

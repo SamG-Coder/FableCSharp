@@ -354,6 +354,9 @@ public sealed class ShaderFormatTests
         Assert.Equal(0f, WorldShading.EvaluateVertexFog(2f, 1f, 1f));
         Assert.Equal(0.5f, WorldShading.EvaluateVertexFog(0.5f, 1f, 1f));
         Assert.True(WorldShading.FirstSeenAppliesVertexFogBlend);
+        Assert.True(WorldShading.FirstSeenFogC2IsLinearViewZ);
+        Assert.True(WorldShading.FirstSeenFogSaturates);
+        Assert.False(LandscapeFrustum.FirstSeenUploadsInverseRow0AsC2);
         Assert.Equal(28, D3dDeviceState.FogEnable);
         Assert.Equal(1, D3dDeviceState.FirstSeenFogEnable);
         Assert.Equal(0xFF000000u, D3dDeviceState.FirstSeenFogColorArgb);
