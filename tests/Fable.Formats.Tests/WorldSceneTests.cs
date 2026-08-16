@@ -102,6 +102,86 @@ public sealed class WorldSceneTests
     }
 
     [Fact]
+    public void Exit_link_low_bits_are_the_destination_entrance_uid()
+    {
+        var install = Require();
+        using var wad = Fable.Formats.Banks.BbbArchive.Open(install.WadPath);
+        var world = WorldFile.Load(install.WorldPath);
+        var byUid = world.Maps.ToDictionary(map => map.MapUid, map => map);
+        var files = new Dictionary<string, ThingFile>(StringComparer.OrdinalIgnoreCase);
+        foreach (var entry in wad.Entries.Where(e => e.Name.EndsWith(".tng", StringComparison.OrdinalIgnoreCase)))
+        {
+            try
+            {
+                files[Path.GetFileNameWithoutExtension(entry.Name)] =
+                    ThingFile.Parse(System.Text.Encoding.ASCII.GetString(wad.Read(entry)));
+            }
+            catch
+            {
+                // skip unreadable
+            }
+        }
+
+        var lookout = files["LookoutPoint"];
+        var picnic = files["PicnicArea"];
+        var picnicExit = lookout.Things.First(t =>
+            t.DefinitionType == "REGION_EXIT_POINT" &&
+            t.Properties["CTCDRegionExit.EntranceConnectedToUID"] == "179907590094848033");
+        var link = RegionLink.Unpack(179907590094848033UL);
+        Assert.Equal(163625, link.MapUid);
+        Assert.Equal(0x21u, link.EntranceSlot);
+        Assert.Equal(179907590094848033UL, link.Pack());
+        var dest = link.FindEntrance(picnic.Things);
+        Assert.NotNull(dest);
+        Assert.InRange(dest!.PositionX!.Value, 79f, 80f);
+
+        var matched = 0;
+        var missingMap = 0;
+        foreach (var (stem, file) in files)
+        {
+            foreach (var thing in file.Things)
+            {
+                if (thing.DefinitionType != "REGION_EXIT_POINT")
+                    continue;
+                if (!thing.Properties.TryGetValue("CTCDRegionExit.EntranceConnectedToUID", out var text) ||
+                    !ulong.TryParse(text, out var packed))
+                    continue;
+                var decoded = RegionLink.Unpack(packed);
+                if (!byUid.TryGetValue(decoded.MapUid, out var map))
+                {
+                    missingMap++;
+                    continue;
+                }
+
+                var destFile = files.GetValueOrDefault(map.FileStem) ?? files.GetValueOrDefault(map.ScriptName);
+                if (destFile is null)
+                {
+                    missingMap++;
+                    continue;
+                }
+
+                Assert.NotNull(decoded.FindEntrance(destFile.Things));
+                matched++;
+            }
+        }
+
+        Assert.True(matched >= 120, $"matched={matched} missingMap={missingMap}");
+    }
+
+    [Fact]
+    public void Bwd_tail_names_lookout_via_text_big()
+    {
+        var install = Require();
+        var ascii = System.Text.Encoding.ASCII.GetString(File.ReadAllBytes(install.BwdPath));
+        Assert.Contains("TXT_REGION_LOOKOUT_POINT", ascii);
+        Assert.Contains("MINIMAP_LOOKOUTPOINT", ascii);
+        using var big = Fable.Formats.Banks.BigArchive.Open(install.TextBigPath);
+        var entry = big.ReadEntries(big.SubBanks[0])
+            .First(e => e.Name == "TXT_REGION_LOOKOUT_POINT");
+        Assert.Equal("Lookout Point", Fable.Formats.Text.TextPayload.ReadUtf16(big.Read(entry)));
+    }
+
+    [Fact]
     public void Global_quests_file_parses_watch_for_hero_death()
     {
         var install = Require();

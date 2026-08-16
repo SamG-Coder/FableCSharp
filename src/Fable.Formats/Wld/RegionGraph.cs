@@ -52,7 +52,7 @@ public sealed class RegionGraph
         Neighbors.TryGetValue(region, out var list) ? list : [];
 
     public static int MapUidFromEntranceLink(ulong entranceConnectedToUid) =>
-        (int)(entranceConnectedToUid >> 40);
+        RegionLink.Unpack(entranceConnectedToUid).MapUid;
 
     private static string Unquote(string value)
     {
