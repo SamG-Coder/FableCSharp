@@ -17,6 +17,7 @@ public sealed class MeshFile
     public int NoBlockFaces { get; init; }
     public int DegenerateSkipped { get; init; }
     public int PrimitiveCount { get; init; }
+    public int BoneCount { get; init; }
     public IReadOnlyList<MeshPrimitiveReport> PrimitiveReports { get; init; } = [];
 
     public static MeshFile? TryParse(byte[] data, int entryType = -1)
@@ -99,8 +100,13 @@ public sealed class MeshFile
             var bump = ReadI32(data, ref cursor);
             var reflection = ReadI32(data, ref cursor);
             var illumination = ReadI32(data, ref cursor);
-            cursor += 4 + 4; // MapFlags + SelfIllumination
-            cursor += 4; // two-sided / transparent / boolean-alpha / degenerate
+            var mapFlags = ReadU32(data, ref cursor);
+            var selfIllumination = ReadF32(data, ref cursor);
+            Need(data, cursor, 4);
+            var flag0 = data[cursor++];
+            var flag1 = data[cursor++];
+            var flag2 = data[cursor++];
+            var flag3 = data[cursor++];
             var useFilenames = data[cursor++] != 0;
             if (useFilenames)
             {
@@ -108,7 +114,9 @@ public sealed class MeshFile
                     ReadCString(data, ref cursor);
             }
 
-            materials.Add(new MeshMaterial(id, matName, diffuse, bump, decal, reflection, illumination));
+            materials.Add(new MeshMaterial(
+                id, matName, diffuse, bump, decal, reflection, illumination,
+                mapFlags, selfIllumination, flag0, flag1, flag2, flag3));
         }
 
         var triangles = new List<MeshTriangle>(1024);
@@ -334,6 +342,7 @@ public sealed class MeshFile
             NoBlockFaces = noBlockFaces,
             DegenerateSkipped = degenerateSkipped,
             PrimitiveCount = primitiveCount,
+            BoneCount = boneCount,
             PrimitiveReports = primitiveReports,
         };
     }
@@ -475,7 +484,13 @@ public readonly record struct MeshMaterial(
     int BumpMapId,
     int DecalId,
     int ReflectionMapId,
-    int IlluminationMapId);
+    int IlluminationMapId,
+    uint MapFlags = 0,
+    float SelfIllumination = 0,
+    byte Flag0 = 0,
+    byte Flag1 = 0,
+    byte Flag2 = 0,
+    byte Flag3 = 0);
 
 public readonly record struct MeshTriangle(
     Vector3 A,

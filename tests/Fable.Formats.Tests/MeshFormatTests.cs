@@ -121,5 +121,32 @@ public sealed class MeshFormatTests
         Assert.DoesNotContain(mesh.Triangles, t => t.TextureId == 3182);
         Assert.Equal(2, mesh.PrimitiveReports.Count);
         Assert.True(mesh.DeclaredTriangles >= mesh.Triangles.Count);
+        var degenerate = mesh.Materials.Single(m => m.Name == "DegenerateTriangles");
+        Assert.Equal(0, degenerate.DiffuseMapId);
+        Assert.Equal(1, degenerate.Flag3);
+        Assert.Equal(0, degenerate.Flag0);
+        Assert.Equal(0, degenerate.Flag1);
+        Assert.Equal(0, degenerate.Flag2);
+        Assert.Contains(mesh.Materials, m => m.Name.Contains("Wall", StringComparison.OrdinalIgnoreCase) && m.Flag3 == 0);
+        var walls3180 = mesh.Materials.Single(m => m.DiffuseMapId == 3180);
+        Assert.Equal(1, walls3180.Flag1);
+    }
+
+    [Fact]
+    public void Kid_c3d_stores_hair_flag1_and_bones()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var path = Path.Combine(install.DataRoot, "graphics", "graphics.big");
+        using var big = BigArchive.Open(path);
+        var bank = big.SubBanks.First(item => item.Name.Contains("MESH", StringComparison.OrdinalIgnoreCase));
+        var entry = big.ReadEntries(bank).First(item => item.Id == 4300);
+        var mesh = MeshFile.Parse(big.Read(entry), (int)entry.Type);
+        Assert.Equal("MESH_YOUNGHERO_02", mesh.Name);
+        Assert.True(mesh.BoneCount > 0, $"kid bones={mesh.BoneCount}");
+        var hair = mesh.Materials.Single(m => m.Name.Contains("Hair", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(1, hair.Flag1);
+        Assert.Equal(0, hair.Flag3);
+        Assert.DoesNotContain(mesh.Materials, m => m.Name == "DegenerateTriangles");
     }
 }

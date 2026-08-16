@@ -236,9 +236,7 @@ public sealed class GameBin
     {
         if (typeName is "CReplaceableMeshDef")
             return ReadReplaceableMeshId(raw, bodyOffset);
-        if (typeName is "OBJECT" or "CREATURE" or "BUILDING" or "CAppearanceDef" or "THING")
-            return ReadGraphicBankIndex(raw, bodyOffset);
-        return null;
+        return ReadGraphicBankIndex(raw, bodyOffset);
     }
 
     private static int? ReadReplaceableMeshId(byte[] raw, int offset)

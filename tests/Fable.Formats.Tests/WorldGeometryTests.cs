@@ -226,6 +226,10 @@ public sealed class WorldGeometryTests
                  {
                      "OBJECT_KHG_BED_03", "OBJECT_TABLE_LARGE_ROUND_01",
                      "OBJECT_WOODEN_LAMP_OFF", "OBJECT_BS_RUG_ROUND_DIAMONDS_01",
+                     "GENERIC_INTERNAL_FIREPLACE", "OBJECT_BUILDING_DOOR_3",
+                     "OBJECT_CHAIR_01", "OBJECT_CUPBOARD_MEDIUM",
+                     "OBJECT_BOOKSHELF_01", "OBJECT_HOME_TABLE_3_STOOLS",
+                     "OBJECT_KHG_BED_01", "OBJECT_BS_TABLELAMP_UNLIT_01",
                  })
         {
             var thing = things.Things.First(t => t.DefinitionType == def && t.PositionX is not null);

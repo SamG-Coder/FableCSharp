@@ -66,6 +66,15 @@ public sealed class GameBinFormatTests
         Assert.Equal(7583, bin.FindMeshId("OBJECT_TABLE_LARGE_ROUND_01"));
         Assert.Equal(7544, bin.FindMeshId("OBJECT_WOODEN_LAMP_OFF"));
         Assert.Equal(4901, bin.FindMeshId("OBJECT_BS_RUG_ROUND_DIAMONDS_01"));
+        Assert.True(bin.FindMeshId("GENERIC_INTERNAL_FIREPLACE") is > 0,
+            "fireplace Graphic missing");
+        Assert.True(bin.FindMeshId("OBJECT_BUILDING_DOOR_3") is > 0, "door Graphic missing");
+        Assert.True(bin.FindMeshId("OBJECT_CHAIR_01") is > 0, "chair Graphic missing");
+        Assert.True(bin.FindMeshId("OBJECT_CUPBOARD_MEDIUM") is > 0, "cupboard Graphic missing");
+        Assert.True(bin.FindMeshId("OBJECT_BOOKSHELF_01") is > 0, "bookshelf Graphic missing");
+        Assert.True(bin.FindMeshId("OBJECT_HOME_TABLE_3_STOOLS") is > 0, "stool table Graphic missing");
+        Assert.True(bin.FindMeshId("OBJECT_KHG_BED_01") is > 0, "second bed Graphic missing");
+        Assert.True(bin.FindMeshId("OBJECT_BS_TABLELAMP_UNLIT_01") is > 0, "table lamp Graphic missing");
 
         var path = Path.Combine(install.DataRoot, "graphics", "graphics.big");
         using var big = BigArchive.Open(path);

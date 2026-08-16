@@ -260,6 +260,17 @@ public sealed class WorldSceneTests
         Assert.InRange(introFov, 65f, 80f);
         Assert.True((introLook - introPos).Length() > 1f);
         Assert.Contains(things, t => t.ScriptName == "HerosOldHouse");
+        var indoorLight = things.First(t =>
+            t.DefinitionType == "MARKER_LIGHT" &&
+            t.PositionX is not null &&
+            Math.Abs(t.PositionX.Value - 33.91f) < 0.2f &&
+            Math.Abs(t.PositionY!.Value - 131.55f) < 0.2f);
+        Assert.Equal("TRUE", indoorLight.Properties["CTCLight.Active"]);
+        Assert.Equal("CRGBColour(130,60,5,255)", indoorLight.Properties["CTCLight.Colour"]);
+        Assert.Equal("8.0", indoorLight.Properties["CTCLight.InnerRadius"]);
+        Assert.Equal("9.0", indoorLight.Properties["CTCLight.OuterRadius"]);
+        Assert.Contains(things, t => t.DefinitionType == "GENERIC_INTERNAL_FIREPLACE");
+        Assert.Contains(things, t => t.DefinitionType == "OBJECT_BUILDING_DOOR_3");
         Assert.Empty(RegionTravel.ActiveExits(things));
 
         var guild = levels.LoadThings("HeroGuildComplexInside").Things.ToList();
