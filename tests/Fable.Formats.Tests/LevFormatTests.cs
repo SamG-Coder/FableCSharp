@@ -375,7 +375,7 @@ public sealed class LevFormatTests
         Assert.NotNull(cells);
         var tris = height.ToTileTriangles(cells, compiled.Materials);
         Assert.True(tris.Count > 8_000, $"tris={tris.Count}");
-        Assert.True(tris.Count < 128 * 128 * 2, $"filled grid would clip holes tris={tris.Count}");
+        Assert.True(tris.Count < 128 * 128 * 2 * 3, $"unbounded mesh tris={tris.Count}");
         Assert.True(tris.Count(t => t.Normal.Z > 0) > tris.Count * 9 / 10);
         Assert.True(tris.Max(t => t.A.X) >= 120);
         Assert.True(tris.Min(t => t.A.X) <= 2);
@@ -407,6 +407,38 @@ public sealed class LevFormatTests
         var full = tiles.Tiles.Where(tile => tile.Vertices.Count == 289).ToList();
         Assert.True(full.Count >= 8);
         Assert.Contains(full, tile => tile.Indices.Count == 0);
+    }
+
+    [Fact]
+    public void Adaptive_tile_stores_edge_strip_objects_after_the_primary_strip()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var stb = StbArchive.Open(install.RuntimeStbPath);
+        using var levels = new LevelLibrary(install);
+        var lookout = levels.LoadHeightField("LookoutPoint")!;
+        var bytes = stb.Read(stb.FindLev("LookoutPoint")!);
+        var tiles = LevTileMesh.Parse(bytes, lookout.OriginX, lookout.OriginY, lookout.CellsX, lookout.CellsY);
+        var withExtras = tiles.Tiles.Where(tile => tile.Extras.Count >= 3).ToList();
+        Assert.True(withExtras.Count >= 8, $"tilesWithExtras={withExtras.Count}");
+        Assert.All(withExtras, tile =>
+        {
+            Assert.All(tile.Extras, extra =>
+            {
+                Assert.True(extra.Vertices.Count >= 3);
+                Assert.True(extra.Indices.Count >= 3);
+                Assert.All(extra.Indices, index => Assert.InRange(index, 0, extra.Vertices.Count - 1));
+                Assert.InRange(extra.Vertices[0].WorldX, 3200, 3400);
+                Assert.InRange(extra.Vertices[0].WorldY, 3450, 3650);
+                Assert.InRange(extra.Vertices[0].Z, 15, 80);
+            });
+        });
+
+        var compiled = levels.LoadCompiledLev("LookoutPoint")!;
+        var cells = LevCellGrid.TryParse(compiled)!;
+        var tris = lookout.ToTileTriangles(cells, compiled.Materials);
+        Assert.True(tris.Count > 36_000, $"edge strips should raise coverage tris={tris.Count}");
+        Assert.True(tris.Count < 128 * 128 * 2 * 3, $"unbounded mesh tris={tris.Count}");
     }
 
     [Fact]

@@ -30,10 +30,11 @@ parsers and notes.
 | Fine terrain mesh | 1-unit quads still exist for sampling. The **drawn** landscape is the STB tile mesh: index **strip** for adaptive tiles, 17×17 quads only when `v=289` and the lattice is complete. Treating 70%-filled adaptive tiles as a grid skipped ~1120 Lookout quads (sky holes). | `LevFormatTests` |
 | GPU texturing | Mesh vertex is pos/normal/UV. Draws are grouped by `textures.big` id. RGBA is uploaded as `R8G8B8A8` with a repeat/linear sampler. Fragment shader samples `albedo`. Some bank ids fail framed LZO and fall back to a 1×1. | `GpuTextureTests` |
 | STB tile table | After the coarse 36-byte lattice, leftover `magic/offset/size` is a tile directory (`0x012EC900`, file offset, packed size). Lookout 63 tiles, Picnic 47. Last record is a 0,0 sentinel. | `LevFormatTests` |
-| STB tile payload | `u32` uncompressed size, `u32` packed size, then **raw LZO** (not framed). Inflated header `u16` at +2 is vertex count (289 = 17×17). | `LevFormatTests` |
+| STB tile payload | `u32` uncompressed size, `u32` packed size, then **raw LZO** (not framed). Inflated 32-byte header: `u16` extra-object count, `u16` vert count at +2 (289 = 17×17), `u16` strip length at +4, `u16` flag at +18 (`256` = implicit 17×17, no primary strip). | `LevFormatTests` |
 | STB tile verts | 32-byte header, then `count` × **15-byte** records: `u16` world X, `u16` world Y, `f32` Z, 7 unread bytes (packed normal / colour). Mesh origin is the coarse cell's **east** edge. | `LevFormatTests` |
 | STB section 2 tile | The blob at `u32@2048` is the **same** raw-LZO tile. Lookout covers WLD `[3232,3248]×[3488,3504]` (map origin, 289 verts). Picnic covers `[3104,3120]×[3520,3536]`. This is the west-south cell the table does not store. | `LevFormatTests` |
-| STB tile indices | After the vertex array, adaptive tiles (`v < 289`) store a `u16` triangle list (all indices `< v`). Full 17×17 tiles usually skip that and start a second unread object (`59 10` header). | `LevFormatTests` |
+| STB tile indices | After the vertex array, adaptive tiles store exactly header `u16@+4` strip indices. Scanning until `index >= v` eats the next object's attach pair (tail jump 280→115). | `LevFormatTests` |
+| STB edge-strip objects | After the primary strip (or immediately when flag=256) sit `CPatchTesselationEdgeStrip` blobs. Adaptive: 34-byte header `attach0, attach1, v, ix, fmt…` then 15-byte world verts + strip. Flag 256: 30-byte header (no attach). Lookout adaptive tiles carry 3–16 extras; they fill the ~11% of 1 m cells the primary strip does not cover. | `LevFormatTests` |
 | Camera | System.Numerics row-major is uploaded as-is (no extra transpose). Z-up. Overview `(64,-40,95)` looks at `(64,64,36)`. | `CameraProjectionTests` |
 | Object basis | C3D is Z-up centimetres. TNG `RHSetForward` / `RHSetUp` are a right-handed Z-up frame (mesh X=right, Y=forward, Z=up). Streetlamp 4978 is 345 units tall in **Z**. | `WorldGeometryTests` |
 | Region space | One region is drawn in **local** metres: TNG XY is 0–128 on Lookout, not WLD `(3232,3488)`. STB world XY is subtracted by MapX/MapY. Object Z matches fine terrain (median ~10 cm). `ObjectScale` multiplies the 0.01 mesh scale. | `WorldGeometryTests` |
@@ -83,7 +84,7 @@ parsers and notes.
 | WAD 21-byte `u16` at +8 is height | Every Lookout/Picnic cell stores **60**. It is a constant, not Z. | `LevFormatTests` |
 | Material slot `u32` is a textures.big id | Lookout sand slot id 1911 decodes as `TEXTURE_BOWER_FEMALE_MIDDLE_LEGS_03C`. | `LevFormatTests` |
 | STB section 2 is a packed xyz stream | `stride=12` from the section header does not yield a dense height point cloud. It is a raw-LZO tile, same as the table payloads. | `LevFormatTests` |
-| Every inflated tile leftover is an index buffer | Full 17×17 tiles often start a nested `59 10` object (u16s 40/119 or 5/8, then 22785). Adaptive tiles do start with a `u16` triangle list. | `LevFormatTests` |
+| Every inflated tile leftover is one index buffer | Full 17×17 leftover starts a 30-byte extra object (`v, ix, 0x5911…`) not a second primary strip. Adaptive leftover after the counted strip is a chain of 34-byte edge-strip objects. | `LevFormatTests` |
 | Compressed tile bytes are a 17×17 f32 grid | Without LZO, almost no values sit in the TNG Z range. | `LevFormatTests.Compressed_tile_payload_is_not_a_17_by_17_float_grid` |
 | 15-byte verts on the packed tile | Z floats appear at ~15-byte gaps, but XY is not packed local. The stream is LZO; verts are world `u16` after inflate. | probe 2026-08-16 |
 | Every Lookout `DiffuseMapID` framed-LZO decodes | Some bank ids overrun the LZO reader. `TryLoad` returns null; those draws use a 1×1 fallback. | `GpuTextureTests` |
@@ -110,9 +111,9 @@ parsers and notes.
 1. **Full game.bin field tables.** We read `Graphic.bank_index` and `CReplaceableMeshDef`. Other controls (health, physics, inventory, quests) are still raw bytes.
 2. **Creature clothing / appearance layers.** Villager Graphic is the unclothed body (`MESH_BS_MALE_MIDDLE_UNCLOTHED_01`). `CAppearanceDef` / morphs are unread.
 3. **Streetlamp lit vs off.** TNG `OBJECT_STREETLAMP_LIT_SINGLE_01` maps to `MESH_OBJECT_STREETLAMP_OFF_02`. Lit state is probably a replaceable / particle, not a second mesh id.
-4. **Tile second object / 7-byte extras.** After verts (and optional indices) a second `59 10` object remains. The 7 bytes after Z are not a simple u8 normal (`FF` at +4 is common; packed 11-11-10 is not unit-length).
+4. **Tile extra-object formats / 7-byte extras.** Edge-strip `fmt` values (`0x5901`–`0x5904`, `0x5801`–`0x5804`, `0x7900`, …) are unread as side/LOD flags. Attach0/1 are not yet welded into extra index buffers. The 7 bytes after Z are still packed 11-11-10 + RGB.
 5. **GPU texturing leftovers.** Two albedo samplers, no atlas, no mipmaps, no bump/reflection/illumination maps, no DXT-on-GPU. Terrain UVs still tile every 16 world units. No shadow-buffer / colbuff variants.
-14. **CPatchTesselationEdgeStrip.** Exe stitches adjacent landscape patches with an edge strip. We offset neighbour tiles by MapX/Y; shared 16 m edges are not retessellated.
+14. **CPatchTesselationEdgeStrip weld.** Extra objects parse and draw as their own strips. Attach0/1 (primary verts the strip welds to) are stored but not inserted into the extra index buffer.
 15. **LoadWaterData / CEngineWaterRenderer.** `SetStaticMapFileForUse` always loads water after opening the static maps. Sea / river / ice shaders (`VSHADER_WATER_FOREGROUND`, `VSHADER_SEA_BACKGROUND`) are unread.
 16. **Picnic fillers.** `PicnicArea_Filler_02/03` touch Lookout but have no STB `.lev` (`LoadedOnPlayerProximity FALSE`). Likely `CLandscapeBackgroundPatch` only; WAD cells unread.
 17. **CEngineLightingManager register maps.** Scene pass calls `00B46C80`/`00B46890` on `0x1436E9C` then caches a matrix at device-wrapper +496 (`009881F0`). `PSCONST_MAX_FOG_ALPHA` default is (0.5)×4; `PSCONST_TFACTOR` is (1)×4. **Which VS constant (`c20`/`c35`/`c3`/`c2`/`c18`) they become is still UNREAD.**
@@ -250,7 +251,7 @@ Traced `00B27D90` → `00B25950` → layer `00B2AB80`. Do not invent VS register
     - Water: `PSHADER_WATER_SKY_MAP` → `+452`; `PSHADER_WATER_ENVIRONMENT_MAP` → `+436`.
 11. **`EnableSky` / `EnableLandscape` / `EnableWater` / `EnableWeather` / `EnableShadows` / `EnablePrimitives`** are `ret 4` name interners, not the draw path.
 12. **State blocks** exist as RTTI only in this dump: `CEngineStateBlockSolid`, `Solid2X`, `Alpha`, `Alpha2X`, `AdditiveAlpha`, `AddSmoothAlpha`, `Alpha2XTFactor`, `DiffuseOnly`, **`Diffuse2X`**, `DiffuseEnv2X`.
-13. **`CEngineLandscapeMeshBuilder` / `CPatchTesselationEdgeStrip`**: 17×17 (`v=289`) is a full grid; other tiles are the stored strip. Still reading those strips; leftover holes are unread tessellation, not a CPU 70% grid.
+13. **`CEngineLandscapeMeshBuilder` / `CPatchTesselationEdgeStrip`**: 17×17 (`v=289`, flag 256) is a full grid; other tiles use the counted strip plus stored edge-strip objects. Attach weld is unread.
 
 ## Exe dump tool
 

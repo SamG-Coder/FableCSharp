@@ -7,7 +7,8 @@ namespace Fable.Formats.Levels;
 
 /// <summary>
 /// Per-16-unit landscape tile stored in the runtime STB copy of a .lev.
-/// Each table record points at a raw-LZO payload of 15-byte world-space verts.
+/// Each table record points at a raw-LZO payload of 15-byte world-space verts
+/// plus optional CPatchTesselationEdgeStrip objects after the primary strip.
 /// The blob at the u32@2048 offset is the same format (map-origin / west cell).
 /// </summary>
 public sealed class LevTileMesh
@@ -67,21 +68,33 @@ public sealed class LevTileMesh
         var stamped = 0;
         foreach (var tile in Tiles)
         {
-            foreach (var vert in tile.Vertices)
-            {
-                if (vert.Z is < 0f or > 200f)
-                    continue;
-                var x = vert.WorldX - originX;
-                var y = vert.WorldY - originY;
-                var ix = (int)MathF.Round(x);
-                var iy = (int)MathF.Round(y);
-                if (ix < 0 || iy < 0 || ix > width || iy > height)
-                    continue;
-                if (MathF.Abs(x - ix) > 0.05f || MathF.Abs(y - iy) > 0.05f)
-                    continue;
-                dest[ix, iy] = vert.Z;
-                stamped++;
-            }
+            stamped += StampVerts(dest, originX, originY, width, height, tile.Vertices);
+            foreach (var extra in tile.Extras)
+                stamped += StampVerts(dest, originX, originY, width, height, extra.Vertices);
+        }
+
+        return stamped;
+    }
+
+    private static int StampVerts(
+        float[,] dest, float originX, float originY, int width, int height,
+        IReadOnlyList<LevTileVertex> verts)
+    {
+        var stamped = 0;
+        foreach (var vert in verts)
+        {
+            if (vert.Z is < 0f or > 200f)
+                continue;
+            var x = vert.WorldX - originX;
+            var y = vert.WorldY - originY;
+            var ix = (int)MathF.Round(x);
+            var iy = (int)MathF.Round(y);
+            if (ix < 0 || iy < 0 || ix > width || iy > height)
+                continue;
+            if (MathF.Abs(x - ix) > 0.05f || MathF.Abs(y - iy) > 0.05f)
+                continue;
+            dest[ix, iy] = vert.Z;
+            stamped++;
         }
 
         return stamped;
@@ -140,24 +153,48 @@ public sealed class LevTileMesh
             }
 
             if (tile.Indices.Count >= 3)
+                AddStrip(triangles, tile.Vertices, points, tile.Indices, cells, bySlot, textures);
+
+            foreach (var extra in tile.Extras)
             {
-                for (var i = 0; i + 2 < tile.Indices.Count; i++)
+                var extraPoints = new Vector3[extra.Vertices.Count];
+                for (var i = 0; i < extra.Vertices.Count; i++)
                 {
-                    var ia = tile.Indices[i];
-                    var ib = tile.Indices[i + 1];
-                    var ic = tile.Indices[i + 2];
-                    var a = PointOf(tile.Vertices[ia], points[ia]);
-                    var b = PointOf(tile.Vertices[ib], points[ib]);
-                    var c = PointOf(tile.Vertices[ic], points[ic]);
-                    if ((i & 1) != 0)
-                        (b, c) = (c, b);
-                    var tex = LayersAt(a.P, cells, bySlot, textures);
-                    Add(triangles, a, b, c, tex.A, tex.B);
+                    var ev = extra.Vertices[i];
+                    extraPoints[i] = new Vector3(ev.WorldX - originX, ev.WorldY - originY, ev.Z);
                 }
+
+                AddStrip(triangles, extra.Vertices, extraPoints, extra.Indices, cells, bySlot, textures);
             }
         }
 
         return triangles;
+    }
+
+    private static void AddStrip(
+        List<MeshTriangle> triangles,
+        IReadOnlyList<LevTileVertex> verts,
+        Vector3[] points,
+        IReadOnlyList<int> indices,
+        LevCellGrid cells,
+        Dictionary<int, LevMaterial> bySlot,
+        HeaderEnums? textures)
+    {
+        for (var i = 0; i + 2 < indices.Count; i++)
+        {
+            var ia = indices[i];
+            var ib = indices[i + 1];
+            var ic = indices[i + 2];
+            if ((uint)ia >= (uint)verts.Count || (uint)ib >= (uint)verts.Count || (uint)ic >= (uint)verts.Count)
+                continue;
+            var a = PointOf(verts[ia], points[ia]);
+            var b = PointOf(verts[ib], points[ib]);
+            var c = PointOf(verts[ic], points[ic]);
+            if ((i & 1) != 0)
+                (b, c) = (c, b);
+            var tex = LayersAt(a.P, cells, bySlot, textures);
+            Add(triangles, a, b, c, tex.A, tex.B);
+        }
     }
 
     private static (Vector3 P, Vector3 N) PointOf(LevTileVertex v, Vector3 p) =>
@@ -253,22 +290,35 @@ public sealed class LevTileMesh
                 PackedDirection.ColorRgb(dest[o + 12], dest[o + 13], dest[o + 14]));
         }
 
+        var declared = BitConverter.ToUInt16(dest, 4);
+        var extraCount = BitConverter.ToUInt16(dest, 0);
+        var flag = BitConverter.ToUInt16(dest, 18);
+        var hasPrimaryStrip = flag != 256;
+        var indices = hasPrimaryStrip
+            ? ReadIndices(dest, count, need, declared)
+            : [];
+        var extraStart = hasPrimaryStrip ? need + declared * 2 : need;
         return new LevTile(
             index,
             0, 0,
             verts[0].WorldX,
             verts[0].WorldY,
             verts,
-            ReadIndices(dest, count, need));
+            indices,
+            ReadExtras(dest, extraStart, extraCount, hasPrimaryStrip));
     }
 
-    internal static IReadOnlyList<int> ReadIndices(byte[] dest, int vertCount, int start)
+    internal static IReadOnlyList<int> ReadIndices(byte[] dest, int vertCount, int start, int declared = -1)
     {
         if (start + 6 > dest.Length)
             return [];
 
+        var limit = dest.Length;
+        if (declared > 0)
+            limit = Math.Min(limit, start + declared * 2);
+
         var indices = new List<int>();
-        for (var o = start; o + 2 <= dest.Length; o += 2)
+        for (var o = start; o + 2 <= limit; o += 2)
         {
             var index = BitConverter.ToUInt16(dest, o);
             if (index >= vertCount)
@@ -278,6 +328,64 @@ public sealed class LevTileMesh
 
         return indices.Count >= 3 ? indices : [];
     }
+
+    /// <summary>
+    /// CPatchTesselationEdgeStrip blobs after the primary strip.
+    /// Flag 256 (full grid) extras start immediately and have no attach pair
+    /// (30-byte header). Adaptive extras are attach0/attach1 + 30 bytes (34).
+    /// </summary>
+    internal static IReadOnlyList<LevTileExtra> ReadExtras(
+        byte[] dest, int start, int declaredObjects, bool hasAttach)
+    {
+        var extras = new List<LevTileExtra>();
+        var cursor = start;
+        var header = hasAttach ? 34 : 30;
+        var budget = Math.Max(declaredObjects, 0) + 2;
+        while (cursor + header + 15 <= dest.Length && extras.Count < budget)
+        {
+            var attachOff = hasAttach ? 4 : 0;
+            var attach0 = hasAttach ? BitConverter.ToUInt16(dest, cursor) : (ushort)0xFFFF;
+            var attach1 = hasAttach ? BitConverter.ToUInt16(dest, cursor + 2) : (ushort)0xFFFF;
+            var v = BitConverter.ToUInt16(dest, cursor + attachOff);
+            var ix = BitConverter.ToUInt16(dest, cursor + attachOff + 2);
+            var fmt = BitConverter.ToUInt16(dest, cursor + attachOff + 4);
+            if (v is < 3 or > 400 || ix < 3 || ix > 4000)
+                break;
+
+            var vertAt = cursor + header;
+            var end = vertAt + v * VertexStride + ix * 2;
+            if (end > dest.Length)
+                break;
+
+            var x = BitConverter.ToUInt16(dest, vertAt);
+            var y = BitConverter.ToUInt16(dest, vertAt + 2);
+            var z = BitConverter.ToSingle(dest, vertAt + 4);
+            if (x is < 2000 or > 6000 || y is < 2000 or > 6000 || z is < 0f or > 200f)
+                break;
+
+            var verts = new LevTileVertex[v];
+            for (var i = 0; i < v; i++)
+            {
+                var o = vertAt + i * VertexStride;
+                verts[i] = new LevTileVertex(
+                    BitConverter.ToUInt16(dest, o),
+                    BitConverter.ToUInt16(dest, o + 2),
+                    BitConverter.ToSingle(dest, o + 4),
+                    PackedDirection.Unpack(BitConverter.ToUInt32(dest, o + 8)),
+                    PackedDirection.ColorRgb(dest[o + 12], dest[o + 13], dest[o + 14]));
+            }
+
+            extras.Add(new LevTileExtra(
+                attach0,
+                attach1,
+                fmt,
+                verts,
+                ReadIndices(dest, v, vertAt + v * VertexStride, ix)));
+            cursor = end;
+        }
+
+        return extras;
+    }
 }
 
 public readonly record struct LevTile(
@@ -286,6 +394,18 @@ public readonly record struct LevTile(
     int CellY,
     float OriginX,
     float OriginY,
+    IReadOnlyList<LevTileVertex> Vertices,
+    IReadOnlyList<int> Indices,
+    IReadOnlyList<LevTileExtra> Extras);
+
+/// <summary>
+/// One CPatchTesselationEdgeStrip after the primary tile mesh.
+/// Attach0/1 are primary-vert indices the strip welds to (0xFFFF if none).
+/// </summary>
+public readonly record struct LevTileExtra(
+    int Attach0,
+    int Attach1,
+    ushort Format,
     IReadOnlyList<LevTileVertex> Vertices,
     IReadOnlyList<int> Indices);
 

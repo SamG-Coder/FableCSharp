@@ -81,6 +81,9 @@ switch (command)
     case "bin":
         DumpGameBin(install, rest.FirstOrDefault());
         break;
+    case "scene":
+        DumpScene(install, rest.FirstOrDefault() ?? "LookoutPoint");
+        break;
     default:
         PrintUsage();
         return 1;
@@ -109,6 +112,7 @@ static void PrintUsage()
           lev [region]         inspect a compiled .lev
           tex [id|name]        decode a textures.big image
           bin [name]           compiled game.bin def / mesh id
+          scene [region]       tile/object coverage vs AABB neighbours
 
         FABLE_PATH overrides the default Steam TLC install.
         """);
@@ -513,4 +517,102 @@ static string? ResolveBankPath(GameInstall install, string? name)
 
     return install.FindBigBanks()
         .FirstOrDefault(path => Path.GetFileName(path).Equals(name, StringComparison.OrdinalIgnoreCase));
+}
+
+static void DumpScene(GameInstall install, string region)
+{
+    using var levels = new LevelLibrary(install);
+    var things = levels.LoadThings(region);
+    var world = WorldGeometry.Build(install, region, things.Things);
+    Console.WriteLine($"region {region} maps={string.Join(",", world.Regions)}");
+    Console.WriteLine($"instances={world.MeshInstances} missingMesh={world.MissingMeshes} tris={world.Triangles.Count}");
+    Console.WriteLine($"primaryThings={things.Things.Count()}");
+
+    foreach (var name in world.Regions)
+    {
+        var height = levels.LoadHeightField(name);
+        if (height is null)
+        {
+            Console.WriteLine($"  {name}  NO STB");
+            continue;
+        }
+
+        var compiled = levels.LoadCompiledLev(name);
+        var cells = compiled is null ? null : LevCellGrid.TryParse(compiled);
+        var tris = cells is null || compiled is null
+            ? 0
+            : height.ToTileTriangles(cells, compiled.Materials).Count;
+        var tiles = height.Tiles.Tiles;
+        var full = tiles.Count(t => t.Vertices.Count == 289);
+        var adaptive = tiles.Count(t => t.Vertices.Count != 289);
+        var noIx = tiles.Count(t => t.Vertices.Count != 289 && t.Indices.Count < 3);
+        var extraObjs = tiles.Sum(t => t.Extras.Count);
+        var extraVerts = tiles.Sum(t => t.Extras.Sum(e => e.Vertices.Count));
+        var failedGrid = 0;
+        foreach (var tile in tiles.Where(t => t.Vertices.Count == 289))
+        {
+            var keys = new HashSet<(int, int)>();
+            foreach (var v in tile.Vertices)
+                keys.Add(((int)MathF.Round(v.WorldX - height.OriginX), (int)MathF.Round(v.WorldY - height.OriginY)));
+            if (keys.Count < 280)
+                failedGrid++;
+        }
+
+        var tng = levels.TryLoadThings(name);
+        Console.WriteLine(
+            $"  {name} tiles={tiles.Count} full289={full} failGrid={failedGrid} adaptive={adaptive} adaptiveNoIx={noIx} extras={extraObjs}/{extraVerts}v landTris={tris} tng={(tng is null ? -1 : tng.Things.Count())} origin={height.OriginX},{height.OriginY} cells={height.CellsX}x{height.CellsY}");
+    }
+
+    var namesPath = install.FindCompiledDef("names.bin");
+    var binPath = install.FindCompiledDef("game.bin");
+    if (namesPath is null || binPath is null)
+        return;
+    var defs = GameBin.Load(binPath, NamesBin.Load(namesPath));
+    var misses = new Dictionary<string, int>(StringComparer.Ordinal);
+    foreach (var name in world.Regions)
+    {
+        var tng = levels.TryLoadThings(name);
+        if (tng is null)
+            continue;
+        foreach (var thing in tng.Things)
+        {
+            if (thing.DefinitionType is null || thing.PositionX is null)
+                continue;
+            if (defs.FindMeshId(thing.DefinitionType) is not null)
+                continue;
+            misses[thing.DefinitionType] = misses.GetValueOrDefault(thing.DefinitionType) + 1;
+        }
+    }
+
+    var lookout = levels.LoadHeightField(region);
+    if (lookout is not null)
+    {
+        Console.WriteLine("sample adaptive index prefixes:");
+        foreach (var tile in lookout.Tiles.Tiles.Where(t => t.Vertices.Count is > 3 and < 289 && t.Indices.Count >= 12).Take(4))
+        {
+            var head = string.Join(",", tile.Indices.Take(24));
+            var mid = tile.Indices.Count > 600 ? string.Join(",", tile.Indices.Skip(560).Take(16)) : "-";
+            var tail = string.Join(",", tile.Indices.TakeLast(12));
+            Console.WriteLine($"  v={tile.Vertices.Count} ix={tile.Indices.Count} head={head}");
+            Console.WriteLine($"    mid560={mid} tail={tail}");
+            var deg = 0;
+            var real = 0;
+            for (var i = 0; i + 2 < tile.Indices.Count; i++)
+            {
+                var a = tile.Indices[i];
+                var b = tile.Indices[i + 1];
+                var c = tile.Indices[i + 2];
+                if (a == b || b == c || a == c)
+                    deg++;
+                else
+                    real++;
+            }
+
+            Console.WriteLine($"    stripDeg={deg} stripReal={real} fullQuadWouldBe=512");
+        }
+    }
+
+    Console.WriteLine($"missing Graphic types={misses.Count}");
+    foreach (var pair in misses.OrderByDescending(p => p.Value).Take(20))
+        Console.WriteLine($"  {pair.Value,4} {pair.Key}");
 }
