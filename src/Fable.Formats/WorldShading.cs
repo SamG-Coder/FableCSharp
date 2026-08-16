@@ -12,9 +12,12 @@ namespace Fable.Formats;
 /// Fog: first-seen VS is <c>mad oFog, min(dp4(pos,c2),c0.y), -c18.w, c0.y</c>.
 /// First-seen <c>c2</c> is the <c>00B47630</c> linear view-Z plane
 /// (start 1000 / end 2000), not inverse row 0. <c>c18</c> is record
-/// <c>(0,0,0,1)</c>. LayoutBasic <c>c0=(0,1,2,0.5)</c> after dirty-2
-/// flush. Far 7000 is SKY_DEF, not the fog record. First-seen
-/// <c>FOGENABLE=1</c>. D3D <c>oFog</c> saturates to <c>[0,1]</c>.
+/// <c>(0,0,0,1)</c>. LayoutBasic <c>c0=(0,1,2,0.5)</c> and
+/// <c>c1=(256)×4</c> after dirty-2 flush. PALSKIN turns
+/// D3DCOLOR indices with <c>v1.zyxw*c1</c> then
+/// <c>a0</c>-relative <c>c38</c>. Far 7000 is SKY_DEF, not the
+/// fog record. First-seen <c>FOGENABLE=1</c>. D3D <c>oFog</c>
+/// saturates to <c>[0,1]</c>.
 /// </summary>
 public static class WorldShading
 {
@@ -162,9 +165,15 @@ public static class WorldShading
     }
 
     /// <summary>
-    /// VS <c>m4x3</c> / <c>00BCFB00</c> 3-row upload: <c>dot(pos.xyzw, row)</c>
-    /// with <c>w=1</c>. Weights are UBYTE/255. Missing bones leave the
-    /// position unchanged.
+    /// VS: <c>mul r2, v1.zyxw, c1</c> (indices),
+    /// <c>mov r3, v2.zyxw</c> (weights 0–1),
+    /// <c>mov a0.x, r2.x</c>, then
+    /// <c>mul/mad r, r3, c[38+a0]</c> (relative).
+    /// File bytes are the integer bone ids / UBYTE weights.
+    /// D3DCOLOR×<see cref="FirstSeenC1"/> recovers those ids.
+    /// Both streams use the same <c>.zyxw</c> so pairs stay matched.
+    /// <c>00BCFB00</c> uploads 3 float4s per influence.
+    /// Missing bones leave the position unchanged.
     /// </summary>
     public static Vector3 SkinPosition(
         Vector3 position, ReadOnlySpan<byte> indices, ReadOnlySpan<byte> weights, Matrix4x4[] palettes)
@@ -377,6 +386,19 @@ public static class WorldShading
     /// FOGTABLEMODE/FOGVERTEXMODE NONE still blend toward FOGCOLOR.
     /// </summary>
     public static readonly Vector4 FirstSeenC0 = new(0f, 1f, 2f, 0.5f);
+    /// <summary>
+    /// LayoutBasic <c>00BDBB70</c> second float4 is
+    /// <c>0x43800000</c> × 4. Dirty-2 flush <c>00989BF0</c>
+    /// uploads count 2 from register 0, so first-seen
+    /// <c>c1=(256,256,256,256)</c>. PALSKIN
+    /// <c>mul r2, v1.zyxw, c1</c> turns D3DCOLOR indices
+    /// into 0–255 for <c>a0.x</c>.
+    /// </summary>
+    public static readonly Vector4 FirstSeenC1 = new(256f, 256f, 256f, 256f);
+    public const uint LayoutBasicFlush = 0x00989BF0;
+    public const int LayoutBasicFloat4Count = 2;
+    public const uint FirstSeenPalskinDefaultDraw = 0x00BD549D;
+    public const bool FirstSeenPalskinUsesA0RelativeC38 = true;
     public const bool FirstSeenAppliesVertexFogBlend = true;
 
     /// <summary>

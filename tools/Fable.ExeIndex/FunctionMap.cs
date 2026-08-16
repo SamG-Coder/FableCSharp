@@ -99,6 +99,8 @@ internal static class FunctionMap
         ("fog colour flush c18", 0x009897C0),
         ("fog plane setter +880", 0x00988600),
         ("LayoutBasic fog +56", 0x00BDBB70),
+        ("LayoutBasic flush c0 c1", 0x00989BF0),
+        ("PALSKIN default draw", 0x00BD549D),
         ("lighting record alloc", 0x00B4A4C0),
         ("camera update helper FOV", 0x00B314E0),
         ("extract other writes view", 0x00B2FC50),

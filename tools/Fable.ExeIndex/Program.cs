@@ -833,6 +833,8 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteWalkPart(pe, store, family, "Landscape setup FOGENABLE 00B67480", 0x00B67480, 40),
         WriteWalkPart(pe, store, family, "MainScene FOGENABLE bits 00B32AD0", 0x00B32AD0, 80),
         WriteWalkPart(pe, store, family, "LayoutBasic 00BDBB70", 0x00BDBB70, 250),
+        WriteWalkPart(pe, store, family, "LayoutBasic flush c0 c1 00989BF0", 0x00989BF0, 80),
+        WriteWalkPart(pe, store, family, "PALSKIN default draw 00BD549D", 0x00BD549D, 200),
         WriteFnPart(pe, store, family, "Fog colour setter 009886C0", 0x009886C0, 20),
         WriteFnPart(pe, store, family, "Fog colour flush c18 009897C0", 0x009897C0, 40),
         WriteFnPart(pe, store, family, "Fog plane setter 00988600", 0x00988600, 20),

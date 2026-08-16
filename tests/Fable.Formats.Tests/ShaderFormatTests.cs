@@ -194,6 +194,9 @@ public sealed class ShaderFormatTests
         }
         Assert.True(WorldShading.FirstSeenDirLightAddsC3);
         Assert.Equal(new Vector4(0f, 0.125f, 0f, 0f), WorldShading.FirstSeenC3);
+        Assert.True(skin.TryGetPalskinA0RelativeC38());
+        Assert.False(land.TryGetPalskinA0RelativeC38());
+        Assert.False(stat.TryGetPalskinA0RelativeC38());
 
         Assert.Contains(3, land.ConstRegisters);
         Assert.DoesNotContain(1, land.ConstRegisters);
@@ -307,6 +310,11 @@ public sealed class ShaderFormatTests
         Assert.Equal(0u, WorldShading.PalskinJumpTarget(5));
         Assert.Equal(0u, WorldShading.PalskinJumpTarget(0));
         Assert.True(WorldShading.FirstSeenBoneUploadWritesC38);
+        Assert.Equal(new Vector4(256f, 256f, 256f, 256f), WorldShading.FirstSeenC1);
+        Assert.Equal(0x00989BF0u, WorldShading.LayoutBasicFlush);
+        Assert.Equal(2, WorldShading.LayoutBasicFloat4Count);
+        Assert.Equal(0x00BD549Du, WorldShading.FirstSeenPalskinDefaultDraw);
+        Assert.True(WorldShading.FirstSeenPalskinUsesA0RelativeC38);
         Assert.Equal(38, WorldShading.DerivedPaletteStartRegister);
         Assert.Equal(54, WorldShading.DerivedPaletteRegisterCount);
         Assert.Equal(64, WorldShading.BoneRecordBytes);

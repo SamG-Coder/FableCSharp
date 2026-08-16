@@ -448,6 +448,25 @@ public sealed class ShaderProgram
         return false;
     }
 
+    /// <summary>
+    /// PALSKIN: <c>mov a0.x, …</c> then <c>mul/mad …, c38</c> with
+    /// the vs_1_1 relative-address bit (0x2000) on the const src.
+    /// </summary>
+    public bool TryGetPalskinA0RelativeC38()
+    {
+        var sawAddr = false;
+        foreach (var insn in DecodeInstructions())
+        {
+            if (insn.Opcode == MovOpcode && insn.DestType == 3)
+                sawAddr = true;
+            if (sawAddr && (insn.Opcode == MulOpcode || insn.Opcode == MadOpcode)
+                && insn.Src1Is(RegTypeConst, 38) && (insn.Src1 & 0x2000) != 0)
+                return true;
+        }
+
+        return false;
+    }
+
     public readonly record struct VertexFogSequence(int PosRegister, int PosType);
 
     public readonly record struct Ot1Projected(int PosRegister, int PosType);

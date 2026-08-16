@@ -224,6 +224,10 @@ public sealed class MeshFormatTests
         Assert.True(WorldShading.FirstSeenPalskinSrcAlphaBlend);
         Assert.Contains(mesh.Triangles, t => t.SrcAlphaBlend);
         Assert.False(WorldShading.FirstSeenPlaysAnim);
+        Assert.Equal(new Vector4(256f, 256f, 256f, 256f), WorldShading.FirstSeenC1);
+        Assert.Equal(0x00989BF0u, WorldShading.LayoutBasicFlush);
+        Assert.Equal(0x00BD549Du, WorldShading.FirstSeenPalskinDefaultDraw);
+        Assert.True(WorldShading.FirstSeenPalskinUsesA0RelativeC38);
         Assert.DoesNotContain(mesh.Materials, m => m.Name == "DegenerateTriangles");
     }
 
