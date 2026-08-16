@@ -235,6 +235,19 @@ public static class LandscapeFrustum
     /// </summary>
     public const bool FirstSeenWvpIsWorldViewProj = true;
     /// <summary>
+    /// First-seen FG / static / PALSKIN / inner-sky VS only
+    /// <c>dp4 oPos</c> against <c>c5–c8</c>. Those four
+    /// registers are the <c>00988A50</c> product
+    /// (<c>SetVSConstantF</c> at wrapper+752). No first-seen
+    /// VS reads a separate world / view / proj bank
+    /// (registers 9–16 are unused on those programs).
+    /// Combined <see cref="ComposeWvp"/> is that product.
+    /// </summary>
+    public const bool FirstSeenVsReadsSeparateWvp = false;
+    public const int WvpStartRegister = 5;
+    public const int WvpRegisterCount = 4;
+    public const int WvpUploadOffset = 752;
+    /// <summary>
     /// <c>009883F0</c> writes <c>M11=M22=1</c>, Z from helper
     /// near/far/minZ/maxZ, <c>M43=1</c>, <c>M44=0</c>. Cot lives
     /// on camera+128, not in proj.

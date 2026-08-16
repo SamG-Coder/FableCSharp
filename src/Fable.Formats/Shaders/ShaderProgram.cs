@@ -170,6 +170,25 @@ public sealed class ShaderProgram
     /// First-seen inner/outer sky: <c>dp4 oPos, v0, c5–c8</c>.
     /// No <c>c4</c> subtract.
     /// </summary>
+    public bool TryGetOPosWvpC5C8()
+    {
+        var saw = new bool[4];
+        foreach (var insn in DecodeInstructions())
+        {
+            if (insn.Opcode != Dp4Opcode)
+                continue;
+            if (!insn.Src1Is(RegTypeConst, insn.Src1Num) || insn.Src1Num is < 5 or > 8)
+                continue;
+            saw[insn.Src1Num - 5] = true;
+        }
+
+        return saw[0] && saw[1] && saw[2] && saw[3];
+    }
+
+    /// <summary>
+    /// First-seen inner/outer sky: <c>dp4 oPos, v0, c5–c8</c>.
+    /// No <c>c4</c> subtract.
+    /// </summary>
     public bool TryGetSkyOPosWvp()
     {
         var insns = DecodeInstructions();

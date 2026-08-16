@@ -217,6 +217,18 @@ public sealed class ShaderFormatTests
         Assert.DoesNotContain(42, stat.ConstRegisters);
         Assert.DoesNotContain(42, skin.ConstRegisters);
         Assert.False(land.HasConstDef(LandscapeTextures.Od0WFadeRegister));
+        Assert.True(land.TryGetOPosWvpC5C8());
+        Assert.True(stat.TryGetOPosWvpC5C8());
+        Assert.True(skin.TryGetOPosWvpC5C8());
+        Assert.False(LandscapeFrustum.FirstSeenVsReadsSeparateWvp);
+        Assert.Equal(5, LandscapeFrustum.WvpStartRegister);
+        Assert.Equal(4, LandscapeFrustum.WvpRegisterCount);
+        Assert.Equal(752, LandscapeFrustum.WvpUploadOffset);
+        foreach (var vs in new[] { land, stat, skin })
+        {
+            for (var r = 9; r <= 16; r++)
+                Assert.DoesNotContain(r, vs.ConstRegisters);
+        }
         Assert.True(stat.TryGetOt0FromInput(out var statOt0));
         Assert.Equal(2, statOt0);
         Assert.True(skin.TryGetOt0FromInput(out var skinOt0));

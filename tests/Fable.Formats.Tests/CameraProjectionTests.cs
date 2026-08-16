@@ -224,6 +224,7 @@ public sealed class CameraProjectionTests
         camera.LookAt(look);
 
         Assert.True(LandscapeFrustum.FirstSeenWvpIsWorldViewProj);
+        Assert.False(LandscapeFrustum.FirstSeenVsReadsSeparateWvp);
         Assert.True(LandscapeFrustum.FirstSeenProjXyIsIdentity);
         Assert.True(LandscapeFrustum.FirstSeenView128IsCotScaled);
         Assert.True(LandscapeFrustum.FirstSeenLandscapeWorldIsCameraTranslation);
