@@ -71,7 +71,8 @@ internal static class LineShaders
             vec3 n = fragNormal;
             float nlen = length(n);
             float ndl = nlen < 0.1 ? 1.0 : max(dot(normalize(n), pc.lightDir.xyz), 0.0);
-            vec3 v0 = fragColor.rgb * pc.lightColor.rgb * ndl;
+            // VS: mul r3, NdotL, c20; mad r3, *, c35, r3. c35 rgb is 0 at TOD 0.
+            vec3 v0 = fragColor.rgb * (pc.lightColor.rgb * ndl + pc.pass.yzw);
             float mode = pc.pass.x;
             vec3 lit;
             if (mode < 0.5)

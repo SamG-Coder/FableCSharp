@@ -59,7 +59,7 @@ public sealed unsafe partial class VulkanLineRenderer
                 continue;
             if (Math.Abs(_meshPush.Pass.X - draw.ShaderMode) > 0.01f)
             {
-                _meshPush.Pass = new System.Numerics.Vector4(draw.ShaderMode, 0, 0, 0);
+                _meshPush.Pass = MeshPushConstants.PackPass(draw.ShaderMode);
                 PushMeshConstants(commandBuffer);
             }
 

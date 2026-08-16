@@ -850,7 +850,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
                 CameraPos = new Vector4(cameraPosition, Fable.Formats.WorldShading.FogEnd),
                 LightDir = Fable.Formats.WorldShading.DirLightDirection,
                 LightColor = Fable.Formats.WorldShading.DirLightColor,
-                Pass = Vector4.Zero,
+                Pass = MeshPushConstants.PackPass(0f),
             };
             _vk.CmdBindPipeline(commandBuffer, PipelineBindPoint.Graphics, _meshPipeline);
             PushMeshConstants(commandBuffer);

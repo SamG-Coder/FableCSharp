@@ -188,10 +188,14 @@ public sealed class ShaderFormatTests
         Assert.Equal(19, WorldShading.DirLightStartRegister);
         Assert.Equal(2, WorldShading.RegistersPerLight);
         Assert.Equal(35, WorldShading.LitRegister);
+        Assert.Equal(38, WorldShading.PaletteSkinStartRegister);
+        Assert.Equal(58, WorldShading.PaletteSkinRegisterCount);
         Assert.Equal(new Vector4(0f, 1f, 0f, 0f), WorldShading.DirLightDirection);
         Assert.Equal(0.25f, WorldShading.DirLightColor.X);
         Assert.Equal(0.25f, WorldShading.DirLightColor.Y);
         Assert.Equal(0.25f, WorldShading.DirLightColor.Z);
         Assert.Equal(1f, WorldShading.DirLightColor.W);
+        Assert.Equal(new Vector4(0f, 0f, 0f, 1f), WorldShading.LitColor);
+        Assert.Contains(WorldShading.PaletteSkinStartRegister, skin.ConstRegisters);
     }
 }
