@@ -404,6 +404,22 @@ public static class RegionTravel
     public const bool FirstSeenPlayCombatAnimationYields = true;
     public const bool FirstSeenPlayCombatAnimationAppliesPose = false;
     public const string IntroFatherCombatAnim = "TURNING_AC90";
+    /// <summary>
+    /// <c>00CCC246</c> <c>Create</c>. Type, marker, and
+    /// name required else <c>jmp 00CD17FD</c>. Apply
+    /// context <c>vtbl+364</c> <c>008A9100</c> then
+    /// <c>jmp 00CD17F8</c>. No interpreter yield.
+    /// Spawn body UNREAD — record only.
+    /// </summary>
+    public const uint CreateOpcode = 0x00CCC246;
+    public const uint CreateApply = 0x00CCC3E6;
+    public const uint CreateJoin = 0x00CD17F8;
+    public const int CreateApplyVtbl = 364;
+    public const uint CreateApplyFn = 0x008A9100;
+    public const bool FirstSeenCreateDoesNotYield = true;
+    public const string IntroCreateType = "CREATURE_OAKVALE_VILLAGER_FEMALE_NORMAL_MESH";
+    public const string IntroCreateMarker = "MK_OVI_ID_VS1";
+    public const string IntroCreateName = "VILL1";
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;

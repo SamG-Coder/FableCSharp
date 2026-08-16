@@ -192,6 +192,8 @@ internal static class FunctionMap
         ("PlayCombatAnim token", 0x00CC15E3),
         ("PlayCombatAnim Father vtbl+76", 0x00834760),
         ("CActionPlayCombatAnimation", 0x009035F0),
+        ("Create token", 0x00CCC246),
+        ("Create vtbl+364", 0x008A9100),
         ("PlayAnimation thing vtbl+72", 0x004C7470),
         ("CTCAnimationComplex factory", 0x0070B3F0),
         ("CTCAnimationComplex +68 stub", 0x00686920),

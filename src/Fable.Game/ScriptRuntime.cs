@@ -39,6 +39,7 @@ public sealed class ScriptRuntime : IScriptHost
     public IReadOnlyList<ScriptWaitTask> WaitTasks => _waits;
     public IReadOnlyList<ScriptSneakTo> SneakTos => _sneaks;
     public IReadOnlyList<ScriptCombatAnimation> CombatAnimations => _combatAnims;
+    public IReadOnlyList<ScriptCreate> Creates => _creates;
     public IReadOnlyList<string> PreloadedCameras => _preloadedCameras;
 
     private readonly Dictionary<string, string> _named = new(StringComparer.OrdinalIgnoreCase);
@@ -53,6 +54,7 @@ public sealed class ScriptRuntime : IScriptHost
     private readonly List<ScriptWaitTask> _waits = [];
     private readonly List<ScriptSneakTo> _sneaks = [];
     private readonly List<ScriptCombatAnimation> _combatAnims = [];
+    private readonly List<ScriptCreate> _creates = [];
     private readonly List<string> _preloadedCameras = [];
     private IReadOnlyList<ThingInstance> _things = [];
     private ScriptedCamera? _camera;
@@ -327,6 +329,14 @@ public sealed class ScriptRuntime : IScriptHost
         _combatAnims.Add(new ScriptCombatAnimation(actor, name, flagA, flagB, flagC, flagD, flagE, count));
 
     /// <summary>
+    /// <c>00CCC246</c>: <c>vtbl+364</c> then
+    /// <c>jmp 00CD17F8</c>. No yield. Spawn body
+    /// UNREAD — record only.
+    /// </summary>
+    void IScriptHost.Create(string type, string marker, string name) =>
+        _creates.Add(new ScriptCreate(type, marker, name));
+
+    /// <summary>
     /// <c>00CC86D0</c> default path: <c>00CBF29F</c> with
     /// <c>dl=0</c> collects UseCamera names via
     /// <c>vtbl+1648</c>. First-seen has no TRUE arg so
@@ -431,3 +441,5 @@ public readonly record struct ScriptCombatAnimation(
     bool FlagD,
     bool FlagE,
     int Count);
+
+public readonly record struct ScriptCreate(string Type, string Marker, string Name);

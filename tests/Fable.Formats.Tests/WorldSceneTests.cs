@@ -376,6 +376,13 @@ public sealed class WorldSceneTests
         Assert.True(RegionTravel.FirstSeenPlayCombatAnimationYields);
         Assert.False(RegionTravel.FirstSeenPlayCombatAnimationAppliesPose);
         Assert.Equal("TURNING_AC90", RegionTravel.IntroFatherCombatAnim);
+        Assert.Equal(0x00CCC246u, RegionTravel.CreateOpcode);
+        Assert.Equal(364, RegionTravel.CreateApplyVtbl);
+        Assert.Equal(0x008A9100u, RegionTravel.CreateApplyFn);
+        Assert.True(RegionTravel.FirstSeenCreateDoesNotYield);
+        Assert.Equal("CREATURE_OAKVALE_VILLAGER_FEMALE_NORMAL_MESH", RegionTravel.IntroCreateType);
+        Assert.Equal("MK_OVI_ID_VS1", RegionTravel.IntroCreateMarker);
+        Assert.Equal("VILL1", RegionTravel.IntroCreateName);
         Assert.Equal(0x00CC4B22u, RegionTravel.ScriptFadeInOut);
         Assert.Equal(0x00CB5D80u, RegionTravel.RegisteringScripts);
         Assert.Equal(0x00CB8110u, RegionTravel.QuestBaseCtor);
@@ -939,6 +946,20 @@ public sealed class WorldSceneTests
         Assert.Contains(runtime.Animations, a =>
             a.Actor == "Hero" && a.Name == "CS_LOOK_LEFT" && a.Flag1 && !a.Flag2);
         Assert.False(intro.ExecutedVerb("Create"));
+        Assert.Equal(0x00CCC246u, RegionTravel.CreateOpcode);
+        Assert.True(RegionTravel.FirstSeenCreateDoesNotYield);
+        script.Update(0.1f);
+        Assert.Contains(
+            "Create CREATURE_OAKVALE_VILLAGER_FEMALE_NORMAL_MESH,MK_OVI_ID_VS1,VILL1",
+            intro.Executed);
+        Assert.Equal("VILL1.WalkTo MK_OVI_ID_VW1", intro.Commands[intro.InstructionPointer]);
+        Assert.Equal("VILL1.WalkTo MK_OVI_ID_VW1", intro.UnsupportedCommand);
+        Assert.True(intro.Yielded);
+        Assert.Contains(runtime.Creates, c =>
+            c.Type == RegionTravel.IntroCreateType &&
+            c.Marker == RegionTravel.IntroCreateMarker &&
+            c.Name == RegionTravel.IntroCreateName);
+        Assert.False(intro.ExecutedVerb("WalkTo"));
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 
@@ -1055,6 +1076,29 @@ public sealed class WorldSceneTests
 
         public void PlayCombatAnimation(
             string? actor, string name, bool flagA, bool flagB, bool flagC, bool flagD, bool flagE, int count) { }
+
+        public void Create(string type, string marker, string name) { }
+    }
+
+    [Fact]
+    public void Create_villager_records_args_and_does_not_yield()
+    {
+        var command = "Create CREATURE_OAKVALE_VILLAGER_FEMALE_NORMAL_MESH,MK_OVI_ID_VS1,VILL1";
+        var parsed = ScriptCommand.ParseCreate(ScriptCommand.Parse(command).Arguments);
+        Assert.Equal(RegionTravel.IntroCreateType, parsed.Type);
+        Assert.Equal(RegionTravel.IntroCreateMarker, parsed.Marker);
+        Assert.Equal(RegionTravel.IntroCreateName, parsed.Name);
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(ScriptCommand.Parse(command)));
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(ScriptCommand.Parse("Create")));
+        Assert.Equal(0x00CCC246u, RegionTravel.CreateOpcode);
+        Assert.Equal(364, RegionTravel.CreateApplyVtbl);
+        Assert.Equal(0x008A9100u, RegionTravel.CreateApplyFn);
+        Assert.True(RegionTravel.FirstSeenCreateDoesNotYield);
+        var interpreter = new ScriptInterpreter("create", [command, "VILL1.WalkTo MK_OVI_ID_VW1"]);
+        interpreter.RunUntilYield();
+        Assert.Contains(command, interpreter.Executed);
+        Assert.Equal("VILL1.WalkTo MK_OVI_ID_VW1", interpreter.Commands[interpreter.InstructionPointer]);
+        Assert.Equal("VILL1.WalkTo MK_OVI_ID_VW1", interpreter.UnsupportedCommand);
     }
 
     [Fact]

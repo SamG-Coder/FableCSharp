@@ -287,6 +287,14 @@ public sealed class ScriptInterpreter
                 host.PlayCombatAnimation(
                     command.Actor, anim.Name, anim.FlagA, anim.FlagB, anim.FlagC, anim.FlagD, anim.FlagE, anim.Count);
         }
+        else if (command.Verb.Equals("Create", StringComparison.OrdinalIgnoreCase))
+        {
+            var create = ScriptCommand.ParseCreate(command.Arguments);
+            if (create.Type.Length != 0 &&
+                create.Marker.Length != 0 &&
+                create.Name.Length != 0)
+                host.Create(create.Type, create.Marker, create.Name);
+        }
     }
 
     internal static void ParseFadeArgs(string arguments, out float seconds, out float param)
@@ -450,6 +458,20 @@ public readonly struct ScriptCommand
     }
 
     /// <summary>
+    /// <c>00CCC246</c>: type, marker, name required.
+    /// Empty any → <c>00CD17FD</c>. Else apply
+    /// <c>vtbl+364</c> and <c>jmp 00CD17F8</c>.
+    /// </summary>
+    public static (string Type, string Marker, string Name) ParseCreate(string arguments)
+    {
+        var args = SplitArgs(arguments);
+        var type = args.Length == 0 ? "" : args[0];
+        var marker = args.Length < 2 ? "" : args[1];
+        var name = args.Length < 3 ? "" : args[2];
+        return (type, marker, name);
+    }
+
+    /// <summary>
     /// <c>00CBEE0C</c>: strcmp arg to <c>false</c>.
     /// </summary>
     public static bool IsFalseArg(string? text) =>
@@ -499,7 +521,8 @@ public readonly struct ScriptCommand
             verb.Equals("DoCameraPreloading", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("PlayAVI", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("MuteSounds", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("StartTimeCode", StringComparison.OrdinalIgnoreCase))
+            verb.Equals("StartTimeCode", StringComparison.OrdinalIgnoreCase) ||
+            verb.Equals("Create", StringComparison.OrdinalIgnoreCase))
             return ScriptFlow.Continue;
         if (verb.Equals("UseCamera", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("NoLoadUseCamera", StringComparison.OrdinalIgnoreCase))
@@ -597,4 +620,5 @@ public interface IScriptHost
     void SneakTo(string? actor, string marker, float speed, bool wait);
     void PlayCombatAnimation(
         string? actor, string name, bool flagA, bool flagB, bool flagC, bool flagD, bool flagE, int count);
+    void Create(string type, string marker, string name);
 }
