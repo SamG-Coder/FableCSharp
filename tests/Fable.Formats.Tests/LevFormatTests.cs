@@ -339,6 +339,12 @@ public sealed class LevFormatTests
         Assert.Equal(1f, LandscapeFrustum.NormalizeDivisor);
         Assert.Equal(128, LandscapeFrustum.ViewMatrixOffset);
         Assert.Equal(228, LandscapeFrustum.InverseOffset);
+        Assert.Equal(2, LandscapeFrustum.InverseRow0Register);
+        Assert.Equal(18, LandscapeFrustum.LayoutFogRegister);
+        Assert.Equal(1000f, LandscapeFrustum.FogRecordStart);
+        Assert.Equal(2000f, LandscapeFrustum.FogRecordEnd);
+        Assert.Equal(new Vector4(0f, 0f, 0f, 1f), LandscapeFrustum.FogRecordColor);
+        Assert.Equal(0x00B54310u, LandscapeFrustum.CameraConstantUpload);
         Assert.Equal(212, LandscapeFrustum.CotHOffset);
         Assert.Equal(216, LandscapeFrustum.CotVOffset);
         Assert.Equal(84, LandscapeFrustum.TwoFovFlagOffset);

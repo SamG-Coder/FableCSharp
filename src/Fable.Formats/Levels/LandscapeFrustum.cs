@@ -18,6 +18,8 @@ namespace Fable.Formats.Levels;
 /// start is <c>0,0</c>, size is map +92/+94, origin map +96/+98,
 /// <c>min.z=max.z=0</c>. Getter <c>00BDBFC0</c> is <c>&this+168</c>
 /// only; <c>00BE9C80</c> ctor-zeros the same slots.
+/// <c>00B54310</c> uploads inverse rows to <c>c2/c3/c4</c>; first-seen
+/// fog colour <c>c18</c> is record <c>(0,0,0,1)</c>, start 1000, end 2000.
 /// </summary>
 public static class LandscapeFrustum
 {
@@ -80,6 +82,42 @@ public static class LandscapeFrustum
     public const int SourceReadyOffset = 104;
     public const int CameraPosOffset = 64;
     public const bool FirstSeenUsesFourPlaneAabb = true;
+    /// <summary>
+    /// <c>00B54310</c> <c>add edi, 0xE4</c> then
+    /// <c>00989B00(2, [+228], [+240], [+252], [+264])</c>.
+    /// Column stride 12 gathers inverse row 0 as <c>c2</c>.
+    /// <c>c3</c>/<c>c4</c> are rows 1/2; landscape per-cell
+    /// <c>00989A60(3)</c> later overwrites <c>c3</c> with UV.
+    /// </summary>
+    public const uint CameraConstantUpload = 0x00B54310;
+    public const uint CameraConstantUploadCaller = 0x00B555A0;
+    public const uint SetVsConstantF4 = 0x00989B00;
+    public const uint FogCompute = 0x00B47630;
+    public const uint FogComputeCaller = 0x00B25877;
+    public const uint FogColorSetter = 0x009886C0;
+    public const uint FogColorFlush = 0x009897C0;
+    public const uint FogPlaneSetter = 0x00988600;
+    public const uint LayoutBasic = 0x00BDBB70;
+    public const uint LightingRecordAlloc = 0x00B4A4C0;
+    public const int InverseRow0Register = 2;
+    public const int InverseRow1Register = 3;
+    public const int InverseRow2Register = 4;
+    public const int InverseColumnStrideBytes = 12;
+    public const int LayoutFogRegisterOffset = 56;
+    public const int LayoutFogCountOffset = 60;
+    public const int LayoutFogRegister = 18;
+    public const int LayoutFogCount = 1;
+    public const int FogRecordColorOffset = 64;
+    public const int FogRecordStartOffset = 80;
+    public const int FogRecordEndOffset = 84;
+    public const int FogRecordStrideBytes = 112;
+    public const int WrapperFogColorOffset = 444;
+    public const int WrapperFogPlaneOffset = 880;
+    public const int FogDirtyBit = 0x20000;
+    public const float FogRecordStart = 1000f;
+    public const float FogRecordEnd = 2000f;
+    public static readonly Vector4 FogRecordColor = new(0f, 0f, 0f, 1f);
+    public const bool FirstSeenUploadsInverseRow0AsC2 = true;
 
     public readonly record struct Plane(Vector3 Normal, float D);
 
@@ -111,15 +149,14 @@ public static class LandscapeFrustum
     }
 
     /// <summary>
-    /// <c>00B2FD60</c>: unproject eye <c>(0,0,0)</c> and the four NDC
-    /// corners <c>(±1, ±1, 1)</c> through the inverse of the cot-scaled
-    /// world-to-view 3x4, then <c>n = (Pnext-Eye) × (Pprev-Eye)</c>,
-    /// normalize, <c>d = n·Eye</c>. View +Z is look; +Y is camera up;
-    /// right is <c>look × up</c>. Screen-top is NDC +Y because extract
-    /// uses <c>(centerY - screenY) / halfH</c>.
+    /// <c>00B54310</c> / <c>00B30B50</c> store: inverse columns of 3
+    /// at +228 stride 12. Row <c>i</c> is
+    /// <c>(i0[i], i1[i], i2[i], it[i])</c> and is uploaded to
+    /// <c>c[2+i]</c>.
     /// </summary>
-    public static Plane[] ExtractSidePlanes(
-        Vector3 position, Vector3 look, Vector3 up, float cotH, float cotV)
+    public static void CotScaledInverse(
+        Vector3 position, Vector3 look, Vector3 up, float cotH, float cotV,
+        out Vector4 row0, out Vector4 row1, out Vector4 row2)
     {
         var forward = Vector3.Normalize(look);
         var right = Vector3.Normalize(Vector3.Cross(forward, up));
@@ -137,6 +174,38 @@ public static class LandscapeFrustum
             forward,
             new Vector3(t.X * cotH, t.Y * cotV, t.Z),
             out var i0, out var i1, out var i2, out var it);
+        row0 = new Vector4(i0.X, i1.X, i2.X, it.X);
+        row1 = new Vector4(i0.Y, i1.Y, i2.Y, it.Y);
+        row2 = new Vector4(i0.Z, i1.Z, i2.Z, it.Z);
+    }
+
+    /// <summary>
+    /// <c>00B54310</c> <c>push 2</c> / <c>00989B00</c>: camera
+    /// <c>+228/+240/+252/+264</c>.
+    /// </summary>
+    public static Vector4 InverseRow0(
+        Vector3 position, Vector3 look, Vector3 up, float cotH, float cotV)
+    {
+        CotScaledInverse(position, look, up, cotH, cotV, out var row0, out _, out _);
+        return row0;
+    }
+
+    /// <summary>
+    /// <c>00B2FD60</c>: unproject eye <c>(0,0,0)</c> and the four NDC
+    /// corners <c>(±1, ±1, 1)</c> through the inverse of the cot-scaled
+    /// world-to-view 3x4, then <c>n = (Pnext-Eye) × (Pprev-Eye)</c>,
+    /// normalize, <c>d = n·Eye</c>. View +Z is look; +Y is camera up;
+    /// right is <c>look × up</c>. Screen-top is NDC +Y because extract
+    /// uses <c>(centerY - screenY) / halfH</c>.
+    /// </summary>
+    public static Plane[] ExtractSidePlanes(
+        Vector3 position, Vector3 look, Vector3 up, float cotH, float cotV)
+    {
+        CotScaledInverse(position, look, up, cotH, cotV, out var row0, out var row1, out var row2);
+        var i0 = new Vector3(row0.X, row1.X, row2.X);
+        var i1 = new Vector3(row0.Y, row1.Y, row2.Y);
+        var i2 = new Vector3(row0.Z, row1.Z, row2.Z);
+        var it = new Vector3(row0.W, row1.W, row2.W);
 
         var eye = Unproject(i0, i1, i2, it, Vector3.Zero);
         var pLt = Unproject(i0, i1, i2, it, new Vector3(-1f, 1f, 1f));

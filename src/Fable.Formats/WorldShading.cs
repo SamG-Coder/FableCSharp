@@ -9,7 +9,10 @@ namespace Fable.Formats;
 /// <c>[+84]=19</c>, <c>[+76]=2</c> so light 0 is <c>c19</c>/<c>c20</c>.
 /// <c>[+96]=35</c>, <c>[+100]=1</c>. TOD bytes at ctor are 0 so record 0
 /// is copied. <c>c35</c> is the VS MAD addend, not a LIT source.
-/// Fog is VS <c>oFog</c> from <c>c2</c>/<c>c18</c>; far 7000 is SKY_DEF.
+/// Fog: <c>00B54310</c> uploads camera inverse row 0 to <c>c2</c>.
+/// LayoutBasic <c>00BDBB70</c> maps <c>c18</c> at <c>[+56]=18</c>
+/// count 1. First-seen record colour is <c>(0,0,0,1)</c>; start
+/// 1000 / end 2000. Far 7000 is SKY_DEF, not the fog record.
 /// </summary>
 public static class WorldShading
 {
@@ -338,8 +341,29 @@ public static class WorldShading
     /// </summary>
     public static readonly Vector4 LitColor = new(0f, 0f, 0f, 1f);
 
-    public static readonly Vector3 FogColor = new(0.52f, 0.58f, 0.68f);
-    public const float FogStart = 0f;
+    /// <summary>
+    /// LayoutBasic <c>00BDBB70</c> <c>[esi+56]=18</c> count
+    /// <c>[esi+60]=1</c>. Flush <c>009897C0</c> is
+    /// <c>SetVSConstantF(c18, wrapper+444, 1)</c>.
+    /// </summary>
+    public const int FogColorRegister = 18;
+
+    /// <summary>
+    /// <c>00B54310</c> <c>00989B00(2, cam+228/+240/+252/+264)</c>.
+    /// </summary>
+    public const int FogPlaneRegister = 2;
+
+    /// <summary>
+    /// Lighting ctor <c>00B482A0</c> record 0 <c>+64..+76</c> =
+    /// (0,0,0,1). <c>00B47630</c> copies those four floats through
+    /// <c>009886C0</c>. Invented RGB (0.52, 0.58, 0.68) is not this.
+    /// </summary>
+    public static readonly Vector4 FogRecordColor = new(0f, 0f, 0f, 1f);
+
+    public static readonly Vector3 FogColor = new(0f, 0f, 0f);
+    public const float FogStart = 1000f;
+    public const float FogRecordEnd = 2000f;
+    /// <summary>SKY_DEF max flare radius 6000 plus slack; not fog end.</summary>
     public const float FogEnd = 7000f;
 
     /// <summary>

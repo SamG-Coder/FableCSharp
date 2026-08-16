@@ -277,6 +277,16 @@ public sealed class WorldSceneTests
         Assert.Equal("0.2", shot.Properties["CTCCameraPointScriptedSpline.KeyCameras[0].FOV"]);
         Assert.False(shot.Properties.ContainsKey("CTCCameraPointScripted.FOV"));
         Assert.Equal(72f, LandscapeFrustum.FirstSeenFovTurns * LandscapeFrustum.FovTurnsToDegrees, 3);
+        LandscapeFrustum.LetterboxCots(
+            LandscapeFrustum.TurnsToRadians(LandscapeFrustum.FirstSeenFovTurns), 4f, 3f,
+            out var introCotH, out var introCotV);
+        var introC2 = LandscapeFrustum.InverseRow0(
+            introPos, introLook - introPos, Vector3.UnitZ, introCotH, introCotV);
+        Assert.True(float.IsFinite(introC2.X) && float.IsFinite(introC2.W), $"c2={introC2}");
+        Assert.Equal(2, WorldShading.FogPlaneRegister);
+        Assert.Equal(new Vector4(0f, 0f, 0f, 1f), WorldShading.FogRecordColor);
+        Assert.Equal(1000f, WorldShading.FogStart);
+        Assert.Equal(2000f, WorldShading.FogRecordEnd);
         Assert.Equal(
             LandscapeFrustum.CotHalfAngle(float.DegreesToRadians(72f)),
             LandscapeFrustum.CotHalfAngle(LandscapeFrustum.TurnsToRadians(0.2f)), 4);

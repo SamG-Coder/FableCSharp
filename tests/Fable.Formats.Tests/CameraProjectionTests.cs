@@ -66,4 +66,38 @@ public sealed class CameraProjectionTests
         Assert.True(LandscapeFrustum.AabbIsOutside(
             new Vector3(-1f, -4f, -1f), new Vector3(1f, -2f, 1f), planes));
     }
+
+    [Fact]
+    public void Inverse_row0_is_c2_from_cot_scaled_inverse()
+    {
+        var cot = LandscapeFrustum.CotHalfAngle(float.DegreesToRadians(90f));
+        var c2 = LandscapeFrustum.InverseRow0(
+            Vector3.Zero, Vector3.UnitY, Vector3.UnitZ, cot, cot);
+        Assert.Equal(1f, c2.X, 5);
+        Assert.Equal(0f, c2.Y, 5);
+        Assert.Equal(0f, c2.Z, 5);
+        Assert.Equal(0f, c2.W, 5);
+        LandscapeFrustum.CotScaledInverse(
+            Vector3.Zero, Vector3.UnitY, Vector3.UnitZ, cot, cot,
+            out var row0, out var row1, out var row2);
+        Assert.Equal(c2, row0);
+        Assert.Equal(2, LandscapeFrustum.InverseRow0Register);
+        Assert.Equal(3, LandscapeFrustum.InverseRow1Register);
+        Assert.Equal(4, LandscapeFrustum.InverseRow2Register);
+        Assert.Equal(12, LandscapeFrustum.InverseColumnStrideBytes);
+        Assert.Equal(0x00B54310u, LandscapeFrustum.CameraConstantUpload);
+        Assert.Equal(0x00989B00u, LandscapeFrustum.SetVsConstantF4);
+        Assert.True(LandscapeFrustum.FirstSeenUploadsInverseRow0AsC2);
+        Assert.Equal(18, LandscapeFrustum.LayoutFogRegister);
+        Assert.Equal(1, LandscapeFrustum.LayoutFogCount);
+        Assert.Equal(56, LandscapeFrustum.LayoutFogRegisterOffset);
+        Assert.Equal(new Vector4(0f, 0f, 0f, 1f), LandscapeFrustum.FogRecordColor);
+        Assert.Equal(1000f, LandscapeFrustum.FogRecordStart);
+        Assert.Equal(2000f, LandscapeFrustum.FogRecordEnd);
+        Assert.Equal(0x00B47630u, LandscapeFrustum.FogCompute);
+        Assert.Equal(0x009886C0u, LandscapeFrustum.FogColorSetter);
+        Assert.Equal(0x009897C0u, LandscapeFrustum.FogColorFlush);
+        Assert.Equal(444, LandscapeFrustum.WrapperFogColorOffset);
+        Assert.Equal(0x20000, LandscapeFrustum.FogDirtyBit);
+    }
 }

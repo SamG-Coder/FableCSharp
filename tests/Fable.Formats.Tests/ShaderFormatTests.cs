@@ -2,6 +2,7 @@ using System.Numerics;
 using Fable.Core;
 using Fable.Formats;
 using Fable.Formats.Banks;
+using Fable.Formats.Levels;
 using Fable.Formats.Shaders;
 
 namespace Fable.Formats.Tests;
@@ -178,6 +179,8 @@ public sealed class ShaderFormatTests
             Assert.Contains(WorldShading.DirLightStartRegister, vs.ConstRegisters);
             Assert.Contains(WorldShading.DirLightStartRegister + 1, vs.ConstRegisters);
             Assert.Contains(WorldShading.LitRegister, vs.ConstRegisters);
+            Assert.Contains(WorldShading.FogPlaneRegister, vs.ConstRegisters);
+            Assert.Contains(WorldShading.FogColorRegister, vs.ConstRegisters);
             Assert.Contains(2, vs.ConstRegisters);
             Assert.Contains(18, vs.ConstRegisters);
             Assert.False(vs.HasLit);
@@ -277,5 +280,17 @@ public sealed class ShaderFormatTests
         Assert.True(WorldShading.QualifiesAsAddableLight(130f / 255f, 60f / 255f, 5f / 255f, 8f, 9f));
         Assert.False(WorldShading.QualifiesAsAddableLight(130f / 255f, 60f / 255f, 5f / 255f, 0.05f, 9f));
         Assert.False(WorldShading.QualifiesAsAddableLight(0f, 60f / 255f, 5f / 255f, 8f, 9f));
+        Assert.Equal(2, WorldShading.FogPlaneRegister);
+        Assert.Equal(18, WorldShading.FogColorRegister);
+        Assert.Equal(new Vector4(0f, 0f, 0f, 1f), WorldShading.FogRecordColor);
+        Assert.Equal(0f, WorldShading.FogColor.X);
+        Assert.Equal(0f, WorldShading.FogColor.Y);
+        Assert.Equal(0f, WorldShading.FogColor.Z);
+        Assert.Equal(1000f, WorldShading.FogStart);
+        Assert.Equal(2000f, WorldShading.FogRecordEnd);
+        Assert.Equal(7000f, WorldShading.FogEnd);
+        Assert.Equal(LandscapeFrustum.InverseRow0Register, WorldShading.FogPlaneRegister);
+        Assert.Equal(LandscapeFrustum.LayoutFogRegister, WorldShading.FogColorRegister);
+        Assert.Equal(LandscapeFrustum.FogRecordColor, WorldShading.FogRecordColor);
     }
 }
