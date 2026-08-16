@@ -238,13 +238,14 @@ void EnterRegion(string next, RegionExit? arrivedFromExit)
     Console.WriteLine($"Instanced {world.MeshInstances} meshes ({world.Triangles.Count} tris), missing {world.MissingMeshes}");
     if (region == RegionTravel.NewGameRegion)
     {
-        intro = new NewGameScript();
-        intro.Start();
+        var runtime = ScriptRuntime.StartNewGame(install, things.Things, gameCam);
+        intro = new NewGameScript(runtime);
+        var ip = runtime.ActiveInterpreter?.InstructionPointer ?? 0;
         Console.WriteLine(
             $"Intro {RegionTravel.IntroQuest}/{RegionTravel.IntroScriptName} " +
             $"run 0x{RegionTravel.IntroQuestRun:X} -> 0x{RegionTravel.StartOakValeSetup:X}; " +
             $"VM list 0x{NewGameScript.ListWalk:X} rec {NewGameScript.ListRecordBytes}; " +
-            $"phase {intro.Current} {RegionTravel.PreAttackDuration:0}s wait; " +
+            $"{runtime.ActiveCutscene} ip={ip} music={intro.PlayMusicRan} fade={intro.FadeOutReached}; " +
             $"+{RegionTravel.PreAttackGateOffset} unread; {gameCam.ActiveName}; kid bind-pose");
     }
     else

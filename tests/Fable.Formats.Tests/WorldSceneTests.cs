@@ -329,25 +329,8 @@ public sealed class WorldSceneTests
         Assert.Equal(8, NewGameScript.DtOffset);
         Assert.Equal(16, NewGameScript.FiberSetupVtbl);
         Assert.Equal(8, NewGameScript.FiberRunVtbl);
-        var script = new NewGameScript();
-        Assert.Equal(NewGameScript.Phase.NotStarted, script.Current);
-        script.Start();
-        Assert.True(script.CutsceneStarted);
-        Assert.False(script.FadeSpecialCaseApplied);
-        Assert.True(script.PlayMusicRan);
-        Assert.True(script.FadeOutReached);
-        Assert.Equal(0.5f, script.FadeDuration);
-        Assert.Equal(0f, script.FadeParam);
         Assert.Equal(NewGameScript.LiveFatherScript, RegionTravel.LiveFatherScript);
         Assert.Equal(0x00DAC2C0u, NewGameScript.LiveFatherFactory);
-        Assert.Equal(NewGameScript.Phase.PreAttackWait, script.Current);
-        script.Update(0.1f);
-        Assert.Equal(0.1f, script.DtAtPlus8);
-        Assert.Equal(NewGameScript.Phase.PreAttackWait, script.Current);
-        Assert.False(script.Gate80);
-        script.ApplyPersist(true);
-        Assert.True(script.Gate80);
-        Assert.Equal(NewGameScript.Phase.WaitingGate80, script.Current);
         Assert.Equal(0x00B23B50u, LandscapeFrustum.BindSource);
         Assert.Equal(2, LandscapeFrustum.CameraUpdateCallerCount);
         Assert.Equal("LookoutPoint", world.Maps[0].ScriptName);
@@ -526,6 +509,53 @@ public sealed class WorldSceneTests
         var lookout = levels.LoadThings("LookoutPoint").Things.ToList();
         Assert.Contains(lookout, t => t.DefinitionType == "HOLY_SITE_PLAYER_START"
                                       && t.ScriptName == "GuildArrivalHSP");
+    }
+
+    [Fact]
+    public void New_game_intro_runs_through_generic_script_runtime()
+    {
+        var install = Require();
+        using var levels = new LevelLibrary(install);
+        var things = levels.LoadThings("StartOakValeWest").Things.ToList();
+        var camera = new ScriptedCamera();
+        Assert.True(camera.UseCamera(things, RegionTravel.IntroFirstSeenCamera));
+
+        var runtime = ScriptRuntime.StartNewGame(install, things, camera);
+        var script = new NewGameScript(runtime);
+        var intro = runtime.FindInterpreter(RegionTravel.IntroCutscene);
+        Assert.NotNull(intro);
+        Assert.Equal(RegionTravel.IntroCutscene, intro.Name);
+        Assert.True(script.CutsceneStarted);
+        Assert.False(script.FadeSpecialCaseApplied);
+        Assert.True(script.PlayMusicRan);
+        Assert.True(script.FadeOutReached);
+        Assert.Equal(0.5f, script.FadeDuration);
+        Assert.Equal(0f, script.FadeParam);
+        Assert.Equal(RegionTravel.IntroPlayMusic, intro.Executed[0]);
+        Assert.Contains(RegionTravel.FadeSpecialCase, intro.Executed);
+        Assert.Contains(intro.Executed, line => line.StartsWith("CameraPause", StringComparison.Ordinal));
+        Assert.True(intro.InstructionPointer >= 3);
+        Assert.True(intro.Yielded);
+        Assert.False(intro.ExecutedVerb("UseCamera"));
+        Assert.False(intro.ExecutedVerb("PlayAVI"));
+        Assert.Equal("Hero.Teleport MK_OVI_ID_HERO,FALSE", intro.Commands[intro.InstructionPointer]);
+        Assert.Equal(RegionTravel.IntroFirstSeenCamera, camera.ActiveName);
+        Assert.Equal("MUSIC_SET_NULL", runtime.LastMusic);
+        Assert.False(script.Gate80);
+        script.Update(0.1f);
+        Assert.Equal(0.1f, script.DtAtPlus8);
+        Assert.False(script.Gate80);
+        Assert.Equal("Hero.Teleport MK_OVI_ID_HERO,FALSE", intro.Commands[intro.InstructionPointer]);
+        script.ApplyPersist(true);
+        Assert.True(script.Gate80);
+
+        var attract = runtime.Bank!.Find("CS_ATTRACT_1") ?? runtime.Bank.Find("CS_ATTRACT_12");
+        Assert.NotNull(attract);
+        var other = runtime.StartCutscene(attract.InstanceName);
+        Assert.NotNull(other);
+        Assert.NotEqual(RegionTravel.IntroCutscene, other.Name);
+        Assert.Equal(attract.Commands[0], other.Commands[0]);
+        Assert.Same(intro, runtime.FindInterpreter(RegionTravel.IntroCutscene));
     }
 
     [Fact]

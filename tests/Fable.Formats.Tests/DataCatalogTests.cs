@@ -53,7 +53,7 @@ public sealed class DataCatalogTests
         Assert.True(RegionTravel.FirstSeenStartsIntroCutscene);
         Assert.Equal("NOVI_LiveFather", RegionTravel.LiveFatherScript);
         var father = script.Entries.First(e => e.InstanceName == RegionTravel.IntroCutscene);
-        var commands = AsciiCommands(father.Raw);
+        var commands = ScriptBank.ExtractCommands(father.Raw);
         Assert.Equal("PlayMusic MUSIC_SET_NULL", commands[0]);
         Assert.Equal(RegionTravel.IntroPlayMusic, commands[0]);
         Assert.Equal(RegionTravel.FadeSpecialCase, commands[1]);
@@ -231,25 +231,4 @@ public sealed class DataCatalogTests
         Assert.True(raw.Length > 40_000);
     }
 
-    private static List<string> AsciiCommands(byte[] raw)
-    {
-        var list = new List<string>();
-        var i = 0;
-        while (i < raw.Length)
-        {
-            if (raw[i] is < 32 or > 126)
-            {
-                i++;
-                continue;
-            }
-
-            var start = i;
-            while (i < raw.Length && raw[i] is >= 32 and <= 126)
-                i++;
-            if (i - start >= 4)
-                list.Add(Encoding.ASCII.GetString(raw, start, i - start));
-        }
-
-        return list;
-    }
 }
