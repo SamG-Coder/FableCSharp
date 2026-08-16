@@ -863,6 +863,7 @@ static void RunExportScriptBank(PeImage pe, DumpStore store, GameInstall? instal
     native.AppendLine("| command loop | `00CD17FD` | `inc [ebp-72]` then `jb 00CC012E`. Next line is `FadeOut 0.5,0`. |");
     native.AppendLine("| FadeOut opcode | `00CD0987` | same-slice after PlayMusic. Parses 0.5 / 0 / default black. Apply `vtbl+1488(0.5,0)` then `jmp 00CD17FD`. |");
     native.AppendLine("| PlayAVI | `00CCA26D` | first arg required else `jmp 00CD17FD`. Prefix `Data\\Video\\` via `0099F570`, `vtbl+1476`, `jmp 00CD17F8` (dtor then `00CD17FD`). **No** `vtbl+28`. Apply body UNREAD. |");
+    native.AppendLine("| MuteSounds | `00CC7258` | `00CBEE0C` IsFalse → `vtbl+2664(0)` else `(1)`. `jmp 00CC8464` (next token). **No** `vtbl+28`. First-seen `false` unmutes. Apply body UNREAD. |");
     native.AppendLine("| NoLoadUseCamera | `00CC9E6A` | separate token from `UseCamera`. |");
     native.AppendLine("| .Teleport | `00CC4678` | lookup marker `vtbl+280/+288`, apply `vtbl+1892`. Second arg `00CBEE0C` is **IsFalse**. **No** `vtbl+28`. `jmp 00CC707C`. |");
     native.AppendLine("| .LookToThing | `00CC3B3F` | apply `vtbl+1992`, parse `forever`. Third arg `00CBEE0C` (IsFalse) skips wait. Else if `[ebp+103]` (set **1** at `00CBFC65`) **`call [eax+28]`** then `00CBF7FE` / `jmp 00CC707C`. |");
@@ -1107,6 +1108,9 @@ static void RunTraceScriptRuntime(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "DoCameraPreloading token 00CC86D0", 0x00CC86D0, 50, stopOnRet: false),
         WriteFnPart(pe, store, family, "DoCameraPreloading apply 00CC8720", 0x00CC8720, 30, stopOnRet: false),
         WriteWalkPart(pe, store, family, "IsTrue arg 00CBEDBA", 0x00CBEDBA, 40),
+        WriteFnPart(pe, store, family, "MuteSounds token 00CC7258", 0x00CC7258, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "MuteSounds apply 00CC72A8", 0x00CC72A8, 16, stopOnRet: false),
+        WriteFnPart(pe, store, family, "MuteSounds join 00CC8464", 0x00CC8464, 20, stopOnRet: false),
         WriteVtblPart(pe, store, family, "CCutsceneDef vtbl 012FB6E0", 0x012FB6E0, 24),
         WriteCallsPart(pe, store, family, "calls S_QNOVI factory 00DBEF70", 0x00DBEF70),
         WriteCallsPart(pe, store, family, "calls S_QNOVI run 00DABAC0", 0x00DABAC0),
@@ -1631,6 +1635,9 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "DoCameraPreloading token 00CC86D0", 0x00CC86D0, 50, stopOnRet: false),
         WriteFnPart(pe, store, family, "DoCameraPreloading apply 00CC8720", 0x00CC8720, 30, stopOnRet: false),
         WriteWalkPart(pe, store, family, "IsTrue arg 00CBEDBA", 0x00CBEDBA, 40),
+        WriteFnPart(pe, store, family, "MuteSounds token 00CC7258", 0x00CC7258, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "MuteSounds apply 00CC72A8", 0x00CC72A8, 16, stopOnRet: false),
+        WriteFnPart(pe, store, family, "MuteSounds join 00CC8464", 0x00CC8464, 20, stopOnRet: false),
         WriteWalkPart(pe, store, family, "FadeIn FadeOut 00CC4B22", 0x00CC4B22, 80),
         WriteWalkPart(pe, store, family, "Registering Scripts 00CB5D80", 0x00CB5D80, 80),
         WriteWalkPart(pe, store, family, "quest base ctor 00CB8110", 0x00CB8110, 80),

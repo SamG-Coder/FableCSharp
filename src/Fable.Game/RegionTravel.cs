@@ -161,6 +161,12 @@ public static class RegionTravel
     public const uint IsTrueArgFn = 0x00CBEDBA;
     public const bool FirstSeenDoCameraPreloadingDoesNotYield = true;
     public const bool FirstSeenDoCameraPreloadingHasTrueArg = false;
+    public const uint MuteSoundsOpcode = 0x00CC7258;
+    public const uint MuteSoundsApply = 0x00CC72A8;
+    public const uint MuteSoundsJoin = 0x00CC8464;
+    public const int MuteSoundsVtbl = 2664;
+    public const bool FirstSeenMuteSoundsDoesNotYield = true;
+    public const bool FirstSeenMuteSoundsArgIsFalse = true;
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;

@@ -585,8 +585,15 @@ public sealed class WorldSceneTests
         Assert.Equal(@"Data\Video\dream_sequence_comp.xmv", runtime.LastAvi);
         Assert.True(RegionTravel.FirstSeenPlayAviDoesNotYield);
         Assert.False(RegionTravel.FirstSeenPlayAvi);
-        Assert.Equal("MuteSounds false", intro.Commands[intro.InstructionPointer]);
-        Assert.Equal("MuteSounds false", intro.UnsupportedCommand);
+        Assert.Contains("MuteSounds false", intro.Executed);
+        Assert.False(runtime.SoundsMuted);
+        Assert.Equal(0x00CC7258u, RegionTravel.MuteSoundsOpcode);
+        Assert.Equal(2664, RegionTravel.MuteSoundsVtbl);
+        Assert.True(RegionTravel.FirstSeenMuteSoundsDoesNotYield);
+        Assert.True(RegionTravel.FirstSeenMuteSoundsArgIsFalse);
+        Assert.Equal("DoScriptFrame 2", intro.Commands[intro.InstructionPointer]);
+        Assert.Null(intro.UnsupportedCommand);
+        Assert.False(intro.ExecutedVerb("PlayAnimation"));
         Assert.Equal(RegionTravel.IntroFirstSeenCamera, camera.ActiveName);
         script.ApplyPersist(true);
         Assert.True(script.Gate80);

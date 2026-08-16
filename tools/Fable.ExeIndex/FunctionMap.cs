@@ -165,6 +165,7 @@ internal static class FunctionMap
         ("PlayAVI", 0x00CCA26D),
         ("PlayAVI apply", 0x00CCA2BD),
         ("command continue join", 0x00CD17F8),
+        ("MuteSounds token", 0x00CC7258),
         ("NoLoadUseCamera", 0x00CC9E6A),
         ("PlayMusic helper", 0x00CBF7FE),
         ("intro-father dtor", 0x00DB8680),

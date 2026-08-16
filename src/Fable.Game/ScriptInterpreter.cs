@@ -179,6 +179,8 @@ public sealed class ScriptInterpreter
             host.DoCameraPreloading(command.Arguments);
         else if (command.Verb.Equals("PlayAVI", StringComparison.OrdinalIgnoreCase))
             host.PlayAvi(command.Arguments);
+        else if (command.Verb.Equals("MuteSounds", StringComparison.OrdinalIgnoreCase))
+            host.MuteSounds(command.Arguments);
     }
 
     internal static void ParseFadeArgs(string arguments, out float seconds, out float param)
@@ -255,7 +257,8 @@ public readonly struct ScriptCommand
             verb.Equals("CameraPause", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("Teleport", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("DoCameraPreloading", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("PlayAVI", StringComparison.OrdinalIgnoreCase))
+            verb.Equals("PlayAVI", StringComparison.OrdinalIgnoreCase) ||
+            verb.Equals("MuteSounds", StringComparison.OrdinalIgnoreCase))
             return ScriptFlow.Continue;
         if (verb.Equals("LookToThing", StringComparison.OrdinalIgnoreCase))
         {
@@ -289,4 +292,5 @@ public interface IScriptHost
     void LookToThing(string? actor, string arguments);
     void DoCameraPreloading(string arguments);
     void PlayAvi(string arguments);
+    void MuteSounds(string arguments);
 }

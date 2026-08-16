@@ -19,6 +19,7 @@ public sealed class ScriptRuntime : IScriptHost
     public float FadeParam { get; private set; }
     public string? LastMusic { get; private set; }
     public string? LastAvi { get; private set; }
+    public bool SoundsMuted { get; private set; }
     public string? ActiveCutscene => _interpreters.Count == 0 ? null : _interpreters[^1].Name;
     public ScriptInterpreter? ActiveInterpreter =>
         _interpreters.Count == 0 ? null : _interpreters[^1];
@@ -205,6 +206,14 @@ public sealed class ScriptRuntime : IScriptHost
         var file = ScriptInterpreter.FirstToken(arguments);
         LastAvi = file.Length == 0 ? null : RegionTravel.PlayAviPrefix + file;
     }
+
+    /// <summary>
+    /// <c>00CC7258</c>: <c>00CBEE0C</c> IsFalse →
+    /// <c>vtbl+2664(0)</c>, else <c>(1)</c>.
+    /// <c>jmp 00CC8464</c>. No yield. Body UNREAD.
+    /// </summary>
+    void IScriptHost.MuteSounds(string arguments) =>
+        SoundsMuted = !ScriptCommand.IsFalseArg(ScriptInterpreter.FirstToken(arguments));
 
     /// <summary>
     /// <c>00CC86D0</c> default path: <c>00CBF29F</c> with
