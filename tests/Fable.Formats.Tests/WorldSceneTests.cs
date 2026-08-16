@@ -273,6 +273,12 @@ public sealed class WorldSceneTests
         Assert.Equal(@"Data\Video\", RegionTravel.PlayAviPrefix);
         Assert.Equal("dream_sequence_comp.xmv", RegionTravel.IntroPlayAvi);
         Assert.Equal(0x00CC9E6Au, RegionTravel.NoLoadUseCameraSite);
+        Assert.Equal(0x00CC9E69u, RegionTravel.NoLoadUseCameraOpcode);
+        Assert.Equal(0x00CC9F39u, RegionTravel.UseCameraOpcode);
+        Assert.Equal(0x00CCA22Cu, RegionTravel.UseCameraYield);
+        Assert.Equal(0x00CBFD53u, RegionTravel.UseCameraYieldFlagWrite);
+        Assert.True(RegionTravel.FirstSeenUseCameraYields);
+        Assert.True(RegionTravel.FirstSeenNoLoadUseCameraYields);
         Assert.False(RegionTravel.FirstSeenPlayAvi);
         Assert.False(RegionTravel.FirstSeenWatchBarrelsSpawnsBeetle);
         Assert.False(RegionTravel.FirstSeenHandsPlayerControl);
@@ -690,6 +696,10 @@ public sealed class WorldSceneTests
         Assert.Equal("MUSIC_SET_OAKVALE", runtime.LastMusic);
         Assert.Contains("NoLoadUseCamera CAM_OVI_ID_STANDUP", intro.Executed);
         Assert.Equal(RegionTravel.IntroStandupCamera, camera.ActiveName);
+        Assert.True(RegionTravel.FirstSeenNoLoadUseCameraYields);
+        Assert.Equal("FadeIn", intro.Commands[intro.InstructionPointer]);
+        Assert.False(intro.ExecutedVerb("FadeIn"));
+        script.Update(0.1f);
         Assert.Contains(intro.Executed, line => line.Equals("FadeIn", StringComparison.Ordinal));
         Assert.Equal("GamePause 1.6", intro.Commands[intro.InstructionPointer]);
         Assert.Null(intro.UnsupportedCommand);
@@ -746,6 +756,23 @@ public sealed class WorldSceneTests
             s.Prompt.Contains(RegionTravel.IntroFatherPrompt, StringComparison.Ordinal) &&
             !s.Wait &&
             s.Response.Contains(RegionTravel.IntroFatherResponse, StringComparison.Ordinal));
+        var pause12Visits = 0;
+        while (intro.Yielded &&
+               intro.Commands[intro.InstructionPointer].StartsWith("GamePause 1.2", StringComparison.Ordinal) &&
+               pause12Visits < 40)
+        {
+            script.Update(0.1f);
+            pause12Visits++;
+        }
+
+        Assert.Contains("GamePause 1.2", intro.Executed);
+        Assert.Contains("UseCamera CAM_OVIF_SHOT2", intro.Executed);
+        Assert.Equal(RegionTravel.IntroFirstSeenCamera, camera.ActiveName);
+        Assert.Equal("GamePause 5.2", intro.Commands[intro.InstructionPointer]);
+        Assert.True(intro.Yielded);
+        Assert.Null(intro.UnsupportedCommand);
+        Assert.True(RegionTravel.FirstSeenUseCameraYields);
+        Assert.Equal(0x00CC9F39u, RegionTravel.UseCameraOpcode);
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 
@@ -849,6 +876,28 @@ public sealed class WorldSceneTests
         Assert.Equal("GamePause 1.2", interpreter.Commands[interpreter.InstructionPointer]);
         Assert.True(interpreter.Yielded);
         Assert.True(RegionTravel.FirstSeenInteractiveSpeakYieldsOnce);
+    }
+
+    [Fact]
+    public void UseCamera_shot2_binds_then_yields_once()
+    {
+        Assert.Equal(ScriptFlow.YieldAfter, ScriptCommand.Classify(
+            ScriptCommand.Parse("UseCamera CAM_OVIF_SHOT2")));
+        Assert.Equal(ScriptFlow.YieldAfter, ScriptCommand.Classify(
+            ScriptCommand.Parse("NoLoadUseCamera CAM_OVI_ID_STANDUP")));
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(
+            ScriptCommand.Parse("UseCamera")));
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(
+            ScriptCommand.Parse("UseCamera null")));
+        var interpreter = new ScriptInterpreter("cam",
+            ["UseCamera CAM_OVIF_SHOT2", "GamePause 5.2"]);
+        interpreter.RunUntilYield();
+        Assert.Contains("UseCamera CAM_OVIF_SHOT2", interpreter.Executed);
+        Assert.Equal("GamePause 5.2", interpreter.Commands[interpreter.InstructionPointer]);
+        Assert.True(interpreter.Yielded);
+        Assert.True(RegionTravel.FirstSeenUseCameraYields);
+        Assert.Equal(0x00CC9F39u, RegionTravel.UseCameraOpcode);
+        Assert.Equal(0x00CBFD53u, RegionTravel.UseCameraYieldFlagWrite);
     }
 
     [Fact]

@@ -403,8 +403,6 @@ public readonly struct ScriptCommand
         if (verb.Equals("PlayMusic", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("FadeOut", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("FadeIn", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("UseCamera", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("NoLoadUseCamera", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("CameraPause", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("Teleport", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("DoCameraPreloading", StringComparison.OrdinalIgnoreCase) ||
@@ -412,6 +410,15 @@ public readonly struct ScriptCommand
             verb.Equals("MuteSounds", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("StartTimeCode", StringComparison.OrdinalIgnoreCase))
             return ScriptFlow.Continue;
+        if (verb.Equals("UseCamera", StringComparison.OrdinalIgnoreCase) ||
+            verb.Equals("NoLoadUseCamera", StringComparison.OrdinalIgnoreCase))
+        {
+            var name = ScriptInterpreter.FirstToken(command.Arguments);
+            if (name.Length == 0 || IsNullArg(name))
+                return ScriptFlow.Continue;
+            return ScriptFlow.YieldAfter;
+        }
+
         if (verb.Equals("PlayAnimation", StringComparison.OrdinalIgnoreCase))
             return ScriptFlow.YieldAfter;
         if (verb.Equals("Speak", StringComparison.OrdinalIgnoreCase))

@@ -125,6 +125,23 @@ public static class RegionTravel
     public const string IntroPlayAvi = "dream_sequence_comp.xmv";
     public const bool FirstSeenPlayAviDoesNotYield = true;
     public const uint NoLoadUseCameraSite = 0x00CC9E6A;
+    /// <summary>
+    /// <c>00CC9F39</c> <c>UseCamera</c>. Empty / null
+    /// name <c>jmp 00CD17FD</c>. One-arg first-seen
+    /// takes name bind <c>vtbl+1648</c> then
+    /// <c>[ebp-37]</c> ctor <c>00CBFD53=1</c> one
+    /// <c>vtbl+28</c> and leftover <c>00CD17FD</c>.
+    /// <c>NoLoadUseCamera</c> <c>00CC9E69</c> is the
+    /// same yield via <c>00CC907D</c>.
+    /// </summary>
+    public const uint UseCameraOpcode = 0x00CC9F39;
+    public const uint UseCameraNameBind = 0x00CCA1E3;
+    public const uint UseCameraYield = 0x00CCA22C;
+    public const uint UseCameraYieldFlagWrite = 0x00CBFD53;
+    public const uint NoLoadUseCameraOpcode = 0x00CC9E69;
+    public const uint NoLoadUseCameraYield = 0x00CC9F28;
+    public const bool FirstSeenUseCameraYields = true;
+    public const bool FirstSeenNoLoadUseCameraYields = true;
     public const bool FirstSeenPlayAvi = false;
     public const uint PlayMusicHelper = 0x00CBF7FE;
     public const uint PlayMusicInterpreter = 0x00CC8EAC;
