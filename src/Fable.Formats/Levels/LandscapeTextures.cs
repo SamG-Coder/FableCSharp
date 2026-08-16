@@ -123,6 +123,29 @@ public static class LandscapeTextures
     public const int WaterWantedNameSetterVtblSlot = 14;
     public const bool FirstSeenCallsWantedNameSetter = false;
 
+    /// <summary>
+    /// <c>SetStaticMapFileForUse</c> <c>00B428E0</c> always calls
+    /// <c>LoadWaterData</c> <c>00B41FA0</c> at <c>00B429CB</c>
+    /// (only <c>E8</c>). Lookup intern is <c>0x1436EC8</c>. Missing
+    /// intern <c>je 00B420E4</c> — a bare cleanup <c>ret</c>.
+    /// StartOakVale has no water-prefix STB, so first-seen takes
+    /// that miss. Draw <c>00B783F0</c> is water vtbl+16
+    /// (<c>0x012A3364</c>); zero <c>E8</c> callers. Empty check
+    /// <c>je 00B7A865</c> is <c>pop</c>×4 / <c>add esp,40</c> /
+    /// <c>ret 4</c> — no unbind and no draw. Vtbl+8
+    /// <c>00B6D500</c> is <c>ret 4</c>.
+    /// </summary>
+    public const uint LoadWaterData = 0x00B41FA0;
+    public const uint LoadWaterDataIntern = 0x1436EC8;
+    public const uint LoadWaterDataOnlyCaller = 0x00B429CB;
+    public const uint LoadWaterDataMissingInternRet = 0x00B420E4;
+    public const uint WaterDraw = 0x00B783F0;
+    public const uint WaterDrawEmptyReturn = 0x00B7A865;
+    public const uint WaterRendererVtbl = 0x012A3364;
+    public const int WaterDrawVtblOffset = 16;
+    public const bool FirstSeenLoadWaterDataFindsIntern = false;
+    public const bool FirstSeenWaterDrawEmptyIsBareRet = true;
+
     public static bool IsLoadableWaterBank(ReadOnlySpan<byte> bank) =>
         bank.Length >= 4 && BitConverter.ToUInt32(bank) == RequiredWaterBankType;
 

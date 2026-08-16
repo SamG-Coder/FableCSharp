@@ -276,6 +276,16 @@ public sealed class LevFormatTests
         Assert.Equal(0x00B23900u, LandscapeTextures.WaterWantedNameThisSetter);
         Assert.Equal(14, LandscapeTextures.WaterWantedNameSetterVtblSlot);
         Assert.False(LandscapeTextures.FirstSeenCallsWantedNameSetter);
+        Assert.False(LandscapeTextures.FirstSeenLoadWaterDataFindsIntern);
+        Assert.True(LandscapeTextures.FirstSeenWaterDrawEmptyIsBareRet);
+        Assert.Equal(0x00B41FA0u, LandscapeTextures.LoadWaterData);
+        Assert.Equal(0x1436EC8u, LandscapeTextures.LoadWaterDataIntern);
+        Assert.Equal(0x00B429CBu, LandscapeTextures.LoadWaterDataOnlyCaller);
+        Assert.Equal(0x00B420E4u, LandscapeTextures.LoadWaterDataMissingInternRet);
+        Assert.Equal(0x00B783F0u, LandscapeTextures.WaterDraw);
+        Assert.Equal(0x00B7A865u, LandscapeTextures.WaterDrawEmptyReturn);
+        Assert.Equal(0x012A3364u, LandscapeTextures.WaterRendererVtbl);
+        Assert.Equal(16, LandscapeTextures.WaterDrawVtblOffset);
         Assert.False(LandscapeTextures.FirstSeenReadsSeaPrefixWords);
         Assert.False(LandscapeTextures.FirstSeenCallsSeaMeshCopy);
         Assert.Equal(0x00B6D420u, LandscapeTextures.SeaMeshCopy);
