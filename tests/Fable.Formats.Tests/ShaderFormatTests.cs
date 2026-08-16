@@ -180,6 +180,8 @@ public sealed class ShaderFormatTests
             Assert.Contains(WorldShading.LitRegister, vs.ConstRegisters);
             Assert.Contains(2, vs.ConstRegisters);
             Assert.Contains(18, vs.ConstRegisters);
+            Assert.False(vs.HasLit);
+            Assert.Equal(0x10u, ShaderProgram.LitOpcode);
         }
 
         Assert.Contains(3, land.ConstRegisters);

@@ -251,8 +251,12 @@ public sealed class LevFormatTests
         Assert.Equal(129966u, oak.Size);
         var oakBytes = stb.Read(oak);
         Assert.Equal(7363u, BitConverter.ToUInt32(oakBytes, 0));
+        Assert.Equal(LandscapeTextures.SeaBankFirstU32, BitConverter.ToUInt32(oakBytes, 0));
         Assert.Equal(8u, LandscapeTextures.RequiredWaterBankType);
         Assert.Equal(2, LandscapeTextures.WaterType8CopiedDwords);
+        Assert.Equal(508, LandscapeTextures.WaterDrawVectorFirst);
+        Assert.Equal(624, LandscapeTextures.WaterDrawVectorLast);
+        Assert.True(LandscapeTextures.FirstSeenWaterDrawIsEmpty);
         Assert.False(LandscapeTextures.IsLoadableWaterBank(oakBytes));
         Assert.DoesNotContain(stb.Entries, e =>
             e.Name.Contains("__ENGINE_WATER_STATIC_MAP_BANK_FILE__", StringComparison.Ordinal));

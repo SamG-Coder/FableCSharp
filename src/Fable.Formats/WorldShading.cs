@@ -330,9 +330,10 @@ public static class WorldShading
     public static readonly Vector4 DirLightColor = new(0.25f, 0.25f, 0.25f, 1f);
 
     /// <summary>
-    /// Record 0 <c>+32</c> copied to <c>[esi+104]</c> then
-    /// <c>0098B2C0</c> index 0. Flush <c>0098A760</c> uploads that
-    /// float4 to <c>c35</c>.
+    /// Setter <c>0098B2C0</c> inits the stack to (0,0,0,1) then copies
+    /// record 0 <c>+32</c> (same values at TOD 0). Flush <c>0098A760</c>
+    /// is <c>SetVSConstantF</c> of LayoutLights <c>[+96]=35</c> count
+    /// <c>[+100]=1</c>. First-seen VS do <c>MAD c35</c>, not <c>LIT</c>.
     /// </summary>
     public static readonly Vector4 LitColor = new(0f, 0f, 0f, 1f);
 

@@ -10,6 +10,8 @@ public sealed class ShaderProgram
     public const uint PixelVersionTag = 0xFFFF;
     public const uint TexOpcode = 0x42;
     public const uint MulOpcode = 0x05;
+    /// <summary>D3D vs_1_1 <c>LIT</c>. First-seen FG/static/PALSKIN use <c>MAD</c> <c>c35</c> instead.</summary>
+    public const uint LitOpcode = 0x10;
 
     public required string Name { get; init; }
     public required string Bank { get; init; }
@@ -54,6 +56,20 @@ public sealed class ShaderProgram
                     continue;
                 var dest = BitConverter.ToUInt32(Tokens, i + 4);
                 if (((dest >> 24) & 0xF) == 1)
+                    return true;
+            }
+
+            return false;
+        }
+    }
+
+    public bool HasLit
+    {
+        get
+        {
+            for (var i = 0; i + 4 <= Tokens.Length; i += 4)
+            {
+                if (BitConverter.ToUInt32(Tokens, i) == LitOpcode)
                     return true;
             }
 

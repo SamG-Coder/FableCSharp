@@ -21,6 +21,26 @@ public static class LandscapeTextures
     public const uint RequiredWaterBankType = 8;
     public const int WaterType8CopiedDwords = 2;
 
+    /// <summary>
+    /// StartOakVale <c>__ENGINE_SEA_*</c> first u32. Not compared
+    /// anywhere in the water renderer (the only <c>0x1CC3</c> imm is
+    /// in a KnotholeGlade/Arena string fn). <c>00B6D6E0</c> accepts
+    /// type 8 only.
+    /// </summary>
+    public const uint SeaBankFirstU32 = 7363;
+
+    /// <summary>
+    /// Water ctor <c>00B73760</c> zeros <c>+508</c>..<c>+624</c>
+    /// (ebx=0). Draw <c>00B783F0</c> treats begin==end on those
+    /// vectors plus flags <c>+630</c>/<c>+645</c> as empty and
+    /// <c>je 00B7A865</c>. <c>00B6D4D0</c> stores the sea name only.
+    /// Missing water intern returns at <c>00B420E4</c>. First-seen
+    /// never pushes a type-8 record, so the draw is empty.
+    /// </summary>
+    public const int WaterDrawVectorFirst = 508;
+    public const int WaterDrawVectorLast = 624;
+    public const bool FirstSeenWaterDrawIsEmpty = true;
+
     public static bool IsLoadableWaterBank(ReadOnlySpan<byte> bank) =>
         bank.Length >= 4 && BitConverter.ToUInt32(bank) == RequiredWaterBankType;
 
