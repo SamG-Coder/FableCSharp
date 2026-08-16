@@ -414,8 +414,8 @@ public static class WorldShading
     /// 8 then Flag1 adds slot 9. MainScene <c>00B33010</c> drains
     /// slot 14 at layer <c>0x80</c> and slots 8+10 at
     /// <c>0x100</c> through <c>00B849F0</c>, which calls
-    /// <c>[helper+20].vtbl+20/+24</c>. What type 4 binds is still
-    /// UNREAD.
+    /// <c>[helper+20].vtbl+20/+24</c>. Type 4 is not bound on
+    /// first-seen (<see cref="FirstSeenPalskinDrainUsesType4"/>).
     /// </summary>
     public const uint PalskinHelperCtor = 0x00BCE740;
     public const uint PalskinHelperVtbl = 0x012A6C5C;
@@ -430,4 +430,22 @@ public static class WorldShading
     public const uint PrimQueueDrain = 0x00B849F0;
     public const uint PrimQueueSubmit = 0x00B84720;
     public const bool FirstSeenPalskinBindUsesHelperTypeIndex = false;
+
+    /// <summary>
+    /// PALSKIN renderer ctor <c>00BCFF10</c> writes vtbl
+    /// <c>0x012A78DC</c>: slot +20 = <c>00BD7110</c>, +24 =
+    /// <c>00B91340</c>. Drain <c>00B849F0</c> with queue+20 byte 0
+    /// calls +20; byte 1 calls +24. <c>00BD7110</c> with
+    /// helper+32==0 (first-seen: <c>00BEBBB0</c> fails or extras
+    /// empty) calls <c>00BD3070(helper, arg1)</c>. Jump table
+    /// case 4 (<c>00BD3C04</c>) runs only when
+    /// <c>[ebp+124]==2</c>; drain arg1 is queue+12, not 2, so
+    /// first-seen takes default <c>00BD549D</c>. <c>00B91340</c>
+    /// unwraps helper+12 and jumps to debug <c>00B91140</c>.
+    /// </summary>
+    public const uint PalskinRendererVtbl = 0x012A78DC;
+    public const uint PalskinDrainVtbl20 = 0x00BD7110;
+    public const uint PalskinDrainVtbl24 = 0x00B91340;
+    public const uint PalskinType4JumpTarget = 0x00BD3C04;
+    public const bool FirstSeenPalskinDrainUsesType4 = false;
 }
