@@ -27,6 +27,7 @@ public sealed class ScriptRuntime : IScriptHost
     public IReadOnlyDictionary<string, bool> PersistFields => _persist;
     public IReadOnlyDictionary<string, string> NamedScripts => _named;
     public IReadOnlyList<ScriptTeleport> Teleports => _teleports;
+    public IReadOnlyList<ScriptAnimation> Animations => _animations;
     public IReadOnlyList<string> PreloadedCameras => _preloadedCameras;
 
     private readonly Dictionary<string, string> _named = new(StringComparer.OrdinalIgnoreCase);
@@ -34,6 +35,7 @@ public sealed class ScriptRuntime : IScriptHost
     private readonly List<ScriptFiber> _fibers = [];
     private readonly List<ScriptInterpreter> _interpreters = [];
     private readonly List<ScriptTeleport> _teleports = [];
+    private readonly List<ScriptAnimation> _animations = [];
     private readonly List<string> _preloadedCameras = [];
     private IReadOnlyList<ThingInstance> _things = [];
     private ScriptedCamera? _camera;
@@ -176,10 +178,20 @@ public sealed class ScriptRuntime : IScriptHost
 
     void IScriptHost.NoLoadUseCamera(string name) => BindCamera(name);
 
+    /// <summary>
+    /// <c>00CC14B8</c>: thing <c>vtbl+72</c> with name +
+    /// five flags + <c>[0x1375748]</c> + 0. Body UNREAD —
+    /// record only. <c>[ebp-22]</c> ctor 1 at
+    /// <c>00CBFD57</c> then <c>00CC186F</c> →
+    /// <c>00CC5691</c> one <c>vtbl+28</c>.
+    /// </summary>
     void IScriptHost.PlayAnimation(string? actor, string arguments)
     {
-        _ = actor;
-        _ = arguments;
+        var args = ScriptCommand.SplitArgs(arguments);
+        var name = args.Length == 0 ? "" : args[0];
+        var flags = ScriptCommand.ParsePlayAnimationFlags(arguments);
+        _animations.Add(new ScriptAnimation(
+            actor, name, flags.Flag1, flags.Flag2, flags.Flag3, flags.Flag4, flags.Flag5));
     }
 
     void IScriptHost.CameraPause(string arguments) => _ = arguments;
@@ -279,3 +291,12 @@ public sealed class ScriptFiber
 }
 
 public readonly record struct ScriptTeleport(string? Actor, string Marker, Vector3? Position);
+
+public readonly record struct ScriptAnimation(
+    string? Actor,
+    string Name,
+    bool Flag1,
+    bool Flag2,
+    bool Flag3,
+    bool Flag4,
+    bool Flag5);

@@ -235,6 +235,29 @@ public readonly struct ScriptCommand
     public static bool IsFalseArg(string? text) =>
         text is not null && text.Equals("false", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// <c>00CBEDBA</c>: strcmp arg to <c>true</c>.
+    /// </summary>
+    public static bool IsTrueArg(string? text) =>
+        text is not null && text.Equals("true", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// <c>00CC1527</c> defaults then <c>00CBEDBA</c> /
+    /// <c>00CBEE0C</c>. Arg 4 default is 1 and
+    /// <c>IsFalse</c> clears it. Do not invent pose.
+    /// </summary>
+    public static (bool Flag1, bool Flag2, bool Flag3, bool Flag4, bool Flag5)
+        ParsePlayAnimationFlags(string arguments)
+    {
+        var args = SplitArgs(arguments);
+        var flag1 = args.Length > 1 && IsTrueArg(args[1]);
+        var flag2 = args.Length > 2 && IsTrueArg(args[2]);
+        var flag3 = args.Length > 3 && IsTrueArg(args[3]);
+        var flag4 = args.Length <= 4 || !IsFalseArg(args[4]);
+        var flag5 = args.Length > 5 && IsTrueArg(args[5]);
+        return (flag1, flag2, flag3, flag4, flag5);
+    }
+
     public static string[] SplitArgs(string arguments)
     {
         if (arguments.Length == 0)
@@ -253,13 +276,14 @@ public readonly struct ScriptCommand
             verb.Equals("FadeIn", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("UseCamera", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("NoLoadUseCamera", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("PlayAnimation", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("CameraPause", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("Teleport", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("DoCameraPreloading", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("PlayAVI", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("MuteSounds", StringComparison.OrdinalIgnoreCase))
             return ScriptFlow.Continue;
+        if (verb.Equals("PlayAnimation", StringComparison.OrdinalIgnoreCase))
+            return ScriptFlow.YieldAfter;
         if (verb.Equals("LookToThing", StringComparison.OrdinalIgnoreCase))
         {
             var args = SplitArgs(command.Arguments);

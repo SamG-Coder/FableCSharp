@@ -167,6 +167,29 @@ public static class RegionTravel
     public const int MuteSoundsVtbl = 2664;
     public const bool FirstSeenMuteSoundsDoesNotYield = true;
     public const bool FirstSeenMuteSoundsArgIsFalse = true;
+    /// <summary>
+    /// <c>00CC14B8</c> push <c>.PlayAnimation</c>. Apply
+    /// <c>00CC1527</c> defaults (0,0,0,1,0) then
+    /// <c>00CBEDBA</c> args 1/2/3/5 and <c>00CBEE0C</c>
+    /// arg 4. Thing <c>vtbl+72</c> plus
+    /// <c>[0x1375748]</c> (file dword <c>0x01010101</c>)
+    /// and 0. Body UNREAD. <c>00CBFD57</c> writes
+    /// <c>[ebp-22]=1</c>, so <c>00CC186F</c> takes
+    /// <c>00CC5691</c> one <c>vtbl+28</c> then
+    /// <c>00CC0EBC</c> → <c>00CC7081</c>.
+    /// </summary>
+    public const uint PlayAnimationOpcode = 0x00CC14B8;
+    public const uint PlayAnimationApply = 0x00CC1527;
+    public const uint PlayAnimationYieldJoin = 0x00CC186F;
+    public const uint PlayAnimationYieldOnce = 0x00CC5691;
+    public const uint PlayAnimationLeftover = 0x00CC0EBC;
+    public const uint PlayAnimationYieldAfterWrite = 0x00CBFD57;
+    public const int PlayAnimationApplyVtbl = 72;
+    public const uint PlayAnimationFlagByte = 0x01375748;
+    public const uint PlayAnimationFlagByteDword = 0x01010101;
+    public const bool FirstSeenPlayAnimationYields = true;
+    public const string IntroWakeLoop = "CS_WAKING_UP_LOOP";
+    public const string IntroWakeSteps = "CS_WAKING_UP_ON_STEPS";
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;

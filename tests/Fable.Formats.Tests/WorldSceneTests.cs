@@ -282,6 +282,18 @@ public sealed class WorldSceneTests
         Assert.Equal(0x00CBF3ACu, RegionTravel.ScriptUseCameraToken);
         Assert.Equal(0x00CBF3FEu, RegionTravel.ScriptCameraLookAtToken);
         Assert.Equal(0x00CC14B9u, RegionTravel.ScriptPlayAnimationToken);
+        Assert.Equal(0x00CC14B8u, RegionTravel.PlayAnimationOpcode);
+        Assert.Equal(0x00CC1527u, RegionTravel.PlayAnimationApply);
+        Assert.Equal(0x00CC186Fu, RegionTravel.PlayAnimationYieldJoin);
+        Assert.Equal(0x00CC5691u, RegionTravel.PlayAnimationYieldOnce);
+        Assert.Equal(0x00CC0EBCu, RegionTravel.PlayAnimationLeftover);
+        Assert.Equal(0x00CBFD57u, RegionTravel.PlayAnimationYieldAfterWrite);
+        Assert.Equal(72, RegionTravel.PlayAnimationApplyVtbl);
+        Assert.Equal(0x01375748u, RegionTravel.PlayAnimationFlagByte);
+        Assert.Equal(0x01010101u, RegionTravel.PlayAnimationFlagByteDword);
+        Assert.True(RegionTravel.FirstSeenPlayAnimationYields);
+        Assert.Equal("CS_WAKING_UP_LOOP", RegionTravel.IntroWakeLoop);
+        Assert.Equal("CS_WAKING_UP_ON_STEPS", RegionTravel.IntroWakeSteps);
         Assert.Equal(0x00CC4B22u, RegionTravel.ScriptFadeInOut);
         Assert.Equal(0x00CB5D80u, RegionTravel.RegisteringScripts);
         Assert.Equal(0x00CB8110u, RegionTravel.QuestBaseCtor);
@@ -594,6 +606,40 @@ public sealed class WorldSceneTests
         Assert.Equal("DoScriptFrame 2", intro.Commands[intro.InstructionPointer]);
         Assert.Null(intro.UnsupportedCommand);
         Assert.False(intro.ExecutedVerb("PlayAnimation"));
+        Assert.Equal(RegionTravel.IntroFirstSeenCamera, camera.ActiveName);
+        var wakeFlags = ScriptCommand.ParsePlayAnimationFlags(
+            "CS_WAKING_UP_LOOP,FALSE,FALSE,TRUE,FALSE");
+        Assert.False(wakeFlags.Flag1);
+        Assert.False(wakeFlags.Flag2);
+        Assert.True(wakeFlags.Flag3);
+        Assert.False(wakeFlags.Flag4);
+        Assert.False(wakeFlags.Flag5);
+        Assert.True(ScriptCommand.ParsePlayAnimationFlags("CS_TIRED").Flag4);
+        Assert.True(RegionTravel.FirstSeenPlayAnimationYields);
+        Assert.Equal(0x00CC14B8u, RegionTravel.PlayAnimationOpcode);
+        Assert.Equal(72, RegionTravel.PlayAnimationApplyVtbl);
+        script.Update(0.1f);
+        Assert.Equal("DoScriptFrame 2", intro.Commands[intro.InstructionPointer]);
+        Assert.False(intro.ExecutedVerb("PlayAnimation"));
+        script.Update(0.1f);
+        Assert.Contains("Hero.PlayAnimation CS_WAKING_UP_LOOP,FALSE,FALSE,TRUE,FALSE", intro.Executed);
+        Assert.DoesNotContain(intro.Executed, line => line.Contains("CS_WAKING_UP_ON_STEPS", StringComparison.Ordinal));
+        Assert.Equal("Hero.PlayAnimation CS_WAKING_UP_ON_STEPS,FALSE,FALSE,TRUE,FALSE", intro.Commands[intro.InstructionPointer]);
+        Assert.True(intro.Yielded);
+        Assert.Null(intro.UnsupportedCommand);
+        Assert.Contains(runtime.Animations, a =>
+            a.Actor == "Hero" && a.Name == RegionTravel.IntroWakeLoop &&
+            !a.Flag1 && !a.Flag2 && a.Flag3 && !a.Flag4 && !a.Flag5);
+        script.Update(0.1f);
+        Assert.Contains("Hero.PlayAnimation CS_WAKING_UP_ON_STEPS,FALSE,FALSE,TRUE,FALSE", intro.Executed);
+        Assert.Equal("DoScriptFrame 4", intro.Commands[intro.InstructionPointer]);
+        Assert.Contains(runtime.Animations, a =>
+            a.Actor == "Hero" && a.Name == RegionTravel.IntroWakeSteps &&
+            !a.Flag1 && !a.Flag2 && a.Flag3 && !a.Flag4 && !a.Flag5);
+        Assert.Equal(2, runtime.Animations.Count);
+        Assert.Null(intro.UnsupportedCommand);
+        Assert.False(intro.ExecutedVerb("UseCamera"));
+        Assert.False(intro.ExecutedVerb("StartTimeCode"));
         Assert.Equal(RegionTravel.IntroFirstSeenCamera, camera.ActiveName);
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
