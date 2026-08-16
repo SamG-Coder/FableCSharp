@@ -8,12 +8,15 @@ dotnet run --project tools/Fable.ExeIndex -- all
 ```
 
 ```
-dotnet run --project tools/Fable.ExeIndex -- disasm 0x00B262C0 40
-dotnet run --project tools/Fable.ExeIndex -- calls 0x00B262C0
-dotnet run --project tools/Fable.ExeIndex -- trace-render
+dotnet run --project tools/Fable.ExeIndex -- disasm 0x00B25950 80
+dotnet run --project tools/Fable.ExeIndex -- calls 0x00B25950
+dotnet run --project tools/Fable.ExeIndex -- vtbl 0x012A2B54 16
+dotnet run --project tools/Fable.ExeIndex -- imm 0x013962A0
+dotnet run --project tools/Fable.ExeIndex -- disp 348 0x00B20000 0x00B80000
+dotnet run --project tools/Fable.ExeIndex -- scanff 16
 ```
 
-Steps (`index` / `split` / `translate` / `all` / `disasm` / `calls` / `trace-render`):
+Steps (`index` / `split` / `translate` / `all` / `disasm` / `calls` / `trace-render` / `imm` / `vtbl` / `disp` / `scanff`):
 
 | Dir | What |
 |---|---|

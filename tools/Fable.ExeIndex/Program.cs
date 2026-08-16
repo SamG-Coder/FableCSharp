@@ -2,7 +2,7 @@ using System.Text;
 using Fable.Core;
 using Fable.ExeIndex;
 
-var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "trace-render" or "calls") ?? "all";
+var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "trace-render" or "calls" or "imm" or "vtbl" or "disp" or "scanff") ?? "all";
 var install = GameInstall.TryLocate();
 var exePath = args.FirstOrDefault(a => a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
               ?? (install is null ? null : Path.Combine(install.Root, "Fable.exe"));
@@ -52,6 +52,18 @@ switch (cmd)
     case "calls":
         RunCalls(pe, args);
         break;
+    case "imm":
+        RunImm(pe, args);
+        break;
+    case "vtbl":
+        RunVtbl(pe, args);
+        break;
+    case "disp":
+        RunDisp(pe, args);
+        break;
+    case "scanff":
+        RunScanFf(pe, args);
+        break;
     default:
         RunIndex(pe, outDir);
         RunSplit(pe, outDir);
@@ -92,12 +104,219 @@ static void RunCalls(PeImage pe, string[] args)
             var site = pe.Va(i);
             Console.WriteLine($"0x{site:X8}  call 0x{target:X8}");
             hits++;
-            if (hits >= 40)
+            if (hits >= 80)
                 return;
         }
     }
 
     Console.WriteLine($"calls  {hits}");
+}
+
+static void RunImm(PeImage pe, string[] args)
+{
+    var vaTok = args.SkipWhile(a => a is "imm").FirstOrDefault(a =>
+        a.StartsWith("0x", StringComparison.OrdinalIgnoreCase) || (a.Length >= 2 && a.All(char.IsAsciiHexDigit)));
+    if (vaTok is null || !TryParseHex(vaTok, out var value))
+    {
+        Console.Error.WriteLine("usage: imm <u32>");
+        return;
+    }
+
+    var data = pe.Data;
+    var hits = 0;
+    foreach (var sec in pe.Sections)
+    {
+        var code = pe.InCode((int)sec.FileOffset);
+        var end = Math.Min(data.Length, (int)(sec.FileOffset + sec.FileSize) - 3);
+        for (var i = (int)sec.FileOffset; i < end; i++)
+        {
+            if (BitConverter.ToUInt32(data, i) != value)
+                continue;
+            var start = code ? X86.FindImmInsn(pe, i) : i;
+            Console.WriteLine($"0x{pe.Va(start):X8}  imm=0x{value:X}  {sec.Name}");
+            hits++;
+            if (hits >= 40)
+            {
+                Console.WriteLine($"imm  {hits}+");
+                return;
+            }
+        }
+    }
+
+    Console.WriteLine($"imm  {hits}");
+}
+
+static void RunScanFf(PeImage pe, string[] args)
+{
+    var tok = args.SkipWhile(a => a is "scanff").FirstOrDefault();
+    if (tok is null || !int.TryParse(tok, out var off))
+    {
+        Console.Error.WriteLine("usage: scanff <vtbl-byte-offset>");
+        return;
+    }
+
+    byte[][] pats =
+    [
+        [0xFF, 0x50, (byte)off],
+        [0xFF, 0x51, (byte)off],
+        [0xFF, 0x52, (byte)off],
+        [0xFF, 0x53, (byte)off],
+        [0xFF, 0x56, (byte)off],
+        [0xFF, 0x57, (byte)off],
+    ];
+    var data = pe.Data;
+    var hits = 0;
+    foreach (var sec in pe.Sections)
+    {
+        if (!pe.InCode((int)sec.FileOffset))
+            continue;
+        var end = Math.Min(data.Length, (int)(sec.FileOffset + sec.FileSize) - 3);
+        for (var i = (int)sec.FileOffset; i < end; i++)
+        {
+            var ok = false;
+            foreach (var p in pats)
+            {
+                if (data[i] == p[0] && data[i + 1] == p[1] && data[i + 2] == p[2])
+                {
+                    ok = true;
+                    break;
+                }
+            }
+
+            if (!ok)
+                continue;
+            var va = pe.Va(i);
+            if (va < 0x00B20000 || va > 0x00B90000)
+                continue;
+            Console.WriteLine($"0x{va:X8}  call [r+{off}]");
+            hits++;
+            if (hits >= 40)
+            {
+                Console.WriteLine($"scanff  {hits}+");
+                return;
+            }
+        }
+    }
+
+    Console.WriteLine($"scanff  {hits}");
+}
+
+static void RunDisp(PeImage pe, string[] args)
+{
+    var tok = args.SkipWhile(a => a is "disp").FirstOrDefault(a =>
+        a.StartsWith("0x", StringComparison.OrdinalIgnoreCase) || a.All(char.IsAsciiHexDigit) || a.All(char.IsDigit));
+    if (tok is null)
+    {
+        Console.Error.WriteLine("usage: disp <displacement>");
+        return;
+    }
+
+    uint disp;
+    if (tok.StartsWith("0x", StringComparison.OrdinalIgnoreCase))
+    {
+        if (!TryParseHex(tok, out disp))
+        {
+            Console.Error.WriteLine("usage: disp <displacement>");
+            return;
+        }
+    }
+    else if (!uint.TryParse(tok, out disp))
+    {
+        Console.Error.WriteLine("usage: disp <displacement>");
+        return;
+    }
+
+    uint lo = 0, hi = uint.MaxValue;
+    var extra = args.SkipWhile(a => a != tok).Skip(1).ToArray();
+    if (extra.Length >= 2 && TryParseHex(extra[0], out lo) && TryParseHex(extra[1], out hi))
+    {
+        RunDispRange(pe, disp, lo, hi);
+        return;
+    }
+
+    var needle = BitConverter.GetBytes(disp);
+    var data = pe.Data;
+    var hits = 0;
+    foreach (var sec in pe.Sections)
+    {
+        if (!pe.InCode((int)sec.FileOffset))
+            continue;
+        var end = Math.Min(data.Length, (int)(sec.FileOffset + sec.FileSize) - 4);
+        for (var i = (int)sec.FileOffset; i < end; i++)
+        {
+            if (data[i] != needle[0] || data[i + 1] != needle[1] || data[i + 2] != needle[2] || data[i + 3] != needle[3])
+                continue;
+            // typical 8B / 8D / 89 / FF modrm + disp32
+            if (i < 2)
+                continue;
+            Console.WriteLine($"0x{pe.Va(i - 2):X8}  +{disp}  {data[i - 2]:X2} {data[i - 1]:X2}");
+            hits++;
+            if (hits >= 50)
+            {
+                Console.WriteLine($"disp  {hits}+");
+                return;
+            }
+        }
+    }
+
+    Console.WriteLine($"disp  {hits}");
+}
+
+static void RunDispRange(PeImage pe, uint disp, uint lo, uint hi)
+{
+    var needle = BitConverter.GetBytes(disp);
+    var data = pe.Data;
+    var hits = 0;
+    foreach (var sec in pe.Sections)
+    {
+        if (!pe.InCode((int)sec.FileOffset))
+            continue;
+        var end = Math.Min(data.Length, (int)(sec.FileOffset + sec.FileSize) - 4);
+        for (var i = (int)sec.FileOffset + 2; i < end; i++)
+        {
+            if (data[i] != needle[0] || data[i + 1] != needle[1] || data[i + 2] != needle[2] || data[i + 3] != needle[3])
+                continue;
+            var va = pe.Va(i - 2);
+            if (va < lo || va > hi)
+                continue;
+            Console.WriteLine($"0x{va:X8}  +{disp}  {data[i - 2]:X2} {data[i - 1]:X2}");
+            hits++;
+        }
+    }
+
+    Console.WriteLine($"disp-range  {hits}");
+}
+
+static void RunVtbl(PeImage pe, string[] args)
+{
+    var vaTok = args.SkipWhile(a => a is "vtbl").FirstOrDefault(a =>
+        a.StartsWith("0x", StringComparison.OrdinalIgnoreCase) || (a.Length >= 6 && a.All(char.IsAsciiHexDigit)));
+    var countTok = args.SkipWhile(a => a != vaTok).Skip(1).FirstOrDefault();
+    if (vaTok is null || !TryParseHex(vaTok, out var va))
+    {
+        Console.Error.WriteLine("usage: vtbl <va> [count]");
+        return;
+    }
+
+    var n = 16;
+    if (countTok is not null && int.TryParse(countTok, out var parsed))
+        n = parsed;
+    var file = pe.FileOffset(va);
+    if (file < 0)
+    {
+        Console.Error.WriteLine($"VA 0x{va:X8} is not mapped.");
+        return;
+    }
+
+    for (var i = 0; i < n; i++)
+    {
+        var off = file + i * 4;
+        if (off + 4 > pe.Data.Length)
+            break;
+        var slot = BitConverter.ToUInt32(pe.Data, off);
+        var mapped = pe.FileOffset(slot) >= 0;
+        Console.WriteLine($"[{i,2}] +{i * 4,3}  0x{slot:X8}{(mapped ? "" : "  (unmapped)")}");
+    }
 }
 
 static void RunDisasm(PeImage pe, string[] args)

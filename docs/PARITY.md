@@ -115,7 +115,7 @@ parsers and notes.
 14. **CPatchTesselationEdgeStrip.** Exe stitches adjacent landscape patches with an edge strip. We offset neighbour tiles by MapX/Y; shared 16 m edges are not retessellated.
 15. **LoadWaterData / CEngineWaterRenderer.** `SetStaticMapFileForUse` always loads water after opening the static maps. Sea / river / ice shaders (`VSHADER_WATER_FOREGROUND`, `VSHADER_SEA_BACKGROUND`) are unread.
 16. **Picnic fillers.** `PicnicArea_Filler_02/03` touch Lookout but have no STB `.lev` (`LoadedOnPlayerProximity FALSE`). Likely `CLandscapeBackgroundPatch` only; WAD cells unread.
-17. **CEngineLightingManager register maps.** `PSCONST_MAX_FOG_ALPHA` **default is (0.5,0.5,0.5,0.5)**; `PSCONST_TFACTOR` default is (1,1,1,1). Which VS constant slot they land in, and fog start/end, are UNREAD. Landscape/static VS names encode 2/4/5 point lights + spot + shadow + colbuff.
+17. **CEngineLightingManager register maps.** Scene pass calls `00B46C80`/`00B46890` on `0x1436E9C` then caches a matrix at device-wrapper +496 (`009881F0`). `PSCONST_MAX_FOG_ALPHA` default is (0.5)×4; `PSCONST_TFACTOR` is (1)×4. **Which VS constant (`c20`/`c35`/`c3`/`c2`/`c18`) they become is still UNREAD.**
 18. **Sky mesh / weather / local detail.** Inner/outer sky VS exist but no sky C3D is in the banks; we draw a dome. Rain/snow/mist and `CEngineLocalDetailGenerator` (`REPEATED_MESH`) are not drawn.
 19. **Water patches.** Landscape `WATER_*` cells use the second texture stage. `CEngineWaterRenderer` / `LoadWaterData` sea-ice tessellation is unread.
 6. **WAD cell bytes 4–7 / 14–20.** High-entropy field and flags after the material slots are unread.
@@ -179,7 +179,7 @@ Traced in `Fable.exe` with `tools/Fable.ExeIndex` (`disasm` / `calls` / `trace-r
    | `0x1436E30` | `00B5C460` | radial blur |
    | `0x1436E38` | `00B86C00` | displacement |
 
-9. **34 render layers** (`Engine: Add Render Layer` @ `00B262C0`, 34 calls from `00B26A75`–`00B276A8`). Each layer is 28 bytes, vtable `0x12A0F04`, **bit mask at +4**, optional renderer attached with `00B2AC80`. Vector at manager `+348 / +352 / +356`. Bits and attachments in **registration** order (iteration / draw order UNREAD):
+9. **34 render layers** (`Engine: Add Render Layer` @ `00B262C0`, 34 calls from `00B26A75`–`00B276A8`). Each layer is 28 bytes, vtable `0x12A0F04`, **bit mask at +4**, flags at +8/+12, renderer vector at **+16 / +20**. Manager vector is a normal MSVC `vector<>`: **`+348` begin, `+352` end, `+356` cap**. Attach is `00B2AC80` (push onto layer+16). Bits and attachments in registration order — and the frame walks **begin → end**, so this **is** submit order:
 
    | +4 bit | attached global |
    |---|---|
@@ -204,6 +204,45 @@ Traced in `Fable.exe` with `tools/Fable.ExeIndex` (`disasm` / `calls` / `trace-r
    | `0x80000000` | `0x1436E7C` |
 
    `[MainScene]+616` is the subobject constructed in `00B33B50` (vtable `0x12A1348`), not the sky renderer.
+
+## Full scene pass (exe)
+
+Traced `00B27D90` → `00B25950` → layer `00B2AB80`. Do not invent VS register numbers.
+
+1. **Frame** `00B27D90` (only vtable site `0x012A0F5C`). Device wrapper `0x1436E18`: unbind textures (`[dev+260]` = `SetTexture(stage, 0)`), optional `00B277A0` (if flags at manager +24/+36: `00B3B4A0` on the shader manager, `00B2F740` on `0x1436E58`), then **`00B25950(this, arg)`**.
+2. **`00B25950` three phases** (this in ebx). Builds a stack ctx: copies 28 dwords from `arg`, stores `this+184` at ctx+120, `this+136` and `this+248` nearby. Then:
+
+   | phase | walk | call |
+   |---|---|---|
+   | 1 | components `+360…+364` | if `(this+184 & query(+40))` → **`vtbl+4`** |
+   | 2 | **layers `+348…+352`** | **every layer `vtbl+4`** (`00B2AB80`) — no extra mask here |
+   | 3 | components `+360…+364` | if `(this+184 & query(+40))` → **`vtbl+8`** |
+
+3. **Layer submit `00B2AB80`** (layer this, ctx). Bail if `(ctx+120 & layer+12) == 0`. `layer+12` is 0 or 1 on construction; ctx+120 is **`manager+184`**. Then three loops over attached renderers (`layer+16…+20`):
+
+   | loop | condition | call |
+   |---|---|---|
+   | prepare | `ctx+120 & renderer->query(+40)` | **`vtbl+20`** (sky/landscape/water = `ret 4` stub `00B28C60`) |
+   | **draw** | same **and** `renderer+8 != 0` | **`vtbl+16`** |
+   | after | same query | **`vtbl+24`** (stub `00B28C70`) |
+
+   Base ctor `00B59710` sets **`[this+8] = 1`**, so +16 runs for sky / landscape / water / MainScene+616.
+   Query (`+40`) returns **`1`** for sky (`00B66DE0`), landscape (`00B6CA10`), water (`00B7ED70`).
+
+4. **`vtbl+16` switches on the layer bit (`arg+4`)**:
+
+   | Renderer | +16 VA | bits handled |
+   |---|---|---|
+   | Landscape `0x12A2B54` | `00B6B0B0` | **`4`**: `00B67480`, `00B671A0`, walk static-map list `00BDC060`, `00B67510`. **`0x40`**: `00B68DA0`, `00B67480`, `00B677D0`, `0098B5E0(2)`, walk list `00BDC2D0`. Other bits: profiler only. |
+   | Sky `0x12A293C` | `00B662F0` | **`0x400000`** → `00B64550`. Else uses `0x1436EA0+20` and continues (outer/inner/stars). |
+   | Water `0x12A3364` | `00B783F0` | Reads water vectors at +508/+512/+520/+524. Body UNREAD (decoder). |
+   | `[MainScene]+616` `0x12A1348` | `00B33010` | `lea ebx, [this-616]` then switch on the bit: **`2`** uses shadow global `0x1436E60`; **`0x20`** → `00B32610`; compares `0x400` / `0x80`. |
+
+5. **Landscape shared setup `00B67480`** (both bit 4 and 0x40): `00B46C80` + `00B46890` on **`0x1436E9C`** (the 0x46D0 object from ctor `00B482A0`), then `009881F0(0x1436E14, matrix)` with **1.0f at +4, +20, +36** (identity-like 4×4 cached on the device wrapper at +496…+556, last `w=1`). This is **not** yet a D3D `SetVertexShaderConstant` index — the wrapper stores the matrix; the c20/c35/c3 slot map is still UNREAD.
+6. **Patch submit** `00BDC2D0` / `00BDC060`: require `[patch+8]` and `[patch+4]`, touch `0x1436EA0+0x1C8`, then x87 (`fld`). Exact DrawIndexed path UNREAD.
+7. **Pre-pass `00B277A0`**: `00B3B4A0(shader manager)` releases caches at +2288/+2296/+2304 and calls `00BD9B50([0x1436EA8]+1712)` — same pool object as `EnablePoolAllocation`.
+8. **`CEngineStateBlockDiffuse2X` apply** — still RTTI only. `0098B5E0(n)` is a device-wrapper call used with **2** (landscape 0x40) and **3** (earlier in `00B25882`).
+
 10. **Per-renderer shader stores**
     - Sky: `PSHADER_INNER_SKY` / `_SIMPLE` → `this+292`; `PSHADER_OUTER_SKY` → `+300`; `PSHADER_SKY_STAR_FIELD` → `+260`; `VSHADER_OUTER_SKY` → `+244`; `VSHADER_SKY_STAR_FIELD` → `+252`.
     - Landscape: `PSHADER_LANDSCAPE_FOREGROUND` → `this+1388`. VS family is `VSHADER_LANDSCAPE_FOREGROUND` plus `_2LIGHTS` / `_4LIGHTS` / `_5LIGHTS` × bump / spot / shadow / colbuff, and `_BLACKOUT_PASS`.
