@@ -82,7 +82,7 @@ public sealed class WorldGeometry
                 continue;
             }
 
-            var transform = BuildTransform(thing);
+            var transform = ObjectTransform(thing);
             foreach (var tri in mesh.Triangles)
             {
                 var a = Vector3.Transform(tri.A, transform);
@@ -108,7 +108,12 @@ public sealed class WorldGeometry
         };
     }
 
-    private static Matrix4x4 BuildTransform(ThingInstance thing)
+    /// <summary>
+    /// C3D meshes are Z-up centimetres. TNG RHSetForward/RHSetUp are a
+    /// right-handed Z-up basis. CreateWorld is Y-up and negates forward —
+    /// that laid lamps and trees on their side.
+    /// </summary>
+    public static Matrix4x4 ObjectTransform(ThingInstance thing)
     {
         var position = new Vector3(thing.PositionX!.Value, thing.PositionY!.Value, thing.PositionZ!.Value);
         var forward = ReadAxis(thing, "CTCPhysicsStandard.RHSetForward", Vector3.UnitY);
@@ -119,7 +124,20 @@ public sealed class WorldGeometry
             up = Vector3.UnitZ;
         forward = Vector3.Normalize(forward);
         up = Vector3.Normalize(up);
-        return Matrix4x4.CreateScale(MeshToWorld) * Matrix4x4.CreateWorld(position, forward, up);
+        var right = Vector3.Cross(forward, up);
+        if (right.LengthSquared() < 1e-8f)
+            right = Vector3.Cross(forward, Vector3.UnitZ);
+        if (right.LengthSquared() < 1e-8f)
+            right = Vector3.UnitX;
+        right = Vector3.Normalize(right);
+        up = Vector3.Normalize(Vector3.Cross(right, forward));
+
+        var basis = new Matrix4x4(
+            right.X, right.Y, right.Z, 0,
+            forward.X, forward.Y, forward.Z, 0,
+            up.X, up.Y, up.Z, 0,
+            position.X, position.Y, position.Z, 1);
+        return Matrix4x4.CreateScale(MeshToWorld) * basis;
     }
 
     private static Vector3 ReadAxis(ThingInstance thing, string prefix, Vector3 fallback)

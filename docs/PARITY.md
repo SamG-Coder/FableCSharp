@@ -35,6 +35,7 @@ parsers and notes.
 | STB section 2 tile | The blob at `u32@2048` is the **same** raw-LZO tile. Lookout covers WLD `[3232,3248]×[3488,3504]` (map origin, 289 verts). Picnic covers `[3104,3120]×[3520,3536]`. This is the west-south cell the table does not store. | `LevFormatTests` |
 | STB tile indices | After the vertex array, adaptive tiles (`v < 289`) store a `u16` triangle list (all indices `< v`). Full 17×17 tiles usually skip that and start a second unread object (`59 10` header). | `LevFormatTests` |
 | Camera | System.Numerics row-major is uploaded as-is (no extra transpose). Z-up. Overview `(64,-40,95)` looks at `(64,64,36)`. | `CameraProjectionTests` |
+| Object basis | C3D is Z-up centimetres. TNG `RHSetForward` / `RHSetUp` are a right-handed Z-up frame (mesh X=right, Y=forward, Z=up). Streetlamp 4978 is 345 units tall in **Z**. | `WorldGeometryTests` |
 | TNG → mesh (partial) | `meshdata.h` name match: `DefinitionType`, `MESH_` + type, or `MESH_` + stem after `OBJECT_` / `CREATURE_` / `BUILDING_`. Skip `[PHYSICS]`. Still useful as a fallback. | `MeshFormatTests` |
 | names.bin offsets | Each name is `(u32 CRC, cstring)`. The game.bin name-ref is the string's offset after the 20-byte header (first string is 4). CRC is Fable polynomial `0xEDB88320` init 0. | `GameBinFormatTests` |
 | game.bin container | 13-byte header: `u8 use_names_bin` (TLC = 0), `u32 file`, `u32 platform`, `u32 entry_count` (14761). Then `NameRef` × N (`type_off`, `file_off`, `counter`). Then chunk index + **zlib level 1** chunks (`78 01`). | `GameBinFormatTests` |
@@ -75,6 +76,7 @@ parsers and notes.
 | Every Lookout `DiffuseMapID` framed-LZO decodes | Some bank ids overrun the LZO reader. `TryLoad` returns null; those draws use a 1×1 fallback. | `GpuTextureTests` |
 | STB `.lev` is the same format as WAD `.lev` | STB blob starts `u32=1`, not version 25 / `0x1904`. | `LevFormatTests` |
 | Extra `Matrix4x4.Transpose` on VP | Double transpose. Screen was solid clear-color. | `CameraProjectionTests` |
+| `CreateWorld(pos, RHSetForward, RHSetUp)` | Numerics CreateWorld is Y-up and **negates** forward. Lamp mesh Z (height) mapped to world Y — props lay on their side and faced backward. | `WorldGeometryTests` |
 | WAD `Find("Lookout")` for a `.tng` | Stem match hit `LookoutPoint.lev`. Must pass the extension. | `TlcInstallTests` |
 | `FinalAlbion.gtg` is a compiled .lev / C3D | ASCII `NEWMAP 1` / `Version 2;`. First `u32` is not 25. | `DataCatalogTests` |
 | PicnicArea.lug / Dialogue.lut are BIGB | Magic is `LiOnHeAd`, not `BIGB`. | `DataCatalogTests` |
