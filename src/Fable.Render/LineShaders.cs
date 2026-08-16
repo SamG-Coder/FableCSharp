@@ -112,7 +112,11 @@ internal static class LineShaders
                 alpha = clamp(t0.a * v0a, 0.0, 1.0);
             }
             else if (mode < 2.5)
-                lit = t1.rgb * fragColor.rgb;
+            {
+                // PSHADER_INNER_SKY / SIMPLE: mul_sat rgb*v0 then *v0.w.
+                // mul_x2 c2/c1 has no first-seen writer — do not invent 0.
+                lit = t1.rgb * fragColor.rgb * fragColor.a;
+            }
             else
                 // STATIC/PALSKIN: mov oT0, v2/v4. PSHADER_TEXTURE_DIFFUSE_FOG mul t0 * v0.
                 lit = t0.rgb * v0;

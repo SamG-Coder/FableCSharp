@@ -1195,16 +1195,91 @@ static void RunTraceShaders(PeImage pe, DumpStore store)
 
     store.WritePart(family, "tokens-tsv", "```\n" + tsv + "```\n");
     links.Add(new IndexLink("tokens-tsv", "Token opcode TSV", 0));
-    links.Add(WriteFnPart(pe, store, family, "Sky inner PS bind 00B62BA8", 0x00B62B90, 50, stopOnRet: false));
+    links.Add(WriteFnPart(pe, store, family, "Sky inner PS bind 00B62BA8", 0x00B62BA0, 24, stopOnRet: false));
     links.Add(WriteCallDispPart(pe, store, family, "SetPixelShaderConstantF 0x1B4 sky", 0x1B4, 0x00B62000, 0x00B67000));
     links.Add(WriteCallDispPart(pe, store, family, "SetTexture 0x104 sky", 0x104, 0x00B62000, 0x00B67000));
     links.Add(WriteCallDispPart(pe, store, family, "SetPixelShaderConstantF 0x1B4 wrappers", 0x1B4, 0x00988000, 0x0098C000));
     links.Add(WriteCallDispPart(pe, store, family, "SetPixelShaderConstantF 0x1B4 first-scene", 0x1B4, 0x00B20000, 0x00B80000));
+    links.Add(WriteWalkPart(pe, store, family, "PS constant wrapper 009888FC", 0x009888FC, 40));
+    links.Add(WriteWalkPart(pe, store, family, "PS constant wrapper 00989C98", 0x00989C98, 40));
+    links.Add(WriteCallsPart(pe, store, family, "calls PS wrapper 009888FC", 0x009888FC));
+    links.Add(WriteCallsPart(pe, store, family, "calls PS wrapper 00989C98", 0x00989C98));
+    links.Add(WriteImmPart(pe, store, family, "imm c92 sky", 92, 0x00B62000, 0x00B67000));
+    links.Add(WriteImmPart(pe, store, family, "imm c92 wrappers", 92, 0x00988000, 0x0098C000));
     store.WriteIndex(
         family, DumpStore.ShaderTokensVersion, "shader-tokens",
         "First-seen New Game shader token listings from shaders.big plus bind/PS-constant opcode hits. This is the opcode database — dump here instead of grepping.",
         links);
     Console.WriteLine($"trace  {family}/  parts={links.Count}  v{DumpStore.ShaderTokensVersion}");
+}
+
+static IndexLink WriteCallsPart(PeImage pe, DumpStore store, string family, string name, uint target)
+{
+    var slug = DumpStore.Slug(name, target);
+    var sb = new StringBuilder();
+    sb.AppendLine($"# {name}");
+    sb.AppendLine();
+    sb.AppendLine($"`E8` sites that call `0x{target:X8}`. [INDEX](INDEX.md)");
+    sb.AppendLine();
+    var data = pe.Data;
+    var hits = 0;
+    foreach (var sec in pe.Sections)
+    {
+        if (!pe.InCode((int)sec.FileOffset))
+            continue;
+        var end = Math.Min(data.Length, (int)(sec.FileOffset + sec.FileSize) - 4);
+        for (var i = (int)sec.FileOffset; i < end; i++)
+        {
+            if (data[i] != 0xE8)
+                continue;
+            var rel = BitConverter.ToInt32(data, i + 1);
+            var dest = pe.Va(i + 5 + rel);
+            if (dest != target)
+                continue;
+            sb.AppendLine($"- `0x{pe.Va(i):X8}`");
+            hits++;
+        }
+    }
+
+    sb.AppendLine();
+    sb.AppendLine($"hits **{hits}**");
+    store.WritePart(family, slug, sb.ToString());
+    return new IndexLink(slug, name, target);
+}
+
+static IndexLink WriteImmPart(
+    PeImage pe, DumpStore store, string family, string name, uint value, uint lo, uint hi)
+{
+    var slug = DumpStore.Slug(name, value);
+    var sb = new StringBuilder();
+    sb.AppendLine($"# {name}");
+    sb.AppendLine();
+    sb.AppendLine($"imm `0x{value:X}` in `0x{lo:X8}`–`0x{hi:X8}`. [INDEX](INDEX.md)");
+    sb.AppendLine();
+    var data = pe.Data;
+    var hits = 0;
+    foreach (var sec in pe.Sections)
+    {
+        if (!pe.InCode((int)sec.FileOffset))
+            continue;
+        var end = Math.Min(data.Length, (int)(sec.FileOffset + sec.FileSize) - 3);
+        for (var i = (int)sec.FileOffset; i < end; i++)
+        {
+            if (BitConverter.ToUInt32(data, i) != value)
+                continue;
+            var start = X86.FindImmInsn(pe, i);
+            var va = pe.Va(start);
+            if (va < lo || va > hi)
+                continue;
+            sb.AppendLine($"- `0x{va:X8}`");
+            hits++;
+        }
+    }
+
+    sb.AppendLine();
+    sb.AppendLine($"hits **{hits}**");
+    store.WritePart(family, slug, sb.ToString());
+    return new IndexLink(slug, name, value);
 }
 
 static IndexLink WriteCallDispPart(

@@ -29,9 +29,9 @@ public static class MeshBatches
             var first = cursor;
             foreach (var tri in group)
             {
-                vertices[cursor++] = Vert(tri.A, tri.NormalA, tri.Normal, tri.UvA, tri.ColorA, tri.ExtraA);
-                vertices[cursor++] = Vert(tri.B, tri.NormalB, tri.Normal, tri.UvB, tri.ColorB, tri.ExtraB);
-                vertices[cursor++] = Vert(tri.C, tri.NormalC, tri.Normal, tri.UvC, tri.ColorC, tri.ExtraC);
+                vertices[cursor++] = Vert(tri.A, tri.NormalA, tri.Normal, tri.UvA, tri.ColorA, tri.ExtraA, tri.ColorAlphaA);
+                vertices[cursor++] = Vert(tri.B, tri.NormalB, tri.Normal, tri.UvB, tri.ColorB, tri.ExtraB, tri.ColorAlphaB);
+                vertices[cursor++] = Vert(tri.C, tri.NormalC, tri.Normal, tri.UvC, tri.ColorC, tri.ExtraC, tri.ColorAlphaC);
             }
 
             var count = (uint)(cursor - first);
@@ -62,10 +62,11 @@ public static class MeshBatches
 
     private static MeshVertex Vert(
         System.Numerics.Vector3 p, System.Numerics.Vector3 n, System.Numerics.Vector3 face,
-        System.Numerics.Vector2 uv, System.Numerics.Vector3 color, System.Numerics.Vector3 extra)
+        System.Numerics.Vector2 uv, System.Numerics.Vector3 color, System.Numerics.Vector3 extra,
+        float alpha)
     {
         var normal = n.LengthSquared() < 1e-8f ? face : n;
         var tint = color.LengthSquared() < 1e-8f ? System.Numerics.Vector3.One : color;
-        return new MeshVertex(p, normal, uv, new System.Numerics.Vector4(tint, 1f), extra);
+        return new MeshVertex(p, normal, uv, new System.Numerics.Vector4(tint, alpha), extra);
     }
 }

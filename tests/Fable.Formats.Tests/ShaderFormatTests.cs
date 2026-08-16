@@ -499,6 +499,12 @@ public sealed class ShaderFormatTests
         Assert.False(SkyPass.FirstSeenSkyPsC2HasWriter);
         Assert.True(SkyPass.FirstSeenSkyMode2IsStandIn);
         Assert.False(SkyPass.FirstSeenQualityBitKnown);
+        Assert.True(SkyPass.FirstSeenInnerSkyMulsVertexAlpha);
+        Assert.Equal(92, SkyPass.InnerSkyVsC92);
+        Assert.Equal(0x009888FCu, SkyPass.PsConstantWrapper0);
+        Assert.Equal(0x00989C98u, SkyPass.PsConstantWrapper1);
+        Assert.Equal(1f, SkyPass.DomeAlpha(0), 5);
+        Assert.InRange(SkyPass.DomeAlpha(SkyPass.DomeRings - 1), 0f, 0.08f);
         Assert.Equal(2f, ScenePasses.ShaderMode(SceneSubmit.SkyElse));
     }
 }

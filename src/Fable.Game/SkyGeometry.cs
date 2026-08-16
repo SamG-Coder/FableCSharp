@@ -38,8 +38,10 @@ public static class SkyGeometry
             var b = SkyPass.EllipsoidPoint(r, s1);
             var c = SkyPass.EllipsoidPoint(r + 1, s);
             var d = SkyPass.EllipsoidPoint(r + 1, s1);
-            Textured(triangles, a, b, d, Uv(r, s), Uv(r, s1), Uv(r + 1, s1), textureId);
-            Textured(triangles, a, d, c, Uv(r, s), Uv(r + 1, s1), Uv(r + 1, s), textureId);
+            var a0 = SkyPass.DomeAlpha(r);
+            var a1 = SkyPass.DomeAlpha(r + 1);
+            Textured(triangles, a, b, d, Uv(r, s), Uv(r, s1), Uv(r + 1, s1), textureId, a0, a0, a1);
+            Textured(triangles, a, d, c, Uv(r, s), Uv(r + 1, s1), Uv(r + 1, s), textureId, a0, a1, a1);
         }
 
         for (var s = 0; s < segs; s++)
@@ -54,7 +56,7 @@ public static class SkyGeometry
             Textured(triangles, lo, lo1, hi1, default, default, default, textureId);
             Textured(triangles, lo, hi1, hi, default, default, default, textureId);
             var pole = new Vector3(0f, 0f, SkyPass.PoleZ);
-            Textured(triangles, pole, hi, hi1, default, default, default, textureId);
+            Textured(triangles, pole, hi, hi1, default, default, default, textureId, 0f, 1f, 1f);
             var nadir = new Vector3(0f, 0f, SkyPass.NadirZ);
             Textured(triangles, nadir, lo1, lo, default, default, default, textureId);
         }
@@ -67,12 +69,14 @@ public static class SkyGeometry
         List<MeshTriangle> triangles,
         Vector3 a, Vector3 b, Vector3 c,
         Vector2 ua, Vector2 ub, Vector2 uc,
-        int textureId)
+        int textureId,
+        float alphaA = 1f, float alphaB = 1f, float alphaC = 1f)
     {
         triangles.Add(new MeshTriangle(
             a, b, c, Vector3.Zero,
             ua, ub, uc,
             textureId, Vector3.One, Vector3.One, Vector3.One, textureId,
-            default, default, default, SceneLayer.Sky));
+            default, default, default, SceneLayer.Sky,
+            ColorAlphaA: alphaA, ColorAlphaB: alphaB, ColorAlphaC: alphaC));
     }
 }

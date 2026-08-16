@@ -15,7 +15,7 @@ internal sealed class DumpStore
     public const int LandscapeTraceVersion = 5;
     public const int RenderTraceVersion = 2;
     public const int NewGameTraceVersion = 71;
-    public const int ShaderTokensVersion = 1;
+    public const int ShaderTokensVersion = 2;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

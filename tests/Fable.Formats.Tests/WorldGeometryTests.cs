@@ -373,6 +373,9 @@ public sealed class WorldGeometryTests
         Assert.Equal(0x00B62BA8u, SkyPass.InnerSkyPsBind);
         Assert.False(SkyPass.FirstSeenSkyPsC2HasWriter);
         Assert.True(SkyPass.FirstSeenSkyMode2IsStandIn);
+        Assert.True(SkyPass.FirstSeenInnerSkyMulsVertexAlpha);
+        Assert.Contains(midday, t => t.ColorAlphaA > 0.99f);
+        Assert.Contains(midday, t => t.ColorAlphaA < 0.1f || t.ColorAlphaC < 0.1f);
         Assert.DoesNotContain(installDome, t => t.TextureId == SkyDef.StarTextureIdDefault);
         var invented = new Vector2(0f / 36f, 0f / 8f);
         Assert.Equal(Vector2.Zero, SkyPass.DomeUv(0, 0, 0f, 0f, SkyPass.FirstSeenInvUvDivisor));

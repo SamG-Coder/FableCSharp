@@ -145,6 +145,15 @@ public static class SkyPass
     public const bool FirstSeenSkyPsC2HasWriter = false;
     public const bool FirstSeenSkyMode2IsStandIn = true;
     public const bool FirstSeenQualityBitKnown = false;
+    /// <summary>
+    /// Both INNER_SKY and SIMPLE: <c>mul_sat r0, r0, v0.w</c> after
+    /// <c>mul_sat r0.xyz, r0, v0</c>. <c>VSHADER_INNER_SKY</c> is
+    /// <c>mov oD0, v1</c> so that alpha is the dome dest+12 byte.
+    /// </summary>
+    public const bool FirstSeenInnerSkyMulsVertexAlpha = true;
+    public const int InnerSkyVsC92 = 92;
+    public const uint PsConstantWrapper0 = 0x009888FC;
+    public const uint PsConstantWrapper1 = 0x00989C98;
     public const int DomeRings = 9;
     public const int DomeSegments = 36;
     public const int DomeVertsPerRing = 37;
@@ -314,6 +323,13 @@ public static class SkyPass
         var alpha = vBase > 0f ? vBase : 0f;
         return (FloatToByte(alpha * ColourScale) << 24) | ColourRgbMask;
     }
+
+    /// <summary>
+    /// Dest+12 alpha as 0..1. <c>PSHADER_INNER_SKY</c> multiplies
+    /// by this via <c>mov oD0, v1</c> then <c>mul_sat r0, r0, v0.w</c>.
+    /// </summary>
+    public static float DomeAlpha(int ring) =>
+        ((uint)DomeColor(ring) >> 24) / 255f;
 
     /// <summary>
     /// Dome dest+16/+20. Pass the first-seen video-options floats
