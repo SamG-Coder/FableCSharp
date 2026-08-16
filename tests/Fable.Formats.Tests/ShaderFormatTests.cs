@@ -1,4 +1,6 @@
+using System.Numerics;
 using Fable.Core;
+using Fable.Formats;
 using Fable.Formats.Banks;
 using Fable.Formats.Shaders;
 
@@ -173,8 +175,9 @@ public sealed class ShaderFormatTests
         var skin = Load("SHADERS_PALSKIN", "VSHADER_PALSKIN_DIRLIGHT_FOG");
         foreach (var vs in new[] { land, stat, skin })
         {
-            Assert.Contains(20, vs.ConstRegisters);
-            Assert.Contains(35, vs.ConstRegisters);
+            Assert.Contains(WorldShading.DirLightStartRegister, vs.ConstRegisters);
+            Assert.Contains(WorldShading.DirLightStartRegister + 1, vs.ConstRegisters);
+            Assert.Contains(WorldShading.LitRegister, vs.ConstRegisters);
             Assert.Contains(2, vs.ConstRegisters);
             Assert.Contains(18, vs.ConstRegisters);
         }
@@ -182,5 +185,13 @@ public sealed class ShaderFormatTests
         Assert.Contains(3, land.ConstRegisters);
         Assert.Contains(5, stat.ConstRegisters);
         Assert.DoesNotContain(20, Load("SHADERS_STATIC", "VSHADER_STATIC_UNLIT").ConstRegisters);
+        Assert.Equal(19, WorldShading.DirLightStartRegister);
+        Assert.Equal(2, WorldShading.RegistersPerLight);
+        Assert.Equal(35, WorldShading.LitRegister);
+        Assert.Equal(new Vector4(0f, 1f, 0f, 0f), WorldShading.DirLightDirection);
+        Assert.Equal(0.25f, WorldShading.DirLightColor.X);
+        Assert.Equal(0.25f, WorldShading.DirLightColor.Y);
+        Assert.Equal(0.25f, WorldShading.DirLightColor.Z);
+        Assert.Equal(1f, WorldShading.DirLightColor.W);
     }
 }

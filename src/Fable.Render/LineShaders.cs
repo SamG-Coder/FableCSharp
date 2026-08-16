@@ -36,8 +36,8 @@ internal static class LineShaders
         layout(push_constant) uniform Push {
             mat4 viewProj;
             vec4 cameraPos;
-            vec4 fogColor;
             vec4 lightDir;
+            vec4 lightColor;
             vec4 pass;
         } pc;
         void main() {
@@ -61,15 +61,17 @@ internal static class LineShaders
         layout(push_constant) uniform Push {
             mat4 viewProj;
             vec4 cameraPos;
-            vec4 fogColor;
             vec4 lightDir;
+            vec4 lightColor;
             vec4 pass;
         } pc;
         void main() {
             vec4 t0 = texture(albedo0, fragUv);
             vec4 t1 = texture(albedo1, fragUv);
-            // v0 is VS oD0. Light constants unread; do not invent N.L.
-            vec3 v0 = fragColor.rgb;
+            vec3 n = fragNormal;
+            float nlen = length(n);
+            float ndl = nlen < 0.1 ? 1.0 : max(dot(normalize(n), pc.lightDir.xyz), 0.0);
+            vec3 v0 = fragColor.rgb * pc.lightColor.rgb * ndl;
             float mode = pc.pass.x;
             vec3 lit;
             if (mode < 0.5)
