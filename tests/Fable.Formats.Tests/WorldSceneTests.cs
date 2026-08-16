@@ -383,6 +383,14 @@ public sealed class WorldSceneTests
         Assert.Equal("CREATURE_OAKVALE_VILLAGER_FEMALE_NORMAL_MESH", RegionTravel.IntroCreateType);
         Assert.Equal("MK_OVI_ID_VS1", RegionTravel.IntroCreateMarker);
         Assert.Equal("VILL1", RegionTravel.IntroCreateName);
+        Assert.Equal(0x00CC083Du, RegionTravel.WalkToOpcode);
+        Assert.Equal(20, RegionTravel.WalkToApplyVtbl);
+        Assert.Equal(0x004C72B0u, RegionTravel.WalkToApplyStub);
+        Assert.Equal(0, RegionTravel.WalkToMode);
+        Assert.False(RegionTravel.FirstSeenWalkToAppliesMove);
+        Assert.False(RegionTravel.FirstSeenWalkToWaitsForArrival);
+        Assert.Equal("MK_OVI_ID_VW1", RegionTravel.IntroWalkMarker);
+        Assert.Equal(0.3f, RegionTravel.IntroWalkSpeed);
         Assert.Equal(0x00CC4B22u, RegionTravel.ScriptFadeInOut);
         Assert.Equal(0x00CB5D80u, RegionTravel.RegisteringScripts);
         Assert.Equal(0x00CB8110u, RegionTravel.QuestBaseCtor);
@@ -952,14 +960,21 @@ public sealed class WorldSceneTests
         Assert.Contains(
             "Create CREATURE_OAKVALE_VILLAGER_FEMALE_NORMAL_MESH,MK_OVI_ID_VS1,VILL1",
             intro.Executed);
-        Assert.Equal("VILL1.WalkTo MK_OVI_ID_VW1", intro.Commands[intro.InstructionPointer]);
-        Assert.Equal("VILL1.WalkTo MK_OVI_ID_VW1", intro.UnsupportedCommand);
+        Assert.Contains("VILL1.WalkTo MK_OVI_ID_VW1", intro.Executed);
+        Assert.Equal("GamePause 0.8", intro.Commands[intro.InstructionPointer]);
+        Assert.Null(intro.UnsupportedCommand);
         Assert.True(intro.Yielded);
         Assert.Contains(runtime.Creates, c =>
             c.Type == RegionTravel.IntroCreateType &&
             c.Marker == RegionTravel.IntroCreateMarker &&
             c.Name == RegionTravel.IntroCreateName);
-        Assert.False(intro.ExecutedVerb("WalkTo"));
+        Assert.Contains(runtime.WalkTos, w =>
+            w.Actor == "VILL1" &&
+            w.Marker == RegionTravel.IntroWalkMarker &&
+            w.Speed == RegionTravel.IntroWalkSpeed &&
+            !w.Wait);
+        Assert.False(RegionTravel.FirstSeenWalkToAppliesMove);
+        Assert.False(intro.ExecutedVerb("WaitActiveDialog"));
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 
@@ -1078,6 +1093,32 @@ public sealed class WorldSceneTests
             string? actor, string name, bool flagA, bool flagB, bool flagC, bool flagD, bool flagE, int count) { }
 
         public void Create(string type, string marker, string name) { }
+
+        public void WalkTo(string? actor, string marker, float speed, bool wait) { }
+    }
+
+    [Fact]
+    public void VILL1_WalkTo_yields_once_without_move()
+    {
+        var command = "VILL1.WalkTo MK_OVI_ID_VW1";
+        var parsed = ScriptCommand.ParseSneakTo(ScriptCommand.Parse(command).Arguments);
+        Assert.Equal("MK_OVI_ID_VW1", parsed.Marker);
+        Assert.Equal(0.3f, parsed.Speed);
+        Assert.False(parsed.Wait);
+        Assert.Equal(ScriptFlow.YieldAfter, ScriptCommand.Classify(ScriptCommand.Parse(command)));
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(ScriptCommand.Parse("WalkTo MK_OVI_ID_VW1")));
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(ScriptCommand.Parse("VILL1.WalkTo")));
+        Assert.Equal(0x00CC083Du, RegionTravel.WalkToOpcode);
+        Assert.Equal(0x004C72B0u, RegionTravel.WalkToApplyStub);
+        Assert.Equal(0, RegionTravel.WalkToMode);
+        Assert.False(RegionTravel.FirstSeenWalkToAppliesMove);
+        Assert.False(RegionTravel.FirstSeenWalkToWaitsForArrival);
+        var interpreter = new ScriptInterpreter("walk", [command, "GamePause 0.8"]);
+        interpreter.RunUntilYield();
+        Assert.True(interpreter.Yielded);
+        Assert.Contains(command, interpreter.Executed);
+        Assert.Equal("GamePause 0.8", interpreter.Commands[interpreter.InstructionPointer]);
+        Assert.Null(interpreter.UnsupportedCommand);
     }
 
     [Fact]
@@ -1094,11 +1135,11 @@ public sealed class WorldSceneTests
         Assert.Equal(364, RegionTravel.CreateApplyVtbl);
         Assert.Equal(0x008A9100u, RegionTravel.CreateApplyFn);
         Assert.True(RegionTravel.FirstSeenCreateDoesNotYield);
-        var interpreter = new ScriptInterpreter("create", [command, "VILL1.WalkTo MK_OVI_ID_VW1"]);
+        var interpreter = new ScriptInterpreter("create", [command]);
         interpreter.RunUntilYield();
         Assert.Contains(command, interpreter.Executed);
-        Assert.Equal("VILL1.WalkTo MK_OVI_ID_VW1", interpreter.Commands[interpreter.InstructionPointer]);
-        Assert.Equal("VILL1.WalkTo MK_OVI_ID_VW1", interpreter.UnsupportedCommand);
+        Assert.True(interpreter.Finished);
+        Assert.Null(interpreter.UnsupportedCommand);
     }
 
     [Fact]

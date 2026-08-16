@@ -420,6 +420,25 @@ public static class RegionTravel
     public const string IntroCreateType = "CREATURE_OAKVALE_VILLAGER_FEMALE_NORMAL_MESH";
     public const string IntroCreateMarker = "MK_OVI_ID_VS1";
     public const string IntroCreateName = "VILL1";
+    /// <summary>
+    /// <c>00CC083D</c> <c>.WalkTo</c>. Same parse as
+    /// SneakTo. Empty actor / marker →
+    /// <c>00CC7081</c>. First-seen is marker only so
+    /// arg2/arg3 IsTrue is false: <c>jmp 00CC0E96</c>
+    /// one <c>vtbl+28</c> then <c>00CC7081</c>. Thing
+    /// <c>vtbl+20</c> is <c>004C72B0</c> stub. Mode
+    /// push is 0.
+    /// </summary>
+    public const uint WalkToOpcode = 0x00CC083D;
+    public const uint WalkToApply = 0x00CC09E2;
+    public const uint WalkToYieldOnce = 0x00CC0E96;
+    public const int WalkToApplyVtbl = 20;
+    public const uint WalkToApplyStub = 0x004C72B0;
+    public const int WalkToMode = 0;
+    public const bool FirstSeenWalkToWaitsForArrival = false;
+    public const bool FirstSeenWalkToAppliesMove = false;
+    public const string IntroWalkMarker = "MK_OVI_ID_VW1";
+    public const float IntroWalkSpeed = 0.3f;
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;

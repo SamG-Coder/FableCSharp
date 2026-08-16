@@ -38,6 +38,7 @@ public sealed class ScriptRuntime : IScriptHost
     public IReadOnlyList<ScriptDialogSpeech> DialogSpeeches => _dialogs;
     public IReadOnlyList<ScriptWaitTask> WaitTasks => _waits;
     public IReadOnlyList<ScriptSneakTo> SneakTos => _sneaks;
+    public IReadOnlyList<ScriptWalkTo> WalkTos => _walks;
     public IReadOnlyList<ScriptCombatAnimation> CombatAnimations => _combatAnims;
     public IReadOnlyList<ScriptCreate> Creates => _creates;
     public IReadOnlyList<string> PreloadedCameras => _preloadedCameras;
@@ -53,6 +54,7 @@ public sealed class ScriptRuntime : IScriptHost
     private readonly List<ScriptDialogSpeech> _dialogs = [];
     private readonly List<ScriptWaitTask> _waits = [];
     private readonly List<ScriptSneakTo> _sneaks = [];
+    private readonly List<ScriptWalkTo> _walks = [];
     private readonly List<ScriptCombatAnimation> _combatAnims = [];
     private readonly List<ScriptCreate> _creates = [];
     private readonly List<string> _preloadedCameras = [];
@@ -320,6 +322,14 @@ public sealed class ScriptRuntime : IScriptHost
         _sneaks.Add(new ScriptSneakTo(actor, marker, speed, wait));
 
     /// <summary>
+    /// <c>00CC083D</c>: thing <c>vtbl+20</c> is
+    /// <c>004C72B0</c> stub. First-seen does not
+    /// wait for arrival. Record only — no mesh move.
+    /// </summary>
+    void IScriptHost.WalkTo(string? actor, string marker, float speed, bool wait) =>
+        _walks.Add(new ScriptWalkTo(actor, marker, speed, wait));
+
+    /// <summary>
     /// <c>00CC15E3</c>: thing <c>vtbl+76</c> does not
     /// read the name. Record only — no TURNING_AC90
     /// pose. <c>[ebp-22]</c> one <c>vtbl+28</c>.
@@ -431,6 +441,8 @@ public readonly record struct ScriptDialogSpeech(
 public readonly record struct ScriptWaitTask(string? Actor, string Name);
 
 public readonly record struct ScriptSneakTo(string? Actor, string Marker, float Speed, bool Wait);
+
+public readonly record struct ScriptWalkTo(string? Actor, string Marker, float Speed, bool Wait);
 
 public readonly record struct ScriptCombatAnimation(
     string? Actor,

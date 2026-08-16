@@ -280,6 +280,12 @@ public sealed class ScriptInterpreter
             if (sneak.Marker.Length != 0)
                 host.SneakTo(command.Actor, sneak.Marker, sneak.Speed, sneak.Wait);
         }
+        else if (command.Verb.Equals("WalkTo", StringComparison.OrdinalIgnoreCase))
+        {
+            var walk = ScriptCommand.ParseSneakTo(command.Arguments);
+            if (walk.Marker.Length != 0)
+                host.WalkTo(command.Actor, walk.Marker, walk.Speed, walk.Wait);
+        }
         else if (ScriptCommand.IsPlayCombatAnimation(command.Verb))
         {
             var anim = ScriptCommand.ParsePlayCombatAnimation(command.Arguments);
@@ -563,12 +569,15 @@ public readonly struct ScriptCommand
         }
         if (verb.Equals("WaitTask", StringComparison.OrdinalIgnoreCase))
             return string.IsNullOrEmpty(command.Actor) ? ScriptFlow.Continue : ScriptFlow.YieldAfter;
-        if (verb.Equals("SneakTo", StringComparison.OrdinalIgnoreCase))
+        if (verb.Equals("SneakTo", StringComparison.OrdinalIgnoreCase) ||
+            verb.Equals("WalkTo", StringComparison.OrdinalIgnoreCase))
         {
-            var sneak = ParseSneakTo(command.Arguments);
-            if (sneak.Marker.Length == 0)
+            if (string.IsNullOrEmpty(command.Actor))
                 return ScriptFlow.Continue;
-            return sneak.Wait ? ScriptFlow.Yield : ScriptFlow.YieldAfter;
+            var move = ParseSneakTo(command.Arguments);
+            if (move.Marker.Length == 0)
+                return ScriptFlow.Continue;
+            return move.Wait ? ScriptFlow.Yield : ScriptFlow.YieldAfter;
         }
         if (IsPlayCombatAnimation(verb))
         {
@@ -618,6 +627,7 @@ public interface IScriptHost
     void DialogSpeak(string? actor, string listener, string text);
     void WaitTask(string? actor, string name);
     void SneakTo(string? actor, string marker, float speed, bool wait);
+    void WalkTo(string? actor, string marker, float speed, bool wait);
     void PlayCombatAnimation(
         string? actor, string name, bool flagA, bool flagB, bool flagC, bool flagD, bool flagE, int count);
     void Create(string type, string marker, string name);
