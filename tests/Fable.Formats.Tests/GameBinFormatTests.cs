@@ -82,6 +82,8 @@ public sealed class GameBinFormatTests
         Assert.Equal(0x00522A20u, GameBin.ThingTypeRegistrar);
         Assert.False(GameBin.FirstSeenHouseFloor3184HasPrims);
         Assert.True(GameBin.FirstSeenMultiStaticAppliesBothHouseMeshes);
+        Assert.False(GameBin.FirstSeenMultiStaticValueIsScale);
+        Assert.Equal(0x004BC180u, GameBin.MultiStaticDefaultFloat);
         Assert.False(GameBin.FirstSeenHouseSkipDropsInterior);
         Assert.False(GameBin.FirstSeenHouseSkipDropsExterior);
         var house = bin.FindEntry("BUILDING_OAKVALE_HOUSE_MEDIUM_SINGLE_FLOOR_BUYABLE")!;

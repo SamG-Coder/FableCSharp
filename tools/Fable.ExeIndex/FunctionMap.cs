@@ -90,6 +90,8 @@ internal static class FunctionMap
         ("CMultiStaticMeshDef lookup", 0x007E1400),
         ("CMultiStaticMeshDef ctor", 0x007E14C0),
         ("CMultiStaticMeshDef apply", 0x007E15C0),
+        ("Default float 004BC180", 0x004BC180),
+        ("LayoutRepeatedMesh ctor", 0x00BDB080),
         ("CTC multi-static name", 0x007E1A80),
         ("PALSKIN dest x87 00BD2F91", 0x00BD2F91),
         ("PALSKIN hierarchy 00AA0090", 0x00AA0090),

@@ -234,6 +234,19 @@ public sealed class GameBin
     public const bool FirstSeenHouseSkipDropsInterior = false;
     public const bool FirstSeenHouseSkipDropsExterior = false;
     public const bool FirstSeenMultiStaticAppliesBothHouseMeshes = true;
+    /// <summary>
+    /// <c>007E17AB</c> if runtime <c>+45 != 0</c> copies
+    /// <c>+48</c> over <c>[esp+36]</c>, which was
+    /// <c>004BC180</c>'s leftover float
+    /// (<c>fild [0x1375710]</c> or <c>fld [obj+72]</c>).
+    /// <c>[esp+36]</c> is not read again at that offset in
+    /// <c>007E15C0</c>. House interior file value 40 is
+    /// therefore not a proven mesh scale
+    /// (<c>FirstSeenMultiStaticValueIsScale=false</c>).
+    /// File-order persist onto +44/+45/+48/+52 is unread.
+    /// </summary>
+    public const uint MultiStaticDefaultFloat = 0x004BC180;
+    public const bool FirstSeenMultiStaticValueIsScale = false;
     public const string BuyableHouseDefType = "CBuyableHouseDef";
     public const uint BuyableHouseDefLookup = 0x006C1B00;
     public const uint BuyableHouseCtor = 0x006BF8A0;

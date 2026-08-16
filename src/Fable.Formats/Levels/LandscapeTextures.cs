@@ -231,11 +231,25 @@ public static class LandscapeTextures
     public const int Ot1RegisterY = 41;
     public const int PerCellFirstSlot = 2;
     public const int PerCellSecondSlot = 3;
+    public const int PerCellC1FlipSlot = 1;
     public const uint PerCellFirstSlotSet = 0x00BF4EB7;
     public const uint SetVsConstantF1 = 0x00989A60;
     public const uint InnerVsObjectCtor = 0x0098D4A0;
     public const int InnerRegisterBaseOffset = 20;
     public const int FirstSeenInnerRegisterBase = 0;
+    public const uint LandscapeSharedSetup = 0x00B67480;
+    /// <summary>
+    /// <c>00989A60</c> has 18 <c>E8</c> sites. First-seen
+    /// landscape per-cell is <c>00BF5150</c> slot
+    /// <c>edi=2</c>, <c>00BF5170</c> slot 3, and
+    /// <c>00BF51D4</c> slot 1 only when layer type is 4.
+    /// None push 40 or 41. Shared setup <c>00B674B3</c>
+    /// <c>mov [esp+40],0</c> is a stack offset, not
+    /// register 40. LayoutBasic fields are 3/18/4/5/9/2/
+    /// 11/15/16/19. LayoutRepeatedMesh adds 51/67/19/35/83.
+    /// No layout field 40.
+    /// </summary>
+    public const int SetVsConstantF1CallCount = 18;
     public const bool FirstSeenOt1Projected = true;
     public const bool FirstSeenOt1HasExplicitWriter = false;
     public const bool FirstSeenOt1UsesDeviceDefault = true;

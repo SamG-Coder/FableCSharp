@@ -336,10 +336,13 @@ public sealed class LevFormatTests
         Assert.True(LandscapeTextures.FirstSeenOt1Projected);
         Assert.False(LandscapeTextures.FirstSeenOt1HasExplicitWriter);
         Assert.True(LandscapeTextures.FirstSeenOt1UsesDeviceDefault);
-        Assert.Equal(Vector4.Zero, LandscapeTextures.Ot1C40);
-        Assert.Equal(Vector4.Zero, LandscapeTextures.Ot1C41);
         Assert.Equal(2, LandscapeTextures.PerCellFirstSlot);
         Assert.Equal(3, LandscapeTextures.PerCellSecondSlot);
+        Assert.Equal(1, LandscapeTextures.PerCellC1FlipSlot);
+        Assert.Equal(18, LandscapeTextures.SetVsConstantF1CallCount);
+        Assert.Equal(0x00B67480u, LandscapeTextures.LandscapeSharedSetup);
+        Assert.Equal(Vector4.Zero, LandscapeTextures.Ot1C40);
+        Assert.Equal(Vector4.Zero, LandscapeTextures.Ot1C41);
         Assert.Equal(0x00BF4EB7u, LandscapeTextures.PerCellFirstSlotSet);
         Assert.Equal(0x00989A60u, LandscapeTextures.SetVsConstantF1);
         Assert.Equal(0x0098D4A0u, LandscapeTextures.InnerVsObjectCtor);
