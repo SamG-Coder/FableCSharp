@@ -246,8 +246,11 @@ public sealed class CameraProjectionTests
         Assert.Equal(0f, WorldShading.DirLightNdotL(Vector3.UnitY), 5);
         Assert.Equal(1f, WorldShading.DirLightNdotL(-Vector3.UnitY), 5);
         Assert.Equal(0f, WorldShading.DirLightNdotL(Vector3.UnitZ), 5);
-        Assert.Equal(new Vector3(0.25f, 0.25f, 0.25f), WorldShading.EvaluateDirLightRgb(-Vector3.UnitY));
-        Assert.Equal(Vector3.Zero, WorldShading.EvaluateDirLightRgb(Vector3.UnitZ));
+        Assert.True(WorldShading.FirstSeenDirLightAddsC3);
+        Assert.Equal(new Vector4(0f, 0.125f, 0f, 0f), WorldShading.FirstSeenC3);
+        Assert.Equal(0x0139C614u, WorldShading.C3LightingTable);
+        Assert.Equal(new Vector3(0.25f, 0.375f, 0.25f), WorldShading.EvaluateDirLightRgb(-Vector3.UnitY));
+        Assert.Equal(new Vector3(0f, 0.125f, 0f), WorldShading.EvaluateDirLightRgb(Vector3.UnitZ));
         Assert.Equal(1f, WorldShading.SaturateFog(2f));
         Assert.Equal(0f, WorldShading.SaturateFog(-1f));
     }

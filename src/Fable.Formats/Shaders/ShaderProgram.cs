@@ -395,6 +395,33 @@ public sealed class ShaderProgram
         _ => 0,
     };
 
+    /// <summary>
+    /// First-seen FG/static/PALSKIN: <c>dp3 …, -c19</c> then
+    /// <c>mul …, c20</c> / <c>mad …, c35</c> / <c>add …, c3</c>
+    /// into <c>oD0.xyz</c>.
+    /// </summary>
+    public bool TryGetDirLightAddsC3()
+    {
+        var sawNegC19 = false;
+        var sawC20 = false;
+        var sawC35 = false;
+        foreach (var insn in DecodeInstructions())
+        {
+            if (insn.Opcode == Dp3Opcode && insn.Src1Is(RegTypeConst, 19)
+                && insn.Src1Mod == SrcModNeg)
+                sawNegC19 = true;
+            if (insn.Opcode == MulOpcode && insn.Src1Is(RegTypeConst, 20))
+                sawC20 = true;
+            if (insn.Opcode == MadOpcode && insn.Src1Is(RegTypeConst, 35))
+                sawC35 = true;
+            if (sawNegC19 && sawC20 && sawC35 && insn.Opcode == AddOpcode
+                && insn.Src1Is(RegTypeConst, 3))
+                return true;
+        }
+
+        return false;
+    }
+
     public readonly record struct VertexFogSequence(int PosRegister, int PosType);
 
     public readonly record struct Ot1Projected(int PosRegister, int PosType);

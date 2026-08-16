@@ -184,10 +184,14 @@ public sealed class ShaderFormatTests
             Assert.Contains(WorldShading.FogPlaneRegister, vs.ConstRegisters);
             Assert.Contains(WorldShading.FogColorRegister, vs.ConstRegisters);
             Assert.Contains(2, vs.ConstRegisters);
+            Assert.Contains(3, vs.ConstRegisters);
             Assert.Contains(18, vs.ConstRegisters);
             Assert.False(vs.HasLit);
             Assert.Equal(0x10u, ShaderProgram.LitOpcode);
+            Assert.True(vs.TryGetDirLightAddsC3(), vs.Name);
         }
+        Assert.True(WorldShading.FirstSeenDirLightAddsC3);
+        Assert.Equal(new Vector4(0f, 0.125f, 0f, 0f), WorldShading.FirstSeenC3);
 
         Assert.Contains(3, land.ConstRegisters);
         Assert.DoesNotContain(1, land.ConstRegisters);

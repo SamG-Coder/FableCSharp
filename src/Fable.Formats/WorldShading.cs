@@ -440,10 +440,23 @@ public static class WorldShading
             FogRecordColor.W));
 
     /// <summary>
-    /// First-seen FG/static: <c>dp3 r, n, -c19</c>;
-    /// <c>max r.x, r, c0.x</c>; <c>mul r.x, r.x, r.x</c>;
-    /// <c>mul r, r.x, c20</c>; <c>mad r, -r.y, c35, r</c>.
-    /// <c>c35.rgb=0</c> so RGB is <c>max(n·-c19, 0)² * c20</c>.
+    /// Per-cell <c>00989A60(3)</c> writes table <c>0x0139C614</c>
+    /// to <c>c3</c>: <c>(0, 0.125, 0, 0)</c>. Fog flush restores
+    /// <c>c2</c> only. First-seen FG / static / PALSKIN all
+    /// <c>add oD0.xyz, lit, c3</c>. Draw order is landscape
+    /// <c>0x40</c> then primitives, so house and kid keep this
+    /// leftover. Without it unlit faces are black.
+    /// </summary>
+    public static readonly Vector4 FirstSeenC3 = new(0f, 0.125f, 0f, 0f);
+    public const uint C3LightingTable = 0x0139C614;
+    public const bool FirstSeenDirLightAddsC3 = true;
+
+    /// <summary>
+    /// First-seen FG/static/PALSKIN: <c>dp3 r, n, -c19</c>;
+    /// <c>max r.x, r, c0.x</c>; <c>min r.y, r, c0.x</c>;
+    /// <c>mul r.x, r.x, r.x</c>; <c>mul r, r.x, c20</c>;
+    /// <c>mad r, -r.y, c35, r</c>; <c>add …, c3</c>.
+    /// <c>c35.rgb=0</c> so RGB is <c>max(n·-c19, 0)² * c20 + c3</c>.
     /// </summary>
     public static float DirLightNdotL(Vector3 normal)
     {
@@ -458,7 +471,8 @@ public static class WorldShading
         var t = DirLightNdotL(normal);
         t *= t;
         return new Vector3(DirLightColor.X, DirLightColor.Y, DirLightColor.Z) * t
-               + new Vector3(LitColor.X, LitColor.Y, LitColor.Z);
+               + new Vector3(LitColor.X, LitColor.Y, LitColor.Z)
+               + new Vector3(FirstSeenC3.X, FirstSeenC3.Y, FirstSeenC3.Z);
     }
 
     /// <summary>

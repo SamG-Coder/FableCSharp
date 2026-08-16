@@ -78,12 +78,13 @@ internal static class LineShaders
             vec4 t1 = texture(albedo1, fragUv);
             vec3 n = fragNormal;
             float nlen = length(n);
-            // VS: dp3 r, n, -c19; max r.x, r, c0.x; mul r.x, r.x, r.x;
-            // mul r, r.x, c20; mad r, -r.y, c35, r. c35.rgb = 0.
+            // VS: dp3 n,-c19; max(.,c0.x); square; *c20; mad c35; add c3.
+            // First-seen c35.rgb=0. c3 leftover is table (0, 0.125, 0, 0).
             vec3 ldir = -pc.lightDir.xyz;
             float ndl = nlen < 1e-8 ? 0.0 : max(dot(normalize(n), ldir), 0.0);
             vec3 litAdd = pc.pass.yzw;
-            vec3 v0 = fragColor.rgb * (pc.lightColor.rgb * (ndl * ndl) + litAdd);
+            vec3 c3 = vec3(0.0, 0.125, 0.0);
+            vec3 v0 = fragColor.rgb * (pc.lightColor.rgb * (ndl * ndl) + litAdd + c3);
             float mode = pc.pass.x;
             vec3 lit;
             if (mode < 0.5)
