@@ -132,6 +132,17 @@ public static class RegionTravel
     public const int FadeApplyVtbl = 1488;
     public const bool FirstSeenPlayMusicDoesNotYield = true;
     public const string IntroPlayMusic = "PlayMusic MUSIC_SET_NULL";
+    public const uint TeleportOpcode = 0x00CC4678;
+    public const uint TeleportApply = 0x00CC47EB;
+    public const int TeleportApplyVtbl = 1892;
+    public const uint LookToThingOpcode = 0x00CC3B3F;
+    public const uint LookToThingYield = 0x00CC3CAD;
+    public const uint ActorCommandJoin = 0x00CC707C;
+    public const uint IsFalseArgFn = 0x00CBEE0C;
+    public const int InterpreterYieldEnableOffset = 103;
+    public const uint InterpreterYieldEnableWrite = 0x00CBFC65;
+    public const bool FirstSeenTeleportDoesNotYield = true;
+    public const bool FirstSeenLookToThingYields = true;
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;

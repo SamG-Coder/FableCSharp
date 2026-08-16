@@ -534,18 +534,27 @@ public sealed class WorldSceneTests
         Assert.Equal(RegionTravel.IntroPlayMusic, intro.Executed[0]);
         Assert.Contains(RegionTravel.FadeSpecialCase, intro.Executed);
         Assert.Contains(intro.Executed, line => line.StartsWith("CameraPause", StringComparison.Ordinal));
-        Assert.True(intro.InstructionPointer >= 3);
+        Assert.Contains("Hero.Teleport MK_OVI_ID_HERO,FALSE", intro.Executed);
+        Assert.Contains("Father.Teleport MK_OVI_ID_DAD", intro.Executed);
+        Assert.Contains("Father.LookToThing Hero,FOREVER", intro.Executed);
+        Assert.True(RegionTravel.FirstSeenTeleportDoesNotYield);
+        Assert.True(RegionTravel.FirstSeenLookToThingYields);
+        Assert.Equal(0x00CC4678u, RegionTravel.TeleportOpcode);
+        Assert.Equal(0x00CC3B3Fu, RegionTravel.LookToThingOpcode);
         Assert.True(intro.Yielded);
         Assert.False(intro.ExecutedVerb("UseCamera"));
         Assert.False(intro.ExecutedVerb("PlayAVI"));
-        Assert.Equal("Hero.Teleport MK_OVI_ID_HERO,FALSE", intro.Commands[intro.InstructionPointer]);
+        Assert.Equal("DoScriptFrame 1", intro.Commands[intro.InstructionPointer]);
+        Assert.Null(intro.UnsupportedCommand);
         Assert.Equal(RegionTravel.IntroFirstSeenCamera, camera.ActiveName);
+        Assert.Contains(runtime.Teleports, t => t.Actor == "Hero" && t.Marker == "MK_OVI_ID_HERO");
+        Assert.Contains(runtime.Teleports, t => t.Actor == "Father" && t.Marker == "MK_OVI_ID_DAD");
         Assert.Equal("MUSIC_SET_NULL", runtime.LastMusic);
         Assert.False(script.Gate80);
         script.Update(0.1f);
         Assert.Equal(0.1f, script.DtAtPlus8);
         Assert.False(script.Gate80);
-        Assert.Equal("Hero.Teleport MK_OVI_ID_HERO,FALSE", intro.Commands[intro.InstructionPointer]);
+        Assert.Equal("DoScriptFrame 1", intro.Commands[intro.InstructionPointer]);
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 
@@ -556,6 +565,37 @@ public sealed class WorldSceneTests
         Assert.NotEqual(RegionTravel.IntroCutscene, other.Name);
         Assert.Equal(attract.Commands[0], other.Commands[0]);
         Assert.Same(intro, runtime.FindInterpreter(RegionTravel.IntroCutscene));
+    }
+
+    [Fact]
+    public void Cutscene_commands_come_from_persist_vectors_not_ascii_scrape()
+    {
+        var install = Require();
+        var bank = ScriptBank.Load(install);
+        var father = bank.Find(RegionTravel.IntroCutscene);
+        Assert.NotNull(father);
+        Assert.Equal(ScriptBank.CutsceneType, father.TypeName);
+        Assert.True(father.CommandsLayoutProven);
+        Assert.Equal(ScriptBank.CutsceneVectorCount, father.Vectors.Count);
+        Assert.Equal(60, ScriptBank.CommandRuntimeOffset);
+        Assert.Equal(0x00F2A1D0u, ScriptBank.PersistFn);
+        Assert.Equal(0x00433273u, ScriptBank.VectorRead);
+        Assert.Equal(0x00432EE9u, ScriptBank.VectorCopy);
+        Assert.Equal(RegionTravel.IntroPlayMusic, father.Commands[0]);
+        Assert.Equal(RegionTravel.FadeSpecialCase, father.Commands[1]);
+        Assert.Equal("CameraPause FALSE", father.Commands[2]);
+        Assert.Equal("Hero.Teleport MK_OVI_ID_HERO,FALSE", father.Commands[3]);
+        Assert.Equal("Father.LookToThing Hero,FOREVER", father.Commands[5]);
+        Assert.Contains("UseCamera CAM_OVIF_SHOT2", father.Commands);
+        Assert.DoesNotContain(father.Commands, line => line.Equals("CCutsceneDef", StringComparison.Ordinal));
+        Assert.True(father.Commands.Count >= 60);
+        Assert.True(father.Vectors[0].Count == father.Commands.Count);
+
+        var attract = bank.Find("CS_ATTRACT_12");
+        Assert.NotNull(attract);
+        Assert.True(attract.CommandsLayoutProven);
+        Assert.Equal("SetTime 14", attract.Commands[0]);
+        Assert.StartsWith("NoLoadUseCamera ", attract.Commands[3], StringComparison.Ordinal);
     }
 
     [Fact]

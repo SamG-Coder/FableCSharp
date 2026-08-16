@@ -864,6 +864,10 @@ static void RunExportScriptBank(PeImage pe, DumpStore store, GameInstall? instal
     native.AppendLine("| FadeOut opcode | `00CD0987` | same-slice after PlayMusic. Parses 0.5 / 0 / default black. Apply `vtbl+1488(0.5,0)` then `jmp 00CD17FD`. |");
     native.AppendLine("| PlayAVI | `00CCA26E` | prefix `Data\\Video\\` then `vtbl+1476`. Later than first command. |");
     native.AppendLine("| NoLoadUseCamera | `00CC9E6A` | separate token from `UseCamera`. |");
+    native.AppendLine("| .Teleport | `00CC4678` | lookup marker `vtbl+280/+288`, apply `vtbl+1892`. Second arg `00CBEE0C` is **IsFalse**. **No** `vtbl+28`. `jmp 00CC707C`. |");
+    native.AppendLine("| .LookToThing | `00CC3B3F` | apply `vtbl+1992`, parse `forever`. Third arg `00CBEE0C` (IsFalse) skips wait. Else if `[ebp+103]` (set **1** at `00CBFC65`) **`call [eax+28]`** then `00CBF7FE` / `jmp 00CC707C`. |");
+    native.AppendLine("| actor join | `00CC707C` | dtor then next token `DoScriptFrame`. Teleport does not wait there. |");
+    native.AppendLine("| IsFalse | `00CBEE0C` | strcmp arg to `false` via `00BFEBA8`. |");
     store.WritePart(family, "native-sqnovi", native.ToString());
     links.Insert(4, new IndexLink("native-sqnovi", "native S_QNOVI", 0));
 
@@ -1077,6 +1081,20 @@ static void RunTraceScriptRuntime(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "PlayAnimation token 00CC14B9", 0x00CC14B9, 30, stopOnRet: false),
         WriteWalkPart(pe, store, family, "FadeIn FadeOut 00CC4B22", 0x00CC4B22, 80),
         WriteFnPart(pe, store, family, "StayFadedOut 00CD087E", 0x00CD087E, 30, stopOnRet: false),
+        WriteFnPart(pe, store, family, "Teleport token 00CC4678", 0x00CC4678, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "Teleport apply 00CC47B4", 0x00CC47B4, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "LookToThing token 00CC3B3F", 0x00CC3B3F, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "LookToThing yield 00CC3C94", 0x00CC3C94, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "actor command join 00CC707C", 0x00CC707C, 50, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "IsFalse arg 00CBEE0C", 0x00CBEE0C, 40),
+        WriteFnPart(pe, store, family, "runner ebp+103 yield-enable 00CBFC65", 0x00CBFC65, 8, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "CCutsceneDef ctor 00F29D00", 0x00F29D00, 50),
+        WriteWalkPart(pe, store, family, "CCutsceneDef persist 00F2A1D0", 0x00F2A1D0, 50),
+        WriteFnPart(pe, store, family, "CString vector persist 004331F9", 0x004331F9, 20, stopOnRet: false),
+        WriteFnPart(pe, store, family, "CString vector read 00433273", 0x00433273, 50, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "def+60 vector copy 00432EE9", 0x00432EE9, 40),
+        WriteFnPart(pe, store, family, "command loop index 00CC0205", 0x00CC0205, 40, stopOnRet: false),
+        WriteVtblPart(pe, store, family, "CCutsceneDef vtbl 012FB6E0", 0x012FB6E0, 24),
         WriteCallsPart(pe, store, family, "calls S_QNOVI factory 00DBEF70", 0x00DBEF70),
         WriteCallsPart(pe, store, family, "calls S_QNOVI run 00DABAC0", 0x00DABAC0),
         WriteCallsPart(pe, store, family, "calls StartOakVale 00DBDE40", 0x00DBDE40),
@@ -1582,6 +1600,13 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "UseCamera site 00CBF3AC", 0x00CBF3AC, 30, stopOnRet: false),
         WriteFnPart(pe, store, family, "CameraLookAt site 00CBF3FE", 0x00CBF3FE, 30, stopOnRet: false),
         WriteFnPart(pe, store, family, "PlayAnimation site 00CC14B9", 0x00CC14B9, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "Teleport token 00CC4678", 0x00CC4678, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "Teleport apply 00CC47B4", 0x00CC47B4, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "LookToThing token 00CC3B3F", 0x00CC3B3F, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "LookToThing yield 00CC3C94", 0x00CC3C94, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "actor command join 00CC707C", 0x00CC707C, 50, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "IsFalse arg 00CBEE0C", 0x00CBEE0C, 40),
+        WriteFnPart(pe, store, family, "runner ebp+103 yield-enable 00CBFC65", 0x00CBFC65, 8, stopOnRet: false),
         WriteWalkPart(pe, store, family, "FadeIn FadeOut 00CC4B22", 0x00CC4B22, 80),
         WriteWalkPart(pe, store, family, "Registering Scripts 00CB5D80", 0x00CB5D80, 80),
         WriteWalkPart(pe, store, family, "quest base ctor 00CB8110", 0x00CB8110, 80),

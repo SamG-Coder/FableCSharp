@@ -3,10 +3,9 @@ using System.Globalization;
 namespace Fable.Game;
 
 /// <summary>
-/// <c>00CBFB7D</c> command walk. Continue is
-/// <c>jmp 00CD17FD</c> → <c>inc [ebp-72]</c> /
-/// <c>jb 00CC012E</c>. Yields stay on the unread
-/// wait. Do not invent fade/AVI/wake playback.
+/// <c>00CBFB7D</c> command walk over the <c>+60</c>
+/// CString vector. Continue is <c>jmp 00CD17FD</c> /
+/// actor join <c>00CC707C</c>. Unread waits stay put.
 /// </summary>
 public sealed class ScriptInterpreter
 {
@@ -16,6 +15,7 @@ public sealed class ScriptInterpreter
     public bool Yielded { get; private set; }
     public bool Finished { get; private set; }
     public bool FadeSpecialCaseApplied { get; private set; }
+    public string? UnsupportedCommand { get; private set; }
     public IReadOnlyList<string> Executed => _executed;
 
     private readonly List<string> _executed = [];
@@ -37,8 +37,10 @@ public sealed class ScriptInterpreter
         {
             var raw = Commands[InstructionPointer];
             var command = ScriptCommand.Parse(raw);
-            if (ScriptCommand.Classify(command.Verb) == ScriptFlow.Yield)
+            var flow = ScriptCommand.Classify(command);
+            if (flow == ScriptFlow.Yield)
             {
+                UnsupportedCommand = raw;
                 Yielded = true;
                 return;
             }
@@ -46,6 +48,11 @@ public sealed class ScriptInterpreter
             Dispatch(command, host);
             _executed.Add(raw);
             InstructionPointer++;
+            if (flow == ScriptFlow.YieldAfter)
+            {
+                Yielded = true;
+                return;
+            }
         }
 
         Finished = true;
@@ -89,6 +96,10 @@ public sealed class ScriptInterpreter
             host.PlayAnimation(command.Actor, command.Arguments);
         else if (command.Verb.Equals("CameraPause", StringComparison.OrdinalIgnoreCase))
             host.CameraPause(command.Arguments);
+        else if (command.Verb.Equals("Teleport", StringComparison.OrdinalIgnoreCase))
+            host.Teleport(command.Actor, command.Arguments);
+        else if (command.Verb.Equals("LookToThing", StringComparison.OrdinalIgnoreCase))
+            host.LookToThing(command.Actor, command.Arguments);
     }
 
     internal static void ParseFadeArgs(string arguments, out float seconds, out float param)
@@ -104,7 +115,7 @@ public sealed class ScriptInterpreter
             float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out param);
     }
 
-    private static string FirstToken(string arguments)
+    internal static string FirstToken(string arguments)
     {
         var end = arguments.IndexOfAny([',', ' ']);
         return end < 0 ? arguments : arguments[..end];
@@ -138,23 +149,41 @@ public readonly struct ScriptCommand
     }
 
     /// <summary>
-    /// Proven continue: PlayMusic <c>00CC8EAC</c>, FadeOut
-    /// <c>00CD0987</c>, UseCamera <c>00CC9F3A</c>,
-    /// NoLoadUseCamera <c>00CC9E6A</c>, PlayAnimation
-    /// <c>00CC14B9</c>, CameraPause. Proven yield:
-    /// DoScriptFrame / GamePause / PlayAVI / Wait*.
-    /// Anything unread yields.
+    /// <c>00CBEE0C</c>: strcmp arg to <c>false</c>.
     /// </summary>
-    public static ScriptFlow Classify(string verb)
+    public static bool IsFalseArg(string? text) =>
+        text is not null && text.Equals("false", StringComparison.OrdinalIgnoreCase);
+
+    public static string[] SplitArgs(string arguments)
     {
+        if (arguments.Length == 0)
+            return [];
+        var parts = arguments.Split(',');
+        for (var i = 0; i < parts.Length; i++)
+            parts[i] = parts[i].Trim();
+        return parts;
+    }
+
+    public static ScriptFlow Classify(ScriptCommand command)
+    {
+        var verb = command.Verb;
         if (verb.Equals("PlayMusic", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("FadeOut", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("FadeIn", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("UseCamera", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("NoLoadUseCamera", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("PlayAnimation", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("CameraPause", StringComparison.OrdinalIgnoreCase))
+            verb.Equals("CameraPause", StringComparison.OrdinalIgnoreCase) ||
+            verb.Equals("Teleport", StringComparison.OrdinalIgnoreCase))
             return ScriptFlow.Continue;
+        if (verb.Equals("LookToThing", StringComparison.OrdinalIgnoreCase))
+        {
+            var args = SplitArgs(command.Arguments);
+            if (args.Length >= 3 && IsFalseArg(args[2]))
+                return ScriptFlow.Continue;
+            return ScriptFlow.YieldAfter;
+        }
+
         return ScriptFlow.Yield;
     }
 }
@@ -163,6 +192,7 @@ public enum ScriptFlow
 {
     Continue,
     Yield,
+    YieldAfter,
 }
 
 public interface IScriptHost
@@ -174,4 +204,6 @@ public interface IScriptHost
     void NoLoadUseCamera(string name);
     void PlayAnimation(string? actor, string arguments);
     void CameraPause(string arguments);
+    void Teleport(string? actor, string arguments);
+    void LookToThing(string? actor, string arguments);
 }

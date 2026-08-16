@@ -53,7 +53,8 @@ public sealed class DataCatalogTests
         Assert.True(RegionTravel.FirstSeenStartsIntroCutscene);
         Assert.Equal("NOVI_LiveFather", RegionTravel.LiveFatherScript);
         var father = script.Entries.First(e => e.InstanceName == RegionTravel.IntroCutscene);
-        var commands = ScriptBank.ExtractCommands(father.Raw);
+        Assert.True(ScriptBank.TryReadCutsceneVectors(father.Raw, out var vectors));
+        var commands = vectors[ScriptBank.CommandVectorIndex];
         Assert.Equal("PlayMusic MUSIC_SET_NULL", commands[0]);
         Assert.Equal(RegionTravel.IntroPlayMusic, commands[0]);
         Assert.Equal(RegionTravel.FadeSpecialCase, commands[1]);

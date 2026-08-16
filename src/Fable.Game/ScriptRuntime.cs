@@ -1,3 +1,4 @@
+using System.Numerics;
 using Fable.Core;
 using Fable.Formats.Tng;
 
@@ -23,11 +24,13 @@ public sealed class ScriptRuntime : IScriptHost
     public IReadOnlyList<ScriptInterpreter> Interpreters => _interpreters;
     public IReadOnlyDictionary<string, bool> PersistFields => _persist;
     public IReadOnlyDictionary<string, string> NamedScripts => _named;
+    public IReadOnlyList<ScriptTeleport> Teleports => _teleports;
 
     private readonly Dictionary<string, string> _named = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, bool> _persist = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<ScriptFiber> _fibers = [];
     private readonly List<ScriptInterpreter> _interpreters = [];
+    private readonly List<ScriptTeleport> _teleports = [];
     private IReadOnlyList<ThingInstance> _things = [];
     private ScriptedCamera? _camera;
 
@@ -67,16 +70,19 @@ public sealed class ScriptRuntime : IScriptHost
 
     /// <summary>
     /// <c>004C97B0</c> / <c>00CB8960</c>: start the named
-    /// script bound to each thing <c>ScriptName</c>.
+    /// script only when the name is in the registry.
     /// </summary>
+    public ScriptInterpreter? ActivateThing(ThingInstance thing)
+    {
+        if (thing.ScriptName is null)
+            return null;
+        return StartNamedScript(thing.ScriptName);
+    }
+
     public void ActivateThings(IEnumerable<ThingInstance> things)
     {
         foreach (var thing in things)
-        {
-            if (thing.ScriptName is null)
-                continue;
-            StartNamedScript(thing.ScriptName);
-        }
+            ActivateThing(thing);
     }
 
     public ScriptInterpreter? StartNamedScript(string scriptName)
@@ -168,6 +174,32 @@ public sealed class ScriptRuntime : IScriptHost
 
     void IScriptHost.CameraPause(string arguments) => _ = arguments;
 
+    void IScriptHost.Teleport(string? actor, string arguments)
+    {
+        var args = ScriptCommand.SplitArgs(arguments);
+        var marker = args.Length == 0 ? "" : args[0];
+        var thing = FindThing(marker);
+        Vector3? position = thing is { PositionX: not null } ? RegionTravel.PositionOf(thing) : null;
+        _teleports.Add(new ScriptTeleport(actor, marker, position));
+    }
+
+    void IScriptHost.LookToThing(string? actor, string arguments) =>
+        _ = (actor, arguments);
+
+    private ThingInstance? FindThing(string name)
+    {
+        if (name.Length == 0)
+            return null;
+        foreach (var thing in _things)
+        {
+            if (thing.ScriptName is not null &&
+                thing.ScriptName.Equals(name, StringComparison.OrdinalIgnoreCase))
+                return thing;
+        }
+
+        return null;
+    }
+
     private void BindCamera(string name)
     {
         if (_camera is null || name.Length == 0)
@@ -188,3 +220,5 @@ public sealed class ScriptFiber
         PersistField = persistField;
     }
 }
+
+public readonly record struct ScriptTeleport(string? Actor, string Marker, Vector3? Position);
