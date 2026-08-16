@@ -62,6 +62,17 @@ public sealed class GameBinFormatTests
         Assert.Equal(4300, bin.FindMeshId("CREATURE_HERO_CHILD"));
         Assert.Equal(4300, bin.FindMeshId("CREATURE_YOUNG_HERO"));
         Assert.Equal(6909, bin.FindMeshId("BUILDING_OAKVALE_HOUSE_MEDIUM_SINGLE_FLOOR_BUYABLE"));
+        var houseIds = bin.FindMeshIds("BUILDING_OAKVALE_HOUSE_MEDIUM_SINGLE_FLOOR_BUYABLE");
+        Assert.Contains(GameBin.HerosOldHouseExteriorMeshId, houseIds);
+        Assert.Contains(GameBin.HerosOldHouseInteriorMeshId, houseIds);
+        Assert.Equal(0x0CDCCB01u, GameBin.MultiStaticMeshesFieldCrc);
+        Assert.Equal(FableCrc.Hash("Meshes"), GameBin.MultiStaticMeshesFieldCrc);
+        Assert.Equal(FableCrc.Hash("Mesh"), 0x60194A74u);
+        Assert.Equal(0x007E1400u, GameBin.MultiStaticLookup);
+        Assert.Equal(0x0052AC10u, GameBin.ThingBuildingFactory);
+        Assert.Equal(0x005296B0u, GameBin.ThingBuildingBaseCtor);
+        Assert.Equal(0x00522A20u, GameBin.ThingTypeRegistrar);
+        Assert.False(GameBin.FirstSeenHouseFloor3184HasPrims);
         Assert.Equal(6556, bin.FindMeshId("OBJECT_KHG_BED_03"));
         Assert.Equal(7583, bin.FindMeshId("OBJECT_TABLE_LARGE_ROUND_01"));
         Assert.Equal(7544, bin.FindMeshId("OBJECT_WOODEN_LAMP_OFF"));

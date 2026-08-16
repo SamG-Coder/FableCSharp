@@ -134,6 +134,88 @@ public sealed class GameBin
         return null;
     }
 
+    /// <summary>
+    /// First Graphic plus every <c>CMultiStaticMeshDef</c> bank.
+    /// HerosOldHouse Graphic is 6909 (exterior); the multi list is
+    /// 6911 (interior walls) then 6909. 3184 is a material name on
+    /// both C3Ds and has no primitives.
+    /// </summary>
+    public IReadOnlyList<int> FindMeshIds(string definitionType)
+    {
+        var ids = new List<int>();
+        var seen = new HashSet<int>();
+        void Add(int? id)
+        {
+            if (id is > 0 && seen.Add(id.Value))
+                ids.Add(id.Value);
+        }
+
+        var entry = FindEntry(definitionType);
+        if (entry is null || IsEditorOnly(entry))
+            return ids;
+
+        Add(entry.MeshId);
+        foreach (var sub in entry.SubDefs)
+        {
+            if ((uint)sub.DefIndex >= (uint)Entries.Count)
+                continue;
+            var child = Entries[sub.DefIndex];
+            if (child.TypeName == "CReplaceableMeshDef")
+                Add(child.MeshId);
+            if (child.TypeName != MultiStaticMeshDefType)
+                continue;
+            foreach (var id in ReadMultiStaticMeshIds(child.Raw))
+                Add(id);
+        }
+
+        return ids;
+    }
+
+    public const string MultiStaticMeshDefType = "CMultiStaticMeshDef";
+    public const uint MultiStaticMeshesFieldCrc = 0x0CDCCB01;
+    public const int MultiStaticMeshHeaderBytes = 11;
+    public const int MultiStaticMeshEntryBytes = 34;
+    public const int MultiStaticMeshIdOffset = 4;
+    public const int HerosOldHouseExteriorMeshId = 6909;
+    public const int HerosOldHouseInteriorMeshId = 6911;
+    public const int HerosOldHouseInteriorWallTexture = 3172;
+    public const int HerosOldHouseFloorTexture = 3184;
+    public const bool FirstSeenHouseFloor3184HasPrims = false;
+    public const uint MultiStaticLookup = 0x007E1400;
+    public const uint MultiStaticName = 0x007E12F0;
+    public const uint ThingBuildingFactory = 0x0052AC10;
+    public const uint ThingBuildingBaseCtor = 0x005296B0;
+    public const uint ThingTypeRegistrar = 0x00522A20;
+    public const uint CreateBuildingScript = 0x0072DF50;
+
+    /// <summary>
+    /// <c>Meshes</c> CRC then u32 count then 34-byte
+    /// <c>CMultiStaticMeshEntryDef</c> records: <c>Mesh</c> CRC +
+    /// bank i32 + two flag bytes (interior is typically
+    /// <c>fa=0, fb=1, f=40</c>; Graphic/exterior <c>fa=1, fb=0, f=0</c>).
+    /// </summary>
+    public static IReadOnlyList<int> ReadMultiStaticMeshIds(byte[] raw)
+    {
+        if (raw.Length < MultiStaticMeshHeaderBytes)
+            return [];
+        if (BitConverter.ToUInt32(raw, 3) != MultiStaticMeshesFieldCrc)
+            return [];
+        var count = BitConverter.ToInt32(raw, 7);
+        if (count is < 0 or > 16)
+            return [];
+        var ids = new List<int>(count);
+        var o = MultiStaticMeshHeaderBytes;
+        for (var i = 0; i < count && o + MultiStaticMeshEntryBytes <= raw.Length; i++)
+        {
+            var id = BitConverter.ToInt32(raw, o + MultiStaticMeshIdOffset);
+            if (id is > 0 and < 50_000)
+                ids.Add(id);
+            o += MultiStaticMeshEntryBytes;
+        }
+
+        return ids;
+    }
+
     private static bool IsEditorOnly(GameBinEntry entry)
     {
         var name = entry.InstanceName ?? entry.TypeName ?? "";

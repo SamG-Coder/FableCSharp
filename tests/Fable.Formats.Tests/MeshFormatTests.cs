@@ -136,6 +136,28 @@ public sealed class MeshFormatTests
         Assert.False(WorldShading.FirstSeenFlag1WritesLayerType20);
         Assert.False(WorldShading.FirstSeenStaticLitReadsFlag1);
         Assert.DoesNotContain(mesh.Triangles, t => t.SrcAlphaBlend);
+        Assert.False(GameBin.FirstSeenHouseFloor3184HasPrims);
+        Assert.Equal(3184, GameBin.HerosOldHouseFloorTexture);
+    }
+
+    [Fact]
+    public void Heros_old_house_interior_is_multistatic_6911_not_floor_3184()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var path = Path.Combine(install.DataRoot, "graphics", "graphics.big");
+        using var big = BigArchive.Open(path);
+        var bank = big.SubBanks.First(item => item.Name.Contains("MESH", StringComparison.OrdinalIgnoreCase));
+        var entries = big.ReadEntries(bank);
+        var interior = MeshFile.Parse(
+            big.Read(entries.First(item => item.Id == GameBin.HerosOldHouseInteriorMeshId)), 1);
+        Assert.Equal(2, interior.PrimitiveCount);
+        Assert.Contains(interior.Materials, m => m.Name.Contains("int", StringComparison.OrdinalIgnoreCase)
+            && m.DiffuseMapId == GameBin.HerosOldHouseInteriorWallTexture);
+        Assert.Contains(interior.Materials, m => m.DiffuseMapId == GameBin.HerosOldHouseFloorTexture);
+        Assert.Contains(interior.Triangles, t => t.TextureId == GameBin.HerosOldHouseInteriorWallTexture);
+        Assert.DoesNotContain(interior.Triangles, t => t.TextureId == GameBin.HerosOldHouseFloorTexture);
+        Assert.False(GameBin.FirstSeenHouseFloor3184HasPrims);
     }
 
     [Fact]

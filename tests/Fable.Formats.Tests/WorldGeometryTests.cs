@@ -1,5 +1,6 @@
 using System.Numerics;
 using Fable.Core;
+using Fable.Formats.Defs;
 using Fable.Formats.Meshes;
 using Fable.Formats.Sky;
 using Fable.Game;
@@ -223,6 +224,21 @@ public sealed class WorldGeometryTests
         Assert.Equal("BUILDING_OAKVALE_HOUSE_MEDIUM_SINGLE_FLOOR_BUYABLE", house.DefinitionType);
         var houseTris = CountPropNear(world, house.PositionX!.Value, house.PositionY!.Value, 20f);
         Assert.True(houseTris > 100, $"HerosOldHouse mesh missing houseTris={houseTris}");
+        var hx = house.PositionX!.Value;
+        var hy = house.PositionY!.Value;
+        var interiorWalls = world.Triangles.Count(t =>
+            t.Layer == Fable.Formats.Meshes.SceneLayer.Prop
+            && t.TextureId == GameBin.HerosOldHouseInteriorWallTexture
+            && NearXY(t, hx, hy, 20f));
+        Assert.True(interiorWalls > 100, $"interior 6911 walls missing n={interiorWalls}");
+        Assert.DoesNotContain(
+            world.Triangles.Where(t => NearXY(t, hx, hy, 20f)),
+            t => t.TextureId == GameBin.HerosOldHouseFloorTexture);
+        var landFloor = world.Triangles.Count(t =>
+            t.Layer == Fable.Formats.Meshes.SceneLayer.Landscape
+            && t.TextureId == 4130
+            && NearXY(t, hx, hy, 12f));
+        Assert.True(landFloor > 0, $"house floor landscape PATH_STONEY missing n={landFloor}");
         foreach (var def in new[]
                  {
                      "OBJECT_KHG_BED_03", "OBJECT_TABLE_LARGE_ROUND_01",
@@ -389,6 +405,13 @@ public sealed class WorldGeometryTests
             return Vector3.Distance(new Vector3(mid.X, mid.Y, 0f), inventedOrigin) < 200f
                    && mid.Z > 1000f;
         });
+    }
+
+    private static bool NearXY(MeshTriangle t, float x, float y, float radius)
+    {
+        var mx = (t.A.X + t.B.X + t.C.X) / 3f - x;
+        var my = (t.A.Y + t.B.Y + t.C.Y) / 3f - y;
+        return mx * mx + my * my < radius * radius;
     }
 
     private static int CountPropNear(WorldGeometry world, float x, float y, float radius)

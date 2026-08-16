@@ -252,40 +252,55 @@ public sealed class WorldGeometry
             if (thing.PositionX is null || thing.DefinitionType is null)
                 continue;
 
-            var meshId = defs?.FindMeshId(thing.DefinitionType) ?? enums?.FindMeshId(thing.DefinitionType);
-            if (meshId is null || !byId.TryGetValue((uint)meshId.Value, out var entry))
+            var meshIds = defs?.FindMeshIds(thing.DefinitionType) ?? [];
+            if (meshIds.Count == 0)
             {
-                missing++;
-                continue;
+                var one = defs?.FindMeshId(thing.DefinitionType) ?? enums?.FindMeshId(thing.DefinitionType);
+                if (one is > 0)
+                    meshIds = [one.Value];
             }
 
-            if (!cache.TryGetValue(entry.Id, out var mesh))
-            {
-                mesh = MeshFile.TryParse(big.Read(entry), (int)entry.Type);
-                cache[entry.Id] = mesh;
-            }
-
-            if (mesh is null)
+            if (meshIds.Count == 0)
             {
                 missing++;
                 continue;
             }
 
             var transform = ObjectTransform(thing) * shift;
-            foreach (var tri in mesh.Triangles)
+            var any = false;
+            foreach (var meshId in meshIds)
             {
-                var a = Vector3.Transform(tri.A, transform);
-                var b = Vector3.Transform(tri.B, transform);
-                var c = Vector3.Transform(tri.C, transform);
-                var n = Vector3.TransformNormal(tri.Normal, transform);
-                if (n.LengthSquared() < 1e-8f)
-                    n = Vector3.UnitZ;
-                else
-                    n = Vector3.Normalize(n);
-                triangles.Add(tri with { A = a, B = b, C = c, Normal = n });
+                if (!byId.TryGetValue((uint)meshId, out var entry))
+                    continue;
+
+                if (!cache.TryGetValue(entry.Id, out var mesh))
+                {
+                    mesh = MeshFile.TryParse(big.Read(entry), (int)entry.Type);
+                    cache[entry.Id] = mesh;
+                }
+
+                if (mesh is null)
+                    continue;
+
+                foreach (var tri in mesh.Triangles)
+                {
+                    var a = Vector3.Transform(tri.A, transform);
+                    var b = Vector3.Transform(tri.B, transform);
+                    var c = Vector3.Transform(tri.C, transform);
+                    var n = Vector3.TransformNormal(tri.Normal, transform);
+                    if (n.LengthSquared() < 1e-8f)
+                        n = Vector3.UnitZ;
+                    else
+                        n = Vector3.Normalize(n);
+                    triangles.Add(tri with { A = a, B = b, C = c, Normal = n });
+                }
+
+                any = true;
+                instances++;
             }
 
-            instances++;
+            if (!any)
+                missing++;
         }
     }
 
