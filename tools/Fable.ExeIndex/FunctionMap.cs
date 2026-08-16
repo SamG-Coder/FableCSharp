@@ -50,6 +50,7 @@ internal static class FunctionMap
         ("NONE primitive pass", 0x00B89C30),
         ("NONE-draw layer", 0x00BBE090),
         ("Primitive layer switch", 0x00BBC130),
+        ("Static primitive submit", 0x00BBC460),
         ("LayoutLights ctor", 0x00BDB400),
         ("lighting ctor", 0x00B482A0),
         ("TOD blend", 0x00B46C80),

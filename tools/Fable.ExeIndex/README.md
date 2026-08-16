@@ -30,6 +30,7 @@ dotnet run --project tools/Fable.ExeIndex -- scanff 16
 dotnet run --project tools/Fable.ExeIndex -- floats 0x0139C5D8 16
 dotnet run --project tools/Fable.ExeIndex -- calldisp 0xE4
 dotnet run --project tools/Fable.ExeIndex -- calldisp 0x38 0x00B40000 0x00B80000
+dotnet run --project tools/Fable.ExeIndex -- scan C7460814000000 0x00A00000 0x00C00000
 dotnet run --project tools/Fable.ExeIndex -- calldisp 0x1C
 dotnet run --project tools/Fable.ExeIndex -- trace-landscape
 ```

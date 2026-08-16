@@ -2,7 +2,7 @@ using System.Text;
 using Fable.Core;
 using Fable.ExeIndex;
 
-var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "fn" or "trace-render" or "trace-landscape" or "trace-newgame" or "map-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp") ?? "all";
+var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "fn" or "trace-render" or "trace-landscape" or "trace-newgame" or "map-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp" or "scan") ?? "all";
 var force = args.Any(a => a is "--force" or "-f");
 var install = GameInstall.TryLocate();
 var exePath = args.FirstOrDefault(a => a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
@@ -89,6 +89,9 @@ switch (cmd)
     case "calldisp":
         RunCallDisp(pe, args);
         break;
+    case "scan":
+        RunScan(pe, args);
+        break;
     default:
         RunIndex(pe, store);
         RunSplit(pe, store);
@@ -144,8 +147,17 @@ static void RunImm(PeImage pe, string[] args)
         a.StartsWith("0x", StringComparison.OrdinalIgnoreCase) || (a.Length >= 2 && a.All(char.IsAsciiHexDigit)));
     if (vaTok is null || !TryParseHex(vaTok, out var value))
     {
-        Console.Error.WriteLine("usage: imm <u32>");
+        Console.Error.WriteLine("usage: imm <u32> [lo hi]");
         return;
+    }
+
+    uint lo = 0, hi = uint.MaxValue;
+    var extra = args.SkipWhile(a => a != vaTok).Skip(1).ToArray();
+    var ranged = extra.Length >= 2 && TryParseHex(extra[0], out lo) && TryParseHex(extra[1], out hi);
+    if (!ranged)
+    {
+        lo = 0;
+        hi = uint.MaxValue;
     }
 
     var data = pe.Data;
@@ -159,9 +171,12 @@ static void RunImm(PeImage pe, string[] args)
             if (BitConverter.ToUInt32(data, i) != value)
                 continue;
             var start = code ? X86.FindImmInsn(pe, i) : i;
-            Console.WriteLine($"0x{pe.Va(start):X8}  imm=0x{value:X}  {sec.Name}");
+            var va = pe.Va(start);
+            if (va < lo || va > hi)
+                continue;
+            Console.WriteLine($"0x{va:X8}  imm=0x{value:X}  {sec.Name}");
             hits++;
-            if (hits >= 40)
+            if (!ranged && hits >= 40)
             {
                 Console.WriteLine($"imm  {hits}+");
                 return;
@@ -170,6 +185,66 @@ static void RunImm(PeImage pe, string[] args)
     }
 
     Console.WriteLine($"imm  {hits}");
+}
+
+static void RunScan(PeImage pe, string[] args)
+{
+    var hex = args.SkipWhile(a => a is "scan").FirstOrDefault();
+    if (hex is null || hex.Length < 2 || hex.Length % 2 != 0)
+    {
+        Console.Error.WriteLine("usage: scan <hex-bytes> [lo hi]");
+        return;
+    }
+
+    var needle = new byte[hex.Length / 2];
+    for (var n = 0; n < needle.Length; n++)
+    {
+        if (!byte.TryParse(hex.AsSpan(n * 2, 2), System.Globalization.NumberStyles.HexNumber, null, out needle[n]))
+        {
+            Console.Error.WriteLine("usage: scan <hex-bytes> [lo hi]");
+            return;
+        }
+    }
+
+    uint lo = 0, hi = uint.MaxValue;
+    var extra = args.SkipWhile(a => a != hex).Skip(1).ToArray();
+    var ranged = extra.Length >= 2 && TryParseHex(extra[0], out lo) && TryParseHex(extra[1], out hi);
+
+    var data = pe.Data;
+    var hits = 0;
+    foreach (var sec in pe.Sections)
+    {
+        if (!pe.InCode((int)sec.FileOffset))
+            continue;
+        var end = Math.Min(data.Length, (int)(sec.FileOffset + sec.FileSize) - needle.Length);
+        for (var i = (int)sec.FileOffset; i < end; i++)
+        {
+            var ok = true;
+            for (var j = 0; j < needle.Length; j++)
+            {
+                if (data[i + j] != needle[j])
+                {
+                    ok = false;
+                    break;
+                }
+            }
+
+            if (!ok)
+                continue;
+            var va = pe.Va(i);
+            if (va < lo || va > hi)
+                continue;
+            Console.WriteLine($"0x{va:X8}  scan");
+            hits++;
+            if (!ranged && hits >= 40)
+            {
+                Console.WriteLine($"scan  {hits}+");
+                return;
+            }
+        }
+    }
+
+    Console.WriteLine($"scan  {hits}");
 }
 
 static void RunCallDisp(PeImage pe, string[] args)
@@ -765,6 +840,10 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteWalkPart(pe, store, family, "Sea stream ctor 009D5DF0", 0x009D5DF0, 80),
         WriteU32Part(pe, store, family, "Layer type byte table", 0x00BBC2EC, 6),
         WriteU32Part(pe, store, family, "Layer type jump table", 0x00BBC2D8, 5),
+        WriteFnPart(pe, store, family, "PALSKIN +8 enable 00BD71B0", 0x00BD71B0, 20, stopOnRet: false),
+        WriteFnPart(pe, store, family, "Type20 NONE-draw case 00BBC1DB", 0x00BBC1DB, 30, stopOnRet: false),
+        WriteFnPart(pe, store, family, "Static submit calls switch 00BBCB59", 0x00BBCB4B, 20, stopOnRet: false),
+        WriteVtblPart(pe, store, family, "Static primitive vtbl 012A5B80", 0x012A5B80, 24),
         WriteFnPart(pe, store, family, "Water +636 this-setter 00B23900", 0x00B23900, 20, stopOnRet: false),
         WriteFnPart(pe, store, family, "Water +636 dtor 00B71994", 0x00B71994, 40, stopOnRet: false),
         WriteVtblPart(pe, store, family, "Engine +636 setter table", 0x012A1000, 20),

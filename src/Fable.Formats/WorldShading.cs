@@ -361,4 +361,14 @@ public static class WorldShading
     /// after the draw. Flag1 is not that selector.
     /// </summary>
     public const bool FirstSeenAppliesCullNoneFromFlag1 = false;
+
+    /// <summary>
+    /// Layer type 20 is NONE-draw <c>00BBE090</c>, only called from
+    /// <c>00BBC210</c> (jump-table case of <c>00BBC130</c>).
+    /// First-seen PALSKIN <c>00BD71B0</c> tests <c>[this+8]</c> as an
+    /// enable byte and never calls <c>00BBC130</c>. First-seen
+    /// static-lit <c>00BB2540</c> (house 3180) also never calls it.
+    /// Flag1 on hair 793 / house 3180 does not write type 20.
+    /// </summary>
+    public const bool FirstSeenFlag1WritesLayerType20 = false;
 }
