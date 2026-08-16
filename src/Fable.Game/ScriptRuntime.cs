@@ -41,6 +41,7 @@ public sealed class ScriptRuntime : IScriptHost
     public IReadOnlyList<ScriptWalkTo> WalkTos => _walks;
     public IReadOnlyList<ScriptCombatAnimation> CombatAnimations => _combatAnims;
     public IReadOnlyList<ScriptCreate> Creates => _creates;
+    public int WaitActiveDialogCount { get; private set; }
     public IReadOnlyList<string> PreloadedCameras => _preloadedCameras;
 
     private readonly Dictionary<string, string> _named = new(StringComparer.OrdinalIgnoreCase);
@@ -345,6 +346,12 @@ public sealed class ScriptRuntime : IScriptHost
     /// </summary>
     void IScriptHost.Create(string type, string marker, string name) =>
         _creates.Add(new ScriptCreate(type, marker, name));
+
+    /// <summary>
+    /// <c>00CC656B</c>: leftover session poll
+    /// <c>vtbl+1472</c>. Dismiss UNREAD — one yield.
+    /// </summary>
+    void IScriptHost.WaitActiveDialog() => WaitActiveDialogCount++;
 
     /// <summary>
     /// <c>00CC86D0</c> default path: <c>00CBF29F</c> with

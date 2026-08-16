@@ -439,6 +439,21 @@ public static class RegionTravel
     public const bool FirstSeenWalkToAppliesMove = false;
     public const string IntroWalkMarker = "MK_OVI_ID_VW1";
     public const float IntroWalkSpeed = 0.3f;
+    /// <summary>
+    /// <c>00CC656B</c> <c>WaitActiveDialog</c>. If
+    /// <c>[ebp-44]==edi</c> (no session)
+    /// <c>jmp 00CC7081</c>. Else poll context
+    /// <c>vtbl+1472</c> <c>008907D0</c> /
+    /// <c>006E5660</c> until <c>al==0</c>. First-seen
+    /// has a leftover InteractiveSpeak/DialogSpeak
+    /// session so one <c>vtbl+28</c>. Dismiss body
+    /// UNREAD.
+    /// </summary>
+    public const uint WaitActiveDialogOpcode = 0x00CC656B;
+    public const uint WaitActiveDialogPoll = 0x00CC6612;
+    public const int WaitActiveDialogPollVtbl = 1472;
+    public const uint WaitActiveDialogPollFn = 0x008907D0;
+    public const bool FirstSeenWaitActiveDialogYieldsOnce = true;
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;

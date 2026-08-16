@@ -301,6 +301,8 @@ public sealed class ScriptInterpreter
                 create.Name.Length != 0)
                 host.Create(create.Type, create.Marker, create.Name);
         }
+        else if (command.Verb.Equals("WaitActiveDialog", StringComparison.OrdinalIgnoreCase))
+            host.WaitActiveDialog();
     }
 
     internal static void ParseFadeArgs(string arguments, out float seconds, out float param)
@@ -569,6 +571,8 @@ public readonly struct ScriptCommand
         }
         if (verb.Equals("WaitTask", StringComparison.OrdinalIgnoreCase))
             return string.IsNullOrEmpty(command.Actor) ? ScriptFlow.Continue : ScriptFlow.YieldAfter;
+        if (verb.Equals("WaitActiveDialog", StringComparison.OrdinalIgnoreCase))
+            return ScriptFlow.YieldAfter;
         if (verb.Equals("SneakTo", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("WalkTo", StringComparison.OrdinalIgnoreCase))
         {
@@ -631,4 +635,5 @@ public interface IScriptHost
     void PlayCombatAnimation(
         string? actor, string name, bool flagA, bool flagB, bool flagC, bool flagD, bool flagE, int count);
     void Create(string type, string marker, string name);
+    void WaitActiveDialog();
 }

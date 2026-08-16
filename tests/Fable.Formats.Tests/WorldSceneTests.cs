@@ -391,6 +391,9 @@ public sealed class WorldSceneTests
         Assert.False(RegionTravel.FirstSeenWalkToWaitsForArrival);
         Assert.Equal("MK_OVI_ID_VW1", RegionTravel.IntroWalkMarker);
         Assert.Equal(0.3f, RegionTravel.IntroWalkSpeed);
+        Assert.Equal(0x00CC656Bu, RegionTravel.WaitActiveDialogOpcode);
+        Assert.Equal(1472, RegionTravel.WaitActiveDialogPollVtbl);
+        Assert.True(RegionTravel.FirstSeenWaitActiveDialogYieldsOnce);
         Assert.Equal(0x00CC4B22u, RegionTravel.ScriptFadeInOut);
         Assert.Equal(0x00CB5D80u, RegionTravel.RegisteringScripts);
         Assert.Equal(0x00CB8110u, RegionTravel.QuestBaseCtor);
@@ -975,6 +978,23 @@ public sealed class WorldSceneTests
             !w.Wait);
         Assert.False(RegionTravel.FirstSeenWalkToAppliesMove);
         Assert.False(intro.ExecutedVerb("WaitActiveDialog"));
+        Assert.Equal(0x00CC656Bu, RegionTravel.WaitActiveDialogOpcode);
+        Assert.True(RegionTravel.FirstSeenWaitActiveDialogYieldsOnce);
+        var pause08 = 0;
+        while (intro.Yielded &&
+               !intro.ExecutedVerb("WaitActiveDialog") &&
+               intro.Commands[intro.InstructionPointer].StartsWith("GamePause 0.8", StringComparison.Ordinal) &&
+               pause08 < 50)
+        {
+            script.Update(0.1f);
+            pause08++;
+        }
+
+        Assert.Contains("WaitActiveDialog", intro.Executed);
+        Assert.Equal("UseCamera CAM_OVIF_SHOT3", intro.Commands[intro.InstructionPointer]);
+        Assert.True(intro.Yielded);
+        Assert.Null(intro.UnsupportedCommand);
+        Assert.Equal(1, runtime.WaitActiveDialogCount);
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 
@@ -1095,6 +1115,24 @@ public sealed class WorldSceneTests
         public void Create(string type, string marker, string name) { }
 
         public void WalkTo(string? actor, string marker, float speed, bool wait) { }
+
+        public void WaitActiveDialog() { }
+    }
+
+    [Fact]
+    public void WaitActiveDialog_first_seen_yields_once()
+    {
+        Assert.Equal(ScriptFlow.YieldAfter, ScriptCommand.Classify(ScriptCommand.Parse("WaitActiveDialog")));
+        Assert.Equal(0x00CC656Bu, RegionTravel.WaitActiveDialogOpcode);
+        Assert.Equal(1472, RegionTravel.WaitActiveDialogPollVtbl);
+        Assert.Equal(0x008907D0u, RegionTravel.WaitActiveDialogPollFn);
+        Assert.True(RegionTravel.FirstSeenWaitActiveDialogYieldsOnce);
+        var interpreter = new ScriptInterpreter("wad", ["WaitActiveDialog", "UseCamera CAM_OVIF_SHOT3"]);
+        interpreter.RunUntilYield();
+        Assert.True(interpreter.Yielded);
+        Assert.Contains("WaitActiveDialog", interpreter.Executed);
+        Assert.Equal("UseCamera CAM_OVIF_SHOT3", interpreter.Commands[interpreter.InstructionPointer]);
+        Assert.Null(interpreter.UnsupportedCommand);
     }
 
     [Fact]
