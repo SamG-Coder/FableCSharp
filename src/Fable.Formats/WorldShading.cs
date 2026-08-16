@@ -15,6 +15,11 @@ public static class WorldShading
     public const int DirLightStartRegister = 19;
     public const int RegistersPerLight = 2;
     public const int LitRegister = 35;
+    /// <summary>
+    /// LayoutLights <c>[+20]</c>. New Game function map does not reach a
+    /// <c>009896D0</c> caller (offset 0 is never written on that graph).
+    /// First-seen kid stays bind-pose; do not invent bone matrices.
+    /// </summary>
     public const int PaletteSkinStartRegister = 38;
     public const int PaletteSkinRegisterCount = 58;
 

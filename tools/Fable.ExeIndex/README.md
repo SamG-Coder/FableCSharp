@@ -13,6 +13,7 @@ a 12-instruction stub.
 dotnet run --project tools/Fable.ExeIndex -- all
 dotnet run --project tools/Fable.ExeIndex -- trace-newgame
 dotnet run --project tools/Fable.ExeIndex -- --force trace-landscape
+dotnet run --project tools/Fable.ExeIndex -- map-newgame
 ```
 
 ```
@@ -29,7 +30,7 @@ dotnet run --project tools/Fable.ExeIndex -- trace-landscape
 
 Each dump family lives in `out/01-sections/<family>/` as one markdown file per VA, plus `INDEX.md` that links them. A stub `01-sections/<family>.md` points at that index. `out/manifest.json` stores the exe identity (`TimeDateStamp-SizeOfImage-fileLength`) and a **recipe version** per family. Re-running the same command skips a family unless the exe changed, the version constant in `DumpStore.cs` was bumped, or you pass `--force`.
 
-Steps (`index` / `split` / `translate` / `all` / `disasm` / `calls` / `trace-render` / `trace-landscape` / `trace-newgame` / `imm` / `vtbl` / `disp` / `scanff` / `floats` / `calldisp`):
+Steps (`index` / `split` / `translate` / `all` / `disasm` / `calls` / `trace-render` / `trace-landscape` / `trace-newgame` / `map-newgame` / `imm` / `vtbl` / `disp` / `scanff` / `floats` / `calldisp`):
 
 | Dir | What |
 |---|---|

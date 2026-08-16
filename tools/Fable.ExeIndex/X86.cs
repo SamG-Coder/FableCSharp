@@ -6,6 +6,8 @@ namespace Fable.ExeIndex;
 /// </summary>
 internal static class X86
 {
+    public readonly record struct Step(uint Va, string Text, bool IsRet, uint? DirectCall);
+
     public static List<string> Disassemble(PeImage pe, int fileOffset, int maxInsns = 64) =>
         DisassembleCore(pe, fileOffset, maxInsns, stopOnRet: true);
 
@@ -17,25 +19,45 @@ internal static class X86
     public static List<string> DisassembleAll(PeImage pe, int fileOffset, int maxInsns = 64) =>
         DisassembleCore(pe, fileOffset, maxInsns, stopOnRet: false);
 
-    private static List<string> DisassembleCore(PeImage pe, int fileOffset, int maxInsns, bool stopOnRet)
+    public static List<Step> Walk(PeImage pe, int fileOffset, int maxInsns, bool stopOnRet)
     {
-        var lines = new List<string>();
+        var steps = new List<Step>(maxInsns);
         var ip = fileOffset;
-        for (var n = 0; n < maxInsns && ip + 1 < pe.Data.Length; n++)
+        var d = pe.Data;
+        for (var n = 0; n < maxInsns && ip + 1 < d.Length; n++)
         {
             var start = ip;
+            var look = ip;
+            while (look < d.Length && d[look] is 0x66 or 0xF2 or 0xF3 or 0xF0 or 0x64 or 0x65 or 0x26 or 0x2E or 0x36 or 0x3E)
+                look++;
+            uint? call = null;
+            if (look + 5 <= d.Length && d[look] == 0xE8)
+            {
+                var rel = BitConverter.ToInt32(d, look + 1);
+                call = pe.Va(look + 5 + rel);
+            }
+
             if (!TryDecode(pe, ref ip, out var text))
             {
-                lines.Add($"  //{pe.Va(start):X8}: db 0x{pe.Data[start]:X2}");
+                steps.Add(new Step(pe.Va(start), $"db 0x{d[start]:X2}", false, null));
                 ip = start + 1;
                 continue;
             }
 
-            lines.Add($"  //{pe.Va(start):X8}: {text}");
-            if (stopOnRet && (text is "ret" or "retn" || text.StartsWith("ret ", StringComparison.Ordinal)))
+            var ret = text is "ret" or "retn" || text.StartsWith("ret ", StringComparison.Ordinal);
+            steps.Add(new Step(pe.Va(start), text, ret, call));
+            if (stopOnRet && ret)
                 break;
         }
 
+        return steps;
+    }
+
+    private static List<string> DisassembleCore(PeImage pe, int fileOffset, int maxInsns, bool stopOnRet)
+    {
+        var lines = new List<string>();
+        foreach (var step in Walk(pe, fileOffset, maxInsns, stopOnRet))
+            lines.Add($"  //{step.Va:X8}: {step.Text}");
         return lines;
     }
 

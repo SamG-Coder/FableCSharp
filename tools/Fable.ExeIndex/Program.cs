@@ -2,7 +2,7 @@ using System.Text;
 using Fable.Core;
 using Fable.ExeIndex;
 
-var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "trace-render" or "trace-landscape" or "trace-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp") ?? "all";
+var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "trace-render" or "trace-landscape" or "trace-newgame" or "map-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp") ?? "all";
 var force = args.Any(a => a is "--force" or "-f");
 var install = GameInstall.TryLocate();
 var exePath = args.FirstOrDefault(a => a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
@@ -61,6 +61,9 @@ switch (cmd)
         if (!File.Exists(Path.Combine(outDir, "00-index", "xrefs.tsv")))
             RunIndex(pe, store);
         RunTraceNewGame(pe, store);
+        break;
+    case "map-newgame":
+        RunMapNewGame(pe, store);
         break;
     case "calls":
         RunCalls(pe, args);
@@ -621,12 +624,32 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "MainScene plus616 draw", 0x00B33010, 120),
         WriteFnPart(pe, store, family, "Static mesh VS bind", 0x00B8B660, 80),
         WriteFnPart(pe, store, family, "VS bind LANDSCAPE FOREGROUND", 0x00B69330, 80),
+        WriteNewGameMap(pe, store, family),
     };
     store.WriteIndex(
         family, DumpStore.NewGameTraceVersion, "newgame-trace",
         "Click New through first-seen StartOakVale: UI, quest, kid, NewRegion, static maps, tiles, draw.",
         links);
     Console.WriteLine($"trace  {family}/  parts={links.Count}  v{DumpStore.NewGameTraceVersion}");
+}
+
+static void RunMapNewGame(PeImage pe, DumpStore store)
+{
+    const string family = "newgame-trace";
+    var links = new List<IndexLink> { WriteNewGameMap(pe, store, family) };
+    store.WriteIndex(
+        family, DumpStore.NewGameTraceVersion, "newgame-trace",
+        "New Game / StartOakVale function map only (no other towns).",
+        links);
+}
+
+static IndexLink WriteNewGameMap(PeImage pe, DumpStore store, string family)
+{
+    var nodes = FunctionMap.WalkNewGame(pe);
+    store.WritePart(family, "fnmap", FunctionMap.ToMarkdown(nodes));
+    store.WritePart(family, "fnmap-tsv", "```\n" + FunctionMap.ToTsv(nodes) + "```\n");
+    Console.WriteLine($"map    newgame functions={nodes.Count}");
+    return new IndexLink("fnmap", "New Game function map", 0);
 }
 
 static IndexLink WriteFnPart(PeImage pe, DumpStore store, string family, string name, uint va, int n, bool stopOnRet = true)

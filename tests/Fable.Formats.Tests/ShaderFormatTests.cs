@@ -197,5 +197,6 @@ public sealed class ShaderFormatTests
         Assert.Equal(1f, WorldShading.DirLightColor.W);
         Assert.Equal(new Vector4(0f, 0f, 0f, 1f), WorldShading.LitColor);
         Assert.Contains(WorldShading.PaletteSkinStartRegister, skin.ConstRegisters);
+        // New Game fnmap: no 009896D0 caller, so first-seen does not fill c38.
     }
 }
