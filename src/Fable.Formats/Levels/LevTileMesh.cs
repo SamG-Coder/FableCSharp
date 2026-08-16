@@ -249,9 +249,9 @@ public sealed class LevTileMesh
         var face = Vector3.Normalize(n);
         triangles.Add(new MeshTriangle(
             a.P, b.P, c.P, face,
-            new Vector2(a.P.X / LevHeightField.SampleSpacing, a.P.Y / LevHeightField.SampleSpacing),
-            new Vector2(b.P.X / LevHeightField.SampleSpacing, b.P.Y / LevHeightField.SampleSpacing),
-            new Vector2(c.P.X / LevHeightField.SampleSpacing, c.P.Y / LevHeightField.SampleSpacing),
+            new Vector2(a.P.X * LandscapeTextures.UvScale, a.P.Y * LandscapeTextures.UvScale),
+            new Vector2(b.P.X * LandscapeTextures.UvScale, b.P.Y * LandscapeTextures.UvScale),
+            new Vector2(c.P.X * LandscapeTextures.UvScale, c.P.Y * LandscapeTextures.UvScale),
             textureId,
             Vector3.One, Vector3.One, Vector3.One,
             textureId1,

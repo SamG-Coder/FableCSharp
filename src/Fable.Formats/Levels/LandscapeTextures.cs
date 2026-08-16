@@ -10,6 +10,14 @@ public static class LandscapeTextures
 {
     public const int DefaultId = 414;
 
+    /// <summary>
+    /// Exe table <c>0x0139C5D8</c> uploaded via <c>00989A60</c> as VS
+    /// float4s: <c>0.125</c> / <c>-0.125</c>. Tile verts have no UV;
+    /// <c>VSHADER_LANDSCAPE_FOREGROUND</c> does <c>mad oT0</c> from world XY.
+    /// Cell lookup still uses <c>&gt;&gt;4</c> (16 m). UV scale is 1/8, not 1/16.
+    /// </summary>
+    public const float UvScale = 0.125f;
+
     public static bool IsUsable(string materialName) =>
         materialName.Length > 0 &&
         !materialName.StartsWith("INVALID", StringComparison.OrdinalIgnoreCase);

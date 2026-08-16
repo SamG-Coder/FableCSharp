@@ -269,12 +269,22 @@ internal static class X86
 
         var name = op2 switch
         {
+            0x12 => "movlps",
+            0x13 => "movlps",
+            0x16 => "movhps",
+            0x17 => "movhps",
             0x1F => "nop",
             0x10 or 0x11 => "movups",
             0x28 or 0x29 => "movaps",
             0x2E => "ucomiss",
             0x2F => "comiss",
             0x57 => "xorps",
+            0x58 => "addps",
+            0x59 => "mulps",
+            0x5C => "subps",
+            0x5D => "minps",
+            0x5F => "maxps",
+            0x70 => "pshufd",
             0xAF => "imul",
             0xB6 => "movzx",
             0xB7 => "movzx",
@@ -286,13 +296,26 @@ internal static class X86
             0xBB => "btc",
             0xBC => "bsf",
             0xBD => "bsr",
+            0xC2 => "cmpps",
+            0xC6 => "shufps",
             _ => $"0F_{op2:X2}",
         };
 
         // Almost every remaining 0F opcode takes ModR/M. Consume it so we
         // never return success with the IP still sitting on the operand.
         var rmFirst = op2 is 0xA3 or 0xAB or 0xB3 or 0xBB;
-        return ModRm(pe, d, ref ip, name, rmFirst, out text, r8: op2 is 0xB6 or 0xBE);
+        if (!ModRm(pe, d, ref ip, name, rmFirst, out text, r8: op2 is 0xB6 or 0xBE))
+            return false;
+
+        // shufps / cmpps / pshufd / shld / shrd / bt-imm take an extra imm8.
+        if (op2 is 0x70 or 0x71 or 0x72 or 0x73 or 0xA4 or 0xAC or 0xBA or 0xC2 or 0xC4 or 0xC5 or 0xC6)
+        {
+            if (ip >= d.Length)
+                return false;
+            text += $", {d[ip++]}";
+        }
+
+        return true;
     }
 
     private static string Jcc(int cc) => cc switch

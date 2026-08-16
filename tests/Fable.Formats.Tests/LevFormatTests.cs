@@ -265,6 +265,10 @@ public sealed class LevFormatTests
         Assert.True(tris.Count > 1000, $"tris={tris.Count}");
         Assert.DoesNotContain(tris, t => t.TextureId is 4106 or 4107 or 4108);
         Assert.Contains(tris, t => t.TextureId is 4130 or 414 or 428 or 412);
+        Assert.Equal(0.125f, LandscapeTextures.UvScale);
+        var sample = tris.First(t => t.A.X > 1f && t.A.Y > 1f);
+        Assert.Equal(sample.A.X * 0.125f, sample.UvA.X, 3);
+        Assert.Equal(sample.A.Y * 0.125f, sample.UvA.Y, 3);
     }
 
     [Fact]
