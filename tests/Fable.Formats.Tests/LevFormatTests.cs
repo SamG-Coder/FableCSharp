@@ -257,6 +257,14 @@ public sealed class LevFormatTests
         Assert.Equal(508, LandscapeTextures.WaterDrawVectorFirst);
         Assert.Equal(624, LandscapeTextures.WaterDrawVectorLast);
         Assert.True(LandscapeTextures.FirstSeenWaterDrawIsEmpty);
+        Assert.False(LandscapeTextures.WaterType8DwordsAreStoredOnRenderer);
+        Assert.Equal(1448, LandscapeTextures.SeaInternOffset);
+        Assert.Equal(1452, LandscapeTextures.SeaNameStringOffset);
+        Assert.Equal(636, LandscapeTextures.WaterWantedNameOffset);
+        Assert.Equal(1464, LandscapeTextures.SeaBankObjectOffset);
+        Assert.Equal(630, LandscapeTextures.WaterMeshReadyOffset);
+        Assert.True(LandscapeTextures.FirstSeenWaterWantedNameIsZero);
+        Assert.False(LandscapeTextures.FirstSeenSeaBindRuns);
         Assert.False(LandscapeTextures.IsLoadableWaterBank(oakBytes));
         Assert.DoesNotContain(stb.Entries, e =>
             e.Name.Contains("__ENGINE_WATER_STATIC_MAP_BANK_FILE__", StringComparison.Ordinal));

@@ -33,13 +33,45 @@ public static class LandscapeTextures
     /// Water ctor <c>00B73760</c> zeros <c>+508</c>..<c>+624</c>
     /// (ebx=0). Draw <c>00B783F0</c> treats begin==end on those
     /// vectors plus flags <c>+630</c>/<c>+645</c> as empty and
-    /// <c>je 00B7A865</c>. <c>00B6D4D0</c> stores the sea name only.
-    /// Missing water intern returns at <c>00B420E4</c>. First-seen
-    /// never pushes a type-8 record, so the draw is empty.
+    /// <c>je 00B7A865</c>. <c>00B6D4D0</c> stores the sea intern at
+    /// <c>+1448</c> and the name string at <c>+1452</c>. Missing
+    /// water intern returns at <c>00B420E4</c>. First-seen never
+    /// pushes a type-8 record, so the draw is empty.
     /// </summary>
     public const int WaterDrawVectorFirst = 508;
     public const int WaterDrawVectorLast = 624;
     public const bool FirstSeenWaterDrawIsEmpty = true;
+
+    /// <summary>
+    /// <c>00B6DAF0</c> is the only <c>E8</c> caller of
+    /// <c>00B6D6E0</c>. Dest is <c>lea ecx,[esp+12]</c> — the
+    /// two type-8 dwords land on a stack local and
+    /// <c>add esp,8</c> discards them. <c>LoadWaterData</c>
+    /// ignores <c>al</c>.
+    /// </summary>
+    public const bool WaterType8DwordsAreStoredOnRenderer = false;
+
+    /// <summary>
+    /// <c>00B6D4D0</c> <c>mov [ecx+1448], eax</c> then
+    /// <c>add ecx, 0x5AC</c> copies the name string.
+    /// </summary>
+    public const int SeaInternOffset = 1448;
+    public const int SeaNameStringOffset = 1452;
+
+    /// <summary>
+    /// Ctor <c>0099E4B0</c> at <c>+636</c> writes the first
+    /// dword 0. Sea bind <c>00B6DC40</c> does
+    /// <c>cmp [esi+636], 0</c> / <c>je</c> return 0 — it never
+    /// reaches the <c>+1448</c> intern or the 7363 bank.
+    /// <c>+1464</c> is also ctor-zero. <c>+630</c> is set only
+    /// by <c>00B6D420</c> on a later bind when <c>+1464</c>
+    /// is already set.
+    /// </summary>
+    public const int WaterWantedNameOffset = 636;
+    public const int SeaBankObjectOffset = 1464;
+    public const int WaterMeshReadyOffset = 630;
+    public const bool FirstSeenWaterWantedNameIsZero = true;
+    public const bool FirstSeenSeaBindRuns = false;
 
     public static bool IsLoadableWaterBank(ReadOnlySpan<byte> bank) =>
         bank.Length >= 4 && BitConverter.ToUInt32(bank) == RequiredWaterBankType;
