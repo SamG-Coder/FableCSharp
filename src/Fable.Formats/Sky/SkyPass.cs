@@ -105,9 +105,9 @@ public static class SkyPass
     /// fstp [0x0143782C]</c>. The qword is the last-ring elevation.
     /// Ctor <c>00B627E2</c> copies +16/+20/+12 from the current
     /// <c>ENVIRONMENT</c> object at <c>[0x1436E24]</c>
-    /// (+292/+288/+296). First-seen +12 is 0. +16/+20 have no
-    /// first-seen numeric writer — do not invent
-    /// <c>(seg/36, ring/8)</c>.
+    /// (+292/+288/+296). Those slots are CString first-dwords
+    /// (ctor <c>0099AED0</c> zeros; persist <c>004310A7</c>).
+    /// First-seen all three are 0.
     /// </summary>
     public const uint UvDivisorGlobal = 0x0143782C;
     public const uint UvDivisorInit = 0x01224830;
@@ -120,11 +120,24 @@ public static class SkyPass
     public const uint EnvironmentLookup = 0x00B26828;
     public const uint VideoOptionsLookup = 0x00B2640F;
     public const uint CtorThis16Write = 0x00B627E2;
+    public const uint EnvironmentStringCtor = 0x0099AED0;
+    public const uint EnvironmentPersist = 0x00430900;
+    public const uint EnvironmentStringPersist = 0x004310A7;
     public const int This16FromOptionsOffset = 292;
     public const int This20FromOptionsOffset = 288;
     public const int This12FromOptionsOffset = 296;
-    public const bool FirstSeenThis16HasNumeric = false;
-    public const bool FirstSeenThis20HasNumeric = false;
+    /// <summary>
+    /// +288/+292/+296 are CString first-dwords: ctor
+    /// <c>0099AED0</c> writes 0, persist <c>004310A7</c> assigns
+    /// the intern pointer. First-seen +296 is 0 (origin Z).
+    /// <c>ENVIRONMENT</c> has one filename
+    /// (<c>lightning_colours.tga</c>) which fills an earlier
+    /// string slot; +288/+292 stay the ctor zeros.
+    /// </summary>
+    public const bool FirstSeenThis16HasNumeric = true;
+    public const bool FirstSeenThis20HasNumeric = true;
+    public const float FirstSeenThis16 = 0f;
+    public const float FirstSeenThis20 = 0f;
     public const bool FirstSeenUvDivisorHasWriter = true;
     public const uint CapPoleUvBits = 0x38D1B717;
     public const int CapPoleColor = 0;

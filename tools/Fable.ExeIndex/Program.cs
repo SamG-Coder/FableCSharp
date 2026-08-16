@@ -2,7 +2,7 @@ using System.Text;
 using Fable.Core;
 using Fable.ExeIndex;
 
-var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "fn" or "trace-render" or "trace-landscape" or "trace-newgame" or "map-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp" or "scan") ?? "all";
+var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "fn" or "trace-render" or "trace-landscape" or "trace-newgame" or "map-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp" or "scan" or "datascan") ?? "all";
 var force = args.Any(a => a is "--force" or "-f");
 var install = GameInstall.TryLocate();
 var exePath = args.FirstOrDefault(a => a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
@@ -90,7 +90,10 @@ switch (cmd)
         RunCallDisp(pe, args);
         break;
     case "scan":
-        RunScan(pe, args);
+        RunScan(pe, args, codeOnly: true);
+        break;
+    case "datascan":
+        RunScan(pe, args, codeOnly: false);
         break;
     default:
         RunIndex(pe, store);
@@ -187,12 +190,12 @@ static void RunImm(PeImage pe, string[] args)
     Console.WriteLine($"imm  {hits}");
 }
 
-static void RunScan(PeImage pe, string[] args)
+static void RunScan(PeImage pe, string[] args, bool codeOnly = true)
 {
-    var hex = args.SkipWhile(a => a is "scan").FirstOrDefault();
+    var hex = args.SkipWhile(a => a is "scan" or "datascan").FirstOrDefault();
     if (hex is null || hex.Length < 2 || hex.Length % 2 != 0)
     {
-        Console.Error.WriteLine("usage: scan <hex-bytes> [lo hi]");
+        Console.Error.WriteLine("usage: scan|datascan <hex-bytes> [lo hi]");
         return;
     }
 
@@ -214,7 +217,7 @@ static void RunScan(PeImage pe, string[] args)
     var hits = 0;
     foreach (var sec in pe.Sections)
     {
-        if (!pe.InCode((int)sec.FileOffset))
+        if (codeOnly && !pe.InCode((int)sec.FileOffset))
             continue;
         var end = Math.Min(data.Length, (int)(sec.FileOffset + sec.FileSize) - needle.Length);
         for (var i = (int)sec.FileOffset; i < end; i++)
@@ -899,6 +902,9 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteU32Part(pe, store, family, "Sky UV divisor angle 12A1140", 0x012A1140, 2),
         WriteU32Part(pe, store, family, "Sky UV divisor scale 12A1138", 0x012A1138, 1),
         WriteFnPart(pe, store, family, "ENVIRONMENT lookup 00B26828", 0x00B26826, 20, stopOnRet: false),
+        WriteFnPart(pe, store, family, "ENVIRONMENT CString ctor 0099AED0", 0x0099AED0, 8),
+        WriteFnPart(pe, store, family, "ENVIRONMENT string persist 004310A7", 0x004310A7, 40),
+        WriteFnPart(pe, store, family, "ENVIRONMENT Transfer +288", 0x00430BF3, 20, stopOnRet: false),
         WriteWalkPart(pe, store, family, "Sky star draw 00B65A20", 0x00B65A20, 80),
         WriteFnPart(pe, store, family, "Sky mesh draw calls stars", 0x00B6627A, 20, stopOnRet: false),
         WriteFnPart(pe, store, family, "MainScene plus616 draw", 0x00B33010, 120),

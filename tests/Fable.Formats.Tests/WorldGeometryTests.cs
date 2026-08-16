@@ -282,6 +282,8 @@ public sealed class WorldGeometryTests
     [Fact]
     public void First_seen_sky_dome_colour_is_white_with_vbase_alpha()
     {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
         Assert.Equal(1.105f, SkyPass.UvVBaseScale, 4);
         Assert.Equal(255f, SkyPass.ColourScale);
         Assert.Equal(0x00BFEA70u, SkyPass.FloatToInt);
@@ -314,8 +316,19 @@ public sealed class WorldGeometryTests
         Assert.Equal(
             (float)(13000.0 * Math.Cos(SkyPass.UvDivisorAngle)),
             SkyPass.FirstSeenUvDivisor, 3);
-        Assert.False(SkyPass.FirstSeenThis16HasNumeric);
-        Assert.False(SkyPass.FirstSeenThis20HasNumeric);
+        Assert.True(SkyPass.FirstSeenThis16HasNumeric);
+        Assert.True(SkyPass.FirstSeenThis20HasNumeric);
+        Assert.Equal(0f, SkyPass.FirstSeenThis16);
+        Assert.Equal(0f, SkyPass.FirstSeenThis20);
+        Assert.Equal(0x0099AED0u, SkyPass.EnvironmentStringCtor);
+        Assert.Equal(0x004310A7u, SkyPass.EnvironmentStringPersist);
+        Assert.Equal(Vector2.Zero, SkyPass.DomeUv(
+            3, 9, SkyPass.FirstSeenThis16, SkyPass.FirstSeenThis20, SkyPass.FirstSeenInvUvDivisor));
+        var installDome = SkyGeometry.Build(install);
+        var midday = installDome.Where(t => t.TextureId == SkyDef.MiddaySkyTextureId).ToList();
+        Assert.Contains(midday, t => t.UvA == Vector2.Zero && t.UvB == Vector2.Zero && t.UvC == Vector2.Zero);
+        Assert.DoesNotContain(midday.Take(8 * 36 * 2), t =>
+            t.UvA.X > 0.01f || t.UvA.Y > 0.01f);
         Assert.Equal(0x00B65A20u, SkyPass.StarDraw);
         Assert.Equal(0x00B66190u, SkyPass.StarDrawCallerFn);
         Assert.True(SkyPass.FirstSeenCallsStarDraw);

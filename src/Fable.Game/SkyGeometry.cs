@@ -35,7 +35,7 @@ public static class SkyGeometry
         var rings = SkyPass.DomeRings;
         var segs = SkyPass.DomeSegments;
         Vector2 Uv(int ring, int seg) =>
-            new(seg / (float)segs, ring / (float)(rings - 1));
+            SkyPass.DomeUv(ring, seg, SkyPass.FirstSeenThis16, SkyPass.FirstSeenThis20, SkyPass.FirstSeenInvUvDivisor);
 
         for (var r = 0; r < rings - 1; r++)
         for (var s = 0; s < segs; s++)
