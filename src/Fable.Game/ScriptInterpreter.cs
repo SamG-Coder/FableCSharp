@@ -261,6 +261,14 @@ public sealed class ScriptInterpreter
             host.InteractiveSpeak(
                 command.Actor, speech.Listener, speech.Prompt, speech.Wait, speech.Response);
         }
+        else if (command.Verb.Equals("DialogSpeak", StringComparison.OrdinalIgnoreCase))
+        {
+            var speech = ScriptCommand.ParseDialogSpeak(command.Arguments);
+            if (speech.Listener.Length != 0 &&
+                speech.Text.Length != 0 &&
+                !ScriptCommand.IsNullArg(speech.Text))
+                host.DialogSpeak(command.Actor, speech.Listener, speech.Text);
+        }
     }
 
     internal static void ParseFadeArgs(string arguments, out float seconds, out float param)
@@ -359,6 +367,19 @@ public readonly struct ScriptCommand
     }
 
     /// <summary>
+    /// <c>00CC3165</c>: listener, text. Empty / null
+    /// skip via <c>00CC7081</c>. Then one
+    /// <c>vtbl+28</c> and <c>jmp 00CC707C</c>.
+    /// </summary>
+    public static (string Listener, string Text) ParseDialogSpeak(string arguments)
+    {
+        var args = SplitArgs(arguments);
+        var listener = args.Length == 0 ? "" : args[0];
+        var text = args.Length < 2 ? "" : args[1];
+        return (listener, text);
+    }
+
+    /// <summary>
     /// <c>00CBEE0C</c>: strcmp arg to <c>false</c>.
     /// </summary>
     public static bool IsFalseArg(string? text) =>
@@ -438,6 +459,15 @@ public readonly struct ScriptCommand
                 return ScriptFlow.Continue;
             return speech.Wait ? ScriptFlow.Yield : ScriptFlow.YieldAfter;
         }
+        if (verb.Equals("DialogSpeak", StringComparison.OrdinalIgnoreCase))
+        {
+            var speech = ParseDialogSpeak(command.Arguments);
+            if (speech.Listener.Length == 0 ||
+                speech.Text.Length == 0 ||
+                IsNullArg(speech.Text))
+                return ScriptFlow.Continue;
+            return ScriptFlow.YieldAfter;
+        }
         if (verb.Equals("LookToThing", StringComparison.OrdinalIgnoreCase))
         {
             var args = SplitArgs(command.Arguments);
@@ -476,4 +506,5 @@ public interface IScriptHost
     void Speak(string? actor, string target, string text, int mode);
     void InteractiveSpeak(
         string? actor, string listener, string prompt, bool wait, string response);
+    void DialogSpeak(string? actor, string listener, string text);
 }

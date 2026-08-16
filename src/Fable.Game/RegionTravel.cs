@@ -315,6 +315,29 @@ public static class RegionTravel
     public const bool FirstSeenInteractiveSpeakYieldsOnce = true;
     public const string IntroFatherPrompt = "TEXT_QST_048_FATHER_INTRO_20";
     public const string IntroFatherResponse = "TEXT_QST_048_FATHER_INTRO_30";
+    /// <summary>
+    /// <c>00CC3165</c> <c>.DialogSpeak</c>. Skip empty
+    /// actor / listener / text / <c>00CBEE5E</c>
+    /// <c>null</c> via <c>00CC7081</c>. Context
+    /// <c>vtbl+1456/1460/1464</c> (same slots as
+    /// InteractiveSpeak). Optional leftover-session
+    /// poll <c>vtbl+1472</c> → <c>008907D0</c> /
+    /// <c>006E5660</c> is UNREAD as UI. Then one
+    /// <c>vtbl+28</c> and <c>jmp 00CC707C</c>.
+    /// </summary>
+    public const uint DialogSpeakOpcode = 0x00CC3165;
+    public const uint DialogSpeakApply = 0x00CC31BC;
+    public const uint DialogSpeakYield = 0x00CC3310;
+    public const uint DialogSpeakJoin = 0x00CC707C;
+    public const uint DialogSpeakBeginFn = 0x008906C0;
+    public const uint DialogSpeakBindFn = 0x00890710;
+    public const uint DialogSpeakLineFn = 0x00890750;
+    public const uint DialogSpeakWaitFn = 0x008907D0;
+    public const uint DialogSpeakWaitBody = 0x006E5660;
+    public const bool FirstSeenDialogSpeakYieldsOnce = true;
+    public const string IntroFatherDialog = "TEXT_QST_048_FATHER_INTRO_60";
+    public const string IntroDialogListener = "HERO";
+    public const float IntroGamePauseAfterTired = 2.0f;
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;

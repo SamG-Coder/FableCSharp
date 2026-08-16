@@ -35,6 +35,7 @@ public sealed class ScriptRuntime : IScriptHost
     public IReadOnlyList<ScriptAnimation> Animations => _animations;
     public IReadOnlyList<ScriptSpeech> Speeches => _speeches;
     public IReadOnlyList<ScriptInteractiveSpeech> InteractiveSpeeches => _interactive;
+    public IReadOnlyList<ScriptDialogSpeech> DialogSpeeches => _dialogs;
     public IReadOnlyList<string> PreloadedCameras => _preloadedCameras;
 
     private readonly Dictionary<string, string> _named = new(StringComparer.OrdinalIgnoreCase);
@@ -45,6 +46,7 @@ public sealed class ScriptRuntime : IScriptHost
     private readonly List<ScriptAnimation> _animations = [];
     private readonly List<ScriptSpeech> _speeches = [];
     private readonly List<ScriptInteractiveSpeech> _interactive = [];
+    private readonly List<ScriptDialogSpeech> _dialogs = [];
     private readonly List<string> _preloadedCameras = [];
     private IReadOnlyList<ThingInstance> _things = [];
     private ScriptedCamera? _camera;
@@ -285,6 +287,14 @@ public sealed class ScriptRuntime : IScriptHost
         _interactive.Add(new ScriptInteractiveSpeech(actor, listener, prompt, wait, response));
 
     /// <summary>
+    /// <c>00CC3165</c>: context <c>vtbl+1456/1460/1464</c>
+    /// then one <c>vtbl+28</c> and <c>jmp 00CC707C</c>.
+    /// Bodies UNREAD — record only.
+    /// </summary>
+    void IScriptHost.DialogSpeak(string? actor, string listener, string text) =>
+        _dialogs.Add(new ScriptDialogSpeech(actor, listener, text));
+
+    /// <summary>
     /// <c>00CC86D0</c> default path: <c>00CBF29F</c> with
     /// <c>dl=0</c> collects UseCamera names via
     /// <c>vtbl+1648</c>. First-seen has no TRUE arg so
@@ -370,3 +380,8 @@ public readonly record struct ScriptInteractiveSpeech(
     string Prompt,
     bool Wait,
     string Response);
+
+public readonly record struct ScriptDialogSpeech(
+    string? Actor,
+    string Listener,
+    string Text);

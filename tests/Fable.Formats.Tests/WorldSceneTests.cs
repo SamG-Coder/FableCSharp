@@ -349,6 +349,13 @@ public sealed class WorldSceneTests
         Assert.True(RegionTravel.FirstSeenInteractiveSpeakYieldsOnce);
         Assert.Equal("TEXT_QST_048_FATHER_INTRO_20", RegionTravel.IntroFatherPrompt);
         Assert.Equal("TEXT_QST_048_FATHER_INTRO_30", RegionTravel.IntroFatherResponse);
+        Assert.Equal(0x00CC3165u, RegionTravel.DialogSpeakOpcode);
+        Assert.Equal(0x008906C0u, RegionTravel.DialogSpeakBeginFn);
+        Assert.Equal(0x008907D0u, RegionTravel.DialogSpeakWaitFn);
+        Assert.True(RegionTravel.FirstSeenDialogSpeakYieldsOnce);
+        Assert.Equal("TEXT_QST_048_FATHER_INTRO_60", RegionTravel.IntroFatherDialog);
+        Assert.Equal("HERO", RegionTravel.IntroDialogListener);
+        Assert.Equal(2.0f, RegionTravel.IntroGamePauseAfterTired);
         Assert.Equal(0x00CC4B22u, RegionTravel.ScriptFadeInOut);
         Assert.Equal(0x00CB5D80u, RegionTravel.RegisteringScripts);
         Assert.Equal(0x00CB8110u, RegionTravel.QuestBaseCtor);
@@ -822,6 +829,28 @@ public sealed class WorldSceneTests
             a.Actor == "Hero" && a.Name == RegionTravel.IntroTired && a.Flag4);
         Assert.False(WorldShading.FirstSeenPlaysAnim);
         Assert.False(intro.ExecutedVerb("DialogSpeak"));
+        Assert.Equal(0x00CC3165u, RegionTravel.DialogSpeakOpcode);
+        Assert.True(RegionTravel.FirstSeenDialogSpeakYieldsOnce);
+        Assert.Equal(2.0f, RegionTravel.IntroGamePauseAfterTired);
+        var pause20Visits = 0;
+        while (intro.Yielded &&
+               intro.Commands[intro.InstructionPointer].StartsWith("GamePause 2.0", StringComparison.Ordinal) &&
+               pause20Visits < 50)
+        {
+            script.Update(0.1f);
+            pause20Visits++;
+        }
+
+        Assert.Contains("GamePause 2.0", intro.Executed);
+        Assert.Contains("Father.DialogSpeak HERO,'TEXT_QST_048_FATHER_INTRO_60'", intro.Executed);
+        Assert.Equal("Hero.WaitTask FOO", intro.Commands[intro.InstructionPointer]);
+        Assert.True(intro.Yielded);
+        Assert.Null(intro.UnsupportedCommand);
+        Assert.Contains(runtime.DialogSpeeches, s =>
+            s.Actor == "Father" &&
+            s.Listener.Equals(RegionTravel.IntroDialogListener, StringComparison.OrdinalIgnoreCase) &&
+            s.Text.Contains(RegionTravel.IntroFatherDialog, StringComparison.Ordinal));
+        Assert.False(intro.ExecutedVerb("WaitTask"));
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 
@@ -929,6 +958,30 @@ public sealed class WorldSceneTests
 
         public void InteractiveSpeak(
             string? actor, string listener, string prompt, bool wait, string response) { }
+
+        public void DialogSpeak(string? actor, string listener, string text) { }
+    }
+
+    [Fact]
+    public void Father_DialogSpeak_yields_once_then_continues()
+    {
+        var command = "Father.DialogSpeak HERO,'TEXT_QST_048_FATHER_INTRO_60'";
+        var parsed = ScriptCommand.ParseDialogSpeak(ScriptCommand.Parse(command).Arguments);
+        Assert.Equal("HERO", parsed.Listener);
+        Assert.Contains("TEXT_QST_048_FATHER_INTRO_60", parsed.Text);
+        Assert.Equal(ScriptFlow.YieldAfter, ScriptCommand.Classify(ScriptCommand.Parse(command)));
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(
+            ScriptCommand.Parse("Father.DialogSpeak HERO,null")));
+        Assert.Equal(0x00CC3165u, RegionTravel.DialogSpeakOpcode);
+        Assert.Equal(0x008906C0u, RegionTravel.DialogSpeakBeginFn);
+        Assert.Equal(0x008907D0u, RegionTravel.DialogSpeakWaitFn);
+        Assert.True(RegionTravel.FirstSeenDialogSpeakYieldsOnce);
+        var interpreter = new ScriptInterpreter("dspeak", [command, "Hero.WaitTask FOO"]);
+        interpreter.RunUntilYield();
+        Assert.True(interpreter.Yielded);
+        Assert.Contains(command, interpreter.Executed);
+        Assert.Equal("Hero.WaitTask FOO", interpreter.Commands[interpreter.InstructionPointer]);
+        Assert.Null(interpreter.UnsupportedCommand);
     }
 
     [Fact]
