@@ -64,6 +64,31 @@ public sealed class WorldSceneTests
     }
 
     [Fact]
+    public void Lookout_aabb_neighbours_are_the_exe_static_maps()
+    {
+        var install = Require();
+        var world = WorldFile.Load(install.WorldPath);
+        var bwd = BwdFile.Load(install.BwdPath);
+        var names = bwd.AdjacentTo("LookoutPoint").Select(r => r.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        Assert.Contains("PicnicArea", names);
+        Assert.Contains("BowerstoneBridge", names);
+        Assert.Contains("Greatwood_1", names);
+        Assert.Contains("Greatwood_2", names);
+        Assert.Contains("GuildExterior", names);
+        Assert.Contains("PicnicArea_Filler_02", names);
+        Assert.Contains("PicnicArea_Filler_03", names);
+        Assert.DoesNotContain("BowerstoneSlums", names);
+        Assert.DoesNotContain("GreatwoodEntrance", names);
+
+        var lookout = world.FindMap("LookoutPoint")!;
+        Assert.True(lookout.LoadedOnPlayerProximity);
+        foreach (var name in new[] { "PicnicArea", "BowerstoneBridge", "Greatwood_1", "Greatwood_2", "GuildExterior" })
+            Assert.True(world.FindMap(name)!.LoadedOnPlayerProximity, name);
+        foreach (var name in new[] { "PicnicArea_Filler_02", "PicnicArea_Filler_03" })
+            Assert.False(world.FindMap(name)!.LoadedOnPlayerProximity, name);
+    }
+
+    [Fact]
     public void Lookout_exit_uids_pack_neighbour_map_uids()
     {
         var install = Require();

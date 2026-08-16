@@ -55,6 +55,9 @@ parsers and notes.
 | Other BIGB | `fonts.big`, `dialogue.big` (lipsync), `frontend.big`, `effects.big` (particles), `shaders.big` (pixel/vertex programs). Same BIGB footer as graphics/textures. | `DataCatalogTests` |
 | Sound .lug / Dialogue.lut | Lionhead audio, **not** BIGB. Magic `LiOnHeAd` + `LHFileSegmentBankInfo` / `LHAudioBankCompData`. `.met` is a sidecar (u32=1 then source WAV path). | `DataCatalogTests` |
 | stars.dat | `u32` count **1330**, then 24-byte records (6 floats). | `DataCatalogTests` |
+| Fable.exe world load | RTTI: `CWorld` / `CWorldMap` / `CLevelLoader` / `CEngineLandscapeMap` / `CEngineLandscapePatch` / `CLandscapeBackgroundPatch` / `CLandscapePatchTesselator` / `CPatchTesselationEdgeStrip` / `CStaticMapBankFile` / `CHeightMap` / `CEngineWaterRenderer`. `SetStaticMapFileForUse` logs **`OpenStaticMaps`** (plural), `OpenStaticMap`, `LoadWaterData`, `CloseStaticMapFile`. Region files then `Activate Topology` / `Post Load Initialise`. WLD tokens `NewMap` / `MapX` / `LoadedOnPlayerProximity TRUE;` are parsed as written. | exe string dump 2026-08-16 |
+| AABB static maps | `OpenStaticMaps` + `CLandscapeBackgroundPatch` load **BWD rectangles that touch**, not the starting-region teleport graph. Lookout (3232,3488–3360,3616) touches Picnic (−128,+32), Bridge (0,+128), GuildExterior (+128,−32), Greatwood_1 (+32,−192), Greatwood_2 (−64,−192), plus two Picnic fillers with no STB `.lev`. Those five real maps are `LoadedOnPlayerProximity TRUE`; fillers are FALSE. Graph names (`BowerstoneSlums`, `GreatwoodEntrance`) are exits, not tiles. | `WorldSceneTests`, `WorldGeometryTests` |
+| Neighbour scene | Lookout world mesh is local metres **plus** those five maps, offset by `MapX/MapY` delta. Scene spans X&lt;0 and X&gt;128, Y&lt;0 and Y&gt;128. Fillers stay out (STB `FindLev` skips `Filler` / `Demon`). Instances &gt; 192. | `WorldGeometryTests.Lookout_scene_opens_aabb_adjacent_static_maps` |
 
 ## Did not work
 
@@ -88,6 +91,8 @@ parsers and notes.
 | BWD declared count is the parsed region count | File says 399; 398 records match WLD. Trailing ~22 KB is not another region. | `DataCatalogTests` |
 | WLD `MapUIDCount 72` is the number of maps | The file then has **398** `NewMap` blocks. 72 is some other counter. | `WorldSceneTests` |
 | `EntranceConnectedToUID` is a raw thing UID | The u64 is not an instance id. High bits are MapUID; low 32 bits equal the dest entrance's low 32 bits (`0xFFFFFE00…`). | `WorldSceneTests` |
+| Lookout STB 64/64 means the overworld is complete | Every Lookout tile is present (~30039 tris, 192 props). The missing ground west/east/north/south is **other WLD maps**. Teleport-graph neighbours are not those tiles. | `WorldGeometryTests`, exe `OpenStaticMaps` |
+| Starting-region graph is the visual neighbourhood | Lookout graph lists Picnic, BowerstoneSlums, GreatwoodEntrance, guild interior, demon door. Only Picnic shares an AABB edge. Slums / GreatwoodEntrance / interiors do not touch Lookout's rectangle. | `WorldSceneTests` |
 
 ## Open
 
@@ -96,6 +101,9 @@ parsers and notes.
 3. **Streetlamp lit vs off.** TNG `OBJECT_STREETLAMP_LIT_SINGLE_01` maps to `MESH_OBJECT_STREETLAMP_OFF_02`. Lit state is probably a replaceable / particle, not a second mesh id.
 4. **Tile second object / 7-byte extras.** After verts (and optional indices) a second `59 10` object remains. The 7 bytes after Z are not a simple u8 normal (`FF` at +4 is common; packed 11-11-10 is not unit-length).
 5. **GPU texturing leftovers.** Sampler is 2D RGBA, one draw per texture id. No atlas, no mipmaps, no bump/reflection/illumination maps, no DXT-on-GPU. Terrain UVs still tile every 16 world units.
+14. **CPatchTesselationEdgeStrip.** Exe stitches adjacent landscape patches with an edge strip. We offset neighbour tiles by MapX/Y; shared 16 m edges are not retessellated.
+15. **LoadWaterData / CEngineWaterRenderer.** `SetStaticMapFileForUse` always loads water after opening the static maps. Sea / river patches are unread.
+16. **Picnic fillers.** `PicnicArea_Filler_02/03` touch Lookout but have no STB `.lev` (`LoadedOnPlayerProximity FALSE`). Likely `CLandscapeBackgroundPatch` only; WAD cells unread.
 6. **WAD cell bytes 4–7 / 14–20.** High-entropy field and flags after the material slots are unread.
 7. **Animation / bones / cloth.** Parser skips the blocks so static positions survive. No skinning.
 8. **Hero, combat, quests, UI, audio.** Frontend UI defs and cutscene defs parse as GameBin entries; fields inside are unread. `.lug`/`.lut` payloads, `.ogg`/`.wmv`, tattoos, and `stars.dat` channels are unread.

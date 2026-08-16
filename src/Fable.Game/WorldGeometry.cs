@@ -5,6 +5,7 @@ using Fable.Formats.Defs;
 using Fable.Formats.Levels;
 using Fable.Formats.Meshes;
 using Fable.Formats.Tng;
+using Fable.Formats.Wld;
 
 namespace Fable.Game;
 
@@ -13,11 +14,16 @@ public sealed class WorldGeometry
     public const float MeshToWorld = 0.01f;
 
     public required string Region { get; init; }
+    public required IReadOnlyList<string> Regions { get; init; }
     public required IReadOnlyList<MeshTriangle> Triangles { get; init; }
     public required int MeshInstances { get; init; }
     public required int MissingMeshes { get; init; }
 
-    public static WorldGeometry Build(GameInstall install, string region, IEnumerable<ThingInstance> things)
+    public static WorldGeometry Build(
+        GameInstall install,
+        string region,
+        IEnumerable<ThingInstance> things,
+        bool adjacentStaticMaps = true)
     {
         var headerPath = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "meshdata.h");
         var graphicsPath = Path.Combine(install.DataRoot, "graphics", "graphics.big");
@@ -36,27 +42,143 @@ public sealed class WorldGeometry
             .ToDictionary(group => group.Key, group => group.First());
 
         var cache = new Dictionary<uint, MeshFile?>();
-        var triangles = new List<MeshTriangle>(80_000);
-
-        using (var levels = new LevelLibrary(install))
-        {
-            var height = levels.LoadHeightField(region);
-            var compiled = levels.LoadCompiledLev(region);
-            var cells = compiled is null ? null : LevCellGrid.TryParse(compiled);
-            var textureHeader = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h");
-            var landscapeEnums = File.Exists(textureHeader) ? HeaderEnums.Load(textureHeader) : null;
-            if (height is not null && cells is not null && compiled is not null)
-            {
-                triangles.AddRange(height.ToTileTriangles(cells, compiled.Materials, landscapeEnums));
-            }
-            else if (height is not null)
-            {
-                foreach (var tri in height.ToLocalTriangles())
-                    triangles.Add(tri with { TextureId = TextureLibrary.LandscapeGrassPlainId });
-            }
-        }
+        var triangles = new List<MeshTriangle>(200_000);
+        var loaded = new List<string>();
         var instances = 0;
         var missing = 0;
+
+        using var levels = new LevelLibrary(install);
+        var textureHeader = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h");
+        var landscapeEnums = File.Exists(textureHeader) ? HeaderEnums.Load(textureHeader) : null;
+        var primaryThings = things as IReadOnlyList<ThingInstance> ?? things.ToList();
+
+        var maps = adjacentStaticMaps
+            ? StaticMapsAround(levels.World, install, region)
+            : PrimaryOnly(levels.World, region);
+        foreach (var map in maps)
+        {
+            var primary = levels.World.FindMap(region);
+            var dx = primary is null ? 0f : map.MapX - primary.MapX;
+            var dy = primary is null ? 0f : map.MapY - primary.MapY;
+            var beforeTris = triangles.Count;
+            var beforeInstances = instances;
+            AddTerrain(levels, map.ScriptName, dx, dy, triangles, landscapeEnums);
+
+            var mapThings = IsPrimary(map, region)
+                ? primaryThings
+                : levels.TryLoadThings(map.ScriptName)?.Things ?? [];
+            AddInstances(mapThings, dx, dy, defs, enums, big, byId, cache, triangles, ref instances, ref missing);
+
+            if (triangles.Count > beforeTris || instances > beforeInstances)
+                loaded.Add(map.ScriptName);
+        }
+
+        if (loaded.Count == 0)
+        {
+            AddTerrain(levels, region, 0, 0, triangles, landscapeEnums);
+            AddInstances(primaryThings, 0, 0, defs, enums, big, byId, cache, triangles, ref instances, ref missing);
+            loaded.Add(region);
+        }
+
+        return new WorldGeometry
+        {
+            Region = region,
+            Regions = loaded,
+            Triangles = triangles,
+            MeshInstances = instances,
+            MissingMeshes = missing,
+        };
+    }
+
+    /// <summary>
+    /// Fable.exe <c>SetStaticMapFileForUse: OpenStaticMaps</c> opens more than
+    /// the current WLD map. Neighbours are BWD AABBs that touch this one
+    /// (CLandscapeBackgroundPatch), not the starting-region teleport graph.
+    /// </summary>
+    internal static IReadOnlyList<WorldMap> StaticMapsAround(WorldFile world, GameInstall install, string region)
+    {
+        var primary = world.FindMap(region);
+        if (primary is null)
+            return [];
+
+        return PrimaryPlus(primary, world, install);
+    }
+
+    private static IReadOnlyList<WorldMap> PrimaryOnly(WorldFile world, string region)
+    {
+        var primary = world.FindMap(region);
+        return primary is null ? [] : [primary];
+    }
+
+    private static IReadOnlyList<WorldMap> PrimaryPlus(WorldMap primary, WorldFile world, GameInstall install)
+    {
+        var maps = new List<WorldMap> { primary };
+        if (!File.Exists(install.BwdPath))
+            return maps;
+
+        var bwd = BwdFile.Load(install.BwdPath);
+        var home = bwd.Find(primary.ScriptName) ?? bwd.Find(primary.FileStem);
+        if (home is null)
+            return maps;
+
+        foreach (var map in world.Maps)
+        {
+            if (map.MapUid == primary.MapUid || map.IsSea)
+                continue;
+            var box = bwd.Find(map.ScriptName) ?? bwd.Find(map.FileStem);
+            if (box is null || !home.Value.Touches(box.Value))
+                continue;
+            maps.Add(map);
+        }
+
+        return maps;
+    }
+
+    private static bool IsPrimary(WorldMap map, string region) =>
+        map.ScriptName.Equals(region, StringComparison.OrdinalIgnoreCase) ||
+        map.FileStem.Equals(region, StringComparison.OrdinalIgnoreCase);
+
+    private static void AddTerrain(
+        LevelLibrary levels,
+        string region,
+        float dx,
+        float dy,
+        List<MeshTriangle> triangles,
+        HeaderEnums? landscapeEnums)
+    {
+        var height = levels.LoadHeightField(region);
+        if (height is null)
+            return;
+
+        var compiled = levels.LoadCompiledLev(region);
+        var cells = compiled is null ? null : LevCellGrid.TryParse(compiled);
+        IEnumerable<MeshTriangle> local;
+        if (cells is not null && compiled is not null)
+            local = height.ToTileTriangles(cells, compiled.Materials, landscapeEnums);
+        else
+            local = height.ToLocalTriangles().Select(tri => tri with { TextureId = TextureLibrary.LandscapeGrassPlainId });
+
+        var offset = new Vector3(dx, dy, 0);
+        foreach (var tri in local)
+            triangles.Add(tri with { A = tri.A + offset, B = tri.B + offset, C = tri.C + offset });
+    }
+
+    private static void AddInstances(
+        IEnumerable<ThingInstance> things,
+        float dx,
+        float dy,
+        GameBin? defs,
+        HeaderEnums? enums,
+        BigArchive big,
+        Dictionary<uint, BankEntry> byId,
+        Dictionary<uint, MeshFile?> cache,
+        List<MeshTriangle> triangles,
+        ref int instances,
+        ref int missing)
+    {
+        var shift = dx == 0 && dy == 0
+            ? Matrix4x4.Identity
+            : Matrix4x4.CreateTranslation(dx, dy, 0);
 
         foreach (var thing in things)
         {
@@ -82,7 +204,7 @@ public sealed class WorldGeometry
                 continue;
             }
 
-            var transform = ObjectTransform(thing);
+            var transform = ObjectTransform(thing) * shift;
             foreach (var tri in mesh.Triangles)
             {
                 var a = Vector3.Transform(tri.A, transform);
@@ -98,14 +220,6 @@ public sealed class WorldGeometry
 
             instances++;
         }
-
-        return new WorldGeometry
-        {
-            Region = region,
-            Triangles = triangles,
-            MeshInstances = instances,
-            MissingMeshes = missing,
-        };
     }
 
     /// <summary>

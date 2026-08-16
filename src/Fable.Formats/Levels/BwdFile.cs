@@ -69,6 +69,29 @@ public sealed class BwdFile
         return null;
     }
 
+    /// <summary>
+    /// Maps whose WLD rectangle shares an edge or corner with <paramref name="name"/>.
+    /// Fable.exe <c>OpenStaticMaps</c> / <c>CLandscapeBackgroundPatch</c> use this
+    /// neighbourhood, not the starting-region teleport graph.
+    /// </summary>
+    public IReadOnlyList<BwdRegion> AdjacentTo(string name)
+    {
+        var home = Find(name);
+        if (home is null)
+            return [];
+
+        var list = new List<BwdRegion>();
+        foreach (var region in Regions)
+        {
+            if (region.Name.Equals(home.Value.Name, StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (home.Value.Touches(region))
+                list.Add(region);
+        }
+
+        return list;
+    }
+
     public BwdDisplay? FindDisplay(string scriptName)
     {
         foreach (var display in Displays)
@@ -210,7 +233,12 @@ public readonly record struct BwdRegion(
     int MaxY,
     int MapUid,
     byte[] Flags,
-    byte[] Extra);
+    byte[] Extra)
+{
+    public bool Touches(BwdRegion other) =>
+        MinX <= other.MaxX && MaxX >= other.MinX &&
+        MinY <= other.MaxY && MaxY >= other.MinY;
+}
 
 public readonly record struct BwdDisplay(
     string ScriptName,

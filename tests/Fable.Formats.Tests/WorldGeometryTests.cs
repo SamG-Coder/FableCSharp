@@ -138,4 +138,34 @@ public sealed class WorldGeometryTests
         Assert.Contains(world.Triangles, tri => tri.TextureId > 0 && tri.TextureId != TextureLibrary.LandscapeGrassPlainId);
         Assert.True(world.MeshInstances > 150, $"game.bin should instance walls/rocks/lamps; instances={world.MeshInstances} missing={world.MissingMeshes}");
     }
+
+    [Fact]
+    public void Lookout_scene_opens_aabb_adjacent_static_maps()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        var things = levels.LoadThings("LookoutPoint");
+        var world = WorldGeometry.Build(install, "LookoutPoint", things.Things);
+
+        Assert.Contains("LookoutPoint", world.Regions);
+        Assert.Contains("PicnicArea", world.Regions);
+        Assert.Contains("BowerstoneBridge", world.Regions);
+        Assert.Contains("Greatwood_1", world.Regions);
+        Assert.Contains("Greatwood_2", world.Regions);
+        Assert.Contains("GuildExterior", world.Regions);
+        Assert.DoesNotContain("PicnicArea_Filler_02", world.Regions);
+        Assert.DoesNotContain("PicnicArea_Filler_03", world.Regions);
+        Assert.DoesNotContain("BowerstoneSlums", world.Regions);
+
+        var minX = world.Triangles.Min(t => MathF.Min(t.A.X, MathF.Min(t.B.X, t.C.X)));
+        var maxX = world.Triangles.Max(t => MathF.Max(t.A.X, MathF.Max(t.B.X, t.C.X)));
+        var minY = world.Triangles.Min(t => MathF.Min(t.A.Y, MathF.Min(t.B.Y, t.C.Y)));
+        var maxY = world.Triangles.Max(t => MathF.Max(t.A.Y, MathF.Max(t.B.Y, t.C.Y)));
+        Assert.True(minX < -1f, $"west Picnic tiles missing, minX={minX}");
+        Assert.True(maxX > 129f, $"east Guild tiles missing, maxX={maxX}");
+        Assert.True(minY < -1f, $"south Greatwood tiles missing, minY={minY}");
+        Assert.True(maxY > 129f, $"north Bridge tiles missing, maxY={maxY}");
+        Assert.True(world.MeshInstances > 192, $"neighbour props missing; instances={world.MeshInstances}");
+    }
 }

@@ -26,9 +26,15 @@ public sealed class LevelLibrary : IDisposable
         _stb = File.Exists(install.RuntimeStbPath) ? StbArchive.Open(install.RuntimeStbPath) : null;
     }
 
-    public ThingFile LoadThings(string region)
+    public ThingFile LoadThings(string region) =>
+        TryLoadThings(region) ?? throw new FileNotFoundException(
+            $"No TNG for '{region}'. Expected a loose file under '{LooseHint(region)}' or an entry in FinalAlbion.wad.");
+
+    public ThingFile? TryLoadThings(string region)
     {
-        var map = World.FindMap(region) ?? throw new FileNotFoundException($"Region '{region}' is not in FinalAlbion.wld.");
+        var map = World.FindMap(region);
+        if (map is null)
+            return null;
         var stem = map.FileStem;
 
         var loose = Path.Combine(Install.LooseLevelsDirectory, stem + ".tng");
@@ -43,15 +49,25 @@ public sealed class LevelLibrary : IDisposable
                 return ThingFile.Parse(Encoding.ASCII.GetString(_wad.Read(entry)));
         }
 
-        throw new FileNotFoundException(
-            $"No TNG for '{region}'. Expected loose file '{loose}' or an entry in FinalAlbion.wad.");
+        return null;
+    }
+
+    private string LooseHint(string region)
+    {
+        var map = World.FindMap(region);
+        var stem = map?.FileStem ?? region;
+        return Path.Combine(Install.LooseLevelsDirectory, stem + ".tng");
     }
 
     public IReadOnlyList<BankEntry> WadEntries => _wad?.Entries ?? [];
 
     public LevFile? LoadCompiledLev(string region)
     {
-        var entry = _wad?.Find(region + ".lev");
+        var map = World.FindMap(region);
+        var stem = map?.FileStem ?? region;
+        var entry = _wad?.Find(stem + ".lev")
+                    ?? _wad?.Find(region + ".lev")
+                    ?? (map is null ? null : _wad?.Find(map.LevelName));
         return entry is null ? null : LevFile.Parse(_wad!.Read(entry));
     }
 

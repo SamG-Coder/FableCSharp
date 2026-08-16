@@ -112,7 +112,7 @@ public sealed class GameBinFormatTests
         Assert.NotNull(install);
         using var levels = new LevelLibrary(install);
         var things = levels.LoadThings("LookoutPoint");
-        var world = WorldGeometry.Build(install, "LookoutPoint", things.Things);
+        var world = WorldGeometry.Build(install, "LookoutPoint", things.Things, adjacentStaticMaps: false);
         Assert.True(world.MeshInstances > 150, $"instances={world.MeshInstances} missing={world.MissingMeshes}");
         Assert.True(world.MissingMeshes < 120, $"missing={world.MissingMeshes} instances={world.MeshInstances}");
     }
