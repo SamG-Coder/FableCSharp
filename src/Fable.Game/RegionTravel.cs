@@ -94,6 +94,34 @@ public static class RegionTravel
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;
     public const string WatchBarrelsThing = "NOVI_Barrel";
+    /// <summary>
+    /// Text-script camera matcher <c>00CBF29F</c> strcmp-walks
+    /// <c>UseCamera</c> / <c>CameraLookAt</c> /
+    /// <c>CameraLookBetween</c> / <c>CameraFOVLookBetween</c>.
+    /// Its <c>E8</c> callers are <c>00CBFE3B</c> /
+    /// <c>00CC8782</c> / <c>00CD1837</c> — not
+    /// <c>00DBDE40</c>. <c>.PlayAnimation</c> lives in the
+    /// opcode dispatcher (<c>00CC14B9</c>); that helper
+    /// <c>00CBFACA</c> has only <c>00CD0DB2</c> /
+    /// <c>00CD0E2E</c>. Fade is <c>00CC4B22</c>
+    /// (<c>.FadeIn</c> / <c>.FadeOut</c>). First-seen
+    /// <c>S_QNOVI</c> is the native quest object, not these
+    /// text opcodes.
+    /// </summary>
+    public const uint ScriptCameraHooks = 0x00CBF29F;
+    public const uint ScriptUseCameraToken = 0x00CBF3AC;
+    public const uint ScriptCameraLookAtToken = 0x00CBF3FE;
+    public const uint ScriptPlayAnimationToken = 0x00CC14B9;
+    public const uint ScriptFadeInOut = 0x00CC4B22;
+    public const uint RegisteringScripts = 0x00CB5D80;
+    public const uint QuestBaseCtor = 0x00CB8110;
+    public const uint QuestBaseVtbl = 0x012C1648;
+    public const uint ActionPlayAnimationName = 0x00903570;
+    public const bool FirstSeenCallsUseCamera = false;
+    public const bool FirstSeenCallsPlayAnimationDispatcher = false;
+    public const bool FirstSeenScriptBinHasSqnovi = false;
+    public const string IntroCutscene = "CS_OAKVALE_INTRO_FATHER";
+    public const bool FirstSeenScriptBinHasIntroCutscene = true;
     public static float WatchBarrelsInterval =>
         System.BitConverter.Int32BitsToSingle(unchecked((int)WatchBarrelsIntervalBits));
 

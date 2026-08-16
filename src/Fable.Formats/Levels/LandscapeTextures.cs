@@ -145,6 +145,31 @@ public static class LandscapeTextures
     public const int WaterDrawVtblOffset = 16;
     public const bool FirstSeenLoadWaterDataFindsIntern = false;
     public const bool FirstSeenWaterDrawEmptyIsBareRet = true;
+    /// <summary>
+    /// Water vtbl+4 <c>00B71FB0</c> (query <c>00B7ED70</c> returns
+    /// 1 so the component walk calls it). Every
+    /// <c>cmp eax, eax</c> is taken: end is copied from begin
+    /// on +508..+620, then <c>00B6DC40</c> bind. First-seen
+    /// <c>+636==0</c> so bind returns without a mesh.
+    /// Type-4 enqueue <c>00BF44A0</c> is only <c>E8</c> from
+    /// per-cell <c>00BF57D1</c>: <c>[obj+28]==4</c> pushes the
+    /// cell onto water <c>+0x244</c>. That is a pointer list,
+    /// not a type-8 / 7363 mesh. First-seen prepare therefore
+    /// does not fill a drawable water bank.
+    /// </summary>
+    public const uint WaterPrepare = 0x00B71FB0;
+    public const int WaterPrepareVtblOffset = 4;
+    public const uint WaterPrepareBind = 0x00B6DC40;
+    public const uint WaterQuery = 0x00B7ED70;
+    public const int WaterQueryReturns = 1;
+    public const bool WaterPrepareAlwaysClearsVectors = true;
+    public const bool FirstSeenWaterPrepareFillsMesh = false;
+    public const uint WaterEnqueue = 0x00BF44A0;
+    public const uint WaterEnqueueOnlyCaller = 0x00BF57D1;
+    public const int WaterEnqueueTypeOffset = 28;
+    public const int WaterType4QueueOffset = 0x244;
+    public const int WaterType5QueueOffset = 0x250;
+    public const int WaterType8QueueOffset = 0x220;
 
     public static bool IsLoadableWaterBank(ReadOnlySpan<byte> bank) =>
         bank.Length >= 4 && BitConverter.ToUInt32(bank) == RequiredWaterBankType;

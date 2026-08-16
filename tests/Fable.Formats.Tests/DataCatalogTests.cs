@@ -7,6 +7,7 @@ using Fable.Formats.Levels;
 using Fable.Formats.Text;
 using Fable.Formats.Tng;
 using Fable.Formats.Wld;
+using Fable.Game;
 
 namespace Fable.Formats.Tests;
 
@@ -40,6 +41,15 @@ public sealed class DataCatalogTests
         Assert.Equal(611, script.Entries.Count);
         Assert.True(script.Entries.Count(e => e.TypeName == "CCutsceneDef") > 500);
         Assert.Contains(script.Entries, e => e.InstanceName == "CS_ATTRACT_1");
+        Assert.Contains(script.Entries, e => e.InstanceName == "CS_OAKVALE_INTRO_FATHER");
+        Assert.Contains(script.Entries, e => e.InstanceName == RegionTravel.IntroCutscene);
+        Assert.DoesNotContain(script.Entries, e =>
+            e.InstanceName == RegionTravel.IntroScriptName
+            || e.TypeName == RegionTravel.IntroScriptName);
+        Assert.False(RegionTravel.FirstSeenScriptBinHasSqnovi);
+        Assert.True(RegionTravel.FirstSeenScriptBinHasIntroCutscene);
+        Assert.False(RegionTravel.FirstSeenCallsUseCamera);
+        Assert.False(RegionTravel.FirstSeenCallsPlayAnimationDispatcher);
     }
 
     [Fact]

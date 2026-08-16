@@ -16,6 +16,8 @@ dotnet run --project tools/Fable.ExeIndex -- all
 dotnet run --project tools/Fable.ExeIndex -- trace-newgame
 dotnet run --project tools/Fable.ExeIndex -- --force trace-shaders
 dotnet run --project tools/Fable.ExeIndex -- --force trace-landscape
+dotnet run --project tools/Fable.ExeIndex -- --force trace-script
+dotnet run --project tools/Fable.ExeIndex -- --force export-scripts
 dotnet run --project tools/Fable.ExeIndex -- map-newgame
 ```
 

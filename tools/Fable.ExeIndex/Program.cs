@@ -2,9 +2,11 @@ using System.Text;
 using Fable.Core;
 using Fable.ExeIndex;
 using Fable.Formats.Banks;
+using Fable.Formats.Defs;
+using Fable.Formats.Qst;
 using Fable.Formats.Shaders;
 
-var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "fn" or "trace-render" or "trace-landscape" or "trace-newgame" or "trace-shaders" or "map-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp" or "scan" or "datascan") ?? "all";
+var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "fn" or "trace-render" or "trace-landscape" or "trace-newgame" or "trace-script" or "export-scripts" or "trace-shaders" or "map-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp" or "scan" or "datascan") ?? "all";
 var force = args.Any(a => a is "--force" or "-f");
 var install = GameInstall.TryLocate();
 var exePath = args.FirstOrDefault(a => a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
@@ -66,7 +68,19 @@ switch (cmd)
         if (!File.Exists(Path.Combine(outDir, "00-index", "xrefs.tsv")))
             RunIndex(pe, store);
         RunTraceNewGame(pe, store);
+        RunTraceScriptRuntime(pe, store);
         RunTraceShaders(pe, store);
+        break;
+    case "trace-script":
+        if (!File.Exists(Path.Combine(outDir, "00-index", "xrefs.tsv")))
+            RunIndex(pe, store);
+        RunTraceScriptRuntime(pe, store);
+        RunExportScriptBank(pe, store, install);
+        break;
+    case "export-scripts":
+        if (!File.Exists(Path.Combine(outDir, "00-index", "xrefs.tsv")))
+            RunIndex(pe, store);
+        RunExportScriptBank(pe, store, install);
         break;
     case "trace-shaders":
         RunTraceShaders(pe, store);
@@ -713,6 +727,325 @@ static void RunTraceLandscape(PeImage pe, DumpStore store)
     Console.WriteLine($"trace  {family}/  parts={links.Count}  v{DumpStore.LandscapeTraceVersion}");
 }
 
+static void RunExportScriptBank(PeImage pe, DumpStore store, GameInstall? install)
+{
+    const string family = "script-bank";
+    if (!store.ShouldWrite(family, DumpStore.ScriptBankVersion))
+    {
+        Console.WriteLine($"skip  {family}  v{DumpStore.ScriptBankVersion} (exe unchanged)");
+        return;
+    }
+
+    if (install is null)
+    {
+        Console.Error.WriteLine("script-bank: no TLC install, skip");
+        return;
+    }
+
+    var namesPath = install.FindCompiledDef("names.bin");
+    var scriptPath = install.FindCompiledDef("script.bin");
+    if (namesPath is null || scriptPath is null)
+    {
+        Console.Error.WriteLine("script-bank: names.bin/script.bin missing");
+        return;
+    }
+
+    var names = NamesBin.Load(namesPath);
+    var script = GameBin.Load(scriptPath, names);
+    var links = new List<IndexLink>();
+    var tsv = new StringBuilder();
+    tsv.AppendLine("index\ttype\tinstance\traw\tstrings\tnewgame");
+    var newGame = new StringBuilder();
+    newGame.AppendLine("# New Game script.bin entries");
+    newGame.AppendLine();
+    newGame.AppendLine("S_QNOVI is **not** in this bank. First-seen is the native quest object.");
+    newGame.AppendLine();
+
+    foreach (var entry in script.Entries)
+    {
+        var type = entry.TypeName ?? "";
+        var inst = entry.InstanceName ?? "";
+        var strings = ExtractAscii(entry.Raw);
+        var isNew = IsNewGameScript(type, inst, strings);
+        tsv.Append(entry.Index).Append('\t').Append(type).Append('\t').Append(inst)
+            .Append('\t').Append(entry.Raw.Length).Append('\t')
+            .Append(string.Join("|", strings.Take(8))).Append('\t')
+            .Append(isNew ? "1" : "0").AppendLine();
+        if (!isNew && entry.TypeName == "CCutsceneDef")
+            continue;
+        if (!isNew && script.Entries.Count > 0 && !inst.StartsWith("S_Q", StringComparison.Ordinal))
+            continue;
+
+        var slug = DumpStore.Slug($"{entry.Index:D4}-{inst}", 0);
+        var body = new StringBuilder();
+        body.AppendLine($"# {inst}");
+        body.AppendLine();
+        body.AppendLine($"type `{type}` · index **{entry.Index}** · raw **{entry.Raw.Length}** · newgame **{isNew}**.");
+        body.AppendLine();
+        if (entry.SubDefs.Count > 0)
+        {
+            body.AppendLine("subdefs:");
+            foreach (var sub in entry.SubDefs)
+                body.AppendLine($"- `{sub.DefIndex}`");
+            body.AppendLine();
+        }
+
+        if (strings.Count > 0)
+        {
+            body.AppendLine("strings:");
+            foreach (var s in strings)
+                body.AppendLine($"- `{s}`");
+            body.AppendLine();
+        }
+
+        body.AppendLine("```");
+        var n = Math.Min(entry.Raw.Length, 96);
+        for (var i = 0; i < n; i += 16)
+        {
+            body.Append($"{i:X4}  ");
+            for (var j = 0; j < 16 && i + j < n; j++)
+                body.Append($"{entry.Raw[i + j]:X2} ");
+            body.AppendLine();
+        }
+
+        body.AppendLine("```");
+        store.WritePart(family, slug, body.ToString());
+        links.Add(new IndexLink(slug, inst.Length == 0 ? type : inst, 0));
+        if (isNew)
+            newGame.AppendLine($"- [{inst}]({slug}.md) `{type}` raw {entry.Raw.Length}");
+    }
+
+    store.WritePart(family, "entries-tsv", "```\n" + tsv + "```\n");
+    links.Insert(0, new IndexLink("entries-tsv", "script.bin TSV", 0));
+    store.WritePart(family, "newgame", newGame.ToString());
+    links.Insert(1, new IndexLink("newgame", "New Game script.bin", 0));
+
+    var qst = QuestFile.Load(install.QuestPath);
+    var qstMd = new StringBuilder();
+    qstMd.AppendLine("# FinalAlbion.qst");
+    qstMd.AppendLine();
+    foreach (var q in qst.Quests)
+        qstMd.AppendLine($"- `{q.Name}` persistent **{q.Persistent}**");
+    store.WritePart(family, "quests-qst", qstMd.ToString());
+    links.Insert(2, new IndexLink("quests-qst", "FinalAlbion.qst", 0));
+
+    var cmdMd = new StringBuilder();
+    cmdMd.AppendLine("# Exe script command strings");
+    cmdMd.AppendLine();
+    cmdMd.AppendLine("ASCII in `0x012C1500`–`0x012C2C00` (dispatcher tokens).");
+    cmdMd.AppendLine();
+    foreach (var (va, text) in ExeAscii(pe, 0x012C1500, 0x012C2C00))
+        cmdMd.AppendLine($"- `0x{va:X8}` `{text}`");
+    store.WritePart(family, "exe-commands", cmdMd.ToString());
+    links.Insert(3, new IndexLink("exe-commands", "exe command tokens", 0));
+
+    var native = new StringBuilder();
+    native.AppendLine("# Native S_QNOVI");
+    native.AppendLine();
+    native.AppendLine("Not a script.bin entry. Factory `00DBEF70` / ctor `00DAAC00` / vtbl `0x12D7A28`.");
+    native.AppendLine();
+    native.AppendLine("| step | VA | what |");
+    native.AppendLine("|---|---|---|");
+    native.AppendLine("| update | `00A44880` | microthread pump; dt via `009E1BC0` into `+8` |");
+    native.AppendLine("| fiber | `00A446A0` | `[vtbl+16]` then loop `[vtbl+8]` until `+5` |");
+    native.AppendLine("| persist AttackOver | `00DAADA0` | `004045C0(\"AttackOver\", this+80)` |");
+    native.AppendLine("| run | `00DABAC0` → `00DBDE40` | native first-seen body |");
+    native.AppendLine("| yield | `[ctx+28]` / `00A44690` | `009D8650` fiber switch |");
+    native.AppendLine("| wait 12s | `[ctx+2584](12.0)` | after `[ctx+2592](1,&+76)` |");
+    native.AppendLine("| gate | `+80` | persist name **AttackOver**; writer still UNREAD |");
+    store.WritePart(family, "native-sqnovi", native.ToString());
+    links.Insert(4, new IndexLink("native-sqnovi", "native S_QNOVI", 0));
+
+    store.WriteIndex(
+        family, DumpStore.ScriptBankVersion, "script-bank",
+        "script.bin entries, QST names, exe command tokens, native S_QNOVI. out/ is gitignored.",
+        links);
+    Console.WriteLine($"trace  {family}/  parts={links.Count}  v{DumpStore.ScriptBankVersion}");
+}
+
+static bool IsNewGameScript(string type, string inst, IReadOnlyList<string> strings)
+{
+    foreach (var s in new[] { type, inst }.Concat(strings))
+    {
+        if (s.Contains("NOV", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("OakVale", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("Oakvale", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("Q_New", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("S_QNOVI", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("S_QHOH", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("OVIF", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("PreAttack", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("HerosOld", StringComparison.OrdinalIgnoreCase) ||
+            s.Contains("AttackOver", StringComparison.OrdinalIgnoreCase))
+            return true;
+    }
+
+    return false;
+}
+
+static List<string> ExtractAscii(byte[] raw)
+{
+    var list = new List<string>();
+    var i = 0;
+    while (i < raw.Length)
+    {
+        if (raw[i] is < 32 or > 126)
+        {
+            i++;
+            continue;
+        }
+
+        var start = i;
+        while (i < raw.Length && raw[i] is >= 32 and <= 126)
+            i++;
+        if (i - start >= 4)
+            list.Add(Encoding.ASCII.GetString(raw, start, i - start));
+    }
+
+    return list;
+}
+
+static List<(uint Va, string Text)> ExeAscii(PeImage pe, uint lo, uint hi)
+{
+    var list = new List<(uint, string)>();
+    var data = pe.Data;
+    foreach (var sec in pe.Sections)
+    {
+        var end = Math.Min(data.Length, (int)(sec.FileOffset + sec.FileSize));
+        var i = (int)sec.FileOffset;
+        while (i < end)
+        {
+            var va = pe.Va(i);
+            if (va < lo || va > hi || data[i] is < 32 or > 126)
+            {
+                i++;
+                continue;
+            }
+
+            var start = i;
+            while (i < end && data[i] is >= 32 and <= 126)
+                i++;
+            if (i - start >= 4)
+                list.Add((pe.Va(start), Encoding.ASCII.GetString(data, start, i - start)));
+        }
+    }
+
+    return list;
+}
+
+static void RunTraceScriptRuntime(PeImage pe, DumpStore store)
+{
+    const string family = "script-runtime";
+    if (!store.ShouldWrite(family, DumpStore.ScriptRuntimeVersion))
+    {
+        Console.WriteLine($"skip  {family}  v{DumpStore.ScriptRuntimeVersion} (exe unchanged)");
+        return;
+    }
+
+    var links = new List<IndexLink>
+    {
+        WriteWalkPart(pe, store, family, "Registering Scripts 00CB5D80", 0x00CB5D80, 80),
+        WriteWalkPart(pe, store, family, "quest table 00CD52D0", 0x00CD52D0, 80),
+        WriteWalkPart(pe, store, family, "script def 00F2A0F0", 0x00F2A0F0, 80),
+        WriteWalkPart(pe, store, family, "script bind 00CB5C90", 0x00CB5C90, 120),
+        WriteWalkPart(pe, store, family, "script alias 00CB5AC0", 0x00CB5AC0, 40),
+        WriteWalkPart(pe, store, family, "start scripts 00CB7780", 0x00CB7780, 200),
+        WriteWalkPart(pe, store, family, "script invoke 00CB70E0", 0x00CB70E0, 200),
+        WriteWalkPart(pe, store, family, "script walk 00CB6EA0", 0x00CB6EA0, 200),
+        WriteWalkPart(pe, store, family, "script per-item 00CB6CE0", 0x00CB6CE0, 200),
+        WriteWalkPart(pe, store, family, "script start item 00CB62F0", 0x00CB62F0, 200),
+        WriteWalkPart(pe, store, family, "script start item 00CB6420", 0x00CB6420, 200),
+        WriteCallsPart(pe, store, family, "calls script start 00CB62F0", 0x00CB62F0),
+        WriteCallsPart(pe, store, family, "calls script start 00CB6420", 0x00CB6420),
+        WriteWalkPart(pe, store, family, "script per-item 00CB6B00", 0x00CB6B00, 120),
+        WriteCallsPart(pe, store, family, "calls script per-item 00CB6CE0", 0x00CB6CE0),
+        WriteWalkPart(pe, store, family, "script walk tail 00CB6860", 0x00CB6860, 120),
+        WriteCallsPart(pe, store, family, "calls script walk 00CB6EA0", 0x00CB6EA0),
+        WriteWalkPart(pe, store, family, "script store factory 00CB7210", 0x00CB7210, 80),
+        WriteWalkPart(pe, store, family, "script partition 00CB7310", 0x00CB7310, 80),
+        WriteCallsPart(pe, store, family, "calls script invoke 00CB70E0", 0x00CB70E0),
+        WriteWalkPart(pe, store, family, "quest base slot2 00CBD4C0", 0x00CBD4C0, 40),
+        WriteWalkPart(pe, store, family, "quest base slot0 00CBD4F0", 0x00CBD4F0, 40),
+        WriteWalkPart(pe, store, family, "quest base slot1 00CBD4B0", 0x00CBD4B0, 40),
+        WriteWalkPart(pe, store, family, "quest base slot3 00CBD4D0", 0x00CBD4D0, 40),
+        WriteWalkPart(pe, store, family, "quest base slot4 00CBD4E0", 0x00CBD4E0, 40),
+        WriteWalkPart(pe, store, family, "microthread create 00A447D0", 0x00A447D0, 80),
+        WriteWalkPart(pe, store, family, "microthread 00A44840", 0x00A44840, 80),
+        WriteWalkPart(pe, store, family, "microthread update 00A44880", 0x00A44880, 200),
+        WriteWalkPart(pe, store, family, "microthread fiber entry 00A446A0", 0x00A446A0, 80),
+        WriteWalkPart(pe, store, family, "microthread resume 00A44660", 0x00A44660, 40),
+        WriteWalkPart(pe, store, family, "microthread has-work 00A44930", 0x00A44930, 40),
+        WriteWalkPart(pe, store, family, "frame dt 009E1BC0", 0x009E1BC0, 30),
+        WriteWalkPart(pe, store, family, "microthread yield 00A44690", 0x00A44690, 40),
+        WriteCallsPart(pe, store, family, "calls microthread resume 00A44660", 0x00A44660),
+        WriteCallsPart(pe, store, family, "calls microthread fiber 00A446A0", 0x00A446A0),
+        WriteCallDispPart(pe, store, family, "calldisp vtbl+24 update quests", 0x18, 0x00CB0000, 0x00CC0000),
+        WriteCallDispPart(pe, store, family, "calldisp vtbl+24 update mgr", 0x18, 0x00A44000, 0x00A46000),
+        WriteWalkPart(pe, store, family, "microthread ctor 00A44740", 0x00A44740, 80),
+        WriteCallsPart(pe, store, family, "calls microthread update 00A44880", 0x00A44880),
+        WriteCallsPart(pe, store, family, "calls microthread 00A44840", 0x00A44840),
+        WriteCallsPart(pe, store, family, "calls microthread create 00A447D0", 0x00A447D0),
+        WriteVtblPart(pe, store, family, "watcher vtbl 012D7A3C", 0x012D7A3C, 16),
+        WriteWalkPart(pe, store, family, "S_QNOVI slot4 00DAADA0", 0x00DAADA0, 40),
+        WriteWalkPart(pe, store, family, "AttackOver persist 004045C0", 0x004045C0, 80),
+        WriteCallsPart(pe, store, family, "calls AttackOver persist 004045C0", 0x004045C0),
+        WriteWalkPart(pe, store, family, "S_QNOVI slot5 00DAAD80", 0x00DAAD80, 40),
+        WriteWalkPart(pe, store, family, "S_QNOVI slot9 00DAAD70", 0x00DAAD70, 20),
+        WriteWalkPart(pe, store, family, "S_QNOVI slot10 00CDD410", 0x00CDD410, 20),
+        WriteWalkPart(pe, store, family, "S_QNOVI slot11 00CDD420", 0x00CDD420, 20),
+        WriteFnPart(pe, store, family, "script global first use 00CBE0C2", 0x00CBE0C0, 20, stopOnRet: false),
+        WriteFnPart(pe, store, family, "+80 setter al 00CFAE04", 0x00CFAE00, 20, stopOnRet: false),
+        WriteFnPart(pe, store, family, "+80 setter al 00D037D4", 0x00D037D0, 20, stopOnRet: false),
+        WriteFnPart(pe, store, family, "+80 imm1 00D11781", 0x00D11780, 16, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "quest base ctor 00CB8110", 0x00CB8110, 40),
+        WriteVtblPart(pe, store, family, "quest base vtbl 012C1648", 0x012C1648, 16),
+        WriteWalkPart(pe, store, family, "S_QNOVI factory 00DBEF70", 0x00DBEF70, 20),
+        WriteWalkPart(pe, store, family, "S_QNOVI ctor 00DAAC00", 0x00DAAC00, 80),
+        WriteVtblPart(pe, store, family, "S_QNOVI vtbl 012D7A28", 0x012D7A28, 16),
+        WriteWalkPart(pe, store, family, "S_QNOVI slot0 dtor 00DBEFA0", 0x00DBEFA0, 20),
+        WriteWalkPart(pe, store, family, "S_QNOVI slot1 Main 00DAACE0", 0x00DAACE0, 40),
+        WriteWalkPart(pe, store, family, "S_QNOVI slot2 run 00DABAC0", 0x00DABAC0, 80),
+        WriteFnPart(pe, store, family, "S_QNOVI slot2 calls setup 00DAC293", 0x00DAC293, 16, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "S_QNOVI slot3 reset 00DAADD0", 0x00DAADD0, 80),
+        WriteWalkPart(pe, store, family, "StartOakVale 00DBDE40", 0x00DBDE40, 200),
+        WriteFnPart(pe, store, family, "PreAttack wait setup 00DBE128", 0x00DBE128, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PreAttack +80 spin 00DBE1FA", 0x00DBE1FA, 40, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "hero-exists 00CB7940", 0x00CB7940, 20),
+        WriteWalkPart(pe, store, family, "watcher ctor 00CDD450", 0x00CDD450, 40),
+        WriteWalkPart(pe, store, family, "watcher register 00CB7E50", 0x00CB7E50, 80),
+        WriteWalkPart(pe, store, family, "WatchBarrels 00DBE890", 0x00DBE890, 80),
+        WriteWalkPart(pe, store, family, "script camera hooks 00CBF29F", 0x00CBF29F, 120),
+        WriteWalkPart(pe, store, family, "PlayAnimation splitter 00CBFACA", 0x00CBFACA, 40),
+        WriteFnPart(pe, store, family, "PlayAnimation token 00CC14B9", 0x00CC14B9, 30, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "FadeIn FadeOut 00CC4B22", 0x00CC4B22, 80),
+        WriteFnPart(pe, store, family, "StayFadedOut 00CD087E", 0x00CD087E, 30, stopOnRet: false),
+        WriteCallsPart(pe, store, family, "calls S_QNOVI factory 00DBEF70", 0x00DBEF70),
+        WriteCallsPart(pe, store, family, "calls S_QNOVI run 00DABAC0", 0x00DABAC0),
+        WriteCallsPart(pe, store, family, "calls StartOakVale 00DBDE40", 0x00DBDE40),
+        WriteCallsPart(pe, store, family, "calls script bind 00CB5C90", 0x00CB5C90),
+        WriteCallsPart(pe, store, family, "calls start scripts 00CB7780", 0x00CB7780),
+        WriteCallsPart(pe, store, family, "calls camera hooks 00CBF29F", 0x00CBF29F),
+        WriteImmPart(pe, store, family, "imm script global 143E8F8", 0x143E8F8, 0x00CB0000, 0x00DC0000),
+        WriteImmPart(pe, store, family, "imm script global engine", 0x143E8F8, 0x00B20000, 0x00B40000),
+        WriteCallDispPart(pe, store, family, "calldisp vtbl+28 yield intro", 0x1C, 0x00DBDE00, 0x00DBF000),
+        WriteCallDispPart(pe, store, family, "calldisp vtbl+28 yield scripts", 0x1C, 0x00CB0000, 0x00CE0000),
+        WriteCallDispPart(pe, store, family, "calldisp vtbl+2584 wait intro", 0xA18, 0x00DBDE00, 0x00DBF000),
+        WriteCallDispPart(pe, store, family, "calldisp vtbl+2584 wait scripts", 0xA18, 0x00CB0000, 0x00CE0000),
+        WriteCallDispPart(pe, store, family, "calldisp vtbl+2592 flag intro", 0xA20, 0x00DBDE00, 0x00DBF000),
+        WriteCallDispPart(pe, store, family, "calldisp vtbl+8 slot2 scripts", 0x8, 0x00CB7000, 0x00CB9000),
+        WriteScanPart(pe, store, family, "scan +80 imm1 scripts", "C6465001", 0x00CB0000, 0x00DC0000),
+        WriteScanPart(pe, store, family, "scan +80 al scripts", "884650", 0x00CB0000, 0x00DC0000),
+        WriteScanPart(pe, store, family, "scan +80 ebx imm1", "C6435001", 0x00CB0000, 0x00DC0000),
+        WriteU32Part(pe, store, family, "CGameScriptInterface RTTI", 0x013801F4, 8),
+        WriteU32Part(pe, store, family, "script global 143E8F8 dword", 0x0143E8F8, 4),
+    };
+    store.WriteIndex(
+        family, DumpStore.ScriptRuntimeVersion, "script-runtime",
+        "New Game S_QNOVI VM: register, factory, vtbl, yield, wait, +80 gate, text-opcode hooks. Do not invent.",
+        links);
+    Console.WriteLine($"trace  {family}/  parts={links.Count}  v{DumpStore.ScriptRuntimeVersion}");
+}
+
 static void RunTraceNewGame(PeImage pe, DumpStore store)
 {
     const string family = "newgame-trace";
@@ -1146,6 +1479,24 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteWalkPart(pe, store, family, "S_QNOVI vtbl0 00DBEFA0", 0x00DBEFA0, 40),
         WriteWalkPart(pe, store, family, "S_QNOVI vtbl1 00DAACE0", 0x00DAACE0, 120),
         WriteWalkPart(pe, store, family, "S_QNOVI vtbl3 00DAADD0", 0x00DAADD0, 40),
+        WriteWalkPart(pe, store, family, "water vtbl+4 prepare 00B71FB0", 0x00B71FB0, 200),
+        WriteCallsPart(pe, store, family, "calls water prepare 00B71FB0", 0x00B71FB0),
+        WriteWalkPart(pe, store, family, "water type-4 enqueue 00BF44B3", 0x00BF44B3, 80),
+        WriteFnPart(pe, store, family, "per-cell type-4 cmp 00BF5175", 0x00BF5175, 40, stopOnRet: false),
+        WriteCallsPart(pe, store, family, "calls water enqueue 00BF44B3", 0x00BF44B3),
+        WriteCallsPart(pe, store, family, "calls water enqueue fn 00BF44A0", 0x00BF44A0),
+        WriteWalkPart(pe, store, family, "script camera hooks 00CBF29F", 0x00CBF29F, 200),
+        WriteFnPart(pe, store, family, "UseCamera site 00CBF3AC", 0x00CBF3AC, 30, stopOnRet: false),
+        WriteFnPart(pe, store, family, "CameraLookAt site 00CBF3FE", 0x00CBF3FE, 30, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAnimation site 00CC14B9", 0x00CC14B9, 40, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "FadeIn FadeOut 00CC4B22", 0x00CC4B22, 80),
+        WriteWalkPart(pe, store, family, "Registering Scripts 00CB5D80", 0x00CB5D80, 80),
+        WriteWalkPart(pe, store, family, "quest base ctor 00CB8110", 0x00CB8110, 80),
+        WriteWalkPart(pe, store, family, "CActionPlayAnimation 00903570", 0x00903570, 40),
+        WriteCallsPart(pe, store, family, "calls UseCamera helper 00CBF29F", 0x00CBF29F),
+        WriteCallsPart(pe, store, family, "calls PlayAnimation dispatcher 00CBFACA", 0x00CBFACA),
+        WriteWalkPart(pe, store, family, "water query vtbl+40 00B7ED70", 0x00B7ED70, 20),
+        WriteVtblPart(pe, store, family, "water vtbl 012A3364 full", 0x012A3364, 16),
         WriteFnPart(pe, store, family, "S_QNOVI bind site 00CD6E1D", 0x00CD6E1D, 40, stopOnRet: false),
         WriteWalkPart(pe, store, family, "quest script bind 00CB5C90", 0x00CB5C90, 80),
         WriteWalkPart(pe, store, family, "quest script alias 00CB5AC0", 0x00CB5AC0, 40),

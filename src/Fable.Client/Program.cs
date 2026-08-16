@@ -27,6 +27,7 @@ Vector3 startPosition = new(64f, -40f, 95f);
 Vector3 startLook = new(64f, 64f, 36f);
 var startFov = 65f;
 using var textures = new TextureLibrary(install);
+NewGameScript? intro = null;
 EnterRegion(region, arrivedFromExit: null);
 
 var camera = new FlyCamera { Position = startPosition, FovDegrees = startFov };
@@ -111,6 +112,8 @@ window.Update += dt =>
     if (move.LengthSquared() > 0)
         camera.Move(Vector3.Normalize(move), (float)dt, keyboard.IsKeyPressed(Key.ShiftLeft));
 
+    intro?.Update((float)dt);
+
     TryWalk();
 
     looking = mouse is not null && mouse.IsButtonPressed(MouseButton.Right);
@@ -190,13 +193,17 @@ void EnterRegion(string next, RegionExit? arrivedFromExit)
     Console.WriteLine($"Instanced {world.MeshInstances} meshes ({world.Triangles.Count} tris), missing {world.MissingMeshes}");
     if (region == RegionTravel.NewGameRegion)
     {
+        intro = new NewGameScript();
+        intro.Start();
         Console.WriteLine(
             $"Intro {RegionTravel.IntroQuest}/{RegionTravel.IntroScriptName} " +
             $"run 0x{RegionTravel.IntroQuestRun:X} -> 0x{RegionTravel.StartOakValeSetup:X}; " +
-            $"phase PreAttack {RegionTravel.PreAttackDuration:0}s wait on +{RegionTravel.PreAttackGateOffset}; " +
-            $"WatchBarrels idle (no beetle); fade opcode unused; " +
-            $"SHOT2 TNG camera; kid bind-pose; no player handoff");
+            $"VM list 0x{NewGameScript.ListWalk:X} rec {NewGameScript.ListRecordBytes}; " +
+            $"phase {intro.Current} {RegionTravel.PreAttackDuration:0}s wait; " +
+            $"+{RegionTravel.PreAttackGateOffset} unread; SHOT2 TNG; kid bind-pose");
     }
+    else
+        intro = null;
 
     if (planes is null && spawn is not null)
     {
