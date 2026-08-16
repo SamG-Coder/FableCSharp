@@ -227,6 +227,10 @@ public sealed class CameraProjectionTests
         Assert.True(WorldShading.FirstSeenFogSaturates);
         Assert.False(LandscapeFrustum.FirstSeenUploadsInverseRow0AsC2);
         Assert.Equal(276, WorldShading.FogComputeCameraMatrixOffset);
+        Assert.Equal(276, LandscapeFrustum.ViewUnscaledCopyOffset);
+        Assert.True(LandscapeFrustum.FirstSeenFogUsesUnscaledView);
+        Assert.True(LandscapeFrustum.FirstSeenView128IsCotScaled);
+        Assert.Equal(0x00B30B50u, LandscapeFrustum.ViewBuilder);
         Assert.Equal(0x00B47630u, LandscapeFrustum.FogCompute);
 
         var plane = WorldShading.LinearFogPlane(cam, look);

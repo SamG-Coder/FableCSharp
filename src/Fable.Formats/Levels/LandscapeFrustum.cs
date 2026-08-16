@@ -196,6 +196,18 @@ public static class LandscapeFrustum
     /// <c>[0x1436EA0]</c> again before landscape.
     /// </summary>
     public const uint ViewSourceOffset = 128;
+    /// <summary>
+    /// <c>00B30B50</c> copies helper+16 (12 floats) to
+    /// camera+128, writes translation <c>-R*pos</c> at
+    /// +164/+168/+172, then <c>rep movsd</c> that 3x4 to
+    /// <c>+276</c> before scaling +128 rows 0/1 by
+    /// cotH/cotV. Fog <c>00B47630</c> reads +276 (unscaled).
+    /// WVP <c>00988350</c> reads the cot-scaled +128.
+    /// </summary>
+    public const int ViewUnscaledCopyOffset = 276;
+    public const bool FirstSeenFogUsesUnscaledView = true;
+    public const bool FirstSeenView128IsCotScaled = true;
+    public const uint ViewBuilder = 0x00B30B50;
     public const uint BindCameraUpdate = 0x00B23B50;
     public const int BindCameraUpdateArg = 1;
     public const int PrePassCameraUpdateArg = 0;
