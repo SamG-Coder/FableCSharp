@@ -5,9 +5,11 @@ namespace Fable.Formats.Levels;
 /// <summary>
 /// Per-16-unit landscape tile stored in the runtime STB copy of a .lev.
 /// Each table record points at a raw-LZO payload of 15-byte world-space verts.
+/// The blob at the u32@2048 offset is the same format (map-origin / west cell).
 /// </summary>
 public sealed class LevTileMesh
 {
+    public const int Section2OffsetAt = 2048;
     public const int TableOffset = 2056;
     public const int RecordSize = 36;
     public const int VertexHeaderSize = 32;
@@ -15,10 +17,15 @@ public sealed class LevTileMesh
     public const uint RecordMagic = 0x012EC900;
 
     public required IReadOnlyList<LevTile> Tiles { get; init; }
+    public LevTile? Section2 { get; init; }
 
     public static LevTileMesh Parse(byte[] stbLev, float mapX, float mapY, int cellsX, int cellsY)
     {
         var tiles = new List<LevTile>();
+        var section2 = TryReadPayload(stbLev, (int)BitConverter.ToUInt32(stbLev, Section2OffsetAt), -1);
+        if (section2 is not null)
+            tiles.Add(section2.Value);
+
         for (var i = 0; i < cellsX * cellsY + 2; i++)
         {
             var rec = TableOffset + i * RecordSize;
@@ -38,14 +45,18 @@ public sealed class LevTileMesh
             if (off <= 0 || size < 12 || off + size > stbLev.Length)
                 continue;
 
-            var verts = DecompressVertices(stbLev.AsSpan(off, size));
-            if (verts.Count == 0)
+            var tile = TryReadPayload(stbLev, off, i);
+            if (tile is null)
                 continue;
 
-            tiles.Add(new LevTile(i, ix, iy, x0, y0, verts));
+            tiles.Add(tile.Value with { CellX = ix, CellY = iy, OriginX = x0, OriginY = y0 });
         }
 
-        return new LevTileMesh { Tiles = tiles };
+        return new LevTileMesh
+        {
+            Tiles = tiles,
+            Section2 = section2,
+        };
     }
 
     public int StampOnto(float[,] dest, float originX, float originY, int width, int height)
@@ -73,24 +84,28 @@ public sealed class LevTileMesh
         return stamped;
     }
 
-    internal static IReadOnlyList<LevTileVertex> DecompressVertices(ReadOnlySpan<byte> payload)
+    internal static LevTile? TryReadPayload(byte[] stbLev, int off, int index)
     {
-        if (payload.Length < 12)
-            return [];
+        if (off < 0 || off + 12 > stbLev.Length)
+            return null;
 
-        var expect = BitConverter.ToInt32(payload);
+        var expect = BitConverter.ToInt32(stbLev, off);
         if (expect is < VertexHeaderSize + VertexStride or > 2_000_000)
-            return [];
+            return null;
+
+        var packed = BitConverter.ToInt32(stbLev, off + 4);
+        if (packed <= 0 || off + 8 + packed > stbLev.Length)
+            return null;
 
         var dest = new byte[expect];
-        var produced = Lzo.DecompressRaw(payload[8..], dest);
+        var produced = Lzo.DecompressRaw(stbLev.AsSpan(off + 8, packed), dest);
         if (produced != expect)
-            return [];
+            return null;
 
         var count = BitConverter.ToUInt16(dest, 2);
         var need = VertexHeaderSize + count * VertexStride;
         if (count is 0 or > 4000 || need > dest.Length)
-            return [];
+            return null;
 
         var verts = new LevTileVertex[count];
         for (var i = 0; i < count; i++)
@@ -102,7 +117,34 @@ public sealed class LevTileMesh
                 BitConverter.ToSingle(dest, o + 4));
         }
 
-        return verts;
+        return new LevTile(
+            index,
+            0, 0,
+            verts[0].WorldX,
+            verts[0].WorldY,
+            verts,
+            ReadIndices(dest, count, need));
+    }
+
+    internal static IReadOnlyList<int> ReadIndices(byte[] dest, int vertCount, int start)
+    {
+        if (start + 6 > dest.Length)
+            return [];
+
+        var indices = new List<int>();
+        for (var o = start; o + 6 <= dest.Length; o += 6)
+        {
+            var a = BitConverter.ToUInt16(dest, o);
+            var b = BitConverter.ToUInt16(dest, o + 2);
+            var c = BitConverter.ToUInt16(dest, o + 4);
+            if (a >= vertCount || b >= vertCount || c >= vertCount)
+                break;
+            indices.Add(a);
+            indices.Add(b);
+            indices.Add(c);
+        }
+
+        return indices.Count >= 3 ? indices : [];
     }
 }
 
@@ -112,6 +154,7 @@ public readonly record struct LevTile(
     int CellY,
     float OriginX,
     float OriginY,
-    IReadOnlyList<LevTileVertex> Vertices);
+    IReadOnlyList<LevTileVertex> Vertices,
+    IReadOnlyList<int> Indices);
 
 public readonly record struct LevTileVertex(ushort WorldX, ushort WorldY, float Z);

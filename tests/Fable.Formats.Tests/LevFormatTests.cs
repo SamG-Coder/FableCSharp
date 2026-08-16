@@ -278,15 +278,15 @@ public sealed class LevFormatTests
         using var stb = StbArchive.Open(install.RuntimeStbPath);
         var lookout = levels.LoadHeightField("LookoutPoint");
         Assert.NotNull(lookout);
-        Assert.Equal(63, lookout.TileCount);
+        Assert.Equal(64, lookout.TileCount);
         Assert.True(lookout.FineSampleCount > 2000, $"fine={lookout.FineSampleCount}");
         Assert.Equal(128, lookout.FineWidth);
         Assert.Equal(128, lookout.FineHeight);
 
         var bytes = stb.Read(stb.FindLev("LookoutPoint")!);
         var tiles = LevTileMesh.Parse(bytes, lookout.OriginX, lookout.OriginY, lookout.CellsX, lookout.CellsY);
-        Assert.Equal(63, tiles.Tiles.Count);
-        var first = tiles.Tiles[0];
+        Assert.Equal(64, tiles.Tiles.Count);
+        var first = tiles.Tiles.First(tile => tile.Index == 0);
         Assert.Equal(289, first.Vertices.Count);
         Assert.Equal(3248, first.Vertices[0].WorldX);
         Assert.Equal(3488, first.Vertices[0].WorldY);
@@ -309,11 +309,75 @@ public sealed class LevFormatTests
         using var levels = new LevelLibrary(install);
         var picnic = levels.LoadHeightField("PicnicArea");
         Assert.NotNull(picnic);
-        Assert.Equal(47, picnic.TileCount);
+        Assert.Equal(48, picnic.TileCount);
         Assert.True(picnic.FineSampleCount > 1000, $"fine={picnic.FineSampleCount}");
         Assert.Equal(128, picnic.FineWidth);
         Assert.Equal(96, picnic.FineHeight);
         Assert.InRange(picnic.FineHeights[16, 0], 15f, 80f);
+    }
+
+    [Fact]
+    public void Stb_section_two_is_the_map_origin_tile()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        using var stb = StbArchive.Open(install.RuntimeStbPath);
+        foreach (var (region, x0, y0, x1, y1) in new[]
+                 {
+                     ("LookoutPoint", 3232, 3488, 3248, 3504),
+                     ("PicnicArea", 3104, 3520, 3120, 3536),
+                 })
+        {
+            var field = levels.LoadHeightField(region);
+            Assert.NotNull(field);
+            var bytes = stb.Read(stb.FindLev(region)!);
+            var tiles = LevTileMesh.Parse(bytes, field.OriginX, field.OriginY, field.CellsX, field.CellsY);
+            Assert.NotNull(tiles.Section2);
+            var s2 = tiles.Section2.Value;
+            Assert.Equal(-1, s2.Index);
+            Assert.True(s2.Vertices.Count is >= 200 and <= 289, $"{region} s2 v={s2.Vertices.Count}");
+            Assert.Equal(x0, s2.Vertices[0].WorldX);
+            Assert.Equal(y0, s2.Vertices[0].WorldY);
+            Assert.InRange(s2.Vertices[0].Z, 10f, 80f);
+            Assert.Equal(x0, s2.Vertices.Min(v => v.WorldX));
+            Assert.Equal(y0, s2.Vertices.Min(v => v.WorldY));
+            Assert.Equal(x1, s2.Vertices.Max(v => v.WorldX));
+            Assert.Equal(y1, s2.Vertices.Max(v => v.WorldY));
+        }
+
+        var lookout = levels.LoadHeightField("LookoutPoint")!;
+        var origin = LevTileMesh.Parse(
+            stb.Read(stb.FindLev("LookoutPoint")!),
+            lookout.OriginX, lookout.OriginY, lookout.CellsX, lookout.CellsY).Section2!.Value.Vertices[0];
+        Assert.Equal(origin.Z, lookout.FineHeights[0, 0], 2);
+        var pred = Bilinear(lookout, 8 / 16f, 4 / 16f);
+        Assert.True(
+            Math.Abs(lookout.FineHeights[8, 4] - pred) > 0.15f,
+            $"origin interior fine[8,4]={lookout.FineHeights[8, 4]} bilinear={pred}");
+    }
+
+    [Fact]
+    public void Adaptive_tile_leftover_is_a_u16_triangle_list()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var stb = StbArchive.Open(install.RuntimeStbPath);
+        using var levels = new LevelLibrary(install);
+        var lookout = levels.LoadHeightField("LookoutPoint")!;
+        var bytes = stb.Read(stb.FindLev("LookoutPoint")!);
+        var tiles = LevTileMesh.Parse(bytes, lookout.OriginX, lookout.OriginY, lookout.CellsX, lookout.CellsY);
+        var adaptive = tiles.Tiles.Where(tile => tile.Vertices.Count < 289 && tile.Indices.Count >= 9).ToList();
+        Assert.True(adaptive.Count >= 8, $"adaptive={adaptive.Count}");
+        Assert.All(adaptive, tile =>
+        {
+            Assert.Equal(0, tile.Indices.Count % 3);
+            Assert.All(tile.Indices, index => Assert.InRange(index, 0, tile.Vertices.Count - 1));
+        });
+
+        var full = tiles.Tiles.Where(tile => tile.Vertices.Count == 289).ToList();
+        Assert.True(full.Count >= 8);
+        Assert.Contains(full, tile => tile.Indices.Count == 0);
     }
 
     [Fact]
