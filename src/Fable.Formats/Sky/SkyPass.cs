@@ -174,6 +174,16 @@ public static class SkyPass
     public const uint SkyPsFlush3 = 0x00B65937;
     public const uint SkyPsFlush4 = 0x00B66086;
     public const bool FirstSeenSkyCallsLayoutBasicPsFlush = true;
+    /// <summary>
+    /// Sky draw sites test <c>[obj] &amp; 2</c> before
+    /// <c>00989BF0</c>. Same dirty-bit gate as the other
+    /// LayoutBasic flushes (<c>00988A20</c> bit 1,
+    /// <c>00989760</c> bit 4). First-seen bit and bank values
+    /// unread — do not invent PS <c>c0/c1/c2</c>.
+    /// </summary>
+    public const int LayoutBasicPsDirtyBit = 2;
+    public const uint WvpFlush = 0x00988A20;
+    public const uint FogColorFlush = 0x009897C0;
     public const int DomeRings = 9;
     public const int DomeSegments = 36;
     public const int DomeVertsPerRing = 37;
