@@ -16,6 +16,7 @@ public sealed class ScriptInterpreter
     public bool Finished { get; private set; }
     public bool FadeSpecialCaseApplied { get; private set; }
     public string? UnsupportedCommand { get; private set; }
+    public int ScriptFrameRemaining { get; private set; }
     public IReadOnlyList<string> Executed => _executed;
 
     private readonly List<string> _executed = [];
@@ -37,6 +38,19 @@ public sealed class ScriptInterpreter
         {
             var raw = Commands[InstructionPointer];
             var command = ScriptCommand.Parse(raw);
+            if (command.Verb.Equals("DoScriptFrame", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!TickScriptFrame(command.Arguments))
+                {
+                    Yielded = true;
+                    return;
+                }
+
+                _executed.Add(raw);
+                InstructionPointer++;
+                continue;
+            }
+
             var flow = ScriptCommand.Classify(command);
             if (flow == ScriptFlow.Yield)
             {
@@ -58,6 +72,19 @@ public sealed class ScriptInterpreter
         Finished = true;
     }
 
+    /// <summary>
+    /// <c>00A44660</c> resume: continue after <c>vtbl+28</c>.
+    /// Unread waits re-yield on the same IP.
+    /// </summary>
+    public void Resume(IScriptHost? host = null)
+    {
+        if (Finished)
+            return;
+        Yielded = false;
+        UnsupportedCommand = null;
+        RunUntilYield(host);
+    }
+
     public bool ExecutedVerb(string verb) =>
         _executed.Any(line =>
             ScriptCommand.Parse(line).Verb.Equals(verb, StringComparison.OrdinalIgnoreCase));
@@ -70,6 +97,54 @@ public sealed class ScriptInterpreter
             return;
         FadeSpecialCaseApplied = true;
         host?.FadeOut(RegionTravel.FadeSpecialCaseSeconds, 0f);
+    }
+
+    /// <summary>
+    /// <c>00CC70D5</c>: default count 1, <c>0099E7F0</c>
+    /// atoi, <c>esi&lt;=0</c> skips. Each loop iteration
+    /// with <c>[ebp+103]=1</c> is one <c>vtbl+28</c>.
+    /// </summary>
+    private bool TickScriptFrame(string arguments)
+    {
+        if (ScriptFrameRemaining == 0)
+        {
+            ScriptFrameRemaining = ParseScriptFrameCount(arguments);
+            if (ScriptFrameRemaining <= 0)
+                return true;
+            return false;
+        }
+
+        ScriptFrameRemaining--;
+        return ScriptFrameRemaining == 0;
+    }
+
+    public static int ParseScriptFrameCount(string arguments)
+    {
+        var token = FirstToken(arguments.Trim());
+        if (token.Length == 0)
+            return RegionTravel.DoScriptFrameDefaultCount;
+        var n = 0;
+        var negative = false;
+        var sawDigit = false;
+        foreach (var ch in token)
+        {
+            if (ch == '-')
+            {
+                negative = true;
+                continue;
+            }
+
+            if (ch == '.')
+                break;
+            if (ch is < '0' or > '9')
+                break;
+            sawDigit = true;
+            n = n * 10 + (ch - '0');
+        }
+
+        if (!sawDigit)
+            return RegionTravel.DoScriptFrameDefaultCount;
+        return negative ? -n : n;
     }
 
     private static void Dispatch(ScriptCommand command, IScriptHost? host)

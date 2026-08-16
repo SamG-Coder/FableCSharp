@@ -546,6 +546,13 @@ public sealed class WorldSceneTests
         Assert.False(intro.ExecutedVerb("PlayAVI"));
         Assert.Equal("DoScriptFrame 1", intro.Commands[intro.InstructionPointer]);
         Assert.Null(intro.UnsupportedCommand);
+        Assert.False(intro.ExecutedVerb("DoScriptFrame"));
+        Assert.Equal(0x00CC7085u, RegionTravel.DoScriptFrameOpcode);
+        Assert.Equal(1, RegionTravel.DoScriptFrameDefaultCount);
+        Assert.True(RegionTravel.FirstSeenDoScriptFrameYieldsPerCount);
+        Assert.Equal(1, ScriptInterpreter.ParseScriptFrameCount("1"));
+        Assert.Equal(0, ScriptInterpreter.ParseScriptFrameCount("0"));
+        Assert.Equal(1, ScriptInterpreter.ParseScriptFrameCount(""));
         Assert.Equal(RegionTravel.IntroFirstSeenCamera, camera.ActiveName);
         Assert.Contains(runtime.Teleports, t => t.Actor == "Hero" && t.Marker == "MK_OVI_ID_HERO");
         Assert.Contains(runtime.Teleports, t => t.Actor == "Father" && t.Marker == "MK_OVI_ID_DAD");
@@ -555,6 +562,12 @@ public sealed class WorldSceneTests
         Assert.Equal(0.1f, script.DtAtPlus8);
         Assert.False(script.Gate80);
         Assert.Equal("DoScriptFrame 1", intro.Commands[intro.InstructionPointer]);
+        Assert.True(intro.Yielded);
+        Assert.False(intro.ExecutedVerb("DoScriptFrame"));
+        script.Update(0.1f);
+        Assert.Contains("DoScriptFrame 1", intro.Executed);
+        Assert.Equal("DoCameraPreloading", intro.Commands[intro.InstructionPointer]);
+        Assert.Equal("DoCameraPreloading", intro.UnsupportedCommand);
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 

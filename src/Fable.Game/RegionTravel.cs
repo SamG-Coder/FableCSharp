@@ -143,6 +143,11 @@ public static class RegionTravel
     public const uint InterpreterYieldEnableWrite = 0x00CBFC65;
     public const bool FirstSeenTeleportDoesNotYield = true;
     public const bool FirstSeenLookToThingYields = true;
+    public const uint DoScriptFrameOpcode = 0x00CC7085;
+    public const uint DoScriptFrameWait = 0x00CC70D5;
+    public const uint DoScriptFrameAtoi = 0x0099E7F0;
+    public const int DoScriptFrameDefaultCount = 1;
+    public const bool FirstSeenDoScriptFrameYieldsPerCount = true;
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;

@@ -114,8 +114,9 @@ public sealed class ScriptRuntime : IScriptHost
         FindInterpreter(cutsceneName)?.ExecutedVerb(verb) ?? false;
 
     /// <summary>
-    /// <c>00A44880</c>: store dt at <c>+8</c>. Does not
-    /// resume unread waits or write persist fields.
+    /// <c>00A44880</c>: store dt at <c>+8</c>, then
+    /// <c>00A44660</c> resume. Unread waits re-yield.
+    /// Does not write persist fields.
     /// </summary>
     public void Update(float dt)
     {
@@ -126,6 +127,11 @@ public sealed class ScriptRuntime : IScriptHost
         DtAtPlus8 = dt;
         foreach (var fiber in _fibers)
             fiber.DtAtPlus8 = dt;
+        foreach (var interpreter in _interpreters)
+        {
+            if (interpreter.Yielded)
+                interpreter.Resume(this);
+        }
     }
 
     /// <summary>

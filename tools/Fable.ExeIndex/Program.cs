@@ -867,6 +867,7 @@ static void RunExportScriptBank(PeImage pe, DumpStore store, GameInstall? instal
     native.AppendLine("| .Teleport | `00CC4678` | lookup marker `vtbl+280/+288`, apply `vtbl+1892`. Second arg `00CBEE0C` is **IsFalse**. **No** `vtbl+28`. `jmp 00CC707C`. |");
     native.AppendLine("| .LookToThing | `00CC3B3F` | apply `vtbl+1992`, parse `forever`. Third arg `00CBEE0C` (IsFalse) skips wait. Else if `[ebp+103]` (set **1** at `00CBFC65`) **`call [eax+28]`** then `00CBF7FE` / `jmp 00CC707C`. |");
     native.AppendLine("| actor join | `00CC707C` | dtor then next token `DoScriptFrame`. Teleport does not wait there. |");
+    native.AppendLine("| DoScriptFrame | `00CC7085` | default count **1** (`xor esi; inc esi`). Arg via `0099E7F0` atoi. `esi<=0` skips. Loop: if `[ebp+103]` **`call [eax+28]`**, then `00CBF7FE`, `dec esi`. First-seen `[ebp+103]=1`. |");
     native.AppendLine("| IsFalse | `00CBEE0C` | strcmp arg to `false` via `00BFEBA8`. |");
     store.WritePart(family, "native-sqnovi", native.ToString());
     links.Insert(4, new IndexLink("native-sqnovi", "native S_QNOVI", 0));
@@ -1094,6 +1095,9 @@ static void RunTraceScriptRuntime(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "CString vector read 00433273", 0x00433273, 50, stopOnRet: false),
         WriteWalkPart(pe, store, family, "def+60 vector copy 00432EE9", 0x00432EE9, 40),
         WriteFnPart(pe, store, family, "command loop index 00CC0205", 0x00CC0205, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "DoScriptFrame token 00CC7085", 0x00CC7085, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "DoScriptFrame wait 00CC70D5", 0x00CC70D5, 30, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "CString atoi 0099E7F0", 0x0099E7F0, 40),
         WriteVtblPart(pe, store, family, "CCutsceneDef vtbl 012FB6E0", 0x012FB6E0, 24),
         WriteCallsPart(pe, store, family, "calls S_QNOVI factory 00DBEF70", 0x00DBEF70),
         WriteCallsPart(pe, store, family, "calls S_QNOVI run 00DABAC0", 0x00DABAC0),
@@ -1607,6 +1611,9 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "actor command join 00CC707C", 0x00CC707C, 50, stopOnRet: false),
         WriteWalkPart(pe, store, family, "IsFalse arg 00CBEE0C", 0x00CBEE0C, 40),
         WriteFnPart(pe, store, family, "runner ebp+103 yield-enable 00CBFC65", 0x00CBFC65, 8, stopOnRet: false),
+        WriteFnPart(pe, store, family, "DoScriptFrame token 00CC7085", 0x00CC7085, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "DoScriptFrame wait 00CC70D5", 0x00CC70D5, 30, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "CString atoi 0099E7F0", 0x0099E7F0, 40),
         WriteWalkPart(pe, store, family, "FadeIn FadeOut 00CC4B22", 0x00CC4B22, 80),
         WriteWalkPart(pe, store, family, "Registering Scripts 00CB5D80", 0x00CB5D80, 80),
         WriteWalkPart(pe, store, family, "quest base ctor 00CB8110", 0x00CB8110, 80),
