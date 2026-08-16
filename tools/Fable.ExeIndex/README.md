@@ -22,12 +22,13 @@ dotnet run --project tools/Fable.ExeIndex -- vtbl 0x012A2B54 16
 dotnet run --project tools/Fable.ExeIndex -- imm 0x013962A0
 dotnet run --project tools/Fable.ExeIndex -- disp 348 0x00B20000 0x00B80000
 dotnet run --project tools/Fable.ExeIndex -- scanff 16
+dotnet run --project tools/Fable.ExeIndex -- floats 0x0139C5D8 16
 dotnet run --project tools/Fable.ExeIndex -- trace-landscape
 ```
 
 Each dump family lives in `out/01-sections/<family>/` as one markdown file per VA, plus `INDEX.md` that links them. A stub `01-sections/<family>.md` points at that index. `out/manifest.json` stores the exe identity (`TimeDateStamp-SizeOfImage-fileLength`) and a **recipe version** per family. Re-running the same command skips a family unless the exe changed, the version constant in `DumpStore.cs` was bumped, or you pass `--force`.
 
-Steps (`index` / `split` / `translate` / `all` / `disasm` / `calls` / `trace-render` / `trace-landscape` / `trace-newgame` / `imm` / `vtbl` / `disp` / `scanff`):
+Steps (`index` / `split` / `translate` / `all` / `disasm` / `calls` / `trace-render` / `trace-landscape` / `trace-newgame` / `imm` / `vtbl` / `disp` / `scanff` / `floats`):
 
 | Dir | What |
 |---|---|

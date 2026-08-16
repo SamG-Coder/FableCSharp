@@ -2,7 +2,7 @@ using System.Text;
 using Fable.Core;
 using Fable.ExeIndex;
 
-var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "trace-render" or "trace-landscape" or "trace-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff") ?? "all";
+var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "trace-render" or "trace-landscape" or "trace-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats") ?? "all";
 var force = args.Any(a => a is "--force" or "-f");
 var install = GameInstall.TryLocate();
 var exePath = args.FirstOrDefault(a => a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
@@ -76,6 +76,9 @@ switch (cmd)
         break;
     case "scanff":
         RunScanFf(pe, args);
+        break;
+    case "floats":
+        RunFloats(pe, args);
         break;
     default:
         RunIndex(pe, store);
@@ -158,6 +161,36 @@ static void RunImm(PeImage pe, string[] args)
     }
 
     Console.WriteLine($"imm  {hits}");
+}
+
+static void RunFloats(PeImage pe, string[] args)
+{
+    var toks = args.SkipWhile(a => a is "floats").ToArray();
+    if (toks.Length == 0 || !TryParseHex(toks[0], out var va))
+    {
+        Console.Error.WriteLine("usage: floats <va> [count]");
+        return;
+    }
+
+    var count = 8;
+    if (toks.Length > 1 && int.TryParse(toks[1], out var n) && n is > 0 and <= 64)
+        count = n;
+    var file = pe.FileOffset(va);
+    if (file < 0)
+    {
+        Console.Error.WriteLine($"UNREAD 0x{va:X8}");
+        return;
+    }
+
+    for (var i = 0; i < count; i++)
+    {
+        var off = file + i * 4;
+        if (off + 4 > pe.Data.Length)
+            break;
+        var bits = BitConverter.ToUInt32(pe.Data, off);
+        var f = BitConverter.ToSingle(pe.Data, off);
+        Console.WriteLine($"0x{va + (uint)(i * 4):X8}  {f,12:0.########}  0x{bits:X8}");
+    }
 }
 
 static void RunScanFf(PeImage pe, string[] args)
