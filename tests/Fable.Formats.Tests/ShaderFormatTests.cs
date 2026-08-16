@@ -229,6 +229,23 @@ public sealed class ShaderFormatTests
         Assert.False(WorldShading.FirstSeenUploadsPaletteC38);
         Assert.Equal(33, WorldShading.PaletteC38SlotIndex);
         Assert.Equal(16 + WorldShading.PaletteC38SlotIndex * 4, 148);
+        Assert.Equal(2, WorldShading.PalskinJumpTablePass);
+        Assert.Equal(4, WorldShading.PalskinHelperPass);
+        Assert.True(WorldShading.PalskinPassUsesJumpTable(2));
+        Assert.False(WorldShading.PalskinPassUsesJumpTable(4));
+        Assert.False(WorldShading.PalskinPassUsesJumpTable(0x20));
+        Assert.Equal(18, WorldShading.PalskinJumpTable.Length);
+        Assert.Equal(0x00BD3C04u, WorldShading.PalskinJumpTarget(4));
+        Assert.Equal(0x00BD42CDu, WorldShading.PalskinJumpTarget(16));
+        Assert.Equal(0u, WorldShading.PalskinJumpTarget(5));
+        Assert.Equal(0u, WorldShading.PalskinJumpTarget(0));
+        Assert.True(WorldShading.FirstSeenBoneUploadWritesC38);
+        Assert.Equal(38, WorldShading.DerivedPaletteStartRegister);
+        Assert.Equal(54, WorldShading.DerivedPaletteRegisterCount);
+        Assert.Equal(64, WorldShading.BoneRecordBytes);
+        Assert.Equal(3, WorldShading.BoneFloat4sPerInfluence);
+        Assert.Equal(0, WorldShading.BoneConstantCount(-1));
+        Assert.Equal(6, WorldShading.BoneConstantCount(2));
         Assert.Equal("VSHADER_PALSKIN_DIRLIGHT_FOG", WorldShading.PalskinFamilyShader(0));
         Assert.Equal("VSHADER_PALSKIN_DIRLIGHT_FOG", WorldShading.PalskinFamilyShader(2));
         Assert.Contains(WorldShading.PaletteSkinStartRegister,

@@ -25,16 +25,71 @@ public static class WorldShading
     public const int PaletteSkinRegisterCount = 58;
 
     /// <summary>
-    /// First-seen PALSKIN case <c>00BD3C36</c> binds family slot 0 then
-    /// <c>jmp 00BD3E17</c> / <c>00BD4DA6</c>. That path does not call
-    /// <c>00989A60(0)</c>. The c38 writer is only the
-    /// <c>[0x1436E84]+148</c> case at <c>00BD42CD</c>. Slot 33 has no
-    /// New Game registrar (lighting writes 15/16, static 36, PALSKIN
-    /// 37/38; zero <c>mov [rm], 33</c> in the render window). Do not
-    /// invent the four floats.
+    /// <c>00989A60(0)</c> at <c>00BD4591</c> is only jump-table case 16
+    /// (pass <see cref="PalskinJumpTablePass"/>, <c>[arg0+28]==16</c>).
+    /// Slot 33 has no New Game registrar. First-seen pass is not 2, so
+    /// that path does not write <c>c38</c>. Bone upload below does.
     /// </summary>
     public const bool FirstSeenUploadsPaletteC38 = false;
     public const int PaletteC38SlotIndex = 33;
+
+    /// <summary>
+    /// <c>00BD3070</c> <c>cmp [ebp+124], 2</c> then
+    /// <c>jmp [0xBD5C40+([arg0+28]-1)*4]</c>. Any other pass
+    /// (1 / 8 / 9 / 10 / 12 / 13 / default) skips that table.
+    /// <c>00B32E90</c> (only <c>E8</c> from <c>00BD6B2A</c> in
+    /// PALSKIN <c>00BD6810</c>) pushes pass <c>4</c>.
+    /// </summary>
+    public const int PalskinJumpTablePass = 2;
+    public const int PalskinHelperPass = 4;
+
+    /// <summary>
+    /// Jump table at <c>0x00BD5C40</c>, index <c>[arg0+28]-1</c>.
+    /// Case 16 is <c>00BD42CD</c> (slot-33 <c>c38</c>). Cases 5/14/15
+    /// are 0. First-seen pass 4 never indexes this.
+    /// </summary>
+    public static readonly uint[] PalskinJumpTable =
+    [
+        0x00BD429A, 0x00BD3B28, 0x00BD3B8F, 0x00BD3C04,
+        0,          0x00BD3CBB, 0x00BD3D44, 0x00BD3C60,
+        0x00BD3E51, 0x00BD3F00, 0x00BD4011, 0x00BD40DA,
+        0x00BD417D, 0,          0,          0x00BD42CD,
+        0x00BD46A5, 0x00BD4A55,
+    ];
+
+    public static bool PalskinPassUsesJumpTable(int pass) =>
+        pass == PalskinJumpTablePass;
+
+    public static uint PalskinJumpTarget(int field28)
+    {
+        var i = field28 - 1;
+        if ((uint)i >= (uint)PalskinJumpTable.Length)
+            return 0;
+        return PalskinJumpTable[i];
+    }
+
+    /// <summary>
+    /// Default path <c>00BD549D</c> (pass 4) calls bone pack
+    /// <c>00BD2D90</c> then <c>00BCFB00</c>. Packer stores 64-byte
+    /// records (<c>shl eax, 6</c>). Draw copies 12 dwords (3 float4s)
+    /// per influence and <c>0098B930</c> = <c>SetVSConstantF</c>.
+    /// Start register is shader-manager <c>+11860</c> =
+    /// derived-layout <c>+216</c> = <c>0x26</c> (38). Count field
+    /// <c>+220</c> = <c>0x36</c> (54). Matrix values are the packed
+    /// records — do not invent identity.
+    /// </summary>
+    public const bool FirstSeenBoneUploadWritesC38 = true;
+    public const int BoneRecordBytes = 64;
+    public const int BoneFloat4sPerInfluence = 3;
+    public const int DerivedPaletteStartRegister = 38;
+    public const int DerivedPaletteRegisterCount = 54;
+
+    public static int BoneConstantCount(int influenceCount)
+    {
+        if (influenceCount < 0)
+            return 0;
+        return influenceCount * BoneFloat4sPerInfluence;
+    }
 
     /// <summary>
     /// Offsets pushed to <c>009896D0</c>. Offset 0 (c38) is absent.
@@ -102,10 +157,11 @@ public static class WorldShading
 
     /// <summary>
     /// PALSKIN family ctor <c>00BD01B8</c> stores the same 6-slot names.
-    /// Draw <c>00BD3C36</c> uses family+32 remap then +56. Shader-manager
-    /// <c>00B3CDD4</c> attaches LayoutLights as wrapper layout index 2
-    /// so <c>00989A60(0)</c> at <c>00BD4591</c> is <c>c38</c>. First-seen
-    /// does not take that case (<see cref="FirstSeenUploadsPaletteC38"/>).
+    /// Pass 2 jump-table case 4 binds family+32 remap then +56. First-seen
+    /// pass 4 skips that table. Shader-manager <c>00B3CDD4</c> attaches
+    /// LayoutLights as wrapper layout index 2 so <c>00989A60(0)</c> would
+    /// be <c>c38</c>; first-seen writes <c>c38</c> via <c>0098B930</c>
+    /// instead (<see cref="FirstSeenBoneUploadWritesC38"/>).
     /// </summary>
     public const int PaletteSkinLayoutIndex = 2;
 
