@@ -295,6 +295,9 @@ public sealed class WorldGeometryTests
             .ToList();
         Assert.DoesNotContain("CMultiStaticMeshDef", kidChildTypes);
         Assert.True(GameBin.FirstSeenHouseAreaDefsResolveGraphic);
+        Assert.True(GameBin.FirstSeenMultiStaticPersistMapsFileFields);
+        Assert.Equal(-1, GameBin.FirstSeenSkipGlobal);
+        Assert.False(GameBin.FirstSeenSkipGlobalHasWriter);
         Assert.Equal(0x0137B530u, GameBin.MultiStaticEntryRtti);
     }
 

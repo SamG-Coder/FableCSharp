@@ -164,8 +164,12 @@ public sealed class GameBin
                 Add(child.MeshId);
             if (child.TypeName != MultiStaticMeshDefType)
                 continue;
-            foreach (var id in ReadMultiStaticMeshIds(child.Raw))
-                Add(id);
+            foreach (var mesh in ReadMultiStaticMeshEntries(child.Raw))
+            {
+                if (FirstSeenMultiStaticSkipDraw(mesh.FlagA, (byte)mesh.Tail))
+                    continue;
+                Add(mesh.MeshId);
+            }
         }
 
         return ids;
@@ -207,6 +211,27 @@ public sealed class GameBin
     public const int MultiStaticRuntimeOverrideOffset = 48;
     public const int MultiStaticRuntimeSkipByteOffset = 52;
     public const uint MultiStaticSkipGlobal = 0x013756F0;
+    /// <summary>
+    /// <c>0x13756F0</c> is a <c>.data</c> dword whose file
+    /// value is <c>-1</c>. <c>imm</c> finds only two readers
+    /// (<c>007E1788</c>, <c>0077BAC5</c>) and no writer.
+    /// </summary>
+    public const int FirstSeenSkipGlobal = -1;
+    public const bool FirstSeenSkipGlobalHasWriter = false;
+    public const uint MultiStaticDefFactory = 0x004E31FA;
+    public const uint MultiStaticDefPersistCtor = 0x004E1516;
+    public const uint MultiStaticDefVtbl = 0x0124265C;
+    public const uint MultiStaticVectorPersistSlot = 0x004EDE1B;
+    public const uint MultiStaticVectorPersist = 0x004EDE2B;
+    public const uint MultiStaticVectorResize = 0x004EDF0A;
+    public const uint MultiStaticEntryVtbl = 0x012438A4;
+    public const uint MultiStaticEntryPersist = 0x004EB8C3;
+    public const uint MultiStaticEntryAssign = 0x004EB831;
+    public const uint MultiStaticPersistDword = 0x00431102;
+    public const uint MultiStaticPersistU8 = 0x0043314A;
+    public const uint MultiStaticPersistFloat = 0x00431061;
+    public const uint MultiStaticPersistTail = 0x004735D6;
+    public const int MultiStaticEntryPersistVtblSlot = 18;
     public const int MultiStaticThingSkipOffset = 64;
     public const uint ThingBuildingFactory = 0x0052AC10;
     public const uint ThingBuildingBaseCtor = 0x005296B0;
@@ -225,11 +250,12 @@ public sealed class GameBin
     /// <summary>
     /// <c>007E15C0</c> skip is
     /// <c>[0x13756F0] &gt;= 0 &amp;&amp; selected != 0</c>.
-    /// <c>selected</c> is runtime <c>+52</c> when <c>+44 != 0</c>,
-    /// else <c>[thing+64]</c>. File fa/fb/f mapping onto those
-    /// runtime bytes is unread. First-seen <c>[thing+64]=0</c>
-    /// so the <c>+44==0</c> path never skips. House 6911/6909
-    /// both instance.
+    /// <c>selected</c> is the low byte of runtime <c>+52</c>
+    /// when <c>+44 != 0</c>, else <c>[thing+64]</c>. File
+    /// persist <c>004EB8C3</c> maps FlagA/FlagB/Value/Tail
+    /// onto <c>+44/+45/+48/+52</c>. First-seen skip-global
+    /// is the <c>.data</c> dword <c>-1</c>, so skip stays
+    /// off and both house meshes instance.
     /// </summary>
     public const bool FirstSeenHouseSkipDropsInterior = false;
     public const bool FirstSeenHouseSkipDropsExterior = false;
@@ -239,12 +265,14 @@ public sealed class GameBin
     /// within 25 m of HerosOldHouse all have Graphic /
     /// CMultiStaticMeshDef / CReplaceableMeshDef bank ids.
     /// Apply vtbl <c>0x126FFB4</c> persist slots are
-    /// <c>ret</c> stubs; file CRC immediates are not in
-    /// <c>007E0000–007E2000</c>. Runtime +44/+52 persist
-    /// stays unread. First-seen still instances both house
-    /// meshes because <c>[thing+64]=0</c>.
+    /// <c>ret</c> stubs. File fields persist through
+    /// <c>CMultiStaticMeshDef</c> vtbl <c>0x124265C[18]</c>
+    /// <c>004EDE1B</c> → vector <c>004EDE2B</c> → each
+    /// 56-byte <c>004EB8C3</c>. First-seen skip-global
+    /// <c>-1</c> leaves both house meshes on.
     /// </summary>
     public const bool FirstSeenHouseAreaDefsResolveGraphic = true;
+    public const bool FirstSeenMultiStaticPersistMapsFileFields = true;
     public const uint MultiStaticEntryRtti = 0x0137B530;
     /// <summary>
     /// <c>007E17AB</c> if runtime <c>+45 != 0</c> copies
@@ -255,7 +283,8 @@ public sealed class GameBin
     /// <c>007E15C0</c>. House interior file value 40 is
     /// therefore not a proven mesh scale
     /// (<c>FirstSeenMultiStaticValueIsScale=false</c>).
-    /// File-order persist onto +44/+45/+48/+52 is unread.
+    /// Persist <c>004EB8C3</c> writes that float at <c>+48</c>
+    /// via <c>00431061</c>.
     /// </summary>
     public const uint MultiStaticDefaultFloat = 0x004BC180;
     public const bool FirstSeenMultiStaticValueIsScale = false;
@@ -342,7 +371,7 @@ public sealed class GameBin
     }
 
     public static bool FirstSeenMultiStaticSkipDraw(byte runtimeFlagA, byte runtimeSkipByte) =>
-        MultiStaticSkipDraw(runtimeFlagA, runtimeSkipByte, FirstSeenThingPlus64, 0);
+        MultiStaticSkipDraw(runtimeFlagA, runtimeSkipByte, FirstSeenThingPlus64, FirstSeenSkipGlobal);
 
     public static IReadOnlyList<int> ReadBuyableHousePrices(byte[] raw)
     {
@@ -555,8 +584,8 @@ public readonly record struct GameBinSubDef(uint NameCrc, int DefIndex, int Owne
 
 /// <summary>
 /// One 34-byte <c>CMultiStaticMeshEntryDef</c> from game.bin.
-/// Field CRCs after <c>Mesh</c> are unread names; values are
-/// the u8/u8/f32/u32 that follow each CRC.
+/// Persist <c>004EB8C3</c> writes Mesh/FlagA/FlagB/Value/Tail
+/// onto runtime <c>+40/+44/+45/+48/+52</c>.
 /// </summary>
 public readonly record struct MultiStaticMeshEntry(
     int MeshId,

@@ -86,6 +86,19 @@ public sealed class GameBinFormatTests
         Assert.Equal(0x0137B530u, GameBin.MultiStaticEntryRtti);
         Assert.False(GameBin.FirstSeenMultiStaticValueIsScale);
         Assert.Equal(0x004BC180u, GameBin.MultiStaticDefaultFloat);
+        Assert.Equal(-1, GameBin.FirstSeenSkipGlobal);
+        Assert.False(GameBin.FirstSeenSkipGlobalHasWriter);
+        Assert.True(GameBin.FirstSeenMultiStaticPersistMapsFileFields);
+        Assert.Equal(0x004EB8C3u, GameBin.MultiStaticEntryPersist);
+        Assert.Equal(0x004EDE1Bu, GameBin.MultiStaticVectorPersistSlot);
+        Assert.Equal(0x00431102u, GameBin.MultiStaticPersistDword);
+        Assert.Equal(0x0043314Au, GameBin.MultiStaticPersistU8);
+        Assert.Equal(0x00431061u, GameBin.MultiStaticPersistFloat);
+        Assert.Equal(0x004735D6u, GameBin.MultiStaticPersistTail);
+        Assert.Equal(44, GameBin.MultiStaticRuntimeFlagAOffset);
+        Assert.Equal(45, GameBin.MultiStaticRuntimeFlagBOffset);
+        Assert.Equal(48, GameBin.MultiStaticRuntimeOverrideOffset);
+        Assert.Equal(52, GameBin.MultiStaticRuntimeSkipByteOffset);
         Assert.False(GameBin.FirstSeenHouseSkipDropsInterior);
         Assert.False(GameBin.FirstSeenHouseSkipDropsExterior);
         var house = bin.FindEntry("BUILDING_OAKVALE_HOUSE_MEDIUM_SINGLE_FLOOR_BUYABLE")!;
@@ -103,6 +116,7 @@ public sealed class GameBinFormatTests
         Assert.Equal(1, houseEntries[1].FlagA);
         Assert.Equal(0, houseEntries[1].FlagB);
         Assert.Equal(0f, houseEntries[1].Value);
+        Assert.Equal(0u, houseEntries[1].Tail);
         Assert.Equal(0x7CA90715u, GameBin.MultiStaticFlagAFieldCrc);
         Assert.Equal(0x97595FC1u, GameBin.MultiStaticFlagBFieldCrc);
         Assert.Equal(0x15DC93E9u, GameBin.MultiStaticValueFieldCrc);
@@ -114,6 +128,9 @@ public sealed class GameBinFormatTests
         Assert.True(GameBin.FirstSeenThingPlus64IsZero);
         Assert.Equal(0, GameBin.FirstSeenThingPlus64);
         Assert.False(GameBin.FirstSeenMultiStaticSkipDraw(0, 1));
+        Assert.False(GameBin.FirstSeenMultiStaticSkipDraw(1, 1));
+        Assert.False(GameBin.FirstSeenMultiStaticSkipDraw(houseEntries[1].FlagA, (byte)houseEntries[1].Tail));
+        Assert.False(GameBin.FirstSeenMultiStaticSkipDraw(houseEntries[0].FlagA, (byte)houseEntries[0].Tail));
         Assert.False(GameBin.FirstSeenInsideBuildingFlag);
         Assert.False(GameBin.FirstSeenBuyableHouseSwapsWindows);
         Assert.Equal(0x006BF8A0u, GameBin.BuyableHouseCtor);
