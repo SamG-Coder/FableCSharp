@@ -75,6 +75,42 @@ public sealed class ShaderFormatTests
         Assert.Contains("PSHADER_LANDSCAPE_PROC_TEXTURE", names);
         Assert.Contains("PSHADER_TEXTURE_DIFFUSE_FOG", names);
         Assert.Contains("PSHADER_INNER_SKY", names);
+        Assert.Contains("PSHADER_INNER_SKY_SIMPLE", names);
+        Assert.Contains("VSHADER_LANDSCAPE_FOREGROUND_BLACKOUT_PASS", names);
+        Assert.Contains("VSHADER_LANDSCAPE_FOREGROUND_5LIGHTS", names);
+        Assert.Contains("VSHADER_SKY_STAR_FIELD", names);
+        Assert.Contains("VSHADER_SKY_SCREEN_SPACE_SPRITE", names);
+
+        // Exe 00B3B5D0 / 00B3B6D0 register these banks by name.
+        string[] exeBanks =
+        [
+            "PIXEL_SHADERS",
+            "SHADERS_STATIC",
+            "SHADERS_PALSKIN",
+            "SHADERS_STATIC_BUMP",
+            "SHADERS_PALSKIN_BUMP",
+            "SHADERS_SKY",
+            "SHADERS_SKY_SCREEN_SPACE",
+            "SHADERS_WATER_FOREGROUND",
+            "SHADERS_WATER_BACKGROUND",
+            "SHADERS_SEA_BACKGROUND",
+            "SHADERS_WEATHER",
+            "SHADERS_LANDSCAPE_BACKGROUND",
+            "SHADERS_LANDSCAPE_FOREGROUND",
+            "SHADERS_POS_COL_TEX1",
+            "SHADERS_REPEATED_MESH",
+            "SHADERS_POINT_SPRITE1",
+            "SHADERS_ZSPRITE",
+            "SHADERS_VERTEX_POS",
+            "SHADER_SPRITE_GROUP",
+            "SHADERS_DECAL_GROUP",
+            "SHADERS_MESH_GROUP",
+            "SHADERS_PARTICLE_SPRITE_TRAIL",
+            "SHADERS_DEBUGGING",
+            "SHADERS_TEXT",
+        ];
+        foreach (var bank in exeBanks)
+            Assert.Contains(bank, banks);
     }
 
     [Fact]

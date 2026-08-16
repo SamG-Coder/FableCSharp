@@ -2,7 +2,7 @@ using System.Text;
 using Fable.Core;
 using Fable.ExeIndex;
 
-var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all") ?? "all";
+var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "trace-render" or "calls") ?? "all";
 var install = GameInstall.TryLocate();
 var exePath = args.FirstOrDefault(a => a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
               ?? (install is null ? null : Path.Combine(install.Root, "Fable.exe"));
@@ -41,6 +41,17 @@ switch (cmd)
 
         RunTranslatePackets(outDir);
         break;
+    case "disasm":
+        RunDisasm(pe, args);
+        break;
+    case "trace-render":
+        if (!File.Exists(Path.Combine(outDir, "00-index", "xrefs.tsv")))
+            RunIndex(pe, outDir);
+        RunTraceRender(pe, outDir);
+        break;
+    case "calls":
+        RunCalls(pe, args);
+        break;
     default:
         RunIndex(pe, outDir);
         RunSplit(pe, outDir);
@@ -52,6 +63,113 @@ Console.WriteLine("done.");
 Console.WriteLine("Next: translate each out/02-translate/<section>.prompt.md into out/03-pseudo/<section>.md");
 Console.WriteLine("(out/ is gitignored — do not commit dumps)");
 return 0;
+
+static void RunCalls(PeImage pe, string[] args)
+{
+    var vaTok = args.FirstOrDefault(a => a.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                                         || (a.Length >= 6 && a.All(char.IsAsciiHexDigit)));
+    if (vaTok is null || !TryParseHex(vaTok, out var target))
+    {
+        Console.Error.WriteLine("usage: calls <fn-va>");
+        return;
+    }
+
+    var data = pe.Data;
+    var hits = 0;
+    foreach (var sec in pe.Sections)
+    {
+        if (!pe.InCode((int)sec.FileOffset))
+            continue;
+        var end = Math.Min(data.Length, (int)(sec.FileOffset + sec.FileSize) - 4);
+        for (var i = (int)sec.FileOffset; i < end; i++)
+        {
+            if (data[i] != 0xE8)
+                continue;
+            var rel = BitConverter.ToInt32(data, i + 1);
+            var dest = pe.Va(i + 5 + rel);
+            if (dest != target)
+                continue;
+            var site = pe.Va(i);
+            Console.WriteLine($"0x{site:X8}  call 0x{target:X8}");
+            hits++;
+            if (hits >= 40)
+                return;
+        }
+    }
+
+    Console.WriteLine($"calls  {hits}");
+}
+
+static void RunDisasm(PeImage pe, string[] args)
+{
+    var vaTok = args.FirstOrDefault(a => a.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+                                         || (a.Length >= 6 && a.All(char.IsAsciiHexDigit)));
+    var countTok = args.SkipWhile(a => a != vaTok).Skip(1).FirstOrDefault();
+    if (vaTok is null || !TryParseHex(vaTok, out var va))
+    {
+        Console.Error.WriteLine("usage: disasm <va> [insn-count]");
+        return;
+    }
+
+    var n = 64;
+    if (countTok is not null && int.TryParse(countTok, out var parsed))
+        n = parsed;
+    var file = pe.FileOffset(va);
+    if (file < 0)
+    {
+        Console.Error.WriteLine($"VA 0x{va:X8} is not in a mapped section.");
+        return;
+    }
+
+    foreach (var line in X86.Disassemble(pe, file, n))
+        Console.WriteLine(line);
+}
+
+static void RunTraceRender(PeImage pe, string outDir)
+{
+    var dest = Path.Combine(outDir, "01-sections");
+    Directory.CreateDirectory(dest);
+    uint[] vas =
+    [
+        0x00B29880, // just before first "Engine: Add Engine Component"
+        0x00B262C0, // Add Render Layer
+        0x00B33B50, // MainScene
+        0x00B3D200, // shader bank registrar (LANDSCAPE_FOREGROUND nearby)
+        0x00B66DC0, // EnableSky
+        0x00B6CA20, // EnableLandscape
+        0x00B7ED80, // EnableWater
+        0x00B56650, // EnableWeather
+        0x00B38C90, // EnablePrimitives
+        0x00B50B50, // EnableShadows
+        0x00B4B6F0, // Enable2DPrimitives
+        0x00B625E0, // CEngineSkyRenderer init
+        0x00B69330, // VSHADER_LANDSCAPE_FOREGROUND_BLACKOUT_PASS bind
+        0x00B8B660, // VSHADER_STATIC_DIRLIGHT_FOG bind
+    ];
+    var sb = new StringBuilder();
+    sb.AppendLine("# render-trace");
+    sb.AppendLine();
+    sb.AppendLine("Raw decode of engine register / scene / enable sites. Do not invent.");
+    foreach (var va in vas)
+    {
+        var file = pe.FileOffset(va);
+        sb.AppendLine();
+        sb.AppendLine($"## 0x{va:X8}");
+        if (file < 0)
+        {
+            sb.AppendLine("UNREAD (VA not mapped)");
+            continue;
+        }
+
+        var n = va == 0x00B29880 || va == 0x00B3D200 ? 220 : 80;
+        foreach (var line in X86.Disassemble(pe, file, n))
+            sb.AppendLine(line);
+    }
+
+    var path = Path.Combine(dest, "render-trace.md");
+    File.WriteAllText(path, sb.ToString());
+    Console.WriteLine($"trace  {path}");
+}
 
 static string ResolveOutDir(string[] args)
 {

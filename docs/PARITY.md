@@ -115,7 +115,7 @@ parsers and notes.
 14. **CPatchTesselationEdgeStrip.** Exe stitches adjacent landscape patches with an edge strip. We offset neighbour tiles by MapX/Y; shared 16 m edges are not retessellated.
 15. **LoadWaterData / CEngineWaterRenderer.** `SetStaticMapFileForUse` always loads water after opening the static maps. Sea / river / ice shaders (`VSHADER_WATER_FOREGROUND`, `VSHADER_SEA_BACKGROUND`) are unread.
 16. **Picnic fillers.** `PicnicArea_Filler_02/03` touch Lookout but have no STB `.lev` (`LoadedOnPlayerProximity FALSE`). Likely `CLandscapeBackgroundPatch` only; WAD cells unread.
-17. **CEngineLightingManager register maps.** `PSCONST_MAX_FOG_ALPHA` / shadow fade / 2–5 point lights / shadowed spot are unread. Fog distances are inferred.
+17. **CEngineLightingManager register maps.** `PSCONST_MAX_FOG_ALPHA` **default is (0.5,0.5,0.5,0.5)**; `PSCONST_TFACTOR` default is (1,1,1,1). Which VS constant slot they land in, and fog start/end, are UNREAD. Landscape/static VS names encode 2/4/5 point lights + spot + shadow + colbuff.
 18. **Sky mesh / weather / local detail.** Inner/outer sky VS exist but no sky C3D is in the banks; we draw a dome. Rain/snow/mist and `CEngineLocalDetailGenerator` (`REPEATED_MESH`) are not drawn.
 19. **Water patches.** Landscape `WATER_*` cells use the second texture stage. `CEngineWaterRenderer` / `LoadWaterData` sea-ice tessellation is unread.
 6. **WAD cell bytes 4–7 / 14–20.** High-entropy field and flags after the material slots are unread.
@@ -129,14 +129,88 @@ parsers and notes.
 
 ## Exe load / render pathway
 
-Traced in `Fable.exe` (file offsets). Do not invent steps.
+Traced in `Fable.exe` with `tools/Fable.ExeIndex` (`disasm` / `calls` / `trace-render`). Do not invent steps.
 
 1. **`CTextureManager`** reads the 34-byte BIG info. `u16` at +12 is the format code (`31` / `32` / `35`).
 2. **Framed LZO** inflates the bank payload. Format 35’s first frame is **262144** bytes (`512×512×16`) — one DXT3/DXT5 top mip — not DXT1’s 131072. Last 3 bytes of the frame are the raw tail (`DecompressFramed`).
-3. **CreateTexture helpers** at `0x5BE800` (push `DXT1`), `0x5BE870` (push `DXT3`), `0x16D20` (push `DXT5`) call `IDirect3DDevice9` with those FourCCs. Format **35 skies are 16-byte blocks**; first 8 bytes `FF FF 00 00 00 00 00 00` are DXT5 alpha (`a0=a1=255`, opaque), not DXT3 nibbles. Reading them as DXT3 makes 75% of texels `alpha=0`.
+3. **CreateTexture helpers** at VA `009BE80C` (push `DXT1`), `009BE87C` (push `DXT3`), `00416D20` (push `DXT5`) call `IDirect3DDevice9` vtable `+40` with those FourCCs. Format **35 skies are 16-byte blocks**; first 8 bytes `FF FF 00 00 00 00 00 00` are DXT5 alpha (`a0=a1=255`, opaque), not DXT3 nibbles. Reading them as DXT3 makes 75% of texels `alpha=0`.
 4. **`CEngineSkyRenderer`** / `PSHADER_INNER_SKY`: `tex t0..t3` then `lrp` — **no `texkill`**. Discarding `t1.a < 0.08` punched the DXT3-misread alpha into horizontal stripes. `VSHADER_INNER_SKY` transforms `v0` by `c5–c8` and copies UVs from `v2`.
-5. **`CRenderManager` order**: sky → landscape (`CEngineLandscapeRenderer` + `CEngineStateBlockDiffuse2X` + `mul_x2_sat t1,v0`) → static meshes (`VSHADER_STATIC_DIRLIGHT_FOG`) → water / weather / HUD.
-6. **`CEngineLandscapeMeshBuilder` / `CPatchTesselationEdgeStrip`**: 17×17 (`v=289`) is a full grid; other tiles are the stored strip. Still reading those strips; leftover holes are unread tessellation, not a CPU 70% grid.
+5. **Shader manager** ctor `00B3CB30` (global `0x1436E98`, size `0x31E0`). `PIXEL_SHADERS` is bound through a vtable on `this+10392`; the resulting manager pointer is stored at **`this+10904`**. Every `PSHADER_*` lookup is `00A5D720` on `[0x1436E98]+10904`. Vertex lookups are `00A5D5F0` on the same object: sky inner/outer use **`+10728`**, star field **`+10816`**, landscape foreground **`+10784`**.
+6. **Shader bank slots** (`00B3B5D0`, push the integer then the name). Locked against `shaders.big` by `ShaderFormatTests.World_passes_are_landscape_static_water_and_sky`:
+
+   | slot | bank |
+   |---|---|
+   | 5 | `SHADERS_SKY` |
+   | 6 | `SHADERS_SKY_SCREEN_SPACE` |
+   | 7 | `SHADERS_WATER_FOREGROUND` |
+   | 8 | `SHADERS_WATER_BACKGROUND` |
+   | 9 | `SHADERS_SEA_BACKGROUND` |
+   | 10 | `SHADERS_WEATHER` |
+   | 11 | `SHADERS_LANDSCAPE_BACKGROUND` |
+   | 12 | `SHADERS_LANDSCAPE_FOREGROUND` |
+   | 13 | `SHADERS_POS_COL_TEX1` |
+   | 14 | `SHADERS_REPEATED_MESH` |
+   | 16 | `SHADERS_POINT_SPRITE1` |
+   | 17 | `SHADERS_ZSPRITE` |
+   | 20 | `SHADERS_VERTEX_POS` |
+   | 21 | `SHADER_SPRITE_GROUP` |
+   | 22 | `SHADERS_DECAL_GROUP` |
+   | 23 | `SHADERS_MESH_GROUP` |
+   | 24 | `SHADERS_PARTICLE_SPRITE_TRAIL` |
+   | 25 | `SHADERS_DEBUGGING` |
+   | 26 | `SHADERS_TEXT` |
+
+   A second registrar `00B3B6D0` takes `SHADERS_STATIC` (ebx), `SHADERS_STATIC_BUMP` (2), `SHADERS_PALSKIN` (3), `SHADERS_PALSKIN_BUMP` (4). ebx at that site is UNREAD.
+7. **PS constants** interned just before the bank table: `PSCONST_MAX_FOG_ALPHA` default `(0.5,0.5,0.5,0.5)`, `PSCONST_TFACTOR` default `(1,1,1,1)`. Also named: `PSCONST_ZERO` / `ONE` / `HALF` / `1_0_0_0` / `0_1_0_0` / `0_0_1_0` / `0_0_0_1` / `PSCONST_SHADOW_FADE_COLOUR` plus `PSCONST_USER_0..3`, `PSCONST_OUTPUT_FACTOR`, `PSCONST_INPUT_FACTOR_0/1`.
+8. **Engine components** (`Engine: Add Engine Component` @ `00B29930` appends to `this+360`). Construction order in the engine ctor includes:
+
+   | global | ctor VA | what the listing shows |
+   |---|---|---|
+   | `0x1436E98` | `00B3CB30` | shader manager |
+   | `0x1436E80` | `00B33B50` | intern `"MainScene"` (also builds `"RepMeshScene"`) |
+   | `0x1436E60` | `00B50370` | lives next to `"EnableShadows"` |
+   | `0x1436E8C` | `00B423F0` | `SetStaticMapFileForUse` |
+   | `0x1436E54` | `00B73760` | water (`PSHADER_WATER_*` binds) |
+   | `0x1436EA8` | `00B69000` | landscape (`PSHADER_LANDSCAPE_*` binds; pool alloc uses `[0x1436EA8]+1712`) |
+   | `0x1436E50` | `00B625E0` | **`CEngineSkyRenderer`** (only caller of that ctor) |
+   | `0x1436E44` | `00B52250` | weather (`EnableWeather` / `PSHADER_WEATHER_*`) |
+   | `0x1436E40` | `00B5A1D0` | screen colour filter |
+   | `0x1436E34` | `00B5F090` | glow |
+   | `0x1436E30` | `00B5C460` | radial blur |
+   | `0x1436E38` | `00B86C00` | displacement |
+
+9. **34 render layers** (`Engine: Add Render Layer` @ `00B262C0`, 34 calls from `00B26A75`–`00B276A8`). Each layer is 28 bytes, vtable `0x12A0F04`, **bit mask at +4**, optional renderer attached with `00B2AC80`. Vector at manager `+348 / +352 / +356`. Bits and attachments in **registration** order (iteration / draw order UNREAD):
+
+   | +4 bit | attached global |
+   |---|---|
+   | `1` | none in the listing |
+   | `2` | `0x1436E60` shadows |
+   | `4` | `0x1436EA8` landscape |
+   | `8` | `[MainScene]+616` |
+   | `0x10` | `[MainScene]+616` |
+   | `0x40` | landscape |
+   | `0x20` | `[MainScene]+616` |
+   | `0x100` / `0x400` / `0x1000` | `[MainScene]+616` |
+   | `0x2000` | **sky** `0x1436E50` |
+   | `0x4000` / `0x8000` | `[MainScene]+616` |
+   | `0x20000` | **water** `0x1436E54` |
+   | `0x10000` | displacement `0x1436E38` |
+   | `0x400000` | sky again |
+   | `0x2000000` | landscape again |
+   | `0x4000000` | `0x1436E3C` |
+   | `0x1000000` | colour filter `0x1436E40` |
+   | `0x20000000` | weather + glow + radial + displacement |
+   | `0x40000000` | shader manager `0x1436E98` |
+   | `0x80000000` | `0x1436E7C` |
+
+   `[MainScene]+616` is the subobject constructed in `00B33B50` (vtable `0x12A1348`), not the sky renderer.
+10. **Per-renderer shader stores**
+    - Sky: `PSHADER_INNER_SKY` / `_SIMPLE` → `this+292`; `PSHADER_OUTER_SKY` → `+300`; `PSHADER_SKY_STAR_FIELD` → `+260`; `VSHADER_OUTER_SKY` → `+244`; `VSHADER_SKY_STAR_FIELD` → `+252`.
+    - Landscape: `PSHADER_LANDSCAPE_FOREGROUND` → `this+1388`. VS family is `VSHADER_LANDSCAPE_FOREGROUND` plus `_2LIGHTS` / `_4LIGHTS` / `_5LIGHTS` × bump / spot / shadow / colbuff, and `_BLACKOUT_PASS`.
+    - Water: `PSHADER_WATER_SKY_MAP` → `+452`; `PSHADER_WATER_ENVIRONMENT_MAP` → `+436`.
+11. **`EnableSky` / `EnableLandscape` / `EnableWater` / `EnableWeather` / `EnableShadows` / `EnablePrimitives`** are `ret 4` name interners, not the draw path.
+12. **State blocks** exist as RTTI only in this dump: `CEngineStateBlockSolid`, `Solid2X`, `Alpha`, `Alpha2X`, `AdditiveAlpha`, `AddSmoothAlpha`, `Alpha2XTFactor`, `DiffuseOnly`, **`Diffuse2X`**, `DiffuseEnv2X`.
+13. **`CEngineLandscapeMeshBuilder` / `CPatchTesselationEdgeStrip`**: 17×17 (`v=289`) is a full grid; other tiles are the stored strip. Still reading those strips; leftover holes are unread tessellation, not a CPU 70% grid.
 
 ## Exe dump tool
 

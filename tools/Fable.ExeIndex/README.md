@@ -7,7 +7,13 @@ section packets an agent can rewrite as C-like pseudocode.
 dotnet run --project tools/Fable.ExeIndex -- all
 ```
 
-Steps (`index` / `split` / `translate` / `all`):
+```
+dotnet run --project tools/Fable.ExeIndex -- disasm 0x00B262C0 40
+dotnet run --project tools/Fable.ExeIndex -- calls 0x00B262C0
+dotnet run --project tools/Fable.ExeIndex -- trace-render
+```
+
+Steps (`index` / `split` / `translate` / `all` / `disasm` / `calls` / `trace-render`):
 
 | Dir | What |
 |---|---|
