@@ -842,6 +842,12 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "Static SetTexture bind 00BB301E", 0x00BB301E, 20, stopOnRet: false),
         WriteFnPart(pe, store, family, "SetVertexShader wrapper 00988020", 0x00988020, 40),
         WriteFnPart(pe, store, family, "Attach PS record 00988140", 0x00988140, 20),
+        WriteFnPart(pe, store, family, "PS const wrapper ctor 0098ACF0", 0x0098ACF0, 200),
+        WriteFnPart(pe, store, family, "PSCONST slot assign 0098DB20", 0x0098DB20, 40),
+        WriteFnPart(pe, store, family, "PS record ctor 00A5EC40", 0x00A5EC40, 30),
+        WriteFnPart(pe, store, family, "PS name to slot 0098A9A0", 0x0098A9A0, 80),
+        WriteImmPart(pe, store, family, "imm PSCONST_OUTPUT_FACTOR", 0x0129A104, 0x00980000, 0x00990000),
+        WriteFnPart(pe, store, family, "PALSKIN attach PS +DC 00BD5486", 0x00BD5480, 20, stopOnRet: false),
         WriteCallDispPart(pe, store, family, "SetTexture 0x104 static-lit", 0x104, 0x00BB2000, 0x00BB8000),
         WriteFnPart(pe, store, family, "Static-lit FVF 0x112 00BB2633", 0x00BB2631, 20, stopOnRet: false),
         WriteWalkPart(pe, store, family, "CreateVertexBuffer wrapper 00A63150", 0x00A63150, 40),
@@ -1213,6 +1219,11 @@ static void RunTraceShaders(PeImage pe, DumpStore store)
             sb.AppendLine($"bank `{bankName}` · `{program.Profile}` · tex **{program.TexCount}** · declared **{program.DeclaredSize}**.");
             sb.AppendLine();
             sb.AppendLine("const: " + string.Join(", ", program.ConstRegisters.Select(r => "c" + r)));
+            if (program.CommentStrings.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("ctab: " + string.Join(", ", program.CommentStrings));
+            }
             sb.AppendLine();
             sb.AppendLine("```");
             sb.Append(program.ToListing());

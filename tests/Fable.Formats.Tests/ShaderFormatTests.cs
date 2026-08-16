@@ -246,7 +246,10 @@ public sealed class ShaderFormatTests
         Assert.Equal("PSHADER_TEXTURE_DIFFUSE", WorldShading.FirstSeenStaticPsName);
         Assert.Equal("VSHADER_STATIC_DIRLIGHT_FOG", WorldShading.FirstSeenStaticVsName);
         Assert.True(WorldShading.FirstSeenStaticPsMulX2);
-        Assert.False(WorldShading.FirstSeenStaticPsC0HasWriter);
+        Assert.True(WorldShading.FirstSeenStaticPsC0HasWriter);
+        Assert.Equal(Vector4.One, WorldShading.FirstSeenStaticPsC0);
+        Assert.Equal("PSCONST_OUTPUT_FACTOR", WorldShading.FirstSeenStaticPsC0Name);
+        Assert.Equal(2, WorldShading.FirstSeenStaticPsC0BankSlot);
         Assert.Equal(new Vector3(1f, 1f, 1f),
             WorldShading.FirstSeenEvaluateTextureDiffuseRgb(new Vector3(0.5f, 0.5f, 0.5f), Vector3.One));
 
@@ -492,7 +495,14 @@ public sealed class ShaderFormatTests
         Assert.Equal(0x00B8B630u, WorldShading.FirstSeenStaticCompactCtor);
         Assert.Equal(0x00988020u, WorldShading.FirstSeenStaticSetVertexShader);
         Assert.Equal(0x00988140u, WorldShading.FirstSeenStaticAttachPixelShader);
-        Assert.False(WorldShading.FirstSeenStaticPsC0HasWriter);
+        Assert.True(WorldShading.FirstSeenStaticPsC0HasWriter);
+        Assert.Equal(Vector4.One, WorldShading.FirstSeenStaticPsC0);
+        Assert.Equal("PSCONST_OUTPUT_FACTOR", WorldShading.FirstSeenStaticPsC0Name);
+        Assert.Equal(2, WorldShading.FirstSeenStaticPsC0BankSlot);
+        Assert.Equal(0x0098ACF0u, WorldShading.FirstSeenStaticPsC0Writer);
+        Assert.Equal(0x0098DB20u, WorldShading.FirstSeenStaticPsC0SlotAssign);
+        Assert.Contains(WorldShading.FirstSeenStaticPsC0Name, diffuse.CommentStrings);
+        Assert.Equal(0xDC, WorldShading.FirstSeenPalskinAttachPsOffset);
         Assert.Equal(new Vector3(1f, 1f, 1f),
             WorldShading.FirstSeenEvaluateTextureDiffuseRgb(new Vector3(0.5f, 0.5f, 0.5f), Vector3.One));
     }

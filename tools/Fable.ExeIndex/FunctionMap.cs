@@ -228,6 +228,8 @@ internal static class FunctionMap
         ("static compact ctor", 0x00B8B630),
         ("SetVertexShader wrapper", 0x00988020),
         ("Attach PS record", 0x00988140),
+        ("PS const wrapper ctor", 0x0098ACF0),
+        ("PSCONST slot assign", 0x0098DB20),
         ("PALSKIN VS bind", 0x00BD01B8),
         ("PALSKIN bone pack", 0x00BD2D90),
         ("PALSKIN bind switch", 0x00BD3070),

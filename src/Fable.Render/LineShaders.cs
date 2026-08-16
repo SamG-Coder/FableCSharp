@@ -120,7 +120,7 @@ internal static class LineShaders
             else
             {
                 // PSHADER_TEXTURE_DIFFUSE: mul v0*c0 then mul_x2 t0.
-                // First-seen c0 writer unread; identity so two times t0*v0.
+                // First-seen c0 is PSCONST_OUTPUT_FACTOR = (1,1,1,1).
                 lit = clamp(t0.rgb * v0 * 2.0, 0.0, 1.0);
             }
             // FOGENABLE=1, FOGCOLOR black: rgb * oFog + (1-oFog) * 0

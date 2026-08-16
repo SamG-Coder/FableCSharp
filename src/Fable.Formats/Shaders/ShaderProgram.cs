@@ -43,6 +43,37 @@ public sealed class ShaderProgram
     public required uint VersionToken { get; init; }
     public required byte[] Tokens { get; init; }
 
+    /// <summary>
+    /// Printable ASCII runs in the token blob, including the
+    /// trailing CTAB after <c>end</c>. First-seen
+    /// <c>PSHADER_TEXTURE_DIFFUSE</c> names
+    /// <c>PSCONST_OUTPUT_FACTOR</c>.
+    /// </summary>
+    public IReadOnlyList<string> CommentStrings
+    {
+        get
+        {
+            var names = new List<string>();
+            var i = 0;
+            while (i < Tokens.Length)
+            {
+                if (Tokens[i] is < 32 or >= 127)
+                {
+                    i++;
+                    continue;
+                }
+
+                var start = i;
+                while (i < Tokens.Length && Tokens[i] is >= 32 and < 127)
+                    i++;
+                if (i - start >= 4)
+                    names.Add(System.Text.Encoding.ASCII.GetString(Tokens, start, i - start));
+            }
+
+            return names;
+        }
+    }
+
     public bool IsPixel => VersionTag == PixelVersionTag;
     public bool IsVertex => VersionTag == VertexVersionTag;
     public uint VersionTag => VersionToken >> 16;

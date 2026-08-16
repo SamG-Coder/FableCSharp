@@ -432,10 +432,13 @@ public static class WorldShading
     /// <c>mul_x2 r0.xyz, t0, r0</c>. Caller <c>00BB30A0</c>
     /// pushes texture-count <c>1</c>; bind <c>00BB301E</c>
     /// is <c>SetTexture(stage, [array+4*stage])</c>.
-    /// First-seen PS <c>c0</c> writer is unread — do not
-    /// invent LayoutBasic <c>(0,1,2,0.5)</c> as that PS
-    /// constant. Live treats unread <c>c0</c> as 1 so the
-    /// proven <c>mul_x2</c> is <c>2 * t0 * v0</c>.
+    /// PS <c>c0</c> is <c>PSCONST_OUTPUT_FACTOR</c>: wrapper
+    /// ctor <c>0098ACF0</c> registers that name as bank slot
+    /// <c>2</c> via <c>0098DB20</c> (third insert) and writes
+    /// <c>(1,1,1,1)</c> at <c>[bank+32]</c>. Flush
+    /// <c>00989BF0</c> copies <c>bank[slot]</c> to dest
+    /// register 0. First-seen <c>[wrapper+913]=0</c> so
+    /// material overwrite of slot 2 does not run.
     /// </summary>
     public const uint FirstSeenStaticFvf = 0x112;
     public const int FirstSeenStaticStrideBytes = 32;
@@ -453,13 +456,20 @@ public static class WorldShading
     public const string FirstSeenStaticPsName = "PSHADER_TEXTURE_DIFFUSE";
     public const string FirstSeenStaticVsName = "VSHADER_STATIC_DIRLIGHT_FOG";
     public const bool FirstSeenStaticPsMulX2 = true;
-    public const bool FirstSeenStaticPsC0HasWriter = false;
+    public const bool FirstSeenStaticPsC0HasWriter = true;
+    public const string FirstSeenStaticPsC0Name = "PSCONST_OUTPUT_FACTOR";
+    public const int FirstSeenStaticPsC0BankSlot = 2;
+    public const uint FirstSeenStaticPsC0Writer = 0x0098ACF0;
+    public const uint FirstSeenStaticPsC0SlotAssign = 0x0098DB20;
+    public static readonly Vector4 FirstSeenStaticPsC0 = Vector4.One;
+    public const int FirstSeenPalskinAttachPsOffset = 0xDC;
     public const bool FirstSeenAppliesVertexFogBlend = true;
 
     /// <summary>
     /// <c>PSHADER_TEXTURE_DIFFUSE</c> RGB:
     /// <c>sat(2 * t0 * (v0 * c0))</c>. First-seen <c>c0</c>
-    /// unread; pass identity when the writer is unknown.
+    /// First-seen <c>c0</c> is identity
+    /// (<c>PSCONST_OUTPUT_FACTOR</c> bank slot 2).
     /// </summary>
     public static Vector3 EvaluateTextureDiffuseRgb(Vector3 t0, Vector3 v0, Vector4 c0)
     {
@@ -468,7 +478,7 @@ public static class WorldShading
     }
 
     public static Vector3 FirstSeenEvaluateTextureDiffuseRgb(Vector3 t0, Vector3 v0) =>
-        EvaluateTextureDiffuseRgb(t0, v0, Vector4.One);
+        EvaluateTextureDiffuseRgb(t0, v0, FirstSeenStaticPsC0);
 
     /// <summary>
     /// First-seen VS: <c>mad oFog, min(dp4(pos,c2), c0.y), -c18.w, c0.y</c>.
