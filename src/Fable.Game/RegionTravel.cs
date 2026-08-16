@@ -29,6 +29,35 @@ public static class RegionTravel
     public const string IntroHeroIsSubjectKey = "CTCCameraPointScriptedSpline.HeroIsSubject";
     public const string IntroAxisUpKey = "CTCCameraPointScriptedSpline.CoordAxisUp";
     public const bool FirstSeenHeroIsSubject = false;
+    /// <summary>
+    /// <c>00DBDE40</c> first-seen after the map-ready /
+    /// <c>00CB7940</c> / <c>[this+80]</c> gates: lookup
+    /// <c>CREATURE_HERO_CHILD</c>, then three 60-byte
+    /// watchers via <c>00CDD450</c> (push <c>0.1f</c> /
+    /// 64 / 1). <c>WatchBarrels</c> callback
+    /// <c>00DBE890</c> is first-seen. <c>WatchForGotGold</c>
+    /// is <c>00DBE2E0</c>. <c>ManageQuestCoreMarkers</c>
+    /// callback <c>00DBE4E0</c> names <c>NOVI_*</c> — later
+    /// intro, not first-seen, do not follow off StartOakVale.
+    /// Then <c>Q_NewOakValeIntro_PreAttack</c>, write
+    /// <c>12.0f</c> at vtbl+2584, lookup <c>HerosOldHouse</c>.
+    /// </summary>
+    public const uint StartOakValeSetup = 0x00DBDE40;
+    public const uint WatchBarrelsCtor = 0x00CDD450;
+    public const uint WatchBarrelsCallback = 0x00DBE890;
+    public const uint WatchForGotGoldCallback = 0x00DBE2E0;
+    public const uint ManageQuestCoreMarkersCallback = 0x00DBE4E0;
+    public const uint WatchBarrelsVtbl = 0x012D7A3C;
+    public const uint WatchBarrelsIntervalBits = 0x3DCCCCCD;
+    public const int WatchBarrelsCapacity = 64;
+    public const int WatchBarrelsArg2 = 1;
+    public const uint PreAttackQuest = 0x00DBE0C6;
+    public const uint HerosOldHouseLookup = 0x00DBE15E;
+    public const float PreAttackDuration = 12f;
+    public const int PreAttackDurationVtbl = 2584;
+    public const bool FirstSeenFollowsNoviLiveFather = false;
+    public static float WatchBarrelsInterval =>
+        System.BitConverter.Int32BitsToSingle(unchecked((int)WatchBarrelsIntervalBits));
 
     public static string StartingRegion(WorldFile world) =>
         world.FindMap(NewGameRegion)?.ScriptName

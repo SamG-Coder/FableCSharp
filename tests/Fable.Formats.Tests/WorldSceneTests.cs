@@ -223,6 +223,15 @@ public sealed class WorldSceneTests
         var world = WorldFile.Load(install.WorldPath);
         var qst = QuestFile.Load(install.QuestPath);
         Assert.Equal("StartOakValeWest", RegionTravel.StartingRegion(world));
+        Assert.Equal(0x00DBDE40u, RegionTravel.StartOakValeSetup);
+        Assert.Equal(0x00CDD450u, RegionTravel.WatchBarrelsCtor);
+        Assert.Equal(0x00DBE890u, RegionTravel.WatchBarrelsCallback);
+        Assert.Equal(0x00DBE4E0u, RegionTravel.ManageQuestCoreMarkersCallback);
+        Assert.False(RegionTravel.FirstSeenFollowsNoviLiveFather);
+        Assert.Equal(0.1f, RegionTravel.WatchBarrelsInterval);
+        Assert.Equal(64, RegionTravel.WatchBarrelsCapacity);
+        Assert.Equal(12f, RegionTravel.PreAttackDuration);
+        Assert.Equal(0x00DBE15Eu, RegionTravel.HerosOldHouseLookup);
         Assert.Equal("LookoutPoint", world.Maps[0].ScriptName);
         Assert.Contains(qst.Quests, q => q.Name == "Q_NewOakValeIntro");
         Assert.Contains(qst.Quests, q => q.Name == "Q_NewOakValeIntro_PreAttack");

@@ -173,9 +173,18 @@ public sealed class GameBin
 
     public const string MultiStaticMeshDefType = "CMultiStaticMeshDef";
     public const uint MultiStaticMeshesFieldCrc = 0x0CDCCB01;
+    public const uint MultiStaticMeshFieldCrc = 0x60194A74;
+    public const uint MultiStaticFlagAFieldCrc = 0x7CA90715;
+    public const uint MultiStaticFlagBFieldCrc = 0x97595FC1;
+    public const uint MultiStaticValueFieldCrc = 0x15DC93E9;
+    public const uint MultiStaticTailFieldCrc = 0x2DF5F1FA;
     public const int MultiStaticMeshHeaderBytes = 11;
     public const int MultiStaticMeshEntryBytes = 34;
     public const int MultiStaticMeshIdOffset = 4;
+    public const int MultiStaticFlagAOffset = 12;
+    public const int MultiStaticFlagBOffset = 17;
+    public const int MultiStaticValueOffset = 22;
+    public const int MultiStaticTailOffset = 30;
     public const int HerosOldHouseExteriorMeshId = 6909;
     public const int HerosOldHouseInteriorMeshId = 6911;
     public const int HerosOldHouseInteriorWallTexture = 3172;
@@ -183,18 +192,58 @@ public sealed class GameBin
     public const bool FirstSeenHouseFloor3184HasPrims = false;
     public const uint MultiStaticLookup = 0x007E1400;
     public const uint MultiStaticName = 0x007E12F0;
+    public const uint MultiStaticCtor = 0x007E14C0;
+    public const uint MultiStaticApply = 0x007E15C0;
+    public const uint MultiStaticApplyVtbl = 0x0126FFB4;
+    public const uint MultiStaticCountMagic = 0x92492493;
+    public const int MultiStaticRuntimeStrideBytes = 56;
+    public const int MultiStaticRuntimeIdOffset = 40;
+    public const int MultiStaticRuntimeFlagAOffset = 44;
+    public const int MultiStaticRuntimeFlagBOffset = 45;
+    public const int MultiStaticRuntimeOverrideOffset = 48;
+    public const int MultiStaticRuntimeSkipByteOffset = 52;
+    public const uint MultiStaticSkipGlobal = 0x013756F0;
+    public const int MultiStaticThingSkipOffset = 64;
     public const uint ThingBuildingFactory = 0x0052AC10;
     public const uint ThingBuildingBaseCtor = 0x005296B0;
     public const uint ThingTypeRegistrar = 0x00522A20;
     public const uint CreateBuildingScript = 0x0072DF50;
+    public const uint ThingParentCtor = 0x004C9030;
+    public const int ThingBuildingAllocBytes = 0xD8;
+    /// <summary>
+    /// <c>007E15C0</c> skip is
+    /// <c>[0x13756F0] &gt;= 0 &amp;&amp; selected != 0</c>.
+    /// <c>selected</c> is runtime <c>+52</c> when <c>+44 != 0</c>,
+    /// else <c>[thing+64]</c>. File fa/fb/f mapping onto those
+    /// runtime bytes is unread. House 6911/6909 both have a
+    /// first-seen create path and both C3Ds already instance.
+    /// </summary>
+    public const bool FirstSeenHouseSkipDropsInterior = false;
+    public const bool FirstSeenHouseSkipDropsExterior = false;
+    public const bool FirstSeenMultiStaticAppliesBothHouseMeshes = true;
 
     /// <summary>
     /// <c>Meshes</c> CRC then u32 count then 34-byte
-    /// <c>CMultiStaticMeshEntryDef</c> records: <c>Mesh</c> CRC +
-    /// bank i32 + two flag bytes (interior is typically
-    /// <c>fa=0, fb=1, f=40</c>; Graphic/exterior <c>fa=1, fb=0, f=0</c>).
+    /// <c>CMultiStaticMeshEntryDef</c> records:
+    /// <c>Mesh</c> CRC + bank i32 + CRC <c>0x7CA90715</c> + u8
+    /// + CRC <c>0x97595FC1</c> + u8 + CRC <c>0x15DC93E9</c> +
+    /// f32 + CRC <c>0x2DF5F1FA</c> + u32. HerosOldHouse interior
+    /// 6911 is <c>0,1,40</c>; Graphic/exterior 6909 is
+    /// <c>1,0,0</c>.
     /// </summary>
     public static IReadOnlyList<int> ReadMultiStaticMeshIds(byte[] raw)
+    {
+        var ids = new List<int>();
+        foreach (var entry in ReadMultiStaticMeshEntries(raw))
+        {
+            if (entry.MeshId is > 0 and < 50_000)
+                ids.Add(entry.MeshId);
+        }
+
+        return ids;
+    }
+
+    public static IReadOnlyList<MultiStaticMeshEntry> ReadMultiStaticMeshEntries(byte[] raw)
     {
         if (raw.Length < MultiStaticMeshHeaderBytes)
             return [];
@@ -203,17 +252,36 @@ public sealed class GameBin
         var count = BitConverter.ToInt32(raw, 7);
         if (count is < 0 or > 16)
             return [];
-        var ids = new List<int>(count);
+        var entries = new List<MultiStaticMeshEntry>(count);
         var o = MultiStaticMeshHeaderBytes;
         for (var i = 0; i < count && o + MultiStaticMeshEntryBytes <= raw.Length; i++)
         {
-            var id = BitConverter.ToInt32(raw, o + MultiStaticMeshIdOffset);
-            if (id is > 0 and < 50_000)
-                ids.Add(id);
+            if (BitConverter.ToUInt32(raw, o) != MultiStaticMeshFieldCrc)
+                break;
+            entries.Add(new MultiStaticMeshEntry(
+                BitConverter.ToInt32(raw, o + MultiStaticMeshIdOffset),
+                raw[o + MultiStaticFlagAOffset],
+                raw[o + MultiStaticFlagBOffset],
+                BitConverter.ToSingle(raw, o + MultiStaticValueOffset),
+                BitConverter.ToUInt32(raw, o + MultiStaticTailOffset)));
             o += MultiStaticMeshEntryBytes;
         }
 
-        return ids;
+        return entries;
+    }
+
+    /// <summary>
+    /// <c>007E15C0</c> at <c>007E1788</c>: skip the mesh when
+    /// <c>[0x13756F0] &gt;= 0</c> and the selected byte is
+    /// non-zero. Selected is runtime <c>+52</c> when
+    /// <c>+44 != 0</c>, else <c>[thing+64]</c>.
+    /// </summary>
+    public static bool MultiStaticSkipDraw(byte runtimeFlagA, byte runtimeSkipByte, int thingPlus64, int skipGlobal)
+    {
+        if (skipGlobal < 0)
+            return false;
+        var selected = runtimeFlagA != 0 ? runtimeSkipByte : (byte)thingPlus64;
+        return selected != 0;
     }
 
     private static bool IsEditorOnly(GameBinEntry entry)
@@ -404,6 +472,18 @@ public readonly record struct GameBinNameRef(
     string? FileName);
 
 public readonly record struct GameBinSubDef(uint NameCrc, int DefIndex, int OwnerIndex);
+
+/// <summary>
+/// One 34-byte <c>CMultiStaticMeshEntryDef</c> from game.bin.
+/// Field CRCs after <c>Mesh</c> are unread names; values are
+/// the u8/u8/f32/u32 that follow each CRC.
+/// </summary>
+public readonly record struct MultiStaticMeshEntry(
+    int MeshId,
+    byte FlagA,
+    byte FlagB,
+    float Value,
+    uint Tail);
 
 public sealed class GameBinChunk
 {

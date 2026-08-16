@@ -94,6 +94,28 @@ public static class SkyPass
     public const bool FirstSeenWeatherDrawBuildsMesh = false;
     public const bool FirstSeenStarDrawIteratesStarsDat = false;
     public const bool FirstSeenEmitsInventedStarBillboards = false;
+    /// <summary>
+    /// Theme-slot ctor <c>008864A0</c> zeros <c>[this+424]</c>
+    /// with the surrounding block through +420. Theme copy
+    /// <c>008865C0</c> at <c>00886AD2</c> writes
+    /// <c>dest+424 = [src+192]</c> and treats dest+428 as a
+    /// vector. Only <c>E8</c> is the six-slot loop
+    /// <c>00888499</c>. <c>D</c> is <c>[C+84]</c> after the
+    /// map-manager hop, not ENVIRONMENT +424 (that slot is an
+    /// inline NString whose first dword ctor
+    /// <c>0099E4B0</c> already writes 0). First-seen star and
+    /// weather therefore still see pointer first-dwords of 0
+    /// unless a non-zero <c>src+192</c> is proven; skip gates
+    /// stay live.
+    /// </summary>
+    public const uint ThemeSlotCtor = 0x008864A0;
+    public const uint ThemeSlotCopy = 0x008865C0;
+    public const uint ThemeSlotCopyStarWrite = 0x00886AD2;
+    public const uint ThemeSlotCopyLoop = 0x00888499;
+    public const int ThemeSlotCopySourcePointerOffset = 192;
+    public const int ThemeSlotVectorOffset = 428;
+    public const bool FirstSeenStarListPointerCtorZero = true;
+    public const bool FirstSeenStarPointerPayloadsAreNumericIds = false;
     public const int DomeRings = 9;
     public const int DomeSegments = 36;
     public const int DomeVertsPerRing = 37;

@@ -27,7 +27,9 @@ internal static class FunctionMap
         (0x00522000, 0x00523100, "Thing-type-registrar"),
         (0x00529600, 0x0052AE00, "CThingBuilding"),
         (0x0072DF00, 0x0072E500, "CREATEBUILDING"),
-        (0x007E12F0, 0x007E1600, "CMultiStaticMeshDef"),
+        (0x007E12F0, 0x007E1B00, "CMultiStaticMeshDef"),
+        (0x00886400, 0x00888600, "theme-slot-star"),
+        (0x00CDD400, 0x00CDD500, "WatchBarrels"),
         (0x0089FA00, 0x0089FC00, "MARKER-LIGHT"),
         (0x00988000, 0x0098C000, "VS-wrapper"),
         (0x0098D400, 0x0098D800, "inner-vs-ctor"),
@@ -83,6 +85,11 @@ internal static class FunctionMap
         ("CMultiStaticMeshDef name", 0x007E12F0),
         ("CMultiStaticMeshDef lookup", 0x007E1400),
         ("CMultiStaticMeshDef ctor", 0x007E14C0),
+        ("CMultiStaticMeshDef apply", 0x007E15C0),
+        ("Theme slot ctor zeros +424", 0x008864A0),
+        ("Theme slot copy dest+424", 0x008865C0),
+        ("WatchBarrels ctor", 0x00CDD450),
+        ("WatchBarrels callback", 0x00DBE890),
         ("Component add by name", 0x004C9D60),
         ("NONE primitive pass", 0x00B89C30),
         ("NONE-draw layer", 0x00BBE090),
@@ -313,6 +320,8 @@ internal static class FunctionMap
         WriteHits(sb, nodes, "PALSKIN");
         WriteHits(sb, nodes, "CAM_OVIF");
         WriteHits(sb, nodes, "WatchBarrels");
+        WriteHits(sb, nodes, "007E15C0");
+        WriteHits(sb, nodes, "008864A0");
         WriteHits(sb, nodes, "CThingPlayerCreature");
         WriteHits(sb, nodes, "CTCAnimation");
         WriteHits(sb, nodes, "CTCIdle");

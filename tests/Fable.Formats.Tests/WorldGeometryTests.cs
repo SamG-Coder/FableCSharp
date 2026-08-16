@@ -396,6 +396,13 @@ public sealed class WorldGeometryTests
         Assert.True(SkyPass.WeatherSkipDraw([0, 0, 0, 0]));
         Assert.False(SkyPass.WeatherSkipDraw([0, 0, 0, 1]));
         Assert.False(SkyPass.WeatherSkipDraw([401, 0, 0, 0]));
+        Assert.Equal(0x008864A0u, SkyPass.ThemeSlotCtor);
+        Assert.Equal(0x008865C0u, SkyPass.ThemeSlotCopy);
+        Assert.Equal(0x00886AD2u, SkyPass.ThemeSlotCopyStarWrite);
+        Assert.Equal(192, SkyPass.ThemeSlotCopySourcePointerOffset);
+        Assert.Equal(428, SkyPass.ThemeSlotVectorOffset);
+        Assert.True(SkyPass.FirstSeenStarListPointerCtorZero);
+        Assert.False(SkyPass.FirstSeenStarPointerPayloadsAreNumericIds);
         var sky = SkyGeometry.Build(install);
         Assert.DoesNotContain(sky, t => t.TextureId == SkyDef.StarTextureIdDefault);
         var inventedOrigin = new Vector3(64f, 64f, 0f);
