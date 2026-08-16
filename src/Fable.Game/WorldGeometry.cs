@@ -21,6 +21,11 @@ public sealed class WorldGeometry
         var headerPath = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "meshdata.h");
         var graphicsPath = Path.Combine(install.DataRoot, "graphics", "graphics.big");
         var enums = File.Exists(headerPath) ? HeaderEnums.Load(headerPath) : null;
+        GameBin? defs = null;
+        var namesPath = install.FindCompiledDef("names.bin");
+        var binPath = install.FindCompiledDef("game.bin");
+        if (namesPath is not null && binPath is not null)
+            defs = GameBin.Load(binPath, NamesBin.Load(namesPath));
         using var big = BigArchive.Open(graphicsPath);
         var bank = big.SubBanks.First(item => item.Name.Contains("MESH", StringComparison.OrdinalIgnoreCase));
         var entries = big.ReadEntries(bank);
@@ -49,7 +54,7 @@ public sealed class WorldGeometry
             if (thing.PositionX is null || thing.DefinitionType is null)
                 continue;
 
-            var meshId = enums?.FindMeshId(thing.DefinitionType);
+            var meshId = defs?.FindMeshId(thing.DefinitionType) ?? enums?.FindMeshId(thing.DefinitionType);
             if (meshId is null || !byId.TryGetValue((uint)meshId.Value, out var entry))
             {
                 missing++;

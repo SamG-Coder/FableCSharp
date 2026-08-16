@@ -77,6 +77,9 @@ switch (command)
     case "tex":
         DumpTex(install, rest.FirstOrDefault());
         break;
+    case "bin":
+        DumpGameBin(install, rest.FirstOrDefault());
+        break;
     default:
         PrintUsage();
         return 1;
@@ -104,6 +107,7 @@ static void PrintUsage()
           mesh [id|name]       parse a graphics.big mesh
           lev [region]         inspect a compiled .lev
           tex [id|name]        decode a textures.big image
+          bin [name]           compiled game.bin def / mesh id
 
         FABLE_PATH overrides the default Steam TLC install.
         """);
@@ -415,6 +419,57 @@ static void DumpTex(GameInstall install, string? query)
     Console.WriteLine($"#{entry.Id} type={entry.Type} packed={entry.Size} {entry.Name}");
     Console.WriteLine($"header {header.Width}x{header.Height} frame={header.FrameWidth}x{header.FrameHeight} fmt={header.FormatCode}");
     Console.WriteLine($"decoded {texture.Compression} {texture.Width}x{texture.Height} rgba={texture.Rgba.Length}");
+}
+
+static void DumpGameBin(GameInstall install, string? query)
+{
+    var namesPath = install.FindCompiledDef("names.bin");
+    var binPath = install.FindCompiledDef("game.bin");
+    if (namesPath is null || binPath is null)
+    {
+        Console.Error.WriteLine("names.bin / game.bin not found.");
+        return;
+    }
+
+    var names = NamesBin.Load(namesPath);
+    var bin = GameBin.Load(binPath, names);
+    Console.WriteLine(
+        $"game.bin entries={bin.Entries.Count} chunks={bin.Chunks.Count} useNames={bin.UseNamesBin} file=0x{bin.FileIndicator:X8} plat=0x{bin.PlatformIndicator:X8}");
+
+    if (string.IsNullOrWhiteSpace(query))
+    {
+        var types = bin.Entries
+            .GroupBy(entry => entry.TypeName ?? "?")
+            .OrderByDescending(group => group.Count())
+            .Take(20);
+        foreach (var group in types)
+            Console.WriteLine($"  {group.Count(),5}  {group.Key}");
+        var withMesh = bin.Entries.Count(entry => entry.MeshId is > 0);
+        Console.WriteLine($"entries with mesh id: {withMesh}");
+        return;
+    }
+
+    var matches = bin.Entries.Where(entry =>
+            (entry.InstanceName?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (entry.TypeName?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (entry.SourceName?.Contains(query, StringComparison.OrdinalIgnoreCase) ?? false))
+        .Take(30)
+        .ToList();
+    Console.WriteLine($"matches={matches.Count}");
+    foreach (var entry in matches)
+    {
+        Console.WriteLine(
+            $"#{entry.Index} type={entry.TypeName} inst={entry.InstanceName} src={entry.SourceName} mesh={entry.MeshId} subs={entry.SubDefs.Count} raw={entry.Raw.Length}");
+        foreach (var sub in entry.SubDefs.Take(8))
+        {
+            var child = sub.DefIndex >= 0 && sub.DefIndex < bin.Entries.Count ? bin.Entries[sub.DefIndex] : null;
+            Console.WriteLine(
+                $"    sub crc={sub.NameCrc:X8} idx={sub.DefIndex} -> {child?.TypeName} {child?.InstanceName} mesh={child?.MeshId}");
+        }
+    }
+
+    var mapped = bin.FindMeshId(query);
+    Console.WriteLine($"FindMeshId({query}) = {mapped}");
 }
 
 static string? ResolveBankPath(GameInstall install, string? name)
