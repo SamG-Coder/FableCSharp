@@ -25,7 +25,8 @@ public sealed class WorldGeometry
         GameInstall install,
         string region,
         IEnumerable<ThingInstance> things,
-        bool adjacentStaticMaps = true)
+        bool adjacentStaticMaps = true,
+        LandscapeFrustum.Plane[]? landscapePlanes = null)
     {
         var headerPath = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "meshdata.h");
         var graphicsPath = Path.Combine(install.DataRoot, "graphics", "graphics.big");
@@ -62,7 +63,7 @@ public sealed class WorldGeometry
             var primary = levels.World.FindMap(region);
             var dx = primary is null ? 0f : map.MapX - primary.MapX;
             var dy = primary is null ? 0f : map.MapY - primary.MapY;
-            AddTerrain(levels, map.ScriptName, dx, dy, triangles, landscapeEnums);
+            AddTerrain(levels, map.ScriptName, dx, dy, triangles, landscapeEnums, landscapePlanes);
 
             var mapThings = IsPrimary(map, region)
                 ? primaryThings
@@ -76,7 +77,7 @@ public sealed class WorldGeometry
 
         if (loaded.Count == 0)
         {
-            AddTerrain(levels, region, 0, 0, triangles, landscapeEnums);
+            AddTerrain(levels, region, 0, 0, triangles, landscapeEnums, landscapePlanes);
             AddInstances(primaryThings, 0, 0, defs, enums, big, byId, cache, triangles, ref instances, ref missing);
             loaded.Add(region);
         }
@@ -202,7 +203,8 @@ public sealed class WorldGeometry
         float dx,
         float dy,
         List<MeshTriangle> triangles,
-        HeaderEnums? landscapeEnums)
+        HeaderEnums? landscapeEnums,
+        LandscapeFrustum.Plane[]? landscapePlanes)
     {
         var height = levels.LoadHeightField(region);
         if (height is null)
@@ -217,8 +219,14 @@ public sealed class WorldGeometry
             local = height.ToLocalTriangles().Select(tri => tri with { TextureId = TextureLibrary.LandscapeGrassPlainId });
 
         var offset = new Vector3(dx, dy, 0);
-        foreach (var tri in local)
-            triangles.Add(tri with { A = tri.A + offset, B = tri.B + offset, C = tri.C + offset });
+        var shifted = local
+            .Select(tri => tri with { A = tri.A + offset, B = tri.B + offset, C = tri.C + offset })
+            .ToList();
+        if (landscapePlanes is { Length: > 0 } &&
+            LandscapeFrustum.AabbIsOutside(shifted.Select(tri => (tri.A, tri.B, tri.C)), landscapePlanes))
+            return;
+
+        triangles.AddRange(shifted);
     }
 
     private static void AddInstances(

@@ -26,7 +26,7 @@ internal static class FunctionMap
         (0x0089FA00, 0x0089FC00, "MARKER-LIGHT"),
         (0x00988000, 0x0098C000, "VS-wrapper"),
         (0x00B23800, 0x00B24000, "water-name-setter"),
-        (0x00B2FD00, 0x00B30500, "frustum-extract"),
+        (0x00B2FC00, 0x00B31800, "frustum-extract"),
         (0x00B32000, 0x00B34000, "MainScene-prims"),
         (0x00B84000, 0x00B84C00, "prim-queue-drain"),
         (0x00B91000, 0x00B91400, "palskin-drain-unwrap"),
@@ -69,6 +69,9 @@ internal static class FunctionMap
         ("landscape draw", 0x00B6B0B0),
         ("patch frustum AABB", 0x00BDC2D0),
         ("frustum extract", 0x00B2FD60),
+        ("camera setup FOV inverse", 0x00B30B50),
+        ("frustum extract other", 0x00B2FC50),
+        ("camera copy 00B4AF50", 0x00B4AF50),
         ("per-cell submit", 0x00BF4570),
         ("water draw", 0x00B783F0),
         ("water type-8 ingest", 0x00B6DAF0),
@@ -220,6 +223,8 @@ internal static class FunctionMap
         WriteHits(sb, nodes, "00B783F0");
         WriteHits(sb, nodes, "00BDC2D0");
         WriteHits(sb, nodes, "00B2FD60");
+        WriteHits(sb, nodes, "00B30B50");
+        WriteHits(sb, nodes, "00B2FC50");
         WriteHits(sb, nodes, "00B41FA0");
         WriteHits(sb, nodes, "00B7A865");
         WriteHits(sb, nodes, "00BBC130");

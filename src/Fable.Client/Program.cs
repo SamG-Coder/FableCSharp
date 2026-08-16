@@ -1,5 +1,6 @@
 using System.Numerics;
 using Fable.Core;
+using Fable.Formats.Levels;
 using Fable.Formats.Tng;
 using Fable.Formats.Wld;
 using Fable.Game;
@@ -160,33 +161,37 @@ void EnterRegion(string next, RegionExit? arrivedFromExit)
         .Select(t => new SceneMarker(
             new Vector3(t.PositionX!.Value, t.PositionY!.Value, t.PositionZ!.Value),
             t.DefinitionType ?? t.Kind)));
-    Console.WriteLine($"Building {region}...");
-    world = WorldGeometry.Build(install, region, things.Things);
-    map = levels.World.FindMap(region);
-    exits = RegionTravel.ActiveExits(things.Things);
-    Console.WriteLine($"Instanced {world.MeshInstances} meshes ({world.Triangles.Count} tris), missing {world.MissingMeshes}");
-
+    LandscapeFrustum.Plane[]? planes = null;
     ThingInstance? spawn = null;
     if (arrivedFromExit is { } hit)
         spawn = RegionTravel.FindEntrance(things.Things, hit.Link);
     spawn ??= RegionTravel.FindPlayerStart(things.Things);
-    if (spawn is not null)
+    if (spawn is not null &&
+        RegionTravel.TryIntroCamera(things.Things, out var introPos, out var introLook, out var introFov))
     {
-        if (RegionTravel.TryIntroCamera(things.Things, out var introPos, out var introLook, out var introFov))
-        {
-            startPosition = introPos;
-            startLook = introLook;
-            startFov = introFov;
-        }
-        else
-        {
-            var feet = RegionTravel.PositionOf(spawn);
-            var eye = world.PlayerHeight * 0.5f;
-            startPosition = feet + Vector3.UnitZ * eye;
-            startLook = feet + RegionTravel.ForwardOf(spawn) * 8f + Vector3.UnitZ * eye;
-        }
+        startPosition = introPos;
+        startLook = introLook;
+        startFov = introFov;
+        LandscapeFrustum.LetterboxCots(
+            float.DegreesToRadians(introFov), 4f, 3f, out var cotH, out var cotV);
+        planes = LandscapeFrustum.ExtractSidePlanes(
+            introPos, introLook - introPos, Vector3.UnitZ, cotH, cotV);
     }
-    else
+
+    Console.WriteLine($"Building {region}...");
+    world = WorldGeometry.Build(install, region, things.Things, landscapePlanes: planes);
+    map = levels.World.FindMap(region);
+    exits = RegionTravel.ActiveExits(things.Things);
+    Console.WriteLine($"Instanced {world.MeshInstances} meshes ({world.Triangles.Count} tris), missing {world.MissingMeshes}");
+
+    if (planes is null && spawn is not null)
+    {
+        var feet = RegionTravel.PositionOf(spawn);
+        var eye = world.PlayerHeight * 0.5f;
+        startPosition = feet + Vector3.UnitZ * eye;
+        startLook = feet + RegionTravel.ForwardOf(spawn) * 8f + Vector3.UnitZ * eye;
+    }
+    else if (planes is null)
     {
         startPosition = new Vector3(64f, -40f, 95f);
         startLook = new Vector3(64f, 64f, 36f);

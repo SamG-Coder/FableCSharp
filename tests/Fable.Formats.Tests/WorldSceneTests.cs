@@ -1,3 +1,4 @@
+using System.Numerics;
 using Fable.Core;
 using Fable.Formats;
 using Fable.Formats.Levels;
@@ -260,6 +261,25 @@ public sealed class WorldSceneTests
         Assert.InRange(introPos.Y, 128f, 132f);
         Assert.InRange(introFov, 65f, 80f);
         Assert.True((introLook - introPos).Length() > 1f);
+        LandscapeFrustum.LetterboxCots(
+            float.DegreesToRadians(introFov), 4f, 3f, out var shotCotH, out var shotCotV);
+        var shotPlanes = LandscapeFrustum.ExtractSidePlanes(
+            introPos, introLook - introPos, Vector3.UnitZ, shotCotH, shotCotV);
+        Assert.Equal(4, shotPlanes.Length);
+        Assert.False(LandscapeFrustum.AabbIsOutside(
+            new Vector3(28f, 122f, 8f), new Vector3(46f, 138f, 28f), shotPlanes));
+        Assert.True(LandscapeFrustum.AabbIsOutside(
+            new Vector3(2000f, 2000f, 0f), new Vector3(2016f, 2016f, 16f), shotPlanes));
+        var culled = WorldGeometry.Build(
+            install, "StartOakValeWest", things, landscapePlanes: shotPlanes);
+        Assert.Contains("StartOakValeWest", culled.Regions);
+        Assert.Contains(culled.Triangles, t =>
+            t.Layer == Fable.Formats.Meshes.SceneLayer.Landscape &&
+            Math.Abs((t.A.X + t.B.X + t.C.X) / 3f - 34f) < 20f &&
+            Math.Abs((t.A.Y + t.B.Y + t.C.Y) / 3f - 129f) < 20f);
+        Assert.DoesNotContain(culled.Triangles, t =>
+            t.Layer == Fable.Formats.Meshes.SceneLayer.Landscape &&
+            (t.A.X + t.B.X + t.C.X) / 3f > 400f);
         Assert.Contains(things, t => t.ScriptName == "HerosOldHouse");
         var indoorLight = things.First(t =>
             t.DefinitionType == "MARKER_LIGHT" &&

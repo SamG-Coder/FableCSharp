@@ -1,4 +1,5 @@
 using System.Numerics;
+using Fable.Formats.Levels;
 using Fable.Render;
 
 namespace Fable.Formats.Tests;
@@ -50,5 +51,19 @@ public sealed class CameraProjectionTests
             var ndc = FlyCamera.Project(vp, point);
             Assert.True(ndc.W > 0f, $"{point} W={ndc.W}");
         }
+    }
+
+    [Fact]
+    public void Extract_side_planes_keep_the_look_target_and_reject_behind()
+    {
+        var position = new Vector3(0f, 0f, 0f);
+        var look = Vector3.UnitY;
+        var cot = LandscapeFrustum.CotHalfAngle(float.DegreesToRadians(90f));
+        var planes = LandscapeFrustum.ExtractSidePlanes(position, look, Vector3.UnitZ, cot, cot);
+        Assert.Equal(4, planes.Length);
+        Assert.False(LandscapeFrustum.AabbIsOutside(
+            new Vector3(-1f, 2f, -1f), new Vector3(1f, 4f, 1f), planes));
+        Assert.True(LandscapeFrustum.AabbIsOutside(
+            new Vector3(-1f, -4f, -1f), new Vector3(1f, -2f, 1f), planes));
     }
 }
