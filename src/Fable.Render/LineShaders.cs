@@ -29,11 +29,13 @@ internal static class LineShaders
         layout(location = 1) in vec3 inNormal;
         layout(location = 2) in vec2 inUv;
         layout(location = 3) in vec4 inColor;
+        layout(location = 4) in vec3 inExtra;
         layout(location = 0) out vec3 fragNormal;
         layout(location = 1) out vec2 fragUv;
         layout(location = 2) out vec4 fragColor;
         layout(location = 3) out vec3 fragWorld;
         layout(location = 4) out float fragFog;
+        layout(location = 5) out vec3 fragExtra;
         layout(push_constant) uniform Push {
             mat4 viewProj;
             vec4 cameraPos;
@@ -47,6 +49,7 @@ internal static class LineShaders
             fragUv = inUv;
             fragColor = inColor;
             fragWorld = inPosition;
+            fragExtra = inExtra;
             // 00B47630 plane: dp4 world, c2. mad oFog, min(dp,c0.y), -c18.w, c0.y
             // D3D fog interpolator saturates; the mad has no _sat.
             float dp = dot(vec4(inPosition, 1.0), pc.cameraPos);
@@ -63,6 +66,7 @@ internal static class LineShaders
         layout(location = 2) in vec4 fragColor;
         layout(location = 3) in vec3 fragWorld;
         layout(location = 4) in float fragFog;
+        layout(location = 5) in vec3 fragExtra;
         layout(location = 0) out vec4 outColor;
         layout(set = 0, binding = 0) uniform sampler2D albedo0;
         layout(set = 1, binding = 0) uniform sampler2D albedo1;
@@ -74,8 +78,13 @@ internal static class LineShaders
             vec4 pass;
         } pc;
         void main() {
-            vec4 t0 = texture(albedo0, fragUv);
-            vec4 t1 = texture(albedo1, fragUv);
+            float mode = pc.pass.x;
+            // FG VS: oT0.xy = v3.yz (ExtraRgb.YZ). BG VS: oT0 = v3 (ExtraRgb.XY).
+            // Albedo oT1 = dp4(pos,c40/c41) = (0,0) first-seen. Mesh UV is oT1.
+            vec2 ot0 = mode < 0.5 ? fragExtra.xy : fragExtra.yz;
+            vec2 ot1 = fragUv;
+            vec4 t0 = texture(albedo0, ot0);
+            vec4 t1 = texture(albedo1, ot1);
             vec3 n = fragNormal;
             float nlen = length(n);
             // VS: dp3 n,-c19; max(.,c0.x); square; *c20; mad c35; add c3.
@@ -85,18 +94,26 @@ internal static class LineShaders
             vec3 litAdd = pc.pass.yzw;
             vec3 c3 = vec3(0.0, 0.125, 0.0);
             vec3 v0 = fragColor.rgb * (pc.lightColor.rgb * (ndl * ndl) + litAdd + c3);
-            float mode = pc.pass.x;
             vec3 lit;
+            float alpha = 1.0;
             if (mode < 0.5)
-                lit = t0.rgb * v0;
+            {
+                // PSHADER_LANDSCAPE_BACKGROUND: mul_x2_sat t0 * v0
+                lit = clamp(t0.rgb * v0 * 2.0, 0.0, 1.0);
+                alpha = clamp(t0.a * fragColor.a, 0.0, 1.0);
+            }
             else if (mode < 1.5)
+            {
+                // PSHADER_LANDSCAPE_FOREGROUND: mul_x2_sat t1 * v0; mul_sat t0.a * v0.a
                 lit = clamp(t1.rgb * v0 * 2.0, 0.0, 1.0);
+                alpha = clamp(t0.a * fragColor.a, 0.0, 1.0);
+            }
             else if (mode < 2.5)
                 lit = t1.rgb * fragColor.rgb;
             else
                 lit = t1.rgb * v0;
             // FOGENABLE=1, FOGCOLOR black: rgb * oFog + (1-oFog) * 0
-            outColor = vec4(lit * fragFog, 1.0);
+            outColor = vec4(lit * fragFog, alpha);
         }
         """;
 }

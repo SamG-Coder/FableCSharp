@@ -16,12 +16,14 @@ public sealed class GpuTextureTests
     [Fact]
     public void Mesh_vertex_carries_uv_not_colour()
     {
-        Assert.Equal(48u, MeshVertex.Stride);
+        Assert.Equal(60u, MeshVertex.Stride);
         Assert.Equal(24u, MeshVertex.UvOffset);
         Assert.Equal(32u, MeshVertex.ColorOffset);
-        Assert.Equal(48, Unsafe.SizeOf<MeshVertex>());
+        Assert.Equal(48u, MeshVertex.ExtraOffset);
+        Assert.Equal(60, Unsafe.SizeOf<MeshVertex>());
         Assert.Equal(24, (int)Marshal.OffsetOf<MeshVertex>(nameof(MeshVertex.Uv)));
         Assert.Equal(32, (int)Marshal.OffsetOf<MeshVertex>(nameof(MeshVertex.Color)));
+        Assert.Equal(48, (int)Marshal.OffsetOf<MeshVertex>(nameof(MeshVertex.Extra)));
     }
 
     [Fact]
@@ -34,6 +36,8 @@ public sealed class GpuTextureTests
         Assert.Contains("albedo0", LineShaders.MeshFragment, StringComparison.Ordinal);
         Assert.Contains("albedo1", LineShaders.MeshFragment, StringComparison.Ordinal);
         Assert.Contains("inColor", LineShaders.MeshVertex, StringComparison.Ordinal);
+        Assert.Contains("inExtra", LineShaders.MeshVertex, StringComparison.Ordinal);
+        Assert.Contains("fragExtra.yz", LineShaders.MeshFragment, StringComparison.Ordinal);
         Assert.Contains("* 2.0", LineShaders.MeshFragment, StringComparison.Ordinal);
         Assert.DoesNotContain("mix(t0.rgb, t1.rgb, t1.a)", LineShaders.MeshFragment, StringComparison.Ordinal);
     }

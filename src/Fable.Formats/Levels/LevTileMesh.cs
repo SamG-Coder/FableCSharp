@@ -118,12 +118,12 @@ public sealed class LevTileMesh
                 points[i] = new Vector3(v.WorldX - originX, v.WorldY - originY, v.Z);
             }
 
-            var at = new Dictionary<(int X, int Y), (Vector3 P, Vector3 N)>();
+            var at = new Dictionary<(int X, int Y), (Vector3 P, Vector3 N, Vector3 Extra)>();
             for (var i = 0; i < tile.Vertices.Count; i++)
             {
                 var v = tile.Vertices[i];
                 var p = points[i];
-                at[((int)MathF.Round(p.X), (int)MathF.Round(p.Y))] = (p, v.Normal);
+                at[((int)MathF.Round(p.X), (int)MathF.Round(p.Y))] = (p, v.Normal, v.ExtraRgb);
             }
 
             var minX = at.Count == 0 ? 0 : at.Keys.Min(k => k.X);
@@ -202,8 +202,8 @@ public sealed class LevTileMesh
         }
     }
 
-    private static (Vector3 P, Vector3 N) PointOf(LevTileVertex v, Vector3 p) =>
-        (p, v.Normal);
+    private static (Vector3 P, Vector3 N, Vector3 Extra) PointOf(LevTileVertex v, Vector3 p) =>
+        (p, v.Normal, v.ExtraRgb);
 
     private static (int A, int B) LayersAt(
         Vector3 p, LevCellGrid cells, Dictionary<int, LevMaterial> bySlot, HeaderEnums? textures)
@@ -234,9 +234,9 @@ public sealed class LevTileMesh
 
     private static void Add(
         List<MeshTriangle> triangles,
-        (Vector3 P, Vector3 N) a,
-        (Vector3 P, Vector3 N) b,
-        (Vector3 P, Vector3 N) c,
+        (Vector3 P, Vector3 N, Vector3 Extra) a,
+        (Vector3 P, Vector3 N, Vector3 Extra) b,
+        (Vector3 P, Vector3 N, Vector3 Extra) c,
         int textureId,
         int textureId1)
     {
@@ -259,7 +259,10 @@ public sealed class LevTileMesh
             Vector3.One, Vector3.One, Vector3.One,
             textureId1,
             a.N, b.N, c.N,
-            SceneLayer.Landscape));
+            SceneLayer.Landscape,
+            ExtraA: a.Extra,
+            ExtraB: b.Extra,
+            ExtraC: c.Extra));
     }
 
     internal static LevTile? TryReadPayload(byte[] stbLev, int off, int index)

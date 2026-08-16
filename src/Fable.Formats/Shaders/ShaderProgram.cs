@@ -212,6 +212,32 @@ public sealed class ShaderProgram
     }
 
     /// <summary>
+    /// First-seen landscape BG: <c>mov oT0, v3</c> then
+    /// <c>mov oT0.w, c0.y</c>. Sample UV is ExtraRgb.XY, not YZ.
+    /// </summary>
+    public bool TryGetBackgroundOt0FromV3(out int vReg)
+    {
+        vReg = 0;
+        foreach (var insn in DecodeInstructions())
+        {
+            if (insn.Opcode != MovOpcode)
+                continue;
+            if (insn.DestType != RegTypeTexCrdOut || insn.DestNum != 0)
+                continue;
+            if (!insn.DestMaskXYZW)
+                continue;
+            if (insn.Src0Type != RegTypeInput)
+                continue;
+            if (insn.Src0Swizzle0 != 0 || insn.Src0Swizzle1 != 1)
+                continue;
+            vReg = insn.Src0Num;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// First-seen landscape FG:
     /// <c>mov r0.xy, v0</c>; <c>mov r0.z, v1.x</c>;
     /// <c>mov r0.w, c0.y</c>; <c>add r1, r0, -c4</c>;

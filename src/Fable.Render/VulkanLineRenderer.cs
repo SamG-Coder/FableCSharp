@@ -698,13 +698,14 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             new() { Location = 1, Binding = 0, Format = Format.R32G32B32Sfloat, Offset = 12 },
             new() { Location = 2, Binding = 0, Format = Format.R32G32Sfloat, Offset = MeshVertex.UvOffset },
             new() { Location = 3, Binding = 0, Format = Format.R32G32B32A32Sfloat, Offset = MeshVertex.ColorOffset },
+            new() { Location = 4, Binding = 0, Format = Format.R32G32B32Sfloat, Offset = MeshVertex.ExtraOffset },
         };
         var meshVertexInput = new PipelineVertexInputStateCreateInfo
         {
             SType = StructureType.PipelineVertexInputStateCreateInfo,
             VertexBindingDescriptionCount = 1,
             PVertexBindingDescriptions = &meshBinding,
-            VertexAttributeDescriptionCount = 4,
+            VertexAttributeDescriptionCount = 5,
             PVertexAttributeDescriptions = meshAttributes,
         };
         inputAssembly.Topology = PrimitiveTopology.TriangleList;

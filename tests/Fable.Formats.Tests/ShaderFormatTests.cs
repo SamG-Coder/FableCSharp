@@ -139,6 +139,8 @@ public sealed class ShaderFormatTests
         Assert.Equal(1, obj.TexCount);
         Assert.Equal(0, unlit.TexCount);
         Assert.True(fg.HasMulX2, "landscape FG is mul_x2_sat t1 * v0, not a lerp");
+        Assert.True(bg.HasMulX2, "landscape BG is mul_x2_sat t0 * v0");
+        Assert.True(LandscapeTextures.FirstSeenBackgroundPsMulX2);
         Assert.False(obj.HasMulX2, "PSHADER_TEXTURE_DIFFUSE_FOG is mul, not _x2");
 
         var landscapeVs = big.SubBanks.First(b => b.Name == "SHADERS_LANDSCAPE_FOREGROUND");
@@ -201,6 +203,11 @@ public sealed class ShaderFormatTests
         Assert.False(LandscapeTextures.FirstSeenUploadsC1LayerFlip);
         Assert.True(land.TryGetOt0FromV3(out var ot0Reg));
         Assert.Equal(3, ot0Reg);
+        var bgVs = Load("SHADERS_LANDSCAPE_BACKGROUND", "VSHADER_LANDSCAPE_BACKGROUND");
+        Assert.True(bgVs.TryGetBackgroundOt0FromV3(out var bgOt0));
+        Assert.Equal(3, bgOt0);
+        Assert.False(bgVs.TryGetOt0FromV3(out _));
+        Assert.True(LandscapeTextures.FirstSeenBackgroundOt0IsV3);
         Assert.True(land.TryGetOt1Projected(out var ot1));
         Assert.Equal(0, ot1.PosType);
         Assert.True(land.TryGetOPosSubtractC4(out var opos));

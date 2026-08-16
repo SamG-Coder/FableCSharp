@@ -176,9 +176,9 @@ public sealed class LevHeightField
             return;
         triangles.Add(new MeshTriangle(
             a, b, c, Vector3.Normalize(n),
-            new Vector2(a.X * LandscapeTextures.UvScale, a.Y * LandscapeTextures.UvScale),
-            new Vector2(b.X * LandscapeTextures.UvScale, b.Y * LandscapeTextures.UvScale),
-            new Vector2(c.X * LandscapeTextures.UvScale, c.Y * LandscapeTextures.UvScale),
+            LandscapeTextures.ProjectOt1(a),
+            LandscapeTextures.ProjectOt1(b),
+            LandscapeTextures.ProjectOt1(c),
             textureId,
             Vector3.One, Vector3.One, Vector3.One,
             textureId1 == 0 ? textureId : textureId1,

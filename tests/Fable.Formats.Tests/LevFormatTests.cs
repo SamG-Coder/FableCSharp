@@ -348,6 +348,13 @@ public sealed class LevFormatTests
         Assert.Equal(Vector2.Zero, LandscapeTextures.ProjectOt1(sample.A));
         Assert.Equal(0f, sample.UvA.X, 5);
         Assert.Equal(0f, sample.UvA.Y, 5);
+        Assert.True(LandscapeTextures.FirstSeenBackgroundOt0IsV3);
+        Assert.True(LandscapeTextures.FirstSeenBackgroundPsMulX2);
+        Assert.InRange(sample.ExtraA.X, 0.98f, 1.02f);
+        Assert.InRange(sample.ExtraA.Y, 0.3f, 0.7f);
+        Assert.InRange(sample.ExtraA.Z, 0.3f, 0.7f);
+        Assert.Equal(sample.ExtraA.Y, LandscapeTextures.Ot0FromExtra(sample.ExtraA).X, 5);
+        Assert.Equal(sample.ExtraA.Z, LandscapeTextures.Ot0FromExtra(sample.ExtraA).Y, 5);
         var tile = height.Tiles.Tiles.First(t => t.Vertices.Count >= 16);
         Assert.True(tile.Vertices.All(v => Math.Abs(v.ExtraRgb.X - 1f) < 0.02f));
         Assert.True(tile.Vertices.All(v => v.ExtraRgb.Y is > 0.4f and < 0.6f));

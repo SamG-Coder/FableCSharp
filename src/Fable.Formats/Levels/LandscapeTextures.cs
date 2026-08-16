@@ -200,6 +200,13 @@ public static class LandscapeTextures
     /// </summary>
     public const bool FirstSeenOt0FromV3 = true;
     public const bool FirstSeenOt0IsAlbedo = false;
+    /// <summary>
+    /// <c>VSHADER_LANDSCAPE_BACKGROUND</c> is <c>mov oT0, v3</c>
+    /// so bit-4 samples ExtraRgb.XY. FG uses ExtraRgb.YZ.
+    /// Live mesh shader swizzles Extra the same way.
+    /// </summary>
+    public const bool FirstSeenBackgroundOt0IsV3 = true;
+    public const bool FirstSeenBackgroundPsMulX2 = true;
 
     /// <summary>
     /// FG VS albedo: <c>dp4 r5.x, pos, c40</c>;

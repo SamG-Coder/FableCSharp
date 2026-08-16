@@ -667,7 +667,10 @@ public readonly record struct MeshTriangle(
     Vector3 NormalB = default,
     Vector3 NormalC = default,
     SceneLayer Layer = SceneLayer.Prop,
-    bool SrcAlphaBlend = false);
+    bool SrcAlphaBlend = false,
+    Vector3 ExtraA = default,
+    Vector3 ExtraB = default,
+    Vector3 ExtraC = default);
 
 /// <summary>
 /// Geometry bucket. <see cref="Fable.Formats.Scene.ScenePasses"/> maps these
