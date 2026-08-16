@@ -154,4 +154,33 @@ public sealed class ShaderFormatTests
         var landscape = big.ReadEntries(big.SubBanks.First(b => b.Name == "SHADERS_LANDSCAPE_FOREGROUND"));
         Assert.All(landscape, e => Assert.Equal(0u, e.Type));
     }
+
+    [Fact]
+    public void First_seen_vs_read_c20_and_c35()
+    {
+        var install = Require();
+        using var big = BigArchive.Open(install.ShadersBigPath);
+
+        ShaderProgram Load(string bank, string name)
+        {
+            var b = big.SubBanks.First(s => s.Name == bank);
+            var e = big.ReadEntries(b).First(x => x.Name == name);
+            return ShaderProgram.Parse(e.Name, b.Name, e.Type, big.Read(e));
+        }
+
+        var land = Load("SHADERS_LANDSCAPE_FOREGROUND", "VSHADER_LANDSCAPE_FOREGROUND");
+        var stat = Load("SHADERS_STATIC", "VSHADER_STATIC_DIRLIGHT_FOG");
+        var skin = Load("SHADERS_PALSKIN", "VSHADER_PALSKIN_DIRLIGHT_FOG");
+        foreach (var vs in new[] { land, stat, skin })
+        {
+            Assert.Contains(20, vs.ConstRegisters);
+            Assert.Contains(35, vs.ConstRegisters);
+            Assert.Contains(2, vs.ConstRegisters);
+            Assert.Contains(18, vs.ConstRegisters);
+        }
+
+        Assert.Contains(3, land.ConstRegisters);
+        Assert.Contains(5, stat.ConstRegisters);
+        Assert.DoesNotContain(20, Load("SHADERS_STATIC", "VSHADER_STATIC_UNLIT").ConstRegisters);
+    }
 }

@@ -61,6 +61,32 @@ public sealed class ShaderProgram
         }
     }
 
+    /// <summary>
+    /// D3D register numbers of type CONST (2) in dest/src tokens.
+    /// vs_1_1 / ps_1_1 use the D3D8-style type field at bits 28–30.
+    /// </summary>
+    public IReadOnlyList<int> ConstRegisters
+    {
+        get
+        {
+            var set = new SortedSet<int>();
+            for (var i = 4; i + 4 <= Tokens.Length; i += 4)
+            {
+                var token = BitConverter.ToUInt32(Tokens, i);
+                if (token is 0x0000FFFF or 0x0000FFFE)
+                    continue;
+                var type = (int)((token >> 28) & 7);
+                if (type != 2)
+                    continue;
+                var reg = (int)(token & 0x7FF);
+                if (reg is >= 0 and < 96)
+                    set.Add(reg);
+            }
+
+            return set.ToList();
+        }
+    }
+
     public static ShaderProgram Parse(string name, string bank, uint entryType, byte[] data)
     {
         if (data.Length < 8)
