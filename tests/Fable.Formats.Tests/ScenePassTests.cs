@@ -45,4 +45,17 @@ public sealed class ScenePassTests
         Assert.Equal(1f, fg.ShaderMode);
         Assert.Equal(2f, sky.ShaderMode);
     }
+
+    [Fact]
+    public void First_seen_cull_is_d3d_ccw()
+    {
+        Assert.Equal(22, D3dDeviceState.CullMode);
+        Assert.Equal(3, D3dDeviceState.CullCcw);
+        Assert.Equal(1, D3dDeviceState.CullNone);
+        Assert.Equal(2, D3dDeviceState.CullCw);
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        Assert.Equal("StartOakValeWest", RegionTravel.StartingRegion(levels.World));
+    }
 }

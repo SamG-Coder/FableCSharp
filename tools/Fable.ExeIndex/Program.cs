@@ -2,7 +2,7 @@ using System.Text;
 using Fable.Core;
 using Fable.ExeIndex;
 
-var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "trace-render" or "trace-landscape" or "trace-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats") ?? "all";
+var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "trace-render" or "trace-landscape" or "trace-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp") ?? "all";
 var force = args.Any(a => a is "--force" or "-f");
 var install = GameInstall.TryLocate();
 var exePath = args.FirstOrDefault(a => a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
@@ -79,6 +79,9 @@ switch (cmd)
         break;
     case "floats":
         RunFloats(pe, args);
+        break;
+    case "calldisp":
+        RunCallDisp(pe, args);
         break;
     default:
         RunIndex(pe, store);
@@ -161,6 +164,55 @@ static void RunImm(PeImage pe, string[] args)
     }
 
     Console.WriteLine($"imm  {hits}");
+}
+
+static void RunCallDisp(PeImage pe, string[] args)
+{
+    var tok = args.SkipWhile(a => a is "calldisp").FirstOrDefault();
+    if (tok is null || !TryParseHex(tok, out var disp))
+    {
+        Console.Error.WriteLine("usage: calldisp <disp32>");
+        return;
+    }
+
+    // call [reg+disp32]: FF 90/91/92/93/96/97 xx xx xx xx
+    byte[] mods = [0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97];
+    var data = pe.Data;
+    var hits = 0;
+    foreach (var sec in pe.Sections)
+    {
+        if (!pe.InCode((int)sec.FileOffset))
+            continue;
+        var end = Math.Min(data.Length, (int)(sec.FileOffset + sec.FileSize) - 6);
+        for (var i = (int)sec.FileOffset; i < end; i++)
+        {
+            if (data[i] != 0xFF)
+                continue;
+            var ok = false;
+            foreach (var m in mods)
+            {
+                if (data[i + 1] == m)
+                {
+                    ok = true;
+                    break;
+                }
+            }
+
+            if (!ok)
+                continue;
+            if (BitConverter.ToUInt32(data, i + 2) != disp)
+                continue;
+            Console.WriteLine($"0x{pe.Va(i):X8}  call [r+0x{disp:X}]");
+            hits++;
+            if (hits >= 60)
+            {
+                Console.WriteLine($"calldisp  {hits}+");
+                return;
+            }
+        }
+    }
+
+    Console.WriteLine($"calldisp  {hits}");
 }
 
 static void RunFloats(PeImage pe, string[] args)
@@ -508,6 +560,16 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "MARKER LIGHT apply", 0x0089FAA8, 80),
         WriteFnPart(pe, store, family, "CTCLight colour store", 0x00640BB0, 40),
         WriteFnPart(pe, store, family, "Lighting time-of-day blend", 0x00B46C80, 120),
+        WriteFnPart(pe, store, family, "SetVSConstantF wrapper", 0x00989A60, 40),
+        WriteFnPart(pe, store, family, "SetVSConstantF 4float", 0x00989B00, 40),
+        WriteFnPart(pe, store, family, "Wrapper device attach", 0x0098AD45, 40),
+        WriteFnPart(pe, store, family, "Inner VS object ctor", 0x0098D4A0, 40),
+        WriteFnPart(pe, store, family, "Engine stores 1436E14", 0x00B264E4, 40),
+        WriteFnPart(pe, store, family, "State flush SetRenderState", 0x00A044E0, 50),
+        WriteFnPart(pe, store, family, "CULLMODE slot init", 0x00A047A7, 20),
+        WriteFnPart(pe, store, family, "First-seen apply CCW cull", 0x00B24BF2, 40),
+        WriteFnPart(pe, store, family, "Static-lit apply CCW cull", 0x00BB2DA2, 30),
+        WriteU32Part(pe, store, family, "CULL table 01396FB0", 0x01396FB0, 4),
         WriteSitePart(pe, store, family, "Q NewOakValeIntro PreAttack", 0x00DBE0C9, 80),
         WriteFnPart(pe, store, family, "WLD NewRegion reader", 0x0050881D, 80),
         WriteFnPart(pe, store, family, "WLD ContainsMap", 0x004FD7F9, 40),
@@ -615,6 +677,33 @@ static IndexLink WriteVtblPart(PeImage pe, DumpStore store, string family, strin
 
     store.WritePart(family, slug, sb.ToString());
     return new IndexLink(slug, "vtbl " + name, va);
+}
+
+static IndexLink WriteU32Part(PeImage pe, DumpStore store, string family, string name, uint va, int n)
+{
+    var slug = DumpStore.Slug(name, va);
+    var sb = new StringBuilder();
+    sb.AppendLine($"# {name}");
+    sb.AppendLine();
+    sb.AppendLine($"VA `0x{va:X8}` · `{n}` u32. [INDEX](INDEX.md)");
+    sb.AppendLine();
+    var file = pe.FileOffset(va);
+    if (file < 0)
+        sb.AppendLine("UNREAD (VA not mapped)");
+    else
+    {
+        for (var i = 0; i < n; i++)
+        {
+            var off = file + i * 4;
+            if (off + 4 > pe.Data.Length)
+                break;
+            var value = BitConverter.ToUInt32(pe.Data, off);
+            sb.AppendLine($"0x{va + (uint)(i * 4):X8}  {value}  0x{value:X}");
+        }
+    }
+
+    store.WritePart(family, slug, sb.ToString());
+    return new IndexLink(slug, name, va);
 }
 
 static string ResolveOutDir(string[] args)

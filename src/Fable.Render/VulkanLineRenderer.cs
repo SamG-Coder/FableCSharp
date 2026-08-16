@@ -694,7 +694,11 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             PVertexAttributeDescriptions = meshAttributes,
         };
         inputAssembly.Topology = PrimitiveTopology.TriangleList;
-        raster.CullMode = CullModeFlags.None;
+        // D3DCULL_CCW (0x01396FB0 = 3) on first-seen landscape/static-lit.
+        // FlyCamera flips projection M22 for Vulkan Y-down NDC, so D3D CCW
+        // cull keeps the same world faces as Vulkan FrontFace.CCW + Back.
+        raster.CullMode = CullModeFlags.BackBit;
+        raster.FrontFace = FrontFace.CounterClockwise;
         pipelineInfo.PVertexInputState = &meshVertexInput;
         pipelineInfo.PDepthStencilState = &meshDepth;
         pipelineInfo.Layout = _meshPipelineLayout;

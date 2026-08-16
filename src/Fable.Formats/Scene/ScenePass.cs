@@ -100,3 +100,24 @@ public static class ScenePasses
         return Registration.Where(p => submit.Contains(p.Submit)).ToArray();
     }
 }
+
+/// <summary>
+/// D3D9 render-state numbers the first-seen landscape / static-lit paths
+/// apply through device wrapper <c>0x1436E18</c> slot <c>+10384</c>.
+/// </summary>
+public static class D3dDeviceState
+{
+    /// <summary>D3DRS_CULLMODE. Written at <c>00A047B8</c> as <c>0x16</c>.</summary>
+    public const int CullMode = 22;
+
+    /// <summary>
+    /// Dword at <c>0x01396FB0</c>. Landscape <c>00B24BF7</c> and static-lit
+    /// <c>00BB2DA2</c> copy it onto slot <c>+10388</c>. <c>3</c> is
+    /// <c>D3DCULL_CCW</c>. <c>0x01396FB8</c> is <c>1</c> (NONE) for other
+    /// primitive passes, not this first-seen path.
+    /// </summary>
+    public const int CullCcw = 3;
+
+    public const int CullNone = 1;
+    public const int CullCw = 2;
+}
