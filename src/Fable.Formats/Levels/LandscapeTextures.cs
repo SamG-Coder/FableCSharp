@@ -14,9 +14,20 @@ public static class LandscapeTextures
         materialName.Length > 0 &&
         !materialName.StartsWith("INVALID", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Exe <c>OpenStaticMaps</c> <c>00B4282B</c> hands <c>SEA_*</c> to
+    /// <c>CEngineWaterRenderer</c> via <c>__ENGINE_SEA_STATIC_MAP_BANK_FILE__</c>.
+    /// <c>LoadWaterData</c> <c>00B41FA0</c> does the same for
+    /// <c>__ENGINE_WATER_STATIC_MAP_BANK_FILE__</c>. Those are not landscape FG.
+    /// </summary>
+    public static bool IsWaterOrSeaPass(string materialName) =>
+        materialName.StartsWith("WATER_", StringComparison.OrdinalIgnoreCase) ||
+        materialName.StartsWith("SEA_", StringComparison.OrdinalIgnoreCase) ||
+        materialName.Contains("LAKE", StringComparison.OrdinalIgnoreCase);
+
     public static int? TryResolve(string materialName, HeaderEnums? textures)
     {
-        if (!IsUsable(materialName))
+        if (!IsUsable(materialName) || IsWaterOrSeaPass(materialName))
             return null;
         return textures is null ? DefaultId : Resolve(materialName, textures);
     }

@@ -229,6 +229,42 @@ public sealed class LevFormatTests
         Assert.Equal(414, LandscapeTextures.Resolve("GROUND_GRASS", enums));
         Assert.Equal(4118, LandscapeTextures.Resolve("PATH_COBBLES_IRREGULAR_ET", enums));
         Assert.NotEqual(1911, LandscapeTextures.Resolve("GROUND_PATH_SAND", enums));
+        Assert.True(LandscapeTextures.IsWaterOrSeaPass("SEA_OAKVALE_2"));
+        Assert.True(LandscapeTextures.IsWaterOrSeaPass("WATER_GREYCLIFF_ET"));
+        Assert.Null(LandscapeTextures.TryResolve("SEA_OAKVALE_2", enums));
+        Assert.Null(LandscapeTextures.TryResolve("WATER_GREYCLIFF_ET", enums));
+        Assert.Null(LandscapeTextures.TryResolve("WATER_BWLAKE_0", enums));
+    }
+
+    [Fact]
+    public void Start_oakvale_has_a_sea_bank_and_no_water_bank()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var stb = StbArchive.Open(install.RuntimeStbPath);
+        using var levels = new LevelLibrary(install);
+        var sea = stb.Entries.Where(e =>
+            e.Name.StartsWith("__ENGINE_SEA_STATIC_MAP_BANK_FILE__", StringComparison.Ordinal)).ToList();
+        Assert.Equal(25, sea.Count);
+        var oak = sea.Single(e => e.Name.EndsWith("StartOakVale", StringComparison.Ordinal));
+        Assert.Equal(129966u, oak.Size);
+        Assert.Equal(7363u, BitConverter.ToUInt32(stb.Read(oak), 0));
+        Assert.DoesNotContain(stb.Entries, e =>
+            e.Name.Contains("__ENGINE_WATER_STATIC_MAP_BANK_FILE__", StringComparison.Ordinal));
+
+        var height = levels.LoadHeightField("StartOakValeWest");
+        var compiled = levels.LoadCompiledLev("StartOakValeWest");
+        Assert.NotNull(height);
+        Assert.NotNull(compiled);
+        Assert.Contains(compiled.Materials, m => m.Name.StartsWith("SEA_OAKVALE", StringComparison.Ordinal));
+        Assert.Contains(compiled.Materials, m => m.Name.StartsWith("WATER_", StringComparison.Ordinal));
+        var cells = LevCellGrid.TryParse(compiled);
+        Assert.NotNull(cells);
+        var enums = HeaderEnums.Load(Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h"));
+        var tris = height.ToTileTriangles(cells, compiled.Materials, enums);
+        Assert.True(tris.Count > 1000, $"tris={tris.Count}");
+        Assert.DoesNotContain(tris, t => t.TextureId is 4106 or 4107 or 4108);
+        Assert.Contains(tris, t => t.TextureId is 4130 or 414 or 428 or 412);
     }
 
     [Fact]

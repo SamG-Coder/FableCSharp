@@ -146,6 +146,8 @@ public sealed class LevTileMesh
                         !at.TryGetValue((x + 1, y + 1), out var d))
                         continue;
                     var tex = LayersAt(a.P, cells, bySlot, textures);
+                    if (tex.A < 0)
+                        continue;
                     Add(triangles, a, b, d, tex.A, tex.B);
                     Add(triangles, a, d, c, tex.A, tex.B);
                 }
@@ -193,6 +195,8 @@ public sealed class LevTileMesh
             if ((i & 1) != 0)
                 (b, c) = (c, b);
             var tex = LayersAt(a.P, cells, bySlot, textures);
+            if (tex.A < 0)
+                continue;
             Add(triangles, a, b, c, tex.A, tex.B);
         }
     }
@@ -221,7 +225,7 @@ public sealed class LevTileMesh
         }
 
         if (n == 0)
-            return (LandscapeTextures.DefaultId, LandscapeTextures.DefaultId);
+            return (-1, -1);
         return n == 1 ? (found[0], found[0]) : (found[0], found[1]);
     }
 
