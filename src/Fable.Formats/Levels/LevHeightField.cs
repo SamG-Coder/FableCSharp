@@ -149,7 +149,10 @@ public sealed class LevHeightField
             var maxY = (int)MathF.Ceiling(MathF.Max(tri.A.Y, MathF.Max(tri.B.Y, tri.C.Y)));
             for (var y = Math.Max(0, minY); y < Math.Min(cells.Height, maxY); y++)
             for (var x = Math.Max(0, minX); x < Math.Min(cells.Width, maxX); x++)
-                covered[x, y] = true;
+            {
+                if (ContainsCellCenter(tri, x, y))
+                    covered[x, y] = true;
+            }
         }
 
         var bySlot = materials.ToDictionary(item => item.Slot);
@@ -175,10 +178,12 @@ public sealed class LevHeightField
     {
         var found = new int[2];
         var n = 0;
+        var anyNamed = false;
         foreach (var slot in new[] { cell.Material0, cell.Material1, cell.Material2 })
         {
             if (slot == 0xFF || !bySlot.TryGetValue(slot, out var material))
                 continue;
+            anyNamed = true;
             var id = LandscapeTextures.TryResolve(material.Name, textures);
             if (id is null)
                 continue;
@@ -189,7 +194,7 @@ public sealed class LevHeightField
         }
 
         if (n == 0)
-            return (-1, -1);
+            return anyNamed ? (-1, -1) : (LandscapeTextures.DefaultId, LandscapeTextures.DefaultId);
         return n == 1 ? (found[0], found[0]) : (found[0], found[1]);
     }
 
@@ -230,6 +235,33 @@ public sealed class LevHeightField
         }
 
         return LandscapeTextures.DefaultId;
+    }
+
+    /// <summary>
+    /// Strip AABBs overlap 1 m cells they do not actually cover. A cell is
+    /// covered only when its centre sits in a triangle.
+    /// </summary>
+    private static bool ContainsCellCenter(MeshTriangle tri, int x, int y)
+    {
+        var px = x + 0.5f;
+        var py = y + 0.5f;
+        var v0x = tri.C.X - tri.A.X;
+        var v0y = tri.C.Y - tri.A.Y;
+        var v1x = tri.B.X - tri.A.X;
+        var v1y = tri.B.Y - tri.A.Y;
+        var v2x = px - tri.A.X;
+        var v2y = py - tri.A.Y;
+        var dot00 = v0x * v0x + v0y * v0y;
+        var dot01 = v0x * v1x + v0y * v1y;
+        var dot02 = v0x * v2x + v0y * v2y;
+        var dot11 = v1x * v1x + v1y * v1y;
+        var dot12 = v1x * v2x + v1y * v2y;
+        var inv = dot00 * dot11 - dot01 * dot01;
+        if (MathF.Abs(inv) < 1e-12f)
+            return false;
+        var u = (dot11 * dot02 - dot01 * dot12) / inv;
+        var v = (dot00 * dot12 - dot01 * dot02) / inv;
+        return u >= -1e-4f && v >= -1e-4f && u + v <= 1f + 1e-4f;
     }
 
     private static void Add(

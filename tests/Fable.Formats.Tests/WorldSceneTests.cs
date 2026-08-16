@@ -21,6 +21,36 @@ public sealed class WorldSceneTests
     }
 
     [Fact]
+    public void World_file_parses_new_region_contains_and_sees()
+    {
+        var world = WorldFile.Parse("""
+            NewMap 1
+            LevelName "FinalAlbion\LookoutPoint.lev"
+            LevelScriptName "LookoutPoint"
+            MapUID 1
+            EndMap
+            NewRegion 4
+            RegionName "StartOakVale"
+            NewDisplayName "TXT_REGION_OAKVALE"
+            RegionDef "REGION_OAK_VALE_INTRO"
+            ContainsMap "FinalAlbion\StartOakValeWest.lev"
+            ContainsMap "FinalAlbion\StartOakValeEast.lev"
+            SeesMap "FinalAlbion\StartOakVale_Filler_01.lev"
+            EndRegion
+            """.Split('\n'));
+        Assert.Single(world.Maps);
+        Assert.Single(world.Regions);
+        var region = world.Regions[0];
+        Assert.Equal(4, region.Index);
+        Assert.Equal("StartOakVale", region.RegionName);
+        Assert.Equal("TXT_REGION_OAKVALE", region.DisplayName);
+        Assert.Equal(new[] { "StartOakValeWest", "StartOakValeEast" }, region.ContainsMaps);
+        Assert.Equal(new[] { "StartOakVale_Filler_01" }, region.SeesMaps);
+        Assert.Equal("StartOakVale", world.FindRegionContaining("StartOakValeWest")!.RegionName);
+        Assert.Null(world.FindRegionContaining("LookoutPoint"));
+    }
+
+    [Fact]
     public void Bwd_extra_u32_is_the_wld_map_uid()
     {
         var install = Require();
@@ -194,6 +224,20 @@ public sealed class WorldSceneTests
         Assert.Contains(qst.Quests, q => q.Name == "Q_NewOakValeIntro_PreAttack");
         Assert.Contains(qst.Quests, q => q.Name == "Q_GuildTraining");
         Assert.Contains(qst.Quests, q => q.Name == "Q_SunnyvaleMaster" && q.Persistent);
+
+        var oak = world.FindRegionContaining("StartOakValeWest");
+        Assert.NotNull(oak);
+        Assert.Equal("StartOakVale", oak.RegionName);
+        Assert.Equal(4, oak.Index);
+        Assert.Equal("TXT_REGION_OAKVALE", oak.DisplayName);
+        Assert.Equal("REGION_OAK_VALE_INTRO", oak.RegionDef);
+        Assert.Contains("StartOakValeWest", oak.ContainsMaps);
+        Assert.Contains("StartOakValeEast", oak.ContainsMaps);
+        Assert.Contains("StartOakvaleMemorialGarden", oak.ContainsMaps);
+        Assert.Equal(3, oak.ContainsMaps.Count);
+        Assert.Contains("StartOakVale_Filler_01", oak.SeesMaps);
+        Assert.Contains("StartOakVale_Sea_01", oak.SeesMaps);
+        Assert.Equal(9, oak.SeesMaps.Count);
 
         var kid = world.FindMap("StartOakValeWest")!;
         Assert.Equal(203, kid.Index);

@@ -154,8 +154,8 @@ public sealed class WorldGeometryTests
         Assert.Contains("Greatwood_1", world.Regions);
         Assert.Contains("Greatwood_2", world.Regions);
         Assert.Contains("GuildExterior", world.Regions);
-        Assert.DoesNotContain("PicnicArea_Filler_02", world.Regions);
-        Assert.DoesNotContain("PicnicArea_Filler_03", world.Regions);
+        Assert.Contains("PicnicArea_Filler_02", world.Regions);
+        Assert.Contains("PicnicArea_Filler_03", world.Regions);
         Assert.DoesNotContain("BowerstoneSlums", world.Regions);
 
         var minX = world.Triangles.Min(t => MathF.Min(t.A.X, MathF.Min(t.B.X, t.C.X)));
@@ -174,5 +174,35 @@ public sealed class WorldGeometryTests
         Assert.Equal(1f, sand.ColorA.X, 2);
         Assert.Equal(1f, sand.ColorA.Y, 2);
         Assert.Equal(1f, sand.ColorA.Z, 2);
+    }
+
+    [Fact]
+    public void New_game_oakvale_loads_contains_and_sees_maps()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        var things = levels.LoadThings("StartOakValeWest");
+        var world = WorldGeometry.Build(install, "StartOakValeWest", things.Things);
+
+        foreach (var name in new[]
+                 {
+                     "StartOakValeWest", "StartOakValeEast", "StartOakvaleMemorialGarden",
+                     "StartOakVale_Filler_01", "StartOakVale_Filler_02", "StartOakVale_Filler_03",
+                     "StartOakVale_Filler_04", "StartOakVale_Filler_05",
+                     "StartOakVale_Sea_01", "StartOakVale_Sea_02", "StartOakVale_Sea_03",
+                     "StartOakVale_Sea_04",
+                 })
+            Assert.Contains(name, world.Regions);
+
+        var minX = world.Triangles.Min(t => MathF.Min(t.A.X, MathF.Min(t.B.X, t.C.X)));
+        var maxX = world.Triangles.Max(t => MathF.Max(t.A.X, MathF.Max(t.B.X, t.C.X)));
+        var minY = world.Triangles.Min(t => MathF.Min(t.A.Y, MathF.Min(t.B.Y, t.C.Y)));
+        var maxY = world.Triangles.Max(t => MathF.Max(t.A.Y, MathF.Max(t.B.Y, t.C.Y)));
+        Assert.True(minX < -90f, $"west filler/sea missing, minX={minX}");
+        Assert.True(maxX > 129f, $"east village missing, maxX={maxX}");
+        Assert.True(minY < -1f, $"south sea missing, minY={minY}");
+        Assert.True(maxY > 224f, $"north filler missing, maxY={maxY}");
+        Assert.Contains(world.Triangles, t => t.TextureId == 442);
     }
 }

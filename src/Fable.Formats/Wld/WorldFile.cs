@@ -6,6 +6,7 @@ public sealed class WorldFile
     public int MapUidCount { get; init; }
     public int ThingManagerUidCount { get; init; }
     public required IReadOnlyList<WorldMap> Maps { get; init; }
+    public required IReadOnlyList<WorldRegion> Regions { get; init; }
 
     public WorldMap? FindMap(string scriptOrFileName)
     {
@@ -24,14 +25,35 @@ public sealed class WorldFile
         return null;
     }
 
+    /// <summary>
+    /// WLD <c>NewRegion</c> whose <c>ContainsMap</c> list includes this map.
+    /// New-game Oakvale is region <c>StartOakVale</c>, not <c>Maps[0]</c>.
+    /// </summary>
+    public WorldRegion? FindRegionContaining(string scriptOrFileName)
+    {
+        var stem = MapStem(scriptOrFileName);
+        foreach (var region in Regions)
+        {
+            foreach (var map in region.ContainsMaps)
+            {
+                if (map.Equals(stem, StringComparison.OrdinalIgnoreCase))
+                    return region;
+            }
+        }
+
+        return null;
+    }
+
     public static WorldFile Load(string path) => Parse(File.ReadAllLines(path));
 
     public static WorldFile Parse(IEnumerable<string> lines)
     {
         var quests = new List<string>();
         var maps = new List<WorldMap>();
+        var regions = new List<WorldRegion>();
         var inQuests = false;
         WorldMapBuilder? current = null;
+        WorldRegionBuilder? currentRegion = null;
         var mapUidCount = 0;
         var thingManagerUidCount = 0;
 
@@ -63,6 +85,7 @@ public sealed class WorldFile
 
             if (StartsWithToken(line, "NewMap", out var newMapRest))
             {
+                currentRegion = null;
                 current = new WorldMapBuilder { Index = ParseInt(newMapRest) };
                 continue;
             }
@@ -72,6 +95,36 @@ public sealed class WorldFile
                 if (current is not null)
                     maps.Add(current.Build());
                 current = null;
+                continue;
+            }
+
+            if (StartsWithToken(line, "NewRegion", out var newRegionRest))
+            {
+                current = null;
+                currentRegion = new WorldRegionBuilder { Index = ParseInt(newRegionRest) };
+                continue;
+            }
+
+            if (line.Equals("EndRegion", StringComparison.OrdinalIgnoreCase))
+            {
+                if (currentRegion is not null)
+                    regions.Add(currentRegion.Build());
+                currentRegion = null;
+                continue;
+            }
+
+            if (currentRegion is not null)
+            {
+                if (StartsWithToken(line, "RegionName", out var regionName))
+                    currentRegion.RegionName = Unquote(regionName);
+                else if (StartsWithToken(line, "NewDisplayName", out var display))
+                    currentRegion.DisplayName = Unquote(display);
+                else if (StartsWithToken(line, "RegionDef", out var def))
+                    currentRegion.RegionDef = Unquote(def);
+                else if (StartsWithToken(line, "ContainsMap", out var contains))
+                    currentRegion.ContainsMaps.Add(MapStem(contains));
+                else if (StartsWithToken(line, "SeesMap", out var sees))
+                    currentRegion.SeesMaps.Add(MapStem(sees));
                 continue;
             }
 
@@ -100,6 +153,7 @@ public sealed class WorldFile
             MapUidCount = mapUidCount,
             ThingManagerUidCount = thingManagerUidCount,
             Maps = maps,
+            Regions = regions,
         };
     }
 
@@ -122,6 +176,12 @@ public sealed class WorldFile
         if (value.Length >= 2 && value[0] == '"' && value[^1] == '"')
             return value[1..^1];
         return value;
+    }
+
+    internal static string MapStem(string pathOrName)
+    {
+        var value = Unquote(pathOrName).Replace('/', '\\');
+        return Path.GetFileNameWithoutExtension(value);
     }
 
     private static int ParseInt(string value) => int.Parse(value.Trim().Trim('"'));
@@ -152,6 +212,41 @@ public sealed class WorldFile
             LoadedOnPlayerProximity = LoadedOnPlayerProximity,
         };
     }
+
+    private sealed class WorldRegionBuilder
+    {
+        public int Index;
+        public string RegionName = "";
+        public string DisplayName = "";
+        public string RegionDef = "";
+        public List<string> ContainsMaps { get; } = [];
+        public List<string> SeesMaps { get; } = [];
+
+        public WorldRegion Build() => new()
+        {
+            Index = Index,
+            RegionName = RegionName,
+            DisplayName = DisplayName,
+            RegionDef = RegionDef,
+            ContainsMaps = ContainsMaps,
+            SeesMaps = SeesMaps,
+        };
+    }
+}
+
+/// <summary>
+/// WLD <c>NewRegion</c> / <c>EndRegion</c> block. <c>ContainsMap</c> is the
+/// playable cluster; <c>SeesMap</c> is the visible neighbourhood (fillers,
+/// seas). Exe writer <c>004FD040</c> emits both as quoted <c>.lev</c> paths.
+/// </summary>
+public sealed class WorldRegion
+{
+    public required int Index { get; init; }
+    public required string RegionName { get; init; }
+    public required string DisplayName { get; init; }
+    public required string RegionDef { get; init; }
+    public required IReadOnlyList<string> ContainsMaps { get; init; }
+    public required IReadOnlyList<string> SeesMaps { get; init; }
 }
 
 public sealed class WorldMap

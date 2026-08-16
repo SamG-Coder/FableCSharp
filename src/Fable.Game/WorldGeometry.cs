@@ -93,9 +93,10 @@ public sealed class WorldGeometry
     }
 
     /// <summary>
-    /// Fable.exe <c>SetStaticMapFileForUse: OpenStaticMaps</c> opens more than
-    /// the current WLD map. Neighbours are BWD AABBs that touch this one
-    /// (CLandscapeBackgroundPatch), not the starting-region teleport graph.
+    /// New-game / region load set. WLD <c>NewRegion</c> <c>ContainsMap</c> +
+    /// <c>SeesMap</c> is the cluster the exe groups together (StartOakVale =
+    /// West/East/Garden plus fillers and seas). BWD AABBs that touch are
+    /// still unioned (<c>OpenStaticMaps</c> / <c>CLandscapeBackgroundPatch</c>).
     /// </summary>
     internal static IReadOnlyList<WorldMap> StaticMapsAround(WorldFile world, GameInstall install, string region)
     {
@@ -115,6 +116,25 @@ public sealed class WorldGeometry
     private static IReadOnlyList<WorldMap> PrimaryPlus(WorldMap primary, WorldFile world, GameInstall install)
     {
         var maps = new List<WorldMap> { primary };
+        var seen = new HashSet<int> { primary.MapUid };
+
+        void TryAdd(WorldMap? map)
+        {
+            if (map is null || map.IsSea || !seen.Add(map.MapUid))
+                return;
+            maps.Add(map);
+        }
+
+        var cluster = world.FindRegionContaining(primary.ScriptName)
+                      ?? world.FindRegionContaining(primary.FileStem);
+        if (cluster is not null)
+        {
+            foreach (var name in cluster.ContainsMaps)
+                TryAdd(world.FindMap(name));
+            foreach (var name in cluster.SeesMaps)
+                TryAdd(world.FindMap(name));
+        }
+
         if (!File.Exists(install.BwdPath))
             return maps;
 
@@ -125,12 +145,10 @@ public sealed class WorldGeometry
 
         foreach (var map in world.Maps)
         {
-            if (map.MapUid == primary.MapUid || map.IsSea)
-                continue;
             var box = bwd.Find(map.ScriptName) ?? bwd.Find(map.FileStem);
             if (box is null || !home.Value.Touches(box.Value))
                 continue;
-            maps.Add(map);
+            TryAdd(map);
         }
 
         return maps;

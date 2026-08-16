@@ -275,21 +275,36 @@ public sealed class LevFormatTests
         var covered = new bool[cells.Width, cells.Height];
         foreach (var t in tris)
         {
-            var x = (int)MathF.Floor(MathF.Min(t.A.X, MathF.Min(t.B.X, t.C.X)));
-            var y = (int)MathF.Floor(MathF.Min(t.A.Y, MathF.Min(t.B.Y, t.C.Y)));
-            if ((uint)x < (uint)cells.Width && (uint)y < (uint)cells.Height)
-                covered[x, y] = true;
+            var minX = (int)MathF.Floor(MathF.Min(t.A.X, MathF.Min(t.B.X, t.C.X)));
+            var minY = (int)MathF.Floor(MathF.Min(t.A.Y, MathF.Min(t.B.Y, t.C.Y)));
+            var maxX = (int)MathF.Ceiling(MathF.Max(t.A.X, MathF.Max(t.B.X, t.C.X)));
+            var maxY = (int)MathF.Ceiling(MathF.Max(t.A.Y, MathF.Max(t.B.Y, t.C.Y)));
+            for (var y = Math.Max(0, minY); y < Math.Min(cells.Height, maxY); y++)
+            for (var x = Math.Max(0, minX); x < Math.Min(cells.Width, maxX); x++)
+            {
+                var px = x + 0.5f;
+                var py = y + 0.5f;
+                if (PointInTri(px, py, t.A.X, t.A.Y, t.B.X, t.B.Y, t.C.X, t.C.Y))
+                    covered[x, y] = true;
+            }
         }
 
         var bySlot = compiled.Materials.ToDictionary(m => m.Slot);
         var pathCells = 0;
         var pathCovered = 0;
-        for (var y = 90; y < 160 && y < cells.Height; y++)
-        for (var x = 10; x < 90 && x < cells.Width; x++)
+        var usable = 0;
+        var usableCovered = 0;
+        for (var y = 0; y < cells.Height; y++)
+        for (var x = 0; x < cells.Width; x++)
         {
             var slot = cells.Cells[x, y].Material0;
             if (slot == 0xFF || !bySlot.TryGetValue(slot, out var mat))
                 continue;
+            if (!LandscapeTextures.IsUsable(mat.Name))
+                continue;
+            usable++;
+            if (covered[x, y])
+                usableCovered++;
             if (!mat.Name.Contains("PATH", StringComparison.Ordinal) &&
                 !mat.Name.Contains("PAVING", StringComparison.Ordinal))
                 continue;
@@ -299,7 +314,30 @@ public sealed class LevFormatTests
         }
 
         Assert.True(pathCells > 100, $"pathCells={pathCells}");
-        Assert.True(pathCovered * 2 > pathCells, $"pathCovered={pathCovered}/{pathCells}");
+        Assert.Equal(pathCells, pathCovered);
+        Assert.Equal(usable, usableCovered);
+    }
+
+    private static bool PointInTri(
+        float px, float py, float ax, float ay, float bx, float by, float cx, float cy)
+    {
+        var v0x = cx - ax;
+        var v0y = cy - ay;
+        var v1x = bx - ax;
+        var v1y = by - ay;
+        var v2x = px - ax;
+        var v2y = py - ay;
+        var dot00 = v0x * v0x + v0y * v0y;
+        var dot01 = v0x * v1x + v0y * v1y;
+        var dot02 = v0x * v2x + v0y * v2y;
+        var dot11 = v1x * v1x + v1y * v1y;
+        var dot12 = v1x * v2x + v1y * v2y;
+        var inv = dot00 * dot11 - dot01 * dot01;
+        if (MathF.Abs(inv) < 1e-12f)
+            return false;
+        var u = (dot11 * dot02 - dot01 * dot12) / inv;
+        var v = (dot00 * dot12 - dot01 * dot02) / inv;
+        return u >= -1e-4f && v >= -1e-4f && u + v <= 1f + 1e-4f;
     }
 
     [Fact]

@@ -457,8 +457,14 @@ static void RunTraceLandscape(PeImage pe, string outDir)
     DumpFn("Build current patch 00BDD0E0", 0x00BDD0E0, 160);
     DumpFn("Attach patch 00BDF010", 0x00BDF010, 80);
     DumpFn("Create background patch 00BE03A0", 0x00BE03A0, 80);
-    DumpFn("Tile stream 00BF9290", 0x00BF9290, 80);
+    DumpFn("Tile stream 00BF9290", 0x00BF9290, 160);
     DumpFn("Tile vector 00BF97A0", 0x00BF97A0, 60);
+    DumpFn("Tile vector erase 00BF9420", 0x00BF9420, 40);
+    DumpFn("Tile vector helper 00BF8E50", 0x00BF8E50, 80);
+    DumpFn("WLD NewRegion writer 004FD040", 0x004FD040, 120);
+    DumpFn("WLD NewRegion reader 0050881D", 0x0050881D, 80);
+    DumpFn("WLD ContainsMap 004FD7F9", 0x004FD7F9, 40);
+    DumpFn("WLD SeesMap 004FD996", 0x004FD996, 40);
     DumpFn("Background patch ctor", 0x00BE6090, 80);
     DumpFn("Landscape draw vtbl+16", 0x00B6B0B0, 160);
     DumpFn("Shared lighting setup", 0x00B67480, 40);

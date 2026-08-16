@@ -211,10 +211,12 @@ public sealed class LevTileMesh
         var y = Math.Clamp((int)MathF.Floor(p.Y), 0, cells.Height - 1);
         var found = new int[2];
         var n = 0;
+        var anyNamed = false;
         foreach (var slot in new[] { cells.Cells[x, y].Material0, cells.Cells[x, y].Material1, cells.Cells[x, y].Material2 })
         {
             if (slot == 0xFF || !bySlot.TryGetValue(slot, out var material))
                 continue;
+            anyNamed = true;
             var id = LandscapeTextures.TryResolve(material.Name, textures);
             if (id is null)
                 continue;
@@ -225,7 +227,7 @@ public sealed class LevTileMesh
         }
 
         if (n == 0)
-            return (-1, -1);
+            return anyNamed ? (-1, -1) : (LandscapeTextures.DefaultId, LandscapeTextures.DefaultId);
         return n == 1 ? (found[0], found[0]) : (found[0], found[1]);
     }
 

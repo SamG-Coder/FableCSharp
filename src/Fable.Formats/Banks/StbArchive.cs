@@ -85,9 +85,7 @@ public sealed class StbArchive : IDisposable
         foreach (var entry in Entries)
         {
             var file = Path.GetFileName(entry.Name);
-            if (file.Equals(needle, StringComparison.OrdinalIgnoreCase) &&
-                !file.Contains("Filler", StringComparison.OrdinalIgnoreCase) &&
-                !file.Contains("Demon", StringComparison.OrdinalIgnoreCase))
+            if (file.Equals(needle, StringComparison.OrdinalIgnoreCase))
                 return entry;
         }
 
