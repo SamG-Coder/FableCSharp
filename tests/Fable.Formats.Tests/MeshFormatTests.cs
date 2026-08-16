@@ -132,7 +132,9 @@ public sealed class MeshFormatTests
         Assert.Contains(mesh.Materials, m => m.Name.Contains("Wall", StringComparison.OrdinalIgnoreCase) && m.Flag3 == 0);
         var walls3180 = mesh.Materials.Single(m => m.DiffuseMapId == 3180);
         Assert.Equal(1, walls3180.Flag1);
+        Assert.Equal(41, WorldShading.MaterialFlag1Offset);
         Assert.False(WorldShading.FirstSeenFlag1WritesLayerType20);
+        Assert.False(WorldShading.FirstSeenStaticLitReadsFlag1);
         Assert.DoesNotContain(mesh.Triangles, t => t.SrcAlphaBlend);
     }
 
@@ -187,6 +189,12 @@ public sealed class MeshFormatTests
         Assert.Equal(1, hair.Flag1);
         Assert.Equal(1u, hair.MapFlags);
         Assert.Equal(0, hair.Flag3);
+        Assert.Equal(41, WorldShading.MaterialFlag1Offset);
+        Assert.Equal(48, WorldShading.MaterialStrideBytes);
+        Assert.Equal(0x00ABF6B0u, WorldShading.MaterialSerialize);
+        Assert.Equal(5, WorldShading.FirstSeenPalskinFlag1MaskOr);
+        Assert.True(WorldShading.FirstSeenPalskinReadsFlag1);
+        Assert.False(WorldShading.FirstSeenStaticLitReadsFlag1);
         Assert.DoesNotContain(mesh.Materials, m => m.Flag1 == 1 && m != hair);
         Assert.False(WorldShading.FirstSeenAppliesCullNoneFromFlag1);
         Assert.False(WorldShading.FirstSeenFlag1WritesLayerType20);

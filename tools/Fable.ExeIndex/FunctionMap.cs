@@ -28,8 +28,11 @@ internal static class FunctionMap
         (0x00B23800, 0x00B24000, "water-name-setter"),
         (0x00B32000, 0x00B34000, "MainScene-prims"),
         (0x00B41000, 0x00B4A000, "maps-lighting"),
+        (0x00A89400, 0x00A89600, "c3d-mesh-serialize"),
+        (0x00ABF600, 0x00ABF800, "c3d-material-serialize"),
         (0x00B66000, 0x00B7F000, "landscape-water"),
         (0x00B89C00, 0x00BDB000, "static-palskin"),
+        (0x00BE9100, 0x00BE9500, "sea-mesh-builder"),
         (0x00BDB000, 0x00BDC800, "LayoutLights"),
         (0x00BF4000, 0x00BF6000, "per-cell"),
         (0x00DBDE00, 0x00DBF000, "StartOakVale"),
@@ -67,6 +70,9 @@ internal static class FunctionMap
         ("sea bind 00B6DC40", 0x00B6DC40),
         ("water rebuild vtbl1", 0x00B71FB0),
         ("water +636 setter", 0x00B23F00),
+        ("sea mesh copy", 0x00B6D420),
+        ("sea mesh builder", 0x00BE91E0),
+        ("C3D material serialize", 0x00ABF6B0),
         ("static VS bind", 0x00B8B660),
         ("PALSKIN VS bind", 0x00BD01B8),
         ("PALSKIN bone pack", 0x00BD2D90),
@@ -210,6 +216,8 @@ internal static class FunctionMap
         WriteHits(sb, nodes, "VSHADER_LANDSCAPE_FOREGROUND");
         WriteHits(sb, nodes, "MARKER_LIGHT");
         WriteHits(sb, nodes, "ENGINE_WATER");
+        WriteHits(sb, nodes, "00BE91E0");
+        WriteHits(sb, nodes, "00ABF6B0");
         WriteHits(sb, nodes, "00B6CBD0");
         WriteHits(sb, nodes, "00B68DA0");
         WriteHits(sb, nodes, "00BB5040");

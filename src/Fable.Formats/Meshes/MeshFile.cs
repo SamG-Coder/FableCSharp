@@ -636,9 +636,13 @@ public readonly record struct MeshMaterial(
     float SelfIllumination = 0,
     byte Flag0 = 0,
     /// <summary>
-    /// Stored after SelfIllumination. Kid hair / house 3180 are 1.
-    /// First-seen cull does not select NONE from this byte
+    /// C3DMeshMaterial+41 after SelfIllumination
+    /// (<see cref="WorldShading.MaterialFlag1Offset"/>). Kid hair /
+    /// house 3180 are 1. First-seen cull does not select NONE from
+    /// this byte
     /// (<see cref="WorldShading.FirstSeenAppliesCullNoneFromFlag1"/>).
+    /// First-seen PALSKIN reads it and ORs 5 into a feature mask
+    /// (<see cref="WorldShading.FirstSeenPalskinReadsFlag1"/>).
     /// </summary>
     byte Flag1 = 0,
     byte Flag2 = 0,

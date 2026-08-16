@@ -379,4 +379,21 @@ public static class WorldShading
     /// </summary>
     public const bool FirstSeenPalskinSrcAlphaBlend = true;
     public const bool FirstSeenFlag1SelectsAlphaBlend = false;
+
+    /// <summary>
+    /// C3D material serialize <c>00ABF6B0</c> (only <c>E8</c> from
+    /// mesh serialize <c>00A89450</c> at <c>00A8958B</c>, stride
+    /// 48): Flag0 at +40, Flag1 at +41, Flag2 at +42, Flag3 at
+    /// +43. First-seen PALSKIN draw <c>00BD71B0</c> at
+    /// <c>00BD76D2</c>/<c>00BD7705</c> reads +41. If Flag2==0 and
+    /// Flag1!=0 it <c>or ebx, 5</c>. First-seen static-lit
+    /// <c>00BB2540</c> has no +41 read. What mask 5 selects
+    /// (two-sided / slot +12664) is still UNREAD.
+    /// </summary>
+    public const int MaterialFlag1Offset = 41;
+    public const int MaterialStrideBytes = 48;
+    public const uint MaterialSerialize = 0x00ABF6B0;
+    public const int FirstSeenPalskinFlag1MaskOr = 5;
+    public const bool FirstSeenPalskinReadsFlag1 = true;
+    public const bool FirstSeenStaticLitReadsFlag1 = false;
 }

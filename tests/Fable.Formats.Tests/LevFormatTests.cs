@@ -276,6 +276,16 @@ public sealed class LevFormatTests
         Assert.Equal(0x00B23900u, LandscapeTextures.WaterWantedNameThisSetter);
         Assert.Equal(14, LandscapeTextures.WaterWantedNameSetterVtblSlot);
         Assert.False(LandscapeTextures.FirstSeenCallsWantedNameSetter);
+        Assert.False(LandscapeTextures.FirstSeenReadsSeaPrefixWords);
+        Assert.False(LandscapeTextures.FirstSeenCallsSeaMeshCopy);
+        Assert.Equal(0x00B6D420u, LandscapeTextures.SeaMeshCopy);
+        Assert.Equal(0x00BE91E0u, LandscapeTextures.SeaMeshBuilder);
+        Assert.Equal(0x00B6DECDu, LandscapeTextures.SeaMeshCopyCallSite);
+        Assert.Equal(12, LandscapeTextures.SeaVertexStrideBytes);
+        Assert.Equal(101, LandscapeTextures.SeaIndexFormat);
+        Assert.Equal(180, LandscapeTextures.SeaMeshPrimitiveCountOffset);
+        Assert.Equal(7363u, LandscapeTextures.StartOakValeSeaPrefix[0]);
+        Assert.Equal(44259u, LandscapeTextures.StartOakValeSeaPrefix[1]);
         Assert.False(LandscapeTextures.IsLoadableWaterBank(oakBytes));
         Assert.DoesNotContain(stb.Entries, e =>
             e.Name.Contains("__ENGINE_WATER_STATIC_MAP_BANK_FILE__", StringComparison.Ordinal));

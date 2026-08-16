@@ -89,11 +89,25 @@ public static class LandscapeTextures
     public const bool SeaBindUsesType8Check = false;
 
     /// <summary>
-    /// StartOakVale sea bank first five u32s. Meaning of words
-    /// 1–4 is UNREAD; word 0 is not type 8.
+    /// StartOakVale sea bank first five u32s. Word 0 is not type 8.
+    /// When bind runs, <c>00BE91E0</c> (only <c>E8</c> from
+    /// <c>00B6D420</c> at <c>00B6DECD</c>) reads word 0 as vertex
+    /// count, word 1 as index count, word 2 as vertex payload
+    /// bytes, word 3 as index payload bytes. Word 4 is the first
+    /// payload dword. First-seen never reaches that reader
+    /// (<see cref="FirstSeenReadsSeaPrefixWords"/>).
     /// </summary>
     public static readonly uint[] StartOakValeSeaPrefix =
         [7363, 44259, 58022, 1135617, 4340736];
+
+    public const uint SeaMeshCopy = 0x00B6D420;
+    public const uint SeaMeshBuilder = 0x00BE91E0;
+    public const uint SeaMeshCopyCallSite = 0x00B6DECD;
+    public const int SeaVertexStrideBytes = 12;
+    public const int SeaIndexFormat = 101;
+    public const int SeaMeshPrimitiveCountOffset = 180;
+    public const bool FirstSeenReadsSeaPrefixWords = false;
+    public const bool FirstSeenCallsSeaMeshCopy = false;
 
     /// <summary>
     /// Only assigner of water <c>+636</c>: <c>00B23F00</c> does
