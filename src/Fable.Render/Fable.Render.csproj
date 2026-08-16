@@ -19,6 +19,10 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Fable.Core\Fable.Core.csproj" />
+    <ProjectReference Include="..\Fable.Formats\Fable.Formats.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Fable.Formats.Tests" />
   </ItemGroup>
 
 </Project>

@@ -13,7 +13,7 @@ using Semaphore = Silk.NET.Vulkan.Semaphore;
 
 namespace Fable.Render;
 
-public sealed unsafe class VulkanLineRenderer : IDisposable
+public sealed unsafe partial class VulkanLineRenderer : IDisposable
 {
     private const int MaxFrames = 2;
 
@@ -41,8 +41,15 @@ public sealed unsafe class VulkanLineRenderer : IDisposable
     private Extent2D _extent;
     private RenderPass _renderPass;
     private PipelineLayout _pipelineLayout;
+    private PipelineLayout _meshPipelineLayout;
     private Pipeline _linePipeline;
     private Pipeline _meshPipeline;
+    private DescriptorSetLayout _descriptorSetLayout;
+    private DescriptorPool _descriptorPool;
+    private Sampler _sampler;
+    private readonly Dictionary<int, DeviceTexture> _textures = new();
+    private DeviceTexture _fallbackTexture;
+    private MeshDraw[] _draws = [];
     private Image _depthImage;
     private DeviceMemory _depthMemory;
     private ImageView _depthView;
@@ -74,10 +81,12 @@ public sealed unsafe class VulkanLineRenderer : IDisposable
         CreateImageViews();
         CreateDepthResources();
         CreateRenderPass();
+        CreateSamplerAndLayout();
         CreatePipeline();
         CreateFramebuffers();
         CreateCommandPool();
         CreateSync();
+        SetTextures([]);
         window.FramebufferResize += _ => _resized = true;
     }
 
@@ -110,8 +119,9 @@ public sealed unsafe class VulkanLineRenderer : IDisposable
         _vk.UnmapMemory(_device, _vertexMemory);
     }
 
-    public void SetMesh(ReadOnlySpan<MeshVertex> vertices)
+    public void SetMesh(ReadOnlySpan<MeshVertex> vertices, ReadOnlySpan<MeshDraw> draws = default)
     {
+        _draws = draws.Length == 0 ? [] : draws.ToArray();
         _meshCount = (uint)vertices.Length;
         if (_meshCount == 0)
             return;
@@ -221,9 +231,18 @@ public sealed unsafe class VulkanLineRenderer : IDisposable
         }
 
         _vk.DestroyCommandPool(_device, _commandPool, null);
+        DestroyTextures();
         _vk.DestroyPipeline(_device, _linePipeline, null);
         _vk.DestroyPipeline(_device, _meshPipeline, null);
         _vk.DestroyPipelineLayout(_device, _pipelineLayout, null);
+        if (_meshPipelineLayout.Handle != 0)
+            _vk.DestroyPipelineLayout(_device, _meshPipelineLayout, null);
+        if (_descriptorPool.Handle != 0)
+            _vk.DestroyDescriptorPool(_device, _descriptorPool, null);
+        if (_descriptorSetLayout.Handle != 0)
+            _vk.DestroyDescriptorSetLayout(_device, _descriptorSetLayout, null);
+        if (_sampler.Handle != 0)
+            _vk.DestroySampler(_device, _sampler, null);
         _vk.DestroyRenderPass(_device, _renderPass, null);
         _vk.DestroyDevice(_device, null);
         if (_validation)
@@ -584,13 +603,23 @@ public sealed unsafe class VulkanLineRenderer : IDisposable
             StageFlags = ShaderStageFlags.VertexBit,
             Size = 64,
         };
-        var layoutInfo = new PipelineLayoutCreateInfo
+        var setLayout = _descriptorSetLayout;
+        var lineLayoutInfo = new PipelineLayoutCreateInfo
         {
             SType = StructureType.PipelineLayoutCreateInfo,
             PushConstantRangeCount = 1,
             PPushConstantRanges = &push,
         };
-        Check(_vk.CreatePipelineLayout(_device, in layoutInfo, null, out _pipelineLayout));
+        Check(_vk.CreatePipelineLayout(_device, in lineLayoutInfo, null, out _pipelineLayout));
+        var meshLayoutInfo = new PipelineLayoutCreateInfo
+        {
+            SType = StructureType.PipelineLayoutCreateInfo,
+            SetLayoutCount = 1,
+            PSetLayouts = &setLayout,
+            PushConstantRangeCount = 1,
+            PPushConstantRanges = &push,
+        };
+        Check(_vk.CreatePipelineLayout(_device, in meshLayoutInfo, null, out _meshPipelineLayout));
 
         var lineDepth = new PipelineDepthStencilStateCreateInfo
         {
@@ -644,7 +673,7 @@ public sealed unsafe class VulkanLineRenderer : IDisposable
         {
             new() { Location = 0, Binding = 0, Format = Format.R32G32B32Sfloat, Offset = 0 },
             new() { Location = 1, Binding = 0, Format = Format.R32G32B32Sfloat, Offset = 12 },
-            new() { Location = 2, Binding = 0, Format = Format.R32G32B32Sfloat, Offset = 24 },
+            new() { Location = 2, Binding = 0, Format = Format.R32G32Sfloat, Offset = MeshVertex.UvOffset },
         };
         var meshVertexInput = new PipelineVertexInputStateCreateInfo
         {
@@ -658,6 +687,7 @@ public sealed unsafe class VulkanLineRenderer : IDisposable
         raster.CullMode = CullModeFlags.None;
         pipelineInfo.PVertexInputState = &meshVertexInput;
         pipelineInfo.PDepthStencilState = &meshDepth;
+        pipelineInfo.Layout = _meshPipelineLayout;
         Check(_vk.CreateGraphicsPipelines(_device, default, 1, in pipelineInfo, null, out _meshPipeline));
 
         _vk.DestroyShaderModule(_device, meshVert, null);
@@ -797,20 +827,21 @@ public sealed unsafe class VulkanLineRenderer : IDisposable
         // System.Numerics is row-major. GLSL mat4 is column-major, so uploading
         // the row-major bytes already transposes. Do not Transpose() again.
         var viewProj = viewProjection;
-        _vk.CmdPushConstants(commandBuffer, _pipelineLayout, ShaderStageFlags.VertexBit, 0, 64, &viewProj);
 
         if (_meshCount > 0 && _meshBuffer.Handle != 0)
         {
             _vk.CmdBindPipeline(commandBuffer, PipelineBindPoint.Graphics, _meshPipeline);
+            _vk.CmdPushConstants(commandBuffer, _meshPipelineLayout, ShaderStageFlags.VertexBit, 0, 64, &viewProj);
             ulong offset = 0;
             var meshBuffer = _meshBuffer;
             _vk.CmdBindVertexBuffers(commandBuffer, 0, 1, in meshBuffer, in offset);
-            _vk.CmdDraw(commandBuffer, _meshCount, 1, 0, 0);
+            DrawMeshBatches(commandBuffer);
         }
 
         if (_vertexCount > 0 && _vertexBuffer.Handle != 0)
         {
             _vk.CmdBindPipeline(commandBuffer, PipelineBindPoint.Graphics, _linePipeline);
+            _vk.CmdPushConstants(commandBuffer, _pipelineLayout, ShaderStageFlags.VertexBit, 0, 64, &viewProj);
             ulong offset = 0;
             var vertexBuffer = _vertexBuffer;
             _vk.CmdBindVertexBuffers(commandBuffer, 0, 1, in vertexBuffer, in offset);

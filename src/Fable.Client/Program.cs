@@ -53,7 +53,9 @@ window.Load += () =>
 
     renderer = new VulkanLineRenderer(window);
     renderer.SetLines(CollectionsMarshalAsSpan(scene.Lines));
-    renderer.SetMesh(BuildMeshVertices(world.Triangles, textures));
+    var mesh = MeshBatches.Build(world.Triangles);
+    renderer.SetTextures(LoadGpuTextures(mesh, textures));
+    renderer.SetMesh(mesh.Vertices, mesh.Draws);
     input = window.CreateInput();
     mouse = input.Mice.Count > 0 ? input.Mice[0] : null;
     if (mouse is not null)
@@ -61,7 +63,7 @@ window.Load += () =>
 
     Console.WriteLine($"{install.Edition}: {install.Root}");
     Console.WriteLine($"{region}: {scene.ThingCount} things, {scene.Lines.Count} line verts");
-    Console.WriteLine($"camera {camera.Position} -> {lookTarget}  meshVerts={world.Triangles.Count * 3}");
+    Console.WriteLine($"camera {camera.Position} -> {lookTarget}  meshVerts={mesh.Vertices.Length} textures={mesh.Draws.Length}");
     Console.WriteLine("WASD move  Q/E up-down  Shift sprint  RMB look  Home reset  F1 dump  Esc quit");
 };
 
@@ -153,20 +155,10 @@ void DumpThings()
 static ReadOnlySpan<LineVertex> CollectionsMarshalAsSpan(IReadOnlyList<LineVertex> lines) =>
     lines is List<LineVertex> list ? System.Runtime.InteropServices.CollectionsMarshal.AsSpan(list) : lines.ToArray();
 
-static MeshVertex[] BuildMeshVertices(
-    IReadOnlyList<Fable.Formats.Meshes.MeshTriangle> triangles,
-    TextureLibrary textures)
+static IReadOnlyList<GpuTexture> LoadGpuTextures(TexturedMesh mesh, TextureLibrary textures)
 {
-    var vertices = new MeshVertex[triangles.Count * 3];
-    var i = 0;
-    foreach (var tri in triangles)
-    {
-        var ca = textures.Sample(tri.TextureId, tri.UvA);
-        var cb = textures.Sample(tri.TextureId, tri.UvB);
-        var cc = textures.Sample(tri.TextureId, tri.UvC);
-        vertices[i++] = new MeshVertex(tri.A, tri.Normal, ca);
-        vertices[i++] = new MeshVertex(tri.B, tri.Normal, cb);
-        vertices[i++] = new MeshVertex(tri.C, tri.Normal, cc);
-    }
-    return vertices;
+    var files = textures.LoadMany(mesh.Draws.Select(draw => draw.TextureId));
+    return files
+        .Select(file => new GpuTexture(file.Id, file.Width, file.Height, file.Rgba))
+        .ToList();
 }

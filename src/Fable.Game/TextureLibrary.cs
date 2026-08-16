@@ -36,9 +36,32 @@ public sealed class TextureLibrary : IDisposable
         if (!_byId.TryGetValue(key, out var entry))
             return null;
 
-        var texture = TextureFile.Parse(entry.Id, entry.Name, entry.Type, entry.Info, _big.Read(entry));
-        _cache[key] = texture;
-        return texture;
+        try
+        {
+            var texture = TextureFile.Parse(entry.Id, entry.Name, entry.Type, entry.Info, _big.Read(entry));
+            _cache[key] = texture;
+            return texture;
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
+
+    public IReadOnlyList<TextureFile> LoadMany(IEnumerable<int> ids)
+    {
+        var files = new List<TextureFile>();
+        var seen = new HashSet<int>();
+        foreach (var id in ids)
+        {
+            if (!seen.Add(id))
+                continue;
+            var texture = TryLoad(id);
+            if (texture is not null)
+                files.Add(texture);
+        }
+
+        return files;
     }
 
     public Vector3 Sample(int id, Vector2 uv)
