@@ -566,8 +566,17 @@ public sealed class WorldSceneTests
         Assert.False(intro.ExecutedVerb("DoScriptFrame"));
         script.Update(0.1f);
         Assert.Contains("DoScriptFrame 1", intro.Executed);
-        Assert.Equal("DoCameraPreloading", intro.Commands[intro.InstructionPointer]);
-        Assert.Equal("DoCameraPreloading", intro.UnsupportedCommand);
+        Assert.Contains("DoCameraPreloading", intro.Executed);
+        Assert.True(RegionTravel.FirstSeenDoCameraPreloadingDoesNotYield);
+        Assert.False(RegionTravel.FirstSeenDoCameraPreloadingHasTrueArg);
+        Assert.Equal(0x00CC86D0u, RegionTravel.DoCameraPreloadingOpcode);
+        Assert.Equal(0x00CBEDBAu, RegionTravel.IsTrueArgFn);
+        Assert.Equal("DoScriptFrame 1", intro.Commands[intro.InstructionPointer]);
+        Assert.Null(intro.UnsupportedCommand);
+        Assert.Contains("CAM_OVIF_SHOT2", runtime.PreloadedCameras);
+        Assert.Equal(RegionTravel.IntroFirstSeenCamera, camera.ActiveName);
+        Assert.False(intro.ExecutedVerb("UseCamera"));
+        Assert.False(intro.ExecutedVerb("PlayAVI"));
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 

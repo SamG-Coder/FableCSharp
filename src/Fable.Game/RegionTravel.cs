@@ -148,6 +148,14 @@ public static class RegionTravel
     public const uint DoScriptFrameAtoi = 0x0099E7F0;
     public const int DoScriptFrameDefaultCount = 1;
     public const bool FirstSeenDoScriptFrameYieldsPerCount = true;
+    public const uint DoCameraPreloadingOpcode = 0x00CC86D0;
+    public const uint DoCameraPreloadingApply = 0x00CC8720;
+    public const int DoCameraPreloadingBeginVtbl = 1564;
+    public const int DoCameraPreloadingTimedVtbl = 1560;
+    public const int DoCameraPreloadingEndVtbl = 1568;
+    public const uint IsTrueArgFn = 0x00CBEDBA;
+    public const bool FirstSeenDoCameraPreloadingDoesNotYield = true;
+    public const bool FirstSeenDoCameraPreloadingHasTrueArg = false;
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;

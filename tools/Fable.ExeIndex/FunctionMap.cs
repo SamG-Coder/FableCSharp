@@ -183,6 +183,8 @@ internal static class FunctionMap
         ("DoScriptFrame token", 0x00CC7085),
         ("DoScriptFrame wait", 0x00CC70D5),
         ("CString atoi", 0x0099E7F0),
+        ("DoCameraPreloading token", 0x00CC86D0),
+        ("IsTrue arg", 0x00CBEDBA),
         ("quest script bind", 0x00CB5C90),
         ("bind camera source", 0x00B23B50),
         ("Component add by name", 0x004C9D60),

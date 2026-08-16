@@ -175,6 +175,8 @@ public sealed class ScriptInterpreter
             host.Teleport(command.Actor, command.Arguments);
         else if (command.Verb.Equals("LookToThing", StringComparison.OrdinalIgnoreCase))
             host.LookToThing(command.Actor, command.Arguments);
+        else if (command.Verb.Equals("DoCameraPreloading", StringComparison.OrdinalIgnoreCase))
+            host.DoCameraPreloading(command.Arguments);
     }
 
     internal static void ParseFadeArgs(string arguments, out float seconds, out float param)
@@ -249,7 +251,8 @@ public readonly struct ScriptCommand
             verb.Equals("NoLoadUseCamera", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("PlayAnimation", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("CameraPause", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("Teleport", StringComparison.OrdinalIgnoreCase))
+            verb.Equals("Teleport", StringComparison.OrdinalIgnoreCase) ||
+            verb.Equals("DoCameraPreloading", StringComparison.OrdinalIgnoreCase))
             return ScriptFlow.Continue;
         if (verb.Equals("LookToThing", StringComparison.OrdinalIgnoreCase))
         {
@@ -281,4 +284,5 @@ public interface IScriptHost
     void CameraPause(string arguments);
     void Teleport(string? actor, string arguments);
     void LookToThing(string? actor, string arguments);
+    void DoCameraPreloading(string arguments);
 }

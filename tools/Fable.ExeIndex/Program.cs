@@ -868,6 +868,7 @@ static void RunExportScriptBank(PeImage pe, DumpStore store, GameInstall? instal
     native.AppendLine("| .LookToThing | `00CC3B3F` | apply `vtbl+1992`, parse `forever`. Third arg `00CBEE0C` (IsFalse) skips wait. Else if `[ebp+103]` (set **1** at `00CBFC65`) **`call [eax+28]`** then `00CBF7FE` / `jmp 00CC707C`. |");
     native.AppendLine("| actor join | `00CC707C` | dtor then next token `DoScriptFrame`. Teleport does not wait there. |");
     native.AppendLine("| DoScriptFrame | `00CC7085` | default count **1** (`xor esi; inc esi`). Arg via `0099E7F0` atoi. `esi<=0` skips. Loop: if `[ebp+103]` **`call [eax+28]`**, then `00CBF7FE`, `dec esi`. First-seen `[ebp+103]=1`. |");
+    native.AppendLine("| DoCameraPreloading | `00CC86D0` | `vtbl+1564`, then if first arg `00CBEDBA` IsTrue: `vtbl+1560`(float, default 2.0). Else `00CBF29F`(dl=0) preload. Then `vtbl+1568`. **`jmp 00CD17FD`** (no yield). First-seen has no args. |");
     native.AppendLine("| IsFalse | `00CBEE0C` | strcmp arg to `false` via `00BFEBA8`. |");
     store.WritePart(family, "native-sqnovi", native.ToString());
     links.Insert(4, new IndexLink("native-sqnovi", "native S_QNOVI", 0));
@@ -1098,6 +1099,9 @@ static void RunTraceScriptRuntime(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "DoScriptFrame token 00CC7085", 0x00CC7085, 40, stopOnRet: false),
         WriteFnPart(pe, store, family, "DoScriptFrame wait 00CC70D5", 0x00CC70D5, 30, stopOnRet: false),
         WriteWalkPart(pe, store, family, "CString atoi 0099E7F0", 0x0099E7F0, 40),
+        WriteFnPart(pe, store, family, "DoCameraPreloading token 00CC86D0", 0x00CC86D0, 50, stopOnRet: false),
+        WriteFnPart(pe, store, family, "DoCameraPreloading apply 00CC8720", 0x00CC8720, 30, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "IsTrue arg 00CBEDBA", 0x00CBEDBA, 40),
         WriteVtblPart(pe, store, family, "CCutsceneDef vtbl 012FB6E0", 0x012FB6E0, 24),
         WriteCallsPart(pe, store, family, "calls S_QNOVI factory 00DBEF70", 0x00DBEF70),
         WriteCallsPart(pe, store, family, "calls S_QNOVI run 00DABAC0", 0x00DABAC0),
@@ -1614,6 +1618,9 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "DoScriptFrame token 00CC7085", 0x00CC7085, 40, stopOnRet: false),
         WriteFnPart(pe, store, family, "DoScriptFrame wait 00CC70D5", 0x00CC70D5, 30, stopOnRet: false),
         WriteWalkPart(pe, store, family, "CString atoi 0099E7F0", 0x0099E7F0, 40),
+        WriteFnPart(pe, store, family, "DoCameraPreloading token 00CC86D0", 0x00CC86D0, 50, stopOnRet: false),
+        WriteFnPart(pe, store, family, "DoCameraPreloading apply 00CC8720", 0x00CC8720, 30, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "IsTrue arg 00CBEDBA", 0x00CBEDBA, 40),
         WriteWalkPart(pe, store, family, "FadeIn FadeOut 00CC4B22", 0x00CC4B22, 80),
         WriteWalkPart(pe, store, family, "Registering Scripts 00CB5D80", 0x00CB5D80, 80),
         WriteWalkPart(pe, store, family, "quest base ctor 00CB8110", 0x00CB8110, 80),

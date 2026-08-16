@@ -25,12 +25,14 @@ public sealed class ScriptRuntime : IScriptHost
     public IReadOnlyDictionary<string, bool> PersistFields => _persist;
     public IReadOnlyDictionary<string, string> NamedScripts => _named;
     public IReadOnlyList<ScriptTeleport> Teleports => _teleports;
+    public IReadOnlyList<string> PreloadedCameras => _preloadedCameras;
 
     private readonly Dictionary<string, string> _named = new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, bool> _persist = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<ScriptFiber> _fibers = [];
     private readonly List<ScriptInterpreter> _interpreters = [];
     private readonly List<ScriptTeleport> _teleports = [];
+    private readonly List<string> _preloadedCameras = [];
     private IReadOnlyList<ThingInstance> _things = [];
     private ScriptedCamera? _camera;
 
@@ -191,6 +193,34 @@ public sealed class ScriptRuntime : IScriptHost
 
     void IScriptHost.LookToThing(string? actor, string arguments) =>
         _ = (actor, arguments);
+
+    /// <summary>
+    /// <c>00CC86D0</c> default path: <c>00CBF29F</c> with
+    /// <c>dl=0</c> collects UseCamera names via
+    /// <c>vtbl+1648</c>. First-seen has no TRUE arg so
+    /// <c>vtbl+1560</c> is skipped. <c>vtbl+1564/+1568</c>
+    /// bodies stay UNREAD.
+    /// </summary>
+    void IScriptHost.DoCameraPreloading(string arguments)
+    {
+        _ = arguments;
+        var source = ActiveInterpreter?.Commands;
+        if (source is null)
+            return;
+        foreach (var line in source)
+        {
+            var command = ScriptCommand.Parse(line);
+            if (!command.Verb.Equals("UseCamera", StringComparison.OrdinalIgnoreCase) &&
+                !command.Verb.Equals("CameraLookAt", StringComparison.OrdinalIgnoreCase) &&
+                !command.Verb.Equals("CameraLookBetween", StringComparison.OrdinalIgnoreCase) &&
+                !command.Verb.Equals("CameraFOVLookBetween", StringComparison.OrdinalIgnoreCase))
+                continue;
+            var name = ScriptInterpreter.FirstToken(command.Arguments);
+            if (name.Length == 0 || _preloadedCameras.Contains(name, StringComparer.OrdinalIgnoreCase))
+                continue;
+            _preloadedCameras.Add(name);
+        }
+    }
 
     private ThingInstance? FindThing(string name)
     {
