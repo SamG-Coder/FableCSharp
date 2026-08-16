@@ -203,7 +203,7 @@ public sealed class WorldGeometryTests
         Assert.True(maxX > 129f, $"east village missing, maxX={maxX}");
         Assert.True(minY < -1f, $"south sea missing, minY={minY}");
         Assert.True(maxY > 224f, $"north filler missing, maxY={maxY}");
-        Assert.Contains(world.Triangles, t => t.TextureId == 442);
+        Assert.DoesNotContain(world.Triangles, t => t.TextureId == 442);
         Assert.Equal(4300, world.PlayerMeshId);
         Assert.InRange(world.PlayerHeight, 1.0f, 2.2f);
         var start = RegionTravel.FindPlayerStart(things.Things);

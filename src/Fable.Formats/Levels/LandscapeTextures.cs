@@ -38,8 +38,11 @@ public static class LandscapeTextures
     {
         if (!IsUsable(materialName))
             return null;
+        // LoadWaterData 00B41FA0 rejects unless the bank u32 is 8.
+        // StartOakVale sea is 7363. Draw 00B783F0 returns when the
+        // renderer vectors are empty. Not landscape FG.
         if (IsWaterOrSeaPass(materialName))
-            return WaterTexture(textures);
+            return null;
         return textures is null ? DefaultId : Resolve(materialName, textures);
     }
 

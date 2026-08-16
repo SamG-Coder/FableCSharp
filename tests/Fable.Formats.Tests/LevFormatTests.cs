@@ -231,10 +231,10 @@ public sealed class LevFormatTests
         Assert.NotEqual(1911, LandscapeTextures.Resolve("GROUND_PATH_SAND", enums));
         Assert.True(LandscapeTextures.IsWaterOrSeaPass("SEA_OAKVALE_2"));
         Assert.True(LandscapeTextures.IsWaterOrSeaPass("WATER_GREYCLIFF_ET"));
-        Assert.Equal(442, LandscapeTextures.TryResolve("SEA_OAKVALE_2", enums));
-        Assert.Equal(442, LandscapeTextures.TryResolve("WATER_GREYCLIFF_ET", enums));
-        Assert.Equal(442, LandscapeTextures.TryResolve("WATER_BWLAKE_0", enums));
-        Assert.NotEqual(4106, LandscapeTextures.TryResolve("SEA_OAKVALE_2", enums));
+        Assert.Null(LandscapeTextures.TryResolve("SEA_OAKVALE_2", enums));
+        Assert.Null(LandscapeTextures.TryResolve("WATER_GREYCLIFF_ET", enums));
+        Assert.Null(LandscapeTextures.TryResolve("WATER_BWLAKE_0", enums));
+        Assert.Equal(442, LandscapeTextures.WaterTexture(enums));
     }
 
     [Fact]
@@ -266,7 +266,7 @@ public sealed class LevFormatTests
         Assert.True(tris.Count > 1000, $"tris={tris.Count}");
         Assert.DoesNotContain(tris, t => t.TextureId is 4106 or 4107 or 4108);
         Assert.Contains(tris, t => t.TextureId is 4130 or 414 or 428 or 412);
-        Assert.Contains(tris, t => t.TextureId == 442);
+        Assert.DoesNotContain(tris, t => t.TextureId == 442);
         Assert.Equal(0.125f, LandscapeTextures.UvScale);
         var sample = tris.First(t => t.A.X > 1f && t.A.Y > 1f);
         Assert.Equal(sample.A.X * 0.125f, sample.UvA.X, 3);
@@ -301,6 +301,8 @@ public sealed class LevFormatTests
             if (slot == 0xFF || !bySlot.TryGetValue(slot, out var mat))
                 continue;
             if (!LandscapeTextures.IsUsable(mat.Name))
+                continue;
+            if (LandscapeTextures.IsWaterOrSeaPass(mat.Name))
                 continue;
             usable++;
             if (covered[x, y])

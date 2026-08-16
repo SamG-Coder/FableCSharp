@@ -62,8 +62,6 @@ public sealed class WorldGeometry
             var primary = levels.World.FindMap(region);
             var dx = primary is null ? 0f : map.MapX - primary.MapX;
             var dy = primary is null ? 0f : map.MapY - primary.MapY;
-            var beforeTris = triangles.Count;
-            var beforeInstances = instances;
             AddTerrain(levels, map.ScriptName, dx, dy, triangles, landscapeEnums);
 
             var mapThings = IsPrimary(map, region)
@@ -71,8 +69,9 @@ public sealed class WorldGeometry
                 : levels.TryLoadThings(map.ScriptName)?.Things ?? [];
             AddInstances(mapThings, dx, dy, defs, enums, big, byId, cache, triangles, ref instances, ref missing);
 
-            if (triangles.Count > beforeTris || instances > beforeInstances)
-                loaded.Add(map.ScriptName);
+            // OpenStaticMaps still opens Sees/Contains maps when they emit
+            // no landscape tris (sea/water cells are not landscape FG).
+            loaded.Add(map.ScriptName);
         }
 
         if (loaded.Count == 0)
