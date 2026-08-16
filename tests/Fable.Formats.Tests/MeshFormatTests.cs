@@ -195,6 +195,16 @@ public sealed class MeshFormatTests
         Assert.Equal(5, WorldShading.FirstSeenPalskinFlag1MaskOr);
         Assert.True(WorldShading.FirstSeenPalskinReadsFlag1);
         Assert.False(WorldShading.FirstSeenStaticLitReadsFlag1);
+        Assert.Equal(39, WorldShading.InstanceOpacityOffset);
+        Assert.Equal(0xFF, WorldShading.FirstSeenInstanceOpacity);
+        Assert.Equal(28, WorldShading.PalskinHelperTypeIndexOffset);
+        Assert.Equal(24, WorldShading.PalskinHelperArg1Offset);
+        Assert.Equal(4, WorldShading.FirstSeenPalskinHairTypeIndex);
+        Assert.Equal(10, WorldShading.PalskinQueueSlotType1A);
+        Assert.Equal(14, WorldShading.PalskinQueueSlotType1B);
+        Assert.False(WorldShading.FirstSeenPalskinBindUsesHelperTypeIndex);
+        Assert.Equal(0x00BCE740u, WorldShading.PalskinHelperCtor);
+        Assert.Equal(0x00B849F0u, WorldShading.PrimQueueDrain);
         Assert.DoesNotContain(mesh.Materials, m => m.Flag1 == 1 && m != hair);
         Assert.False(WorldShading.FirstSeenAppliesCullNoneFromFlag1);
         Assert.False(WorldShading.FirstSeenFlag1WritesLayerType20);

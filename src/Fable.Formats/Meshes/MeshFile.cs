@@ -642,7 +642,9 @@ public readonly record struct MeshMaterial(
     /// this byte
     /// (<see cref="WorldShading.FirstSeenAppliesCullNoneFromFlag1"/>).
     /// First-seen PALSKIN reads it and ORs 5 into a feature mask
-    /// (<see cref="WorldShading.FirstSeenPalskinReadsFlag1"/>).
+    /// then stores type index 4 at helper+28
+    /// (<see cref="WorldShading.FirstSeenPalskinReadsFlag1"/>,
+    /// <see cref="WorldShading.PalskinHelperTypeIndexOffset"/>).
     /// </summary>
     byte Flag1 = 0,
     byte Flag2 = 0,

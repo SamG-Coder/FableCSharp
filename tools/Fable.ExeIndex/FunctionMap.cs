@@ -27,6 +27,7 @@ internal static class FunctionMap
         (0x00988000, 0x0098C000, "VS-wrapper"),
         (0x00B23800, 0x00B24000, "water-name-setter"),
         (0x00B32000, 0x00B34000, "MainScene-prims"),
+        (0x00B84000, 0x00B84C00, "prim-queue-drain"),
         (0x00B41000, 0x00B4A000, "maps-lighting"),
         (0x00A89400, 0x00A89600, "c3d-mesh-serialize"),
         (0x00ABF600, 0x00ABF800, "c3d-material-serialize"),
@@ -73,6 +74,9 @@ internal static class FunctionMap
         ("sea mesh copy", 0x00B6D420),
         ("sea mesh builder", 0x00BE91E0),
         ("C3D material serialize", 0x00ABF6B0),
+        ("PALSKIN helper ctor", 0x00BCE740),
+        ("prim queue drain", 0x00B849F0),
+        ("MainScene plus616 draw", 0x00B33010),
         ("static VS bind", 0x00B8B660),
         ("PALSKIN VS bind", 0x00BD01B8),
         ("PALSKIN bone pack", 0x00BD2D90),
@@ -218,6 +222,8 @@ internal static class FunctionMap
         WriteHits(sb, nodes, "ENGINE_WATER");
         WriteHits(sb, nodes, "00BE91E0");
         WriteHits(sb, nodes, "00ABF6B0");
+        WriteHits(sb, nodes, "00BCE740");
+        WriteHits(sb, nodes, "00B849F0");
         WriteHits(sb, nodes, "00B6CBD0");
         WriteHits(sb, nodes, "00B68DA0");
         WriteHits(sb, nodes, "00BB5040");

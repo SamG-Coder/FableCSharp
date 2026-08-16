@@ -387,8 +387,9 @@ public static class WorldShading
     /// +43. First-seen PALSKIN draw <c>00BD71B0</c> at
     /// <c>00BD76D2</c>/<c>00BD7705</c> reads +41. If Flag2==0 and
     /// Flag1!=0 it <c>or ebx, 5</c>. First-seen static-lit
-    /// <c>00BB2540</c> has no +41 read. What mask 5 selects
-    /// (two-sided / slot +12664) is still UNREAD.
+    /// <c>00BB2540</c> has no +41 read. Instance opacity
+    /// <c>+39</c> is ctor <c>0xFF</c> (<c>00B991F5</c> /
+    /// <c>00BBBE7D</c>), so the Flag1 loop is not skipped.
     /// </summary>
     public const int MaterialFlag1Offset = 41;
     public const int MaterialStrideBytes = 48;
@@ -396,4 +397,37 @@ public static class WorldShading
     public const int FirstSeenPalskinFlag1MaskOr = 5;
     public const bool FirstSeenPalskinReadsFlag1 = true;
     public const bool FirstSeenStaticLitReadsFlag1 = false;
+    public const int InstanceOpacityOffset = 39;
+    public const byte FirstSeenInstanceOpacity = 0xFF;
+
+    /// <summary>
+    /// Helper ctor <c>00BCE740</c> (vtbl <c>0x12A6C5C</c>, dtor
+    /// <c>00BD7CB0</c>): <c>+12</c> = instance, <c>+16</c> = 0,
+    /// <c>+24</c> = arg1 pointer (released by <c>00BCE4CB</c>),
+    /// <c>+28</c> = type index (Flag1-derived <c>esi</c>, 4 for
+    /// hair MapFlags=1 + mask 5), <c>+32</c> = fade byte.
+    /// First-seen bind <c>00BD3070</c> pass 4 (<c>00BD549D</c>)
+    /// does not read helper+28. <c>00BD3B1A</c> jump table uses
+    /// bind-arg+28, not this field. Draw queues the helper via
+    /// <c>00B84720</c> on <c>0x1436E74</c>: type
+    /// <c>[inst+104]+8==1</c> → slots 10 then 14; type 0 → slot
+    /// 8 then Flag1 adds slot 9. MainScene <c>00B33010</c> drains
+    /// slot 14 at layer <c>0x80</c> and slots 8+10 at
+    /// <c>0x100</c> through <c>00B849F0</c>, which calls
+    /// <c>[helper+20].vtbl+20/+24</c>. What type 4 binds is still
+    /// UNREAD.
+    /// </summary>
+    public const uint PalskinHelperCtor = 0x00BCE740;
+    public const uint PalskinHelperVtbl = 0x012A6C5C;
+    public const uint PalskinHelperDtor = 0x00BD7CB0;
+    public const int PalskinHelperArg1Offset = 24;
+    public const int PalskinHelperTypeIndexOffset = 28;
+    public const int FirstSeenPalskinHairTypeIndex = 4;
+    public const int PalskinQueueSlotType1A = 10;
+    public const int PalskinQueueSlotType1B = 14;
+    public const int PalskinQueueSlotType0 = 8;
+    public const int PalskinQueueSlotFlag1Extra = 9;
+    public const uint PrimQueueDrain = 0x00B849F0;
+    public const uint PrimQueueSubmit = 0x00B84720;
+    public const bool FirstSeenPalskinBindUsesHelperTypeIndex = false;
 }
