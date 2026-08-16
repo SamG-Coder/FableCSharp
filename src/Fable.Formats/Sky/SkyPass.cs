@@ -152,8 +152,22 @@ public static class SkyPass
     /// </summary>
     public const bool FirstSeenInnerSkyMulsVertexAlpha = true;
     public const int InnerSkyVsC92 = 92;
-    public const uint PsConstantWrapper0 = 0x009888FC;
-    public const uint PsConstantWrapper1 = 0x00989C98;
+    /// <summary>
+    /// Device-wrapper <c>SetPixelShaderConstantF</c> at
+    /// <c>009888E0</c>: <c>push count; push floats; push start;
+    /// call [dev+436]</c>. The <c>0x1B4</c> site inside is
+    /// <c>009888FC</c>. LayoutBasic flush <c>00989BF0</c> ends at
+    /// <c>00989C98</c> with <c>start=0</c>, count
+    /// <c>[[this+484]+12]</c>, payload <c>0x13BC3B0</c> copied
+    /// from <c>[this+972]</c>. First-seen values still unread.
+    /// </summary>
+    public const uint PsConstantWrapper = 0x009888E0;
+    public const uint PsConstantWrapperCall = 0x009888FC;
+    public const uint LayoutBasicPsFlush = 0x00989BF0;
+    public const uint LayoutBasicPsUpload = 0x00989C98;
+    public const uint LayoutBasicPsScratch = 0x013BC3B0;
+    public const int LayoutBasicPsBankOffset = 972;
+    public const int LayoutBasicPsRecordOffset = 484;
     public const int DomeRings = 9;
     public const int DomeSegments = 36;
     public const int DomeVertsPerRing = 37;

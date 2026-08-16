@@ -1200,17 +1200,65 @@ static void RunTraceShaders(PeImage pe, DumpStore store)
     links.Add(WriteCallDispPart(pe, store, family, "SetTexture 0x104 sky", 0x104, 0x00B62000, 0x00B67000));
     links.Add(WriteCallDispPart(pe, store, family, "SetPixelShaderConstantF 0x1B4 wrappers", 0x1B4, 0x00988000, 0x0098C000));
     links.Add(WriteCallDispPart(pe, store, family, "SetPixelShaderConstantF 0x1B4 first-scene", 0x1B4, 0x00B20000, 0x00B80000));
-    links.Add(WriteWalkPart(pe, store, family, "PS constant wrapper 009888FC", 0x009888FC, 40));
-    links.Add(WriteWalkPart(pe, store, family, "PS constant wrapper 00989C98", 0x00989C98, 40));
-    links.Add(WriteCallsPart(pe, store, family, "calls PS wrapper 009888FC", 0x009888FC));
-    links.Add(WriteCallsPart(pe, store, family, "calls PS wrapper 00989C98", 0x00989C98));
+    links.Add(WriteFnPart(pe, store, family, "PS constant wrapper 009888E0", 0x009888E0, 16, stopOnRet: false));
+    links.Add(WriteWalkPart(pe, store, family, "LayoutBasic PS flush 00989BF0", 0x00989BF0, 80));
+    links.Add(WriteCallsPart(pe, store, family, "calls PS wrapper 009888E0", 0x009888E0));
+    links.Add(WriteCallsPart(pe, store, family, "calls LayoutBasic PS flush 00989BF0", 0x00989BF0));
     links.Add(WriteImmPart(pe, store, family, "imm c92 sky", 92, 0x00B62000, 0x00B67000));
     links.Add(WriteImmPart(pe, store, family, "imm c92 wrappers", 92, 0x00988000, 0x0098C000));
+    links.Add(WriteScanPart(pe, store, family, "push 92 sky", "6A5C", 0x00B62000, 0x00B67000));
     store.WriteIndex(
         family, DumpStore.ShaderTokensVersion, "shader-tokens",
         "First-seen New Game shader token listings from shaders.big plus bind/PS-constant opcode hits. This is the opcode database — dump here instead of grepping.",
         links);
     Console.WriteLine($"trace  {family}/  parts={links.Count}  v{DumpStore.ShaderTokensVersion}");
+}
+
+static IndexLink WriteScanPart(
+    PeImage pe, DumpStore store, string family, string name, string hex, uint lo, uint hi)
+{
+    var slug = DumpStore.Slug(name, 0);
+    var sb = new StringBuilder();
+    sb.AppendLine($"# {name}");
+    sb.AppendLine();
+    sb.AppendLine($"scan `{hex}` in `0x{lo:X8}`–`0x{hi:X8}`. [INDEX](INDEX.md)");
+    sb.AppendLine();
+    var needle = new byte[hex.Length / 2];
+    for (var n = 0; n < needle.Length; n++)
+        byte.TryParse(hex.AsSpan(n * 2, 2), System.Globalization.NumberStyles.HexNumber, null, out needle[n]);
+    var data = pe.Data;
+    var hits = 0;
+    foreach (var sec in pe.Sections)
+    {
+        if (!pe.InCode((int)sec.FileOffset))
+            continue;
+        var end = Math.Min(data.Length, (int)(sec.FileOffset + sec.FileSize) - needle.Length);
+        for (var i = (int)sec.FileOffset; i < end; i++)
+        {
+            var ok = true;
+            for (var j = 0; j < needle.Length; j++)
+            {
+                if (data[i + j] != needle[j])
+                {
+                    ok = false;
+                    break;
+                }
+            }
+
+            if (!ok)
+                continue;
+            var va = pe.Va(i);
+            if (va < lo || va > hi)
+                continue;
+            sb.AppendLine($"- `0x{va:X8}`");
+            hits++;
+        }
+    }
+
+    sb.AppendLine();
+    sb.AppendLine($"hits **{hits}**");
+    store.WritePart(family, slug, sb.ToString());
+    return new IndexLink(slug, name, 0);
 }
 
 static IndexLink WriteCallsPart(PeImage pe, DumpStore store, string family, string name, uint target)
