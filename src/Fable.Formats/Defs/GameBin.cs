@@ -211,16 +211,44 @@ public sealed class GameBin
     public const uint ThingParentCtor = 0x004C9030;
     public const int ThingBuildingAllocBytes = 0xD8;
     /// <summary>
+    /// <c>004C9030</c> <c>lea eax,[esi+32]</c> then nine
+    /// dwords through <c>[eax+32]</c> so <c>CThing+64</c> is
+    /// ctor-zero. First-seen skip selected for the
+    /// <c>+44==0</c> path is therefore 0.
+    /// </summary>
+    public const int FirstSeenThingPlus64 = 0;
+    public const bool FirstSeenThingPlus64IsZero = true;
+    /// <summary>
     /// <c>007E15C0</c> skip is
     /// <c>[0x13756F0] &gt;= 0 &amp;&amp; selected != 0</c>.
     /// <c>selected</c> is runtime <c>+52</c> when <c>+44 != 0</c>,
     /// else <c>[thing+64]</c>. File fa/fb/f mapping onto those
-    /// runtime bytes is unread. House 6911/6909 both have a
-    /// first-seen create path and both C3Ds already instance.
+    /// runtime bytes is unread. First-seen <c>[thing+64]=0</c>
+    /// so the <c>+44==0</c> path never skips. House 6911/6909
+    /// both instance.
     /// </summary>
     public const bool FirstSeenHouseSkipDropsInterior = false;
     public const bool FirstSeenHouseSkipDropsExterior = false;
     public const bool FirstSeenMultiStaticAppliesBothHouseMeshes = true;
+    public const string BuyableHouseDefType = "CBuyableHouseDef";
+    public const uint BuyableHouseDefLookup = 0x006C1B00;
+    public const uint BuyableHouseCtor = 0x006BF8A0;
+    public const uint BuyableHouseConstruct = 0x006C14D0;
+    public const uint BuyableHouseReadyCheck = 0x006BFB90;
+    public const uint BuyableHouseWindowSwap = 0x006C0F00;
+    public const uint InsideBuildingPredicate = 0x0082E0E0;
+    public const int InsideBuildingFlagOffset = 56;
+    public const uint InsideBuildingFlagBit = 0x200000;
+    /// <summary>
+    /// <c>0082E0E0</c> needs <c>[thing+56] &amp; 0x200000</c>.
+    /// First-seen parent ctor zeros that dword, so the
+    /// predicate returns 0, <c>006BFB90</c> returns 0, and
+    /// <c>006C14D0</c> skips <c>006C0F00</c>. Indoor/outdoor
+    /// window swap is not first-seen.
+    /// </summary>
+    public const bool FirstSeenInsideBuildingFlag = false;
+    public const bool FirstSeenBuyableHouseSwapsWindows = false;
+    public const uint BuyableHousePriceFieldCrc = 0xCD2BFAC0;
 
     /// <summary>
     /// <c>Meshes</c> CRC then u32 count then 34-byte
@@ -282,6 +310,29 @@ public sealed class GameBin
             return false;
         var selected = runtimeFlagA != 0 ? runtimeSkipByte : (byte)thingPlus64;
         return selected != 0;
+    }
+
+    public static bool FirstSeenMultiStaticSkipDraw(byte runtimeFlagA, byte runtimeSkipByte) =>
+        MultiStaticSkipDraw(runtimeFlagA, runtimeSkipByte, FirstSeenThingPlus64, 0);
+
+    public static IReadOnlyList<int> ReadBuyableHousePrices(byte[] raw)
+    {
+        var crc = BuyableHousePriceFieldCrc;
+        for (var i = 0; i + 8 <= raw.Length; i++)
+        {
+            if (BitConverter.ToUInt32(raw, i) != crc)
+                continue;
+            var count = BitConverter.ToInt32(raw, i + 4);
+            if (count is < 1 or > 8 || i + 8 + count * 4 > raw.Length)
+                continue;
+            var prices = new int[count];
+            for (var n = 0; n < count; n++)
+                prices[n] = BitConverter.ToInt32(raw, i + 8 + n * 4);
+            if (prices[0] is > 0 and < 1_000_000)
+                return prices;
+        }
+
+        return [];
     }
 
     private static bool IsEditorOnly(GameBinEntry entry)

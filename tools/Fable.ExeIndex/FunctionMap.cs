@@ -28,6 +28,8 @@ internal static class FunctionMap
         (0x00529600, 0x0052AE00, "CThingBuilding"),
         (0x0072DF00, 0x0072E500, "CREATEBUILDING"),
         (0x007E12F0, 0x007E1B00, "CMultiStaticMeshDef"),
+        (0x006BF600, 0x006C1D00, "CTCBuyableHouse"),
+        (0x0082E0E0, 0x0082E130, "inside-building"),
         (0x00886400, 0x00888600, "theme-slot-star"),
         (0x00CDD400, 0x00CDD500, "WatchBarrels"),
         (0x0089FA00, 0x0089FC00, "MARKER-LIGHT"),
@@ -86,6 +88,12 @@ internal static class FunctionMap
         ("CMultiStaticMeshDef lookup", 0x007E1400),
         ("CMultiStaticMeshDef ctor", 0x007E14C0),
         ("CMultiStaticMeshDef apply", 0x007E15C0),
+        ("CTCBuyableHouse ctor", 0x006BF8A0),
+        ("CTCBuyableHouse construct", 0x006C14D0),
+        ("CTCBuyableHouse ready", 0x006BFB90),
+        ("CTCBuyableHouse window swap", 0x006C0F00),
+        ("Inside-building predicate", 0x0082E0E0),
+        ("CBuyableHouseDef lookup", 0x006C1B00),
         ("Theme slot ctor zeros +424", 0x008864A0),
         ("Theme slot copy dest+424", 0x008865C0),
         ("WatchBarrels ctor", 0x00CDD450),
@@ -321,6 +329,8 @@ internal static class FunctionMap
         WriteHits(sb, nodes, "CAM_OVIF");
         WriteHits(sb, nodes, "WatchBarrels");
         WriteHits(sb, nodes, "007E15C0");
+        WriteHits(sb, nodes, "CBuyableHouse");
+        WriteHits(sb, nodes, "0082E0E0");
         WriteHits(sb, nodes, "008864A0");
         WriteHits(sb, nodes, "CThingPlayerCreature");
         WriteHits(sb, nodes, "CTCAnimation");

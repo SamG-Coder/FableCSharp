@@ -103,6 +103,22 @@ public sealed class GameBinFormatTests
         Assert.True(GameBin.MultiStaticSkipDraw(1, 1, 0, 0));
         Assert.True(GameBin.MultiStaticSkipDraw(0, 0, 1, 0));
         Assert.False(GameBin.MultiStaticSkipDraw(1, 1, 1, -1));
+        Assert.True(GameBin.FirstSeenThingPlus64IsZero);
+        Assert.Equal(0, GameBin.FirstSeenThingPlus64);
+        Assert.False(GameBin.FirstSeenMultiStaticSkipDraw(0, 1));
+        Assert.False(GameBin.FirstSeenInsideBuildingFlag);
+        Assert.False(GameBin.FirstSeenBuyableHouseSwapsWindows);
+        Assert.Equal(0x006BF8A0u, GameBin.BuyableHouseCtor);
+        Assert.Equal(0x006C14D0u, GameBin.BuyableHouseConstruct);
+        Assert.Equal(0x0082E0E0u, GameBin.InsideBuildingPredicate);
+        Assert.Equal(0x200000u, GameBin.InsideBuildingFlagBit);
+        Assert.Equal(56, GameBin.InsideBuildingFlagOffset);
+        var buyable = house.SubDefs
+            .Select(sub => bin.Entries[sub.DefIndex])
+            .First(child => child.TypeName == GameBin.BuyableHouseDefType);
+        var prices = GameBin.ReadBuyableHousePrices(buyable.Raw);
+        Assert.Equal(new[] { 5000, 7500, 11000, 16000 }, prices);
+        Assert.Equal(GameBin.BuyableHousePriceFieldCrc, FableCrc.Hash("Price"));
         Assert.Equal(6556, bin.FindMeshId("OBJECT_KHG_BED_03"));
         Assert.Equal(7583, bin.FindMeshId("OBJECT_TABLE_LARGE_ROUND_01"));
         Assert.Equal(7544, bin.FindMeshId("OBJECT_WOODEN_LAMP_OFF"));
