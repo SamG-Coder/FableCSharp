@@ -508,6 +508,9 @@ public sealed class ShaderFormatTests
         Assert.Equal(0x013BC3B0u, SkyPass.LayoutBasicPsScratch);
         Assert.Equal(972, SkyPass.LayoutBasicPsBankOffset);
         Assert.Equal(484, SkyPass.LayoutBasicPsRecordOffset);
+        Assert.True(SkyPass.FirstSeenSkyCallsLayoutBasicPsFlush);
+        Assert.Equal(0x00B631DFu, SkyPass.SkyPsFlush0);
+        Assert.Equal(0x00B66086u, SkyPass.SkyPsFlush4);
         Assert.Equal(1f, SkyPass.DomeAlpha(0), 5);
         Assert.InRange(SkyPass.DomeAlpha(SkyPass.DomeRings - 1), 0f, 0.08f);
         Assert.Equal(2f, ScenePasses.ShaderMode(SceneSubmit.SkyElse));

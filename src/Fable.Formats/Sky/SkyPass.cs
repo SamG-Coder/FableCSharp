@@ -168,6 +168,12 @@ public static class SkyPass
     public const uint LayoutBasicPsScratch = 0x013BC3B0;
     public const int LayoutBasicPsBankOffset = 972;
     public const int LayoutBasicPsRecordOffset = 484;
+    public const uint SkyPsFlush0 = 0x00B631DF;
+    public const uint SkyPsFlush1 = 0x00B634A7;
+    public const uint SkyPsFlush2 = 0x00B63767;
+    public const uint SkyPsFlush3 = 0x00B65937;
+    public const uint SkyPsFlush4 = 0x00B66086;
+    public const bool FirstSeenSkyCallsLayoutBasicPsFlush = true;
     public const int DomeRings = 9;
     public const int DomeSegments = 36;
     public const int DomeVertsPerRing = 37;

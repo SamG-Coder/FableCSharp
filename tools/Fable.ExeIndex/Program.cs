@@ -1204,6 +1204,11 @@ static void RunTraceShaders(PeImage pe, DumpStore store)
     links.Add(WriteWalkPart(pe, store, family, "LayoutBasic PS flush 00989BF0", 0x00989BF0, 80));
     links.Add(WriteCallsPart(pe, store, family, "calls PS wrapper 009888E0", 0x009888E0));
     links.Add(WriteCallsPart(pe, store, family, "calls LayoutBasic PS flush 00989BF0", 0x00989BF0));
+    links.Add(WriteFnPart(pe, store, family, "Sky PS flush 00B631DF", 0x00B631C0, 24, stopOnRet: false));
+    links.Add(WriteFnPart(pe, store, family, "Sky PS flush 00B634A7", 0x00B63488, 24, stopOnRet: false));
+    links.Add(WriteFnPart(pe, store, family, "Sky PS flush 00B63767", 0x00B63748, 24, stopOnRet: false));
+    links.Add(WriteFnPart(pe, store, family, "Sky PS flush 00B65937", 0x00B65918, 24, stopOnRet: false));
+    links.Add(WriteFnPart(pe, store, family, "Sky PS flush 00B66086", 0x00B66068, 24, stopOnRet: false));
     links.Add(WriteImmPart(pe, store, family, "imm c92 sky", 92, 0x00B62000, 0x00B67000));
     links.Add(WriteImmPart(pe, store, family, "imm c92 wrappers", 92, 0x00988000, 0x0098C000));
     links.Add(WriteScanPart(pe, store, family, "push 92 sky", "6A5C", 0x00B62000, 0x00B67000));
