@@ -53,6 +53,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     private MeshDraw[] _draws = [];
     private MeshPushConstants _meshPush;
     private Matrix4x4 _worldViewProj;
+    private Matrix4x4 _landscapeViewProj;
     private Matrix4x4 _skyViewProj;
     private Image _depthImage;
     private DeviceMemory _depthMemory;
@@ -155,7 +156,12 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
 
     public bool ShowGizmos { get; set; }
 
-    public void Draw(Matrix4x4 viewProjection, Vector3 cameraPosition = default, Vector4 fogPlane = default, Matrix4x4? skyViewProjection = null)
+    public void Draw(
+        Matrix4x4 viewProjection,
+        Vector3 cameraPosition = default,
+        Vector4 fogPlane = default,
+        Matrix4x4? skyViewProjection = null,
+        Matrix4x4? landscapeViewProjection = null)
     {
         if (_extent.Width == 0 || _extent.Height == 0)
             return;
@@ -176,7 +182,10 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             throw new InvalidOperationException($"AcquireNextImage failed: {acquire}");
 
         _vk.ResetFences(_device, 1, in _inFlight[_frame]);
-        Record(_commandBuffers[_frame], imageIndex, viewProjection, cameraPosition, fogPlane, skyViewProjection ?? viewProjection);
+        Record(
+            _commandBuffers[_frame], imageIndex, viewProjection, cameraPosition, fogPlane,
+            skyViewProjection ?? viewProjection,
+            landscapeViewProjection ?? viewProjection);
 
         var wait = _imageAvailable[_frame];
         var signal = _renderFinished[_frame];
@@ -826,7 +835,10 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         }
     }
 
-    private void Record(CommandBuffer commandBuffer, uint imageIndex, Matrix4x4 viewProjection, Vector3 cameraPosition, Vector4 fogPlane, Matrix4x4 skyViewProjection)
+    private void Record(
+        CommandBuffer commandBuffer, uint imageIndex, Matrix4x4 viewProjection,
+        Vector3 cameraPosition, Vector4 fogPlane, Matrix4x4 skyViewProjection,
+        Matrix4x4 landscapeViewProjection)
     {
         var begin = new CommandBufferBeginInfo { SType = StructureType.CommandBufferBeginInfo };
         Check(_vk.BeginCommandBuffer(commandBuffer, in begin));
@@ -860,6 +872,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         {
             _skyViewProj = skyViewProjection;
             _worldViewProj = viewProjection;
+            _landscapeViewProj = landscapeViewProjection;
             _meshPush = new MeshPushConstants
             {
                 ViewProj = viewProjection,

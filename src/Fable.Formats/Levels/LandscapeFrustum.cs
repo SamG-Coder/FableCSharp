@@ -227,6 +227,20 @@ public static class LandscapeFrustum
     public const uint PerCellWorldFill = 0x00BF46A2;
     public const bool FirstSeenLandscapeWorldIsCameraTranslation = true;
     public const bool FirstSeenBindWritesViewFromCamera128 = true;
+    /// <summary>
+    /// VS <c>dp4 oPos, pos, c5–c8</c> with <c>00988A50</c>
+    /// <c>SetVSConstantF(+752)</c>. Wrapper product is world+496
+    /// then view+560 then proj+624. Numerics/GPU consume that as
+    /// row-vector <c>p * W * V * P</c>.
+    /// </summary>
+    public const bool FirstSeenWvpIsWorldViewProj = true;
+    /// <summary>
+    /// <c>009883F0</c> writes <c>M11=M22=1</c>, Z from helper
+    /// near/far/minZ/maxZ, <c>M43=1</c>, <c>M44=0</c>. Cot lives
+    /// on camera+128, not in proj.
+    /// </summary>
+    public const bool FirstSeenProjXyIsIdentity = true;
+    public const float VulkanNdcYSign = -1f;
 
     public readonly record struct Plane(Vector3 Normal, float D);
 
@@ -286,6 +300,54 @@ public static class LandscapeFrustum
         col2 = Vector3.UnitZ;
         col3 = cameraPos;
     }
+
+    /// <summary>
+    /// Numerics / GPU form of <see cref="LandscapeWorld3x4"/>:
+    /// row-vector <c>p * T(cam)</c> = <c>p + cam</c>.
+    /// </summary>
+    public static Matrix4x4 LandscapeWorld(Vector3 cameraPos) =>
+        Matrix4x4.CreateTranslation(cameraPos);
+
+    /// <summary>
+    /// Bind / static / PALSKIN world is identity
+    /// (<c>009881F0</c> from <c>00B2FC50</c>).
+    /// </summary>
+    public static Matrix4x4 IdentityWorld() => Matrix4x4.Identity;
+
+    /// <summary>
+    /// Camera+128 after <c>00B30B50</c>: look-at with +Z along
+    /// look, translation <c>-R*pos</c>, then row-0/row-1 (view
+    /// X/Y) scaled by letterbox cots. Stored here in the Numerics
+    /// CreateLookAt layout so <c>p * view</c> matches the VS.
+    /// </summary>
+    public static Matrix4x4 CotScaledView(
+        Vector3 position, Vector3 look, Vector3 up, float cotH, float cotV)
+    {
+        var view = Matrix4x4.CreateLookAt(position, position + look, up);
+        view.M11 *= cotH; view.M21 *= cotH; view.M31 *= cotH; view.M41 *= cotH;
+        view.M12 *= cotV; view.M22 *= cotV; view.M32 *= cotV; view.M42 *= cotV;
+        return view;
+    }
+
+    /// <summary>
+    /// <c>009883F0</c> XY identity plus viewport Z, with
+    /// <see cref="VulkanNdcYSign"/> on Y so the Vulkan NDC flip
+    /// stays out of the cot-scaled view.
+    /// </summary>
+    public static Matrix4x4 FirstSeenProjection(float m33, float m34, float ySign)
+    {
+        return new Matrix4x4(
+            1f, 0f, 0f, 0f,
+            0f, ySign, 0f, 0f,
+            0f, 0f, -m33, -1f,
+            0f, 0f, m34, 0f);
+    }
+
+    /// <summary>
+    /// <c>00988A50</c> / VS: <c>p * world * view * proj</c>.
+    /// </summary>
+    public static Matrix4x4 ComposeWvp(Matrix4x4 world, Matrix4x4 view, Matrix4x4 proj) =>
+        world * view * proj;
 
     /// <summary>
     /// <c>00B30B50</c> +84 clear: <c>0.75 - h/w</c> letterbox, then

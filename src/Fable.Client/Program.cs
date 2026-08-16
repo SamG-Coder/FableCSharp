@@ -130,7 +130,8 @@ window.Render += _ =>
         camera.Position, camera.Forward);
     renderer.Draw(
         camera.ViewProjection(aspect), camera.Position, fogPlane,
-        camera.SkyViewProjection(aspect));
+        camera.SkyViewProjection(aspect),
+        camera.LandscapeViewProjection(aspect));
 };
 
 window.Closing += () =>

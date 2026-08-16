@@ -28,33 +28,44 @@ public sealed class FlyCamera
 
     public Vector3 Right => Vector3.Normalize(Vector3.Cross(Forward, Vector3.UnitZ));
 
-    public Matrix4x4 ViewMatrix =>
-        Matrix4x4.CreateLookAt(Position, Position + Forward, Vector3.UnitZ);
+    public Matrix4x4 ViewMatrix => ViewMatrixAt(4f / 3f);
 
-    public static Matrix4x4 ProjectionMatrix(float aspect, float fovDegrees = 65f)
+    public Matrix4x4 ViewMatrixAt(float aspect) =>
+        CotScaledView(Position, Forward, FovDegrees, aspect);
+
+    public static Matrix4x4 CotScaledView(
+        Vector3 position, Vector3 look, float fovDegrees, float aspect)
     {
         aspect = MathF.Max(aspect, 0.01f);
         LandscapeFrustum.LetterboxCots(
             float.DegreesToRadians(fovDegrees), aspect, 1f,
             out var cotH, out var cotV);
+        return LandscapeFrustum.CotScaledView(position, look, Vector3.UnitZ, cotH, cotV);
+    }
+
+    public static Matrix4x4 ProjectionMatrix(float aspect, float fovDegrees = 65f)
+    {
+        _ = aspect;
+        _ = fovDegrees;
         LandscapeFrustum.ViewportZTerms(
             LandscapeFrustum.FirstSeenNear,
             LandscapeFrustum.FirstSeenFar,
             LandscapeFrustum.FirstSeenMinZ,
             LandscapeFrustum.FirstSeenMaxZ,
             out var m33, out var m34);
-        // RH CreateLookAt view.z = -fwd·delta. 009883F0 is XY
-        // identity with clip.z = M33*z + M34, clip.w = z after the
-        // cot-scaled view. Numerics Transform matches that when
-        // M33 = -A, M34 = -1, M43 = B. M22 is negated for Vulkan.
-        return new Matrix4x4(
-            cotH, 0f, 0f, 0f,
-            0f, -cotV, 0f, 0f,
-            0f, 0f, -m33, -1f,
-            0f, 0f, m34, 0f);
+        // 009883F0 is XY identity. Cot is on camera+128.
+        // M22 = VulkanNdcYSign. clip.w = view.z after the RH look-at.
+        return LandscapeFrustum.FirstSeenProjection(
+            m33, m34, LandscapeFrustum.VulkanNdcYSign);
     }
 
-    public Matrix4x4 ViewProjection(float aspect) => ViewMatrix * ProjectionMatrix(aspect, FovDegrees);
+    public Matrix4x4 ViewProjection(float aspect) =>
+        LandscapeFrustum.ComposeWvp(
+            LandscapeFrustum.IdentityWorld(), ViewMatrixAt(aspect), ProjectionMatrix(aspect, FovDegrees));
+
+    public Matrix4x4 LandscapeViewProjection(float aspect) =>
+        LandscapeFrustum.ComposeWvp(
+            LandscapeFrustum.LandscapeWorld(Position), ViewMatrixAt(aspect), ProjectionMatrix(aspect, FovDegrees));
 
     /// <summary>
     /// <c>00B662F0</c> else-path <c>00B30B50</c> with sky source
@@ -63,25 +74,21 @@ public sealed class FlyCamera
     /// </summary>
     public static Matrix4x4 SkyProjectionMatrix(float aspect, float fovDegrees = 65f)
     {
-        aspect = MathF.Max(aspect, 0.01f);
-        LandscapeFrustum.LetterboxCots(
-            float.DegreesToRadians(fovDegrees), aspect, 1f,
-            out var cotH, out var cotV);
+        _ = aspect;
+        _ = fovDegrees;
         LandscapeFrustum.ViewportZTerms(
             Fable.Formats.Sky.SkyPass.FirstSeenNear,
             Fable.Formats.Sky.SkyPass.FirstSeenFar,
             Fable.Formats.Sky.SkyPass.FirstSeenMinZ,
             Fable.Formats.Sky.SkyPass.FirstSeenMaxZ,
             out var m33, out var m34);
-        return new Matrix4x4(
-            cotH, 0f, 0f, 0f,
-            0f, -cotV, 0f, 0f,
-            0f, 0f, -m33, -1f,
-            0f, 0f, m34, 0f);
+        return LandscapeFrustum.FirstSeenProjection(
+            m33, m34, LandscapeFrustum.VulkanNdcYSign);
     }
 
     public Matrix4x4 SkyViewProjection(float aspect) =>
-        ViewMatrix * SkyProjectionMatrix(aspect, FovDegrees);
+        LandscapeFrustum.ComposeWvp(
+            LandscapeFrustum.IdentityWorld(), ViewMatrixAt(aspect), SkyProjectionMatrix(aspect, FovDegrees));
 
     public void LookAt(Vector3 target)
     {

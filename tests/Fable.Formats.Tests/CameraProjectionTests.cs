@@ -137,11 +137,21 @@ public sealed class CameraProjectionTests
         LandscapeFrustum.LetterboxCots(
             float.DegreesToRadians(72f), 4f, 3f, out var cotH, out var cotV);
         var proj = FlyCamera.ProjectionMatrix(4f / 3f, 72f);
-        Assert.Equal(cotH, proj.M11, 4);
-        Assert.Equal(-cotV, proj.M22, 4);
+        Assert.True(LandscapeFrustum.FirstSeenProjXyIsIdentity);
+        Assert.Equal(1f, proj.M11, 4);
+        Assert.Equal(LandscapeFrustum.VulkanNdcYSign, proj.M22, 4);
         Assert.Equal(-m33, proj.M33, 4);
         Assert.Equal(-1f, proj.M34, 4);
         Assert.Equal(m34, proj.M43, 4);
+        var view = LandscapeFrustum.CotScaledView(
+            new Vector3(40.033936f, 130.47711f, 16.78288f),
+            new Vector3(-0.704544f, 0.6710376f, -0.23092493f),
+            Vector3.UnitZ, cotH, cotV);
+        Assert.Equal(cotH * Matrix4x4.CreateLookAt(
+            new Vector3(40.033936f, 130.47711f, 16.78288f),
+            new Vector3(40.033936f, 130.47711f, 16.78288f) +
+            new Vector3(-0.704544f, 0.6710376f, -0.23092493f),
+            Vector3.UnitZ).M11, view.M11, 4);
 
         var invented = Matrix4x4.CreatePerspectiveFieldOfView(
             float.DegreesToRadians(72f), 16f / 9f, 0.15f, 7000f);
@@ -195,6 +205,57 @@ public sealed class CameraProjectionTests
         Assert.Equal(Vector3.UnitY, c1);
         Assert.Equal(Vector3.UnitZ, c2);
         Assert.Equal(cam, c3);
+        Assert.True(LandscapeFrustum.FirstSeenWvpIsWorldViewProj);
+        Assert.Equal(LandscapeFrustum.LandscapeWorld(cam), Matrix4x4.CreateTranslation(cam));
+        Assert.Equal(Matrix4x4.Identity, LandscapeFrustum.IdentityWorld());
+    }
+
+    [Fact]
+    public void First_seen_wvp_splits_cot_view_and_landscape_t_cam()
+    {
+        var cam = new Vector3(40.033936f, 130.47711f, 16.78288f);
+        var look = new Vector3(34.397583f, 135.84541f, 14.935481f);
+        var house = new Vector3(34f, 129f, 14f);
+        var camera = new FlyCamera { Position = cam, FovDegrees = 72f };
+        camera.LookAt(look);
+
+        Assert.True(LandscapeFrustum.FirstSeenWvpIsWorldViewProj);
+        Assert.True(LandscapeFrustum.FirstSeenProjXyIsIdentity);
+        Assert.True(LandscapeFrustum.FirstSeenView128IsCotScaled);
+        Assert.True(LandscapeFrustum.FirstSeenLandscapeWorldIsCameraTranslation);
+
+        var prop = camera.ViewProjection(4f / 3f);
+        var land = camera.LandscapeViewProjection(4f / 3f);
+        var lookNdc = FlyCamera.Project(prop, look);
+        Assert.True(lookNdc.W > 0f, $"look W={lookNdc.W}");
+        Assert.InRange(lookNdc.X, -0.05f, 0.05f);
+        Assert.InRange(lookNdc.Y, -0.05f, 0.05f);
+
+        var landOfRelative = FlyCamera.Project(land, house - cam);
+        var propOfHouse = FlyCamera.Project(prop, house);
+        Assert.Equal(propOfHouse.X, landOfRelative.X, 3);
+        Assert.Equal(propOfHouse.Y, landOfRelative.Y, 3);
+        Assert.Equal(propOfHouse.Z, landOfRelative.Z, 3);
+
+        var landOfHouse = FlyCamera.Project(land, house);
+        Assert.True(
+            MathF.Abs(landOfHouse.X - propOfHouse.X) > 0.1f ||
+            MathF.Abs(landOfHouse.Y - propOfHouse.Y) > 0.1f,
+            "landscape T(cam) must not be the shared prop VP");
+
+        LandscapeFrustum.LetterboxCots(
+            float.DegreesToRadians(72f), 4f, 3f, out var cotH, out var cotV);
+        LandscapeFrustum.ViewportZTerms(
+            LandscapeFrustum.FirstSeenNear, LandscapeFrustum.FirstSeenFar,
+            LandscapeFrustum.FirstSeenMinZ, LandscapeFrustum.FirstSeenMaxZ,
+            out var m33, out var m34);
+        var view = LandscapeFrustum.CotScaledView(cam, camera.Forward, Vector3.UnitZ, cotH, cotV);
+        var proj = LandscapeFrustum.FirstSeenProjection(m33, m34, LandscapeFrustum.VulkanNdcYSign);
+        var composed = LandscapeFrustum.ComposeWvp(
+            LandscapeFrustum.IdentityWorld(), view, proj);
+        var composedLook = FlyCamera.Project(composed, look);
+        Assert.Equal(lookNdc.X, composedLook.X, 4);
+        Assert.Equal(lookNdc.Y, composedLook.Y, 4);
     }
 
     [Fact]

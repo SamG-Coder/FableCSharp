@@ -72,7 +72,8 @@ public sealed unsafe partial class VulkanLineRenderer
             }
 
             var sky = draw.PassBit == Fable.Formats.Sky.SkyPass.FirstSeenLayerBit;
-            var wanted = sky ? _skyViewProj : _worldViewProj;
+            var landscape = draw.PassBit is 0x4 or 0x40;
+            var wanted = sky ? _skyViewProj : landscape ? _landscapeViewProj : _worldViewProj;
             if (_meshPush.ViewProj != wanted)
             {
                 _meshPush.ViewProj = wanted;
