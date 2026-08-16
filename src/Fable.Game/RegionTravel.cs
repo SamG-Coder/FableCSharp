@@ -6,31 +6,43 @@ using Fable.Formats.Wld;
 namespace Fable.Game;
 
 /// <summary>
-/// Player start and region-exit walk from Fable.exe <c>CTCDRegionExit</c>
-/// persist fields (<c>0077947D</c> MessageRadius / Active / EntranceConnectedToUID)
-/// and WLD map 1 = LookoutPoint.
+/// New-game start and region-exit walk.
+/// Kid start is WLD region <c>StartOakVale</c> / map <c>StartOakValeWest</c>
+/// at <c>NOVStartHSP</c> (QST <c>AddTestQuest("Q_NewOakValeIntro","NOVStartHSP")</c>,
+/// exe <c>00DBDE4A</c> <c>StartOakVale</c> / <c>00DBDF09</c> <c>CREATURE_HERO_CHILD</c>).
+/// WLD <c>Maps[0]</c> LookoutPoint is the adult overworld first map, not new-game.
 /// </summary>
 public static class RegionTravel
 {
     public const string PlayerStartType = "HOLY_SITE_PLAYER_START";
+    public const string NewGameRegion = "StartOakValeWest";
+    public const string NewGameStartScript = "NOVStartHSP";
     public const string MainStartScript = "MAIN_START_POSITION";
     public const string ExitType = "REGION_EXIT_POINT";
     public const string EntranceType = "REGION_ENTRANCE_POINT";
+    public const string KidCreature = "CREATURE_HERO_CHILD";
+    public const string TweenCreature = "CREATURE_HERO_TRAINING";
+    public const string AdultCreature = "CREATURE_HERO";
 
     public static string StartingRegion(WorldFile world) =>
-        world.Maps.Count > 0 ? world.Maps[0].ScriptName : "LookoutPoint";
+        world.FindMap(NewGameRegion)?.ScriptName
+        ?? (world.Maps.Count > 0 ? world.Maps[0].ScriptName : NewGameRegion);
 
     public static ThingInstance? FindPlayerStart(IEnumerable<ThingInstance> things)
     {
         var starts = things
             .Where(t => t.DefinitionType == PlayerStartType && t.PositionX is not null)
             .ToList();
-        return starts.FirstOrDefault(t =>
-                   string.Equals(t.ScriptName, MainStartScript, StringComparison.OrdinalIgnoreCase))
-               ?? starts.FirstOrDefault(t =>
-                   string.Equals(t.ScriptName, "LookoutPointHSP", StringComparison.OrdinalIgnoreCase))
+        return Named(starts, NewGameStartScript)
+               ?? Named(starts, "StartOakValeHSP")
+               ?? Named(starts, MainStartScript)
+               ?? Named(starts, "LookoutPointHSP")
                ?? starts.FirstOrDefault();
     }
+
+    private static ThingInstance? Named(List<ThingInstance> starts, string script) =>
+        starts.FirstOrDefault(t =>
+            string.Equals(t.ScriptName, script, StringComparison.OrdinalIgnoreCase));
 
     public static Vector3 PositionOf(ThingInstance thing) =>
         new(thing.PositionX!.Value, thing.PositionY!.Value, thing.PositionZ ?? 0);

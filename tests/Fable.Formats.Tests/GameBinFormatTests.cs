@@ -57,6 +57,10 @@ public sealed class GameBinFormatTests
         Assert.Equal(7168, bin.FindMeshId("OBJECT_OK_PILLAR_COLLAPSED_01"));
         Assert.Equal(3977, bin.FindMeshId("OBJECT_DEGRADABLE_THORN_VINES_01"));
         Assert.Equal(5149, bin.FindMeshId("CREATURE_BS_VILLAGER_MALE"));
+        Assert.Equal(4299, bin.FindMeshId("CREATURE_HERO"));
+        Assert.Equal(4299, bin.FindMeshId("CREATURE_HERO_TRAINING"));
+        Assert.Equal(4300, bin.FindMeshId("CREATURE_HERO_CHILD"));
+        Assert.Equal(4300, bin.FindMeshId("CREATURE_YOUNG_HERO"));
 
         var path = Path.Combine(install.DataRoot, "graphics", "graphics.big");
         using var big = BigArchive.Open(path);
@@ -68,6 +72,10 @@ public sealed class GameBinFormatTests
         Assert.Equal("MESH_MEDIUMROCK_LICHEN_01", rock.Name);
         var lamp = MeshFile.Parse(big.Read(entries.First(e => e.Id == 4978)), 1);
         Assert.Equal("MESH_OBJECT_STREETLAMP_OFF_02", lamp.Name);
+        var hero = MeshFile.Parse(big.Read(entries.First(e => e.Id == 4299)), 1);
+        Assert.Equal("MESH_HERO", hero.Name);
+        var kid = MeshFile.Parse(big.Read(entries.First(e => e.Id == 4300)), 1);
+        Assert.Equal("MESH_YOUNGHERO_02", kid.Name);
     }
 
     [Fact]

@@ -151,7 +151,7 @@ public sealed class WorldSceneTests
         var install = Require();
         using var levels = new LevelLibrary(install);
         var world = WorldFile.Load(install.WorldPath);
-        Assert.Equal("LookoutPoint", RegionTravel.StartingRegion(world));
+        Assert.Equal("LookoutPoint", world.Maps[0].ScriptName);
 
         var things = levels.LoadThings("LookoutPoint").Things.ToList();
         var start = RegionTravel.FindPlayerStart(things);
@@ -179,6 +179,46 @@ public sealed class WorldSceneTests
             .First(e => world.Maps.First(m => m.MapUid == e.Link.MapUid).ScriptName == "LookoutPoint");
         var backEntrance = RegionTravel.FindEntrance(things, back.Link);
         Assert.NotNull(backEntrance);
+    }
+
+    [Fact]
+    public void New_game_starts_as_kid_in_start_oakvale_not_lookout()
+    {
+        var install = Require();
+        using var levels = new LevelLibrary(install);
+        var world = WorldFile.Load(install.WorldPath);
+        var qst = QuestFile.Load(install.QuestPath);
+        Assert.Equal("StartOakValeWest", RegionTravel.StartingRegion(world));
+        Assert.Equal("LookoutPoint", world.Maps[0].ScriptName);
+        Assert.Contains(qst.Quests, q => q.Name == "Q_NewOakValeIntro");
+        Assert.Contains(qst.Quests, q => q.Name == "Q_NewOakValeIntro_PreAttack");
+        Assert.Contains(qst.Quests, q => q.Name == "Q_GuildTraining");
+        Assert.Contains(qst.Quests, q => q.Name == "Q_SunnyvaleMaster" && q.Persistent);
+
+        var kid = world.FindMap("StartOakValeWest")!;
+        Assert.Equal(203, kid.Index);
+        Assert.Equal(3456, kid.MapX);
+        Assert.Equal(736, kid.MapY);
+        var east = world.FindMap("StartOakValeEast")!;
+        var garden = world.FindMap("StartOakvaleMemorialGarden")!;
+        Assert.True(east.MapX > kid.MapX);
+        Assert.True(garden.MapY > kid.MapY);
+
+        var things = levels.LoadThings("StartOakValeWest").Things.ToList();
+        var start = RegionTravel.FindPlayerStart(things);
+        Assert.NotNull(start);
+        Assert.Equal("NOVStartHSP", start.ScriptName);
+        Assert.InRange(start.PositionX!.Value, 33f, 36f);
+        Assert.InRange(start.PositionY!.Value, 127f, 131f);
+        Assert.Contains(things, t => t.ScriptName == "HerosOldHouse");
+        Assert.Empty(RegionTravel.ActiveExits(things));
+
+        var guild = levels.LoadThings("HeroGuildComplexInside").Things.ToList();
+        Assert.Contains(guild, t => t.DefinitionType == "HOLY_SITE_PLAYER_START"
+                                    && t.ScriptName == "GuildTrainingHSP");
+        var lookout = levels.LoadThings("LookoutPoint").Things.ToList();
+        Assert.Contains(lookout, t => t.DefinitionType == "HOLY_SITE_PLAYER_START"
+                                      && t.ScriptName == "GuildArrivalHSP");
     }
 
     [Fact]

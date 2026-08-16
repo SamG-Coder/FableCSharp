@@ -99,6 +99,8 @@ public sealed class TlcInstallTests
     {
         var quests = QuestFile.Load(RequireInstall().QuestPath);
         Assert.Contains(quests.Quests, quest => quest.Name == "Q_SunnyvaleMaster" && quest.Persistent);
+        Assert.Contains(quests.Quests, quest => quest.Name == "Q_NewOakValeIntro");
+        Assert.Contains(quests.Quests, quest => quest.Name == "Q_GuildTraining");
         Assert.True(quests.Quests.Count > 50);
     }
 

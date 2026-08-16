@@ -95,6 +95,11 @@ public sealed class DataCatalogTests
         Assert.Equal("CREATURE_BS_VILLAGER_MALE", villager.CreatureType);
         Assert.True(villager.Bones.Count >= 8);
         Assert.Equal(60, Directory.GetFiles(install.BonesDirectory, "*.bncfg").Length);
+
+        var teen = BoneConfig.Load(Path.Combine(install.BonesDirectory, "hero_teen_set.bncfg"));
+        Assert.Equal("CREATURE_HERO", teen.CreatureType);
+        var young = BoneConfig.Load(Path.Combine(install.BonesDirectory, "hero_young_set.bncfg"));
+        Assert.Equal("CREATURE_HERO_CHILD_02", young.CreatureType);
     }
 
     [Fact]
