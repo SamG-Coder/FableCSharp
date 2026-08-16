@@ -303,14 +303,22 @@ public sealed class WorldGeometryTests
         Assert.Equal(292, SkyPass.This16FromOptionsOffset);
         Assert.Equal(288, SkyPass.This20FromOptionsOffset);
         Assert.Equal(296, SkyPass.This12FromOptionsOffset);
-        Assert.Equal(0x01436E24u, SkyPass.VideoOptionsGlobal);
+        Assert.Equal(0x01436E24u, SkyPass.EnvironmentGlobal);
+        Assert.Equal(0x00B26828u, SkyPass.EnvironmentLookup);
         Assert.Equal(0x0143782Cu, SkyPass.UvDivisorGlobal);
+        Assert.Equal(0x01224830u, SkyPass.UvDivisorInit);
+        Assert.Equal(0x012A1138u, SkyPass.UvDivisorScaleConst);
+        Assert.Equal(13000f, SkyPass.UvDivisorScale);
+        Assert.True(SkyPass.FirstSeenUvDivisorHasWriter);
+        Assert.InRange(SkyPass.FirstSeenUvDivisor, 11500f, 11700f);
+        Assert.Equal(
+            (float)(13000.0 * Math.Cos(SkyPass.UvDivisorAngle)),
+            SkyPass.FirstSeenUvDivisor, 3);
         Assert.False(SkyPass.FirstSeenThis16HasNumeric);
         Assert.False(SkyPass.FirstSeenThis20HasNumeric);
-        Assert.False(SkyPass.FirstSeenUvDivisorHasWriter);
         var invented = new Vector2(0f / 36f, 0f / 8f);
-        Assert.Equal(Vector2.Zero, SkyPass.DomeUv(0, 0, 0f, 0f, 1f));
-        Assert.NotEqual(invented, SkyPass.DomeUv(1, 9, 1f, 1f, 1f / 6500f));
+        Assert.Equal(Vector2.Zero, SkyPass.DomeUv(0, 0, 0f, 0f, SkyPass.FirstSeenInvUvDivisor));
+        Assert.NotEqual(invented, SkyPass.DomeUv(1, 9, 1f, 1f, SkyPass.FirstSeenInvUvDivisor));
     }
 
     private static int CountPropNear(WorldGeometry world, float x, float y, float radius)

@@ -96,15 +96,24 @@ public static class SkyPass
     /// <c>uvScale = (this+16 - sin(elev)) * this+20</c>.
     /// <c>U = x * (1/[0x0143782C]) * uvScale</c>,
     /// <c>V = y * (1/[0x0143782C]) * uvScale</c>.
-    /// Ctor <c>00B627E2</c> copies those slots from the current
-    /// <c>ENGINE_VIDEO_OPTIONS_*</c> object at
-    /// <c>[0x1436E24]</c>: +16 ← +292, +20 ← +288, +12 ← +296.
-    /// First-seen +12 is 0 (origin Z). +16 / +20 and the
-    /// <c>0x0143782C</c> divisor have no first-seen numeric
-    /// writer — do not invent <c>(seg/36, ring/8)</c>.
+    /// CRT stub <c>01224830</c> is
+    /// <c>fld qword [0x12A1140]; fcos; fmul dword [0x12A1138]=13000;
+    /// fstp [0x0143782C]</c>. The qword is the last-ring elevation.
+    /// Ctor <c>00B627E2</c> copies +16/+20/+12 from the current
+    /// <c>ENVIRONMENT</c> object at <c>[0x1436E24]</c>
+    /// (+292/+288/+296). First-seen +12 is 0. +16/+20 have no
+    /// first-seen numeric writer — do not invent
+    /// <c>(seg/36, ring/8)</c>.
     /// </summary>
     public const uint UvDivisorGlobal = 0x0143782C;
-    public const uint VideoOptionsGlobal = 0x01436E24;
+    public const uint UvDivisorInit = 0x01224830;
+    public const uint UvDivisorAngleConst = 0x012A1140;
+    public const uint UvDivisorScaleConst = 0x012A1138;
+    public const float UvDivisorScale = 13000f;
+    public const ulong UvDivisorAngleBits = 0x3FDE28C760000000UL;
+    public const uint EnvironmentGlobal = 0x01436E24;
+    public const uint VideoOptionsGlobal = EnvironmentGlobal;
+    public const uint EnvironmentLookup = 0x00B26828;
     public const uint VideoOptionsLookup = 0x00B2640F;
     public const uint CtorThis16Write = 0x00B627E2;
     public const int This16FromOptionsOffset = 292;
@@ -112,7 +121,7 @@ public static class SkyPass
     public const int This12FromOptionsOffset = 296;
     public const bool FirstSeenThis16HasNumeric = false;
     public const bool FirstSeenThis20HasNumeric = false;
-    public const bool FirstSeenUvDivisorHasWriter = false;
+    public const bool FirstSeenUvDivisorHasWriter = true;
     public const uint CapPoleUvBits = 0x38D1B717;
     public const int CapPoleColor = 0;
     public const int CapCylinderColor = unchecked((int)0xFFFFFFFF);
@@ -138,6 +147,14 @@ public static class SkyPass
 
     public static float CapPoleUv =>
         -System.BitConverter.Int32BitsToSingle(unchecked((int)CapPoleUvBits));
+
+    public static double UvDivisorAngle =>
+        System.BitConverter.Int64BitsToDouble(unchecked((long)UvDivisorAngleBits));
+
+    public static float FirstSeenUvDivisor =>
+        (float)(UvDivisorScale * Math.Cos(UvDivisorAngle));
+
+    public static float FirstSeenInvUvDivisor => 1f / FirstSeenUvDivisor;
 
     public static float Elev(int ring) => ElevStart + ring * ElevStep;
 

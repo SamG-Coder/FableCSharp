@@ -487,7 +487,7 @@ internal static class X86
         (0xDB, 5) => "fld", (0xDB, 7) => "fstp",
         (0xDC, 0) => "fadd", (0xDC, 1) => "fmul", (0xDC, 2) => "fcom", (0xDC, 3) => "fcomp",
         (0xDC, 4) => "fsub", (0xDC, 5) => "fsubr", (0xDC, 6) => "fdiv", (0xDC, 7) => "fdivr",
-        (0xDD, 0) => "fld", (0xDD, 2) => "fst", (0xDD, 3) => "fstp",
+        (0xDD, 0) => "fld qword", (0xDD, 2) => "fst", (0xDD, 3) => "fstp",
         (0xDD, 4) => "frstor", (0xDD, 6) => "fnsave", (0xDD, 7) => "fnstsw",
         (0xDE, 0) => "fiadd", (0xDE, 1) => "fimul", (0xDE, 2) => "ficom", (0xDE, 3) => "ficomp",
         (0xDE, 4) => "fisub", (0xDE, 5) => "fisubr", (0xDE, 6) => "fidiv", (0xDE, 7) => "fidivr",
