@@ -92,6 +92,22 @@ public static class WorldShading
     public const int BoneFloat4sPerInfluence = 3;
     public const int DerivedPaletteStartRegister = 38;
     public const int DerivedPaletteRegisterCount = 54;
+    /// <summary>
+    /// <c>00BD2D90</c> at <c>00BD2E7D</c> reads
+    /// <c>[0x13D2880]</c>. Detector <c>00A5B850</c> is
+    /// <c>mov eax,1; CPUID</c> then
+    /// <c>mov [0x13D2880], 1</c> when SSE is present.
+    /// First-seen TLC hosts have SSE, so the palette loop
+    /// takes the SSE <c>mulps</c> path. <c>00BD2F91</c> is
+    /// the x87 fallback of the same
+    /// <c>dest = S * C3D</c> product.
+    /// </summary>
+    public const uint SseDetect = 0x00A5B850;
+    public const uint SseMatrixFlag = 0x013D2880;
+    public const uint BoneDestX87 = 0x00BD2F91;
+    public const uint BoneHierarchyBuild = 0x00AA0090;
+    public const byte FirstSeenSseMatrixFlag = 1;
+    public const bool FirstSeenBoneDestUsesSsePath = true;
 
     public static int BoneConstantCount(int influenceCount)
     {

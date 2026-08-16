@@ -70,6 +70,10 @@ public sealed class GameBinFormatTests
         Assert.Equal(FableCrc.Hash("Mesh"), GameBin.MultiStaticMeshFieldCrc);
         Assert.Equal(0x007E1400u, GameBin.MultiStaticLookup);
         Assert.Equal(0x007E15C0u, GameBin.MultiStaticApply);
+        Assert.Equal("CTCGraphicAppearanceMultipleStaticMeshes", GameBin.MultiStaticComponentType);
+        Assert.Equal(0x007E1A80u, GameBin.MultiStaticComponentName);
+        Assert.Equal(0x5C, GameBin.MultiStaticComponentBytes);
+        Assert.Equal(0x007E1370u, GameBin.MultiStaticIndex);
         Assert.Equal(0x0126FFB4u, GameBin.MultiStaticApplyVtbl);
         Assert.Equal(56, GameBin.MultiStaticRuntimeStrideBytes);
         Assert.Equal(40, GameBin.MultiStaticRuntimeIdOffset);

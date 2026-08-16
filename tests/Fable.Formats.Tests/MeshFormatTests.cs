@@ -199,9 +199,14 @@ public sealed class MeshFormatTests
         Assert.Equal(-103.51969f, bip.Matrix.M34, 4);
         var palettes = WorldShading.FirstSeenPalettes(mesh.Bones);
         Assert.Equal(76, palettes.Length);
-        AssertNearIdentity(palettes[0]);
-        AssertNearIdentity(palettes[3]);
-        AssertNearIdentity(palettes[20]);
+        Assert.Equal(0x00A5B850u, WorldShading.SseDetect);
+        Assert.Equal(0x013D2880u, WorldShading.SseMatrixFlag);
+        Assert.Equal(1, WorldShading.FirstSeenSseMatrixFlag);
+        Assert.True(WorldShading.FirstSeenBoneDestUsesSsePath);
+        Assert.Equal(0x00BD2F91u, WorldShading.BoneDestX87);
+        Assert.Equal(0x00AA0090u, WorldShading.BoneHierarchyBuild);
+        for (var i = 0; i < palettes.Length; i++)
+            AssertNearIdentity(palettes[i]);
         var raw = new Vector3(-11.42f, 11.39f, 180.37f);
         Assert.Equal(raw, WorldShading.SkinPosition(
             raw, new byte[] { 0, 0, 0, 0 }, new byte[] { 255, 0, 0, 0 }, palettes));

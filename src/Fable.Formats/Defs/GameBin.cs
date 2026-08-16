@@ -193,6 +193,10 @@ public sealed class GameBin
     public const uint MultiStaticLookup = 0x007E1400;
     public const uint MultiStaticName = 0x007E12F0;
     public const uint MultiStaticCtor = 0x007E14C0;
+    public const string MultiStaticComponentType = "CTCGraphicAppearanceMultipleStaticMeshes";
+    public const uint MultiStaticComponentName = 0x007E1A80;
+    public const int MultiStaticComponentBytes = 0x5C;
+    public const uint MultiStaticIndex = 0x007E1370;
     public const uint MultiStaticApply = 0x007E15C0;
     public const uint MultiStaticApplyVtbl = 0x0126FFB4;
     public const uint MultiStaticCountMagic = 0x92492493;
