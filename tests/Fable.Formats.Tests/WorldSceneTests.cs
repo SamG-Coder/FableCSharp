@@ -251,7 +251,16 @@ public sealed class WorldSceneTests
         Assert.Equal(80, RegionTravel.PreAttackGateOffset);
         Assert.Equal(2584, RegionTravel.ScriptWaitVtbl);
         Assert.False(RegionTravel.FirstSeenPlus80WrittenInStartOakVale);
-        Assert.False(RegionTravel.FirstSeenFadeOpcodeInStartOakVale);
+        Assert.True(RegionTravel.FirstSeenFadeOpcodeInStartOakVale);
+        Assert.True(RegionTravel.FirstSeenPlayMusicDoesNotYield);
+        Assert.Equal(0x00CBF7FEu, RegionTravel.PlayMusicHelper);
+        Assert.Equal(0x00CC8EACu, RegionTravel.PlayMusicInterpreter);
+        Assert.Equal(0x009E5120u, RegionTravel.PlayMusicLookup);
+        Assert.Equal(2784, RegionTravel.PlayMusicVtbl);
+        Assert.Equal(0x00CD17FDu, RegionTravel.CommandLoopContinue);
+        Assert.Equal(0x00CC012Eu, RegionTravel.CommandLoopNext);
+        Assert.Equal(0x00CD0987u, RegionTravel.FadeOutOpcode);
+        Assert.Equal(1488, RegionTravel.FadeApplyVtbl);
         Assert.False(RegionTravel.FirstSeenFadeSpecialCaseRuns);
         Assert.Equal("FadeOut 0.5,0", RegionTravel.FadeSpecialCase);
         Assert.Equal(0.5f, RegionTravel.FadeSpecialCaseSeconds);
@@ -325,6 +334,10 @@ public sealed class WorldSceneTests
         script.Start();
         Assert.True(script.CutsceneStarted);
         Assert.False(script.FadeSpecialCaseApplied);
+        Assert.True(script.PlayMusicRan);
+        Assert.True(script.FadeOutReached);
+        Assert.Equal(0.5f, script.FadeDuration);
+        Assert.Equal(0f, script.FadeParam);
         Assert.Equal(NewGameScript.LiveFatherScript, RegionTravel.LiveFatherScript);
         Assert.Equal(0x00DAC2C0u, NewGameScript.LiveFatherFactory);
         Assert.Equal(NewGameScript.Phase.PreAttackWait, script.Current);

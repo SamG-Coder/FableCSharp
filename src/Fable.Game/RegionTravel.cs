@@ -89,7 +89,13 @@ public static class RegionTravel
     public const int PreAttackGateOffset = 80;
     public const int ScriptWaitVtbl = 2584;
     public const bool FirstSeenPlus80WrittenInStartOakVale = false;
-    public const bool FirstSeenFadeOpcodeInStartOakVale = false;
+    /// <summary>
+    /// After PlayMusic, <c>00CD17FD</c> increments the line
+    /// index and <c>jb 00CC012E</c> back into the token
+    /// walk. <c>FadeOut 0.5,0</c> is the next line and is
+    /// therefore reached in the same <c>00CBFB7D</c> slice.
+    /// </summary>
+    public const bool FirstSeenFadeOpcodeInStartOakVale = true;
     /// <summary>
     /// <c>00CBFB7D</c> at <c>00CBFD95</c>:
     /// <c>[ebp+120]!=1</c> (00DB86B0 pushes 0,0,0 after
@@ -115,6 +121,17 @@ public static class RegionTravel
     public const string IntroPlayAvi = "dream_sequence_comp.xmv";
     public const uint NoLoadUseCameraSite = 0x00CC9E6A;
     public const bool FirstSeenPlayAvi = false;
+    public const uint PlayMusicHelper = 0x00CBF7FE;
+    public const uint PlayMusicInterpreter = 0x00CC8EAC;
+    public const uint PlayMusicLookup = 0x009E5120;
+    public const int PlayMusicVtbl = 2784;
+    public const uint PlayMusicBank = 0x0143E900;
+    public const uint CommandLoopContinue = 0x00CD17FD;
+    public const uint CommandLoopNext = 0x00CC012E;
+    public const uint FadeOutOpcode = 0x00CD0987;
+    public const int FadeApplyVtbl = 1488;
+    public const bool FirstSeenPlayMusicDoesNotYield = true;
+    public const string IntroPlayMusic = "PlayMusic MUSIC_SET_NULL";
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;

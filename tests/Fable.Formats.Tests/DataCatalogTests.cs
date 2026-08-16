@@ -55,8 +55,12 @@ public sealed class DataCatalogTests
         var father = script.Entries.First(e => e.InstanceName == RegionTravel.IntroCutscene);
         var commands = AsciiCommands(father.Raw);
         Assert.Equal("PlayMusic MUSIC_SET_NULL", commands[0]);
+        Assert.Equal(RegionTravel.IntroPlayMusic, commands[0]);
+        Assert.Equal(RegionTravel.FadeSpecialCase, commands[1]);
         Assert.Contains(RegionTravel.FadeSpecialCase, commands);
         Assert.NotEqual(RegionTravel.FadeSpecialCase, commands[0]);
+        Assert.True(RegionTravel.FirstSeenFadeOpcodeInStartOakVale);
+        Assert.True(RegionTravel.FirstSeenPlayMusicDoesNotYield);
         Assert.Contains(commands, c => c.StartsWith("PlayAVI ", StringComparison.Ordinal)
                                       && c.Contains(RegionTravel.IntroPlayAvi, StringComparison.Ordinal));
         Assert.Contains("UseCamera CAM_OVIF_SHOT2", commands);

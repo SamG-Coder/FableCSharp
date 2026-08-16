@@ -15,9 +15,9 @@ namespace Fable.Game;
 /// <c>00CBFB7D("CS_OAKVALE_INTRO_FATHER")</c>. First-seen
 /// <c>00DABAC0</c> registers <c>NOVI_LiveFather</c> then
 /// waits the map; TNG Father construct starts that body.
-/// <c>00CBFB7D</c> FadeOut 0.5,0 special-case does not
-/// run: first cutscene line is PlayMusic. PlayAVI / wake
-/// are later interpreter tokens. Do not invent them.
+/// First slice: PlayMusic (no yield) then FadeOut 0.5,0
+/// via <c>vtbl+1488</c>. Special-case FadeOut does not run.
+/// PlayAVI / wake are later. Do not invent their playback.
 /// </summary>
 public sealed class NewGameScript
 {
@@ -73,6 +73,10 @@ public sealed class NewGameScript
     /// first-seen <c>CS_OAKVALE_INTRO_FATHER</c>.
     /// </summary>
     public bool FadeSpecialCaseApplied { get; private set; }
+    public bool PlayMusicRan { get; private set; }
+    public bool FadeOutReached { get; private set; }
+    public float FadeDuration { get; private set; }
+    public float FadeParam { get; private set; }
 
     public void Start()
     {
@@ -82,6 +86,12 @@ public sealed class NewGameScript
         // 00DAADA0 persist AttackOver and 00DABAC0 run.
         // 00DABAC0 registers NOVI_LiveFather + 00DAC2C0.
         CutsceneStarted = true;
+        // 00CC8EAC PlayMusic then 00CD17FD → 00CC012E.
+        // Next line FadeOut 0.5,0 calls vtbl+1488(0.5, 0).
+        PlayMusicRan = true;
+        FadeOutReached = true;
+        FadeDuration = RegionTravel.FadeSpecialCaseSeconds;
+        FadeParam = 0f;
         ApplyPersist(Gate80);
         Current = Phase.PreAttackWait;
     }

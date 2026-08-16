@@ -859,6 +859,9 @@ static void RunExportScriptBank(PeImage pe, DumpStore store, GameInstall? instal
     native.AppendLine("| UseCamera activate | `00CC9F3A` | lookup TNG name; bind `vtbl+1656` (thing) or `vtbl+1648` (name) |");
     native.AppendLine("| first-seen start | `NOVI_LiveFather` | `00DABAC0` registers name + factory `00DAC2C0` at `+16` (`0x012D8370`). TNG `CREATURE_HERO_FATHER` / `NOVI_LiveFather`. Construct `004C97B0` → `00CB8960` → `00DB8520` → `00DAC2C0` writes vtbl `0x012D8388`. Fiber `00DB8630` calls `[+52].vtbl+4` = `00DB86B0`. Names are registered before `00DBDE40` map-wait. |");
     native.AppendLine("| FadeOut special-case | `00CBFDD0` | `[ebp+120]!=1` (00DB86B0 pushes 0,0,0) compares first line to `FadeOut 0.5,0` then `vtbl+1488(0.5,0)`. First line is `PlayMusic` so the call is skipped. |");
+    native.AppendLine("| PlayMusic | `00CC8EAC` / `00CBF7FE` | lookup `009E5120` then `vtbl+2784`. Jumps `00CD17FD` (no yield). |");
+    native.AppendLine("| command loop | `00CD17FD` | `inc [ebp-72]` then `jb 00CC012E`. Next line is `FadeOut 0.5,0`. |");
+    native.AppendLine("| FadeOut opcode | `00CD0987` | same-slice after PlayMusic. Parses 0.5 / 0 / default black. Apply `vtbl+1488(0.5,0)` then `jmp 00CD17FD`. |");
     native.AppendLine("| PlayAVI | `00CCA26E` | prefix `Data\\Video\\` then `vtbl+1476`. Later than first command. |");
     native.AppendLine("| NoLoadUseCamera | `00CC9E6A` | separate token from `UseCamera`. |");
     store.WritePart(family, "native-sqnovi", native.ToString());
@@ -1030,7 +1033,16 @@ static void RunTraceScriptRuntime(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "00DB86B0 calls runner 00DB88DB", 0x00DB88DB, 20, stopOnRet: false),
         WriteFnPart(pe, store, family, "PlayAVI site 00CCA26E", 0x00CCA26E, 80, stopOnRet: false),
         WriteFnPart(pe, store, family, "NoLoadUseCamera site 00CC9E6A", 0x00CC9E6A, 50, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "PlayMusic helper 00CBF7FE", 0x00CBF7FE, 120),
+        WriteFnPart(pe, store, family, "PlayMusic helper site 00CBF8F4", 0x00CBF8F4, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayMusic interpreter 00CC8EAC", 0x00CC8EAC, 60, stopOnRet: false),
+        WriteCallsPart(pe, store, family, "calls PlayMusic helper 00CBF7FE", 0x00CBF7FE),
+        WriteFnPart(pe, store, family, "FadeOut opcode exact 00CD0987", 0x00CD0987, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "FadeOut after match 00CD09DF", 0x00CD09DF, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "FadeOut apply 00CD0AF0", 0x00CD0AF0, 60, stopOnRet: false),
+        WriteFnPart(pe, store, family, "command loop continue 00CD17FD", 0x00CD17FD, 80, stopOnRet: false),
         WriteCallDispPart(pe, store, family, "calldisp vtbl+1488 fade runner", 0x5D0, 0x00CBFD00, 0x00CBFE50),
+        WriteCallDispPart(pe, store, family, "calldisp vtbl+1496 FadeOut", 0x5D8, 0x00CD0980, 0x00CD0C00),
         WriteImmPart(pe, store, family, "imm fade 0.5 122F59C", 0x122F59C, 0x00CBFD00, 0x00CBFE50),
         WriteWalkPart(pe, store, family, "CS_OAKVALE_INTRO_FATHER start 00DB86B0", 0x00DB86B0, 200),
         WriteWalkPart(pe, store, family, "intro-father dtor 00DB8680", 0x00DB8680, 20),
@@ -1539,7 +1551,16 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "00DB86B0 calls runner 00DB88DB", 0x00DB88DB, 20, stopOnRet: false),
         WriteFnPart(pe, store, family, "PlayAVI site 00CCA26E", 0x00CCA26E, 80, stopOnRet: false),
         WriteFnPart(pe, store, family, "NoLoadUseCamera site 00CC9E6A", 0x00CC9E6A, 50, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "PlayMusic helper 00CBF7FE", 0x00CBF7FE, 120),
+        WriteFnPart(pe, store, family, "PlayMusic helper site 00CBF8F4", 0x00CBF8F4, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayMusic interpreter 00CC8EAC", 0x00CC8EAC, 60, stopOnRet: false),
+        WriteCallsPart(pe, store, family, "calls PlayMusic helper 00CBF7FE", 0x00CBF7FE),
+        WriteFnPart(pe, store, family, "FadeOut opcode exact 00CD0987", 0x00CD0987, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "FadeOut after match 00CD09DF", 0x00CD09DF, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "FadeOut apply 00CD0AF0", 0x00CD0AF0, 60, stopOnRet: false),
+        WriteFnPart(pe, store, family, "command loop continue 00CD17FD", 0x00CD17FD, 80, stopOnRet: false),
         WriteCallDispPart(pe, store, family, "calldisp vtbl+1488 fade runner", 0x5D0, 0x00CBFD00, 0x00CBFE50),
+        WriteCallDispPart(pe, store, family, "calldisp vtbl+1496 FadeOut", 0x5D8, 0x00CD0980, 0x00CD0C00),
         WriteWalkPart(pe, store, family, "CS_OAKVALE_INTRO_FATHER start 00DB86B0", 0x00DB86B0, 200),
         WriteWalkPart(pe, store, family, "intro-father dtor 00DB8680", 0x00DB8680, 20),
         WriteWalkPart(pe, store, family, "NOVI_LiveFather factory 00DAC2C0", 0x00DAC2C0, 60),
