@@ -259,6 +259,8 @@ public sealed class ShaderFormatTests
         Assert.False(WorldShading.FirstSeenStaticLitReadsFlag1);
         Assert.Equal(41, WorldShading.MaterialFlag1Offset);
         Assert.Equal(5, WorldShading.FirstSeenPalskinFlag1MaskOr);
+        Assert.Equal(2, WorldShading.FirstSeenPalskinFlag2MaskOr);
+        Assert.Equal(4, WorldShading.PalskinTypeIndex(1, 0, 0xFF, 1));
         Assert.Equal(0xFF, WorldShading.FirstSeenInstanceOpacity);
         Assert.Equal(28, WorldShading.PalskinHelperTypeIndexOffset);
         Assert.False(WorldShading.FirstSeenPalskinBindUsesHelperTypeIndex);

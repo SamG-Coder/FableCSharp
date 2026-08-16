@@ -393,20 +393,47 @@ public static class WorldShading
     /// mesh serialize <c>00A89450</c> at <c>00A8958B</c>, stride
     /// 48): Flag0 at +40, Flag1 at +41, Flag2 at +42, Flag3 at
     /// +43. First-seen PALSKIN draw <c>00BD71B0</c> at
-    /// <c>00BD76D2</c>/<c>00BD7705</c> reads +41. If Flag2==0 and
-    /// Flag1!=0 it <c>or ebx, 5</c>. First-seen static-lit
-    /// <c>00BB2540</c> has no +41 read. Instance opacity
-    /// <c>+39</c> is ctor <c>0xFF</c> (<c>00B991F5</c> /
-    /// <c>00BBBE7D</c>), so the Flag1 loop is not skipped.
+    /// <c>00BD76D2</c>/<c>00BD7705</c>: <c>xor ebx,ebx</c>, then
+    /// if opacity &lt; <c>0xFF</c> fill from <c>[inst+12]</c> bit 9
+    /// (first-seen opacity is <c>0xFF</c> so that block is skipped).
+    /// Flag2≠0 → <c>or ebx, 2</c>; else Flag1≠0 → <c>or ebx, 5</c>.
+    /// That bitfield plus MapFlags <c>[mat+32]</c> picks the helper
+    /// type index pushed to <c>00BCE740</c>. First-seen static-lit
+    /// <c>00BB2540</c> has no +41 read.
     /// </summary>
     public const int MaterialFlag1Offset = 41;
+    public const int MaterialFlag2Offset = 42;
     public const int MaterialStrideBytes = 48;
     public const uint MaterialSerialize = 0x00ABF6B0;
     public const int FirstSeenPalskinFlag1MaskOr = 5;
+    public const int FirstSeenPalskinFlag2MaskOr = 2;
     public const bool FirstSeenPalskinReadsFlag1 = true;
     public const bool FirstSeenStaticLitReadsFlag1 = false;
     public const int InstanceOpacityOffset = 39;
     public const byte FirstSeenInstanceOpacity = 0xFF;
+
+    /// <summary>
+    /// <c>00BD76E0</c>–<c>00BD77C2</c> with first-seen opacity
+    /// <c>0xFF</c> (the <c>[inst+12]</c> bit-9 fill is skipped).
+    /// MapFlags bit 0 set and ebx bit 9 clear: remainder 2 or 6 →
+    /// 11, remainder 4 → 7, else 4. Hair MapFlags=1 + Flag1 → 4.
+    /// </summary>
+    public static int PalskinTypeIndex(byte flag1, byte flag2, byte opacity, int mapFlags)
+    {
+        var bits = 0;
+        if (flag2 != 0)
+            bits |= FirstSeenPalskinFlag2MaskOr;
+        else if (flag1 != 0)
+            bits |= FirstSeenPalskinFlag1MaskOr;
+        if (opacity < FirstSeenInstanceOpacity || (mapFlags & 1) == 0 || (bits & 0x200) != 0)
+            return FirstSeenPalskinHairTypeIndex;
+        var remainder = mapFlags & ~1;
+        if (remainder is 2 or 6)
+            return 11;
+        if (remainder == 4)
+            return 7;
+        return 4;
+    }
 
     /// <summary>
     /// Helper ctor <c>00BCE740</c> (vtbl <c>0x12A6C5C</c>, dtor

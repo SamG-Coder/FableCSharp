@@ -193,6 +193,11 @@ public sealed class MeshFormatTests
         Assert.Equal(48, WorldShading.MaterialStrideBytes);
         Assert.Equal(0x00ABF6B0u, WorldShading.MaterialSerialize);
         Assert.Equal(5, WorldShading.FirstSeenPalskinFlag1MaskOr);
+        Assert.Equal(2, WorldShading.FirstSeenPalskinFlag2MaskOr);
+        Assert.Equal(42, WorldShading.MaterialFlag2Offset);
+        Assert.Equal(4, WorldShading.PalskinTypeIndex(1, 0, WorldShading.FirstSeenInstanceOpacity, 1));
+        Assert.Equal(4, WorldShading.PalskinTypeIndex(0, 1, WorldShading.FirstSeenInstanceOpacity, 1));
+        Assert.Equal(7, WorldShading.PalskinTypeIndex(1, 0, WorldShading.FirstSeenInstanceOpacity, 5));
         Assert.True(WorldShading.FirstSeenPalskinReadsFlag1);
         Assert.False(WorldShading.FirstSeenStaticLitReadsFlag1);
         Assert.Equal(39, WorldShading.InstanceOpacityOffset);
