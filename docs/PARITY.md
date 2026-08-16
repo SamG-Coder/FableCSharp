@@ -40,6 +40,14 @@ parsers and notes.
 | game.bin container | 13-byte header: `u8 use_names_bin` (TLC = 0), `u32 file`, `u32 platform`, `u32 entry_count` (14761). Then `NameRef` × N (`type_off`, `file_off`, `counter`). Then chunk index + **zlib level 1** chunks (`78 01`). | `GameBinFormatTests` |
 | game.bin OBJECT → mesh | Instance name is the `file_off` names.bin string (`OBJECT_WALL_SMALL_POST_01`). Body starts with a 3-byte preamble, then a sub-def table, then control fields. Field CRC `"Graphic"` is followed by `EngineGraphic` (`type i32`, **`bank_index i32`** = `graphics.big` mesh id). | `GameBinFormatTests` |
 | Lookout TNG → mesh | Walls 5331 `MESH_SMALL_WALL_CURVED_POST_01`, Brightwood rocks 7828 `MESH_MEDIUMROCK_LICHEN_01`, streetlamps 4978 `MESH_OBJECT_STREETLAMP_OFF_02`, pillars 7168, thorn vines 3977, villager 5149. Lookout instances **> 150**. Markers/cameras stay gizmos. | `GameBinFormatTests`, `WorldGeometryTests` |
+| frontend.bin / script.bin | Same GameBin container as game.bin (13-byte header, platform `0xA8E36C34`). Frontend is 810 entries, mostly `UI`. Script is 611 entries, mostly `CCutsceneDef` (`CS_ATTRACT_1`, …). | `DataCatalogTests` |
+| FinalAlbion.bwd | Region index: 398 records matching every WLD map. Record = path + name + 3 flag bytes + `u32` min/max X/Y (Lookout `3232,3488`–`3360,3616`) + 9 unread bytes. Declared count is 399; leftover after 398 is a second unread blob. | `DataCatalogTests` |
+| FinalAlbion.gtg | Version-2 thing text (`NEWMAP 1`), not a .lev. Parses with the TNG reader. Global `REGION_ENTRANCE_POINT` / `HOLY_SITE_PLAYER_START`. | `DataCatalogTests` |
+| .bncfg | Text bone morphs. `Creature_type: CREATURE_HERO` / `CREATURE_BS_VILLAGER_MALE`, then `Bip01 *` XYZ scales and named bone groups. 60 files in `data\Bones`. | `DataCatalogTests` |
+| text.big | BIGB bank `TEXT_ENGLISH_MAIN`, 28913 UTF-16 LE strings. Id 1 is flourish on-screen help. | `DataCatalogTests` |
+| Other BIGB | `fonts.big`, `dialogue.big` (lipsync), `frontend.big`, `effects.big` (particles), `shaders.big` (pixel/vertex programs). Same BIGB footer as graphics/textures. | `DataCatalogTests` |
+| Sound .lug / Dialogue.lut | Lionhead audio, **not** BIGB. Magic `LiOnHeAd` + `LHFileSegmentBankInfo` / `LHAudioBankCompData`. `.met` is a sidecar (u32=1 then source WAV path). | `DataCatalogTests` |
+| stars.dat | `u32` count **1330**, then 24-byte records (6 floats). | `DataCatalogTests` |
 
 ## Did not work
 
@@ -63,6 +71,9 @@ parsers and notes.
 | STB `.lev` is the same format as WAD `.lev` | STB blob starts `u32=1`, not version 25 / `0x1904`. | `LevFormatTests` |
 | Extra `Matrix4x4.Transpose` on VP | Double transpose. Screen was solid clear-color. | `CameraProjectionTests` |
 | WAD `Find("Lookout")` for a `.tng` | Stem match hit `LookoutPoint.lev`. Must pass the extension. | `TlcInstallTests` |
+| `FinalAlbion.gtg` is a compiled .lev / C3D | ASCII `NEWMAP 1` / `Version 2;`. First `u32` is not 25. | `DataCatalogTests` |
+| PicnicArea.lug / Dialogue.lut are BIGB | Magic is `LiOnHeAd`, not `BIGB`. | `DataCatalogTests` |
+| BWD declared count is the parsed region count | File says 399; 398 records match WLD. Trailing ~22 KB is not another region. | `DataCatalogTests` |
 
 ## Open
 
@@ -73,7 +84,9 @@ parsers and notes.
 5. **GPU texturing leftovers.** Sampler is 2D RGBA, one draw per texture id. No atlas, no mipmaps, no bump/reflection/illumination maps, no DXT-on-GPU. Terrain UVs still tile every 16 world units.
 6. **WAD cell bytes 4–7 / 14–20.** High-entropy field and flags after the material slots are unread.
 7. **Animation / bones / cloth.** Parser skips the blocks so static positions survive. No skinning.
-8. **Hero, combat, quests, UI, audio.** Not started.
+8. **Hero, combat, quests, UI, audio.** Frontend UI defs and cutscene defs parse as GameBin entries; fields inside are unread. `.lug`/`.lut` payloads, `.ogg`/`.wmv`, tattoos, and `stars.dat` channels are unread.
+9. **BWD trailer / second blob.** 9 bytes after each AABB, and ~22 KB after the region table.
+10. **text.big after the first UTF-16 string.** Some entries append a `.lug` name / extra binary.
 
 ## How to add a note
 

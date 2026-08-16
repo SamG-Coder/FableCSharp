@@ -25,6 +25,10 @@ public sealed class GameInstall
     public string WadPath => Path.Combine(LevelsDirectory, "FinalAlbion.wad");
     public string RuntimeStbPath => Path.Combine(LevelsDirectory, "FinalAlbion_RT.stb");
     public string LooseLevelsDirectory => Path.Combine(LevelsDirectory, "FinalAlbion");
+    public string BwdPath => Path.Combine(LevelsDirectory, "FinalAlbion.bwd");
+    public string GtgPath => Path.Combine(LevelsDirectory, "FinalAlbion.gtg");
+    public string BonesDirectory => Path.Combine(DataRoot, "Bones");
+    public string TextBigPath => Path.Combine(DataRoot, "lang", "English", "text.big");
 
     public static GameInstall Locate() =>
         TryLocate() ?? throw new DirectoryNotFoundException(
