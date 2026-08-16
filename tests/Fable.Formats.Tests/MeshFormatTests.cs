@@ -1,3 +1,4 @@
+using System.Numerics;
 using Fable.Core;
 using Fable.Formats;
 using Fable.Formats.Banks;
@@ -144,7 +145,32 @@ public sealed class MeshFormatTests
         var entry = big.ReadEntries(bank).First(item => item.Id == 4300);
         var mesh = MeshFile.Parse(big.Read(entry), (int)entry.Type);
         Assert.Equal("MESH_YOUNGHERO_02", mesh.Name);
-        Assert.True(mesh.BoneCount > 0, $"kid bones={mesh.BoneCount}");
+        Assert.Equal(76, mesh.BoneCount);
+        Assert.Equal(76, mesh.Bones.Count);
+        Assert.Equal(64, MeshFile.BoneMatrixBytes);
+        Assert.Equal(60, MeshFile.BoneInfoBytes);
+        Assert.Equal(48, MeshFile.BoneLocalBytes);
+        Assert.Equal(WorldShading.BoneRecordBytes, MeshFile.BoneMatrixBytes);
+        Assert.Equal(WorldShading.BoneFloat4sPerInfluence * 16, 48);
+        var root = mesh.Bones[0];
+        Assert.Equal("Scene Root", root.Name);
+        Assert.Equal(-1, root.Parent);
+        Assert.Equal(1u, root.Flags);
+        Assert.Equal(Matrix4x4.Identity, root.Matrix);
+        Assert.Equal(new Vector4(1f, 0f, 0f, 0f), root.UploadRow0);
+        Assert.Equal(new Vector4(0f, 1f, 0f, 0f), root.UploadRow1);
+        Assert.Equal(new Vector4(0f, 0f, 1f, 0f), root.UploadRow2);
+        Assert.Equal(76 * 3, WorldShading.BoneConstantCount(mesh.BoneCount));
+        var bip = mesh.Bones[3];
+        Assert.Equal("Bip01", bip.Name);
+        Assert.Equal(2, bip.Parent);
+        Assert.Equal(0f, bip.Matrix.M41);
+        Assert.Equal(0f, bip.Matrix.M42);
+        Assert.Equal(0f, bip.Matrix.M43);
+        Assert.Equal(1f, bip.Matrix.M44);
+        Assert.Equal(6.10849f, bip.Matrix.M14, 4);
+        Assert.Equal(0.28064f, bip.Matrix.M24, 4);
+        Assert.Equal(-103.51969f, bip.Matrix.M34, 4);
         Assert.Equal("VSHADER_PALSKIN_DIRLIGHT_FOG",
             WorldShading.PalskinFamilyShader(WorldShading.FirstSeenPackedLightCount));
         var hair = mesh.Materials.Single(m => m.Name.Contains("Hair", StringComparison.OrdinalIgnoreCase));

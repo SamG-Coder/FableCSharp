@@ -18,7 +18,27 @@ public sealed class MeshFile
     public int DegenerateSkipped { get; init; }
     public int PrimitiveCount { get; init; }
     public int BoneCount { get; init; }
+    public IReadOnlyList<MeshBone> Bones { get; init; } = [];
     public IReadOnlyList<MeshPrimitiveReport> PrimitiveReports { get; init; } = [];
+
+    /// <summary>
+    /// Exe serialize <c>00A89525</c> / getter <c>00A4BD70</c>: 60-byte
+    /// records at mesh+156. First 12 bytes are id / parent / flags.
+    /// </summary>
+    public const int BoneInfoBytes = 60;
+
+    /// <summary>
+    /// Exe serialize <c>lea ecx,[eax+eax*2]; shl ecx,4</c> at
+    /// <c>00A8953D</c>. Local quat + translation + scale.
+    /// </summary>
+    public const int BoneLocalBytes = 48;
+
+    /// <summary>
+    /// Exe serialize <c>shl eax,6</c> at <c>00A89558</c>; pack
+    /// <c>00BD2D90</c> copies 16 dwords from mesh+224. Upload
+    /// <c>00BCFB00</c> sends the first 12 floats (3 float4s).
+    /// </summary>
+    public const int BoneMatrixBytes = 64;
 
     public static MeshFile? TryParse(byte[] data, int entryType = -1)
     {
@@ -76,15 +96,9 @@ public sealed class MeshFile
 
         if (boneCount is < 0 or > 1000)
             throw new InvalidDataException($"Invalid bone count {boneCount} at {cursor}.");
-        if (boneCount > 0)
-        {
-            Need(data, cursor, 2 * boneCount);
-            cursor += 2 * boneCount;
-            Lzo.DecompressFramed(data, ref cursor, boneNameSize);
-            Lzo.DecompressFramed(data, ref cursor, 60 * boneCount);
-            Lzo.DecompressFramed(data, ref cursor, 48 * boneCount);
-            Lzo.DecompressFramed(data, ref cursor, 64 * boneCount);
-        }
+        var bones = boneCount > 0
+            ? ReadBones(data, ref cursor, boneCount, boneNameSize)
+            : [];
 
         Need(data, cursor, 48);
         cursor += 48; // root matrix
@@ -343,8 +357,107 @@ public sealed class MeshFile
             DegenerateSkipped = degenerateSkipped,
             PrimitiveCount = primitiveCount,
             BoneCount = boneCount,
+            Bones = bones,
             PrimitiveReports = primitiveReports,
         };
+    }
+
+    private static MeshBone[] ReadBones(byte[] data, ref int cursor, int boneCount, int boneNameSize)
+    {
+        Need(data, cursor, 2 * boneCount);
+        var nameOffsets = new ushort[boneCount];
+        for (var i = 0; i < boneCount; i++)
+            nameOffsets[i] = ReadU16(data, ref cursor);
+
+        var nameBlob = Lzo.DecompressFramed(data, ref cursor, boneNameSize);
+        var info = Lzo.DecompressFramed(data, ref cursor, BoneInfoBytes * boneCount);
+        var local = Lzo.DecompressFramed(data, ref cursor, BoneLocalBytes * boneCount);
+        var matrices = Lzo.DecompressFramed(data, ref cursor, BoneMatrixBytes * boneCount);
+        if (info.Length != BoneInfoBytes * boneCount ||
+            local.Length != BoneLocalBytes * boneCount ||
+            matrices.Length != BoneMatrixBytes * boneCount)
+        {
+            throw new InvalidDataException(
+                $"Bone blocks short: info={info.Length} local={local.Length} mat={matrices.Length} n={boneCount}.");
+        }
+
+        var sequential = SplitNames(nameBlob, boneCount);
+        var bones = new MeshBone[boneCount];
+        for (var i = 0; i < boneCount; i++)
+        {
+            var name = NameAt(nameBlob, nameOffsets[i]);
+            if (name.Length == 0)
+                name = sequential[i];
+            var io = i * BoneInfoBytes;
+            var lo = i * BoneLocalBytes;
+            var mo = i * BoneMatrixBytes;
+            var matrix = new Matrix4x4(
+                BitConverter.ToSingle(matrices, mo),
+                BitConverter.ToSingle(matrices, mo + 4),
+                BitConverter.ToSingle(matrices, mo + 8),
+                BitConverter.ToSingle(matrices, mo + 12),
+                BitConverter.ToSingle(matrices, mo + 16),
+                BitConverter.ToSingle(matrices, mo + 20),
+                BitConverter.ToSingle(matrices, mo + 24),
+                BitConverter.ToSingle(matrices, mo + 28),
+                BitConverter.ToSingle(matrices, mo + 32),
+                BitConverter.ToSingle(matrices, mo + 36),
+                BitConverter.ToSingle(matrices, mo + 40),
+                BitConverter.ToSingle(matrices, mo + 44),
+                BitConverter.ToSingle(matrices, mo + 48),
+                BitConverter.ToSingle(matrices, mo + 52),
+                BitConverter.ToSingle(matrices, mo + 56),
+                BitConverter.ToSingle(matrices, mo + 60));
+            bones[i] = new MeshBone(
+                name,
+                BitConverter.ToInt32(info, io + 4),
+                BitConverter.ToUInt32(info, io),
+                BitConverter.ToUInt32(info, io + 8),
+                matrix,
+                new Quaternion(
+                    BitConverter.ToSingle(local, lo),
+                    BitConverter.ToSingle(local, lo + 4),
+                    BitConverter.ToSingle(local, lo + 8),
+                    BitConverter.ToSingle(local, lo + 12)),
+                new Vector3(
+                    BitConverter.ToSingle(local, lo + 16),
+                    BitConverter.ToSingle(local, lo + 20),
+                    BitConverter.ToSingle(local, lo + 24)),
+                new Vector3(
+                    BitConverter.ToSingle(local, lo + 32),
+                    BitConverter.ToSingle(local, lo + 36),
+                    BitConverter.ToSingle(local, lo + 40)));
+        }
+
+        return bones;
+    }
+
+    private static string[] SplitNames(byte[] names, int count)
+    {
+        var list = new string[count];
+        var o = 0;
+        for (var i = 0; i < count; i++)
+        {
+            var end = o;
+            while (end < names.Length && names[end] != 0)
+                end++;
+            list[i] = end > o
+                ? System.Text.Encoding.ASCII.GetString(names, o, end - o)
+                : "";
+            o = end < names.Length ? end + 1 : names.Length;
+        }
+
+        return list;
+    }
+
+    private static string NameAt(byte[] names, int offset)
+    {
+        if ((uint)offset >= (uint)names.Length)
+            return "";
+        var end = offset;
+        while (end < names.Length && names[end] != 0)
+            end++;
+        return System.Text.Encoding.ASCII.GetString(names, offset, end - offset);
     }
 
     internal static int PackedUvOffset(int entryType, int stride, uint initFlags, bool hasBones)
@@ -465,6 +578,28 @@ public sealed class MeshFile
         cursor += 4;
         return value;
     }
+}
+
+/// <summary>
+/// One C3D bone. Matrix is the 64-byte block at mesh+224 (row-major 4×4;
+/// last row is 0,0,0,1 on the kid). <see cref="UploadRow0"/>–
+/// <see cref="UploadRow2"/> are the 12 floats <c>00BCFB00</c> copies.
+/// Parent / id / flags are the first 12 bytes of the 60-byte block.
+/// Local TRS is the 48-byte block.
+/// </summary>
+public readonly record struct MeshBone(
+    string Name,
+    int Parent,
+    uint Id,
+    uint Flags,
+    Matrix4x4 Matrix,
+    Quaternion LocalRotation,
+    Vector3 LocalTranslation,
+    Vector3 LocalScale)
+{
+    public Vector4 UploadRow0 => new(Matrix.M11, Matrix.M12, Matrix.M13, Matrix.M14);
+    public Vector4 UploadRow1 => new(Matrix.M21, Matrix.M22, Matrix.M23, Matrix.M24);
+    public Vector4 UploadRow2 => new(Matrix.M31, Matrix.M32, Matrix.M33, Matrix.M34);
 }
 
 public readonly record struct MeshPrimitiveReport(
