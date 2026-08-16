@@ -763,6 +763,8 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteWalkPart(pe, store, family, "NONE-draw PALSKIN 00BC3F30", 0x00BC3F30, 1000),
         WriteWalkPart(pe, store, family, "Primitive layer switch 00BBC130", 0x00BBC130, 200),
         WriteWalkPart(pe, store, family, "Static-lit CCW 00BB2540", 0x00BB2540, 900),
+        WriteFnPart(pe, store, family, "Static-lit FVF 0x112 00BB2633", 0x00BB2631, 20, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "CreateVertexBuffer wrapper 00A63150", 0x00A63150, 40),
         WriteWalkPart(pe, store, family, "Landscape CCW 00B24850", 0x00B24850, 400),
         WriteFnPart(pe, store, family, "CPlayer CreateCharacter", 0x00489D40, 40, stopOnRet: false),
         WriteFnPart(pe, store, family, "CPlayer CreateCharacter body", 0x00489D86, 120, stopOnRet: false),

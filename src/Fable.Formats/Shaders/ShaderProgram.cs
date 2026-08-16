@@ -239,6 +239,32 @@ public sealed class ShaderProgram
     }
 
     /// <summary>
+    /// Static / PALSKIN: <c>mov oT0, vN</c> (full mask, xyzw).
+    /// First-seen static is <c>v2</c> (FVF TEX1); PALSKIN is <c>v4</c>.
+    /// </summary>
+    public bool TryGetOt0FromInput(out int vReg)
+    {
+        vReg = 0;
+        foreach (var insn in DecodeInstructions())
+        {
+            if (insn.Opcode != MovOpcode)
+                continue;
+            if (insn.DestType != RegTypeTexCrdOut || insn.DestNum != 0)
+                continue;
+            if (!insn.DestMaskXYZW)
+                continue;
+            if (insn.Src0Type != RegTypeInput)
+                continue;
+            if (insn.Src0Swizzle0 != 0 || insn.Src0Swizzle1 != 1)
+                continue;
+            vReg = insn.Src0Num;
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
     /// First-seen landscape FG:
     /// <c>mov r0.xy, v0</c>; <c>mov r0.z, v1.x</c>;
     /// <c>mov r0.w, c0.y</c>; <c>add r1, r0, -c4</c>;

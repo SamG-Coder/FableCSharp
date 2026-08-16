@@ -168,6 +168,7 @@ internal static class FunctionMap
         ("PALSKIN drain vtbl24", 0x00B91340),
         ("MainScene plus616 draw", 0x00B33010),
         ("static VS bind", 0x00B8B660),
+        ("static-lit draw FVF", 0x00BB2540),
         ("PALSKIN VS bind", 0x00BD01B8),
         ("PALSKIN bone pack", 0x00BD2D90),
         ("PALSKIN bind switch", 0x00BD3070),

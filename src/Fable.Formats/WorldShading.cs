@@ -406,6 +406,19 @@ public static class WorldShading
     public const bool FirstSeenStaticOd0WIsC0Y = true;
     public const bool FirstSeenPalskinOd0WIsC0Y = true;
     public const bool FirstSeenBackgroundOd0WIsC0Y = true;
+    /// <summary>
+    /// Static-lit <c>00BB2540</c> <c>CreateVertexBuffer</c> is
+    /// FVF <c>0x112</c> (<c>XYZ|NORMAL|TEX1</c>) stride <c>32</c>.
+    /// VS is <c>mov oT0, v2</c>. PALSKIN first-seen is
+    /// <c>mov oT0, v4</c>. Object PS is 1-tex <c>mul t0, v0</c>.
+    /// </summary>
+    public const uint FirstSeenStaticFvf = 0x112;
+    public const int FirstSeenStaticStrideBytes = 32;
+    public const int FirstSeenStaticOt0Input = 2;
+    public const int FirstSeenPalskinOt0Input = 4;
+    public const bool FirstSeenStaticOt0IsV2 = true;
+    public const bool FirstSeenPalskinOt0IsV4 = true;
+    public const uint FirstSeenStaticLitDraw = 0x00BB2540;
     public const bool FirstSeenAppliesVertexFogBlend = true;
 
     /// <summary>

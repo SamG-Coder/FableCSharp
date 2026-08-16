@@ -217,6 +217,16 @@ public sealed class ShaderFormatTests
         Assert.DoesNotContain(42, stat.ConstRegisters);
         Assert.DoesNotContain(42, skin.ConstRegisters);
         Assert.False(land.HasConstDef(LandscapeTextures.Od0WFadeRegister));
+        Assert.True(stat.TryGetOt0FromInput(out var statOt0));
+        Assert.Equal(2, statOt0);
+        Assert.True(skin.TryGetOt0FromInput(out var skinOt0));
+        Assert.Equal(4, skinOt0);
+        Assert.False(land.TryGetOt0FromInput(out _));
+        Assert.True(WorldShading.FirstSeenStaticOt0IsV2);
+        Assert.True(WorldShading.FirstSeenPalskinOt0IsV4);
+        Assert.Equal(0x112u, WorldShading.FirstSeenStaticFvf);
+        Assert.Equal(32, WorldShading.FirstSeenStaticStrideBytes);
+        Assert.Equal(0x00BB2540u, WorldShading.FirstSeenStaticLitDraw);
 
         Assert.Contains(3, land.ConstRegisters);
         Assert.DoesNotContain(1, land.ConstRegisters);

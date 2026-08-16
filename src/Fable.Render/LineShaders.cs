@@ -114,7 +114,8 @@ internal static class LineShaders
             else if (mode < 2.5)
                 lit = t1.rgb * fragColor.rgb;
             else
-                lit = t1.rgb * v0;
+                // STATIC/PALSKIN: mov oT0, v2/v4. PSHADER_TEXTURE_DIFFUSE_FOG mul t0 * v0.
+                lit = t0.rgb * v0;
             // FOGENABLE=1, FOGCOLOR black: rgb * oFog + (1-oFog) * 0
             outColor = vec4(lit * fragFog, alpha);
         }
