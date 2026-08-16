@@ -119,7 +119,8 @@ public sealed class LevTileMesh
             var maxY = at.Count == 0 ? 0 : at.Keys.Max(k => k.Y);
             var span = Math.Max(1, (maxX - minX + 1) * (maxY - minY + 1));
             var filled = at.Count / (float)span;
-            var useGrid = at.Count >= 4 && (maxX - minX) >= 8 && (maxY - minY) >= 8 && filled >= 0.7f;
+            var useGrid = tile.Vertices.Count == 289 &&
+                          (maxX - minX) == 16 && (maxY - minY) == 16 && filled >= 0.98f;
 
             if (useGrid)
             {

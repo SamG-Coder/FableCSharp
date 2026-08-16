@@ -2,12 +2,15 @@ namespace Fable.Formats.Textures;
 
 internal static class Dxt
 {
-    public static byte[] Decode(ReadOnlySpan<byte> blocks, int width, int height, bool dxt5)
+    public static byte[] Decode(ReadOnlySpan<byte> blocks, int width, int height, bool dxt5) =>
+        Decode(blocks, width, height, dxt5 ? DxtKind.Dxt5 : DxtKind.Dxt1);
+
+    public static byte[] Decode(ReadOnlySpan<byte> blocks, int width, int height, DxtKind kind)
     {
         var rgba = new byte[width * height * 4];
         var blockW = Math.Max(1, (width + 3) / 4);
         var blockH = Math.Max(1, (height + 3) / 4);
-        var blockSize = dxt5 ? 16 : 8;
+        var blockSize = kind == DxtKind.Dxt1 ? 8 : 16;
         var offset = 0;
 
         for (var by = 0; by < blockH; by++)
@@ -16,11 +19,14 @@ internal static class Dxt
             if (offset + blockSize > blocks.Length)
                 return rgba;
 
-            var alpha = dxt5
-                ? DecodeAlpha(blocks.Slice(offset, 8))
-                : null;
-            var colorOff = dxt5 ? offset + 8 : offset;
-            var colors = DecodeColors(blocks.Slice(colorOff, 8));
+            var alpha = kind switch
+            {
+                DxtKind.Dxt5 => DecodeAlpha(blocks.Slice(offset, 8)),
+                DxtKind.Dxt3 => DecodeAlphaExplicit(blocks.Slice(offset, 8)),
+                _ => null,
+            };
+            var colorOff = kind == DxtKind.Dxt1 ? offset : offset + 8;
+            var colors = DecodeColors(blocks.Slice(colorOff, 8), out var punchThrough);
             var lookup = BitConverter.ToUInt32(blocks.Slice(colorOff + 4, 4));
 
             for (var py = 0; py < 4; py++)
@@ -35,7 +41,9 @@ internal static class Dxt
                 rgba[o] = colors[idx, 0];
                 rgba[o + 1] = colors[idx, 1];
                 rgba[o + 2] = colors[idx, 2];
-                rgba[o + 3] = alpha is null ? (byte)255 : alpha[py * 4 + px];
+                rgba[o + 3] = alpha is not null
+                    ? alpha[py * 4 + px]
+                    : punchThrough && idx == 3 ? (byte)0 : (byte)255;
             }
 
             offset += blockSize;
@@ -63,14 +71,15 @@ internal static class Dxt
         return total;
     }
 
-    private static byte[,] DecodeColors(ReadOnlySpan<byte> block)
+    private static byte[,] DecodeColors(ReadOnlySpan<byte> block, out bool punchThrough)
     {
         var c0 = BitConverter.ToUInt16(block);
         var c1 = BitConverter.ToUInt16(block.Slice(2));
         var colors = new byte[4, 3];
         Unpack565(c0, out colors[0, 0], out colors[0, 1], out colors[0, 2]);
         Unpack565(c1, out colors[1, 0], out colors[1, 1], out colors[1, 2]);
-        if (c0 > c1)
+        punchThrough = c0 <= c1;
+        if (!punchThrough)
         {
             for (var i = 0; i < 3; i++)
             {
@@ -85,6 +94,18 @@ internal static class Dxt
         }
 
         return colors;
+    }
+
+    private static byte[] DecodeAlphaExplicit(ReadOnlySpan<byte> block)
+    {
+        var alpha = new byte[16];
+        for (var i = 0; i < 16; i++)
+        {
+            var nibble = (block[i / 2] >> (4 * (i & 1))) & 0xF;
+            alpha[i] = (byte)(nibble * 17);
+        }
+
+        return alpha;
     }
 
     private static byte[] DecodeAlpha(ReadOnlySpan<byte> block)
@@ -123,4 +144,11 @@ internal static class Dxt
         g = (byte)(((value >> 5) & 63) * 255 / 63);
         b = (byte)((value & 31) * 255 / 31);
     }
+}
+
+internal enum DxtKind
+{
+    Dxt1,
+    Dxt3,
+    Dxt5,
 }

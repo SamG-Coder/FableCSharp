@@ -7,6 +7,7 @@ public enum TextureCompression
     Unknown,
     Rgba8,
     Dxt1,
+    Dxt3,
     Dxt5,
 }
 
@@ -38,7 +39,7 @@ public sealed class TextureFile
         var compression = Classify(type, header.FormatCode, header.Width, header.Height, data.Length);
         var expected = ExpectedSize(header.Width, header.Height, compression);
         var payload = data;
-        if (compression is TextureCompression.Dxt1 or TextureCompression.Dxt5 && LooksCompressed(data))
+        if (compression is TextureCompression.Dxt1 or TextureCompression.Dxt3 or TextureCompression.Dxt5 && LooksCompressed(data))
         {
             var cursor = 0;
             payload = Lzo.DecompressFramed(data, ref cursor, expected);
@@ -49,8 +50,9 @@ public sealed class TextureFile
             TextureCompression.Rgba8 => payload.Length >= header.Width * header.Height * 4
                 ? payload[..(header.Width * header.Height * 4)]
                 : new byte[header.Width * header.Height * 4],
-            TextureCompression.Dxt1 => Dxt.Decode(payload, header.Width, header.Height, dxt5: false),
-            TextureCompression.Dxt5 => Dxt.Decode(payload, header.Width, header.Height, dxt5: true),
+            TextureCompression.Dxt1 => Dxt.Decode(payload, header.Width, header.Height, DxtKind.Dxt1),
+            TextureCompression.Dxt3 => Dxt.Decode(payload, header.Width, header.Height, DxtKind.Dxt3),
+            TextureCompression.Dxt5 => Dxt.Decode(payload, header.Width, header.Height, DxtKind.Dxt5),
             _ => new byte[header.Width * header.Height * 4],
         };
 
@@ -72,6 +74,8 @@ public sealed class TextureFile
             return TextureCompression.Rgba8;
         if (formatCode == 31)
             return TextureCompression.Dxt1;
+        if (formatCode == 35)
+            return TextureCompression.Dxt3;
         if (formatCode == 32)
             return TextureCompression.Dxt5;
         var raw = width * height * 4;
@@ -83,6 +87,7 @@ public sealed class TextureFile
         {
             TextureCompression.Rgba8 => width * height * 4,
             TextureCompression.Dxt1 => Dxt.MipChainSize(width, height, 8),
+            TextureCompression.Dxt3 => Dxt.MipChainSize(width, height, 16),
             TextureCompression.Dxt5 => Dxt.MipChainSize(width, height, 16),
             _ => width * height * 4,
         };

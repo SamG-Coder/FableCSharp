@@ -72,7 +72,11 @@ internal static class LineShaders
             vec3 v0 = fragColor.rgb * (0.28 + 0.72 * ndl);
             vec3 lit = clamp(t1.rgb * v0 * 2.0, 0.0, 1.0);
             if (nlen < 0.1)
+            {
+                if (t1.a < 0.08)
+                    discard;
                 lit = t1.rgb * fragColor.rgb;
+            }
             outColor = vec4(lit, 1.0);
         }
         """;
