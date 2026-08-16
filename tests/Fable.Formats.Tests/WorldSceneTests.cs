@@ -266,7 +266,10 @@ public sealed class WorldSceneTests
         Assert.Equal(0.5f, RegionTravel.FadeSpecialCaseSeconds);
         Assert.Equal(1488, RegionTravel.FadeSpecialCaseVtbl);
         Assert.Equal(0x00CCA26Eu, RegionTravel.PlayAviSite);
+        Assert.Equal(0x00CCA26Du, RegionTravel.PlayAviOpcode);
+        Assert.Equal(0x00CD17F8u, RegionTravel.PlayAviJoin);
         Assert.Equal(1476, RegionTravel.PlayAviVtbl);
+        Assert.True(RegionTravel.FirstSeenPlayAviDoesNotYield);
         Assert.Equal(@"Data\Video\", RegionTravel.PlayAviPrefix);
         Assert.Equal("dream_sequence_comp.xmv", RegionTravel.IntroPlayAvi);
         Assert.Equal(0x00CC9E6Au, RegionTravel.NoLoadUseCameraSite);
@@ -577,6 +580,14 @@ public sealed class WorldSceneTests
         Assert.Equal(RegionTravel.IntroFirstSeenCamera, camera.ActiveName);
         Assert.False(intro.ExecutedVerb("UseCamera"));
         Assert.False(intro.ExecutedVerb("PlayAVI"));
+        script.Update(0.1f);
+        Assert.Contains("PlayAVI dream_sequence_comp.xmv", intro.Executed);
+        Assert.Equal(@"Data\Video\dream_sequence_comp.xmv", runtime.LastAvi);
+        Assert.True(RegionTravel.FirstSeenPlayAviDoesNotYield);
+        Assert.False(RegionTravel.FirstSeenPlayAvi);
+        Assert.Equal("MuteSounds false", intro.Commands[intro.InstructionPointer]);
+        Assert.Equal("MuteSounds false", intro.UnsupportedCommand);
+        Assert.Equal(RegionTravel.IntroFirstSeenCamera, camera.ActiveName);
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 

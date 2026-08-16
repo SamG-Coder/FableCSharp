@@ -116,9 +116,14 @@ public static class RegionTravel
     public const float FadeSpecialCaseSeconds = 0.5f;
     public const int FadeSpecialCaseVtbl = 1488;
     public const uint PlayAviSite = 0x00CCA26E;
+    public const uint PlayAviOpcode = 0x00CCA26D;
+    public const uint PlayAviApply = 0x00CCA2BD;
+    public const uint PlayAviJoin = 0x00CD17F8;
+    public const uint PlayAviConcat = 0x0099F570;
     public const int PlayAviVtbl = 1476;
     public const string PlayAviPrefix = @"Data\Video\";
     public const string IntroPlayAvi = "dream_sequence_comp.xmv";
+    public const bool FirstSeenPlayAviDoesNotYield = true;
     public const uint NoLoadUseCameraSite = 0x00CC9E6A;
     public const bool FirstSeenPlayAvi = false;
     public const uint PlayMusicHelper = 0x00CBF7FE;

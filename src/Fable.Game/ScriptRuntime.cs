@@ -18,6 +18,7 @@ public sealed class ScriptRuntime : IScriptHost
     public float FadeDuration { get; private set; }
     public float FadeParam { get; private set; }
     public string? LastMusic { get; private set; }
+    public string? LastAvi { get; private set; }
     public string? ActiveCutscene => _interpreters.Count == 0 ? null : _interpreters[^1].Name;
     public ScriptInterpreter? ActiveInterpreter =>
         _interpreters.Count == 0 ? null : _interpreters[^1];
@@ -193,6 +194,17 @@ public sealed class ScriptRuntime : IScriptHost
 
     void IScriptHost.LookToThing(string? actor, string arguments) =>
         _ = (actor, arguments);
+
+    /// <summary>
+    /// <c>00CCA26D</c>: prefix <c>Data\Video\</c> then
+    /// <c>vtbl+1476</c>. Interpreter <c>jmp 00CD17F8</c>
+    /// (no yield). Do not invent video playback.
+    /// </summary>
+    void IScriptHost.PlayAvi(string arguments)
+    {
+        var file = ScriptInterpreter.FirstToken(arguments);
+        LastAvi = file.Length == 0 ? null : RegionTravel.PlayAviPrefix + file;
+    }
 
     /// <summary>
     /// <c>00CC86D0</c> default path: <c>00CBF29F</c> with

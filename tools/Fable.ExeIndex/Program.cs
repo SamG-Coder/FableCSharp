@@ -862,7 +862,7 @@ static void RunExportScriptBank(PeImage pe, DumpStore store, GameInstall? instal
     native.AppendLine("| PlayMusic | `00CC8EAC` / `00CBF7FE` | lookup `009E5120` then `vtbl+2784`. Jumps `00CD17FD` (no yield). |");
     native.AppendLine("| command loop | `00CD17FD` | `inc [ebp-72]` then `jb 00CC012E`. Next line is `FadeOut 0.5,0`. |");
     native.AppendLine("| FadeOut opcode | `00CD0987` | same-slice after PlayMusic. Parses 0.5 / 0 / default black. Apply `vtbl+1488(0.5,0)` then `jmp 00CD17FD`. |");
-    native.AppendLine("| PlayAVI | `00CCA26E` | prefix `Data\\Video\\` then `vtbl+1476`. Later than first command. |");
+    native.AppendLine("| PlayAVI | `00CCA26D` | first arg required else `jmp 00CD17FD`. Prefix `Data\\Video\\` via `0099F570`, `vtbl+1476`, `jmp 00CD17F8` (dtor then `00CD17FD`). **No** `vtbl+28`. Apply body UNREAD. |");
     native.AppendLine("| NoLoadUseCamera | `00CC9E6A` | separate token from `UseCamera`. |");
     native.AppendLine("| .Teleport | `00CC4678` | lookup marker `vtbl+280/+288`, apply `vtbl+1892`. Second arg `00CBEE0C` is **IsFalse**. **No** `vtbl+28`. `jmp 00CC707C`. |");
     native.AppendLine("| .LookToThing | `00CC3B3F` | apply `vtbl+1992`, parse `forever`. Third arg `00CBEE0C` (IsFalse) skips wait. Else if `[ebp+103]` (set **1** at `00CBFC65`) **`call [eax+28]`** then `00CBF7FE` / `jmp 00CC707C`. |");
@@ -1038,6 +1038,11 @@ static void RunTraceScriptRuntime(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "cutscene arg120 00CBFD95", 0x00CBFD95, 20, stopOnRet: false),
         WriteFnPart(pe, store, family, "00DB86B0 calls runner 00DB88DB", 0x00DB88DB, 20, stopOnRet: false),
         WriteFnPart(pe, store, family, "PlayAVI site 00CCA26E", 0x00CCA26E, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI token 00CCA26D", 0x00CCA26D, 50, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI apply 00CCA2BD", 0x00CCA2BD, 30, stopOnRet: false),
+        WriteFnPart(pe, store, family, "command continue join 00CD17F8", 0x00CD17F8, 12, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "CString concat 0099F570", 0x0099F570, 30),
+        WriteCallDispPart(pe, store, family, "calldisp vtbl+1476 PlayAVI", 0x5C4, 0x00CCA280, 0x00CCA320),
         WriteFnPart(pe, store, family, "NoLoadUseCamera site 00CC9E6A", 0x00CC9E6A, 50, stopOnRet: false),
         WriteWalkPart(pe, store, family, "PlayMusic helper 00CBF7FE", 0x00CBF7FE, 120),
         WriteFnPart(pe, store, family, "PlayMusic helper site 00CBF8F4", 0x00CBF8F4, 40, stopOnRet: false),
@@ -1576,6 +1581,11 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "cutscene arg120 00CBFD95", 0x00CBFD95, 20, stopOnRet: false),
         WriteFnPart(pe, store, family, "00DB86B0 calls runner 00DB88DB", 0x00DB88DB, 20, stopOnRet: false),
         WriteFnPart(pe, store, family, "PlayAVI site 00CCA26E", 0x00CCA26E, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI token 00CCA26D", 0x00CCA26D, 50, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI apply 00CCA2BD", 0x00CCA2BD, 30, stopOnRet: false),
+        WriteFnPart(pe, store, family, "command continue join 00CD17F8", 0x00CD17F8, 12, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "CString concat 0099F570", 0x0099F570, 30),
+        WriteCallDispPart(pe, store, family, "calldisp vtbl+1476 PlayAVI", 0x5C4, 0x00CCA280, 0x00CCA320),
         WriteFnPart(pe, store, family, "NoLoadUseCamera site 00CC9E6A", 0x00CC9E6A, 50, stopOnRet: false),
         WriteWalkPart(pe, store, family, "PlayMusic helper 00CBF7FE", 0x00CBF7FE, 120),
         WriteFnPart(pe, store, family, "PlayMusic helper site 00CBF8F4", 0x00CBF8F4, 40, stopOnRet: false),
