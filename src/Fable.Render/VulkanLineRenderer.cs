@@ -54,10 +54,18 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     private DeviceTexture _videoTexture;
     private Vector4 _videoDest = new(0, 0, 1, 1);
     private bool _videoReady;
+    private bool _videoDirty;
     private int _videoSerial = -1;
-    private Buffer _videoStaging;
-    private DeviceMemory _videoStagingMemory;
+    private byte[]? _videoCpu;
+    private int _videoHeight;
+    private ImageLayout _videoImageLayout;
+    private Buffer[] _videoStagings = new Buffer[MaxFrames];
+    private DeviceMemory[] _videoStagingMemories = new DeviceMemory[MaxFrames];
+    private void*[] _videoMapped = new void*[MaxFrames];
     private ulong _videoStagingSize;
+    private long _videoUploadTicks;
+    private long _videoFrameTicks;
+    private int _videoLastSampled = -1;
     /// <summary>
     /// <c>009FA450</c> LockRect is one persistent
     /// texture. These count the video upload path.
@@ -81,6 +89,10 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     public static int VideoDeferredDestroys { get; private set; }
     public static int VideoSerialPresented { get; private set; }
     public static int VideoSerialReceived { get; set; }
+    public static int VideoOneTimeBegins { get; private set; }
+    public static double LastUploadMs { get; private set; }
+    public static double LastFrameMs { get; private set; }
+    public static int VideoOtherFenceStatus { get; private set; }
     public static readonly List<VideoPresentSample> PresentSamples = [];
     private static long _videoTraceStart;
 
@@ -105,6 +117,10 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         VideoDeferredDestroys = 0;
         VideoSerialPresented = 0;
         VideoSerialReceived = 0;
+        VideoOneTimeBegins = 0;
+        LastUploadMs = 0;
+        LastFrameMs = 0;
+        VideoOtherFenceStatus = 0;
         PresentSamples.Clear();
         _videoTraceStart = Stopwatch.GetTimestamp();
     }
@@ -133,8 +149,12 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             Presented = VideoUploads,
             ReceivedSerial = VideoSerialReceived != 0 ? VideoSerialReceived : serial,
             PresentedSerial = serial,
+            SerialDelta = (VideoSerialReceived != 0 ? VideoSerialReceived : serial) - serial,
             WallMs = wallMs,
             UploadMs = uploadMs,
+            FrameMs = LastFrameMs,
+            OneTimeMs = 0,
+            OneTimeBegins = VideoOneTimeBegins,
             StagingCreates = VideoStagingCreates,
             BufferCreates = VideoBufferCreates,
             MemoryAllocs = VideoMemoryAllocs,
@@ -151,6 +171,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             DeferredDestroys = VideoDeferredDestroys,
             ImageCreates = VideoImageCreates,
             DescriptorUpdates = VideoDescriptorUpdates,
+            OtherFence = VideoOtherFenceStatus,
         });
     }
     private DescriptorSetLayout _descriptorSetLayout;
@@ -283,7 +304,10 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         if (_extent.Width == 0 || _extent.Height == 0)
             return;
 
+        var frame0 = Stopwatch.GetTimestamp();
         _vk.WaitForFences(_device, 1, in _inFlight[_frame], true, ulong.MaxValue);
+        var other = (_frame + 1) % MaxFrames;
+        VideoOtherFenceStatus = (int)_vk.GetFenceStatus(_device, _inFlight[other]);
 
         uint imageIndex = 0;
         var acquire = _khrSwapchain.AcquireNextImage(
@@ -338,6 +362,17 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             throw new InvalidOperationException($"QueuePresent failed: {presentResult}");
 
         _frame = (_frame + 1) % MaxFrames;
+        _videoFrameTicks = Stopwatch.GetTimestamp() - frame0;
+        LastFrameMs = _videoFrameTicks * 1000.0 / Stopwatch.Frequency;
+        LastUploadMs = _videoUploadTicks * 1000.0 / Stopwatch.Frequency;
+        if (_videoReady &&
+            VideoUploads > 0 &&
+            (VideoUploads == 1 || VideoUploads % 100 == 0) &&
+            VideoUploads != _videoLastSampled)
+        {
+            _videoLastSampled = VideoUploads;
+            RecordVideoPresent(_videoSerial, _videoUploadTicks);
+        }
     }
 
     public void Dispose()
@@ -1026,6 +1061,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     {
         var begin = new CommandBufferBeginInfo { SType = StructureType.CommandBufferBeginInfo };
         Check(_vk.BeginCommandBuffer(commandBuffer, in begin));
+        RecordVideoCopy(commandBuffer);
 
         var clears = stackalloc ClearValue[]
         {
@@ -1292,8 +1328,12 @@ public sealed class VideoPresentSample
     public int Presented { get; init; }
     public int ReceivedSerial { get; set; }
     public int PresentedSerial { get; init; }
+    public int SerialDelta { get; init; }
     public double WallMs { get; init; }
     public double UploadMs { get; init; }
+    public double FrameMs { get; init; }
+    public double OneTimeMs { get; init; }
+    public int OneTimeBegins { get; init; }
     public int StagingCreates { get; init; }
     public int BufferCreates { get; init; }
     public int MemoryAllocs { get; init; }
@@ -1310,4 +1350,5 @@ public sealed class VideoPresentSample
     public int DeferredDestroys { get; init; }
     public int ImageCreates { get; init; }
     public int DescriptorUpdates { get; init; }
+    public int OtherFence { get; init; }
 }

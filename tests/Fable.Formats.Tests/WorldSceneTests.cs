@@ -1969,6 +1969,10 @@ public sealed class WorldSceneTests
         Assert.Equal(0x009FA450u, RegionTravel.PlayAviLockRect);
         Assert.Equal(0x009F9DE0u, RegionTravel.PlayAviUnlock);
         Assert.True(RegionTravel.FirstSeenPlayAviLockRectReusesTexture);
+        Assert.Equal(80, RegionTravel.PlayAviUnlockVtbl);
+        Assert.False(RegionTravel.FirstSeenPlayAviUnlockWaitsGpu);
+        Assert.False(RegionTravel.FirstSeenPlayAviBlitIsSeparateGpuWait);
+        Assert.True(RegionTravel.FirstSeenPlayAviUnlockThenNormalPresent);
         var serial = player.FrameSerial;
         Thread.Sleep(200);
         Assert.True(

@@ -20,7 +20,7 @@ internal sealed class DumpStore
     public const int ShaderTokensVersion = 7;
     public const int QuartzTraceVersion = 2;
     public const int PlayAviPaceVersion = 1;
-    public const int PlayAviPresentVersion = 1;
+    public const int PlayAviPresentVersion = 2;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

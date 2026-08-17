@@ -308,6 +308,7 @@ public sealed unsafe partial class VulkanLineRenderer
             CommandBufferCount = 1,
         };
         Check(_vk.AllocateCommandBuffers(_device, in alloc, out var command));
+        VideoOneTimeBegins++;
         var begin = new CommandBufferBeginInfo
         {
             SType = StructureType.CommandBufferBeginInfo,
@@ -373,24 +374,31 @@ public sealed unsafe partial class VulkanLineRenderer
             _videoTexture.Id == width &&
             serial == _videoSerial)
             return;
-        _videoSerial = serial;
+
+        // 00A3B730 GetPointer → 009FA450 LockRect
+        // existing texture → copy → 009F9DE0 UnlockRect.
+        // Unlock does not wait the GPU. 006286F0 later
+        // consumes the texture via 009DC870.
         var upload0 = Stopwatch.GetTimestamp();
-        if (_videoTexture.Image.Handle != 0 &&
-            _videoTexture.Id == width &&
-            _videoReady)
-            UpdateVideoPixels(width, height, rgba);
-        else
+        _videoSerial = serial;
+        if (_videoCpu is null || _videoCpu.Length < rgba.Length)
+            _videoCpu = new byte[rgba.Length];
+        rgba.AsSpan().CopyTo(_videoCpu.AsSpan(0, rgba.Length));
+        _videoHeight = height;
+        if (_videoTexture.Image.Handle == 0 ||
+            _videoTexture.Id != width ||
+            !_videoReady)
         {
-            DestroyVideoTexture();
+            DestroyVideoImage();
             EnsureVideoPool();
-            _videoTexture = UploadVideoTexture(width, height, rgba);
+            EnsureVideoStaging((ulong)rgba.Length);
+            _videoTexture = CreateVideoImage(width, height);
             _videoReady = _videoTexture.Set.Handle != 0;
+            _videoImageLayout = ImageLayout.Undefined;
         }
 
-        VideoSerialPresented = serial;
-        var uploadTicks = Stopwatch.GetTimestamp() - upload0;
-        if (VideoUploads == 1 || VideoUploads % 100 == 0)
-            RecordVideoPresent(serial, uploadTicks);
+        _videoDirty = true;
+        _videoUploadTicks = Stopwatch.GetTimestamp() - upload0;
     }
 
     public void ClearVideoFrame()
@@ -400,18 +408,8 @@ public sealed unsafe partial class VulkanLineRenderer
         _videoSerial = -1;
     }
 
-    private DeviceTexture UploadVideoTexture(int width, int height, byte[] rgba)
+    private DeviceTexture CreateVideoImage(int width, int height)
     {
-        // First image only. Staging is the persistent
-        // LockRect analogue; later frames reuse it.
-        EnsureVideoStaging((ulong)rgba.Length);
-        void* mapped;
-        Check(_vk.MapMemory(_device, _videoStagingMemory, 0, (ulong)rgba.Length, 0, &mapped));
-        VideoMaps++;
-        rgba.AsSpan().CopyTo(new Span<byte>(mapped, rgba.Length));
-        _vk.UnmapMemory(_device, _videoStagingMemory);
-        VideoUnmaps++;
-
         var imageInfo = new ImageCreateInfo
         {
             SType = StructureType.ImageCreateInfo,
@@ -436,8 +434,6 @@ public sealed unsafe partial class VulkanLineRenderer
         Check(_vk.AllocateMemory(_device, in alloc, null, out var memory));
         Check(_vk.BindImageMemory(_device, image, memory, 0));
         VideoImageCreates++;
-        _videoTexture.Image = image;
-        UploadVideoStaging(width, height, firstLayout: true);
 
         var viewInfo = new ImageViewCreateInfo
         {
@@ -479,7 +475,6 @@ public sealed unsafe partial class VulkanLineRenderer
         };
         _vk.UpdateDescriptorSets(_device, 1, in write, 0, null);
         VideoDescriptorUpdates++;
-        VideoUploads++;
         return new DeviceTexture
         {
             Id = width,
@@ -509,48 +504,31 @@ public sealed unsafe partial class VulkanLineRenderer
         Check(_vk.CreateDescriptorPool(_device, in poolInfo, null, out _videoPool));
     }
 
-    private void UpdateVideoPixels(int width, int height, byte[] rgba)
+    /// <summary>
+    /// Recorded into the existing frame command
+    /// buffer after <c>WaitForFences</c> and
+    /// before the render pass. Matches Unlock
+    /// then 009DC870 in the same present.
+    /// </summary>
+    private void RecordVideoCopy(CommandBuffer command)
     {
-        // 009FA450 LockRect on the existing
-        // texture, copy, 009F9DE0 Unlock.
-        // One persistent staging map, one
-        // submit — not a new buffer and
-        // three QueueWaitIdle per frame.
-        EnsureVideoStaging((ulong)rgba.Length);
-        void* mapped;
-        Check(_vk.MapMemory(_device, _videoStagingMemory, 0, (ulong)rgba.Length, 0, &mapped));
-        VideoMaps++;
-        rgba.AsSpan().CopyTo(new Span<byte>(mapped, rgba.Length));
-        _vk.UnmapMemory(_device, _videoStagingMemory);
-        VideoUnmaps++;
-        UploadVideoStaging(width, height, firstLayout: false);
-        VideoUploads++;
-    }
-
-    private void EnsureVideoStaging(ulong bytes)
-    {
-        if (_videoStaging.Handle != 0 && _videoStagingSize >= bytes)
+        if (!_videoDirty ||
+            !_videoReady ||
+            _videoCpu is null ||
+            _videoTexture.Image.Handle == 0)
             return;
-        DestroyVideoStaging();
-        CreateBuffer(bytes,
-            BufferUsageFlags.TransferSrcBit,
-            MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
-            out _videoStaging, out _videoStagingMemory);
-        _videoStagingSize = bytes;
-        VideoStagingCreates++;
-        VideoBufferCreates++;
-        VideoMemoryAllocs++;
-        VideoStagingAlive = 1;
-        VideoStagingBytesAlive = bytes;
-    }
 
-    private void UploadVideoStaging(int width, int height, bool firstLayout)
-    {
-        var command = BeginOneTime();
-        if (firstLayout)
-            CmdTransition(command, _videoTexture.Image, ImageLayout.Undefined, ImageLayout.TransferDstOptimal);
-        else
-            CmdTransition(command, _videoTexture.Image, ImageLayout.ShaderReadOnlyOptimal, ImageLayout.TransferDstOptimal);
+        var bytes = (ulong)_videoCpu.Length;
+        EnsureVideoStaging(bytes);
+        var mapped = _videoMapped[_frame];
+        if (mapped == null)
+            return;
+        _videoCpu.AsSpan().CopyTo(new Span<byte>(mapped, _videoCpu.Length));
+
+        var from = _videoImageLayout == ImageLayout.Undefined
+            ? ImageLayout.Undefined
+            : ImageLayout.ShaderReadOnlyOptimal;
+        CmdTransition(command, _videoTexture.Image, from, ImageLayout.TransferDstOptimal);
         var region = new BufferImageCopy
         {
             ImageSubresource = new ImageSubresourceLayers
@@ -558,14 +536,48 @@ public sealed unsafe partial class VulkanLineRenderer
                 AspectMask = ImageAspectFlags.ColorBit,
                 LayerCount = 1,
             },
-            ImageExtent = new Extent3D { Width = (uint)width, Height = (uint)height, Depth = 1 },
+            ImageExtent = new Extent3D
+            {
+                Width = (uint)_videoTexture.Id,
+                Height = (uint)Math.Max(_videoHeight, 1),
+                Depth = 1,
+            },
         };
-        _vk.CmdCopyBufferToImage(command, _videoStaging, _videoTexture.Image, ImageLayout.TransferDstOptimal, 1, in region);
-        CmdTransition(command, _videoTexture.Image, ImageLayout.TransferDstOptimal, ImageLayout.ShaderReadOnlyOptimal);
-        EndOneTime(command);
-        VideoCmdAllocs++;
-        VideoQueueSubmits++;
-        VideoWaitIdles++;
+        _vk.CmdCopyBufferToImage(
+            command, _videoStagings[_frame], _videoTexture.Image,
+            ImageLayout.TransferDstOptimal, 1, in region);
+        CmdTransition(
+            command, _videoTexture.Image,
+            ImageLayout.TransferDstOptimal, ImageLayout.ShaderReadOnlyOptimal);
+        _videoImageLayout = ImageLayout.ShaderReadOnlyOptimal;
+        _videoDirty = false;
+        VideoUploads++;
+        VideoSerialPresented = _videoSerial;
+    }
+
+    private void EnsureVideoStaging(ulong bytes)
+    {
+        if (_videoStagings[0].Handle != 0 && _videoStagingSize >= bytes)
+            return;
+        DestroyVideoStaging();
+        for (var i = 0; i < MaxFrames; i++)
+        {
+            CreateBuffer(bytes,
+                BufferUsageFlags.TransferSrcBit,
+                MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
+                out _videoStagings[i], out _videoStagingMemories[i]);
+            void* mapped;
+            Check(_vk.MapMemory(_device, _videoStagingMemories[i], 0, bytes, 0, &mapped));
+            VideoMaps++;
+            _videoMapped[i] = mapped;
+            VideoStagingCreates++;
+            VideoBufferCreates++;
+            VideoMemoryAllocs++;
+        }
+
+        _videoStagingSize = bytes;
+        VideoStagingAlive = MaxFrames;
+        VideoStagingBytesAlive = bytes * MaxFrames;
     }
 
     private void CmdTransition(CommandBuffer command, Image image, ImageLayout oldLayout, ImageLayout newLayout)
@@ -615,16 +627,26 @@ public sealed unsafe partial class VulkanLineRenderer
 
     private void DestroyVideoStaging()
     {
-        if (_videoStaging.Handle != 0)
+        for (var i = 0; i < MaxFrames; i++)
         {
-            _vk.DestroyBuffer(_device, _videoStaging, null);
-            _videoStaging = default;
-        }
+            if (_videoMapped[i] != null && _videoStagingMemories[i].Handle != 0)
+            {
+                _vk.UnmapMemory(_device, _videoStagingMemories[i]);
+                VideoUnmaps++;
+                _videoMapped[i] = null;
+            }
 
-        if (_videoStagingMemory.Handle != 0)
-        {
-            _vk.FreeMemory(_device, _videoStagingMemory, null);
-            _videoStagingMemory = default;
+            if (_videoStagings[i].Handle != 0)
+            {
+                _vk.DestroyBuffer(_device, _videoStagings[i], null);
+                _videoStagings[i] = default;
+            }
+
+            if (_videoStagingMemories[i].Handle != 0)
+            {
+                _vk.FreeMemory(_device, _videoStagingMemories[i], null);
+                _videoStagingMemories[i] = default;
+            }
         }
 
         _videoStagingSize = 0;
@@ -632,15 +654,23 @@ public sealed unsafe partial class VulkanLineRenderer
         VideoStagingBytesAlive = 0;
     }
 
-    private void DestroyVideoTexture()
+    private void DestroyVideoImage()
     {
         DestroyTexture(_videoTexture);
         _videoTexture = default;
-        DestroyVideoStaging();
         if (_videoPool.Handle != 0)
         {
             _vk.DestroyDescriptorPool(_device, _videoPool, null);
             _videoPool = default;
         }
+    }
+
+    private void DestroyVideoTexture()
+    {
+        DestroyVideoImage();
+        DestroyVideoStaging();
+        _videoCpu = null;
+        _videoDirty = false;
+        _videoImageLayout = ImageLayout.Undefined;
     }
 }

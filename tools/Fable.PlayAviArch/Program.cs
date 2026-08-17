@@ -217,14 +217,17 @@ if (args.Any(a => a is "--present"))
     md.AppendLine($"stagingAlive `{VulkanLineRenderer.VideoStagingAlive}`");
     md.AppendLine($"stagingBytes `{VulkanLineRenderer.VideoStagingBytesAlive}`");
     md.AppendLine($"waitIdle `{VulkanLineRenderer.VideoWaitIdles}`");
+    md.AppendLine($"cmdAllocs `{VulkanLineRenderer.VideoCmdAllocs}`");
+    md.AppendLine($"queueSubmits `{VulkanLineRenderer.VideoQueueSubmits}`");
+    md.AppendLine($"oneTimeBegins `{VulkanLineRenderer.VideoOneTimeBegins}`");
     md.AppendLine($"imageCreates `{VulkanLineRenderer.VideoImageCreates}`");
     md.AppendLine();
-    md.AppendLine("| n | recv | pres | wall_ms | upload_ms | stg | buf | mem | map | unmap | cmd | submit | fence | fwait | qwi | dwi | alive | bytes | def | img | desc |");
-    md.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+    md.AppendLine("| n | recv | pres | delta | wall_ms | upload_ms | frame_ms | onetime | ot_n | stg | buf | mem | map | unmap | cmd | submit | fence | fwait | qwi | dwi | alive | bytes | img | desc | other_fence |");
+    md.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
     foreach (var s in VulkanLineRenderer.PresentSamples)
     {
         md.AppendLine(
-            $"| {s.Presented} | {s.ReceivedSerial} | {s.PresentedSerial} | {s.WallMs:F1} | {s.UploadMs:F3} | {s.StagingCreates} | {s.BufferCreates} | {s.MemoryAllocs} | {s.Maps} | {s.Unmaps} | {s.CmdAllocs} | {s.QueueSubmits} | {s.Fences} | {s.FenceWaits} | {s.QueueWaitIdle} | {s.DeviceWaitIdle} | {s.StagingAlive} | {s.StagingBytes} | {s.DeferredDestroys} | {s.ImageCreates} | {s.DescriptorUpdates} |");
+            $"| {s.Presented} | {s.ReceivedSerial} | {s.PresentedSerial} | {s.SerialDelta} | {s.WallMs:F1} | {s.UploadMs:F3} | {s.FrameMs:F2} | {s.OneTimeMs:F3} | {s.OneTimeBegins} | {s.StagingCreates} | {s.BufferCreates} | {s.MemoryAllocs} | {s.Maps} | {s.Unmaps} | {s.CmdAllocs} | {s.QueueSubmits} | {s.Fences} | {s.FenceWaits} | {s.QueueWaitIdle} | {s.DeviceWaitIdle} | {s.StagingAlive} | {s.StagingBytes} | {s.ImageCreates} | {s.DescriptorUpdates} | {s.OtherFence} |");
     }
 
     File.WriteAllText(Path.Combine(presentDir, "samples.md"), md.ToString());

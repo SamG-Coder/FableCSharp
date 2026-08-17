@@ -299,6 +299,23 @@ public static class RegionTravel
     /// per frame. Vulkan staging must reuse.
     /// </summary>
     public const bool FirstSeenPlayAviLockRectReusesTexture = true;
+    /// <summary>
+    /// <c>009F9DE0</c> is
+    /// <c>IDirect3DTexture9::UnlockRect</c>
+    /// (<c>[vtbl+80]</c>). No device Wait /
+    /// Present / GetRenderTargetData.
+    /// </summary>
+    public const int PlayAviUnlockVtbl = 80;
+    public const bool FirstSeenPlayAviUnlockWaitsGpu = false;
+    /// <summary>
+    /// <c>006286F0</c> WaitEx then
+    /// <c>009DC870</c> 2D quad
+    /// (<c>009DC030</c> ×2) + <c>009D9C80</c>
+    /// flush. Unlock does not blit. Present
+    /// consumes the already-unlocked texture.
+    /// </summary>
+    public const bool FirstSeenPlayAviBlitIsSeparateGpuWait = false;
+    public const bool FirstSeenPlayAviUnlockThenNormalPresent = true;
     public const uint PlayAviWaitIat = 0x0143FE08;
     public const uint PlayAviWaitSite = 0x00628A9E;
     public const uint PlayAviSetEventIat = 0x0143FDE0;
