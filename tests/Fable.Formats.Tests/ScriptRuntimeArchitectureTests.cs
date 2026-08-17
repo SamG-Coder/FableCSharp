@@ -2152,6 +2152,80 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void DrawThing_sets_world_drawable_flag()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("dt",
+            ["DrawThing HERO,FALSE", "DrawThing FATHER,TRUE"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.False(runtime.World.Drawable["HERO"]);
+        Assert.True(runtime.World.Drawable["FATHER"]);
+        Assert.Equal(0x00CC9DDDu, ScriptCommandMap.Find("DrawThing")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("Drawable")!.Value.TokenSite,
+            ScriptCommandMap.Find("DrawThing")!.Value.TokenSite);
+    }
+
+    [Fact]
+    public void DrawThing_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("DrawThing ", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "DrawThing HERO,FALSE";
+        hit ??= bank.Find("CS_OAKVALE_INTRO_FATHER") ?? bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("DrawThing", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        Assert.True(parsed.Arg(1).Length > 0);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-draw", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("DrawThing", StringComparison.OrdinalIgnoreCase));
+        Assert.True(runtime.World.Drawable.ContainsKey(parsed.Arg(0)));
+        Assert.Equal(!ScriptLine.IsFalse(parsed.Arg(1)), runtime.World.Drawable[parsed.Arg(0)]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-draw.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-drawthing.txt"),
+            """
+            DrawThing 00CC9D07 / apply 00CC9DDD
+              arg0 name + arg1 required else 00CD17FD
+              default draw=1; IsFalse(arg1) -> 0
+              lookup arg0 vtbl+280/288
+              vtbl+2044(thing, draw)
+              jmp 00CC864B no yield
+              Distinct from entity Drawable
+            """);
+    }
+
+    [Fact]
     public void WaitForCamera_idles_when_camera_not_busy()
     {
         var runtime = ScriptRuntime.Detached();

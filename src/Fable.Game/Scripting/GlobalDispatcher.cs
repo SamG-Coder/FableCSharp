@@ -156,6 +156,17 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "reset");
         }
 
+        if (Eq(v, "DrawThing"))
+        {
+            var name = line.Arg(0);
+            if (name.Length == 0 || line.Arg(1).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            var draw = !ScriptLine.IsFalse(line.Arg(1));
+            ctx.World.Drawable[name] = draw;
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                draw ? $"{name} on" : $"{name} off");
+        }
+
         if (Eq(v, "SetLightScene"))
             return ApplySetLightScene(line, ctx);
 

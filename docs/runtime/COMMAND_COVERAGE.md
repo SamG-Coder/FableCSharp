@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 93
-RECOVERED RETURN: 93
-RECOVERED APPLY: 16
+RECOVERED DISPATCH: 94
+RECOVERED RETURN: 94
+RECOVERED APPLY: 17
 IMPLEMENTED RUNTIME: 13
-UNREAD: 92
+UNREAD: 91
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -76,7 +76,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | PlayAVI | Global | Proven | Proven | Proven | Proven | Proven | Proven |
 | NoLoadUseCamera | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | ResetCamera | Global | Proven | Proven | Proven | Proven | Partial | Partial |
-| DrawThing | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| DrawThing | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | UseCameraFOVMarkerList | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | CameraRig | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | PutUpYourSwords | Global | Proven | Proven | Proven | Partial | Partial | Partial |

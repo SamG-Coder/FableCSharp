@@ -260,6 +260,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "vtbl+1668(0.0) then vtbl+1664; jmp 00CD17FD; restores gameplay snapshot"),
+        Spec("DrawThing", 0x00CC9D07, 0x00CC9DDD, "name,IsFalse?",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "lookup arg0; IsFalse(arg1)->0 else 1; vtbl+2044; jmp 00CC864B; World.Drawable"),
         Spec("CameraShake", 0x00CD131F, 0x00CD1366, "arg0,arg1",
             ScriptReturn.CompleteNow, CommandParity.ScriptLayer,
             "atof both; vtbl+1696(arg1,arg0); jmp 00CD17FD; decay unread"),
