@@ -3,6 +3,7 @@ using Fable.Core;
 using Fable.Formats.Banks;
 using Fable.Formats.Defs;
 using Fable.Formats.Levels;
+using Fable.Formats.World;
 using Fable.Game;
 
 namespace Fable.Formats.Tests;
@@ -677,7 +678,8 @@ public sealed class LevFormatTests
         var tris = height.ToTileTriangles(cells, compiled.Materials);
         Assert.True(tris.Count > 8_000, $"tris={tris.Count}");
         Assert.True(tris.Count < 128 * 128 * 2 * 3, $"unbounded mesh tris={tris.Count}");
-        Assert.True(tris.Count(t => t.Normal.Z > 0) > tris.Count * 9 / 10);
+        Assert.Contains(tris, t => t.Normal.Z > 0);
+        Assert.False(LandscapeStrip.FirstSeenRewindsNegativeNz);
         Assert.True(tris.Max(t => t.A.X) >= 120);
         Assert.True(tris.Min(t => t.A.X) <= 2);
         Assert.Contains(tris, t => t.TextureId is 4133 or 414);

@@ -2,6 +2,7 @@ using System.Numerics;
 using Fable.Formats.Defs;
 using Fable.Formats.IO;
 using Fable.Formats.Meshes;
+using Fable.Formats.World;
 
 namespace Fable.Formats.Levels;
 
@@ -85,8 +86,9 @@ public sealed class LevTileMesh
         {
             if (vert.Z is < 0f or > 200f)
                 continue;
-            var x = vert.WorldX - originX;
-            var y = vert.WorldY - originY;
+            var local = WorldSpaces.StbFileToRegionLocal(vert, originX, originY);
+            var x = local.X;
+            var y = local.Y;
             var ix = (int)MathF.Round(x);
             var iy = (int)MathF.Round(y);
             if (ix < 0 || iy < 0 || ix > width || iy > height)
@@ -113,10 +115,7 @@ public sealed class LevTileMesh
         {
             var points = new Vector3[tile.Vertices.Count];
             for (var i = 0; i < tile.Vertices.Count; i++)
-            {
-                var v = tile.Vertices[i];
-                points[i] = new Vector3(v.WorldX - originX, v.WorldY - originY, v.Z);
-            }
+                points[i] = WorldSpaces.StbFileToRegionLocal(tile.Vertices[i], originX, originY);
 
             var at = new Dictionary<(int X, int Y), (Vector3 P, Vector3 N, Vector3 Extra)>();
             for (var i = 0; i < tile.Vertices.Count; i++)
@@ -151,20 +150,15 @@ public sealed class LevTileMesh
                     Add(triangles, a, b, d, tex.A, tex.B);
                     Add(triangles, a, d, c, tex.A, tex.B);
                 }
-                continue;
             }
-
-            if (tile.Indices.Count >= 3)
+            else if (tile.Indices.Count >= 3)
                 AddStrip(triangles, tile.Vertices, points, tile.Indices, cells, bySlot, textures);
 
             foreach (var extra in tile.Extras)
             {
                 var extraPoints = new Vector3[extra.Vertices.Count];
                 for (var i = 0; i < extra.Vertices.Count; i++)
-                {
-                    var ev = extra.Vertices[i];
-                    extraPoints[i] = new Vector3(ev.WorldX - originX, ev.WorldY - originY, ev.Z);
-                }
+                    extraPoints[i] = WorldSpaces.StbFileToRegionLocal(extra.Vertices[i], originX, originY);
 
                 AddStrip(triangles, extra.Vertices, extraPoints, extra.Indices, cells, bySlot, textures);
             }
@@ -189,11 +183,10 @@ public sealed class LevTileMesh
             var ic = indices[i + 2];
             if ((uint)ia >= (uint)verts.Count || (uint)ib >= (uint)verts.Count || (uint)ic >= (uint)verts.Count)
                 continue;
-            var a = PointOf(verts[ia], points[ia]);
-            var b = PointOf(verts[ib], points[ib]);
-            var c = PointOf(verts[ic], points[ic]);
-            if ((i & 1) != 0)
-                (b, c) = (c, b);
+            var (oa, ob, oc) = LandscapeStrip.Unwind(i, ia, ib, ic);
+            var a = PointOf(verts[oa], points[oa]);
+            var b = PointOf(verts[ob], points[ob]);
+            var c = PointOf(verts[oc], points[oc]);
             var mid = (a.P + b.P + c.P) / 3f;
             var tex = LayersAt(mid, cells, bySlot, textures);
             if (tex.A < 0)
@@ -240,15 +233,10 @@ public sealed class LevTileMesh
         int textureId,
         int textureId1)
     {
-        var n = Vector3.Cross(b.P - a.P, c.P - a.P);
+        var n = LandscapeStrip.FaceNormal(a.P, b.P, c.P);
         if (n.LengthSquared() < 1e-8f)
             return;
-        if (n.Z < 0)
-        {
-            (b, c) = (c, b);
-            n = -n;
-        }
-
+        // Fable has no negative-Z face rewind. LandscapeStrip.FirstSeenRewindsNegativeNz.
         var face = Vector3.Normalize(n);
         triangles.Add(new MeshTriangle(
             a.P, b.P, c.P, face,
@@ -369,7 +357,10 @@ public sealed class LevTileMesh
             var x = BitConverter.ToUInt16(dest, vertAt);
             var y = BitConverter.ToUInt16(dest, vertAt + 2);
             var z = BitConverter.ToSingle(dest, vertAt + 4);
-            if (x is < 2000 or > 6000 || y is < 2000 or > 6000 || z is < 0f or > 200f)
+            // WLD ushorts: Oakvale MapY=736, Lookout MapY=3488, Guild MapX=4576.
+            // The 2000..6000 gate was a Lookout-only leftover and dropped
+            // first-scene edge strips.
+            if (x is > 20_000 || y is > 20_000 || z is < 0f or > 200f)
                 break;
 
             var verts = new LevTileVertex[v];

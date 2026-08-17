@@ -40,7 +40,7 @@ asset (graphics.big / textures.big / STB .lev / TNG / shaders.big)
 | Landscape tile verts | 15-byte + 11-11-10 normal + extra | proven | `LevTileMesh` |
 | Landscape strip unwind | PrimitiveCount+2, odd swap | proven | |
 | Landscape `oT1` | `(0,0)` from c40=c41=0 | proven | `ProjectOt1` |
-| Landscape `n.Z < 0` rewind | force +Z face | assumption / TEMPORARY | not an exe write; left in place |
+| Landscape `n.Z < 0` rewind | force +Z face | DISPROVEN | no exe write; removed. Strip unwind is D3D odd `(b,a,c)` via `LandscapeStrip` |
 | Texture header / DXT FourCC | 31/32/35, SCRATCH create | proven | `009BE8xx` |
 | DXT → RGBA8 CPU decode | top mip | equivalent | sampled GPU format after SCRATCH UNREAD |
 | Lower mips | stored, not uploaded | temporary | MaxLod=1 |
