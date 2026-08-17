@@ -454,6 +454,23 @@ public static class RegionTravel
     public const int WaitActiveDialogPollVtbl = 1472;
     public const uint WaitActiveDialogPollFn = 0x008907D0;
     public const bool FirstSeenWaitActiveDialogYieldsOnce = true;
+    /// <summary>
+    /// <c>00CD0116</c> <c>Remove</c>. Empty name →
+    /// <c>00CD17FD</c>. Arg <c>dead</c> is
+    /// <c>vtbl+1608</c> (not first-seen). Else lookup
+    /// and <c>vtbl+432</c> <c>008910D0</c> →
+    /// <c>004C9B80</c> (sets <c>[+145]</c> bit 0 /
+    /// <c>[+146]</c> bit 2). <c>jmp 00CC864B</c>.
+    /// No yield. Teardown bodies UNREAD — record only.
+    /// </summary>
+    public const uint RemoveOpcode = 0x00CD0116;
+    public const uint RemoveApply = 0x00CD0224;
+    public const uint RemoveJoin = 0x00CC864B;
+    public const int RemoveApplyVtbl = 432;
+    public const uint RemoveApplyFn = 0x008910D0;
+    public const uint RemoveInner = 0x004C9B80;
+    public const bool FirstSeenRemoveDoesNotYield = true;
+    public const string IntroRemoveName = "VILL1";
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;

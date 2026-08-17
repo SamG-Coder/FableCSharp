@@ -303,6 +303,12 @@ public sealed class ScriptInterpreter
         }
         else if (command.Verb.Equals("WaitActiveDialog", StringComparison.OrdinalIgnoreCase))
             host.WaitActiveDialog();
+        else if (command.Verb.Equals("Remove", StringComparison.OrdinalIgnoreCase))
+        {
+            var name = ScriptInterpreter.FirstToken(command.Arguments);
+            if (name.Length != 0)
+                host.Remove(name);
+        }
     }
 
     internal static void ParseFadeArgs(string arguments, out float seconds, out float param)
@@ -530,7 +536,8 @@ public readonly struct ScriptCommand
             verb.Equals("PlayAVI", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("MuteSounds", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("StartTimeCode", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("Create", StringComparison.OrdinalIgnoreCase))
+            verb.Equals("Create", StringComparison.OrdinalIgnoreCase) ||
+            verb.Equals("Remove", StringComparison.OrdinalIgnoreCase))
             return ScriptFlow.Continue;
         if (verb.Equals("UseCamera", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("NoLoadUseCamera", StringComparison.OrdinalIgnoreCase))
@@ -636,4 +643,5 @@ public interface IScriptHost
         string? actor, string name, bool flagA, bool flagB, bool flagC, bool flagD, bool flagE, int count);
     void Create(string type, string marker, string name);
     void WaitActiveDialog();
+    void Remove(string name);
 }

@@ -41,6 +41,7 @@ public sealed class ScriptRuntime : IScriptHost
     public IReadOnlyList<ScriptWalkTo> WalkTos => _walks;
     public IReadOnlyList<ScriptCombatAnimation> CombatAnimations => _combatAnims;
     public IReadOnlyList<ScriptCreate> Creates => _creates;
+    public IReadOnlyList<string> Removes => _removes;
     public int WaitActiveDialogCount { get; private set; }
     public IReadOnlyList<string> PreloadedCameras => _preloadedCameras;
 
@@ -58,6 +59,7 @@ public sealed class ScriptRuntime : IScriptHost
     private readonly List<ScriptWalkTo> _walks = [];
     private readonly List<ScriptCombatAnimation> _combatAnims = [];
     private readonly List<ScriptCreate> _creates = [];
+    private readonly List<string> _removes = [];
     private readonly List<string> _preloadedCameras = [];
     private IReadOnlyList<ThingInstance> _things = [];
     private ScriptedCamera? _camera;
@@ -352,6 +354,13 @@ public sealed class ScriptRuntime : IScriptHost
     /// <c>vtbl+1472</c>. Dismiss UNREAD — one yield.
     /// </summary>
     void IScriptHost.WaitActiveDialog() => WaitActiveDialogCount++;
+
+    /// <summary>
+    /// <c>00CD0116</c>: <c>vtbl+432</c> then
+    /// <c>jmp 00CC864B</c>. No yield. Teardown
+    /// UNREAD — record only.
+    /// </summary>
+    void IScriptHost.Remove(string name) => _removes.Add(name);
 
     /// <summary>
     /// <c>00CC86D0</c> default path: <c>00CBF29F</c> with

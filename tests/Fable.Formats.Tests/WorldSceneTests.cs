@@ -394,6 +394,11 @@ public sealed class WorldSceneTests
         Assert.Equal(0x00CC656Bu, RegionTravel.WaitActiveDialogOpcode);
         Assert.Equal(1472, RegionTravel.WaitActiveDialogPollVtbl);
         Assert.True(RegionTravel.FirstSeenWaitActiveDialogYieldsOnce);
+        Assert.Equal(0x00CD0116u, RegionTravel.RemoveOpcode);
+        Assert.Equal(432, RegionTravel.RemoveApplyVtbl);
+        Assert.Equal(0x008910D0u, RegionTravel.RemoveApplyFn);
+        Assert.True(RegionTravel.FirstSeenRemoveDoesNotYield);
+        Assert.Equal("VILL1", RegionTravel.IntroRemoveName);
         Assert.Equal(0x00CC4B22u, RegionTravel.ScriptFadeInOut);
         Assert.Equal(0x00CB5D80u, RegionTravel.RegisteringScripts);
         Assert.Equal(0x00CB8110u, RegionTravel.QuestBaseCtor);
@@ -995,6 +1000,33 @@ public sealed class WorldSceneTests
         Assert.True(intro.Yielded);
         Assert.Null(intro.UnsupportedCommand);
         Assert.Equal(1, runtime.WaitActiveDialogCount);
+        Assert.False(intro.ExecutedVerb("Remove"));
+        Assert.Equal(0x00CD0116u, RegionTravel.RemoveOpcode);
+        Assert.True(RegionTravel.FirstSeenRemoveDoesNotYield);
+        script.Update(0.1f);
+        Assert.Contains("UseCamera CAM_OVIF_SHOT3", intro.Executed);
+        Assert.Equal("Hero.Teleport MK_OVIF_HERO4", intro.Commands[intro.InstructionPointer]);
+        Assert.True(intro.Yielded);
+        script.Update(0.1f);
+        Assert.Contains("Hero.Teleport MK_OVIF_HERO4", intro.Executed);
+        Assert.Contains("Hero.PlayAnimation ST_IDLE_SUBTLE,FALSE,TRUE", intro.Executed);
+        Assert.Equal("Father.Speak Father,'TEXT_QST_048_FATHER_INTRO_70'", intro.Commands[intro.InstructionPointer]);
+        Assert.True(intro.Yielded);
+        script.Update(0.1f);
+        Assert.Contains("Father.Speak Father,'TEXT_QST_048_FATHER_INTRO_70'", intro.Executed);
+        Assert.Equal("NoLoadUseCamera CAM_OVIF_SHOT4", intro.Commands[intro.InstructionPointer]);
+        script.Update(0.1f);
+        Assert.Contains("NoLoadUseCamera CAM_OVIF_SHOT4", intro.Executed);
+        Assert.Equal("Remove VILL1", intro.Commands[intro.InstructionPointer]);
+        Assert.False(intro.ExecutedVerb("Remove"));
+        script.Update(0.1f);
+        Assert.Contains("Remove VILL1", intro.Executed);
+        Assert.Contains("Father.Speak Father,'TEXT_QST_048_FATHER_INTRO_80'", intro.Executed);
+        Assert.Equal("NoLoadUseCamera CAM_OVIF_SHOT3", intro.Commands[intro.InstructionPointer]);
+        Assert.True(intro.Yielded);
+        Assert.Null(intro.UnsupportedCommand);
+        Assert.Contains(runtime.Removes, name => name == RegionTravel.IntroRemoveName);
+        Assert.False(intro.ExecutedVerb("DialogadSpeak"));
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 
@@ -1117,6 +1149,33 @@ public sealed class WorldSceneTests
         public void WalkTo(string? actor, string marker, float speed, bool wait) { }
 
         public void WaitActiveDialog() { }
+
+        public void Remove(string name) { }
+    }
+
+    [Fact]
+    public void Remove_VILL1_records_name_and_does_not_yield()
+    {
+        var command = "Remove VILL1";
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(ScriptCommand.Parse(command)));
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(ScriptCommand.Parse("Remove")));
+        Assert.Equal(0x00CD0116u, RegionTravel.RemoveOpcode);
+        Assert.Equal(432, RegionTravel.RemoveApplyVtbl);
+        Assert.Equal(0x008910D0u, RegionTravel.RemoveApplyFn);
+        Assert.Equal(0x004C9B80u, RegionTravel.RemoveInner);
+        Assert.True(RegionTravel.FirstSeenRemoveDoesNotYield);
+        Assert.Equal("VILL1", RegionTravel.IntroRemoveName);
+        var interpreter = new ScriptInterpreter("rm",
+        [
+            command,
+            "Father.Speak Father,'TEXT_QST_048_FATHER_INTRO_80'",
+            "NoLoadUseCamera CAM_OVIF_SHOT3",
+        ]);
+        interpreter.RunUntilYield();
+        Assert.Contains(command, interpreter.Executed);
+        Assert.Contains("Father.Speak Father,'TEXT_QST_048_FATHER_INTRO_80'", interpreter.Executed);
+        Assert.Equal("NoLoadUseCamera CAM_OVIF_SHOT3", interpreter.Commands[interpreter.InstructionPointer]);
+        Assert.Null(interpreter.UnsupportedCommand);
     }
 
     [Fact]
