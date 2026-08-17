@@ -11,7 +11,7 @@ namespace Fable.Game;
 /// behaviour comes from exported command lists, not a
 /// handcrafted Oakvale state machine.
 /// </summary>
-public sealed class ScriptRuntime : IScriptHost
+public sealed class ScriptRuntime : IScriptHost, IScriptTrace
 {
     public ScriptBank? Bank { get; private set; }
     public float DtAtPlus8 { get; private set; }
@@ -47,9 +47,17 @@ public sealed class ScriptRuntime : IScriptHost
     public string? ActiveCutscene => _interpreters.Count == 0 ? null : _interpreters[^1].Name;
     public ScriptInterpreter? ActiveInterpreter =>
         _interpreters.Count == 0 ? null : _interpreters[^1];
+    public string CameraName => _camera?.ActiveName ?? "";
     public IReadOnlyList<ScriptInterpreter> Interpreters => _interpreters;
-    public IReadOnlyDictionary<string, bool> PersistFields => _persist;
+    public IReadOnlyDictionary<string, PersistValue> PersistSlots => _persist;
+    public IReadOnlyDictionary<string, bool> PersistFields =>
+        _persist.ToDictionary(p => p.Key, p => p.Value.Bool, StringComparer.OrdinalIgnoreCase);
     public IReadOnlyDictionary<string, string> NamedScripts => _named;
+    public RuntimeTrace Trace { get; } = new();
+    public int Frame { get; private set; }
+    public float Time { get; private set; }
+    public BindingKind StartNewGameFactoryKind => BindingKind.ProvenGeneric;
+    public BindingKind StartNewGameFiberKind => BindingKind.ProvenGeneric;
     public IReadOnlyList<ScriptTeleport> Teleports => _teleports;
     public IReadOnlyDictionary<string, Vector3> ActorPositions => _actorPositions;
     public IReadOnlyList<ScriptAnimation> Animations => _animations;
@@ -68,7 +76,7 @@ public sealed class ScriptRuntime : IScriptHost
     public IReadOnlyList<string> PreloadedCameras => _preloadedCameras;
 
     private readonly Dictionary<string, string> _named = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, bool> _persist = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, PersistValue> _persist = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<ScriptFiber> _fibers = [];
     private readonly List<ScriptInterpreter> _interpreters = [];
     private readonly List<ScriptTeleport> _teleports = [];
@@ -112,22 +120,46 @@ public sealed class ScriptRuntime : IScriptHost
         _named[scriptName] = cutsceneName;
 
     /// <summary>
+    /// Recovered name-table + persist + S_QNOVI fiber.
+    /// <see cref="StartNewGame"/> only calls this — it does
+    /// not mention Oakvale cutscene strings.
+    /// </summary>
+    public void InstallRecoveredBindings()
+    {
+        foreach (var factory in ScriptFactoryTable.Recovered)
+            RegisterNamedScript(factory.ScriptName, factory.CutsceneName);
+        foreach (var slot in PersistTable.Recovered)
+        {
+            if (!_persist.ContainsKey(slot.Name))
+                _persist[slot.Name] = PersistValue.FromBool(slot.DefaultBool);
+        }
+
+        foreach (var fiber in ScriptFiberTable.Recovered)
+            CreateFiber(fiber.Name, fiber.PersistField);
+    }
+
+    /// <summary>
     /// <c>00A447D0</c> create + <c>00A446A0</c> persist slot.
     /// Does not invent the <c>+80</c> writer.
     /// </summary>
     public ScriptFiber CreateFiber(string name, string? persistField = null)
     {
         if (persistField is not null && !_persist.ContainsKey(persistField))
-            _persist[persistField] = false;
+            _persist[persistField] = PersistValue.FromBool(false);
         var fiber = new ScriptFiber(name, persistField);
         _fibers.Add(fiber);
         return fiber;
     }
 
-    public void ApplyPersist(string name, bool value) => _persist[name] = value;
+    public void ApplyPersist(string name, bool value) =>
+        _persist[name] = PersistValue.FromBool(value);
 
     public bool PersistBool(string name) =>
-        _persist.TryGetValue(name, out var value) && value;
+        _persist.TryGetValue(name, out var value) &&
+        value.Kind == PersistKind.Bool && value.Bool;
+
+    public PersistKind PersistType(string name) =>
+        _persist.TryGetValue(name, out var value) ? value.Kind : PersistKind.Unread;
 
     /// <summary>
     /// <c>004C97B0</c> / <c>00CB8960</c>: start the named
@@ -185,6 +217,8 @@ public sealed class ScriptRuntime : IScriptHost
             return;
         if (dt < 0f)
             return;
+        Frame++;
+        Time += dt;
         DtAtPlus8 = dt;
         foreach (var fiber in _fibers)
             fiber.DtAtPlus8 = dt;
@@ -262,9 +296,10 @@ public sealed class ScriptRuntime : IScriptHost
     }
 
     /// <summary>
-    /// New Game wiring only. Recovered
-    /// <c>NOVI_LiveFather</c> → <c>CS_OAKVALE_INTRO_FATHER</c>
-    /// binding, then generic activate + interpret.
+    /// Generic engine startup: load bank, bind scene,
+    /// install recovered factory/persist/fiber tables,
+    /// activate TNG ScriptName. Oakvale facts live in
+    /// <see cref="ScriptFactoryTable"/>, not here.
     /// </summary>
     public static ScriptRuntime StartNewGame(
         GameInstall install,
@@ -275,10 +310,43 @@ public sealed class ScriptRuntime : IScriptHost
         var runtime = new ScriptRuntime();
         runtime.Load(ScriptBank.Load(install), install);
         runtime.BindScene(list, camera);
-        runtime.RegisterNamedScript(RegionTravel.LiveFatherScript, RegionTravel.IntroCutscene);
-        runtime.CreateFiber(RegionTravel.IntroScriptName, NewGameScript.PersistAttackOverName);
+        runtime.InstallRecoveredBindings();
         runtime.ActivateThings(list);
         return runtime;
+    }
+
+    void IScriptTrace.OnStep(RuntimeTraceStep step) => Trace.Add(step);
+
+    internal string TraceSideEffect(string verb)
+    {
+        if (verb.Equals("PlayMusic", StringComparison.OrdinalIgnoreCase))
+            return LastMusic ?? "";
+        if (verb.Equals("FadeOut", StringComparison.OrdinalIgnoreCase) ||
+            verb.Equals("FadeIn", StringComparison.OrdinalIgnoreCase))
+            return $"fade {FadeDuration},{FadeParam} a={OverlayAlphaByte}";
+        if (verb.Equals("UseCamera", StringComparison.OrdinalIgnoreCase) ||
+            verb.Equals("NoLoadUseCamera", StringComparison.OrdinalIgnoreCase))
+            return _camera?.ActiveName ?? "";
+        if (verb.Equals("Teleport", StringComparison.OrdinalIgnoreCase))
+            return _teleports.Count == 0 ? "" : $"{_teleports[^1].Actor}->{_teleports[^1].Marker}";
+        if (verb.Equals("PlayAVI", StringComparison.OrdinalIgnoreCase))
+            return AviRelativePath ?? "";
+        return verb;
+    }
+
+    internal string TracePersistSnapshot()
+    {
+        if (_persist.Count == 0)
+            return "";
+        return string.Join(",", _persist.Select(p => $"{p.Key}={p.Value.Kind}:{p.Value.Bool}"));
+    }
+
+    internal string TraceWorldSnapshot()
+    {
+        if (_actorPositions.Count == 0)
+            return "";
+        return string.Join(",", _actorPositions.Select(p =>
+            $"{p.Key}:{p.Value.X:0.##},{p.Value.Y:0.##},{p.Value.Z:0.##}"));
     }
 
     void IScriptHost.PlayMusic(string track) => LastMusic = track;
@@ -347,7 +415,9 @@ public sealed class ScriptRuntime : IScriptHost
             actor, name, flags.Flag1, flags.Flag2, flags.Flag3, flags.Flag4, flags.Flag5));
     }
 
-    void IScriptHost.CameraPause(string arguments) => _ = arguments;
+    public string? LastCameraPause { get; private set; }
+
+    void IScriptHost.CameraPause(string arguments) => LastCameraPause = arguments;
 
     /// <summary>
     /// <c>00CC4678</c> → <c>vtbl+1892</c>
@@ -369,8 +439,11 @@ public sealed class ScriptRuntime : IScriptHost
             _actorPositions[actor] = pos;
     }
 
+    public IReadOnlyList<ScriptLookToThing> LookToThings => _lookToThings;
+    private readonly List<ScriptLookToThing> _lookToThings = [];
+
     void IScriptHost.LookToThing(string? actor, string arguments) =>
-        _ = (actor, arguments);
+        _lookToThings.Add(new ScriptLookToThing(actor, arguments));
 
     /// <summary>
     /// <c>00CCA26D</c>: prefix <c>Data\Video\</c> then
@@ -666,3 +739,5 @@ public readonly record struct ScriptDialogAdSpeech(
     int Mode);
 
 public readonly record struct ScriptLookInDirection(string? Actor, float Degrees, bool Flag);
+
+public readonly record struct ScriptLookToThing(string? Actor, string Arguments);

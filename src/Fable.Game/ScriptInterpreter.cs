@@ -48,11 +48,13 @@ public sealed class ScriptInterpreter
                 if (!TickScriptFrame(command.Arguments))
                 {
                     Yielded = true;
+                    Record(host, command, ScriptFlow.Yield);
                     return;
                 }
 
                 _executed.Add(raw);
                 InstructionPointer++;
+                Record(host, command, ScriptFlow.Continue);
                 continue;
             }
 
@@ -61,12 +63,14 @@ public sealed class ScriptInterpreter
                 if (!TickGamePause(command.Arguments))
                 {
                     Yielded = true;
+                    Record(host, command, ScriptFlow.Yield);
                     return;
                 }
 
                 host?.GamePause(ParseGamePauseSeconds(command.Arguments));
                 _executed.Add(raw);
                 InstructionPointer++;
+                Record(host, command, ScriptFlow.Continue);
                 continue;
             }
 
@@ -75,9 +79,11 @@ public sealed class ScriptInterpreter
                 if (!TickPlayAvi(raw, command.Arguments, host))
                 {
                     Yielded = true;
+                    Record(host, command, ScriptFlow.Yield);
                     return;
                 }
 
+                Record(host, command, ScriptFlow.Continue);
                 continue;
             }
 
@@ -86,6 +92,7 @@ public sealed class ScriptInterpreter
             {
                 UnsupportedCommand = raw;
                 Yielded = true;
+                Record(host, command, flow);
                 return;
             }
 
@@ -93,10 +100,10 @@ public sealed class ScriptInterpreter
             _executed.Add(raw);
             InstructionPointer++;
             if (flow == ScriptFlow.YieldAfter)
-            {
                 Yielded = true;
+            Record(host, command, flow);
+            if (flow == ScriptFlow.YieldAfter)
                 return;
-            }
         }
 
         Finished = true;
@@ -400,6 +407,34 @@ public sealed class ScriptInterpreter
             float.TryParse(parts[0], NumberStyles.Float, CultureInfo.InvariantCulture, out seconds);
         if (parts.Length > 1)
             float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out param);
+    }
+
+    private void Record(IScriptHost? host, ScriptCommand command, ScriptFlow flow)
+    {
+        if (host is not IScriptTrace trace)
+            return;
+        var runtime = host as ScriptRuntime;
+        var lastAnim = runtime is { Animations.Count: > 0 }
+            ? runtime.Animations[^1].Name
+            : "";
+        trace.OnStep(new RuntimeTraceStep(
+            runtime?.Frame ?? 0,
+            runtime?.Time ?? 0f,
+            Name,
+            InstructionPointer,
+            command.Raw,
+            command.Verb,
+            command.Arguments,
+            flow,
+            Yielded,
+            Finished,
+            ScriptCommandMap.StatusOf(command.Verb),
+            runtime?.TraceSideEffect(command.Verb) ?? "",
+            runtime?.TracePersistSnapshot() ?? "",
+            runtime?.Interpreters.Count ?? 0,
+            runtime?.CameraName ?? "",
+            lastAnim,
+            runtime?.TraceWorldSnapshot() ?? ""));
     }
 
     internal static string FirstToken(string arguments)
