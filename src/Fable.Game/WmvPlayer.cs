@@ -136,6 +136,10 @@ public sealed class WmvPlayer : IDisposable
         _graph = (IGraphBuilder)Marshal.GetObjectForIUnknown(graphUnk);
         Marshal.Release(graphUnk);
 
+        // Exe never creates IVideoWindow. Hide before
+        // RenderFile so VMR/default renderer cannot pop.
+        HideVideoWindow();
+
         _renderer = new TextureRenderer(OnSample);
         hr = _graph.AddFilter(_renderer, "Fable Texture Renderer");
         if (hr < 0)
@@ -143,14 +147,12 @@ public sealed class WmvPlayer : IDisposable
 
         hr = _graph.RenderFile(path, null);
         if (hr < 0)
-        {
-            _graph.RemoveFilter(_renderer);
-            _renderer = null;
-            hr = _graph.RenderFile(path, null);
-            if (hr < 0)
-                return $"RenderFile {hr:X8}";
-            LastError = $"custom-renderer-miss {hr:X8}";
-        }
+            return $"RenderFile {hr:X8}";
+
+        HideVideoWindow();
+        if (_renderer is { IsConnected: true })
+            RemoveWindowedRenderers();
+        HideVideoWindow();
 
         _control = (IMediaControl)_graph;
         _position = (IMediaPosition)_graph;
@@ -175,11 +177,7 @@ public sealed class WmvPlayer : IDisposable
             return $"Run {hr:X8}";
 
         if (_renderer is { IsConnected: false })
-        {
             LastError = "renderer-not-connected";
-            _graph.RemoveFilter(_renderer);
-            _renderer = null;
-        }
 
         HideVideoWindow();
 
@@ -205,11 +203,46 @@ public sealed class WmvPlayer : IDisposable
         {
             window.put_AutoShow(0);
             window.put_Visible(0);
+            window.put_WindowState(0);
         }
         catch
         {
-            // Default renderer may not expose IVideoWindow.
+            // Custom renderer has no IVideoWindow.
         }
+    }
+
+    /// <summary>
+    /// RenderFile may still insert VMR / Video
+    /// Renderer. Exe present is the game
+    /// backbuffer only — drop windowed filters.
+    /// </summary>
+    private void RemoveWindowedRenderers()
+    {
+        if (_graph is null)
+            return;
+        if (_graph.EnumFilters(out var en) < 0 || en is null)
+            return;
+        var batch = new IBaseFilter[16];
+        var drop = new List<IBaseFilter>();
+        while (en.Next(1, batch, IntPtr.Zero) == 0)
+        {
+            var filter = batch[0];
+            if (filter is null || ReferenceEquals(filter, _renderer))
+                continue;
+            if (filter.QueryFilterInfo(out var info) < 0)
+                continue;
+            if (info.Graph != IntPtr.Zero)
+                Marshal.Release(info.Graph);
+            var name = info.Name ?? "";
+            if (name.Contains("Video Renderer", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("Video Mixing", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("EVR", StringComparison.OrdinalIgnoreCase) ||
+                name.Contains("VMR", StringComparison.OrdinalIgnoreCase))
+                drop.Add(filter);
+        }
+
+        foreach (var filter in drop)
+            _graph.RemoveFilter(filter);
     }
 
     private void TryGrabBasicVideo()
@@ -372,6 +405,7 @@ public sealed class WmvPlayer : IDisposable
         public static readonly Guid Video = new("73646976-0000-0010-8000-00aa00389b71");
         public static readonly Guid Rgb24 = new("e436eb7d-524f-11ce-9f53-0020af0ba770");
         public static readonly Guid Rgb32 = new("e436eb7e-524f-11ce-9f53-0020af0ba770");
+        public static readonly Guid Yuy2 = new("32595559-0000-0010-8000-00aa00389b71");
         public static readonly Guid VideoInfo = new("05589f80-c356-11ce-bf01-00aa0055595a");
     }
 
@@ -382,7 +416,7 @@ public sealed class WmvPlayer : IDisposable
     {
         [PreserveSig] int AddFilter([MarshalAs(UnmanagedType.Interface)] IBaseFilter filter, [MarshalAs(UnmanagedType.LPWStr)] string name);
         [PreserveSig] int RemoveFilter([MarshalAs(UnmanagedType.Interface)] IBaseFilter filter);
-        [PreserveSig] int EnumFilters(out IntPtr enumerator);
+        [PreserveSig] int EnumFilters(out IEnumFilters enumerator);
         [PreserveSig] int FindFilterByName([MarshalAs(UnmanagedType.LPWStr)] string name, out IntPtr filter);
         [PreserveSig] int ConnectDirect(IntPtr outPin, IntPtr inPin, IntPtr type);
         [PreserveSig] int Reconnect(IntPtr pin);
@@ -395,6 +429,17 @@ public sealed class WmvPlayer : IDisposable
         [PreserveSig] int SetLogFile(IntPtr file);
         [PreserveSig] int Abort();
         [PreserveSig] int ShouldOperationContinue();
+    }
+
+    [ComImport]
+    [Guid("56a86893-0ad4-11ce-b03a-0020af0ba770")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IEnumFilters
+    {
+        [PreserveSig] int Next(int count, [Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] IBaseFilter[] filters, IntPtr fetched);
+        [PreserveSig] int Skip(int count);
+        [PreserveSig] int Reset();
+        [PreserveSig] int Clone(out IEnumFilters enumerator);
     }
 
     [ComImport]
@@ -766,6 +811,7 @@ public sealed class WmvPlayer : IDisposable
         private int _bitCount;
         private int _stride;
         private bool _topDown;
+        private Guid _subType;
 
         public bool IsConnected => _connected is not null;
 
@@ -835,8 +881,6 @@ public sealed class WmvPlayer : IDisposable
         public int QueryAccept(ref AMMediaType type)
         {
             if (type.MajorType != Ds.Video)
-                return 1;
-            if (type.SubType != Ds.Rgb24 && type.SubType != Ds.Rgb32)
                 return 1;
             if (type.FormatType != Ds.VideoInfo || type.FormatPtr == IntPtr.Zero || type.FormatSize < 56)
                 return 1;
@@ -923,6 +967,7 @@ public sealed class WmvPlayer : IDisposable
             var rawHeight = Marshal.ReadInt32(type.FormatPtr, 56);
             _height = Math.Abs(rawHeight);
             _topDown = rawHeight < 0;
+            _subType = type.SubType;
             _bitCount = type.SubType == Ds.Rgb32 ? 32 : 24;
             if (type.FormatSize >= 70)
             {
@@ -932,9 +977,11 @@ public sealed class WmvPlayer : IDisposable
             }
 
             // 00A3B5F0: stride = ((width+1)*3) & ~3 for RGB24.
-            _stride = _bitCount == 32
-                ? _width * 4
-                : ((_width + 1) * 3) & ~3;
+            _stride = _subType == Ds.Yuy2
+                ? ((_width * 2 + 3) & ~3)
+                : _bitCount == 32
+                    ? _width * 4
+                    : ((_width + 1) * 3) & ~3;
         }
 
         private byte[]? CopySample(IntPtr data, int length)
@@ -943,10 +990,15 @@ public sealed class WmvPlayer : IDisposable
             if (pixels <= 0)
                 return null;
             var rgba = new byte[pixels * 4];
+            if (_subType == Ds.Yuy2)
+                return CopyYuy2(data, length, rgba);
             var bpp = _bitCount == 32 ? 4 : 3;
             var stride = _stride > 0 ? _stride : ((_width * bpp + 3) & ~3);
             if (length < stride * _height && length >= pixels * bpp)
                 stride = _width * bpp;
+            // 00A3B740 copies rows in sample order.
+            // Positive biHeight is a bottom-up DIB — flip
+            // so dest.y=0 is the top of the game window.
             for (var y = 0; y < _height; y++)
             {
                 var srcY = _topDown ? y : _height - 1 - y;
@@ -965,6 +1017,45 @@ public sealed class WmvPlayer : IDisposable
 
             return rgba;
         }
+
+        private byte[] CopyYuy2(IntPtr data, int length, byte[] rgba)
+        {
+            var stride = _stride > 0 ? _stride : ((_width * 2 + 3) & ~3);
+            if (length < stride * _height)
+                stride = _width * 2;
+            for (var y = 0; y < _height; y++)
+            {
+                var srcY = _topDown ? y : _height - 1 - y;
+                var src = data + srcY * stride;
+                var dst = y * _width * 4;
+                for (var x = 0; x + 1 < _width; x += 2)
+                {
+                    var y0 = Marshal.ReadByte(src, x * 2);
+                    var u = Marshal.ReadByte(src, x * 2 + 1);
+                    var y1 = Marshal.ReadByte(src, x * 2 + 2);
+                    var v = Marshal.ReadByte(src, x * 2 + 3);
+                    YuvToRgba(y0, u, v, rgba, dst);
+                    YuvToRgba(y1, u, v, rgba, dst + 4);
+                    dst += 8;
+                }
+            }
+
+            return rgba;
+        }
+
+        private static void YuvToRgba(int y, int u, int v, byte[] rgba, int dst)
+        {
+            var c = y - 16;
+            var d = u - 128;
+            var e = v - 128;
+            rgba[dst] = ClampByte((298 * c + 409 * e + 128) >> 8);
+            rgba[dst + 1] = ClampByte((298 * c - 100 * d - 208 * e + 128) >> 8);
+            rgba[dst + 2] = ClampByte((298 * c + 516 * d + 128) >> 8);
+            rgba[dst + 3] = 255;
+        }
+
+        private static byte ClampByte(int value) =>
+            (byte)Math.Clamp(value, 0, 255);
     }
 
     [ComVisible(true)]

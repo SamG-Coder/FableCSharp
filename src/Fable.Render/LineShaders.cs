@@ -74,7 +74,10 @@ internal static class LineShaders
                 return;
             }
             vec2 t = (fragUv - pc.dest.xy) / (pc.dest.zw - pc.dest.xy);
-            outColor = texture(video, vec2(t.x, 1.0 - t.y));
+            // 00A3B740 copies sample rows into LockRect
+            // with no extra V flip. Vulkan NDC y=-1 is
+            // the top of the window, matching dest.y.
+            outColor = texture(video, t);
         }
         """;
 

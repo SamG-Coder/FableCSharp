@@ -1930,6 +1930,11 @@ public sealed class WorldSceneTests
         var tall = RegionTravel.PlayAviLetterbox(640, 480, 800, 800);
         Assert.True(tall.Y0 > 0.05f, $"letterbox y0={tall.Y0}");
         Assert.True(tall.Y1 < 0.95f, $"letterbox y1={tall.Y1}");
+        var wide = RegionTravel.PlayAviLetterbox(640, 480, 1920, 1080);
+        Assert.True(wide.X0 > 0.05f, $"wide letterbox x0={wide.X0}");
+        Assert.True(wide.X1 < 0.95f, $"wide letterbox x1={wide.X1}");
+        Assert.Equal(0f, wide.Y0, 3);
+        Assert.Equal(1f, wide.Y1, 3);
         Assert.Equal(0.5f, RegionTravel.PlayAviLetterboxHalf);
         Assert.Equal(0x0122F59Cu, RegionTravel.PlayAviLetterboxHalfVa);
         Assert.Equal(0x009DC870u, RegionTravel.PlayAviBlit);
