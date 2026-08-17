@@ -103,6 +103,8 @@ public sealed class ScriptedCamera
 
     public void SetLookAt(Vector3 lookAt) => LookAt = lookAt;
 
+    public void SetFovDegrees(float fovDegrees) => FovDegrees = fovDegrees;
+
     public bool UseCamera(IEnumerable<ThingInstance> things, string name) =>
         RegionTravel.TryNamedCamera(things, name, out var position, out var lookAt, out var fov, out var up)
         && BindAndTrue(name, position, lookAt, up, fov);

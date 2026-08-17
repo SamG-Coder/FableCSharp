@@ -125,6 +125,7 @@ public sealed class CameraRuntime
     public string LookBetweenA { get; private set; } = "";
     public string LookBetweenB { get; private set; } = "";
     public float LookBetweenDuration { get; private set; }
+    public float LookBetweenFov { get; private set; } = -1f;
 
     /// <summary>
     /// <c>00CCAA6C</c> apply <c>vtbl+1632</c>: look
@@ -136,13 +137,16 @@ public sealed class CameraRuntime
         ThingInstance? a, string nameA,
         ThingInstance? b, string nameB,
         Vector3 offsetA, Vector3 offsetB,
-        float duration)
+        float duration, float fovDegrees = -1f)
     {
         LookBetweenA = nameA;
         LookBetweenB = nameB;
         LookBetweenDuration = duration;
+        LookBetweenFov = fovDegrees;
         LookAt = nameA + "|" + nameB;
         Busy = true;
+        if (fovDegrees >= 0f)
+            camera?.SetFovDegrees(fovDegrees);
         Vector3? posA = a is { PositionX: not null }
             ? RegionTravel.PositionOf(a) + offsetA
             : null;

@@ -909,6 +909,46 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void CameraFOVLookBetween_sets_fov_degrees_on_scripted_camera()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "A",
+                PositionX = 0,
+                PositionY = 0,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "B",
+                PositionX = 4,
+                PositionY = 0,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], new ScriptedCamera());
+        var interp = new ScriptInterpreter("fovlb",
+            ["CameraFOVLookBetween A,B,MODE,2.0,70"]);
+        interp.RunUntilYield(runtime);
+        Assert.Equal(ExecutionKind.YieldOnce, interp.CurrentWaitKind);
+        Assert.Equal(70f, runtime.CameraSys.LookBetweenFov);
+        Assert.Equal(70f, runtime.Camera!.FovDegrees);
+        Assert.Equal(2f, runtime.Camera.LookAt.X);
+        interp.Resume(runtime);
+        Assert.True(interp.Finished);
+    }
+
+    [Fact]
     public void CameraLookBetween_real_script_bank_line()
     {
         var install = GameInstall.TryLocate();
