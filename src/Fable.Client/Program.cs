@@ -141,6 +141,19 @@ window.Update += dt =>
         renderer.FadeOverlayAlpha = intro?.Runtime.OverlayAlphaByte ?? 0;
         var rgb = intro?.Runtime.FadeColor ?? default;
         renderer.FadeOverlayRgb = (rgb.R, rgb.G, rgb.B);
+        var runtime = intro?.Runtime;
+        if (runtime is { AviPlaying: true, AviRgba: not null } &&
+            runtime.AviWidth > 0 && runtime.AviHeight > 0)
+        {
+            var dest = RegionTravel.PlayAviLetterbox(
+                runtime.AviWidth, runtime.AviHeight,
+                window.FramebufferSize.X, window.FramebufferSize.Y);
+            renderer.SetVideoFrame(
+                runtime.AviWidth, runtime.AviHeight, runtime.AviRgba,
+                new Vector4(dest.X0, dest.Y0, dest.X1, dest.Y1));
+        }
+        else
+            renderer.ClearVideoFrame();
     }
 
     TryWalk();

@@ -145,6 +145,18 @@ public static class RegionTravel
     public const int PlayAviSkipSpace = 57;
     public const int PlayAviSkipReturn = 28;
     public const int PlayAviSkipF4 = 62;
+    /// <summary>
+    /// Present loop <c>00628B79</c>: scaled dest then
+    /// leftover * <c>[0x122F59C]=0.5</c> letterbox.
+    /// Blit is 2D submit <c>009DC870</c> then flush
+    /// <c>009D9C80</c>.
+    /// </summary>
+    public const uint PlayAviBlit = 0x009DC870;
+    public const uint PlayAviFlush = 0x009D9C80;
+    public const uint PlayAviLetterboxHalfVa = 0x0122F59C;
+    public const float PlayAviLetterboxHalf = 0.5f;
+    public const bool FirstSeenPlayAviDraws = false;
+    public const bool FirstSeenPlayAviLetterbox = true;
     public static readonly byte[] PlayAviAsfMagic =
         [0x30, 0x26, 0xB2, 0x75, 0x8E, 0x66, 0xCF, 0x11, 0xA6, 0xD9, 0x00, 0xAA, 0x00, 0x62, 0xCE, 0x6C];
     public const uint NoLoadUseCameraSite = 0x00CC9E6A;
@@ -930,6 +942,31 @@ public static class RegionTravel
 
     public static bool IsPlayAviSkipScan(int dik) =>
         dik is PlayAviSkipEscape or PlayAviSkipSpace or PlayAviSkipReturn or PlayAviSkipF4;
+
+    /// <summary>
+    /// <c>00628B79</c> letterbox: fit the WMV in the
+    /// viewport, offset leftover * 0.5 on each side.
+    /// Returns dest in 0–1 screen UV.
+    /// </summary>
+    public static (float X0, float Y0, float X1, float Y1) PlayAviLetterbox(
+        int videoWidth, int videoHeight, int screenWidth, int screenHeight)
+    {
+        var vw = (float)Math.Max(1, videoWidth);
+        var vh = (float)Math.Max(1, videoHeight);
+        var sw = (float)Math.Max(1, screenWidth);
+        var sh = (float)Math.Max(1, screenHeight);
+        var destH = sw * vh / vw;
+        var destW = sw;
+        if (destH > sh)
+        {
+            destH = sh;
+            destW = sh * vw / vh;
+        }
+
+        var x0 = (sw - destW) * PlayAviLetterboxHalf / sw;
+        var y0 = (sh - destH) * PlayAviLetterboxHalf / sh;
+        return (x0, y0, x0 + destW / sw, y0 + destH / sh);
+    }
 
     public static Vector3 ForwardOf(ThingInstance thing)
     {

@@ -37,6 +37,9 @@ public sealed class ScriptRuntime : IScriptHost
     public string? AviRelativePath { get; private set; }
     public string? AviFile { get; private set; }
     public bool AviPlaying { get; private set; }
+    public int AviWidth => _avi?.Width ?? 0;
+    public int AviHeight => _avi?.Height ?? 0;
+    public byte[]? AviRgba => _avi?.Rgba;
     public bool SoundsMuted { get; private set; }
     public int TimeCode { get; private set; }
     public float LastGamePause { get; private set; }
@@ -85,6 +88,7 @@ public sealed class ScriptRuntime : IScriptHost
     private IReadOnlyList<ThingInstance> _things = [];
     private ScriptedCamera? _camera;
     private GameInstall? _install;
+    private WmvPlayer? _avi;
 
     public void Load(ScriptBank bank, GameInstall? install = null)
     {
@@ -184,6 +188,7 @@ public sealed class ScriptRuntime : IScriptHost
         foreach (var fiber in _fibers)
             fiber.DtAtPlus8 = dt;
         TickFade(dt);
+        TickAvi(dt);
         foreach (var interpreter in _interpreters)
         {
             if (interpreter.Yielded)
@@ -372,13 +377,36 @@ public sealed class ScriptRuntime : IScriptHost
         AviFile = LastAvi is null || _install is null
             ? null
             : RegionTravel.ResolvePlayAviFile(_install, LastAvi);
+        _avi?.Dispose();
+        _avi = AviFile is null ? null : WmvPlayer.TryOpen(AviFile);
         AviPlaying = AviFile is not null;
     }
 
     /// <summary>
     /// <c>006286F0</c> skip scan 1 / 57 / 28 / 62.
     /// </summary>
-    public void SkipAvi() => AviPlaying = false;
+    public void SkipAvi()
+    {
+        _avi?.Dispose();
+        _avi = null;
+        AviPlaying = false;
+    }
+
+    /// <summary>
+    /// Present loop reads samples until the player
+    /// returns. EOF ends the blocking apply.
+    /// </summary>
+    private void TickAvi(float dt)
+    {
+        if (!AviPlaying)
+            return;
+        if (_avi is null)
+            return;
+        if (_avi.TryAdvance(dt) && !_avi.Ended)
+            return;
+        if (_avi.Ended)
+            SkipAvi();
+    }
 
     /// <summary>
     /// <c>00CC7258</c>: <c>00CBEE0C</c> IsFalse →

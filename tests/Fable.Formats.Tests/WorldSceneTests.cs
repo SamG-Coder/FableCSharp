@@ -300,6 +300,11 @@ public sealed class WorldSceneTests
         Assert.Equal(57, RegionTravel.PlayAviSkipSpace);
         Assert.Equal(28, RegionTravel.PlayAviSkipReturn);
         Assert.Equal(62, RegionTravel.PlayAviSkipF4);
+        Assert.Equal(0x009DC870u, RegionTravel.PlayAviBlit);
+        Assert.Equal(0x009D9C80u, RegionTravel.PlayAviFlush);
+        Assert.Equal(0.5f, RegionTravel.PlayAviLetterboxHalf);
+        Assert.False(RegionTravel.FirstSeenPlayAviDraws);
+        Assert.True(RegionTravel.FirstSeenPlayAviLetterbox);
         Assert.Equal(0x00CC9E6Au, RegionTravel.NoLoadUseCameraSite);
         Assert.Equal(0x00CC9E69u, RegionTravel.NoLoadUseCameraOpcode);
         Assert.Equal(0x00CC9F39u, RegionTravel.UseCameraOpcode);
@@ -1865,6 +1870,11 @@ public sealed class WorldSceneTests
         Assert.True(File.Exists(file));
         Assert.Equal("dream_sequence_comp.wmv", Path.GetFileName(file), StringComparer.OrdinalIgnoreCase);
         Assert.True(RegionTravel.FileHasAsfMagic(file));
+        using var player = WmvPlayer.TryOpen(file);
+        Assert.True(
+            player is null || (player.Rgba is { Length: > 0 } && player.Width >= 16),
+            $"WmvPlayer opened without a frame: {WmvPlayer.LastError}");
+
         Assert.Equal(0x0099C1E0u, RegionTravel.PlayAviRewrite);
         Assert.Equal(0x00A3B9D0u, RegionTravel.PlayAviOpen);
         Assert.Equal(0x01258DE0u, RegionTravel.PlayAviExtXmvVa);
@@ -1875,6 +1885,17 @@ public sealed class WorldSceneTests
         Assert.True(RegionTravel.IsPlayAviSkipScan(28));
         Assert.True(RegionTravel.IsPlayAviSkipScan(62));
         Assert.False(RegionTravel.IsPlayAviSkipScan(2));
+        var box = RegionTravel.PlayAviLetterbox(640, 480, 800, 600);
+        Assert.Equal(0f, box.X0, 3);
+        Assert.Equal(0f, box.Y0, 3);
+        Assert.Equal(1f, box.X1, 3);
+        Assert.Equal(1f, box.Y1, 3);
+        var tall = RegionTravel.PlayAviLetterbox(640, 480, 800, 800);
+        Assert.True(tall.Y0 > 0.05f, $"letterbox y0={tall.Y0}");
+        Assert.True(tall.Y1 < 0.95f, $"letterbox y1={tall.Y1}");
+        Assert.Equal(0.5f, RegionTravel.PlayAviLetterboxHalf);
+        Assert.Equal(0x0122F59Cu, RegionTravel.PlayAviLetterboxHalfVa);
+        Assert.Equal(0x009DC870u, RegionTravel.PlayAviBlit);
 
         using var levels = new LevelLibrary(install);
         var things = levels.LoadThings("StartOakValeWest").Things.ToList();

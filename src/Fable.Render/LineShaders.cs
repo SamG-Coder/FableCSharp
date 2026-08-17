@@ -46,6 +46,38 @@ internal static class LineShaders
         }
         """;
 
+    /// <summary>
+    /// <c>00628B79</c> letterbox dest then
+    /// <c>009DC870</c> 2D submit. UV 0–1 inside dest;
+    /// outside is black bars.
+    /// </summary>
+    public const string VideoVertex = """
+        #version 450
+        layout(location = 0) out vec2 fragUv;
+        void main() {
+            vec2 p = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+            fragUv = p;
+            gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+        }
+        """;
+
+    public const string VideoFragment = """
+        #version 450
+        layout(location = 0) in vec2 fragUv;
+        layout(location = 0) out vec4 outColor;
+        layout(set = 0, binding = 0) uniform sampler2D video;
+        layout(push_constant) uniform Push { vec4 dest; } pc;
+        void main() {
+            if (fragUv.x < pc.dest.x || fragUv.x > pc.dest.z ||
+                fragUv.y < pc.dest.y || fragUv.y > pc.dest.w) {
+                outColor = vec4(0.0, 0.0, 0.0, 1.0);
+                return;
+            }
+            vec2 t = (fragUv - pc.dest.xy) / (pc.dest.zw - pc.dest.xy);
+            outColor = texture(video, vec2(t.x, 1.0 - t.y));
+        }
+        """;
+
     public const string MeshVertex = """
         #version 450
         layout(location = 0) in vec3 inPosition;

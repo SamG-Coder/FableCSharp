@@ -178,6 +178,8 @@ internal static class FunctionMap
         ("PlayAVI open", 0x00A3B9D0),
         ("PlayAVI rewrite", 0x0099C1E0),
         ("PlayAVI ctor", 0x00A3BC70),
+        ("PlayAVI blit", 0x009DC870),
+        ("PlayAVI flush", 0x009D9C80),
         ("command continue join", 0x00CD17F8),
         ("MuteSounds token", 0x00CC7258),
         ("NoLoadUseCamera", 0x00CC9E6A),

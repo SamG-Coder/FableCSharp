@@ -1,3 +1,4 @@
+using System.Numerics;
 using Silk.NET.Vulkan;
 using Buffer = Silk.NET.Vulkan.Buffer;
 
@@ -265,6 +266,13 @@ public sealed unsafe partial class VulkanLineRenderer
             srcStage = PipelineStageFlags.TransferBit;
             dstStage = PipelineStageFlags.FragmentShaderBit;
         }
+        else if (oldLayout == ImageLayout.ShaderReadOnlyOptimal && newLayout == ImageLayout.TransferDstOptimal)
+        {
+            barrier.SrcAccessMask = AccessFlags.ShaderReadBit;
+            barrier.DstAccessMask = AccessFlags.TransferWriteBit;
+            srcStage = PipelineStageFlags.FragmentShaderBit;
+            dstStage = PipelineStageFlags.TransferBit;
+        }
         else
             throw new InvalidOperationException($"Unsupported layout {oldLayout} -> {newLayout}.");
 
@@ -344,5 +352,176 @@ public sealed unsafe partial class VulkanLineRenderer
             _vk.DestroyImage(_device, texture.Image, null);
         if (texture.Memory.Handle != 0)
             _vk.FreeMemory(_device, texture.Memory, null);
+    }
+
+    /// <summary>
+    /// <c>009DC870</c> 2D submit of the current WMV
+    /// frame. <paramref name="dest"/> is 0–1 letterbox.
+    /// </summary>
+    public void SetVideoFrame(int width, int height, byte[]? rgba, Vector4 dest)
+    {
+        if (rgba is null || width <= 0 || height <= 0 || rgba.Length < width * height * 4)
+        {
+            ClearVideoFrame();
+            return;
+        }
+
+        _videoDest = dest;
+        if (_videoTexture.Image.Handle != 0 &&
+            _videoTexture.Id == width &&
+            _videoReady)
+        {
+            UpdateVideoPixels(width, height, rgba);
+            return;
+        }
+
+        DestroyVideoTexture();
+        EnsureVideoPool();
+        _videoTexture = UploadVideoTexture(width, height, rgba);
+        _videoReady = _videoTexture.Set.Handle != 0;
+    }
+
+    public void ClearVideoFrame()
+    {
+        DestroyVideoTexture();
+        _videoReady = false;
+    }
+
+    private DeviceTexture UploadVideoTexture(int width, int height, byte[] rgba)
+    {
+        var bytes = (ulong)rgba.Length;
+        CreateBuffer(bytes,
+            BufferUsageFlags.TransferSrcBit,
+            MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
+            out var staging, out var stagingMemory);
+        void* mapped;
+        Check(_vk.MapMemory(_device, stagingMemory, 0, bytes, 0, &mapped));
+        rgba.AsSpan().CopyTo(new Span<byte>(mapped, rgba.Length));
+        _vk.UnmapMemory(_device, stagingMemory);
+
+        var imageInfo = new ImageCreateInfo
+        {
+            SType = StructureType.ImageCreateInfo,
+            ImageType = ImageType.Type2D,
+            Format = Format.R8G8B8A8Unorm,
+            Extent = new Extent3D { Width = (uint)width, Height = (uint)height, Depth = 1 },
+            MipLevels = 1,
+            ArrayLayers = 1,
+            Samples = SampleCountFlags.Count1Bit,
+            Tiling = ImageTiling.Optimal,
+            Usage = ImageUsageFlags.TransferDstBit | ImageUsageFlags.SampledBit,
+            InitialLayout = ImageLayout.Undefined,
+        };
+        Check(_vk.CreateImage(_device, in imageInfo, null, out var image));
+        _vk.GetImageMemoryRequirements(_device, image, out var req);
+        var alloc = new MemoryAllocateInfo
+        {
+            SType = StructureType.MemoryAllocateInfo,
+            AllocationSize = req.Size,
+            MemoryTypeIndex = FindMemoryType(req.MemoryTypeBits, MemoryPropertyFlags.DeviceLocalBit),
+        };
+        Check(_vk.AllocateMemory(_device, in alloc, null, out var memory));
+        Check(_vk.BindImageMemory(_device, image, memory, 0));
+        Transition(image, ImageLayout.Undefined, ImageLayout.TransferDstOptimal);
+        CopyBufferToImage(staging, image, (uint)width, (uint)height);
+        Transition(image, ImageLayout.TransferDstOptimal, ImageLayout.ShaderReadOnlyOptimal);
+        _vk.DestroyBuffer(_device, staging, null);
+        _vk.FreeMemory(_device, stagingMemory, null);
+
+        var viewInfo = new ImageViewCreateInfo
+        {
+            SType = StructureType.ImageViewCreateInfo,
+            Image = image,
+            ViewType = ImageViewType.Type2D,
+            Format = Format.R8G8B8A8Unorm,
+            SubresourceRange = new ImageSubresourceRange
+            {
+                AspectMask = ImageAspectFlags.ColorBit,
+                LevelCount = 1,
+                LayerCount = 1,
+            },
+        };
+        Check(_vk.CreateImageView(_device, in viewInfo, null, out var view));
+        var setLayout = _descriptorSetLayout;
+        var allocInfo = new DescriptorSetAllocateInfo
+        {
+            SType = StructureType.DescriptorSetAllocateInfo,
+            DescriptorPool = _videoPool,
+            DescriptorSetCount = 1,
+            PSetLayouts = &setLayout,
+        };
+        Check(_vk.AllocateDescriptorSets(_device, in allocInfo, out var set));
+        var imageWrite = new DescriptorImageInfo
+        {
+            Sampler = _sampler,
+            ImageView = view,
+            ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
+        };
+        var write = new WriteDescriptorSet
+        {
+            SType = StructureType.WriteDescriptorSet,
+            DstSet = set,
+            DstBinding = 0,
+            DescriptorCount = 1,
+            DescriptorType = DescriptorType.CombinedImageSampler,
+            PImageInfo = &imageWrite,
+        };
+        _vk.UpdateDescriptorSets(_device, 1, in write, 0, null);
+        return new DeviceTexture
+        {
+            Id = width,
+            Image = image,
+            Memory = memory,
+            View = view,
+            Set = set,
+        };
+    }
+
+    private void EnsureVideoPool()
+    {
+        if (_videoPool.Handle != 0)
+            return;
+        var poolSize = new DescriptorPoolSize
+        {
+            Type = DescriptorType.CombinedImageSampler,
+            DescriptorCount = 1,
+        };
+        var poolInfo = new DescriptorPoolCreateInfo
+        {
+            SType = StructureType.DescriptorPoolCreateInfo,
+            MaxSets = 1,
+            PoolSizeCount = 1,
+            PPoolSizes = &poolSize,
+        };
+        Check(_vk.CreateDescriptorPool(_device, in poolInfo, null, out _videoPool));
+    }
+
+    private void UpdateVideoPixels(int width, int height, byte[] rgba)
+    {
+        var bytes = (ulong)rgba.Length;
+        CreateBuffer(bytes,
+            BufferUsageFlags.TransferSrcBit,
+            MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
+            out var staging, out var stagingMemory);
+        void* mapped;
+        Check(_vk.MapMemory(_device, stagingMemory, 0, bytes, 0, &mapped));
+        rgba.AsSpan().CopyTo(new Span<byte>(mapped, rgba.Length));
+        _vk.UnmapMemory(_device, stagingMemory);
+        Transition(_videoTexture.Image, ImageLayout.ShaderReadOnlyOptimal, ImageLayout.TransferDstOptimal);
+        CopyBufferToImage(staging, _videoTexture.Image, (uint)width, (uint)height);
+        Transition(_videoTexture.Image, ImageLayout.TransferDstOptimal, ImageLayout.ShaderReadOnlyOptimal);
+        _vk.DestroyBuffer(_device, staging, null);
+        _vk.FreeMemory(_device, stagingMemory, null);
+    }
+
+    private void DestroyVideoTexture()
+    {
+        DestroyTexture(_videoTexture);
+        _videoTexture = default;
+        if (_videoPool.Handle != 0)
+        {
+            _vk.DestroyDescriptorPool(_device, _videoPool, null);
+            _videoPool = default;
+        }
     }
 }

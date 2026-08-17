@@ -47,6 +47,12 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     private Pipeline _meshAlphaPipeline;
     private PipelineLayout _overlayLayout;
     private Pipeline _overlayPipeline;
+    private PipelineLayout _videoLayout;
+    private Pipeline _videoPipeline;
+    private DescriptorPool _videoPool;
+    private DeviceTexture _videoTexture;
+    private Vector4 _videoDest = new(0, 0, 1, 1);
+    private bool _videoReady;
     private DescriptorSetLayout _descriptorSetLayout;
     private DescriptorPool _descriptorPool;
     private Sampler _sampler;
@@ -165,6 +171,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     /// </summary>
     public byte FadeOverlayAlpha { get; set; }
     public (byte R, byte G, byte B) FadeOverlayRgb { get; set; }
+    public bool VideoOverlayActive => _videoReady;
 
     public void Draw(
         Matrix4x4 viewProjection,
@@ -265,6 +272,11 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             _vk.DestroyPipeline(_device, _overlayPipeline, null);
         if (_overlayLayout.Handle != 0)
             _vk.DestroyPipelineLayout(_device, _overlayLayout, null);
+        if (_videoPipeline.Handle != 0)
+            _vk.DestroyPipeline(_device, _videoPipeline, null);
+        if (_videoLayout.Handle != 0)
+            _vk.DestroyPipelineLayout(_device, _videoLayout, null);
+        DestroyVideoTexture();
         _vk.DestroyPipelineLayout(_device, _pipelineLayout, null);
         if (_meshPipelineLayout.Handle != 0)
             _vk.DestroyPipelineLayout(_device, _meshPipelineLayout, null);
@@ -775,6 +787,32 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         Check(_vk.CreateGraphicsPipelines(_device, default, 1, in pipelineInfo, null, out _overlayPipeline));
         _vk.DestroyShaderModule(_device, ovVert, null);
         _vk.DestroyShaderModule(_device, ovFrag, null);
+
+        var vidVertSpv = GlslCompiler.Compile(LineShaders.VideoVertex, ShaderKind.VertexShader, "video.vert");
+        var vidFragSpv = GlslCompiler.Compile(LineShaders.VideoFragment, ShaderKind.FragmentShader, "video.frag");
+        var vidVert = CreateShaderModule(vidVertSpv);
+        var vidFrag = CreateShaderModule(vidFragSpv);
+        stages[0].Module = vidVert;
+        stages[1].Module = vidFrag;
+        var vidSet = _descriptorSetLayout;
+        var vidPush = new PushConstantRange
+        {
+            StageFlags = ShaderStageFlags.FragmentBit,
+            Size = 16,
+        };
+        var vidLayoutInfo = new PipelineLayoutCreateInfo
+        {
+            SType = StructureType.PipelineLayoutCreateInfo,
+            SetLayoutCount = 1,
+            PSetLayouts = &vidSet,
+            PushConstantRangeCount = 1,
+            PPushConstantRanges = &vidPush,
+        };
+        Check(_vk.CreatePipelineLayout(_device, in vidLayoutInfo, null, out _videoLayout));
+        pipelineInfo.Layout = _videoLayout;
+        Check(_vk.CreateGraphicsPipelines(_device, default, 1, in pipelineInfo, null, out _videoPipeline));
+        _vk.DestroyShaderModule(_device, vidVert, null);
+        _vk.DestroyShaderModule(_device, vidFrag, null);
         SilkMarshal.Free((nint)entry);
     }
 
@@ -957,6 +995,19 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             _vk.CmdBindPipeline(commandBuffer, PipelineBindPoint.Graphics, _overlayPipeline);
             _vk.CmdPushConstants(
                 commandBuffer, _overlayLayout, ShaderStageFlags.FragmentBit, 0, 16, &color);
+            _vk.CmdDraw(commandBuffer, 3, 1, 0, 0);
+        }
+
+        if (_videoReady && _videoPipeline.Handle != 0 && _videoTexture.Set.Handle != 0)
+        {
+            var dest = _videoDest;
+            var set = _videoTexture.Set;
+            _vk.CmdBindPipeline(commandBuffer, PipelineBindPoint.Graphics, _videoPipeline);
+            _vk.CmdBindDescriptorSets(
+                commandBuffer, PipelineBindPoint.Graphics, _videoLayout,
+                0, 1, in set, 0, null);
+            _vk.CmdPushConstants(
+                commandBuffer, _videoLayout, ShaderStageFlags.FragmentBit, 0, 16, &dest);
             _vk.CmdDraw(commandBuffer, 3, 1, 0, 0);
         }
 
