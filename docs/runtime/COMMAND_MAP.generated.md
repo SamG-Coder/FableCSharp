@@ -3,6 +3,7 @@
 | PlayMusic | `00CC8EAC` | `00CBF7FE` | track | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | 009E5120 map then vtbl+2784; jmp 00CD17FD; Sound/*.ogg; player UNREAD |
 | Play2DSound | `00CBF89E` | `00CBF8DA` | name | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | leftover helper 00CBF7FE vtbl+2768; not 00BFEAF8; not PlayAVI |
 | PlaySound | `00CC8F4E` | `00CC8FC1` | source,name[,criteria] | YieldAfter | Proven | Proven | Proven | Proven | Partial | Partial | empty skip; IsNull vtbl+2768; else 00CBF9DE + 2756/2760; leftover +28 |
+| CacheMusic | `00CC8E1B` | `00CC8E6D` | track | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | 009E5120 then vtbl+2792; miss skip; jmp 00CD17FD; not PlayMusic 2784 |
 | FadeOut | `00CD0987` | `008907E0` | seconds,param | CompleteNow | Proven | Proven | Proven | Proven | Proven | Proven | vtbl+1488 pack black; 00434C00 +188 |
 | FadeIn | `00CC4B22` | `0088E4C0` | seconds,param | CompleteNow | Proven | Proven | Proven | Proven | Proven | Proven | vtbl+1496 clear lock; falling overlay |
 | CameraPause | `00CC71F1` | `00CC7241` | flag | CompleteNow | Proven | Proven | Proven | Proven | Proven | Proven | IsFalse -> [ebp-37]=0; ctor 00CBFD53=1; gates UseCamera vtbl+28 |

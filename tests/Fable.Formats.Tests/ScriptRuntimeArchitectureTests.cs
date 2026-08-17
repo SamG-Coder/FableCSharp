@@ -691,7 +691,64 @@ public sealed class ScriptRuntimeArchitectureTests
               not PlayAVI; not 009E5120+2792
             PlayMusic 00CC8EAC / 009E5120 then vtbl+2784
               jmp 00CD17FD; Sound/*.ogg lookup; player UNREAD
+            CacheMusic 00CC8E1B / apply 00CC8E6D
+              empty skip; 009E5120; miss skip; vtbl+2792; jmp 00CD17FD
             """);
+    }
+
+    [Fact]
+    public void CacheMusic_continues_and_is_not_PlayMusic()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("cm",
+        [
+            "CacheMusic MUSIC_SET_CUTSCENE_DRAGON_FIGHT_INTRO",
+            "PlayMusic MUSIC_SET_OAKVALE",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Contains("MUSIC_SET_CUTSCENE_DRAGON_FIGHT_INTRO", runtime.Audio.Cached);
+        Assert.Equal("MUSIC_SET_OAKVALE", runtime.Audio.Music);
+        Assert.Equal(0x00CC8E6Du, ScriptCommandMap.Find("CacheMusic")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("PlayMusic")!.Value.ApplySite,
+            ScriptCommandMap.Find("CacheMusic")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void CacheMusic_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_DRAGON_INTRO");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.StartsWith("CacheMusic ", StringComparison.OrdinalIgnoreCase))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-cache", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.True(isolated.Finished);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("CacheMusic ", StringComparison.OrdinalIgnoreCase));
+        Assert.Single(runtime.Audio.Cached);
+        Assert.StartsWith("MUSIC_SET_", runtime.Audio.Cached[0], StringComparison.OrdinalIgnoreCase);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-cache.txt"));
     }
 
     [Fact]

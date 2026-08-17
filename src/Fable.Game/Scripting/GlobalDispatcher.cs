@@ -27,6 +27,16 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "StopMusic");
         }
 
+        if (Eq(v, "CacheMusic"))
+        {
+            var track = line.Arg(0);
+            if (track.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ctx.Audio.CacheMusic(track);
+            ctx.Runtime.LookupMusic(track);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, track);
+        }
+
         if (Eq(v, "Play2DSound"))
         {
             var name = line.Arg(0);

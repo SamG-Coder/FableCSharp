@@ -224,6 +224,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "empty skip; IsNull vtbl+2768; else 00CBF9DE + 2756/2760; leftover +28"),
+        Spec("CacheMusic", 0x00CC8E1B, 0x00CC8E6D, "track",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "009E5120 then vtbl+2792; miss skip; jmp 00CD17FD; not PlayMusic 2784"),
         Spec("FadeOut", 0x00CD0987, 0x008907E0, "seconds,param",
             ScriptReturn.CompleteNow, CommandParity.Complete,
             "vtbl+1488 pack black; 00434C00 +188"),

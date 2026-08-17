@@ -516,11 +516,20 @@ public sealed class AudioRuntime
     public string? Sound { get; private set; }
     public bool Muted { get; private set; }
     public readonly List<ScriptAudioInstance> Instances = [];
+    public readonly List<string> Cached = [];
 
     public void PlayMusic(string track, string? resource = null)
     {
         Music = track;
         MusicResource = resource;
+    }
+
+    public void CacheMusic(string track)
+    {
+        if (track.Length == 0)
+            return;
+        if (!Cached.Contains(track, StringComparer.OrdinalIgnoreCase))
+            Cached.Add(track);
     }
 
     public ScriptAudioInstance PlaySound(

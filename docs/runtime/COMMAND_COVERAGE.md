@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 97
-RECOVERED RETURN: 97
-RECOVERED APPLY: 30
+RECOVERED DISPATCH: 98
+RECOVERED RETURN: 98
+RECOVERED APPLY: 31
 IMPLEMENTED RUNTIME: 13
-UNREAD: 88
+UNREAD: 87
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -86,7 +86,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | HeroHair | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | RemoveHeroWeapons | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | PlaySound | Global | Proven | Proven | Proven | Proven | Partial | Partial |
-| CacheMusic | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| CacheMusic | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | EnableSounds | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | SetChestOpen | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | SetDoorOpen | Global | Proven | Proven | Proven | Proven | Partial | Partial |
