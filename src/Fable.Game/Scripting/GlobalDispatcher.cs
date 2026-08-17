@@ -153,6 +153,17 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "reset");
         }
 
+        if (Eq(v, "CameraShake"))
+        {
+            if (line.Arg(0).Length == 0 || line.Arg(1).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ScriptLine.TryFloat(line.Arg(0), out var a);
+            ScriptLine.TryFloat(line.Arg(1), out var b);
+            ctx.Camera.Shake(a, b);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                $"{a:0.##},{b:0.##}");
+        }
+
         if (Eq(v, "ScriptFrame"))
         {
             ctx.Cutscene.YieldEnable = !ScriptLine.IsFalse(line.Arg(0));
@@ -407,6 +418,9 @@ public static class GlobalDispatcher
         if (Eq(v, "Remove") || Eq(v, "RemoveThing"))
             return ApplyRemove(line, ctx);
 
+        if (Eq(v, "RemoveEffect"))
+            return ApplyRemoveEffect(line, ctx);
+
         if (Eq(v, "RemoveExtras"))
         {
             var hide = ScriptLine.IsTrue(line.Arg(0));
@@ -576,6 +590,26 @@ public static class GlobalDispatcher
         }
 
         ctx.World.Destroy(name);
+        ctx.Runtime.RemoveThing(name);
+        ctx.Bindings.Unbind(name);
+        return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name,
+            $"unbind {name}");
+    }
+
+    /// <summary>
+    /// <c>00CD0071</c>: arg0 required. Walk extras
+    /// 12-byte records. Name match →
+    /// <c>vtbl+432(item,0,1)</c>. Empty list continue.
+    /// Separate from Remove world lookup.
+    /// </summary>
+    internal static CommandResult ApplyRemoveEffect(
+        ScriptLine line, ScriptExecutionContext ctx)
+    {
+        var name = line.Arg(0);
+        if (name.Length == 0)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        if (!ctx.World.RemoveEffect(name))
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name);
         ctx.Runtime.RemoveThing(name);
         ctx.Bindings.Unbind(name);
         return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name,

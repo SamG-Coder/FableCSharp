@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 82
-RECOVERED RETURN: 82
+RECOVERED DISPATCH: 84
+RECOVERED RETURN: 84
 RECOVERED APPLY: 16
 IMPLEMENTED RUNTIME: 13
-UNREAD: 103
+UNREAD: 101
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -22,7 +22,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | PlayMusic | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | Play2DSound | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | SetLightScene | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| CameraShake | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| CameraShake | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | CameraEffect | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | TintScreenOut | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | TintScreenTo | Global | Unread | Unread | Unread | Unread | Unread | Unread |
@@ -36,7 +36,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | PutInFrontOf | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | ExitGame | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | Remove | Global | Proven | Proven | Proven | Partial | Partial | Partial |
-| RemoveEffect | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| RemoveEffect | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | WaitForMessageCamera | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | SetHeroWeapon | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | PutInHeroHands | Global | Unread | Unread | Unread | Unread | Unread | Unread |

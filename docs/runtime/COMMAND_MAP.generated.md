@@ -14,6 +14,8 @@
 | NoLoadUseCamera | `00CC9E6A` | `00CC907D` | name | YieldAfter | Proven | Proven | Proven | Proven | Partial | Partial | separate token; same TNG bind; yield helper 00CC907D |
 | WaitForCamera | `00CCA41F` | `00CCA58F` |  | YieldAfterOrWait | Proven | Proven | Proven | Partial | Partial | Partial | poll vtbl+1672; idle -> 00CD17FD; busy -> vtbl+28 then re-poll |
 | ResetCamera | `00CC9DF1` | `00CC9E40` |  | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | vtbl+1668(0.0) then vtbl+1664; jmp 00CD17FD; restores gameplay snapshot |
+| CameraShake | `00CD131F` | `00CD1366` | arg0,arg1 | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | atof both; vtbl+1696(arg1,arg0); jmp 00CD17FD; decay unread |
+| RemoveEffect | `00CD0071` | `00CD00F8` | name | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | walk extras 12-byte list; match vtbl+432(item,0,1); not Remove lookup |
 | ScriptFrame | `00CC7124` | `00CC7181` | [IsFalse] | CompleteNow | Proven | Proven | Proven | Proven | Proven | Proven | IsFalse -> [ebp+103]=!IsFalse yield-enable; jmp 00CC8464 |
 | DoOneFrame | `00CC75A8` | `00CC7605` |  | YieldAfter | Proven | Proven | Proven | Proven | Proven | Proven | if [ebp+103] vtbl+28; timecode; jmp 00CC8464 |
 | CreateNear | `00CCBEE7` | `00CCC027` | type,near,name[,radius] | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | atof arg3; 004AA980 pos; vtbl+368 factory (not 364/392); offset unread |

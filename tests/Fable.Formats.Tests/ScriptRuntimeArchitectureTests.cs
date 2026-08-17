@@ -859,6 +859,139 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void CameraShake_stores_both_floats_and_continues()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("shake",
+            ["CameraShake 0.5,2.0", "CameraPause FALSE"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.True(runtime.CameraSys.ShakeActive);
+        Assert.Equal(0.5f, runtime.CameraSys.ShakeArg0);
+        Assert.Equal(2.0f, runtime.CameraSys.ShakeArg1);
+        Assert.Contains(runtime.Trace.Steps, s =>
+            s.Verb == "CameraShake" && s.Result == ExecutionKind.Continue);
+        Assert.Equal(0x00CD1366u, ScriptCommandMap.Find("CameraShake")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void RemoveEffect_destroys_created_effect_not_via_Remove_lookup()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "MK_FX",
+                PositionX = 1,
+                PositionY = 0,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], null);
+        var interp = new ScriptInterpreter("rmfx",
+        [
+            "CreateEffect FX_FIRE,MK_FX,FLAME,0",
+            "RemoveEffect FLAME",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Empty(runtime.World.Effects);
+        Assert.Contains("FLAME", runtime.World.Removes);
+        Assert.Null(runtime.Bindings.Resolve("FLAME"));
+        Assert.NotEqual(
+            ScriptCommandMap.Find("Remove")!.Value.TokenSite,
+            ScriptCommandMap.Find("RemoveEffect")!.Value.TokenSite);
+    }
+
+    [Fact]
+    public void CameraShake_and_RemoveEffect_real_script_bank_lines()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? shake = null;
+        string? removeFx = null;
+        ScriptDef? shakeHit = null;
+        ScriptDef? removeHit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (shake is null &&
+                    raw.StartsWith("CameraShake ", StringComparison.OrdinalIgnoreCase))
+                {
+                    shake = raw;
+                    shakeHit = entry;
+                }
+
+                if (removeFx is null &&
+                    raw.StartsWith("RemoveEffect ", StringComparison.OrdinalIgnoreCase))
+                {
+                    removeFx = raw;
+                    removeHit = entry;
+                }
+            }
+
+            if (shake is not null && removeFx is not null)
+                break;
+        }
+
+        shake ??= "CameraShake 0.5,2.0";
+        shakeHit ??= bank.Find("CS_OAKVALE_INTRO_FATHER") ?? bank.Entries[0];
+        var shakeLine = ScriptLine.Parse(shake);
+        Assert.Equal("CameraShake", shakeLine.Verb);
+        Assert.True(shakeLine.Arg(0).Length > 0);
+        Assert.True(shakeLine.Arg(1).Length > 0);
+
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(shakeHit.InstanceName + "-shake", [shake]);
+        isolated.RunUntilYield(runtime);
+        Assert.True(runtime.CameraSys.ShakeActive);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("CameraShake", StringComparison.OrdinalIgnoreCase));
+
+        if (removeFx is not null)
+        {
+            var rm = ScriptLine.Parse(removeFx);
+            Assert.Equal("RemoveEffect", rm.Verb);
+            runtime.World.SpawnEffect("FX", "MK", rm.Arg(0), null);
+            var rem = new ScriptInterpreter((removeHit?.InstanceName ?? "rm") + "-rmfx", [removeFx]);
+            rem.RunUntilYield(runtime);
+            Assert.Contains(rem.Executed, l =>
+                l.StartsWith("RemoveEffect", StringComparison.OrdinalIgnoreCase));
+        }
+
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, shakeHit.InstanceName + "-shake.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-camerashake-removeeffect.txt"),
+            """
+            CameraShake 00CD131F / apply 00CD1366
+              arg0+arg1 required else 00CD17FD
+              atof arg1 then atof arg0
+              vtbl+1696(arg1, arg0)
+              jmp 00CD17FD no yield
+              decay body UNREAD
+            RemoveEffect 00CD0071 / apply 00CD00F8
+              arg0 required else 00CD17FD
+              walk [ebp-96] 12-byte extras (CreateEffect 008ADF90)
+              name match 004A93C0 -> vtbl+432(item,0,1)
+              empty list / after loop -> 00CD17FD
+              NOT Remove world lookup (00CD0116)
+            """);
+    }
+
+    [Fact]
     public void CreateEffect_real_script_bank_line()
     {
         var install = GameInstall.TryLocate();

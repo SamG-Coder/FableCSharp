@@ -104,6 +104,15 @@ public sealed class CameraRuntime
     public string ActiveName { get; private set; } = "";
     public string LookAt { get; private set; } = "";
     public bool Busy { get; private set; }
+    /// <summary>
+    /// Script arg0 (second <c>vtbl+1696</c> float).
+    /// </summary>
+    public float ShakeArg0 { get; private set; }
+    /// <summary>
+    /// Script arg1 (first <c>vtbl+1696</c> float).
+    /// </summary>
+    public float ShakeArg1 { get; private set; }
+    public bool ShakeActive { get; private set; }
 
     public void Bind(ScriptedCamera? camera, IReadOnlyList<ThingInstance> things, string name)
     {
@@ -113,6 +122,17 @@ public sealed class CameraRuntime
     }
 
     public void ClearBusy() => Busy = false;
+
+    /// <summary>
+    /// <c>00CD131F</c> <c>vtbl+1696(arg1, arg0)</c>.
+    /// Shake decay body unread — host stores the pair.
+    /// </summary>
+    public void Shake(float arg0, float arg1)
+    {
+        ShakeArg0 = arg0;
+        ShakeArg1 = arg1;
+        ShakeActive = true;
+    }
 
     public void LookAtThing(ScriptedCamera? camera, ThingInstance? thing, string name)
     {
@@ -615,5 +635,25 @@ public sealed class WorldRuntime
         Positions.Remove(name);
         Drawable.Remove(name);
         Collide.Remove(name);
+        Effects.RemoveAll(e =>
+            e.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// <c>00CD0071</c>: walk extras list, name match,
+    /// <c>vtbl+432(item,0,1)</c>. Not world <c>Remove</c>
+    /// lookup.
+    /// </summary>
+    public bool RemoveEffect(string name)
+    {
+        var hit = Effects.Exists(e =>
+            e.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        if (!hit && !Spawned.Exists(t =>
+                t.ScriptName is not null &&
+                t.ScriptName.Equals(name, StringComparison.OrdinalIgnoreCase) &&
+                t.Properties.ContainsKey("Effect")))
+            return false;
+        Destroy(name);
+        return true;
     }
 }
