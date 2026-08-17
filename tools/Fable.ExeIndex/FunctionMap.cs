@@ -202,6 +202,8 @@ internal static class FunctionMap
         ("DialogadSpeak token", 0x00CC3354),
         ("DialogadSpeak table", 0x00CD3187),
         ("DialogadSpeak miss join", 0x00CC2C6B),
+        ("LookInDirection token", 0x00CC3F73),
+        ("LookInDirection apply vtbl+1896", 0x0089BDF0),
         ("PlayAnimation thing vtbl+72", 0x004C7470),
         ("CTCAnimationComplex factory", 0x0070B3F0),
         ("CTCAnimationComplex +68 stub", 0x00686920),

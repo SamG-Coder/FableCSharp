@@ -499,6 +499,28 @@ public static class RegionTravel
     public const bool FirstSeenDialogadSpeakAppliesUi = false;
     public const string IntroFatherDialogAd = "TEXT_QST_048_FATHER_INTRO_100";
     public const string IntroDialogAdTarget = "Father";
+    /// <summary>
+    /// <c>00CC3F73</c> <c>.LookInDirection</c>. Empty
+    /// actor / degrees → <c>00CC7081</c>. <c>0099E690</c>
+    /// atof * <c>[0x1238E00]=1/360</c>. Arg1
+    /// <c>00CBEE0C</c> IsFalse clears default flag 1.
+    /// Apply context <c>vtbl+1896</c> <c>0089BDF0</c>
+    /// then <c>jmp 00CC707C</c>. No <c>vtbl+28</c>.
+    /// First-seen is <c>215</c> so flag stays 1.
+    /// Heading body UNREAD — record only.
+    /// </summary>
+    public const uint LookInDirectionOpcode = 0x00CC3F73;
+    public const uint LookInDirectionApply = 0x00CC4009;
+    public const uint LookInDirectionJoin = 0x00CC707C;
+    public const uint LookInDirectionSkip = 0x00CC7081;
+    public const int LookInDirectionApplyVtbl = 1896;
+    public const uint LookInDirectionApplyFn = 0x0089BDF0;
+    public const uint LookInDirectionScaleVa = 0x01238E00;
+    public const uint LookInDirectionScaleBits = 0x3B360B61;
+    public const float LookInDirectionScale = 1f / 360f;
+    public const bool FirstSeenLookInDirectionDoesNotYield = true;
+    public const bool FirstSeenLookInDirectionAppliesHeading = false;
+    public const float IntroLookInDirectionDegrees = 215f;
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;

@@ -317,6 +317,12 @@ public sealed class ScriptInterpreter
                 speech.Text.Length != 0)
                 host.DialogadSpeak(command.Actor, speech.Target, speech.Text, speech.Mode);
         }
+        else if (command.Verb.Equals("LookInDirection", StringComparison.OrdinalIgnoreCase))
+        {
+            var look = ScriptCommand.ParseLookInDirection(command.Arguments);
+            if (!string.IsNullOrEmpty(command.Actor) && look.HasDegrees)
+                host.LookInDirection(command.Actor, look.Degrees, look.Flag);
+        }
     }
 
     internal static void ParseFadeArgs(string arguments, out float seconds, out float param)
@@ -437,6 +443,23 @@ public readonly struct ScriptCommand
         ParseSpeak(arguments);
 
     /// <summary>
+    /// <c>00CC3F73</c>: atof degrees * <c>[0x1238E00]</c>
+    /// (1/360). Arg1 IsFalse clears default flag 1.
+    /// Empty actor / degrees → <c>00CC7081</c>.
+    /// </summary>
+    public static (float Degrees, bool Flag, bool HasDegrees) ParseLookInDirection(string arguments)
+    {
+        var args = SplitArgs(arguments);
+        var hasDegrees = args.Length > 0 && args[0].Length != 0;
+        var degrees = 0f;
+        if (hasDegrees)
+            float.TryParse(args[0], System.Globalization.NumberStyles.Float,
+                System.Globalization.CultureInfo.InvariantCulture, out degrees);
+        var flag = args.Length <= 1 || !IsFalseArg(args[1]);
+        return (degrees, flag, hasDegrees);
+    }
+
+    /// <summary>
     /// <c>00CC0CB5</c>: marker, optional speed
     /// (default 0.3), arg2/arg3 IsTrue wait-for
     /// arrival. First-seen is not wait.
@@ -555,7 +578,8 @@ public readonly struct ScriptCommand
             verb.Equals("StartTimeCode", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("Create", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("Remove", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("DialogadSpeak", StringComparison.OrdinalIgnoreCase))
+            verb.Equals("DialogadSpeak", StringComparison.OrdinalIgnoreCase) ||
+            verb.Equals("LookInDirection", StringComparison.OrdinalIgnoreCase))
             return ScriptFlow.Continue;
         if (verb.Equals("UseCamera", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("NoLoadUseCamera", StringComparison.OrdinalIgnoreCase))
@@ -663,4 +687,5 @@ public interface IScriptHost
     void WaitActiveDialog();
     void Remove(string name);
     void DialogadSpeak(string? actor, string target, string text, int mode);
+    void LookInDirection(string? actor, float degrees, bool flag);
 }

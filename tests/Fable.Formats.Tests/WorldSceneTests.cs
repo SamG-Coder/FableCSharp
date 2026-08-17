@@ -408,6 +408,13 @@ public sealed class WorldSceneTests
         Assert.False(RegionTravel.FirstSeenDialogadSpeakAppliesUi);
         Assert.Equal("TEXT_QST_048_FATHER_INTRO_100", RegionTravel.IntroFatherDialogAd);
         Assert.Equal("Father", RegionTravel.IntroDialogAdTarget);
+        Assert.Equal(0x00CC3F73u, RegionTravel.LookInDirectionOpcode);
+        Assert.Equal(1896, RegionTravel.LookInDirectionApplyVtbl);
+        Assert.Equal(0x0089BDF0u, RegionTravel.LookInDirectionApplyFn);
+        Assert.Equal(1f / 360f, RegionTravel.LookInDirectionScale);
+        Assert.True(RegionTravel.FirstSeenLookInDirectionDoesNotYield);
+        Assert.False(RegionTravel.FirstSeenLookInDirectionAppliesHeading);
+        Assert.Equal(215f, RegionTravel.IntroLookInDirectionDegrees);
         Assert.Equal(0x00CC4B22u, RegionTravel.ScriptFadeInOut);
         Assert.Equal(0x00CB5D80u, RegionTravel.RegisteringScripts);
         Assert.Equal(0x00CB8110u, RegionTravel.QuestBaseCtor);
@@ -1067,6 +1074,31 @@ public sealed class WorldSceneTests
             s.Text.Contains(RegionTravel.IntroFatherDialogAd, StringComparison.Ordinal) &&
             s.Mode == 0);
         Assert.False(intro.ExecutedVerb("LookInDirection"));
+        Assert.Equal(0x00CC3F73u, RegionTravel.LookInDirectionOpcode);
+        Assert.True(RegionTravel.FirstSeenLookInDirectionDoesNotYield);
+        Assert.False(RegionTravel.FirstSeenLookInDirectionAppliesHeading);
+        var pause05 = 0;
+        while (intro.Yielded &&
+               !intro.ExecutedVerb("LookInDirection") &&
+               pause05 < 80)
+        {
+            script.Update(0.1f);
+            pause05++;
+        }
+
+        Assert.Contains("GamePause 0.5", intro.Executed);
+        Assert.Contains("NoLoadUseCamera CAM_OVIF_SHOT6", intro.Executed);
+        Assert.Contains("Hero.SneakTo MK_OVIF_HERO5,0.0,FALSE,FALSE,FALSE", intro.Executed);
+        Assert.Contains("GamePause 1.1", intro.Executed);
+        Assert.Contains("Father.LookInDirection 215", intro.Executed);
+        Assert.Contains("UseCamera CAM_OVIF_SHOT7", intro.Executed);
+        Assert.Equal("Hero.SneakTo MK_OVIF_HERO5,0.0,TRUE", intro.Commands[intro.InstructionPointer]);
+        Assert.True(intro.Yielded);
+        Assert.Null(intro.UnsupportedCommand);
+        Assert.Contains(runtime.LookInDirections, l =>
+            l.Actor == "Father" &&
+            l.Degrees == RegionTravel.IntroLookInDirectionDegrees &&
+            l.Flag);
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 
@@ -1193,6 +1225,46 @@ public sealed class WorldSceneTests
         public void Remove(string name) { }
 
         public void DialogadSpeak(string? actor, string target, string text, int mode) { }
+
+        public void LookInDirection(string? actor, float degrees, bool flag) { }
+    }
+
+    [Fact]
+    public void Father_LookInDirection_records_degrees_and_does_not_yield()
+    {
+        var command = "Father.LookInDirection 215";
+        var parsed = ScriptCommand.ParseLookInDirection(ScriptCommand.Parse(command).Arguments);
+        Assert.Equal(215f, parsed.Degrees);
+        Assert.True(parsed.Flag);
+        Assert.True(parsed.HasDegrees);
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(ScriptCommand.Parse(command)));
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(ScriptCommand.Parse("Father.LookInDirection")));
+        var falseArg = ScriptCommand.ParseLookInDirection("270,FALSE");
+        Assert.Equal(270f, falseArg.Degrees);
+        Assert.False(falseArg.Flag);
+        Assert.Equal(0x00CC3F73u, RegionTravel.LookInDirectionOpcode);
+        Assert.Equal(0x00CC4009u, RegionTravel.LookInDirectionApply);
+        Assert.Equal(0x00CC707Cu, RegionTravel.LookInDirectionJoin);
+        Assert.Equal(1896, RegionTravel.LookInDirectionApplyVtbl);
+        Assert.Equal(0x0089BDF0u, RegionTravel.LookInDirectionApplyFn);
+        Assert.Equal(0x01238E00u, RegionTravel.LookInDirectionScaleVa);
+        Assert.Equal(0x3B360B61u, RegionTravel.LookInDirectionScaleBits);
+        Assert.Equal(1f / 360f, RegionTravel.LookInDirectionScale);
+        Assert.True(RegionTravel.FirstSeenLookInDirectionDoesNotYield);
+        Assert.False(RegionTravel.FirstSeenLookInDirectionAppliesHeading);
+        Assert.Equal(215f, RegionTravel.IntroLookInDirectionDegrees);
+        var interpreter = new ScriptInterpreter("lookdir",
+        [
+            command,
+            "UseCamera CAM_OVIF_SHOT7",
+            "Hero.SneakTo MK_OVIF_HERO5,0.0,TRUE",
+        ]);
+        interpreter.RunUntilYield();
+        Assert.Contains(command, interpreter.Executed);
+        Assert.Contains("UseCamera CAM_OVIF_SHOT7", interpreter.Executed);
+        Assert.Equal("Hero.SneakTo MK_OVIF_HERO5,0.0,TRUE", interpreter.Commands[interpreter.InstructionPointer]);
+        Assert.True(interpreter.Yielded);
+        Assert.Null(interpreter.UnsupportedCommand);
     }
 
     [Fact]

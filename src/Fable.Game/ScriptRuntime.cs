@@ -43,6 +43,7 @@ public sealed class ScriptRuntime : IScriptHost
     public IReadOnlyList<ScriptCreate> Creates => _creates;
     public IReadOnlyList<string> Removes => _removes;
     public IReadOnlyList<ScriptDialogAdSpeech> DialogAdSpeeches => _dialogAds;
+    public IReadOnlyList<ScriptLookInDirection> LookInDirections => _looks;
     public int WaitActiveDialogCount { get; private set; }
     public IReadOnlyList<string> PreloadedCameras => _preloadedCameras;
 
@@ -62,6 +63,7 @@ public sealed class ScriptRuntime : IScriptHost
     private readonly List<ScriptCreate> _creates = [];
     private readonly List<string> _removes = [];
     private readonly List<ScriptDialogAdSpeech> _dialogAds = [];
+    private readonly List<ScriptLookInDirection> _looks = [];
     private readonly List<string> _preloadedCameras = [];
     private IReadOnlyList<ThingInstance> _things = [];
     private ScriptedCamera? _camera;
@@ -375,6 +377,15 @@ public sealed class ScriptRuntime : IScriptHost
         _dialogAds.Add(new ScriptDialogAdSpeech(actor, target, text, mode));
 
     /// <summary>
+    /// <c>00CC3F73</c>: context <c>vtbl+1896</c>
+    /// <c>0089BDF0</c> then <c>jmp 00CC707C</c>. No
+    /// <c>vtbl+28</c>. Heading body UNREAD — record
+    /// only, do not invent a yaw write.
+    /// </summary>
+    void IScriptHost.LookInDirection(string? actor, float degrees, bool flag) =>
+        _looks.Add(new ScriptLookInDirection(actor, degrees, flag));
+
+    /// <summary>
     /// <c>00CC86D0</c> default path: <c>00CBF29F</c> with
     /// <c>dl=0</c> collects UseCamera names via
     /// <c>vtbl+1648</c>. First-seen has no TRUE arg so
@@ -489,3 +500,5 @@ public readonly record struct ScriptDialogAdSpeech(
     string Target,
     string Text,
     int Mode);
+
+public readonly record struct ScriptLookInDirection(string? Actor, float Degrees, bool Flag);
