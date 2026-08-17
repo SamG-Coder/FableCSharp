@@ -270,6 +270,11 @@ public sealed class CameraRuntime
     public float LookBetweenDuration { get; private set; }
     public float LookBetweenFov { get; private set; } = -1f;
     public Vector3? LookBetweenCameraPos { get; private set; }
+    public string FovMarkerThingA { get; private set; } = "";
+    public string FovMarkerThingB { get; private set; } = "";
+    public string FovMarkerSelected { get; private set; } = "";
+    public float FovMarkerDuration { get; private set; }
+    public readonly List<string> FovMarkerNames = [];
 
     /// <summary>
     /// <c>00CCAA6C</c> apply <c>vtbl+1632</c>: look
@@ -304,6 +309,77 @@ public sealed class CameraRuntime
         else if (posB is { } onlyB)
             camera?.SetLookAt(onlyB);
     }
+
+    /// <summary>
+    /// <c>00CC9710</c> / <c>00CBF13C</c>: pick one of
+    /// four camera markers by XY projection of
+    /// (marker-B) onto (A-B). Default flag keeps the
+    /// best score (init -2). IsFalse(arg8) assigns
+    /// every finite marker so the last wins.
+    /// <c>vtbl+1632</c>(pos,pos,B,dur,fov).
+    /// </summary>
+    public void FovMarkerList(
+        ScriptedCamera? camera,
+        ThingInstance? a, string nameA,
+        ThingInstance? b, string nameB,
+        IReadOnlyList<ThingInstance?> markers,
+        IReadOnlyList<string> names,
+        float duration, float fovDegrees, bool pickBest, bool applyLook = true)
+    {
+        FovMarkerThingA = nameA;
+        FovMarkerThingB = nameB;
+        FovMarkerDuration = duration;
+        FovMarkerNames.Clear();
+        FovMarkerNames.AddRange(names);
+        var selected = PickFovMarker(a, b, markers, names, pickBest);
+        FovMarkerSelected = selected.Name;
+        if (!applyLook || (selected.Thing is null && selected.Name.Length == 0))
+            return;
+        LookBetween(
+            camera,
+            selected.Thing, selected.Name,
+            selected.Thing, selected.Name,
+            default, default, duration, fovDegrees);
+    }
+
+    internal static (ThingInstance? Thing, string Name) PickFovMarker(
+        ThingInstance? a, ThingInstance? b,
+        IReadOnlyList<ThingInstance?> markers,
+        IReadOnlyList<string> names,
+        bool pickBest)
+    {
+        if (a is not { PositionX: not null } ||
+            b is not { PositionX: not null })
+            return (null, "");
+        var posA = RegionTravel.PositionOf(a);
+        var posB = RegionTravel.PositionOf(b);
+        var dir = new Vector2(posA.X - posB.X, posA.Y - posB.Y);
+        dir = UnitXy(dir);
+        var best = -2f;
+        ThingInstance? chosen = null;
+        var chosenName = "";
+        var count = Math.Min(markers.Count, names.Count);
+        for (var i = 0; i < count; i++)
+        {
+            var marker = markers[i];
+            if (marker is not { PositionX: not null })
+                continue;
+            var pos = RegionTravel.PositionOf(marker);
+            var delta = UnitXy(new Vector2(pos.X - posB.X, pos.Y - posB.Y));
+            var score = delta.X * dir.X + delta.Y * dir.Y;
+            if (!pickBest || score > best)
+            {
+                best = score;
+                chosen = marker;
+                chosenName = names[i];
+            }
+        }
+
+        return (chosen, chosenName);
+    }
+
+    private static Vector2 UnitXy(Vector2 v) =>
+        v.LengthSquared() > 0.0001f ? Vector2.Normalize(v) : v;
 
     /// <summary>
     /// <c>00CCB0D0</c> apply <c>vtbl+1636</c>: look

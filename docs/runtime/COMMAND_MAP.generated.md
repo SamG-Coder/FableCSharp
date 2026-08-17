@@ -16,6 +16,7 @@
 | WaitForMessageCamera | `00CCFF91` | `00CD0006` | name | YieldAfterOrWait | Proven | Proven | Proven | Partial | Partial | Partial | poll vtbl+2316(name); idle continue; leftover 00CCFFB2 |
 | ResetCamera | `00CC9DF1` | `00CC9E40` |  | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | vtbl+1668(0.0) then vtbl+1664; jmp 00CD17FD; restores gameplay snapshot |
 | DrawThing | `00CC9D07` | `00CC9DDD` | name,IsFalse? | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | lookup arg0; IsFalse(arg1)->0 else 1; vtbl+2044; jmp 00CC864B; World.Drawable |
+| UseCameraFOVMarkerList | `00CC96BD` | `00CC9C53` | a,b,m0,m1,m2,m3,dur[,fov][,IsFalse] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | 7 required; 00CBF13C best XY projection; vtbl+1632(pos,pos,B,dur,fov); jmp 00CC864B |
 | CameraShake | `00CD131F` | `00CD1366` | arg0,arg1 | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | atof both; vtbl+1696(arg1,arg0); jmp 00CD17FD; decay unread |
 | CameraEffect | `00CD1258` | `00CD12C2` | arg0,arg1,arg2 | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | atof three; vtbl+1676(a,b,c); jmp 00CD17FD; filter unread |
 | RemoveEffect | `00CD0071` | `00CD00F8` | name | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | walk extras 12-byte list; match vtbl+432(item,0,1); not Remove lookup |

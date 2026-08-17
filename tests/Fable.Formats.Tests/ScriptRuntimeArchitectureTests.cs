@@ -2226,6 +2226,135 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void UseCameraFOVMarkerList_picks_best_xy_projection()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            Marker("HERO", 0, 10, 0),
+            Marker("BOSS", 0, 0, 0),
+            Marker("CAM_L", -10, 5, 0),
+            Marker("CAM_BACK", 0, -5, 0),
+            Marker("CAM_BEST", 0, 5, 0),
+            Marker("CAM_R", 10, 5, 0),
+        ], new ScriptedCamera());
+        var interp = new ScriptInterpreter("fovml",
+        [
+            "UseCameraFOVMarkerList HERO,BOSS,CAM_L,CAM_BACK,CAM_BEST,CAM_R,10,55",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal("CAM_BEST", runtime.CameraSys.FovMarkerSelected);
+        Assert.Equal("HERO", runtime.CameraSys.FovMarkerThingA);
+        Assert.Equal("BOSS", runtime.CameraSys.FovMarkerThingB);
+        Assert.Equal(10f, runtime.CameraSys.FovMarkerDuration);
+        Assert.Equal(55f, runtime.CameraSys.LookBetweenFov);
+        Assert.Equal(0f, runtime.Camera!.LookAt.X);
+        Assert.Equal(5f, runtime.Camera.LookAt.Y);
+        Assert.Equal(55f, runtime.Camera.FovDegrees);
+        Assert.Contains(runtime.Trace.Steps, s =>
+            s.Verb == "UseCameraFOVMarkerList" && s.Result == ExecutionKind.Continue);
+        Assert.Equal(0x00CC9C53u, ScriptCommandMap.Find("UseCameraFOVMarkerList")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void UseCameraFOVMarkerList_false_flag_keeps_last_marker()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            Marker("HERO", 0, 10, 0),
+            Marker("BOSS", 0, 0, 0),
+            Marker("CAM_L", -10, 5, 0),
+            Marker("CAM_BACK", 0, -5, 0),
+            Marker("CAM_BEST", 0, 5, 0),
+            Marker("CAM_R", 10, 5, 0),
+        ], new ScriptedCamera());
+        var interp = new ScriptInterpreter("fovml-last",
+        [
+            "UseCameraFOVMarkerList HERO,BOSS,CAM_L,CAM_BACK,CAM_BEST,CAM_R,10,55,FALSE",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal("CAM_R", runtime.CameraSys.FovMarkerSelected);
+    }
+
+    [Fact]
+    public void UseCameraFOVMarkerList_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("UseCameraFOVMarkerList ", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "UseCameraFOVMarkerList HERO,BOSS,CAM0,CAM1,CAM2,CAM3,10,55";
+        hit ??= bank.Find("CS_JOB_BOSS_PHASE_2") ?? bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("UseCameraFOVMarkerList", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        Assert.True(parsed.Arg(6).Length > 0);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        runtime.BindScene(
+        [
+            Marker(parsed.Arg(0), 0, 10, 0),
+            Marker(parsed.Arg(1), 0, 0, 0),
+            Marker(parsed.Arg(2), -10, 5, 0),
+            Marker(parsed.Arg(3), 0, -5, 0),
+            Marker(parsed.Arg(4), 0, 5, 0),
+            Marker(parsed.Arg(5), 10, 5, 0),
+        ], new ScriptedCamera());
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-fovml", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("UseCameraFOVMarkerList", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(parsed.Arg(0), runtime.CameraSys.FovMarkerThingA);
+        Assert.Equal(parsed.Arg(1), runtime.CameraSys.FovMarkerThingB);
+        Assert.True(runtime.CameraSys.FovMarkerSelected.Length > 0);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-fovml.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-usecamerafovmarkerlist.txt"),
+            """
+            UseCameraFOVMarkerList 00CC96BD / apply 00CC9C53
+              7 required args else 00CD17FD
+              lookup arg0-5 via vtbl+280/288; 004AB130 all six else skip
+              extras list 008ADF90 of arg2-5
+              atof arg6 duration
+              optional arg7 atof * 1/360 (0x1238E00) default -1
+              IsFalse(arg8) -> flag=0 else 1
+              00CBF13C(out, list, A, B, flag):
+                XY (A-B) and (marker-B), eps 0.0001 at 0x129BA3C
+                flag=1 keep score > best (init -2)
+                flag=0 008AB980-assign every finite so last wins
+              arg9 present -> vtbl+1648 unread
+              else vtbl+1632(pos,pos,B,dur,fov)  004AA980 is thiscall +4
+              jmp 00CC864B no yield
+            """);
+    }
+
+    [Fact]
     public void WaitForCamera_idles_when_camera_not_busy()
     {
         var runtime = ScriptRuntime.Detached();

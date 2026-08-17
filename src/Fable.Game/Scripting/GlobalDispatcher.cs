@@ -198,6 +198,9 @@ public static class GlobalDispatcher
         if (Eq(v, "CameraPath"))
             return ApplyCameraPath(line, ctx);
 
+        if (Eq(v, "UseCameraFOVMarkerList"))
+            return ApplyUseCameraFovMarkerList(line, ctx);
+
         if (Eq(v, "CameraEffect"))
         {
             if (line.Arg(0).Length == 0 || line.Arg(1).Length == 0 ||
@@ -1072,6 +1075,53 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, side);
         return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
             "SetLightScene vtbl+2180", side);
+    }
+
+    /// <summary>
+    /// <c>00CC9710</c>: seven required args else
+    /// <c>00CD17FD</c>. Lookup arg0-5. atof arg6
+    /// duration. Optional arg7 FOV degrees *
+    /// <c>1/360</c> (default -1). IsFalse(arg8)
+    /// disables best-score filter. Arg9 present
+    /// takes unread <c>vtbl+1648</c>; else
+    /// <c>vtbl+1632</c>. <c>jmp 00CC864B</c>.
+    /// </summary>
+    internal static CommandResult ApplyUseCameraFovMarkerList(
+        ScriptLine line, ScriptExecutionContext ctx)
+    {
+        for (var i = 0; i < 7; i++)
+        {
+            if (line.Arg(i).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        }
+
+        var nameA = line.Arg(0);
+        var nameB = line.Arg(1);
+        var names = new[] { line.Arg(2), line.Arg(3), line.Arg(4), line.Arg(5) };
+        var a = ctx.FindThing(nameA);
+        var b = ctx.FindThing(nameB);
+        var markers = new ThingInstance?[4];
+        for (var i = 0; i < 4; i++)
+        {
+            markers[i] = ctx.FindThing(names[i]);
+            if (markers[i] is null || a is null || b is null)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        }
+
+        ScriptLine.TryFloat(line.Arg(6), out var duration);
+        var fov = -1f;
+        if (line.Arg(7).Length > 0)
+            ScriptLine.TryFloat(line.Arg(7), out fov);
+        var pickBest = !ScriptLine.IsFalse(line.Arg(8));
+        var applyLook = line.Arg(9).Length == 0;
+        ctx.Camera.FovMarkerList(
+            ctx.Runtime.Camera, a, nameA, b, nameB,
+            markers, names, duration, fov, pickBest, applyLook);
+        var selected = ctx.Camera.FovMarkerSelected;
+        return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+            selected.Length > 0
+                ? $"{nameA}|{nameB}->{selected} d={duration:0.##}"
+                : $"{nameA}|{nameB} d={duration:0.##}");
     }
 
     /// <summary>

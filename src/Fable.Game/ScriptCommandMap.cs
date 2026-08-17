@@ -265,6 +265,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "lookup arg0; IsFalse(arg1)->0 else 1; vtbl+2044; jmp 00CC864B; World.Drawable"),
+        Spec("UseCameraFOVMarkerList", 0x00CC96BD, 0x00CC9C53, "a,b,m0,m1,m2,m3,dur[,fov][,IsFalse]",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "7 required; 00CBF13C best XY projection; vtbl+1632(pos,pos,B,dur,fov); jmp 00CC864B"),
         Spec("CameraShake", 0x00CD131F, 0x00CD1366, "arg0,arg1",
             ScriptReturn.CompleteNow, CommandParity.ScriptLayer,
             "atof both; vtbl+1696(arg1,arg0); jmp 00CD17FD; decay unread"),
