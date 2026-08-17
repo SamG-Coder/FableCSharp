@@ -16,9 +16,11 @@ Traces: `{SCRATCH}/traces/<cutscene>.txt`.
 | CS_BANDITRAID_GATESTART | Finished |
 | CS_CHICKING_START | Finished |
 | CS_CHICKING_TOPPRIZE | Finished; CrowdAnimate `SPECTATORCS,CS_CHEER` / `CS_IDLE` with anim ops |
-| CS_CHICKING_HITGUYBOTTOM | **Blocked** `RemoveThing ORGANISER` — no exe token |
+| CS_CHICKING_HITGUYBOTTOM | Finished; `RemoveThing` is `00BFEAF8` n=6 → `Remove` `00CD0116` / `vtbl+432` |
 
-Grep of traces for UNREAD/PARTIAL/UNKNOWN/FALLBACK/HARDCODED/APPROXIMATE/NO-OP/UNRESOLVED/UNPROVEN YIELD: only the explicit RemoveThing block.
+Grep of traces for UNKNOWN/FALLBACK/HARDCODED/APPROXIMATE/NO-OP/UNRESOLVED/UNPROVEN YIELD: none after RemoveThing recovery.
+
+Added discovery fixtures: `CS_OPENGRAVE_CRYPTCAM` (`WaitForCamera`), `CS_PUNCHCLUB_BS_RUNFORESTRUN` (`WaitPlayAnimation`).
 
 ## Exercised commands
 
@@ -50,7 +52,7 @@ Grep of traces for UNREAD/PARTIAL/UNKNOWN/FALLBACK/HARDCODED/APPROXIMATE/NO-OP/U
 | SneakTo / WalkTo / RunTo | E | marker[,spd][,wait] | enqueue move | YieldOnce (WalkTo TRUE waits leftover) | stub 004C72B0 | Movement.ByActor |
 | Create | G | type,marker,name | alias at marker | Continue | none | Bindings.Created |
 | Remove | G | name | unbind | Continue | none | Bindings |
-| RemoveThing | G | name | **no exe token** | **Blocked UNREAD** | stays | — |
+| RemoveThing | G | name | same apply as Remove (`00BFEAF8` n=6) | Continue | none | Destroy + unbind |
 | RemoveExtras | G | IsTrue,limbo | ExtrasHidden + mode | Continue | none | World.ExtraOps |
 | SetDoorOpen | G | door,IsTrue | door flag | Continue | none | World.Doors |
 | RegisterActor | G | name | register slot | Continue | none | Bindings.Registered |

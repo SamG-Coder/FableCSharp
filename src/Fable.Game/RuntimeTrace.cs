@@ -52,6 +52,15 @@ public sealed class RuntimeTrace
             sb.Append(" wait_target=").Append(s.WaitTarget);
             sb.Append(" queued=").Append(s.QueuedTask);
             sb.Append(" done=").Append(s.CompletionReason);
+            sb.Append(" parse=").Append(s.Parse);
+            sb.Append(" dispatch=").Append(s.Dispatch);
+            sb.Append(" apply=").Append(s.Apply);
+            sb.Append(" runtime=").Append(s.Runtime);
+            sb.Append(" task=").Append(s.Task);
+            sb.Append(" dialogue=").Append(s.Dialogue);
+            sb.Append(" audio=").Append(s.Audio);
+            sb.Append(" created=").Append(s.CreatedThing);
+            sb.Append(" removed=").Append(s.RemovedThing);
             sb.AppendLine();
         }
 
@@ -100,7 +109,16 @@ public readonly record struct RuntimeTraceStep(
     string WaitKind,
     string WaitTarget,
     string QueuedTask,
-    string CompletionReason);
+    string CompletionReason,
+    CommandStatus Parse = CommandStatus.Unread,
+    CommandStatus Dispatch = CommandStatus.Unread,
+    CommandStatus Apply = CommandStatus.Unread,
+    CommandStatus Runtime = CommandStatus.Unread,
+    string Task = "",
+    string Dialogue = "",
+    string Audio = "",
+    string CreatedThing = "",
+    string RemovedThing = "");
 
 public interface IScriptTrace
 {

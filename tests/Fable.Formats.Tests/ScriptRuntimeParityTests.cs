@@ -32,18 +32,24 @@ public sealed class ScriptRuntimeParityTests
     public void Command_map_does_not_mark_unread_or_record_only_as_complete()
     {
         Assert.Equal(CommandStatus.Proven, ScriptCommandMap.StatusOf("FadeOut"));
-        Assert.Equal(CommandStatus.Proven, ScriptCommandMap.StatusOf("Teleport"));
-        Assert.Equal(CommandStatus.Proven, ScriptCommandMap.StatusOf("UseCamera"));
+        Assert.Equal(CommandStatus.Partial, ScriptCommandMap.StatusOf("Teleport"));
+        Assert.Equal(CommandStatus.Partial, ScriptCommandMap.StatusOf("UseCamera"));
         Assert.Equal(CommandStatus.Proven, ScriptCommandMap.StatusOf("PlayAVI"));
         Assert.Equal(CommandStatus.Proven, ScriptCommandMap.StatusOf("DoScriptFrame"));
-        Assert.Equal(CommandStatus.Proven, ScriptCommandMap.StatusOf("PlayAnimation"));
-        Assert.Equal(CommandStatus.Proven, ScriptCommandMap.StatusOf("LookToThing"));
-        Assert.Equal(CommandStatus.Proven, ScriptCommandMap.StatusOf("MuteSounds"));
+        Assert.Equal(CommandStatus.Partial, ScriptCommandMap.StatusOf("PlayAnimation"));
+        Assert.Equal(CommandStatus.Partial, ScriptCommandMap.StatusOf("LookToThing"));
+        Assert.Equal(CommandStatus.Partial, ScriptCommandMap.StatusOf("MuteSounds"));
         Assert.Equal(CommandStatus.Unread, ScriptCommandMap.StatusOf("NotARealVerb"));
-        Assert.True(ScriptCommandMap.IsImplementedComplete("PlayAnimation"));
+        Assert.False(ScriptCommandMap.IsImplementedComplete("PlayAnimation"));
+        Assert.True(ScriptCommandMap.IsImplementedComplete("PlayAVI"));
+        Assert.True(ScriptCommandMap.IsImplementedComplete("CameraPause"));
+        Assert.Equal(CommandStatus.Proven, ScriptCommandMap.Find("WalkTo")!.Value.Dispatch);
+        Assert.Equal(CommandStatus.Partial, ScriptCommandMap.Find("WalkTo")!.Value.Runtime);
+        Assert.Equal(CommandStatus.Proven, ScriptCommandMap.Find("RemoveThing")!.Value.Dispatch);
+        Assert.Equal(0x00CD0116u, ScriptCommandMap.Find("RemoveThing")!.Value.TokenSite);
         Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(ScriptCommand.Parse("SetTime 14")));
         Assert.Equal(ScriptFlow.Yield, ScriptCommand.Classify(ScriptCommand.Parse("NotARealVerb")));
-        Assert.Contains(ScriptCommandMap.All, s => s.Status == CommandStatus.Unread);
+        Assert.Contains(ScriptCommandMap.NativeTokens, t => ScriptCommandMap.Find(t.Name) is null);
         Assert.Equal(0x00A447D0u, ScriptFiberTable.Create);
         Assert.Equal(0x00A44880u, ScriptFiberTable.Update);
         Assert.Equal(8, ScriptFiberTable.DtOffset);

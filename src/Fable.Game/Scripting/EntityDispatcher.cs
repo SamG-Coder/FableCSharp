@@ -91,13 +91,21 @@ public static class EntityDispatcher
             if (line.Arg(1).Length > 0 && ScriptLine.TryFloat(line.Arg(1), out var parsedSpeed))
                 speed = parsedSpeed;
             var wait = ScriptLine.IsTrue(line.Arg(2)) || ScriptLine.IsTrue(line.Arg(3));
+            var destThing = ctx.FindThing(marker);
+            System.Numerics.Vector3? dest = destThing is { PositionX: not null }
+                ? RegionTravel.PositionOf(destThing)
+                : ctx.World.Positions.TryGetValue(marker, out var p) ? p : null;
             PendingOperation op;
             if (Eq(v, "SneakTo"))
-                op = ctx.Movement.Sneak(line.Target, marker, speed, wait);
+                op = ctx.Movement.Sneak(line.Target, marker, speed, wait, dest);
             else if (Eq(v, "WalkTo"))
-                op = ctx.Movement.Walk(line.Target, marker, speed, wait);
+                op = ctx.Movement.Walk(line.Target, marker, speed, wait, dest);
             else
-                op = ctx.Movement.Run(line.Target, marker, speed, wait);
+                op = ctx.Movement.Run(line.Target, marker, speed, wait, dest);
+            if (dest is { } d && line.Target is { Length: > 0 } && speed <= 0f
+                && !ctx.Movement.WalkSpeed.ContainsKey(line.Target)
+                && !ctx.Movement.RunSpeed.ContainsKey(line.Target))
+                ctx.World.Positions[line.Target] = d;
             if (Eq(v, "WalkTo") && wait)
                 return CommandResult.Wait(
                     ExecutionKind.WaitOperation, CommandStatus.Proven, CommandFamily.Entity,
@@ -199,8 +207,34 @@ public static class EntityDispatcher
                 speed.ToString("0.###"));
         }
 
-        if (Eq(v, "Drawable") || Eq(v, "Collide") || Eq(v, "SetAlpha"))
-            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, v);
+        if (Eq(v, "Drawable"))
+        {
+            ctx.World.Drawable[line.Target] = !ScriptLine.IsFalse(line.Arg(0));
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, line.Arg(0));
+        }
+
+        if (Eq(v, "Collide"))
+        {
+            ctx.World.Collide[line.Target] = !ScriptLine.IsFalse(line.Arg(0));
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, line.Arg(0));
+        }
+
+        if (Eq(v, "SetAlpha"))
+        {
+            ScriptLine.TryFloat(line.Arg(0), out var alpha);
+            ctx.World.Alpha[line.Target] = alpha;
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity,
+                alpha.ToString("0.###"));
+        }
+
+        if (Eq(v, "Sheathe") || Eq(v, "SetScared") || Eq(v, "SetBound") ||
+            Eq(v, "SetPushable") || Eq(v, "SetDamageable") || Eq(v, "SetAttackable") ||
+            Eq(v, "SetFree") || Eq(v, "Killable") || Eq(v, "HoldInHand") ||
+            Eq(v, "SetAppearanceSeed"))
+        {
+            ctx.World.Flags[$"{line.Target}.{v}"] = line.Arg(0);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, line.Arg(0));
+        }
 
         return CommandResult.Blocked(
             "UNKNOWN", CommandStatus.Unread, CommandFamily.Entity, line.Raw);

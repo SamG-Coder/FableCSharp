@@ -50,9 +50,10 @@ public sealed class ScriptBindings
         Bind(name, BindingKindSlot.Registered, null, name);
     }
 
-    public void BindCreated(string name, string type, string marker, Vector3? position)
+    public void BindCreated(
+        string name, string type, string marker, Vector3? position, ThingInstance? thing = null)
     {
-        Bind(name, BindingKindSlot.Created, null, name, type, marker, position);
+        Bind(name, BindingKindSlot.Created, thing, name, type, marker, position);
     }
 
     public void BindCrowd(string type, string alias, IReadOnlyList<ThingInstance> members)

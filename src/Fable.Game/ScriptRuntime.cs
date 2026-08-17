@@ -88,7 +88,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     private readonly List<ScriptFiber> _fibers = [];
     private readonly List<ScriptInterpreter> _interpreters = [];
     private readonly List<QuestInstance> _quests = [];
-    private IReadOnlyList<ThingInstance> _things = [];
+    private List<ThingInstance> _things = [];
     private ScriptedCamera? _camera;
     private GameInstall? _install;
     private WmvPlayer? _avi;
@@ -143,9 +143,27 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
         _install = install;
     }
 
+    public void AddThing(ThingInstance thing)
+    {
+        _things.RemoveAll(t =>
+            t.ScriptName is not null &&
+            thing.ScriptName is not null &&
+            t.ScriptName.Equals(thing.ScriptName, StringComparison.OrdinalIgnoreCase));
+        _things.Add(thing);
+    }
+
+    public void RemoveThing(string name)
+    {
+        if (name.Length == 0)
+            return;
+        _things.RemoveAll(t =>
+            t.ScriptName is not null &&
+            t.ScriptName.Equals(name, StringComparison.OrdinalIgnoreCase));
+    }
+
     public void BindScene(IEnumerable<ThingInstance> things, ScriptedCamera? camera)
     {
-        _things = things as IReadOnlyList<ThingInstance> ?? things.ToList();
+        _things = things as List<ThingInstance> ?? things.ToList();
         _camera = camera;
         ThingInstance? hero = null;
         foreach (var thing in _things)
@@ -274,9 +292,14 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
             {
                 foreach (var op in Animation.ByActor.Values)
                     op.Complete = true;
+                foreach (var task in Animation.Tasks.ByActor.Values)
+                    task.MarkComplete();
                 foreach (var op in Movement.ByActor.Values)
                     op.Complete = true;
+                foreach (var task in Movement.Tasks.ByActor.Values)
+                    task.MarkComplete();
                 Dialogue.CompleteWait();
+                CameraSys.CompleteWait();
             }
 
             Update(RegionTravel.GamePauseIncrement / RegionTravel.GamePauseScale);
@@ -318,6 +341,8 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
 
         TickFade(dt);
         TickAvi(dt);
+        Movement.Tick(dt, World);
+        Animation.Tasks.Tick(dt, World);
         if (Scheduler.Fibers.Count == 0)
         {
             foreach (var interpreter in _interpreters)
@@ -644,7 +669,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// no mesh move.
     /// </summary>
     void IScriptHost.SneakTo(string? actor, string marker, float speed, bool wait) =>
-        Movement.Sneak(actor, marker, speed, wait);
+        Movement.Sneak(actor, marker, speed, wait, null);
 
     /// <summary>
     /// <c>00CC083D</c>: thing <c>vtbl+20</c> is
@@ -652,7 +677,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// wait for arrival. Record only — no mesh move.
     /// </summary>
     void IScriptHost.WalkTo(string? actor, string marker, float speed, bool wait) =>
-        Movement.Walk(actor, marker, speed, wait);
+        Movement.Walk(actor, marker, speed, wait, null);
 
     /// <summary>
     /// <c>00CC15E3</c>: thing <c>vtbl+76</c> does not
@@ -668,8 +693,14 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// <c>jmp 00CD17F8</c>. No yield. Spawn body
     /// UNREAD — record only.
     /// </summary>
-    void IScriptHost.Create(string type, string marker, string name) =>
-        World.Creates.Add(new ScriptCreate(type, marker, name));
+    void IScriptHost.Create(string type, string marker, string name)
+    {
+        var thing = FindThingByName(marker);
+        var pos = thing is { PositionX: not null } ? RegionTravel.PositionOf(thing) : (Vector3?)null;
+        var spawned = World.Spawn(type, marker, name, pos);
+        AddThing(spawned);
+        Bindings.BindCreated(name, type, marker, pos, spawned);
+    }
 
     /// <summary>
     /// <c>00CC656B</c>: leftover session poll
@@ -682,7 +713,12 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// <c>jmp 00CC864B</c>. No yield. Teardown
     /// UNREAD — record only.
     /// </summary>
-    void IScriptHost.Remove(string name) => World.Removes.Add(name);
+    void IScriptHost.Remove(string name)
+    {
+        World.Destroy(name);
+        RemoveThing(name);
+        Bindings.Unbind(name);
+    }
 
     /// <summary>
     /// <c>00CC3354</c>: thing <c>vtbl+52</c> then

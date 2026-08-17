@@ -23,10 +23,31 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "StopMusic");
         }
 
-        if (Eq(v, "PlaySound") || Eq(v, "Play2DSound"))
+        if (Eq(v, "Play2DSound"))
         {
-            ctx.Audio.PlaySound(line.Arg(0));
-            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, line.Arg(0));
+            var name = line.Arg(0);
+            if (name.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ctx.Audio.PlaySound(name, null, spatial: false);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name);
+        }
+
+        if (Eq(v, "PlaySound"))
+        {
+            var arg0 = line.Arg(0);
+            var arg1 = line.Arg(1);
+            if (arg0.Length == 0 || arg1.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            if (ScriptLine.IsNull(arg0))
+            {
+                ctx.Audio.PlaySound(arg1, null, spatial: false);
+                return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
+                    "PlaySound NULL vtbl+2768", arg1);
+            }
+
+            ctx.Audio.PlaySound(arg1, arg0, spatial: true);
+            return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
+                "PlaySound vtbl+2760 00CC907D", $"{arg0},{arg1}");
         }
 
         if (Eq(v, "MuteSounds"))
@@ -72,6 +93,32 @@ public static class GlobalDispatcher
                 ctx.Cutscene.CameraPauseEnabled ? "TRUE" : "FALSE");
         }
 
+        if (Eq(v, "AnimationPause"))
+        {
+            ctx.Cutscene.AnimationPauseEnabled = !ScriptLine.IsFalse(line.Arg(0));
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                ctx.Cutscene.AnimationPauseEnabled ? "TRUE" : "FALSE");
+        }
+
+        if (Eq(v, "CameraLookAt"))
+        {
+            var name = line.Arg(0);
+            if (name.Length == 0 || line.Arg(1).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ctx.Camera.LookAtThing(name);
+            if (!ctx.Cutscene.YieldEnable)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name);
+            return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
+                "CameraLookAt vtbl+1628", name);
+        }
+
+        if (Eq(v, "PutUpYourSwords"))
+        {
+            ctx.World.SwordsUp = !ScriptLine.IsFalse(line.Arg(0));
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                ctx.World.SwordsUp ? "TRUE" : "FALSE");
+        }
+
         if (Eq(v, "NoDialogCam"))
         {
             ctx.Cutscene.NoDialogCam = ScriptLine.IsTrue(line.Arg(0));
@@ -89,6 +136,16 @@ public static class GlobalDispatcher
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name);
             return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
                 "UseCamera vtbl+28", name);
+        }
+
+        if (Eq(v, "WaitForCamera"))
+        {
+            var op = ctx.Camera.WaitForCamera();
+            if (op.Complete)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "idle");
+            return CommandResult.Wait(
+                ExecutionKind.WaitOperation, CommandStatus.Proven, CommandFamily.Global,
+                "WaitForCamera vtbl+1672", "camera-idle", op.Id, ctx.Camera.ActiveName);
         }
 
         if (Eq(v, "DoCameraPreloading"))
@@ -171,30 +228,37 @@ public static class GlobalDispatcher
             var name = line.Arg(2);
             if (type.Length == 0 || marker.Length == 0 || name.Length == 0)
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
-            var thing = ctx.FindThing(marker);
-            var pos = thing is { PositionX: not null } ? RegionTravel.PositionOf(thing) : (System.Numerics.Vector3?)null;
-            ctx.World.Creates.Add(new ScriptCreate(type, marker, name));
-            ctx.Bindings.BindCreated(name, type, marker, pos);
+            var markerThing = ctx.FindThing(marker);
+            var pos = markerThing is { PositionX: not null }
+                ? RegionTravel.PositionOf(markerThing)
+                : (System.Numerics.Vector3?)null;
+            var spawned = ctx.World.Spawn(type, marker, name, pos);
+            ctx.Runtime.AddThing(spawned);
+            ctx.Bindings.BindCreated(name, type, marker, pos, spawned);
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
                 $"{type}->{name}", $"Created:{name}");
         }
 
-        if (Eq(v, "Remove") || Eq(v, "RemoveThing"))
+        if (Eq(v, "RemoveAllThings"))
         {
-            if (Eq(v, "RemoveThing"))
-            {
-                return CommandResult.Blocked(
-                    "UNKNOWN", CommandStatus.Unread, CommandFamily.Global, line.Raw);
-            }
-
-            var name = line.Arg(0);
-            if (name.Length == 0)
+            if (line.Arg(0).Length == 0)
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
-            ctx.World.Removes.Add(name);
-            ctx.Bindings.Unbind(name);
-            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name,
-                $"unbind {name}");
+            ctx.World.RemoveFamily.Add(("RemoveAllThings", "LadyGreyIntro"));
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                "LadyGreyIntro");
         }
+
+        if (Eq(v, "RemoveAll"))
+        {
+            var hide = !ScriptLine.IsFalse(line.Arg(0));
+            ctx.World.RemoveFamily.Add(("RemoveAll", hide ? "TRUE" : "FALSE"));
+            ctx.World.RemoveExtras(hide, "RemoveAll");
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                hide ? "TRUE" : "FALSE");
+        }
+
+        if (Eq(v, "Remove") || Eq(v, "RemoveThing"))
+            return ApplyRemove(line, ctx);
 
         if (Eq(v, "RemoveExtras"))
         {
@@ -333,6 +397,36 @@ public static class GlobalDispatcher
 
         return CommandResult.Blocked(
             "UNKNOWN", CommandStatus.Unread, CommandFamily.Global, line.Raw);
+    }
+
+    /// <summary>
+    /// Shared <c>00CD0116</c> path. Token match is
+    /// <c>00BFEAF8("Remove", 6)</c> so
+    /// <c>RemoveThing</c> is the same handler, not a
+    /// separate dispatcher. Empty arg0 →
+    /// <c>00CD17FD</c>. Arg1 <c>dead</c> →
+    /// <c>vtbl+1608</c>. Else lookup +
+    /// <c>vtbl+432</c> (<c>008910D0</c> /
+    /// <c>004C9B80</c>).
+    /// </summary>
+    internal static CommandResult ApplyRemove(ScriptLine line, ScriptExecutionContext ctx)
+    {
+        var name = line.Arg(0);
+        if (name.Length == 0)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        ctx.World.RemoveFamily.Add((line.Verb, name));
+        if (line.Arg(1).Equals("dead", StringComparison.OrdinalIgnoreCase))
+        {
+            ctx.World.Dead.Add(name);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                $"dead {name}", $"dead {name}");
+        }
+
+        ctx.World.Destroy(name);
+        ctx.Runtime.RemoveThing(name);
+        ctx.Bindings.Unbind(name);
+        return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name,
+            $"unbind {name}");
     }
 
     internal static void ParseFade(ScriptLine line, out float seconds, out float param)

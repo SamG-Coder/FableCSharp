@@ -276,6 +276,8 @@ public sealed class ScriptInterpreter
             return true;
         if (ctx.Dialogue.WaitOp is { } dialog && dialog.Id == id)
             return dialog.Complete;
+        if (ctx.Camera.WaitOp is { } cam && cam.Id == id)
+            return cam.Complete;
         foreach (var op in ctx.Animation.ByActor.Values)
         {
             if (op.Id == id)
@@ -418,6 +420,7 @@ public sealed class ScriptInterpreter
         var runtime = ctx.Runtime;
         var lastAnim = runtime.Animations.Count > 0 ? runtime.Animations[^1].Name : "";
         var changes = ctx.Bindings.DrainChanges();
+        var spec = ScriptCommandMap.Find(line.Verb);
         runtime.Trace.Add(new RuntimeTraceStep(
             runtime.Frame,
             runtime.Time,
@@ -451,7 +454,25 @@ public sealed class ScriptInterpreter
             State.WaitKind.ToString(),
             State.WaitOperationId ?? "",
             result.OperationId ?? "",
-            State.ResumeReason));
+            State.ResumeReason,
+            Parse: spec?.Parse ?? CommandStatus.Unread,
+            Dispatch: spec?.Dispatch ?? (result.Kind == ExecutionKind.Blocked
+                ? CommandStatus.Unread
+                : CommandStatus.Proven),
+            Apply: spec?.Apply ?? CommandStatus.Unread,
+            Runtime: spec?.Runtime ?? CommandStatus.Unread,
+            Task: result.OperationId ?? "",
+            Dialogue: ctx.Dialogue.Session is { } session
+                ? $"{session.Verb}:{session.Text}"
+                : "",
+            Audio: ctx.Audio.Sound ?? "",
+            CreatedThing: result.BindingChange.StartsWith("Created:", StringComparison.Ordinal)
+                ? result.BindingChange[8..]
+                : "",
+            RemovedThing: ctx.World.Removes.Count > 0 &&
+                          result.BindingChange.StartsWith("unbind ", StringComparison.Ordinal)
+                ? result.BindingChange[7..]
+                : ""));
     }
 
     internal static string FirstToken(string arguments)

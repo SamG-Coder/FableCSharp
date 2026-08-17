@@ -1,8 +1,11 @@
 # Recovered `00CBFB7D` command map
 
-Statuses: **PROVEN** (recovered script-layer apply + return),
-**PARTIAL** (token + return proven; apply unread),
-**UNREAD** (not implemented; interpreter blocks).
+Statuses are split: **Parse / Dispatch / Return / Apply / Runtime**.
+Overall **PROVEN** only when every dimension is proven.
+**PARTIAL** means script-layer dispatch is recovered but apply or runtime is not.
+**UNREAD** means the interpreter must block.
+
+`RemoveThing` is not a separate exe token. `00BFEAF8(verb, "Remove", 6)` matches it; apply is the `00CD0116` Remove handler.
 
 Unknown verbs are **UNREAD**. They are not complete no-ops.
 

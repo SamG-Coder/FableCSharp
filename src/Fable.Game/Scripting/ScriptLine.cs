@@ -63,6 +63,23 @@ public readonly struct ScriptLine
     public static bool IsForever(string? text) =>
         text is not null && text.Equals("forever", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// <c>00BFEAF8</c> 3-arg import: n =
+    /// token <c>00403A00</c> length. Native
+    /// <c>strnicmp(verb, token, n)==0</c>.
+    /// <c>RemoveThing</c> matches token
+    /// <c>Remove</c> (n=6). Longer tokens
+    /// are compared first in the runner.
+    /// </summary>
+    public static bool TokenMatches(string verb, string token)
+    {
+        if (token.Length == 0)
+            return verb.Length == 0;
+        if (verb.Length < token.Length)
+            return false;
+        return verb.AsSpan(0, token.Length).Equals(token, StringComparison.OrdinalIgnoreCase);
+    }
+
     public static bool TryFloat(string? text, out float value) =>
         float.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
 

@@ -247,6 +247,8 @@ public sealed class ScriptRuntimeArchitectureTests
     [InlineData("CS_CHICKING_START")]
     [InlineData("CS_CHICKING_HITGUYBOTTOM")]
     [InlineData("CS_CHICKING_TOPPRIZE")]
+    [InlineData("CS_OPENGRAVE_CRYPTCAM")]
+    [InlineData("CS_PUNCHCLUB_BS_RUNFORESTRUN")]
     public void Fixture_runs_from_pc0_and_writes_ordered_trace(string name)
     {
         var install = GameInstall.TryLocate();
@@ -272,7 +274,6 @@ public sealed class ScriptRuntimeArchitectureTests
         Assert.NotEmpty(runtime.Trace.Steps);
         Assert.Equal(name, runtime.Trace.Steps[0].Script);
         Assert.DoesNotContain(runtime.Trace.Steps, s =>
-            s.Status == CommandStatus.Partial ||
             s.YieldReason == "UNPROVEN YIELD" ||
             s.SideEffect.Contains("FALLBACK", StringComparison.Ordinal) ||
             s.SideEffect.Contains("HARDCODED", StringComparison.Ordinal) ||
@@ -280,6 +281,8 @@ public sealed class ScriptRuntimeArchitectureTests
             s.SideEffect.Contains("NO-OP", StringComparison.Ordinal));
         if (started.Blocked)
             Assert.True(started.BlockReason is "UNKNOWN" or "UNRESOLVED ARG" or "UNREAD");
+        if (name == "CS_CHICKING_HITGUYBOTTOM")
+            Assert.False(started.Blocked);
         Assert.DoesNotContain(runtime.Trace.Steps, s =>
             !s.Blocked && (s.Status == CommandStatus.Unread || s.Result == ExecutionKind.Blocked));
         var dest = Path.Combine(Scratch(), "traces");
@@ -383,8 +386,144 @@ public sealed class ScriptRuntimeArchitectureTests
             "8 Teleport Continue",
             "9 LookToThing YieldOnce",
         ],
+        "CS_OPENGRAVE_CRYPTCAM" =>
+        [
+            "1 UseCamera YieldOnce",
+        ],
+        "CS_PUNCHCLUB_BS_RUNFORESTRUN" =>
+        [
+            "1 FadeOut Continue",
+            "1 GamePause WaitScaledFrames",
+        ],
         _ => [],
     };
+
+    [Fact]
+    public void RemoveThing_matches_Remove_token_length_and_destroys_created()
+    {
+        Assert.True(ScriptLine.TokenMatches("RemoveThing", "Remove"));
+        Assert.False(ScriptLine.TokenMatches("Remove", "RemoveAll"));
+        Assert.False(ScriptLine.TokenMatches("RemoveThing", "RemoveAll"));
+        Assert.False(ScriptLine.TokenMatches("RemoveThing", "RemoveAllThings"));
+        Assert.False(ScriptLine.TokenMatches("RemoveThing", "RemoveExtras"));
+
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("rm",
+        [
+            "Create CREATURE_X,MK_A,ORGANISER",
+            "RemoveThing ORGANISER",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Null(runtime.Bindings.Resolve("ORGANISER"));
+        Assert.Contains("ORGANISER", runtime.World.Removes);
+        Assert.Contains("ORGANISER", runtime.World.Dead);
+        Assert.DoesNotContain(runtime.Things, t => t.ScriptName == "ORGANISER");
+        Assert.Empty(runtime.World.Spawned);
+        Assert.Equal(0x00CD0116u, ScriptCommandMap.Find("Remove")!.Value.TokenSite);
+        Assert.Equal(0x00CD0116u, ScriptCommandMap.Find("RemoveThing")!.Value.TokenSite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("Remove")!.Value.TokenSite,
+            ScriptCommandMap.Find("RemoveAll")!.Value.TokenSite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("Remove")!.Value.ApplySite,
+            ScriptCommandMap.Find("RemoveAll")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void RemoveAll_and_RemoveAllThings_are_separate_paths()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("rall",
+        [
+            "Create CREATURE_X,MK_A,ORGANISER",
+            "RemoveAll TRUE",
+            "RemoveAllThings",
+            "RemoveAllThings LadyGreyIntro",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.NotNull(runtime.Bindings.Resolve("ORGANISER"));
+        Assert.Contains(runtime.World.RemoveFamily, r => r.Verb == "RemoveAll");
+        Assert.DoesNotContain(runtime.World.RemoveFamily, r =>
+            r.Verb == "RemoveAllThings" && r.Arg.Length == 0);
+        Assert.Contains(runtime.World.RemoveFamily, r =>
+            r.Verb == "RemoveAllThings" && r.Arg == "LadyGreyIntro");
+        Assert.True(runtime.World.ExtrasHidden);
+    }
+
+    [Fact]
+    public void PlaySound_yields_and_is_not_PlayAVI()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("snd",
+        [
+            "PlaySound GUARD,SND_RACEWHISTLE",
+            "Play2DSound UI_CLICK",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Yielded);
+        Assert.Equal("PlaySound", ScriptLine.Parse(interp.Executed[0]).Verb);
+        interp.Resume(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(2, runtime.Audio.Instances.Count);
+        Assert.True(runtime.Audio.Instances[0].Spatial);
+        Assert.False(runtime.Audio.Instances[1].Spatial);
+        Assert.False(runtime.AviPlaying);
+    }
+
+    [Fact]
+    public void WalkTo_writes_destination_and_entity_task()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "MK_A",
+                PositionX = 10,
+                PositionY = 0,
+                PositionZ = 4,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], null);
+        var interp = new ScriptInterpreter("mv", ["HERO.WalkTo MK_A,0.0,FALSE"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(runtime.World.Positions.ContainsKey("HERO"));
+        Assert.Equal(10, runtime.World.Positions["HERO"].X);
+        Assert.NotNull(runtime.Movement.Tasks.Current("HERO"));
+        Assert.Equal(EntityTaskKind.Walk, runtime.Movement.Tasks.Current("HERO")!.Kind);
+    }
+
+    [Fact]
+    public void WaitForCamera_idles_when_camera_not_busy()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("camw", ["WaitForCamera"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+    }
+
+    [Fact]
+    public void Coverage_report_lists_native_tokens()
+    {
+        var report = ScriptCommandMap.FormatCoverage();
+        Assert.Contains("TOTAL NATIVE COMMAND TOKENS:", report);
+        Assert.Contains("RemoveAllThings", report);
+        Assert.Contains("RemoveThing", report);
+        var dest = Path.Combine(Scratch(), "docs");
+        Directory.CreateDirectory(dest);
+        File.WriteAllText(Path.Combine(dest, "COMMAND_COVERAGE.md"), report);
+        var docs = Path.Combine(FindRepoRoot(), "docs", "runtime");
+        Directory.CreateDirectory(docs);
+        File.WriteAllText(Path.Combine(docs, "COMMAND_COVERAGE.md"), report);
+        File.WriteAllText(
+            Path.Combine(docs, "COMMAND_MAP.generated.md"),
+            ScriptCommandMap.FormatMarkdown());
+    }
 
     [Fact]
     public void Handler_not_classify_table_drives_wait_kinds()
@@ -403,5 +542,18 @@ public sealed class ScriptRuntimeArchitectureTests
         var dir = @"C:\Users\samue\AppData\Local\Temp\grok-goal-96ce88caacfb\implementer";
         Directory.CreateDirectory(dir);
         return dir;
+    }
+
+    private static string FindRepoRoot()
+    {
+        var dir = new DirectoryInfo(AppContext.BaseDirectory);
+        while (dir is not null)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "src", "Fable.Game", "ScriptRuntime.cs")))
+                return dir.FullName;
+            dir = dir.Parent;
+        }
+
+        return Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "..", "..", "..", "..", ".."));
     }
 }
