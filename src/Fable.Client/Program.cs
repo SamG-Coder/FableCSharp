@@ -150,7 +150,8 @@ window.Update += dt =>
                 window.FramebufferSize.X, window.FramebufferSize.Y);
             renderer.SetVideoFrame(
                 runtime.AviWidth, runtime.AviHeight, runtime.AviRgba,
-                new Vector4(dest.X0, dest.Y0, dest.X1, dest.Y1));
+                new Vector4(dest.X0, dest.Y0, dest.X1, dest.Y1),
+                runtime.AviFrameSerial);
         }
         else
             renderer.ClearVideoFrame();

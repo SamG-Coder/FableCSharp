@@ -292,31 +292,40 @@ public sealed class WmvPlayer : IDisposable
         var bpp = bits == 32 ? 4 : 3;
         var stride = (width * bpp + 3) & ~3;
         var rgba = new byte[width * height * 4];
-        for (var y = 0; y < height; y++)
+        BgrToRgba(data, stride, rgba, width, height, bpp, flip: !topDown);
+        return rgba;
+    }
+
+    private static unsafe void BgrToRgba(
+        IntPtr src, int srcStride, byte[] dest, int width, int height, int bpp, bool flip)
+    {
+        fixed (byte* d0 = dest)
         {
-            var srcY = topDown ? y : height - 1 - y;
-            var src = data + srcY * stride;
-            var dst = y * width * 4;
-            for (var x = 0; x < width; x++)
+            for (var y = 0; y < height; y++)
             {
-                var o = x * bpp;
-                rgba[dst] = Marshal.ReadByte(src, o + 2);
-                rgba[dst + 1] = Marshal.ReadByte(src, o + 1);
-                rgba[dst + 2] = Marshal.ReadByte(src, o);
-                rgba[dst + 3] = 255;
-                dst += 4;
+                var srcY = flip ? height - 1 - y : y;
+                var s = (byte*)src + srcY * srcStride;
+                var d = d0 + y * width * 4;
+                for (var x = 0; x < width; x++)
+                {
+                    d[0] = s[2];
+                    d[1] = s[1];
+                    d[2] = s[0];
+                    d[3] = 255;
+                    s += bpp;
+                    d += 4;
+                }
             }
         }
-
-        return rgba;
     }
 
     private void Pump()
     {
-        // 006286F0: WaitForSingleObject(event, 33)
-        // then blit. Samples arrive on Receive
-        // (00A3B740). Grab only if the custom
-        // renderer never connected.
+        // Receive (00A3B740) runs on the graph thread.
+        // 006286F0's 33 ms wait is the game present
+        // tick, not a decoder throttle. Keep STA
+        // pumping; grab IBasicVideo only if the
+        // custom pin never connected.
         while (!_stop)
         {
             DrainEvents();
@@ -324,7 +333,7 @@ public sealed class WmvPlayer : IDisposable
                 TryGrabBasicVideo();
             if (Ended)
                 break;
-            Thread.Sleep(RegionTravel.PlayAviPresentMs);
+            Thread.Sleep(_renderer is { IsConnected: true } ? 1 : RegionTravel.PlayAviPresentMs);
         }
 
         try
@@ -358,7 +367,9 @@ public sealed class WmvPlayer : IDisposable
         {
             Width = width;
             Height = height;
-            Rgba = rgba;
+            if (Rgba is null || Rgba.Length != rgba.Length)
+                Rgba = new byte[rgba.Length];
+            rgba.AsSpan().CopyTo(Rgba);
             FrameSerial++;
         }
     }
@@ -996,62 +1007,44 @@ public sealed class WmvPlayer : IDisposable
             var stride = _stride > 0 ? _stride : ((_width * bpp + 3) & ~3);
             if (length < stride * _height && length >= pixels * bpp)
                 stride = _width * bpp;
-            // 00A3B740 copies rows in sample order.
-            // Positive biHeight is a bottom-up DIB — flip
-            // so dest.y=0 is the top of the game window.
-            for (var y = 0; y < _height; y++)
-            {
-                var srcY = _topDown ? y : _height - 1 - y;
-                var src = data + srcY * stride;
-                var dst = y * _width * 4;
-                for (var x = 0; x < _width; x++)
-                {
-                    var o = x * bpp;
-                    rgba[dst] = Marshal.ReadByte(src, o + 2);
-                    rgba[dst + 1] = Marshal.ReadByte(src, o + 1);
-                    rgba[dst + 2] = Marshal.ReadByte(src, o);
-                    rgba[dst + 3] = 255;
-                    dst += 4;
-                }
-            }
-
+            BgrToRgba(data, stride, rgba, _width, _height, bpp, flip: !_topDown);
             return rgba;
         }
 
-        private byte[] CopyYuy2(IntPtr data, int length, byte[] rgba)
+        private unsafe byte[] CopyYuy2(IntPtr data, int length, byte[] rgba)
         {
             var stride = _stride > 0 ? _stride : ((_width * 2 + 3) & ~3);
             if (length < stride * _height)
                 stride = _width * 2;
-            for (var y = 0; y < _height; y++)
+            fixed (byte* d0 = rgba)
             {
-                var srcY = _topDown ? y : _height - 1 - y;
-                var src = data + srcY * stride;
-                var dst = y * _width * 4;
-                for (var x = 0; x + 1 < _width; x += 2)
+                for (var y = 0; y < _height; y++)
                 {
-                    var y0 = Marshal.ReadByte(src, x * 2);
-                    var u = Marshal.ReadByte(src, x * 2 + 1);
-                    var y1 = Marshal.ReadByte(src, x * 2 + 2);
-                    var v = Marshal.ReadByte(src, x * 2 + 3);
-                    YuvToRgba(y0, u, v, rgba, dst);
-                    YuvToRgba(y1, u, v, rgba, dst + 4);
-                    dst += 8;
+                    var srcY = _topDown ? y : _height - 1 - y;
+                    var s = (byte*)data + srcY * stride;
+                    var d = d0 + y * _width * 4;
+                    for (var x = 0; x + 1 < _width; x += 2)
+                    {
+                        YuvToRgba(s[0], s[1], s[3], d);
+                        YuvToRgba(s[2], s[1], s[3], d + 4);
+                        s += 4;
+                        d += 8;
+                    }
                 }
             }
 
             return rgba;
         }
 
-        private static void YuvToRgba(int y, int u, int v, byte[] rgba, int dst)
+        private static unsafe void YuvToRgba(int y, int u, int v, byte* dest)
         {
             var c = y - 16;
             var d = u - 128;
             var e = v - 128;
-            rgba[dst] = ClampByte((298 * c + 409 * e + 128) >> 8);
-            rgba[dst + 1] = ClampByte((298 * c - 100 * d - 208 * e + 128) >> 8);
-            rgba[dst + 2] = ClampByte((298 * c + 516 * d + 128) >> 8);
-            rgba[dst + 3] = 255;
+            dest[0] = ClampByte((298 * c + 409 * e + 128) >> 8);
+            dest[1] = ClampByte((298 * c - 100 * d - 208 * e + 128) >> 8);
+            dest[2] = ClampByte((298 * c + 516 * d + 128) >> 8);
+            dest[3] = 255;
         }
 
         private static byte ClampByte(int value) =>

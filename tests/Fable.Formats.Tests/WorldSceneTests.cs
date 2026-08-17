@@ -1905,12 +1905,10 @@ public sealed class WorldSceneTests
         Assert.Equal(0x00A3B740u, RegionTravel.PlayAviCopySample);
         Assert.Equal(0x009FA450u, RegionTravel.PlayAviLockRect);
         var serial = player.FrameSerial;
-        var deadline = DateTime.UtcNow.AddMilliseconds(400);
-        while (DateTime.UtcNow < deadline && player.FrameSerial <= serial)
-            Thread.Sleep(RegionTravel.PlayAviPresentMs);
+        Thread.Sleep(200);
         Assert.True(
-            player.FrameSerial > serial,
-            $"WMV did not advance past first sample serial={player.FrameSerial} start={serial} {WmvPlayer.LastError}");
+            player.FrameSerial >= serial + 3,
+            $"WMV present too slow serial={player.FrameSerial} start={serial} {WmvPlayer.LastError}");
 
         Assert.Equal(0x0099C1E0u, RegionTravel.PlayAviRewrite);
         Assert.Equal(0x00A3B9D0u, RegionTravel.PlayAviOpen);

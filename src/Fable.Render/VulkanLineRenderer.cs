@@ -53,6 +53,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     private DeviceTexture _videoTexture;
     private Vector4 _videoDest = new(0, 0, 1, 1);
     private bool _videoReady;
+    private int _videoSerial = -1;
     private DescriptorSetLayout _descriptorSetLayout;
     private DescriptorPool _descriptorPool;
     private Sampler _sampler;

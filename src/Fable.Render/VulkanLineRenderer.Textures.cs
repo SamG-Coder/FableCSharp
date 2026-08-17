@@ -358,7 +358,7 @@ public sealed unsafe partial class VulkanLineRenderer
     /// <c>009DC870</c> 2D submit of the current WMV
     /// frame. <paramref name="dest"/> is 0–1 letterbox.
     /// </summary>
-    public void SetVideoFrame(int width, int height, byte[]? rgba, Vector4 dest)
+    public void SetVideoFrame(int width, int height, byte[]? rgba, Vector4 dest, int serial = 0)
     {
         if (rgba is null || width <= 0 || height <= 0 || rgba.Length < width * height * 4)
         {
@@ -367,6 +367,12 @@ public sealed unsafe partial class VulkanLineRenderer
         }
 
         _videoDest = dest;
+        if (_videoReady &&
+            _videoTexture.Image.Handle != 0 &&
+            _videoTexture.Id == width &&
+            serial == _videoSerial)
+            return;
+        _videoSerial = serial;
         if (_videoTexture.Image.Handle != 0 &&
             _videoTexture.Id == width &&
             _videoReady)
@@ -385,6 +391,7 @@ public sealed unsafe partial class VulkanLineRenderer
     {
         DestroyVideoTexture();
         _videoReady = false;
+        _videoSerial = -1;
     }
 
     private DeviceTexture UploadVideoTexture(int width, int height, byte[] rgba)
