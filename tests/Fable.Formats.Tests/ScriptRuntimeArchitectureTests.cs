@@ -630,6 +630,36 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void PutInFrontOf_teleports_mover_to_stand_off()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "FATHER",
+                PositionX = 0,
+                PositionY = 0,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>
+                {
+                    ["CTCPhysicsStandard.RHSetForwardX"] = "0",
+                    ["CTCPhysicsStandard.RHSetForwardY"] = "1",
+                    ["CTCPhysicsStandard.RHSetForwardZ"] = "0",
+                },
+            },
+        ], null);
+        var interp = new ScriptInterpreter("pif", ["PutInFrontOf HERO,FATHER,3"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(3f, runtime.World.Positions["HERO"].Y);
+        Assert.Equal("FATHER", runtime.World.LookTargets["HERO"]);
+    }
+
+    [Fact]
     public void WalkUpToThing_dest_is_position_plus_distance_times_forward()
     {
         var dest = RegionTravel.WalkUpToDestination(

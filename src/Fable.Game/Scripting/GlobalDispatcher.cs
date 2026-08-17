@@ -112,6 +112,31 @@ public static class GlobalDispatcher
                 "CameraLookAt vtbl+1628", name);
         }
 
+        if (Eq(v, "PutInFrontOf"))
+        {
+            var mover = line.Arg(0);
+            var face = line.Arg(1);
+            if (mover.Length == 0 || face.Length == 0 || line.Arg(2).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            if (!ScriptLine.TryFloat(line.Arg(2), out var distance))
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            var thing = ctx.FindThing(face);
+            if (thing is not { PositionX: not null } &&
+                !ctx.World.Positions.TryGetValue(face, out _))
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, face);
+            var pos = thing is { PositionX: not null }
+                ? RegionTravel.PositionOf(thing)
+                : ctx.World.Positions[face];
+            var forward = thing is not null
+                ? RegionTravel.ForwardOf(thing)
+                : System.Numerics.Vector3.UnitY;
+            var dest = RegionTravel.WalkUpToDestination(pos, forward, distance);
+            ctx.World.Teleport(mover, face, dest);
+            ctx.World.LookTargets[mover] = face;
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                $"{mover}@{dest.X:0.##},{dest.Y:0.##}");
+        }
+
         if (Eq(v, "ResetCamera"))
         {
             ctx.Camera.Reset(ctx.Runtime.Camera);

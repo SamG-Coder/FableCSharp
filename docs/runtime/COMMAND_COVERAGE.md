@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 74
-RECOVERED RETURN: 74
+RECOVERED DISPATCH: 75
+RECOVERED RETURN: 75
 RECOVERED APPLY: 14
 IMPLEMENTED RUNTIME: 11
-UNREAD: 111
+UNREAD: 110
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -33,7 +33,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | GameInfo | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | Fullscreen | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | Print | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| PutInFrontOf | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| PutInFrontOf | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | ExitGame | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | Remove | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | RemoveEffect | Global | Unread | Unread | Unread | Unread | Unread | Unread |
