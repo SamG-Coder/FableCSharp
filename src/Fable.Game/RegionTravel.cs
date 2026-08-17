@@ -168,7 +168,8 @@ public static class RegionTravel
     /// <c>IMediaControl::Run</c> vtbl+28, retry 50.
     /// <c>DoRenderSample</c> <c>00A3BCF0</c> is
     /// <c>ret</c>; pixels are
-    /// <c>IMediaSample::GetPointer</c>.
+    /// <c>IMediaSample::GetPointer</c> at
+    /// vtbl+172 <c>00A3B730</c>.
     /// </summary>
     public const uint PlayAviFilterGraphClsidVa = 0x012AB174;
     public const uint PlayAviGraphBuilderIidVa = 0x012A9934;
@@ -191,34 +192,73 @@ public static class RegionTravel
     public const int PlayAviTextureFormat555 = 25;
     public const uint PlayAviSeekZeroVa = 0x0122ED70;
     /// <summary>
-    /// <c>00A3B740</c> is the sample blit: pin
-    /// <c>IMediaSample::GetPointer</c> (+12) RGB24,
+    /// Renderer C++ vtbl+172 <c>00A3B730</c> is the
+    /// sample blit (earlier <c>00A3B740</c> was mid-
+    /// function). <c>EnterCriticalSection(player+100)</c>
+    /// then <c>IMediaSample::GetPointer</c> (+12) RGB24,
     /// <c>009FA450</c> <c>LockRect</c> (texture
     /// vtbl+76), expand to format 21
     /// <c>A8R8G8B8</c> (A=255) or pack 25
     /// <c>A1R5G5B5</c>, unlock <c>009F9DE0</c>,
-    /// <c>[player+128]=texture</c>,
-    /// <c>SetEvent([player+124])</c>. Present
+    /// <c>SetEvent([player+124])</c>. Rows copy
+    /// source[0]→dest[0] with no V flip. Present
     /// <c>006286F0</c> <c>WaitForSingleObject</c>
     /// 33 ms (<c>[0x143FE08]</c>) then
     /// <c>009FA4E0</c> + <c>009DC870</c> into the
-    /// existing game backbuffer. No
-    /// <c>IVideoWindow</c> / <c>GetCurrentImage</c>.
+    /// existing game backbuffer. Open QI is
+    /// IMediaControl/Position/Seeking/Event/BasicAudio
+    /// — not <c>IVideoWindow</c> /
+    /// <c>GetCurrentImage</c>.
     /// </summary>
-    public const uint PlayAviCopySample = 0x00A3B740;
+    public const uint PlayAviCopySample = 0x00A3B730;
+    public const int PlayAviCopyVtbl = 172;
     public const uint PlayAviLockRect = 0x009FA450;
     public const uint PlayAviUnlock = 0x009F9DE0;
     public const uint PlayAviWaitIat = 0x0143FE08;
     public const int PlayAviPresentMs = 33;
     public const int PlayAviGetPointerVtbl = 12;
     public const int PlayAviLockRectVtbl = 76;
+    public const string PlayAviFilterName = "Fable Texture Renderer Filter";
+    public const string PlayAviRendererName = "Texture Renderer";
+    public const string PlayAviPinName = "In";
+    public const uint PlayAviFilterNameVa = 0x0129D1AC;
+    public const uint PlayAviRendererNameVa = 0x0129D160;
+    public const uint PlayAviPinNameVa = 0x0129D184;
     public const bool FirstSeenPlayAviUsesVideoWindow = false;
     public const bool FirstSeenPlayAviUsesGetCurrentImage = false;
     public const bool FirstSeenPlayAviCopiesRgb24ToArgb = true;
+    /// <summary>
+    /// <c>00A3B5F0</c> CheckMediaType reads
+    /// <c>AM_MEDIA_TYPE.pbFormat</c>
+    /// <c>VIDEOINFOHEADER</c> biWidth / abs(biHeight)
+    /// and RGB24 stride. D3D <c>GetLevelDesc</c>
+    /// format must be 21 or 25 else
+    /// <c>0x8004022A</c>. No subtype compare.
+    /// CBasePin <c>QueryAccept</c> maps a failed
+    /// check to <c>S_FALSE</c>.
+    /// </summary>
+    public const uint PlayAviTypeNotAccepted = 0x8004022A;
+    public const bool FirstSeenPlayAviCheckMediaTypeReadsVih = true;
+    public const int PlayAviFilterMiscIsRenderer = 1;
     public static readonly Guid PlayAviFilterGraphClsid =
         new("e436ebb3-524f-11ce-9f53-0020af0ba770");
     public static readonly Guid PlayAviGraphBuilderIid =
         new("56a868a9-0ad4-11ce-b03a-0020af0ba770");
+    public static readonly Guid PlayAviMediaControlIid =
+        new("56a868b1-0ad4-11ce-b03a-0020af0ba770");
+    public static readonly Guid PlayAviMediaPositionIid =
+        new("56a868b2-0ad4-11ce-b03a-0020af0ba770");
+    public static readonly Guid PlayAviMediaSeekingIid =
+        new("36b73880-c2c8-11cf-8b46-00805f6cef60");
+    public static readonly Guid PlayAviMediaEventIid =
+        new("56a868b6-0ad4-11ce-b03a-0020af0ba770");
+    public static readonly Guid PlayAviBasicAudioIid =
+        new("56a868b3-0ad4-11ce-b03a-0020af0ba770");
+    public const uint PlayAviMediaControlIidVa = 0x012AA094;
+    public const uint PlayAviMediaPositionIidVa = 0x012AA064;
+    public const uint PlayAviMediaSeekingIidVa = 0x012A9A04;
+    public const uint PlayAviMediaEventIidVa = 0x012AA084;
+    public const uint PlayAviBasicAudioIidVa = 0x012AA054;
     public const bool FirstSeenPlayAviIsDirectShow = true;
     public const bool FirstSeenPlayAviIsMediaFoundation = false;
     public const bool FirstSeenPlayAviDraws = true;

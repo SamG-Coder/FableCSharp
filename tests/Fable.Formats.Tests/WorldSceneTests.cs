@@ -320,7 +320,14 @@ public sealed class WorldSceneTests
         Assert.False(RegionTravel.FirstSeenPlayAviUsesGetCurrentImage);
         Assert.True(RegionTravel.FirstSeenPlayAviCopiesRgb24ToArgb);
         Assert.Equal(33, RegionTravel.PlayAviPresentMs);
-        Assert.Equal(0x00A3B740u, RegionTravel.PlayAviCopySample);
+        Assert.Equal(0x00A3B730u, RegionTravel.PlayAviCopySample);
+        Assert.Equal(172, RegionTravel.PlayAviCopyVtbl);
+        Assert.Equal("Fable Texture Renderer Filter", RegionTravel.PlayAviFilterName);
+        Assert.Equal(new Guid("56a868b1-0ad4-11ce-b03a-0020af0ba770"), RegionTravel.PlayAviMediaControlIid);
+        Assert.Equal(new Guid("56a868b6-0ad4-11ce-b03a-0020af0ba770"), RegionTravel.PlayAviMediaEventIid);
+        Assert.Equal(0x8004022Au, RegionTravel.PlayAviTypeNotAccepted);
+        Assert.True(RegionTravel.FirstSeenPlayAviCheckMediaTypeReadsVih);
+        Assert.Equal(1, RegionTravel.PlayAviFilterMiscIsRenderer);
         Assert.True(RegionTravel.FirstSeenPlayAviDraws);
         Assert.True(RegionTravel.FirstSeenPlayAviLetterbox);
         Assert.Equal(0x00CC9E6Au, RegionTravel.NoLoadUseCameraSite);
@@ -1897,12 +1904,17 @@ public sealed class WorldSceneTests
         Assert.True(
             player is { Rgba.Length: > 0, Width: >= 16, Height: >= 16 },
             $"WmvPlayer opened without a frame: {WmvPlayer.LastError}");
+        Assert.True(
+            player.SamplesFromGetPointer,
+            $"samples are not IMediaSample::GetPointer: {WmvPlayer.LastError}");
         Assert.True(player.Rgba.Any(b => b != 0), "first frame is all zero");
         Assert.False(RegionTravel.FirstSeenPlayAviUsesVideoWindow);
         Assert.False(RegionTravel.FirstSeenPlayAviUsesGetCurrentImage);
         Assert.True(RegionTravel.FirstSeenPlayAviCopiesRgb24ToArgb);
         Assert.Equal(33, RegionTravel.PlayAviPresentMs);
-        Assert.Equal(0x00A3B740u, RegionTravel.PlayAviCopySample);
+        Assert.Equal(0x00A3B730u, RegionTravel.PlayAviCopySample);
+        Assert.Equal(172, RegionTravel.PlayAviCopyVtbl);
+        Assert.Equal("Fable Texture Renderer Filter", RegionTravel.PlayAviFilterName);
         Assert.Equal(0x009FA450u, RegionTravel.PlayAviLockRect);
         var serial = player.FrameSerial;
         Thread.Sleep(200);
