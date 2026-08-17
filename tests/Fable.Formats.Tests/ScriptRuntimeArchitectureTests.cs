@@ -2442,6 +2442,116 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void CameraRig_teleports_mount_and_waits_scaled_frames()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            Marker("CAM_RIG", 0, 0, 5),
+            Marker("HERO", 10, 20, 0),
+        ], new ScriptedCamera());
+        var interp = new ScriptInterpreter("crig",
+            ["CameraRig CAM_RIG,HERO,0,0,2,1.0"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Yielded);
+        Assert.Equal(ExecutionKind.WaitScaledFrames, interp.CurrentWaitKind);
+        Assert.Equal(1f, runtime.CameraSys.RigSeconds);
+        Assert.Equal("CAM_RIG", runtime.CameraSys.RigThingA);
+        Assert.Equal("HERO", runtime.CameraSys.RigThingB);
+        Assert.Equal(2f, runtime.CameraSys.RigOffset.Z);
+        Assert.Equal(10f, runtime.World.Positions["CAM_RIG"].X);
+        Assert.Equal(20f, runtime.World.Positions["CAM_RIG"].Y);
+        Assert.Equal(2f, runtime.World.Positions["CAM_RIG"].Z);
+        Assert.Equal(10f, runtime.Camera!.Position.X);
+        Assert.Equal(20f, runtime.Camera.Position.Y);
+        Assert.Equal(2f, runtime.Camera.Position.Z);
+        Assert.Equal(RegionTravel.GamePauseScale, interp.GamePauseTarget);
+        Assert.Equal(0x00CC965Du, ScriptCommandMap.Find("CameraRig")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void CameraRig_zero_seconds_skips_apply()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene([Marker("A", 0, 0, 0), Marker("B", 1, 0, 0)], new ScriptedCamera());
+        var interp = new ScriptInterpreter("crig0", ["CameraRig A,B,0,0,0,0"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.False(runtime.World.Positions.ContainsKey("A"));
+        Assert.False(runtime.CameraSys.RigActive);
+    }
+
+    [Fact]
+    public void CameraRig_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("CameraRig ", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "CameraRig CAM,HERO,0,0,2,1.0";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("CameraRig", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        Assert.True(parsed.Arg(5).Length > 0);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        runtime.BindScene(
+        [
+            Marker(parsed.Arg(0), 0, 0, 5),
+            Marker(parsed.Arg(1), 4, 8, 0),
+        ], new ScriptedCamera());
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-crig", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.True(isolated.Yielded || isolated.Finished);
+        Assert.Equal(parsed.Arg(0), runtime.CameraSys.RigThingA);
+        Assert.Equal(parsed.Arg(1), runtime.CameraSys.RigThingB);
+        ScriptLine.TryFloat(parsed.Arg(5), out var seconds);
+        if (seconds * RegionTravel.GamePauseScale > 0f)
+            Assert.True(runtime.CameraSys.RigActive);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-crig.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-camerarig.txt"),
+            """
+            CameraRig 00CC93E3 / apply 00CC965D
+              6 required args else 00CD17FD
+              lookup arg0/arg1 vtbl+280/288
+              atof arg2-4 offset
+              arg5 * 15 (0x124E640) loop count
+              count<=0 skips apply
+              each iter: 004AB130(B); dest=B.pos+off
+                vtbl+1892(A, dest, 0, 0, 0) teleport
+                vtbl+1644(A, 0, 0, -1, 0, -1)
+                yield vtbl+28 if [ebp+103]
+              jmp 00CC864B
+            """);
+    }
+
+    [Fact]
     public void WaitForCamera_idles_when_camera_not_busy()
     {
         var runtime = ScriptRuntime.Detached();

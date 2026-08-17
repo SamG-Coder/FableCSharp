@@ -275,6 +275,11 @@ public sealed class CameraRuntime
     public string FovMarkerSelected { get; private set; } = "";
     public float FovMarkerDuration { get; private set; }
     public readonly List<string> FovMarkerNames = [];
+    public string RigThingA { get; private set; } = "";
+    public string RigThingB { get; private set; } = "";
+    public Vector3 RigOffset { get; private set; }
+    public float RigSeconds { get; private set; }
+    public bool RigActive { get; private set; }
 
     /// <summary>
     /// <c>00CCAA6C</c> apply <c>vtbl+1632</c>: look
@@ -308,6 +313,31 @@ public sealed class CameraRuntime
             camera?.SetLookAt(onlyA);
         else if (posB is { } onlyB)
             camera?.SetLookAt(onlyB);
+    }
+
+    /// <summary>
+    /// <c>00CC9436</c>: teleport A to B+offset
+    /// (<c>vtbl+1892</c>) then <c>vtbl+1644</c>.
+    /// Loop count = arg5 * 15. Blend unread.
+    /// </summary>
+    public void Rig(
+        ScriptedCamera? camera,
+        IReadOnlyList<ThingInstance> things,
+        ThingInstance? b, string nameA, string nameB,
+        Vector3 offset, float seconds)
+    {
+        RigThingA = nameA;
+        RigThingB = nameB;
+        RigOffset = offset;
+        RigSeconds = seconds;
+        RigActive = true;
+        Busy = true;
+        ActiveName = nameA;
+        if (b is not { PositionX: not null })
+            return;
+        var dest = RegionTravel.PositionOf(b) + offset;
+        camera?.UseCamera(things, nameA);
+        camera?.SetPosition(dest);
     }
 
     /// <summary>

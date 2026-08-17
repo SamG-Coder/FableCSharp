@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 96
-RECOVERED RETURN: 96
-RECOVERED APPLY: 20
+RECOVERED DISPATCH: 97
+RECOVERED RETURN: 97
+RECOVERED APPLY: 21
 IMPLEMENTED RUNTIME: 13
-UNREAD: 89
+UNREAD: 88
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -78,7 +78,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | ResetCamera | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | DrawThing | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | UseCameraFOVMarkerList | Global | Proven | Proven | Proven | Proven | Partial | Partial |
-| CameraRig | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| CameraRig | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | PutUpYourSwords | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | RemoveHeroClothes | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | HeroWear | Global | Unread | Unread | Unread | Unread | Unread | Unread |

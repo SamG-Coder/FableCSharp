@@ -270,6 +270,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "7 required; 00CBF13C best XY projection; vtbl+1632(pos,pos,B,dur,fov); jmp 00CC864B"),
+        Spec("CameraRig", 0x00CC93E3, 0x00CC965D, "a,b,ox,oy,oz,sec",
+            ScriptReturn.WaitScaledFrames, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "6 required; A to B+off vtbl+1892; vtbl+1644; loop arg5*15; yield if [ebp+103]"),
         Spec("CameraShake", 0x00CD131F, 0x00CD1366, "arg0,arg1",
             ScriptReturn.CompleteNow, CommandParity.ScriptLayer,
             "atof both; vtbl+1696(arg1,arg0); jmp 00CD17FD; decay unread"),

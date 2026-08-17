@@ -201,6 +201,9 @@ public static class GlobalDispatcher
         if (Eq(v, "UseCameraFOVMarkerList"))
             return ApplyUseCameraFovMarkerList(line, ctx);
 
+        if (Eq(v, "CameraRig"))
+            return ApplyCameraRig(line, ctx);
+
         if (Eq(v, "CameraEffect"))
         {
             if (line.Arg(0).Length == 0 || line.Arg(1).Length == 0 ||
@@ -1088,6 +1091,50 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, side);
         return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
             "SetLightScene vtbl+2180", side);
+    }
+
+    /// <summary>
+    /// <c>00CC9436</c>: six required args else
+    /// <c>00CD17FD</c>. Lookup arg0/arg1. atof
+    /// arg2-4 offset. arg5 * 15 loop count.
+    /// Each iter: <c>vtbl+1892</c> A to B+off,
+    /// <c>vtbl+1644</c>, yield if <c>[ebp+103]</c>.
+    /// </summary>
+    internal static CommandResult ApplyCameraRig(
+        ScriptLine line, ScriptExecutionContext ctx)
+    {
+        for (var i = 0; i < 6; i++)
+        {
+            if (line.Arg(i).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        }
+
+        var nameA = line.Arg(0);
+        var nameB = line.Arg(1);
+        var offset = ReadOffset(line, 2);
+        ScriptLine.TryFloat(line.Arg(5), out var seconds);
+        var frames = seconds * RegionTravel.GamePauseScale;
+        if (frames <= 0f)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "0");
+        var b = ctx.FindThing(nameB);
+        Vector3? dest = b is { PositionX: not null }
+            ? RegionTravel.PositionOf(b) + offset
+            : null;
+        ctx.World.Teleport(nameA, nameB, dest);
+        ctx.Camera.Rig(
+            ctx.Runtime.Camera, ctx.Runtime.Things, b, nameA, nameB, offset, seconds);
+        var side = dest is { } d
+            ? $"{nameA}@{d.X:0.##},{d.Y:0.##},{d.Z:0.##} {seconds:0.##}s"
+            : $"{nameA}|{nameB} {seconds:0.##}s";
+        if (!ctx.Cutscene.YieldEnable)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, side);
+        ctx.Cutscene.GamePauseTarget = frames;
+        ctx.Cutscene.GamePauseCounter = 0f;
+        ctx.Cutscene.GamePausePhase = 1;
+        return CommandResult.Wait(
+            ExecutionKind.WaitScaledFrames, CommandStatus.Proven, CommandFamily.Global,
+            "CameraRig vtbl+1644 loop", "scaled-frames", null, side,
+            advanceWhenDone: true);
     }
 
     /// <summary>
