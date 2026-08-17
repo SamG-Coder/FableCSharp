@@ -285,11 +285,21 @@ public sealed class WorldSceneTests
         Assert.Equal(0x0088F890u, RegionTravel.PlayAviApplyFn);
         Assert.Equal(0x0040D2A0u, RegionTravel.PlayAviSingleton);
         Assert.Equal(0x006286F0u, RegionTravel.PlayAviPlayer);
+        Assert.Equal(0x00A3B9D0u, RegionTravel.PlayAviOpen);
+        Assert.Equal(0x0099C1E0u, RegionTravel.PlayAviRewrite);
+        Assert.Equal(0x01258DE0u, RegionTravel.PlayAviExtXmvVa);
+        Assert.Equal(0x01258DECu, RegionTravel.PlayAviExtWmvVa);
         Assert.Equal(0x1B, RegionTravel.PlayAviMode);
         Assert.True(RegionTravel.FirstSeenPlayAviDoesNotYield);
         Assert.True(RegionTravel.FirstSeenPlayAviIsBlocking);
+        Assert.True(RegionTravel.FirstSeenPlayAviRewritesXmv);
         Assert.Equal(@"Data\Video\", RegionTravel.PlayAviPrefix);
         Assert.Equal("dream_sequence_comp.xmv", RegionTravel.IntroPlayAvi);
+        Assert.Equal("dream_sequence_comp.wmv", RegionTravel.IntroPlayAviRewritten);
+        Assert.Equal(1, RegionTravel.PlayAviSkipEscape);
+        Assert.Equal(57, RegionTravel.PlayAviSkipSpace);
+        Assert.Equal(28, RegionTravel.PlayAviSkipReturn);
+        Assert.Equal(62, RegionTravel.PlayAviSkipF4);
         Assert.Equal(0x00CC9E6Au, RegionTravel.NoLoadUseCameraSite);
         Assert.Equal(0x00CC9E69u, RegionTravel.NoLoadUseCameraOpcode);
         Assert.Equal(0x00CC9F39u, RegionTravel.UseCameraOpcode);
@@ -772,8 +782,17 @@ public sealed class WorldSceneTests
         script.Update(0.1f);
         Assert.Contains("PlayAVI dream_sequence_comp.xmv", intro.Executed);
         Assert.Equal(@"Data\Video\dream_sequence_comp.xmv", runtime.LastAvi);
+        Assert.Equal(@"Data\Video\dream_sequence_comp.wmv", runtime.AviRelativePath);
+        Assert.True(runtime.AviPlaying);
+        Assert.NotNull(runtime.AviFile);
+        Assert.True(File.Exists(runtime.AviFile));
+        Assert.True(RegionTravel.FileHasAsfMagic(runtime.AviFile));
         Assert.True(RegionTravel.FirstSeenPlayAviDoesNotYield);
+        Assert.True(RegionTravel.FirstSeenPlayAviIsBlocking);
         Assert.False(RegionTravel.FirstSeenPlayAvi);
+        Assert.False(intro.ExecutedVerb("MuteSounds"));
+        runtime.SkipAvi();
+        script.Update(0.1f);
         Assert.Contains("MuteSounds false", intro.Executed);
         Assert.False(runtime.SoundsMuted);
         Assert.Equal(0x00CC7258u, RegionTravel.MuteSoundsOpcode);
@@ -1830,6 +1849,49 @@ public sealed class WorldSceneTests
         Assert.True(nearHero > 10, $"kid mesh missing at MK_OVI_ID_HERO nearHero={nearHero}");
         Assert.True(nearDad > 10, $"Father mesh missing at MK_OVI_ID_DAD nearDad={nearDad}");
         Assert.True(nearHero > nearSpawn, $"kid still at NOVStartHSP nearHero={nearHero} nearSpawn={nearSpawn}");
+    }
+
+    [Fact]
+    public void PlayAvi_rewrites_xmv_to_installed_wmv_and_blocks()
+    {
+        var install = Require();
+        var relative = RegionTravel.PlayAviPrefix + RegionTravel.IntroPlayAvi;
+        Assert.Equal(
+            RegionTravel.PlayAviPrefix + RegionTravel.IntroPlayAviRewritten,
+            RegionTravel.RewritePlayAviPath(relative));
+        Assert.True(RegionTravel.PlayAviIsWmvPath(relative));
+        var file = RegionTravel.ResolvePlayAviFile(install, relative);
+        Assert.NotNull(file);
+        Assert.True(File.Exists(file));
+        Assert.Equal("dream_sequence_comp.wmv", Path.GetFileName(file), StringComparer.OrdinalIgnoreCase);
+        Assert.True(RegionTravel.FileHasAsfMagic(file));
+        Assert.Equal(0x0099C1E0u, RegionTravel.PlayAviRewrite);
+        Assert.Equal(0x00A3B9D0u, RegionTravel.PlayAviOpen);
+        Assert.Equal(0x01258DE0u, RegionTravel.PlayAviExtXmvVa);
+        Assert.Equal(0x01258DECu, RegionTravel.PlayAviExtWmvVa);
+        Assert.Equal(0x0129D1E8u, RegionTravel.PlayAviExtAsfVa);
+        Assert.True(RegionTravel.IsPlayAviSkipScan(RegionTravel.PlayAviSkipEscape));
+        Assert.True(RegionTravel.IsPlayAviSkipScan(57));
+        Assert.True(RegionTravel.IsPlayAviSkipScan(28));
+        Assert.True(RegionTravel.IsPlayAviSkipScan(62));
+        Assert.False(RegionTravel.IsPlayAviSkipScan(2));
+
+        using var levels = new LevelLibrary(install);
+        var things = levels.LoadThings("StartOakValeWest").Things.ToList();
+        var runtime = ScriptRuntime.StartNewGame(install, things);
+        var intro = runtime.FindInterpreter(RegionTravel.IntroCutscene);
+        Assert.NotNull(intro);
+        runtime.Update(0.1f);
+        runtime.Update(0.1f);
+        runtime.Update(0.1f);
+        Assert.Contains("PlayAVI dream_sequence_comp.xmv", intro.Executed);
+        Assert.True(runtime.AviPlaying);
+        Assert.Equal(file, runtime.AviFile, StringComparer.OrdinalIgnoreCase);
+        Assert.False(intro.ExecutedVerb("MuteSounds"));
+        runtime.SkipAvi();
+        runtime.Update(0.1f);
+        Assert.False(runtime.AviPlaying);
+        Assert.Contains("MuteSounds false", intro.Executed);
     }
 
     private static int CountPropNear(WorldGeometry world, float x, float y, float radius)

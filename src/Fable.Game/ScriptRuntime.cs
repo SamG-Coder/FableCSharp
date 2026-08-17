@@ -34,6 +34,9 @@ public sealed class ScriptRuntime : IScriptHost
         (byte)Math.Clamp((int)(OverlayFraction() * RegionTravel.FadeAlphaScale), 0, 255);
     public string? LastMusic { get; private set; }
     public string? LastAvi { get; private set; }
+    public string? AviRelativePath { get; private set; }
+    public string? AviFile { get; private set; }
+    public bool AviPlaying { get; private set; }
     public bool SoundsMuted { get; private set; }
     public int TimeCode { get; private set; }
     public float LastGamePause { get; private set; }
@@ -81,8 +84,13 @@ public sealed class ScriptRuntime : IScriptHost
     private readonly List<string> _preloadedCameras = [];
     private IReadOnlyList<ThingInstance> _things = [];
     private ScriptedCamera? _camera;
+    private GameInstall? _install;
 
-    public void Load(ScriptBank bank) => Bank = bank;
+    public void Load(ScriptBank bank, GameInstall? install = null)
+    {
+        Bank = bank;
+        _install = install;
+    }
 
     public void BindScene(IEnumerable<ThingInstance> things, ScriptedCamera? camera)
     {
@@ -250,7 +258,7 @@ public sealed class ScriptRuntime : IScriptHost
     {
         var list = things as IReadOnlyList<ThingInstance> ?? things.ToList();
         var runtime = new ScriptRuntime();
-        runtime.Load(ScriptBank.Load(install));
+        runtime.Load(ScriptBank.Load(install), install);
         runtime.BindScene(list, camera);
         runtime.RegisterNamedScript(RegionTravel.LiveFatherScript, RegionTravel.IntroCutscene);
         runtime.CreateFiber(RegionTravel.IntroScriptName, NewGameScript.PersistAttackOverName);
@@ -351,15 +359,26 @@ public sealed class ScriptRuntime : IScriptHost
     /// <c>00CCA26D</c>: prefix <c>Data\Video\</c> then
     /// <c>vtbl+1476</c> <c>0088F890</c> →
     /// <c>0040D2A0</c> then blocking
-    /// <c>006286F0(edx=0x1B)</c>. Interpreter
-    /// <c>jmp 00CD17F8</c> (no yield). First-seen
-    /// is after LookToThing. Do not invent video.
+    /// <c>006286F0(edx=0x1B)</c>. <c>0099C1E0</c>
+    /// rewrites <c>.xmv</c> → <c>.wmv</c>.
+    /// Interpreter stays in the apply until the
+    /// player returns (no <c>vtbl+28</c>).
     /// </summary>
     void IScriptHost.PlayAvi(string arguments)
     {
         var file = ScriptInterpreter.FirstToken(arguments);
         LastAvi = file.Length == 0 ? null : RegionTravel.PlayAviPrefix + file;
+        AviRelativePath = LastAvi is null ? null : RegionTravel.RewritePlayAviPath(LastAvi);
+        AviFile = LastAvi is null || _install is null
+            ? null
+            : RegionTravel.ResolvePlayAviFile(_install, LastAvi);
+        AviPlaying = AviFile is not null;
     }
+
+    /// <summary>
+    /// <c>006286F0</c> skip scan 1 / 57 / 28 / 62.
+    /// </summary>
+    public void SkipAvi() => AviPlaying = false;
 
     /// <summary>
     /// <c>00CC7258</c>: <c>00CBEE0C</c> IsFalse →

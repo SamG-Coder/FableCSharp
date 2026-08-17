@@ -85,8 +85,19 @@ window.Update += dt =>
 
     if (keyboard.IsKeyPressed(Key.Escape))
     {
-        window.Close();
+        if (intro?.Runtime.AviPlaying == true)
+            intro.Runtime.SkipAvi();
+        else
+            window.Close();
         return;
+    }
+
+    if (intro?.Runtime.AviPlaying == true)
+    {
+        if (keyboard.IsKeyPressed(Key.Space) ||
+            keyboard.IsKeyPressed(Key.Enter) ||
+            keyboard.IsKeyPressed(Key.F4))
+            intro.Runtime.SkipAvi();
     }
 
     var f2Down = keyboard.IsKeyPressed(Key.F2);

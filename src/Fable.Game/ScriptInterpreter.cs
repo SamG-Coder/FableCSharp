@@ -24,6 +24,7 @@ public sealed class ScriptInterpreter
 
     private readonly List<string> _executed = [];
     private int _gamePausePhase;
+    private int _aviAt = -1;
 
     public ScriptInterpreter(string name, IReadOnlyList<string> commands)
     {
@@ -66,6 +67,17 @@ public sealed class ScriptInterpreter
                 host?.GamePause(ParseGamePauseSeconds(command.Arguments));
                 _executed.Add(raw);
                 InstructionPointer++;
+                continue;
+            }
+
+            if (command.Verb.Equals("PlayAVI", StringComparison.OrdinalIgnoreCase))
+            {
+                if (!TickPlayAvi(raw, command.Arguments, host))
+                {
+                    Yielded = true;
+                    return;
+                }
+
                 continue;
             }
 
@@ -156,6 +168,35 @@ public sealed class ScriptInterpreter
 
         ScriptFrameRemaining--;
         return ScriptFrameRemaining == 0;
+    }
+
+    /// <summary>
+    /// <c>006286F0</c> is a blocking apply: no
+    /// <c>vtbl+28</c>, then <c>jmp 00CD17F8</c>.
+    /// Stay on this line until the player returns.
+    /// </summary>
+    private bool TickPlayAvi(string raw, string arguments, IScriptHost? host)
+    {
+        if (host is null)
+        {
+            _executed.Add(raw);
+            InstructionPointer++;
+            return true;
+        }
+
+        if (_aviAt != InstructionPointer)
+        {
+            host.PlayAvi(arguments);
+            _executed.Add(raw);
+            _aviAt = InstructionPointer;
+        }
+
+        if (host.AviPlaying)
+            return false;
+
+        InstructionPointer++;
+        _aviAt = -1;
+        return true;
     }
 
     /// <summary>
@@ -696,6 +737,7 @@ public interface IScriptHost
     void LookToThing(string? actor, string arguments);
     void DoCameraPreloading(string arguments);
     void PlayAvi(string arguments);
+    bool AviPlaying => false;
     void MuteSounds(string arguments);
     void StartTimeCode();
     void GamePause(float seconds);

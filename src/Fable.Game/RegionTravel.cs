@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Numerics;
+using Fable.Core;
 using Fable.Formats.Levels;
 using Fable.Formats.Tng;
 using Fable.Formats.Wld;
@@ -125,11 +126,27 @@ public static class RegionTravel
     public const uint PlayAviSingleton = 0x0040D2A0;
     public const uint PlayAviSingletonVa = 0x013B7D4C;
     public const uint PlayAviPlayer = 0x006286F0;
+    public const uint PlayAviOpen = 0x00A3B9D0;
+    public const uint PlayAviRewrite = 0x0099C1E0;
+    public const uint PlayAviExtXmvVa = 0x01258DE0;
+    public const uint PlayAviExtWmvVa = 0x01258DEC;
+    public const uint PlayAviExtAsfVa = 0x0129D1E8;
     public const int PlayAviMode = 0x1B;
     public const string PlayAviPrefix = @"Data\Video\";
+    public const string PlayAviExtXmv = ".xmv";
+    public const string PlayAviExtWmv = ".wmv";
+    public const string PlayAviExtAsf = ".asf";
     public const string IntroPlayAvi = "dream_sequence_comp.xmv";
+    public const string IntroPlayAviRewritten = "dream_sequence_comp.wmv";
     public const bool FirstSeenPlayAviDoesNotYield = true;
     public const bool FirstSeenPlayAviIsBlocking = true;
+    public const bool FirstSeenPlayAviRewritesXmv = true;
+    public const int PlayAviSkipEscape = 1;
+    public const int PlayAviSkipSpace = 57;
+    public const int PlayAviSkipReturn = 28;
+    public const int PlayAviSkipF4 = 62;
+    public static readonly byte[] PlayAviAsfMagic =
+        [0x30, 0x26, 0xB2, 0x75, 0x8E, 0x66, 0xCF, 0x11, 0xA6, 0xD9, 0x00, 0xAA, 0x00, 0x62, 0xCE, 0x6C];
     public const uint NoLoadUseCameraSite = 0x00CC9E6A;
     /// <summary>
     /// <c>00CC9F39</c> <c>UseCamera</c>. Empty / null
@@ -870,6 +887,49 @@ public static class RegionTravel
         value = new Vector3(x, y, z);
         return true;
     }
+
+    /// <summary>
+    /// <c>006286F0</c> builds wide <c>.xmv</c> /
+    /// <c>.wmv</c> and <c>0099C1E0</c> replaces the
+    /// first with the second. PC TLC ships WMV.
+    /// </summary>
+    public static string RewritePlayAviPath(string relative)
+    {
+        if (relative.EndsWith(PlayAviExtXmv, StringComparison.OrdinalIgnoreCase))
+            return relative[..^PlayAviExtXmv.Length] + PlayAviExtWmv;
+        return relative;
+    }
+
+    /// <summary>
+    /// Script prefix is <c>Data\Video\</c> from the
+    /// install root (same folder as <c>Fable.exe</c>).
+    /// Missing file is <c>00A3B9D0</c> fail — no play.
+    /// </summary>
+    public static string? ResolvePlayAviFile(GameInstall install, string relative)
+    {
+        var rewritten = RewritePlayAviPath(relative);
+        var full = Path.Combine(install.Root, rewritten.Replace('\\', Path.DirectorySeparatorChar));
+        return File.Exists(full) ? full : null;
+    }
+
+    public static bool PlayAviIsWmvPath(string relative)
+    {
+        var rewritten = RewritePlayAviPath(relative);
+        return rewritten.EndsWith(PlayAviExtWmv, StringComparison.OrdinalIgnoreCase) ||
+               rewritten.EndsWith(PlayAviExtAsf, StringComparison.OrdinalIgnoreCase);
+    }
+
+    public static bool FileHasAsfMagic(string path)
+    {
+        using var stream = File.OpenRead(path);
+        Span<byte> header = stackalloc byte[PlayAviAsfMagic.Length];
+        if (stream.Read(header) < header.Length)
+            return false;
+        return header.SequenceEqual(PlayAviAsfMagic);
+    }
+
+    public static bool IsPlayAviSkipScan(int dik) =>
+        dik is PlayAviSkipEscape or PlayAviSkipSpace or PlayAviSkipReturn or PlayAviSkipF4;
 
     public static Vector3 ForwardOf(ThingInstance thing)
     {

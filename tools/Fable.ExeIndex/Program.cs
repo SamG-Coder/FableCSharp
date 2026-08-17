@@ -862,7 +862,7 @@ static void RunExportScriptBank(PeImage pe, DumpStore store, GameInstall? instal
     native.AppendLine("| PlayMusic | `00CC8EAC` / `00CBF7FE` | lookup `009E5120` then `vtbl+2784`. Jumps `00CD17FD` (no yield). |");
     native.AppendLine("| command loop | `00CD17FD` | `inc [ebp-72]` then `jb 00CC012E`. Next line is `FadeOut 0.5,0`. |");
     native.AppendLine("| FadeOut opcode | `00CD0987` | same-slice after PlayMusic. Parses 0.5 / 0 / default black. Apply `vtbl+1488(0.5,0)` then `jmp 00CD17FD`. |");
-    native.AppendLine("| PlayAVI | `00CCA26D` | first arg required else `jmp 00CD17FD`. Prefix `Data\\Video\\` via `0099F570`, `vtbl+1476` **`0088F890`** → `0040D2A0` singleton `[0x13B7D4C]` then blocking **`006286F0(edx=0x1B)`**. `jmp 00CD17F8`. **No** `vtbl+28`. First-seen is after LookToThing (`FirstSeenPlayAvi=false`). |");
+    native.AppendLine("| PlayAVI | `00CCA26D` | first arg required else `jmp 00CD17FD`. Prefix `Data\\Video\\` via `0099F570`, `vtbl+1476` **`0088F890`** → `0040D2A0` then blocking **`006286F0(edx=0x1B)`**. `0099C1E0` rewrites wide `.xmv` (`0x1258DE0`) → `.wmv` (`0x1258DEC`). Open `00A3B9D0` uses DirectShow when path has `.wmv`/`.asf` (`0x129D1E8`). Skip scan DIK 1/57/28/62. `jmp 00CD17F8`. **No** `vtbl+28`. After LookToThing (`FirstSeenPlayAvi=false`) but early intro — PC file is `dream_sequence_comp.wmv`. |");
     native.AppendLine("| MuteSounds | `00CC7258` | `00CBEE0C` IsFalse → `vtbl+2664(0)` else `(1)`. `jmp 00CC8464` (next token). **No** `vtbl+28`. First-seen `false` unmutes. Apply body UNREAD. |");
     native.AppendLine("| NoLoadUseCamera | `00CC9E6A` | separate token from `UseCamera`. |");
     native.AppendLine("| .Teleport | `00CC4678` | lookup marker `vtbl+280/+288`, apply `vtbl+1892` **`0089B780`**. Marker pos `004AA980` = `[handle+4].vtbl+24`. Yaw `004AAA40` = `vtbl+40` default 0. Writes `[thing+96].vtbl+124(pos)`. Second arg `00CBEE0C` is **IsFalse**. **No** `vtbl+28`. `jmp 00CC707C`. `00DB86B0` binds `Hero`/`Father` via `00CD3D2E`/`008ABD10`. |");
@@ -1044,6 +1044,9 @@ static void RunTraceScriptRuntime(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "PlayAVI vtbl+1476 0088F890", 0x0088F890, 20, stopOnRet: false),
         WriteWalkPart(pe, store, family, "PlayAVI singleton 0040D2A0", 0x0040D2A0, 20),
         WriteWalkPart(pe, store, family, "PlayAVI player 006286F0", 0x006286F0, 80),
+        WriteWalkPart(pe, store, family, "PlayAVI open 00A3B9D0", 0x00A3B9D0, 80),
+        WriteWalkPart(pe, store, family, "PlayAVI rewrite 0099C1E0", 0x0099C1E0, 40),
+        WriteWalkPart(pe, store, family, "PlayAVI ctor 00A3BC70", 0x00A3BC70, 20),
         WriteFnPart(pe, store, family, "command continue join 00CD17F8", 0x00CD17F8, 12, stopOnRet: false),
         WriteWalkPart(pe, store, family, "CString concat 0099F570", 0x0099F570, 30),
         WriteCallDispPart(pe, store, family, "calldisp vtbl+1476 PlayAVI", 0x5C4, 0x00CCA280, 0x00CCA320),
@@ -1711,6 +1714,9 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "PlayAVI vtbl+1476 0088F890", 0x0088F890, 20, stopOnRet: false),
         WriteWalkPart(pe, store, family, "PlayAVI singleton 0040D2A0", 0x0040D2A0, 20),
         WriteWalkPart(pe, store, family, "PlayAVI player 006286F0", 0x006286F0, 80),
+        WriteWalkPart(pe, store, family, "PlayAVI open 00A3B9D0", 0x00A3B9D0, 80),
+        WriteWalkPart(pe, store, family, "PlayAVI rewrite 0099C1E0", 0x0099C1E0, 40),
+        WriteWalkPart(pe, store, family, "PlayAVI ctor 00A3BC70", 0x00A3BC70, 20),
         WriteFnPart(pe, store, family, "command continue join 00CD17F8", 0x00CD17F8, 12, stopOnRet: false),
         WriteWalkPart(pe, store, family, "CString concat 0099F570", 0x0099F570, 30),
         WriteCallDispPart(pe, store, family, "calldisp vtbl+1476 PlayAVI", 0x5C4, 0x00CCA280, 0x00CCA320),
