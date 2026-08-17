@@ -344,7 +344,9 @@ public sealed class ScriptRuntime : IScriptHost
     /// <c>0089B780</c>: marker pos
     /// <c>004AA980</c> (<c>[handle+4].vtbl+24</c>),
     /// then <c>[thing+96].vtbl+124(pos)</c>.
-    /// Do not invent yaw / region-change.
+    /// <c>00CC47B4</c> also reads yaw
+    /// <c>004AAA40</c> into <c>0089BDF0</c>.
+    /// Do not invent the unread heading write.
     /// </summary>
     void IScriptHost.Teleport(string? actor, string arguments)
     {

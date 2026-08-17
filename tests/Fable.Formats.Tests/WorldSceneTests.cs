@@ -303,7 +303,20 @@ public sealed class WorldSceneTests
         Assert.Equal(0x009DC870u, RegionTravel.PlayAviBlit);
         Assert.Equal(0x009D9C80u, RegionTravel.PlayAviFlush);
         Assert.Equal(0.5f, RegionTravel.PlayAviLetterboxHalf);
-        Assert.False(RegionTravel.FirstSeenPlayAviDraws);
+        Assert.Equal(0x012AB174u, RegionTravel.PlayAviFilterGraphClsidVa);
+        Assert.Equal(0x012A9934u, RegionTravel.PlayAviGraphBuilderIidVa);
+        Assert.Equal(0x00A3B510u, RegionTravel.PlayAviRendererCtor);
+        Assert.Equal(0x00A3B5F0u, RegionTravel.PlayAviCheckMediaType);
+        Assert.Equal(0x00A3B130u, RegionTravel.PlayAviRun);
+        Assert.Equal(0x00A3BCF0u, RegionTravel.PlayAviDoRenderSample);
+        Assert.Equal(50, RegionTravel.PlayAviRunRetry);
+        Assert.Equal(1, RegionTravel.PlayAviEcComplete);
+        Assert.Equal(21, RegionTravel.PlayAviTextureFormatArgb);
+        Assert.Equal(new Guid("e436ebb3-524f-11ce-9f53-0020af0ba770"), RegionTravel.PlayAviFilterGraphClsid);
+        Assert.Equal(new Guid("56a868a9-0ad4-11ce-b03a-0020af0ba770"), RegionTravel.PlayAviGraphBuilderIid);
+        Assert.True(RegionTravel.FirstSeenPlayAviIsDirectShow);
+        Assert.False(RegionTravel.FirstSeenPlayAviIsMediaFoundation);
+        Assert.True(RegionTravel.FirstSeenPlayAviDraws);
         Assert.True(RegionTravel.FirstSeenPlayAviLetterbox);
         Assert.Equal(0x00CC9E6Au, RegionTravel.NoLoadUseCameraSite);
         Assert.Equal(0x00CC9E69u, RegionTravel.NoLoadUseCameraOpcode);
@@ -321,7 +334,11 @@ public sealed class WorldSceneTests
         Assert.Equal(0x004AA980u, RegionTravel.TeleportMarkerPos);
         Assert.Equal(124, RegionTravel.TeleportSetPosVtbl);
         Assert.True(RegionTravel.FirstSeenTeleportAppliesPos);
+        Assert.True(RegionTravel.FirstSeenTeleportReadsYaw);
         Assert.False(RegionTravel.FirstSeenTeleportAppliesYaw);
+        Assert.Equal(0x0089BDF0u, RegionTravel.TeleportHeadingApply);
+        Assert.Equal(1896, RegionTravel.TeleportHeadingVtbl);
+        Assert.Equal(264, RegionTravel.TeleportSetYawVtbl);
         Assert.False(RegionTravel.FirstSeenWatchBarrelsSpawnsBeetle);
         Assert.False(RegionTravel.FirstSeenHandsPlayerControl);
         Assert.False(RegionTravel.FirstSeenCameraNameInExe);
@@ -731,6 +748,7 @@ public sealed class WorldSceneTests
         Assert.Contains("Father.LookToThing Hero,FOREVER", intro.Executed);
         Assert.True(RegionTravel.FirstSeenTeleportDoesNotYield);
         Assert.True(RegionTravel.FirstSeenTeleportAppliesPos);
+        Assert.True(RegionTravel.FirstSeenTeleportReadsYaw);
         Assert.False(RegionTravel.FirstSeenTeleportAppliesYaw);
         Assert.False(RegionTravel.FirstSeenTeleportChangesRegion);
         Assert.True(RegionTravel.FirstSeenLookToThingYields);
@@ -1872,8 +1890,9 @@ public sealed class WorldSceneTests
         Assert.True(RegionTravel.FileHasAsfMagic(file));
         using var player = WmvPlayer.TryOpen(file);
         Assert.True(
-            player is null || (player.Rgba is { Length: > 0 } && player.Width >= 16),
+            player is { Rgba.Length: > 0, Width: >= 16, Height: >= 16 },
             $"WmvPlayer opened without a frame: {WmvPlayer.LastError}");
+        Assert.True(player.Rgba.Any(b => b != 0), "first frame is all zero");
 
         Assert.Equal(0x0099C1E0u, RegionTravel.PlayAviRewrite);
         Assert.Equal(0x00A3B9D0u, RegionTravel.PlayAviOpen);

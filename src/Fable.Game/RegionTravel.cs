@@ -155,7 +155,48 @@ public static class RegionTravel
     public const uint PlayAviFlush = 0x009D9C80;
     public const uint PlayAviLetterboxHalfVa = 0x0122F59C;
     public const float PlayAviLetterboxHalf = 0.5f;
-    public const bool FirstSeenPlayAviDraws = false;
+    /// <summary>
+    /// <c>00A3B9D0</c> CoCreate <c>0x12AB174</c> /
+    /// <c>0x12A9934</c> (FilterGraph + IGraphBuilder),
+    /// alloc <c>0x180</c> renderer <c>00A3B510</c>,
+    /// <c>AddFilter</c> vtbl+12, <c>RenderFile</c>
+    /// vtbl+52. <c>00A3B5F0</c> copies
+    /// <c>VIDEOINFOHEADER</c> biWidth / abs(biHeight)
+    /// and RGB24 stride <c>((w+1)*3)&amp;~3</c>. D3D
+    /// texture formats 21 / 25. <c>00A3B130</c>
+    /// <c>put_CurrentPosition(0)</c> then
+    /// <c>IMediaControl::Run</c> vtbl+28, retry 50.
+    /// <c>DoRenderSample</c> <c>00A3BCF0</c> is
+    /// <c>ret</c>; pixels are
+    /// <c>IMediaSample::GetPointer</c>.
+    /// </summary>
+    public const uint PlayAviFilterGraphClsidVa = 0x012AB174;
+    public const uint PlayAviGraphBuilderIidVa = 0x012A9934;
+    public const uint PlayAviCoCreateIat = 0x01440640;
+    public const uint PlayAviRendererCtor = 0x00A3B510;
+    public const uint PlayAviCheckMediaType = 0x00A3B5F0;
+    public const uint PlayAviRun = 0x00A3B130;
+    public const uint PlayAviDoRenderSample = 0x00A3BCF0;
+    public const uint PlayAviRendererVtbl = 0x0129D08C;
+    public const uint PlayAviPinVtbl = 0x0129D04C;
+    public const uint PlayAviMemInputVtbl = 0x0129D008;
+    public const int PlayAviRendererSize = 0x180;
+    public const int PlayAviAddFilterVtbl = 12;
+    public const int PlayAviRenderFileVtbl = 52;
+    public const int PlayAviMediaControlRunVtbl = 28;
+    public const int PlayAviMediaPositionPutVtbl = 32;
+    public const int PlayAviRunRetry = 50;
+    public const int PlayAviEcComplete = 1;
+    public const int PlayAviTextureFormatArgb = 21;
+    public const int PlayAviTextureFormat555 = 25;
+    public const uint PlayAviSeekZeroVa = 0x0122ED70;
+    public static readonly Guid PlayAviFilterGraphClsid =
+        new("e436ebb3-524f-11ce-9f53-0020af0ba770");
+    public static readonly Guid PlayAviGraphBuilderIid =
+        new("56a868a9-0ad4-11ce-b03a-0020af0ba770");
+    public const bool FirstSeenPlayAviIsDirectShow = true;
+    public const bool FirstSeenPlayAviIsMediaFoundation = false;
+    public const bool FirstSeenPlayAviDraws = true;
     public const bool FirstSeenPlayAviLetterbox = true;
     public static readonly byte[] PlayAviAsfMagic =
         [0x30, 0x26, 0xB2, 0x75, 0x8E, 0x66, 0xCF, 0x11, 0xA6, 0xD9, 0x00, 0xAA, 0x00, 0x62, 0xCE, 0x6C];
@@ -266,6 +307,20 @@ public static class RegionTravel
     public const string IntroHeroTeleportMarker = "MK_OVI_ID_HERO";
     public const string IntroFatherTeleportMarker = "MK_OVI_ID_DAD";
     public const bool FirstSeenTeleportAppliesPos = true;
+    /// <summary>
+    /// <c>00CC47B4</c> calls <c>004AAA40</c> and
+    /// <c>fstp</c>s the float into
+    /// <c>0089B780</c>. That fn later
+    /// <c>vtbl+1896</c> <c>0089BDF0</c>. Heading
+    /// write is <c>[thing+96].vtbl+264</c> or
+    /// look-at <c>00753E90</c> — both unread as
+    /// a mesh rotate.
+    /// </summary>
+    public const uint TeleportHeadingApply = 0x0089BDF0;
+    public const int TeleportHeadingVtbl = 1896;
+    public const int TeleportSetYawVtbl = 264;
+    public const uint TeleportLookAt = 0x00753E90;
+    public const bool FirstSeenTeleportReadsYaw = true;
     public const bool FirstSeenTeleportAppliesYaw = false;
     public const bool FirstSeenTeleportChangesRegion = false;
     public const uint LookToThingOpcode = 0x00CC3B3F;

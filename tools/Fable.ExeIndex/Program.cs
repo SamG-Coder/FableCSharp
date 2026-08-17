@@ -862,10 +862,10 @@ static void RunExportScriptBank(PeImage pe, DumpStore store, GameInstall? instal
     native.AppendLine("| PlayMusic | `00CC8EAC` / `00CBF7FE` | lookup `009E5120` then `vtbl+2784`. Jumps `00CD17FD` (no yield). |");
     native.AppendLine("| command loop | `00CD17FD` | `inc [ebp-72]` then `jb 00CC012E`. Next line is `FadeOut 0.5,0`. |");
     native.AppendLine("| FadeOut opcode | `00CD0987` | same-slice after PlayMusic. Parses 0.5 / 0 / default black. Apply `vtbl+1488(0.5,0)` then `jmp 00CD17FD`. |");
-    native.AppendLine("| PlayAVI | `00CCA26D` | first arg required else `jmp 00CD17FD`. Prefix `Data\\Video\\` via `0099F570`, `vtbl+1476` **`0088F890`** → `0040D2A0` then blocking **`006286F0(edx=0x1B)`**. `0099C1E0` rewrites wide `.xmv` (`0x1258DE0`) → `.wmv` (`0x1258DEC`). Open `00A3B9D0` uses DirectShow when path has `.wmv`/`.asf` (`0x129D1E8`). Skip scan DIK 1/57/28/62. `jmp 00CD17F8`. **No** `vtbl+28`. After LookToThing (`FirstSeenPlayAvi=false`) but early intro — PC file is `dream_sequence_comp.wmv`. |");
+    native.AppendLine("| PlayAVI | `00CCA26D` | first arg required else `jmp 00CD17FD`. Prefix `Data\\Video\\` via `0099F570`, `vtbl+1476` **`0088F890`** → `0040D2A0` then blocking **`006286F0(edx=0x1B)`**. `0099C1E0` rewrites wide `.xmv` (`0x1258DE0`) → `.wmv` (`0x1258DEC`). Open `00A3B9D0` CoCreate `0x12AB174`/`0x12A9934` (FilterGraph + IGraphBuilder), renderer ctor `00A3B510` size `0x180`, `AddFilter` vtbl+12, `RenderFile` vtbl+52. `00A3B5F0` copies VIDEOINFOHEADER biWidth/abs(biHeight); stride `((w+1)*3)&~3`. `00A3B130` `put_CurrentPosition(0)` then `Run` vtbl+28 retry 50. `DoRenderSample` `00A3BCF0` is `ret`. Sample is `IMediaSample::GetPointer`. Skip scan DIK 1/57/28/62. `jmp 00CD17F8`. **No** `vtbl+28`. After LookToThing (`FirstSeenPlayAvi=false`) but early intro — PC file is `dream_sequence_comp.wmv`. |");
     native.AppendLine("| MuteSounds | `00CC7258` | `00CBEE0C` IsFalse → `vtbl+2664(0)` else `(1)`. `jmp 00CC8464` (next token). **No** `vtbl+28`. First-seen `false` unmutes. Apply body UNREAD. |");
     native.AppendLine("| NoLoadUseCamera | `00CC9E6A` | separate token from `UseCamera`. |");
-    native.AppendLine("| .Teleport | `00CC4678` | lookup marker `vtbl+280/+288`, apply `vtbl+1892` **`0089B780`**. Marker pos `004AA980` = `[handle+4].vtbl+24`. Yaw `004AAA40` = `vtbl+40` default 0. Writes `[thing+96].vtbl+124(pos)`. Second arg `00CBEE0C` is **IsFalse**. **No** `vtbl+28`. `jmp 00CC707C`. `00DB86B0` binds `Hero`/`Father` via `00CD3D2E`/`008ABD10`. |");
+    native.AppendLine("| .Teleport | `00CC4678` | lookup marker `vtbl+280/+288`. Apply `00CC47B4` calls yaw `004AAA40` (`vtbl+40`, default `[0x122DEDC]=0`) then pos `004AA980` then `vtbl+1892` **`0089B780`**. `0089B780` writes `[thing+96].vtbl+124(pos)` and later `vtbl+1896` (LookInDirection) with that yaw. Second arg `00CBEE0C` is **IsFalse**. **No** `vtbl+28`. `jmp 00CC707C`. `00DB86B0` binds `Hero`/`Father` via `00CD3D2E`/`008ABD10`. |");
     native.AppendLine("| .LookToThing | `00CC3B3F` | apply `vtbl+1992`, parse `forever`. Third arg `00CBEE0C` (IsFalse) skips wait. Else if `[ebp+103]` (set **1** at `00CBFC65`) **`call [eax+28]`** then `00CBF7FE` / `jmp 00CC707C`. |");
     native.AppendLine("| actor join | `00CC707C` | dtor then next token `DoScriptFrame`. Teleport does not wait there. |");
     native.AppendLine("| DoScriptFrame | `00CC7085` | default count **1** (`xor esi; inc esi`). Arg via `0099E7F0` atoi. `esi<=0` skips. Loop: if `[ebp+103]` **`call [eax+28]`**, then `00CBF7FE`, `dec esi`. First-seen `[ebp+103]=1`. |");
@@ -1047,6 +1047,15 @@ static void RunTraceScriptRuntime(PeImage pe, DumpStore store)
         WriteWalkPart(pe, store, family, "PlayAVI open 00A3B9D0", 0x00A3B9D0, 80),
         WriteWalkPart(pe, store, family, "PlayAVI rewrite 0099C1E0", 0x0099C1E0, 40),
         WriteWalkPart(pe, store, family, "PlayAVI ctor 00A3BC70", 0x00A3BC70, 20),
+        WriteWalkPart(pe, store, family, "PlayAVI renderer ctor 00A3B510", 0x00A3B510, 20),
+        WriteWalkPart(pe, store, family, "PlayAVI CheckMediaType 00A3B5F0", 0x00A3B5F0, 40),
+        WriteWalkPart(pe, store, family, "PlayAVI Run 00A3B130", 0x00A3B130, 30),
+        WriteFnPart(pe, store, family, "PlayAVI DoRenderSample 00A3BCF0", 0x00A3BCF0, 4, stopOnRet: false),
+        WriteVtblPart(pe, store, family, "PlayAVI renderer IBaseFilter 0129D08C", 0x0129D08C, 24),
+        WriteVtblPart(pe, store, family, "PlayAVI renderer IMemInputPin 0129D008", 0x0129D008, 8),
+        WriteGuidPart(pe, store, family, "PlayAVI FilterGraph CLSID 012AB174", 0x012AB174),
+        WriteGuidPart(pe, store, family, "PlayAVI IGraphBuilder IID 012A9934", 0x012A9934),
+        WriteU32Part(pe, store, family, "PlayAVI seek 0 0122ED70", 0x0122ED70, 2),
         WriteWalkPart(pe, store, family, "PlayAVI blit 009DC870", 0x009DC870, 40),
         WriteWalkPart(pe, store, family, "PlayAVI flush 009D9C80", 0x009D9C80, 40),
         WriteU32Part(pe, store, family, "PlayAVI letterbox 0.5 0122F59C", 0x0122F59C, 1),
@@ -1145,6 +1154,7 @@ static void RunTraceScriptRuntime(PeImage pe, DumpStore store)
         WriteWalkPart(pe, store, family, "Teleport vtbl+1892 0089B780", 0x0089B780, 80),
         WriteWalkPart(pe, store, family, "Teleport marker pos 004AA980", 0x004AA980, 8),
         WriteWalkPart(pe, store, family, "Teleport marker yaw 004AAA40", 0x004AAA40, 8),
+        WriteWalkPart(pe, store, family, "Teleport heading apply 0089BDF0", 0x0089BDF0, 50),
         WriteWalkPart(pe, store, family, "Teleport handle valid 004AB130", 0x004AB130, 8),
         WriteWalkPart(pe, store, family, "cutscene actor bind 00CD3D2E", 0x00CD3D2E, 30),
         WriteWalkPart(pe, store, family, "cutscene actor slot 008ABD10", 0x008ABD10, 20),
@@ -1720,6 +1730,15 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteWalkPart(pe, store, family, "PlayAVI open 00A3B9D0", 0x00A3B9D0, 80),
         WriteWalkPart(pe, store, family, "PlayAVI rewrite 0099C1E0", 0x0099C1E0, 40),
         WriteWalkPart(pe, store, family, "PlayAVI ctor 00A3BC70", 0x00A3BC70, 20),
+        WriteWalkPart(pe, store, family, "PlayAVI renderer ctor 00A3B510", 0x00A3B510, 20),
+        WriteWalkPart(pe, store, family, "PlayAVI CheckMediaType 00A3B5F0", 0x00A3B5F0, 40),
+        WriteWalkPart(pe, store, family, "PlayAVI Run 00A3B130", 0x00A3B130, 30),
+        WriteFnPart(pe, store, family, "PlayAVI DoRenderSample 00A3BCF0", 0x00A3BCF0, 4, stopOnRet: false),
+        WriteVtblPart(pe, store, family, "PlayAVI renderer IBaseFilter 0129D08C", 0x0129D08C, 24),
+        WriteVtblPart(pe, store, family, "PlayAVI renderer IMemInputPin 0129D008", 0x0129D008, 8),
+        WriteGuidPart(pe, store, family, "PlayAVI FilterGraph CLSID 012AB174", 0x012AB174),
+        WriteGuidPart(pe, store, family, "PlayAVI IGraphBuilder IID 012A9934", 0x012A9934),
+        WriteU32Part(pe, store, family, "PlayAVI seek 0 0122ED70", 0x0122ED70, 2),
         WriteWalkPart(pe, store, family, "PlayAVI blit 009DC870", 0x009DC870, 40),
         WriteWalkPart(pe, store, family, "PlayAVI flush 009D9C80", 0x009D9C80, 40),
         WriteU32Part(pe, store, family, "PlayAVI letterbox 0.5 0122F59C", 0x0122F59C, 1),
@@ -1785,6 +1804,7 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteWalkPart(pe, store, family, "Teleport vtbl+1892 0089B780", 0x0089B780, 80),
         WriteWalkPart(pe, store, family, "Teleport marker pos 004AA980", 0x004AA980, 8),
         WriteWalkPart(pe, store, family, "Teleport marker yaw 004AAA40", 0x004AAA40, 8),
+        WriteWalkPart(pe, store, family, "Teleport heading apply 0089BDF0", 0x0089BDF0, 50),
         WriteWalkPart(pe, store, family, "Teleport handle valid 004AB130", 0x004AB130, 8),
         WriteWalkPart(pe, store, family, "cutscene actor bind 00CD3D2E", 0x00CD3D2E, 30),
         WriteWalkPart(pe, store, family, "cutscene actor slot 008ABD10", 0x008ABD10, 20),
@@ -2350,6 +2370,30 @@ static IndexLink WriteVtblPart(PeImage pe, DumpStore store, string family, strin
 
     store.WritePart(family, slug, sb.ToString());
     return new IndexLink(slug, "vtbl " + name, va);
+}
+
+static IndexLink WriteGuidPart(PeImage pe, DumpStore store, string family, string name, uint va)
+{
+    var slug = DumpStore.Slug(name, va);
+    var sb = new StringBuilder();
+    sb.AppendLine($"# {name}");
+    sb.AppendLine();
+    sb.AppendLine($"VA `0x{va:X8}` GUID. [INDEX](INDEX.md)");
+    sb.AppendLine();
+    var file = pe.FileOffset(va);
+    if (file < 0 || file + 16 > pe.Data.Length)
+        sb.AppendLine("UNREAD (VA not mapped)");
+    else
+    {
+        var guid = new Guid(pe.Data.AsSpan(file, 16).ToArray());
+        sb.AppendLine($"`{guid:D}`");
+        for (var i = 0; i < 16; i++)
+            sb.Append($"{pe.Data[file + i]:X2} ");
+        sb.AppendLine();
+    }
+
+    store.WritePart(family, slug, sb.ToString());
+    return new IndexLink(slug, name, va);
 }
 
 static IndexLink WriteU32Part(PeImage pe, DumpStore store, string family, string name, uint va, int n)

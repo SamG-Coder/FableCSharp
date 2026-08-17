@@ -3,12 +3,18 @@ using System.Runtime.InteropServices;
 namespace Fable.Game;
 
 /// <summary>
-/// <c>00A3B9D0</c> DirectShow / WMV path when the
-/// rewritten name ends <c>.wmv</c> / <c>.asf</c>.
-/// Media Foundation SourceReader is that same ASF
-/// graph on modern Windows. First sample is the
-/// first presented frame; EOF ends the blocking
-/// apply the way <c>006286F0</c> returns.
+/// <c>00A3B9D0</c> DirectShow path when the rewritten
+/// name ends <c>.wmv</c> / <c>.asf</c>. CoCreate
+/// <c>CLSID_FilterGraph</c> (<c>0x12AB174</c>) +
+/// <c>IID_IGraphBuilder</c> (<c>0x12A9934</c>),
+/// <c>AddFilter</c> a renderer (<c>00A3B510</c>),
+/// <c>RenderFile</c> vtbl+52, QI
+/// <c>IMediaControl</c> / <c>IMediaPosition</c> /
+/// <c>IMediaEvent</c>, <c>put_CurrentPosition(0)</c>
+/// then <c>Run</c> vtbl+28 up to 50 times
+/// (<c>00A3B130</c>). Samples are
+/// <c>IMediaSample::GetPointer</c>, not
+/// <c>IMFSample</c>. EOF is <c>EC_COMPLETE</c> (1).
 /// </summary>
 public sealed class WmvPlayer : IDisposable
 {
@@ -17,12 +23,17 @@ public sealed class WmvPlayer : IDisposable
     public byte[]? Rgba { get; private set; }
     public bool Ended { get; private set; }
 
-    private IMFSourceReader? _reader;
-    private long _elapsedHns;
-    private bool _started;
-    private string? _aviPath;
-
     public static string? LastError { get; private set; }
+
+    private readonly object _gate = new();
+    private Thread? _thread;
+    private volatile bool _stop;
+    private IGraphBuilder? _graph;
+    private IMediaControl? _control;
+    private IMediaEvent? _events;
+    private IMediaPosition? _position;
+    private TextureRenderer? _renderer;
+    private long _elapsedHns;
 
     public static WmvPlayer? TryOpen(string path)
     {
@@ -33,487 +44,974 @@ public sealed class WmvPlayer : IDisposable
             return null;
         }
 
-        var start = Mf.MFStartup(Mf.Version, Mf.StartupLite);
-        if (start < 0)
+        var player = new WmvPlayer();
+        var ready = new ManualResetEventSlim(false);
+        string? startError = null;
+        player._thread = new Thread(() =>
         {
-            LastError = $"MFStartup {start:X8}";
+            var hr = Ole32.CoInitializeEx(IntPtr.Zero, Ole32.ApartmentThreaded);
+            if (hr < 0 && hr != Ole32.RpcEChangedMode)
+            {
+                startError = $"CoInitializeEx {hr:X8}";
+                ready.Set();
+                return;
+            }
+
+            try
+            {
+                startError = player.BuildGraph(path);
+            }
+            catch (Exception ex)
+            {
+                startError = ex.GetType().Name + ": " + ex.Message;
+            }
+
+            ready.Set();
+            if (startError is null)
+                player.Pump();
+            player.TearDown();
+            Ole32.CoUninitialize();
+        })
+        {
+            IsBackground = true,
+            Name = "FableWmv",
+        };
+        player._thread.SetApartmentState(ApartmentState.STA);
+        player._thread.Start();
+        if (!ready.Wait(TimeSpan.FromSeconds(8)))
+        {
+            LastError = "sta-timeout";
+            player.Dispose();
             return null;
         }
 
-        var started = true;
-        try
+        if (startError is not null || player.Rgba is null || player.Width < 16)
         {
-            var url = path.StartsWith("file:", StringComparison.OrdinalIgnoreCase)
-                ? path
-                : "file:///" + path.Replace('\\', '/');
-            var hr = Mf.MFCreateSourceReaderFromURL(url, IntPtr.Zero, out var reader);
-            if (hr < 0 || reader is null)
-            {
-                LastError = $"SourceReader {hr:X8}";
-                Mf.MFShutdown();
-                return null;
-            }
-
-            var player = new WmvPlayer { _reader = reader, _started = true, _aviPath = path };
-            if (!player.ConfigureRgb32() || !player.ReadUntil(0))
-            {
-                LastError ??= "configure-or-first-sample";
-                player.Dispose();
-                return null;
-            }
-
-            return player;
-        }
-        catch (Exception ex)
-        {
-            LastError = ex.GetType().Name + ": " + ex.Message;
-            if (started)
-                Mf.MFShutdown();
+            LastError = startError ?? "no-sample";
+            player.Dispose();
             return null;
         }
+
+        return player;
     }
 
     public bool TryAdvance(float dt)
     {
-        if (Ended || _reader is null)
+        if (Ended)
             return false;
         if (dt > 0f)
             _elapsedHns += (long)(dt * 10_000_000d);
-        return ReadUntil(_elapsedHns);
-    }
-
-    private bool ConfigureRgb32()
-    {
-        if (_reader is null)
-            return false;
-        _reader.SetStreamSelection(Mf.AnyStream, false);
-        _reader.SetStreamSelection(Mf.FirstVideoStream, true);
-        TryReadFrameSizeFromType();
-        if (Width <= 0 || Height <= 0)
-            TryReadAsfBitmapSize();
-
-        var hr = Mf.MFCreateMediaType(out var type);
-        if (hr < 0 || type is null)
-        {
-            LastError = $"MFCreateMediaType {hr:X8}";
-            return false;
-        }
-
-        type.SetGUID(Mf.MajorType, Mf.Video);
-        type.SetGUID(Mf.Subtype, Mf.Rgb32);
-        if (Width > 0 && Height > 0)
-            type.SetUINT64(Mf.FrameSize, ((ulong)(uint)Width << 32) | (uint)Height);
-        try
-        {
-            _reader.SetCurrentMediaType(Mf.FirstVideoStream, IntPtr.Zero, type);
-        }
-        catch (Exception ex)
-        {
-            LastError = $"SetCurrentMediaType {Width}x{Height}: {ex.Message}";
-            Marshal.ReleaseComObject(type);
-            return false;
-        }
-
-        Marshal.ReleaseComObject(type);
-        if (Width <= 0 || Height <= 0)
-            TryReadFrameSizeFromType();
-        return true;
-    }
-
-    private void TryReadFrameSizeFromType()
-    {
-        if (_reader is null)
-            return;
-        try
-        {
-            _reader.GetNativeMediaType(Mf.FirstVideoStream, 0, out var native);
-            if (native is null)
-                return;
-            try
-            {
-                if (TryPackedSize(native, out var w, out var h))
-                {
-                    Width = w;
-                    Height = h;
-                }
-            }
-            finally
-            {
-                Marshal.ReleaseComObject(native);
-            }
-        }
-        catch
-        {
-            // Frame size may live in the ASF BITMAPINFOHEADER instead.
-        }
-    }
-
-    private static bool TryPackedSize(IMFMediaType type, out int width, out int height)
-    {
-        width = 0;
-        height = 0;
-        try
-        {
-            type.GetUINT64(Mf.FrameSize, out var packed);
-            width = (int)(packed >> 32);
-            height = (int)(packed & 0xFFFFFFFF);
-            return width > 0 && height > 0;
-        }
-        catch
-        {
-            return false;
-        }
-    }
-
-    private void InferSizeFromLength(int length)
-    {
-        if (length < 16 * 16 * 4 || length % 4 != 0)
-            return;
-        var pixels = length / 4;
-        foreach (var (w, h) in (ReadOnlySpan<(int, int)>)[(640, 480), (720, 480), (854, 480), (1280, 720), (320, 240)])
-        {
-            if (w * h != pixels)
-                continue;
-            Width = w;
-            Height = h;
-            return;
-        }
-
-        var height = (int)Math.Round(Math.Sqrt(pixels * 3.0 / 4.0));
-        if (height > 0 && pixels % height == 0)
-        {
-            Width = pixels / height;
-            Height = height;
-        }
-    }
-
-    private void TryReadAsfBitmapSize()
-    {
-        if (_aviPath is null)
-            return;
-        var header = new byte[Math.Min(1 << 18, (int)new FileInfo(_aviPath).Length)];
-        using (var stream = File.OpenRead(_aviPath))
-            _ = stream.Read(header);
-        var bytes = header;
-        for (var i = 0; i + 12 <= bytes.Length; i++)
-        {
-            if (BitConverter.ToInt32(bytes, i) != 40)
-                continue;
-            var width = BitConverter.ToInt32(bytes, i + 4);
-            var height = Math.Abs(BitConverter.ToInt32(bytes, i + 8));
-            if (width is >= 16 and <= 4096 && height is >= 16 and <= 4096)
-            {
-                Width = width;
-                Height = height;
-                return;
-            }
-        }
-    }
-
-    private bool ReadUntil(long targetHns)
-    {
-        if (_reader is null)
-            return false;
-        while (true)
-        {
-            var hr = _reader.ReadSample(
-                Mf.FirstVideoStream, 0,
-                out _, out var flags, out var time, out var samplePtr);
-            if (hr < 0)
-            {
-                LastError = $"ReadSample {hr:X8}";
-                return Rgba is not null;
-            }
-
-            if ((flags & Mf.EndOfStream) != 0)
-            {
-                Ended = true;
-                if (samplePtr != IntPtr.Zero)
-                    Marshal.Release(samplePtr);
-                return Rgba is not null;
-            }
-
-            if (samplePtr == IntPtr.Zero)
-            {
-                LastError = $"ReadSample empty hr={hr:X8} flags={flags} time={time}";
-                return Rgba is not null;
-            }
-
-            try
-            {
-                CopySample(samplePtr);
-            }
-            catch (Exception ex)
-            {
-                LastError = $"CopySample hr={hr:X8} flags={flags} ptr={samplePtr.ToInt64():X} {ex.Message}";
-                Marshal.Release(samplePtr);
-                return false;
-            }
-
-            Marshal.Release(samplePtr);
-            if (Rgba is null)
-                return false;
-            if (time >= targetHns)
-                return true;
-        }
-    }
-
-    private void CopySample(IntPtr samplePtr)
-    {
-        var sampleIid = typeof(IMFSample).GUID;
-        var bufferIid = typeof(IMFMediaBuffer).GUID;
-        IMFMediaBuffer? buffer;
-        if (Marshal.QueryInterface(samplePtr, ref sampleIid, out var sampleUnk) >= 0)
-        {
-            var sample = (IMFSample)Marshal.GetUniqueObjectForIUnknown(sampleUnk);
-            Marshal.Release(sampleUnk);
-            sample.ConvertToContiguousBuffer(out buffer);
-        }
-        else if (Marshal.QueryInterface(samplePtr, ref bufferIid, out var bufferUnk) >= 0)
-        {
-            buffer = (IMFMediaBuffer)Marshal.GetUniqueObjectForIUnknown(bufferUnk);
-            Marshal.Release(bufferUnk);
-        }
-        else
-        {
-            LastError = $"sample-qi ptr={samplePtr.ToInt64():X}";
-            return;
-        }
-        if (buffer is null)
-            return;
-        buffer.Lock(out var data, out _, out var length);
-        try
-        {
-            if (Width <= 0 || Height <= 0)
-                InferSizeFromLength(length);
-            var pixels = Width * Height;
-            if (pixels <= 0 || length < pixels * 4)
-                return;
-            var bgra = new byte[pixels * 4];
-            Marshal.Copy(data, bgra, 0, bgra.Length);
-            var rgba = Rgba is { Length: var n } && n == pixels * 4
-                ? Rgba
-                : new byte[pixels * 4];
-            for (var i = 0; i < pixels; i++)
-            {
-                var o = i * 4;
-                rgba[o] = bgra[o + 2];
-                rgba[o + 1] = bgra[o + 1];
-                rgba[o + 2] = bgra[o];
-                rgba[o + 3] = 255;
-            }
-
-            Rgba = rgba;
-        }
-        finally
-        {
-            buffer.Unlock();
-            Marshal.ReleaseComObject(buffer);
-        }
+        return Rgba is not null;
     }
 
     public void Dispose()
     {
-        if (_reader is not null)
+        _stop = true;
+        if (_thread is { IsAlive: true } &&
+            !_thread.Join(TimeSpan.FromSeconds(2)))
+            LastError ??= "sta-join";
+        _thread = null;
+    }
+
+    private string? BuildGraph(string path)
+    {
+        var clsid = Ds.FilterGraph;
+        var iid = typeof(IGraphBuilder).GUID;
+        var hr = Ole32.CoCreateInstance(
+            ref clsid, IntPtr.Zero, Ole32.InprocServer, ref iid, out var graphUnk);
+        if (hr < 0 || graphUnk == IntPtr.Zero)
+            return $"CoCreate FilterGraph {hr:X8}";
+
+        _graph = (IGraphBuilder)Marshal.GetObjectForIUnknown(graphUnk);
+        Marshal.Release(graphUnk);
+
+        _renderer = new TextureRenderer(OnSample);
+        hr = _graph.AddFilter(_renderer, "Fable Texture Renderer");
+        if (hr < 0)
+            return $"AddFilter {hr:X8}";
+
+        hr = _graph.RenderFile(path, null);
+        if (hr < 0)
         {
-            Marshal.ReleaseComObject(_reader);
-            _reader = null;
+            _graph.RemoveFilter(_renderer);
+            _renderer = null;
+            hr = _graph.RenderFile(path, null);
+            if (hr < 0)
+                return $"RenderFile {hr:X8}";
+            LastError = $"custom-renderer-miss {hr:X8}";
         }
 
-        if (_started)
+        _control = (IMediaControl)_graph;
+        _position = (IMediaPosition)_graph;
+        _events = (IMediaEvent)_graph;
+
+        // 00A3B130: put_CurrentPosition(0) then Run, retry 50.
+        for (var i = 0; i < 8 && _position is not null; i++)
         {
-            Mf.MFShutdown();
-            _started = false;
+            hr = _position.put_CurrentPosition(0d);
+            if (hr == 0)
+                break;
+        }
+
+        for (var i = 0; i < RegionTravel.PlayAviRunRetry; i++)
+        {
+            hr = _control.Run();
+            if (hr >= 0)
+                break;
+        }
+
+        if (hr < 0)
+            return $"Run {hr:X8}";
+
+        HideVideoWindow();
+
+        var deadline = Environment.TickCount64 + 5000;
+        while (Environment.TickCount64 < deadline && !_stop)
+        {
+            DrainEvents();
+            if (Rgba is null)
+                TryGrabBasicVideo();
+            if (Rgba is not null)
+                return null;
+            Thread.Sleep(15);
+        }
+
+        return Rgba is null ? "first-sample-timeout" : null;
+    }
+
+    private void HideVideoWindow()
+    {
+        if (_graph is not IVideoWindow window)
+            return;
+        try
+        {
+            window.put_AutoShow(0);
+            window.put_Visible(0);
+        }
+        catch
+        {
+            // Default renderer may not expose IVideoWindow.
         }
     }
 
-    private static class Mf
+    private void TryGrabBasicVideo()
     {
-        public const int Version = 0x00020070;
-        public const int StartupLite = 1;
-        public const int FirstVideoStream = unchecked((int)0xFFFFFFFC);
-        public const int AnyStream = unchecked((int)0xFFFFFFFE);
-        public const int EndOfStream = 0x2;
-        public static readonly Guid MajorType = new("48eba18e-f8c9-4687-bf11-0a74c9f96a8f");
-        public static readonly Guid Subtype = new("f7e34c9a-42e8-4714-b74b-cb29d72c35e5");
-        public static readonly Guid Video = new("73646976-0000-0010-8000-00AA00389B71");
-        public static readonly Guid Rgb32 = new("00000016-0000-0010-8000-00AA00389B71");
-        public static readonly Guid FrameSize = new("18231bfc-49ed-4d60-9e6c-d69c6afd7d1e");
+        if (_graph is not IBasicVideo video)
+            return;
+        try
+        {
+            if (video.get_VideoWidth(out var width) < 0 ||
+                video.get_VideoHeight(out var height) < 0 ||
+                width < 16 || height < 16)
+                return;
+            var size = 0;
+            if (video.GetCurrentImage(ref size, IntPtr.Zero) < 0 || size < 40)
+                return;
+            var dib = Marshal.AllocCoTaskMem(size);
+            try
+            {
+                if (video.GetCurrentImage(ref size, dib) < 0)
+                    return;
+                var header = Marshal.ReadInt32(dib);
+                if (header < 40)
+                    return;
+                var w = Marshal.ReadInt32(dib, 4);
+                var rawH = Marshal.ReadInt32(dib, 8);
+                var h = Math.Abs(rawH);
+                var bits = Marshal.ReadInt16(dib, 14);
+                if (w < 16 || h < 16 || bits is not (24 or 32))
+                    return;
+                var pixels = CopyDib(dib + header, w, h, bits, rawH < 0);
+                if (pixels is not null)
+                    OnSample(w, h, pixels);
+            }
+            finally
+            {
+                Marshal.FreeCoTaskMem(dib);
+            }
+        }
+        catch
+        {
+            // VMR/EVR often reject GetCurrentImage.
+        }
+    }
 
-        [DllImport("mfplat.dll")]
-        public static extern int MFStartup(int version, int flags);
+    private static byte[]? CopyDib(IntPtr data, int width, int height, int bits, bool topDown)
+    {
+        var bpp = bits == 32 ? 4 : 3;
+        var stride = (width * bpp + 3) & ~3;
+        var rgba = new byte[width * height * 4];
+        for (var y = 0; y < height; y++)
+        {
+            var srcY = topDown ? y : height - 1 - y;
+            var src = data + srcY * stride;
+            var dst = y * width * 4;
+            for (var x = 0; x < width; x++)
+            {
+                var o = x * bpp;
+                rgba[dst] = Marshal.ReadByte(src, o + 2);
+                rgba[dst + 1] = Marshal.ReadByte(src, o + 1);
+                rgba[dst + 2] = Marshal.ReadByte(src, o);
+                rgba[dst + 3] = 255;
+                dst += 4;
+            }
+        }
 
-        [DllImport("mfplat.dll")]
-        public static extern int MFShutdown();
+        return rgba;
+    }
 
-        [DllImport("mfplat.dll")]
-        public static extern int MFCreateMediaType(out IMFMediaType type);
+    private void Pump()
+    {
+        while (!_stop)
+        {
+            DrainEvents();
+            if (Ended)
+                break;
+            Thread.Sleep(15);
+        }
 
-        [DllImport("mfreadwrite.dll", CharSet = CharSet.Unicode)]
-        public static extern int MFCreateSourceReaderFromURL(
-            string url, IntPtr attributes, out IMFSourceReader reader);
+        try
+        {
+            _control?.Stop();
+        }
+        catch
+        {
+            // Graph may already be torn down.
+        }
+    }
+
+    private void DrainEvents()
+    {
+        if (_events is null)
+            return;
+        while (_events.GetEvent(out var code, out var p1, out var p2, 0) >= 0)
+        {
+            _events.FreeEventParams(code, p1, p2);
+            if (code == RegionTravel.PlayAviEcComplete)
+            {
+                Ended = true;
+                break;
+            }
+        }
+    }
+
+    private void OnSample(int width, int height, byte[] rgba)
+    {
+        lock (_gate)
+        {
+            Width = width;
+            Height = height;
+            Rgba = rgba;
+        }
+    }
+
+    private void TearDown()
+    {
+        _events = null;
+        _position = null;
+        if (_control is not null)
+        {
+            try { _control.Stop(); } catch { /* already stopped */ }
+            _control = null;
+        }
+
+        if (_graph is not null)
+        {
+            Marshal.ReleaseComObject(_graph);
+            _graph = null;
+        }
+
+        _renderer = null;
+    }
+
+    private static class Ole32
+    {
+        public const int ApartmentThreaded = 2;
+        public const int InprocServer = 1;
+        public const int RpcEChangedMode = unchecked((int)0x80010106);
+
+        [DllImport("ole32.dll")]
+        public static extern int CoInitializeEx(IntPtr reserved, int coInit);
+
+        [DllImport("ole32.dll")]
+        public static extern void CoUninitialize();
+
+        [DllImport("ole32.dll")]
+        public static extern int CoCreateInstance(
+            ref Guid clsid, IntPtr outer, int ctx, ref Guid iid, out IntPtr ppv);
+    }
+
+    private static class Ds
+    {
+        public static readonly Guid FilterGraph = new("e436ebb3-524f-11ce-9f53-0020af0ba770");
+        public static readonly Guid Video = new("73646976-0000-0010-8000-00aa00389b71");
+        public static readonly Guid Rgb24 = new("e436eb7d-524f-11ce-9f53-0020af0ba770");
+        public static readonly Guid Rgb32 = new("e436eb7e-524f-11ce-9f53-0020af0ba770");
+        public static readonly Guid VideoInfo = new("05589f80-c356-11ce-bf01-00aa0055595a");
     }
 
     [ComImport]
-    [Guid("2cd2d921-c447-44a7-a13c-4adabfc247e3")]
+    [Guid("56a868a9-0ad4-11ce-b03a-0020af0ba770")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IMFAttributes
+    private interface IGraphBuilder
     {
-        void GetItem(in Guid key, IntPtr value);
-        void GetItemType(in Guid key, out int type);
-        void CompareItem(in Guid key, IntPtr value, out int result);
-        void Compare(IMFAttributes other, int match, out int result);
-        void GetUINT32(in Guid key, out int value);
-        void GetUINT64(in Guid key, out ulong value);
-        void GetDouble(in Guid key, out double value);
-        void GetGUID(in Guid key, out Guid value);
-        void GetStringLength(in Guid key, out int length);
-        void GetString(in Guid key, IntPtr value, int size, out int length);
-        void GetAllocatedString(in Guid key, out IntPtr value, out int length);
-        void GetBlobSize(in Guid key, out int size);
-        void GetBlob(in Guid key, IntPtr buf, int size, out int written);
-        void GetAllocatedBlob(in Guid key, out IntPtr buf, out int size);
-        void GetUnknown(in Guid key, in Guid iid, out IntPtr unk);
-        void SetItem(in Guid key, IntPtr value);
-        void DeleteItem(in Guid key);
-        void DeleteAllItems();
-        void SetUINT32(in Guid key, int value);
-        void SetUINT64(in Guid key, ulong value);
-        void SetDouble(in Guid key, double value);
-        void SetGUID(in Guid key, in Guid value);
-        void SetString(in Guid key, [MarshalAs(UnmanagedType.LPWStr)] string value);
-        void SetBlob(in Guid key, IntPtr buf, int size);
-        void SetUnknown(in Guid key, [MarshalAs(UnmanagedType.IUnknown)] object unk);
-        void LockStore();
-        void UnlockStore();
-        void GetCount(out int count);
-        void GetItemByIndex(int index, out Guid key, IntPtr value);
-        void CopyAllItems(IMFAttributes dest);
+        [PreserveSig] int AddFilter([MarshalAs(UnmanagedType.Interface)] IBaseFilter filter, [MarshalAs(UnmanagedType.LPWStr)] string name);
+        [PreserveSig] int RemoveFilter([MarshalAs(UnmanagedType.Interface)] IBaseFilter filter);
+        [PreserveSig] int EnumFilters(out IntPtr enumerator);
+        [PreserveSig] int FindFilterByName([MarshalAs(UnmanagedType.LPWStr)] string name, out IntPtr filter);
+        [PreserveSig] int ConnectDirect(IntPtr outPin, IntPtr inPin, IntPtr type);
+        [PreserveSig] int Reconnect(IntPtr pin);
+        [PreserveSig] int Disconnect(IntPtr pin);
+        [PreserveSig] int SetDefaultSyncSource();
+        [PreserveSig] int Connect(IntPtr outPin, IntPtr inPin);
+        [PreserveSig] int Render(IntPtr outPin);
+        [PreserveSig] int RenderFile([MarshalAs(UnmanagedType.LPWStr)] string file, [MarshalAs(UnmanagedType.LPWStr)] string? playlist);
+        [PreserveSig] int AddSourceFilter([MarshalAs(UnmanagedType.LPWStr)] string file, [MarshalAs(UnmanagedType.LPWStr)] string name, out IntPtr filter);
+        [PreserveSig] int SetLogFile(IntPtr file);
+        [PreserveSig] int Abort();
+        [PreserveSig] int ShouldOperationContinue();
     }
 
     [ComImport]
-    [Guid("44ae0fa8-ea31-4109-8d2e-4cae4997c555")]
+    [Guid("56a868b1-0ad4-11ce-b03a-0020af0ba770")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IMFMediaType
+    private interface IMediaControl
     {
-        void GetItem(in Guid key, IntPtr value);
-        void GetItemType(in Guid key, out int type);
-        void CompareItem(in Guid key, IntPtr value, out int result);
-        void Compare(IntPtr other, int match, out int result);
-        void GetUINT32(in Guid key, out int value);
-        void GetUINT64(in Guid key, out ulong value);
-        void GetDouble(in Guid key, out double value);
-        void GetGUID(in Guid key, out Guid value);
-        void GetStringLength(in Guid key, out int length);
-        void GetString(in Guid key, IntPtr value, int size, out int length);
-        void GetAllocatedString(in Guid key, out IntPtr value, out int length);
-        void GetBlobSize(in Guid key, out int size);
-        void GetBlob(in Guid key, IntPtr buf, int size, out int written);
-        void GetAllocatedBlob(in Guid key, out IntPtr buf, out int size);
-        void GetUnknown(in Guid key, in Guid iid, out IntPtr unk);
-        void SetItem(in Guid key, IntPtr value);
-        void DeleteItem(in Guid key);
-        void DeleteAllItems();
-        void SetUINT32(in Guid key, int value);
-        void SetUINT64(in Guid key, ulong value);
-        void SetDouble(in Guid key, double value);
-        void SetGUID(in Guid key, in Guid value);
-        void SetString(in Guid key, [MarshalAs(UnmanagedType.LPWStr)] string value);
-        void SetBlob(in Guid key, IntPtr buf, int size);
-        void SetUnknown(in Guid key, [MarshalAs(UnmanagedType.IUnknown)] object unk);
-        void LockStore();
-        void UnlockStore();
-        void GetCount(out int count);
-        void GetItemByIndex(int index, out Guid key, IntPtr value);
-        void CopyAllItems(IntPtr dest);
-        void GetMajorType(out Guid type);
-        void IsCompressedFormat(out int compressed);
-        void IsEqual(IntPtr other, out int flags);
-        void GetRepresentation(in Guid guid, out IntPtr pv);
-        void FreeRepresentation(in Guid guid, IntPtr pv);
+        void GetTypeInfoCount(out int count);
+        void GetTypeInfo(int itinfo, int lcid, out IntPtr info);
+        void GetIDsOfNames(ref Guid iid, IntPtr names, int count, int lcid, IntPtr dispIds);
+        void Invoke(int dispId, ref Guid iid, int lcid, short flags, IntPtr dispParams, IntPtr result, IntPtr excep, IntPtr argErr);
+        [PreserveSig] int Run();
+        [PreserveSig] int Pause();
+        [PreserveSig] int Stop();
+        [PreserveSig] int GetState(int timeout, out int state);
+        [PreserveSig] int RenderFile([MarshalAs(UnmanagedType.BStr)] string file);
+        [PreserveSig] int AddSourceFilter([MarshalAs(UnmanagedType.BStr)] string file, [MarshalAs(UnmanagedType.IDispatch)] out object filter);
+        [PreserveSig] int get_FilterCollection([MarshalAs(UnmanagedType.IDispatch)] out object collection);
+        [PreserveSig] int get_RegFilterCollection([MarshalAs(UnmanagedType.IDispatch)] out object collection);
+        [PreserveSig] int StopWhenReady();
     }
 
     [ComImport]
-    [Guid("70ae66f2-c809-4e4f-8915-bdcb406b7993")]
+    [Guid("56a868b2-0ad4-11ce-b03a-0020af0ba770")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IMFSourceReader
+    private interface IMediaPosition
     {
-        void GetStreamSelection(int index, out int selected);
-        void SetStreamSelection(int index, [MarshalAs(UnmanagedType.Bool)] bool selected);
-        void GetNativeMediaType(int stream, int typeIndex, out IMFMediaType native);
-        void GetCurrentMediaType(int stream, out IMFMediaType current);
-        void SetCurrentMediaType(int stream, IntPtr reserved, IMFMediaType type);
-        void SetCurrentPosition(ref Guid format, IntPtr position);
-        [PreserveSig]
-        int ReadSample(
-            int stream, int flags,
-            out int actual, out int sampleFlags, out long timestamp,
-            out IntPtr sample);
-        void Flush(int stream);
-        void GetServiceForStream(int stream, in Guid service, in Guid iid, out IntPtr unk);
-        void GetPresentationAttribute(int stream, in Guid guid, IntPtr value);
+        void GetTypeInfoCount(out int count);
+        void GetTypeInfo(int itinfo, int lcid, out IntPtr info);
+        void GetIDsOfNames(ref Guid iid, IntPtr names, int count, int lcid, IntPtr dispIds);
+        void Invoke(int dispId, ref Guid iid, int lcid, short flags, IntPtr dispParams, IntPtr result, IntPtr excep, IntPtr argErr);
+        [PreserveSig] int get_Duration(out double duration);
+        [PreserveSig] int put_CurrentPosition(double position);
+        [PreserveSig] int get_CurrentPosition(out double position);
     }
 
     [ComImport]
-    [Guid("c40a00f2-b397-4bdf-ab59-09d1738ec2da")]
+    [Guid("56a868b6-0ad4-11ce-b03a-0020af0ba770")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IMFSample
+    private interface IMediaEvent
     {
-        void GetItem(in Guid key, IntPtr value);
-        void GetItemType(in Guid key, out int type);
-        void CompareItem(in Guid key, IntPtr value, out int result);
-        void Compare(IntPtr other, int match, out int result);
-        void GetUINT32(in Guid key, out int value);
-        void GetUINT64(in Guid key, out ulong value);
-        void GetDouble(in Guid key, out double value);
-        void GetGUID(in Guid key, out Guid value);
-        void GetStringLength(in Guid key, out int length);
-        void GetString(in Guid key, IntPtr value, int size, out int length);
-        void GetAllocatedString(in Guid key, out IntPtr value, out int length);
-        void GetBlobSize(in Guid key, out int size);
-        void GetBlob(in Guid key, IntPtr buf, int size, out int written);
-        void GetAllocatedBlob(in Guid key, out IntPtr buf, out int size);
-        void GetUnknown(in Guid key, in Guid iid, out IntPtr unk);
-        void SetItem(in Guid key, IntPtr value);
-        void DeleteItem(in Guid key);
-        void DeleteAllItems();
-        void SetUINT32(in Guid key, int value);
-        void SetUINT64(in Guid key, ulong value);
-        void SetDouble(in Guid key, double value);
-        void SetGUID(in Guid key, in Guid value);
-        void SetString(in Guid key, [MarshalAs(UnmanagedType.LPWStr)] string value);
-        void SetBlob(in Guid key, IntPtr buf, int size);
-        void SetUnknown(in Guid key, [MarshalAs(UnmanagedType.IUnknown)] object unk);
-        void LockStore();
-        void UnlockStore();
-        void GetCount(out int count);
-        void GetItemByIndex(int index, out Guid key, IntPtr value);
-        void CopyAllItems(IntPtr dest);
-        void GetSampleFlags(out int flags);
-        void SetSampleFlags(int flags);
-        void GetSampleTime(out long time);
-        void SetSampleTime(long time);
-        void GetSampleDuration(out long duration);
-        void SetSampleDuration(long duration);
-        void GetBufferCount(out int count);
-        void GetBufferByIndex(int index, out IMFMediaBuffer buffer);
-        void ConvertToContiguousBuffer(out IMFMediaBuffer buffer);
-        void AddBuffer(IMFMediaBuffer buffer);
-        void RemoveBufferByIndex(int index);
-        void RemoveAllBuffers();
-        void GetTotalLength(out int length);
-        void CopyToBuffer(IMFMediaBuffer buffer);
+        void GetTypeInfoCount(out int count);
+        void GetTypeInfo(int itinfo, int lcid, out IntPtr info);
+        void GetIDsOfNames(ref Guid iid, IntPtr names, int count, int lcid, IntPtr dispIds);
+        void Invoke(int dispId, ref Guid iid, int lcid, short flags, IntPtr dispParams, IntPtr result, IntPtr excep, IntPtr argErr);
+        [PreserveSig] int GetEventHandle(out IntPtr handle);
+        [PreserveSig] int GetEvent(out int code, out IntPtr param1, out IntPtr param2, int timeout);
+        [PreserveSig] int WaitForCompletion(int timeout, out int code);
+        [PreserveSig] int CancelDefaultHandling(int code);
+        [PreserveSig] int RestoreDefaultHandling(int code);
+        [PreserveSig] int FreeEventParams(int code, IntPtr param1, IntPtr param2);
     }
 
     [ComImport]
-    [Guid("045fa593-8799-42b8-bc8d-8968c6453507")]
+    [Guid("56a868b4-0ad4-11ce-b03a-0020af0ba770")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IMFMediaBuffer
+    private interface IVideoWindow
     {
-        void Lock(out IntPtr data, out int max, out int current);
-        void Unlock();
-        void GetCurrentLength(out int length);
-        void SetCurrentLength(int length);
-        void GetMaxLength(out int length);
+        void GetTypeInfoCount(out int count);
+        void GetTypeInfo(int itinfo, int lcid, out IntPtr info);
+        void GetIDsOfNames(ref Guid iid, IntPtr names, int count, int lcid, IntPtr dispIds);
+        void Invoke(int dispId, ref Guid iid, int lcid, short flags, IntPtr dispParams, IntPtr result, IntPtr excep, IntPtr argErr);
+        [PreserveSig] int put_Caption([MarshalAs(UnmanagedType.BStr)] string caption);
+        [PreserveSig] int get_Caption([MarshalAs(UnmanagedType.BStr)] out string caption);
+        [PreserveSig] int put_WindowStyle(int style);
+        [PreserveSig] int get_WindowStyle(out int style);
+        [PreserveSig] int put_WindowStyleEx(int style);
+        [PreserveSig] int get_WindowStyleEx(out int style);
+        [PreserveSig] int put_AutoShow(int autoShow);
+        [PreserveSig] int get_AutoShow(out int autoShow);
+        [PreserveSig] int put_WindowState(int state);
+        [PreserveSig] int get_WindowState(out int state);
+        [PreserveSig] int put_BackgroundPalette(int background);
+        [PreserveSig] int get_BackgroundPalette(out int background);
+        [PreserveSig] int put_Visible(int visible);
+        [PreserveSig] int get_Visible(out int visible);
+    }
+
+    [ComImport]
+    [Guid("56a868b5-0ad4-11ce-b03a-0020af0ba770")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IBasicVideo
+    {
+        void GetTypeInfoCount(out int count);
+        void GetTypeInfo(int itinfo, int lcid, out IntPtr info);
+        void GetIDsOfNames(ref Guid iid, IntPtr names, int count, int lcid, IntPtr dispIds);
+        void Invoke(int dispId, ref Guid iid, int lcid, short flags, IntPtr dispParams, IntPtr result, IntPtr excep, IntPtr argErr);
+        [PreserveSig] int get_AvgTimePerFrame(out double time);
+        [PreserveSig] int get_BitRate(out int rate);
+        [PreserveSig] int get_BitErrorRate(out int rate);
+        [PreserveSig] int get_VideoWidth(out int width);
+        [PreserveSig] int get_VideoHeight(out int height);
+        [PreserveSig] int put_SourceLeft(int left);
+        [PreserveSig] int get_SourceLeft(out int left);
+        [PreserveSig] int put_SourceWidth(int width);
+        [PreserveSig] int get_SourceWidth(out int width);
+        [PreserveSig] int put_SourceTop(int top);
+        [PreserveSig] int get_SourceTop(out int top);
+        [PreserveSig] int put_SourceHeight(int height);
+        [PreserveSig] int get_SourceHeight(out int height);
+        [PreserveSig] int put_DestinationLeft(int left);
+        [PreserveSig] int get_DestinationLeft(out int left);
+        [PreserveSig] int put_DestinationWidth(int width);
+        [PreserveSig] int get_DestinationWidth(out int width);
+        [PreserveSig] int put_DestinationTop(int top);
+        [PreserveSig] int get_DestinationTop(out int top);
+        [PreserveSig] int put_DestinationHeight(int height);
+        [PreserveSig] int get_DestinationHeight(out int height);
+        [PreserveSig] int SetSourcePosition(int left, int top, int width, int height);
+        [PreserveSig] int GetSourcePosition(out int left, out int top, out int width, out int height);
+        [PreserveSig] int SetDefaultSourcePosition();
+        [PreserveSig] int SetDestinationPosition(int left, int top, int width, int height);
+        [PreserveSig] int GetDestinationPosition(out int left, out int top, out int width, out int height);
+        [PreserveSig] int SetDefaultDestinationPosition();
+        [PreserveSig] int GetVideoSize(out int width, out int height);
+        [PreserveSig] int GetVideoPaletteEntries(int start, int count, out int retrieved, IntPtr palette);
+        [PreserveSig] int GetCurrentImage(ref int size, IntPtr dib);
+    }
+
+    [ComImport]
+    [Guid("56a86895-0ad4-11ce-b03a-0020af0ba770")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IBaseFilter
+    {
+        [PreserveSig] int GetClassID(out Guid clsid);
+        [PreserveSig] int Stop();
+        [PreserveSig] int Pause();
+        [PreserveSig] int Run(long start);
+        [PreserveSig] int GetState(int timeout, out int state);
+        [PreserveSig] int SetSyncSource(IntPtr clock);
+        [PreserveSig] int GetSyncSource(out IntPtr clock);
+        [PreserveSig] int EnumPins(out IEnumPins enumerator);
+        [PreserveSig] int FindPin([MarshalAs(UnmanagedType.LPWStr)] string id, out IPin? pin);
+        [PreserveSig] int QueryFilterInfo(out FilterInfo info);
+        [PreserveSig] int JoinFilterGraph(IntPtr graph, [MarshalAs(UnmanagedType.LPWStr)] string? name);
+        [PreserveSig] int QueryVendorInfo([MarshalAs(UnmanagedType.LPWStr)] out string? vendor);
+    }
+
+    [ComImport]
+    [Guid("56a86891-0ad4-11ce-b03a-0020af0ba770")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IPin
+    {
+        [PreserveSig] int Connect(IPin receive, IntPtr type);
+        [PreserveSig] int ReceiveConnection(IPin connector, ref AMMediaType type);
+        [PreserveSig] int Disconnect();
+        [PreserveSig] int ConnectedTo(out IPin? pin);
+        [PreserveSig] int ConnectionMediaType(out AMMediaType type);
+        [PreserveSig] int QueryPinInfo(out PinInfo info);
+        [PreserveSig] int QueryDirection(out PinDirection direction);
+        [PreserveSig] int QueryId([MarshalAs(UnmanagedType.LPWStr)] out string id);
+        [PreserveSig] int QueryAccept(ref AMMediaType type);
+        [PreserveSig] int EnumMediaTypes(out IEnumMediaTypes enumerator);
+        [PreserveSig] int QueryInternalConnections(IntPtr pins, ref int count);
+        [PreserveSig] int EndOfStream();
+        [PreserveSig] int BeginFlush();
+        [PreserveSig] int EndFlush();
+        [PreserveSig] int NewSegment(long start, long stop, double rate);
+    }
+
+    [ComImport]
+    [Guid("56a8689f-0ad4-11ce-b03a-0020af0ba770")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IEnumPins
+    {
+        [PreserveSig] int Next(int count, [Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] IPin[] pins, IntPtr fetched);
+        [PreserveSig] int Skip(int count);
+        [PreserveSig] int Reset();
+        [PreserveSig] int Clone(out IEnumPins enumerator);
+    }
+
+    [ComImport]
+    [Guid("89c31040-846b-11ce-97d3-00aa0055595a")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IEnumMediaTypes
+    {
+        [PreserveSig] int Next(int count, [Out, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 0)] IntPtr[] types, IntPtr fetched);
+        [PreserveSig] int Skip(int count);
+        [PreserveSig] int Reset();
+        [PreserveSig] int Clone(out IEnumMediaTypes enumerator);
+    }
+
+    [ComImport]
+    [Guid("56a8689c-0ad4-11ce-b03a-0020af0ba770")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IMemInputPin
+    {
+        [PreserveSig] int GetAllocator(out IntPtr allocator);
+        [PreserveSig] int NotifyAllocator(IntPtr allocator, [MarshalAs(UnmanagedType.Bool)] bool readOnly);
+        [PreserveSig] int GetAllocatorRequirements(out AllocatorProperties props);
+        [PreserveSig] int Receive(IMediaSample sample);
+        [PreserveSig] int ReceiveMultiple([In, MarshalAs(UnmanagedType.LPArray, SizeParamIndex = 1)] IMediaSample[] samples, int count, out int processed);
+        [PreserveSig] int ReceiveCanBlock();
+    }
+
+    [ComImport]
+    [Guid("56a8689a-0ad4-11ce-b03a-0020af0ba770")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IMediaSample
+    {
+        [PreserveSig] int GetPointer(out IntPtr buffer);
+        [PreserveSig] int GetSize();
+        [PreserveSig] int GetTime(out long start, out long end);
+        [PreserveSig] int SetTime(IntPtr start, IntPtr end);
+        [PreserveSig] int IsSyncPoint();
+        [PreserveSig] int SetSyncPoint([MarshalAs(UnmanagedType.Bool)] bool sync);
+        [PreserveSig] int IsPreroll();
+        [PreserveSig] int SetPreroll([MarshalAs(UnmanagedType.Bool)] bool preroll);
+        [PreserveSig] int GetActualDataLength();
+        [PreserveSig] int SetActualDataLength(int length);
+        [PreserveSig] int GetMediaType(out IntPtr type);
+        [PreserveSig] int SetMediaType(IntPtr type);
+        [PreserveSig] int IsDiscontinuity();
+        [PreserveSig] int SetDiscontinuity([MarshalAs(UnmanagedType.Bool)] bool discontinuity);
+        [PreserveSig] int GetMediaTime(out long start, out long end);
+        [PreserveSig] int SetMediaTime(IntPtr start, IntPtr end);
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct FilterInfo
+    {
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+        public string Name;
+        public IntPtr Graph;
+    }
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct PinInfo
+    {
+        public IBaseFilter Filter;
+        public PinDirection Direction;
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
+        public string Name;
+    }
+
+    private enum PinDirection
+    {
+        Input,
+        Output,
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct AMMediaType
+    {
+        public Guid MajorType;
+        public Guid SubType;
+        public int FixedSizeSamples;
+        public int TemporalCompression;
+        public int SampleSize;
+        public Guid FormatType;
+        public IntPtr Unk;
+        public int FormatSize;
+        public IntPtr FormatPtr;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct AllocatorProperties
+    {
+        public int Count;
+        public int Size;
+        public int Alignment;
+        public int Prefix;
+    }
+
+    [ComVisible(true)]
+    [ClassInterface(ClassInterfaceType.None)]
+    private sealed class TextureRenderer : IBaseFilter
+    {
+        private readonly RendererPin _pin;
+        private int _state;
+        private IntPtr _graph;
+        private string _name = "Fable Texture Renderer";
+
+        public TextureRenderer(Action<int, int, byte[]> onSample) =>
+            _pin = new RendererPin(this, onSample);
+
+        public IPin Pin => _pin;
+
+        public int GetClassID(out Guid clsid)
+        {
+            clsid = new Guid("a3b51000-0000-0000-0000-000000a3b510");
+            return 0;
+        }
+
+        public int Stop()
+        {
+            _state = 0;
+            return 0;
+        }
+
+        public int Pause()
+        {
+            _state = 1;
+            return 0;
+        }
+
+        public int Run(long start)
+        {
+            _ = start;
+            _state = 2;
+            return 0;
+        }
+
+        public int GetState(int timeout, out int state)
+        {
+            _ = timeout;
+            state = _state;
+            return 0;
+        }
+
+        public int SetSyncSource(IntPtr clock)
+        {
+            _ = clock;
+            return 0;
+        }
+
+        public int GetSyncSource(out IntPtr clock)
+        {
+            clock = IntPtr.Zero;
+            return 0;
+        }
+
+        public int EnumPins(out IEnumPins enumerator)
+        {
+            enumerator = new PinEnum(_pin);
+            return 0;
+        }
+
+        public int FindPin(string id, out IPin? pin)
+        {
+            pin = string.Equals(id, "In", StringComparison.OrdinalIgnoreCase) ? _pin : null;
+            return pin is null ? unchecked((int)0x80004005) : 0;
+        }
+
+        public int QueryFilterInfo(out FilterInfo info)
+        {
+            info = new FilterInfo { Name = _name, Graph = _graph };
+            if (_graph != IntPtr.Zero)
+                Marshal.AddRef(_graph);
+            return 0;
+        }
+
+        public int JoinFilterGraph(IntPtr graph, string? name)
+        {
+            _graph = graph;
+            if (!string.IsNullOrEmpty(name))
+                _name = name;
+            return 0;
+        }
+
+        public int QueryVendorInfo(out string? vendor)
+        {
+            vendor = null;
+            return unchecked((int)0x80004001);
+        }
+    }
+
+    [ComVisible(true)]
+    [ClassInterface(ClassInterfaceType.None)]
+    private sealed class RendererPin : IPin, IMemInputPin
+    {
+        private readonly TextureRenderer _filter;
+        private readonly Action<int, int, byte[]> _onSample;
+        private IPin? _connected;
+        private AMMediaType _type;
+        private int _width;
+        private int _height;
+        private int _bitCount;
+        private int _stride;
+        private bool _topDown;
+
+        public RendererPin(TextureRenderer filter, Action<int, int, byte[]> onSample)
+        {
+            _filter = filter;
+            _onSample = onSample;
+        }
+
+        public int Connect(IPin receive, IntPtr type)
+        {
+            _ = (receive, type);
+            return unchecked((int)0x80004001);
+        }
+
+        public int ReceiveConnection(IPin connector, ref AMMediaType type)
+        {
+            if (QueryAccept(ref type) != 0)
+                return unchecked((int)0x80040200);
+            _connected = connector;
+            _type = type;
+            ReadVideoInfo(type);
+            return 0;
+        }
+
+        public int Disconnect()
+        {
+            _connected = null;
+            return 0;
+        }
+
+        public int ConnectedTo(out IPin? pin)
+        {
+            pin = _connected;
+            return pin is null ? unchecked((int)0x80040209) : 0;
+        }
+
+        public int ConnectionMediaType(out AMMediaType type)
+        {
+            type = _type;
+            return _connected is null ? unchecked((int)0x80040209) : 0;
+        }
+
+        public int QueryPinInfo(out PinInfo info)
+        {
+            info = new PinInfo
+            {
+                Filter = _filter,
+                Direction = PinDirection.Input,
+                Name = "In",
+            };
+            return 0;
+        }
+
+        public int QueryDirection(out PinDirection direction)
+        {
+            direction = PinDirection.Input;
+            return 0;
+        }
+
+        public int QueryId(out string id)
+        {
+            id = "In";
+            return 0;
+        }
+
+        public int QueryAccept(ref AMMediaType type)
+        {
+            if (type.MajorType != Ds.Video)
+                return 1;
+            if (type.SubType != Ds.Rgb24 && type.SubType != Ds.Rgb32)
+                return 1;
+            if (type.FormatType != Ds.VideoInfo || type.FormatPtr == IntPtr.Zero || type.FormatSize < 56)
+                return 1;
+            var width = Marshal.ReadInt32(type.FormatPtr, 52);
+            var height = Math.Abs(Marshal.ReadInt32(type.FormatPtr, 56));
+            return width >= 16 && height >= 16 ? 0 : 1;
+        }
+
+        public int EnumMediaTypes(out IEnumMediaTypes enumerator)
+        {
+            enumerator = new MediaTypeEnum();
+            return 0;
+        }
+
+        public int QueryInternalConnections(IntPtr pins, ref int count)
+        {
+            _ = pins;
+            count = 0;
+            return unchecked((int)0x80004001);
+        }
+
+        public int EndOfStream() => 0;
+
+        public int BeginFlush() => 0;
+
+        public int EndFlush() => 0;
+
+        public int NewSegment(long start, long stop, double rate)
+        {
+            _ = (start, stop, rate);
+            return 0;
+        }
+
+        public int GetAllocator(out IntPtr allocator)
+        {
+            allocator = IntPtr.Zero;
+            return unchecked((int)0x8004020A);
+        }
+
+        public int NotifyAllocator(IntPtr allocator, bool readOnly)
+        {
+            _ = (allocator, readOnly);
+            return 0;
+        }
+
+        public int GetAllocatorRequirements(out AllocatorProperties props)
+        {
+            props = default;
+            return unchecked((int)0x80004001);
+        }
+
+        public int Receive(IMediaSample sample)
+        {
+            if (sample.GetPointer(out var data) < 0 || data == IntPtr.Zero)
+                return 0;
+            var length = sample.GetActualDataLength();
+            if (length <= 0)
+                length = sample.GetSize();
+            if (_width <= 0 || _height <= 0 || length <= 0)
+                return 0;
+            var rgba = CopySample(data, length);
+            if (rgba is not null)
+                _onSample(_width, _height, rgba);
+            return 0;
+        }
+
+        public int ReceiveMultiple(IMediaSample[] samples, int count, out int processed)
+        {
+            processed = 0;
+            for (var i = 0; i < count; i++)
+            {
+                Receive(samples[i]);
+                processed++;
+            }
+
+            return 0;
+        }
+
+        public int ReceiveCanBlock() => 0;
+
+        private void ReadVideoInfo(AMMediaType type)
+        {
+            _width = Marshal.ReadInt32(type.FormatPtr, 52);
+            var rawHeight = Marshal.ReadInt32(type.FormatPtr, 56);
+            _height = Math.Abs(rawHeight);
+            _topDown = rawHeight < 0;
+            _bitCount = type.SubType == Ds.Rgb32 ? 32 : 24;
+            if (type.FormatSize >= 70)
+            {
+                var bits = Marshal.ReadInt16(type.FormatPtr, 62);
+                if (bits is 24 or 32)
+                    _bitCount = bits;
+            }
+
+            // 00A3B5F0: stride = ((width+1)*3) & ~3 for RGB24.
+            _stride = _bitCount == 32
+                ? _width * 4
+                : ((_width + 1) * 3) & ~3;
+        }
+
+        private byte[]? CopySample(IntPtr data, int length)
+        {
+            var pixels = _width * _height;
+            if (pixels <= 0)
+                return null;
+            var rgba = new byte[pixels * 4];
+            var bpp = _bitCount == 32 ? 4 : 3;
+            var stride = _stride > 0 ? _stride : ((_width * bpp + 3) & ~3);
+            if (length < stride * _height && length >= pixels * bpp)
+                stride = _width * bpp;
+            for (var y = 0; y < _height; y++)
+            {
+                var srcY = _topDown ? y : _height - 1 - y;
+                var src = data + srcY * stride;
+                var dst = y * _width * 4;
+                for (var x = 0; x < _width; x++)
+                {
+                    var o = x * bpp;
+                    rgba[dst] = Marshal.ReadByte(src, o + 2);
+                    rgba[dst + 1] = Marshal.ReadByte(src, o + 1);
+                    rgba[dst + 2] = Marshal.ReadByte(src, o);
+                    rgba[dst + 3] = 255;
+                    dst += 4;
+                }
+            }
+
+            return rgba;
+        }
+    }
+
+    [ComVisible(true)]
+    [ClassInterface(ClassInterfaceType.None)]
+    private sealed class PinEnum : IEnumPins
+    {
+        private readonly IPin _pin;
+        private int _index;
+
+        public PinEnum(IPin pin) => _pin = pin;
+
+        public int Next(int count, IPin[] pins, IntPtr fetched)
+        {
+            var n = 0;
+            if (_index == 0 && count > 0)
+            {
+                pins[0] = _pin;
+                _index = 1;
+                n = 1;
+            }
+
+            if (fetched != IntPtr.Zero)
+                Marshal.WriteInt32(fetched, n);
+            return n == count ? 0 : 1;
+        }
+
+        public int Skip(int count)
+        {
+            _index += count;
+            return _index > 1 ? 1 : 0;
+        }
+
+        public int Reset()
+        {
+            _index = 0;
+            return 0;
+        }
+
+        public int Clone(out IEnumPins enumerator)
+        {
+            enumerator = new PinEnum(_pin) { _index = _index };
+            return 0;
+        }
+    }
+
+    [ComVisible(true)]
+    [ClassInterface(ClassInterfaceType.None)]
+    private sealed class MediaTypeEnum : IEnumMediaTypes
+    {
+        private int _index;
+
+        public int Next(int count, IntPtr[] types, IntPtr fetched)
+        {
+            _ = (count, types);
+            if (fetched != IntPtr.Zero)
+                Marshal.WriteInt32(fetched, 0);
+            return 1;
+        }
+
+        public int Skip(int count)
+        {
+            _index += count;
+            return 1;
+        }
+
+        public int Reset()
+        {
+            _index = 0;
+            return 0;
+        }
+
+        public int Clone(out IEnumMediaTypes enumerator)
+        {
+            enumerator = new MediaTypeEnum { _index = _index };
+            return 0;
+        }
     }
 }
