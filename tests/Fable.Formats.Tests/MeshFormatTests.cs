@@ -259,6 +259,17 @@ public sealed class MeshFormatTests
         Assert.Equal(0x00BD549Du, WorldShading.FirstSeenPalskinDefaultDraw);
         Assert.True(WorldShading.FirstSeenPalskinUsesA0RelativeC38);
         Assert.DoesNotContain(mesh.Materials, m => m.Name == "DegenerateTriangles");
+        Assert.Equal(0x00A23DE0u, WorldShading.MeshLodInfoReady);
+        Assert.Equal(0x0129CDB4u, WorldShading.MeshLodInfoVtbl);
+        Assert.Equal(36, WorldShading.MeshLodInfoPtrOffset);
+        Assert.Equal(0x009D54E0u, WorldShading.ResourceReadyCheck);
+        Assert.Equal(0x00A62920u, WorldShading.ResourceLockHelper);
+        Assert.Equal(0x00BF3BECu, WorldShading.LandscapeTileExpandReady);
+        Assert.Equal(0x00BDC6D9u, WorldShading.PatchSubmitReady);
+        Assert.True(WorldShading.FirstSeenLodInfoNullReturnsReady);
+        Assert.False(WorldShading.FirstSeenLodInfoSwapsMesh);
+        Assert.Equal(1, WorldShading.MeshLodInfoReady_00A23DE0(0));
+        Assert.Equal(0, WorldShading.MeshLodInfoReady_00A23DE0(1));
     }
 
     private static void AssertNearIdentity(Matrix4x4 m)

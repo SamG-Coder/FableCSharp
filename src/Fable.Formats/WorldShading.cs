@@ -753,4 +753,34 @@ public static class WorldShading
     public const uint PalskinDrainVtbl24 = 0x00B91340;
     public const uint PalskinType4JumpTarget = 0x00BD3C04;
     public const bool FirstSeenPalskinDrainUsesType4 = false;
+
+    /// <summary>
+    /// <c>C3DMeshLODInfo</c> vtbl method <c>00A23DE0</c>
+    /// (slot at <c>0x0129CDB4</c>). Zero <c>E8</c> callers.
+    /// <c>[this+36]==0</c> is <c>mov al,1; ret</c> — draw
+    /// the stored C3D. Non-null jumps to <c>009D54E0</c>,
+    /// which locks <c>[this+40]+0x14C</c> via
+    /// <c>00A62920</c> then returns <c>[this+68]</c>.
+    /// That is a resource-ready flag, not a mesh-id swap.
+    /// Landscape tile expand <c>00BF3BEC</c> and patch
+    /// submit <c>00BDC6D9</c> call <c>009D54E0</c> on the
+    /// resource object directly.
+    /// </summary>
+    public const uint MeshLodInfoReady = 0x00A23DE0;
+    public const uint MeshLodInfoVtbl = 0x0129CDB4;
+    public const int MeshLodInfoPtrOffset = 36;
+    public const uint ResourceReadyCheck = 0x009D54E0;
+    public const uint ResourceLockHelper = 0x00A62920;
+    public const uint LandscapeTileExpandReady = 0x00BF3BEC;
+    public const uint PatchSubmitReady = 0x00BDC6D9;
+    public const bool FirstSeenLodInfoNullReturnsReady = true;
+    public const bool FirstSeenLodInfoSwapsMesh = false;
+
+    /// <summary>
+    /// <c>00A23DE0</c>: null <c>+36</c> returns 1. A
+    /// non-null pointer is <c>009D54E0</c> and is not a
+    /// first-seen C3D mesh swap.
+    /// </summary>
+    public static int MeshLodInfoReady_00A23DE0(nint field36) =>
+        field36 == 0 ? 1 : 0;
 }

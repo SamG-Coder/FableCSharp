@@ -1,5 +1,6 @@
 using System.Numerics;
 using Fable.Core;
+using Fable.Formats;
 using Fable.Formats.Defs;
 using Fable.Formats.Meshes;
 using Fable.Formats.Sky;
@@ -207,6 +208,8 @@ public sealed class WorldGeometryTests
         Assert.True(maxY > 224f, $"north filler missing, maxY={maxY}");
         Assert.DoesNotContain(world.Triangles, t => t.TextureId == 442);
         Assert.Equal(4300, world.PlayerMeshId);
+        Assert.False(WorldShading.FirstSeenLodInfoSwapsMesh);
+        Assert.Equal(1, WorldShading.MeshLodInfoReady_00A23DE0(0));
         Assert.InRange(world.PlayerHeight, 1.0f, 2.2f);
         var start = RegionTravel.FindPlayerStart(things.Things);
         Assert.NotNull(start);
