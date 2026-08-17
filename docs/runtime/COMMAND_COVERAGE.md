@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 72
-RECOVERED RETURN: 72
+RECOVERED DISPATCH: 73
+RECOVERED RETURN: 73
 RECOVERED APPLY: 14
 IMPLEMENTED RUNTIME: 11
-UNREAD: 113
+UNREAD: 112
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -57,7 +57,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | CrowdAcquire | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | CreditScreen | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | CrowdCreate | Global | Proven | Proven | Proven | Partial | Partial | Partial |
-| CrowdCreateMixed | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| CrowdCreateMixed | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | ObjectCreate | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | Create | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | SmashWindows | Global | Unread | Unread | Unread | Unread | Unread | Unread |

@@ -630,6 +630,46 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void CrowdCreateMixed_alternates_types_at_source_markers()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "MK0",
+                PositionX = 1,
+                PositionY = 0,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "MK1",
+                PositionX = 2,
+                PositionY = 0,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], null);
+        var interp = new ScriptInterpreter("ccm",
+            ["CrowdCreateMixed TYPEA,TYPEB,MK,CROWD"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(2, runtime.World.Spawned.Count);
+        Assert.Equal("TYPEA", runtime.World.Spawned[0].DefinitionType);
+        Assert.Equal("TYPEB", runtime.World.Spawned[1].DefinitionType);
+        Assert.NotNull(runtime.Bindings.Resolve("CROWD0"));
+        Assert.NotNull(runtime.Bindings.Resolve("CROWD1"));
+    }
+
+    [Fact]
     public void ObjectCreate_inserts_world_thing()
     {
         var runtime = ScriptRuntime.Detached();

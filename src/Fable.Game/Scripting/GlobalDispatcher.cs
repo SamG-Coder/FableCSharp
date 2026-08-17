@@ -302,6 +302,33 @@ public static class GlobalDispatcher
                 $"{type}->{alias}x{spawned.Count}", $"Crowd:{alias}");
         }
 
+        if (Eq(v, "CrowdCreateMixed"))
+        {
+            var typeA = line.Arg(0);
+            var typeB = line.Arg(1);
+            var source = line.Arg(2);
+            var alias = line.Arg(3);
+            if (typeA.Length == 0 || typeB.Length == 0 ||
+                source.Length == 0 || alias.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            var sources = ctx.World.CollectByName(ctx.Runtime.Things, source);
+            var spawned = new List<ThingInstance>();
+            for (var i = 0; i < sources.Count; i++)
+            {
+                var type = (i & 1) == 0 ? typeA : typeB;
+                var src = sources[i];
+                var pos = src.PositionX is not null ? RegionTravel.PositionOf(src) : (System.Numerics.Vector3?)null;
+                var member = alias + i.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                var thing = ctx.World.Spawn(type, src.ScriptName ?? source, member, pos);
+                ctx.Runtime.AddThing(thing);
+                spawned.Add(thing);
+            }
+
+            ctx.Bindings.BindCrowd(typeA, alias, spawned);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                $"{typeA}|{typeB}->{alias}x{spawned.Count}", $"Crowd:{alias}");
+        }
+
         if (Eq(v, "RemoveAllThings"))
         {
             if (line.Arg(0).Length == 0)
