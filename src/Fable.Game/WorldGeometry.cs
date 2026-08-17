@@ -6,6 +6,7 @@ using Fable.Formats.Levels;
 using Fable.Formats.Meshes;
 using Fable.Formats.Tng;
 using Fable.Formats.Wld;
+using Fable.Formats.World;
 
 namespace Fable.Game;
 
@@ -66,8 +67,11 @@ public sealed class WorldGeometry
         foreach (var map in maps)
         {
             var primary = levels.World.FindMap(region);
-            var dx = primary is null ? 0f : map.MapX - primary.MapX;
-            var dy = primary is null ? 0f : map.MapY - primary.MapY;
+            var neighbour = primary is null
+                ? Vector2.Zero
+                : WorldSpaces.NeighbourRegionOffset(map.MapX, map.MapY, primary.MapX, primary.MapY);
+            var dx = neighbour.X;
+            var dy = neighbour.Y;
             AddTerrain(levels, map.ScriptName, dx, dy, triangles, landscapeEnums, landscapePlanes);
 
             var mapThings = IsPrimary(map, region)
