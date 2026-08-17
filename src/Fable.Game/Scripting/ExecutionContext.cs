@@ -544,17 +544,19 @@ public sealed class DialogueRuntime
     public PendingOperation? WaitOp { get; private set; }
     private int _waitSerial;
 
-    public void Speak(string? actor, string target, string text, int mode)
+    public void Speak(string? actor, string target, string text, int mode, bool hold = false,
+        string? body = null)
     {
         Speeches.Add(new ScriptSpeech(actor, target, text, mode));
-        Open(actor, target, text, mode, "Speak");
+        Open(actor, target, text, mode, "Speak", handle: false, hold, body);
     }
 
     public PendingOperation InteractiveSpeak(
-        string? actor, string listener, string prompt, bool wait, string response)
+        string? actor, string listener, string prompt, bool wait, string response,
+        string? body = null)
     {
         Interactive.Add(new ScriptInteractiveSpeech(actor, listener, prompt, wait, response));
-        Open(actor, listener, prompt, 0, "InteractiveSpeak");
+        Open(actor, listener, prompt, 0, "InteractiveSpeak", handle: true, hold: false, body);
         var op = new PendingOperation($"ispeak-{++_waitSerial}", "InteractiveSpeak", actor, prompt);
         if (wait)
             WaitOp = op;
@@ -570,28 +572,29 @@ public sealed class DialogueRuntime
 
     /// <summary>
     /// <c>00CC656B</c> leftover session poll
-    /// <c>vtbl+1472</c>. Waits on the active line.
+    /// <c>vtbl+1472</c>. No handle → continue.
+    /// Handle → one leftover then next line.
     /// </summary>
     public PendingOperation WaitActive()
     {
         if (WaitOp is { Complete: false } existing)
             return existing;
         WaitOp = new PendingOperation($"dialog-{++_waitSerial}", "WaitActiveDialog", null, "active");
-        if (ActiveCount == 0)
+        if (Session is not { HasHandle: true, Active: true })
             WaitOp.Complete = true;
         return WaitOp;
     }
 
-    public void DialogSpeak(string? actor, string listener, string text)
+    public void DialogSpeak(string? actor, string listener, string text, string? body = null)
     {
         Dialogs.Add(new ScriptDialogSpeech(actor, listener, text));
-        Open(actor, listener, text, 0, "DialogSpeak");
+        Open(actor, listener, text, 0, "DialogSpeak", handle: true, hold: false, body);
     }
 
     public void DialogAdSpeak(string? actor, string target, string text, int mode)
     {
         DialogAds.Add(new ScriptDialogAdSpeech(actor, target, text, mode));
-        Open(actor, target, text, mode, "DialogadSpeak");
+        Open(actor, target, text, mode, "DialogadSpeak", handle: false, hold: false, null);
     }
 
     public void Dismiss()
@@ -600,11 +603,19 @@ public sealed class DialogueRuntime
             ActiveCount--;
         if (Session is not null)
             Session.Active = ActiveCount > 0;
+        if (Session is { HasHandle: true } && ActiveCount == 0)
+            Session.HasHandle = false;
     }
 
-    private void Open(string? speaker, string listener, string text, int mode, string verb)
+    private void Open(string? speaker, string listener, string text, int mode, string verb,
+        bool handle, bool hold, string? body)
     {
-        Session = new DialogueSession(speaker, listener, text, mode, verb);
+        Session = new DialogueSession(speaker, listener, text, mode, verb)
+        {
+            HasHandle = handle,
+            Hold = hold,
+            ResolvedBody = body ?? "",
+        };
         ActiveCount++;
     }
 }
@@ -617,6 +628,9 @@ public sealed class DialogueSession
     public int Mode { get; }
     public string Verb { get; }
     public bool Active { get; set; } = true;
+    public bool HasHandle { get; set; }
+    public bool Hold { get; set; }
+    public string ResolvedBody { get; set; } = "";
 
     public DialogueSession(string? speaker, string listener, string text, int mode, string verb)
     {

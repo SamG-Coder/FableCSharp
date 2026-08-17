@@ -36,12 +36,12 @@
 | MuteSounds | `00CC7258` | `—` | IsFalse? | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+2664; jmp 00CC8464; apply body UNREAD |
 | StartTimeCode | `00CD1373` | `—` |  | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | and [0x13B83C8],0; leftover increment not a pose clock |
 | GamePause | `00CC88D1` | `—` | seconds | WaitScaledFrames | Proven | Proven | Proven | Proven | Proven | Proven | atof * [0x124E640]=15; CLOCK path UNREAD |
-| Speak | `00CC25FD` | `—` | target,text[,…] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+52/+104 leftover poll; session recorded; no dialogue UI |
-| InteractiveSpeak | `00CC2EAA` | `—` | listener,prompt[,wait] | YieldAfterUnlessWait | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+1456/1460/1464; TRUE wait vtbl+1472 UNREAD |
-| DialogSpeak | `00CC3165` | `—` | listener,text | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | one vtbl+28; bodies UNREAD |
+| Speak | `00CC25FD` | `00CC27EA` | listener,text[,hold][,mode] | YieldAfter | Proven | Proven | Proven | Proven | Partial | Partial | vtbl+52(text,mode,0,1); leftover vtbl+104; random=1 norepeat=2 sequence=3 |
+| InteractiveSpeak | `00CC2EAA` | `00CC2F50` | listener,prompt[,wait] | YieldAfterUnlessWait | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+1456 handle; TRUE leftover 1472; FALSE one vtbl+28 |
+| DialogSpeak | `00CC3165` | `00CC31BC` | listener,text | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+1456 handle; one vtbl+28; 1472 unread UI |
 | DialogadSpeak | `00CC3354` | `—` | target,text[,mode] | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | no vtbl+28; father +52 stub; no dialogue UI |
 | WaitTask | `00CC0783` | `—` | name | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | poll vtbl+104 leftover; entity task slot |
-| WaitActiveDialog | `00CC656B` | `—` |  | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | session poll vtbl+1472; dismiss UNREAD |
+| WaitActiveDialog | `00CC656B` | `00CC6612` |  | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | [ebp-44]==0 continue; else leftover +28 then [0x13D2838]+5 → next |
 | WaitPlayAnimation | `00CC2518` | `—` |  | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | poll current entity anim task |
 | SneakTo | `00CC0CB5` | `00CC0E5A` | marker[,speed][,wait] | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | thing vtbl+20 is 004C72B0 stub; dest+gait via vtbl+16 006A9960; TickMove |
 | WalkTo | `00CC083D` | `00CC09E2` | marker[,speed][,wait] | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | 012457FC/0127293C +20=004C72B0; dest+gait 006A5D90 or[this+146],2; no warp |

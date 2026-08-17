@@ -1,5 +1,7 @@
 using System.Numerics;
 using Fable.Core;
+using Fable.Formats.Banks;
+using Fable.Formats.Text;
 using Fable.Formats.Tng;
 using Fable.Game.Scripting;
 
@@ -92,6 +94,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     private List<ThingInstance> _things = [];
     private ScriptedCamera? _camera;
     private GameInstall? _install;
+    private Dictionary<string, string>? _textLines;
     private WmvPlayer? _avi;
     private int _questId;
     private int _cutsceneId;
@@ -142,6 +145,38 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     {
         Bank = bank;
         _install = install;
+    }
+
+    /// <summary>
+    /// <c>lang/English/text.big</c> UTF-16 lookup by
+    /// <c>TEXT_*</c> name. Speak stores the ID even
+    /// when the body is missing.
+    /// </summary>
+    public string? LookupText(string id)
+    {
+        if (id.Length == 0)
+            return null;
+        EnsureText();
+        return _textLines is not null && _textLines.TryGetValue(id, out var body) ? body : null;
+    }
+
+    private void EnsureText()
+    {
+        if (_textLines is not null || _install is null || !File.Exists(_install.TextBigPath))
+            return;
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        using var big = BigArchive.Open(_install.TextBigPath);
+        foreach (var bank in big.SubBanks)
+        {
+            foreach (var entry in big.ReadEntries(bank))
+            {
+                if (entry.Name.Length == 0)
+                    continue;
+                map[entry.Name] = TextPayload.ReadUtf16(big.Read(entry));
+            }
+        }
+
+        _textLines = map;
     }
 
     public void AddThing(ThingInstance thing)

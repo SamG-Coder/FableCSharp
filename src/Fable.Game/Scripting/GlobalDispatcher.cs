@@ -555,6 +555,10 @@ public static class GlobalDispatcher
         {
             ctx.Runtime.WaitActiveDialogCount++;
             var op = ctx.Dialogue.WaitActive();
+            if (op.Complete)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "idle");
+            // Native leftover 00CC65C6: vtbl+28 then inc [0x13B83C8];
+            // [0x13D2838]+5 != 0 → 00CC7081 (one leftover, next line).
             return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
                 "WaitActiveDialog leftover vtbl+1472", op.Id);
         }

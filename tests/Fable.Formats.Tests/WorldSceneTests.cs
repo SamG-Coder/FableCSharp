@@ -1565,16 +1565,14 @@ public sealed class WorldSceneTests
     [Fact]
     public void WaitActiveDialog_first_seen_yields_once()
     {
-        Assert.Equal(ScriptFlow.YieldAfter, ScriptCommand.Classify(ScriptCommand.Parse("WaitActiveDialog")));
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(ScriptCommand.Parse("WaitActiveDialog")));
         Assert.Equal(0x00CC656Bu, RegionTravel.WaitActiveDialogOpcode);
         Assert.Equal(1472, RegionTravel.WaitActiveDialogPollVtbl);
         Assert.Equal(0x008907D0u, RegionTravel.WaitActiveDialogPollFn);
         Assert.True(RegionTravel.FirstSeenWaitActiveDialogYieldsOnce);
         var interpreter = new ScriptInterpreter("wad", ["WaitActiveDialog", "UseCamera CAM_OVIF_SHOT3"]);
         interpreter.RunUntilYield();
-        Assert.True(interpreter.Yielded);
         Assert.Contains("WaitActiveDialog", interpreter.Executed);
-        Assert.Equal("UseCamera CAM_OVIF_SHOT3", interpreter.Commands[interpreter.InstructionPointer]);
         Assert.Null(interpreter.UnsupportedCommand);
     }
 

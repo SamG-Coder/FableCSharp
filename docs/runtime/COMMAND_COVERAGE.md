@@ -3,7 +3,7 @@ GLOBAL: 124
 ENTITY: 61
 RECOVERED DISPATCH: 97
 RECOVERED RETURN: 97
-RECOVERED APPLY: 25
+RECOVERED APPLY: 27
 IMPLEMENTED RUNTIME: 13
 UNREAD: 88
 # Native command coverage
@@ -124,7 +124,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | LadyGreyIntro | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | RemoveAllThings | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | RegisterActor | Global | Proven | Proven | Proven | Partial | Partial | Partial |
-| WaitActiveDialog | Global | Proven | Proven | Proven | Partial | Partial | Partial |
+| WaitActiveDialog | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | GiveHero | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | GiveHeroHealth | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | GiveHeroMorality | Global | Unread | Unread | Unread | Unread | Unread | Unread |
@@ -170,7 +170,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | InteractiveSpeak | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
 | InteractiveSpeakGroup | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
 | DataSpeak | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
-| Speak | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
+| Speak | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
 | WalkUpToThing | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
 | ModifyHealth | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
 | HoldInHand | Entity | Unread | Unread | Unread | Unread | Unread | Unread |

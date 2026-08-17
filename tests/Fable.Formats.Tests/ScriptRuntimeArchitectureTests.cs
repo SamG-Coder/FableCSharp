@@ -151,6 +151,115 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void Speak_opens_session_and_WaitActiveDialog_idles_without_handle()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("spk",
+        [
+            "Father.Speak Father,'TEXT_QST_048_FATHER_INTRO_10',FALSE,NOREPEAT",
+            "WaitActiveDialog",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Yielded);
+        Assert.Equal("Father", runtime.Dialogue.Session!.Speaker);
+        Assert.Equal("Father", runtime.Dialogue.Session.Listener);
+        Assert.Equal("TEXT_QST_048_FATHER_INTRO_10", runtime.Dialogue.Session.Text);
+        Assert.Equal(2, runtime.Dialogue.Session.Mode);
+        Assert.False(runtime.Dialogue.Session.HasHandle);
+        interp.Resume(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(0x00CC27EAu, ScriptCommandMap.Find("Speak")!.Value.ApplySite);
+        Assert.Equal(0x00CC6612u, ScriptCommandMap.Find("WaitActiveDialog")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void WaitActiveDialog_leftover_polls_interactive_handle()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("wad",
+        [
+            "Father.InteractiveSpeak Hero,'TEXT_A',FALSE,'TEXT_B'",
+            "WaitActiveDialog",
+            "CameraPause FALSE",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(runtime.Dialogue.Session!.HasHandle);
+        interp.Resume(runtime);
+        Assert.Contains("WaitActiveDialog", interp.Executed);
+        Assert.Equal("CameraPause FALSE", interp.Commands[interp.InstructionPointer]);
+        Assert.True(interp.Yielded);
+        interp.Resume(runtime);
+        Assert.Contains(interp.Executed, l => l.StartsWith("CameraPause", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Speak_real_script_bank_line_resolves_text_big()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".Speak ", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "Father.Speak Father,'TEXT_QST_048_FATHER_INTRO_10'";
+        hit ??= bank.Find("CS_OAKVALE_INTRO_FATHER") ?? bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("Speak", parsed.Verb);
+        Assert.True(parsed.Arg(1).Length > 0);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-speak", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains("Speak", StringComparison.OrdinalIgnoreCase));
+        Assert.NotNull(runtime.Dialogue.Session);
+        Assert.Equal(parsed.Arg(1), runtime.Dialogue.Session!.Text);
+        Assert.Equal(parsed.Target, runtime.Dialogue.Session.Speaker);
+        Assert.Equal(parsed.Arg(0), runtime.Dialogue.Session.Listener);
+        var body = runtime.LookupText(parsed.Arg(1));
+        if (body is { Length: > 0 })
+            Assert.Equal(body, runtime.Dialogue.Session.ResolvedBody);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-speak.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-speak.txt"),
+            """
+            Speak 00CC25FD / apply 00CC27EA
+              actor + listener + text required; IsNull(text) skip
+              IsTrue(arg2) vtbl+1484(1) hold, cleared after poll
+              arg3 random=1 norepeat=2 sequence=3
+              persist 00CD3187 or thing lookup; actor.vtbl+52
+              leftover vtbl+104; father +52 004CD1B0 al=1
+              +104 00661A40 ret 4 leaves al → one yield
+            WaitActiveDialog 00CC656B / poll 00CC6612
+              [ebp-44]==0 continue (Speak does not set handle)
+              else leftover vtbl+1472 008907D0 → 006E5660
+              handle comes from InteractiveSpeak/DialogSpeak vtbl+1456
+            """);
+    }
+
+    [Fact]
     public void CrowdAnimate_plays_on_real_members_only()
     {
         var runtime = ScriptRuntime.Detached();

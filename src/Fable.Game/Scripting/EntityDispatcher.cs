@@ -192,9 +192,11 @@ public static class EntityDispatcher
             if (target.Length == 0 || text.Length == 0 || ScriptLine.IsNull(text))
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
             var mode = SpeakMode(line.Arg(3));
-            ctx.Dialogue.Speak(line.Target, target, text, mode);
+            var hold = ScriptLine.IsTrue(line.Arg(2));
+            var body = ctx.Runtime.LookupText(text);
+            ctx.Dialogue.Speak(line.Target, target, text, mode, hold, body);
             return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Entity,
-                "Speak vtbl+28", text);
+                "Speak vtbl+52 leftover vtbl+104", text);
         }
 
         if (Eq(v, "InteractiveSpeak"))
@@ -205,7 +207,8 @@ public static class EntityDispatcher
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
             var wait = ScriptLine.IsTrue(line.Arg(2));
             var op = ctx.Dialogue.InteractiveSpeak(
-                line.Target, listener, prompt, wait, line.Arg(3));
+                line.Target, listener, prompt, wait, line.Arg(3),
+                ctx.Runtime.LookupText(prompt));
             if (wait)
                 return CommandResult.Wait(
                     ExecutionKind.WaitOperation, CommandStatus.Proven, CommandFamily.Entity,
@@ -220,7 +223,7 @@ public static class EntityDispatcher
             var text = line.Arg(1);
             if (listener.Length == 0 || text.Length == 0 || ScriptLine.IsNull(text))
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
-            ctx.Dialogue.DialogSpeak(line.Target, listener, text);
+            ctx.Dialogue.DialogSpeak(line.Target, listener, text, ctx.Runtime.LookupText(text));
             return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Entity,
                 "DialogSpeak vtbl+28", text);
         }
