@@ -644,7 +644,11 @@ public sealed class AnimationRuntime
     {
         Plays.Add(new ScriptAnimation(actor, name, f1, f2, f3, f4, f5));
         if (actor is { Length: > 0 })
-            States[actor] = new AnimationState(actor, name, false, f1, f2, f3, f4, f5);
+        {
+            var state = new AnimationState(actor, name, false, f1, f2, f3, f4, f5);
+            BeginInnerPlay(state, name, 0);
+            States[actor] = state;
+        }
         var kind = EntityTaskKind.Animate;
         var task = Tasks.Replace(actor, kind, name, null, 0f);
         var op = new PendingOperation(task.Id, "PlayAnimation", actor, name);
@@ -697,6 +701,35 @@ public sealed class AnimationRuntime
 
     public PendingOperation? Current(string? actor) =>
         actor is { Length: > 0 } && ByActor.TryGetValue(actor, out var op) ? op : null;
+
+    /// <summary>
+    /// <c>0070C050</c> request then <c>0070D580</c>.
+    /// Script PlayAnimation does not reach this via
+    /// thing <c>vtbl+72</c> (CTC +68 is <c>00686920</c>
+    /// stub). Appearance DEFAULT <c>005B37F7</c> does.
+    /// Mode 6 is that DEFAULT path. Pose packer unread.
+    /// </summary>
+    public void BeginInnerPlay(AnimationState state, string clip, int mode)
+    {
+        state.ClipKey = clip;
+        state.RequestMode = mode;
+        state.Playing = true;
+        state.PlayTime = 0f;
+        state.Duration = 1f;
+    }
+
+    /// <summary>
+    /// <c>005B37F7</c> <c>DEFAULT</c> via
+    /// <c>005DC340</c> 20-byte name table then
+    /// <c>0070C050</c> → <c>0070B460</c> →
+    /// <c>0070D580</c>.
+    /// </summary>
+    public void PlayAppearanceDefault(string actor)
+    {
+        var state = new AnimationState(actor, "DEFAULT", true, false, false, false, true, false);
+        BeginInnerPlay(state, "DEFAULT", 6);
+        States[actor] = state;
+    }
 }
 
 public sealed class AnimationState
@@ -710,6 +743,11 @@ public sealed class AnimationState
     public bool F4 { get; }
     public bool F5 { get; }
     public int Loops { get; set; }
+    public string ClipKey { get; set; } = "";
+    public int RequestMode { get; set; }
+    public bool Playing { get; set; }
+    public float PlayTime { get; set; }
+    public float Duration { get; set; }
 
     public AnimationState(
         string actor, string name, bool looping,
@@ -921,13 +959,22 @@ public sealed class WorldRuntime
         return hits;
     }
 
-    public ThingInstance Spawn(string type, string marker, string name, Vector3? pos)
+    public ThingInstance Spawn(string type, string marker, string name, Vector3? pos) =>
+        Spawn(type, marker, name, pos, extras: false);
+
+    /// <summary>
+    /// <c>00CCC3E6</c> <c>vtbl+364</c> <c>008A9100</c>.
+    /// Empty/IsTrue(arg3) extras <c>008ADF90</c>.
+    /// </summary>
+    public ThingInstance Spawn(string type, string marker, string name, Vector3? pos, bool extras)
     {
         var props = new Dictionary<string, string>
         {
             ["Marker"] = marker,
             ["Created"] = "1",
         };
+        if (extras)
+            props["Extra"] = "1";
         var thing = new ThingInstance
         {
             Kind = "CTC",
@@ -944,6 +991,8 @@ public sealed class WorldRuntime
         Dead.Remove(name);
         if (pos is { } p)
             Positions[name] = p;
+        if (extras)
+            Effects.Add(new ScriptCreate(type, marker, name));
         return thing;
     }
 

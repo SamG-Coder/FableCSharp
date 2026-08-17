@@ -30,7 +30,7 @@
 | ObjectCreate | `00CCC4FC` | `00CCC62E` | type,marker,name | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+392 object factory; empty any skip; jmp 00CC864B |
 | CrowdCreate | `00CCC92F` | `00CCCAA1` | type,source,alias[,IsTrue] | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+300(source); per-item vtbl+364; alias+i via 0099F570; 00CD3D2E |
 | CrowdCreateMixed | `00CCC64D` | `00CCC7A8` | typeA,typeB,source,alias | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+300(source); rand 00BFEB16%2 picks typeA/typeB; vtbl+364 each |
-| PlayAnimation | `00CC14B8` | `00CC15DA` | name[,IsTrue]x3[,IsFalse][,IsTrue] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+72(name,f0-2,f3=1,byte_1375748,0,f4); [ebp-22] yield 00CC5691 else 00CC7081 |
+| PlayAnimation | `00CC14B8` | `00CC15DA` | name[,IsTrue]x3[,IsFalse][,IsTrue] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+72; CTC+68 00686920 stub — 0070D580 is 005B37F7 DEFAULT not this path |
 | PlayLoopingAnim | `00CC1731` | `00CC186C` | name,loops[,flags] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+80(name,atoi arg1,f0-4); not PlayAnimation; same [ebp-22] yield |
 | PlayAVI | `00CCA26D` | `006286F0` | file | BlockPump | Proven | Proven | Proven | Proven | Proven | Proven | Data\Video\ prefix; blocking 006286F0; no vtbl+28 |
 | MuteSounds | `00CC7258` | `—` | IsFalse? | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+2664; jmp 00CC8464; apply body UNREAD |
@@ -48,7 +48,7 @@
 | RunTo | `00CC0A79` | `00CC09E2` | marker[,speed][,wait] | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | same dest+gait slot as WalkTo; mode 1 |
 | PlayCombatAnimation | `00CC15E3` | `—` | name[,flags] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+76 does not read name; no TURNING_AC90 pose |
 | PlayCombatAnim | `00CC15E3` | `—` | name[,flags] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | exe token alias of PlayCombatAnimation |
-| Create | `00CCC246` | `—` | type,marker,name | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+364; spawn body UNREAD; C# inserts ThingInstance |
+| Create | `00CCC246` | `00CCC3E6` | type,marker,name[,extra][,suffix][,unique][,IsFalse] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | vtbl+364 008A9100 at marker; extras 008ADF90; unique skip; jmp 00CD17F8 |
 | Remove | `00CD0116` | `008910D0` | name[,dead|IsTrue] | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | empty skip; dead -> vtbl+1608; else vtbl+432 008910D0/004C9B80 |
 | RemoveThing | `00CD0116` | `008910D0` | name | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | NOT a separate token. 00BFEAF8 n=6 matches Remove. Same apply. |
 | RemoveAll | `00CC67B5` | `00CC6817` | IsFalse? | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | separate path; vtbl+336 collection; vtbl+2044 per item; NOT vtbl+432 |

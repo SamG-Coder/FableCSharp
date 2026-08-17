@@ -3,7 +3,7 @@ GLOBAL: 124
 ENTITY: 61
 RECOVERED DISPATCH: 97
 RECOVERED RETURN: 97
-RECOVERED APPLY: 24
+RECOVERED APPLY: 25
 IMPLEMENTED RUNTIME: 13
 UNREAD: 88
 # Native command coverage
@@ -59,7 +59,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | CrowdCreate | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | CrowdCreateMixed | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | ObjectCreate | Global | Proven | Proven | Proven | Partial | Partial | Partial |
-| Create | Global | Proven | Proven | Proven | Partial | Partial | Partial |
+| Create | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | SmashWindows | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | RegisterScript | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | CreateNear | Global | Proven | Proven | Proven | Partial | Partial | Partial |

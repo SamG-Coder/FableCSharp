@@ -1491,6 +1491,113 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void Create_spawns_at_marker_and_skips_duplicate_when_unique()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            Marker("MK_A", 3, 4, 5),
+        ], null);
+        var interp = new ScriptInterpreter("cr",
+        [
+            "Create CREATURE_VILLAGER,MK_A,VILL1",
+            "Create CREATURE_VILLAGER,MK_A,VILL1,,,TRUE",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Single(runtime.World.Spawned);
+        Assert.Equal("CREATURE_VILLAGER", runtime.World.Spawned[0].DefinitionType);
+        Assert.Equal("VILL1", runtime.World.Spawned[0].ScriptName);
+        Assert.Equal(3f, runtime.World.Positions["VILL1"].X);
+        Assert.Equal("1", runtime.World.Spawned[0].Properties["Extra"]);
+        Assert.NotNull(runtime.Bindings.Resolve("VILL1"));
+        Assert.Equal(0x00CCC3E6u, ScriptCommandMap.Find("Create")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void Create_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("Create ", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "Create CREATURE_VILLAGER,MK_A,VILL1";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("Create", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        Assert.True(parsed.Arg(2).Length > 0);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        runtime.BindScene([Marker(parsed.Arg(1), 1, 2, 3)], null);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-create", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("Create", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(runtime.World.Spawned, t =>
+            t.ScriptName is not null &&
+            t.ScriptName.Equals(parsed.Arg(2), StringComparison.OrdinalIgnoreCase));
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-create.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-create-0070d580.txt"),
+            """
+            Create 00CCC246 / apply 00CCC3E6
+              3 required; arg4 name suffix; IsTrue(arg5) skip if bound
+              lookup marker; vtbl+364 008A9100(type,pos,name)
+              empty|IsTrue(arg3) extras 008ADF90
+              not IsFalse(arg6) 00CD3D2E persist bind
+              vtbl+2148 activate; jmp 00CD17F8
+            PlayAnimation does NOT call 0070D580
+              thing vtbl+72 004C7470; CTC+68 00686920 al=1 stub
+            0070D580 is 005B37F7 DEFAULT:
+              005DC340 20-byte name table
+              0070C050 request mode 6
+              0070B460 inner; 0070D1A0 copies request
+              PALSKIN packer 00BD2D90 unread from this path
+            """);
+    }
+
+    [Fact]
+    public void Appearance_DEFAULT_starts_0070D580_inner_play()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.Animation.PlayAppearanceDefault("HERO");
+        var state = runtime.Animation.States["HERO"];
+        Assert.Equal("DEFAULT", state.ClipKey);
+        Assert.Equal(6, state.RequestMode);
+        Assert.True(state.Playing);
+        Assert.Equal(0f, state.PlayTime);
+        Assert.Equal(1f, state.Duration);
+        Assert.Equal(0x0070D580u, RegionTravel.AnimationPlayInner);
+        Assert.Equal(0x0070C050u, RegionTravel.AnimationPlayRequest);
+        Assert.False(RegionTravel.FirstSeenPlayAnimationCallsInnerPlay);
+    }
+
+    [Fact]
     public void TintScreenOut_consumes_hold_and_continues()
     {
         var runtime = ScriptRuntime.Detached();

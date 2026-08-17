@@ -355,22 +355,7 @@ public static class GlobalDispatcher
         }
 
         if (Eq(v, "Create"))
-        {
-            var type = line.Arg(0);
-            var marker = line.Arg(1);
-            var name = line.Arg(2);
-            if (type.Length == 0 || marker.Length == 0 || name.Length == 0)
-                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
-            var markerThing = ctx.FindThing(marker);
-            var pos = markerThing is { PositionX: not null }
-                ? RegionTravel.PositionOf(markerThing)
-                : (System.Numerics.Vector3?)null;
-            var spawned = ctx.World.Spawn(type, marker, name, pos);
-            ctx.Runtime.AddThing(spawned);
-            ctx.Bindings.BindCreated(name, type, marker, pos, spawned);
-            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
-                $"{type}->{name}", $"Created:{name}");
-        }
+            return ApplyCreate(line, ctx);
 
         if (Eq(v, "CreateEffect"))
             return ApplyCreateEffect(line, ctx);
@@ -708,6 +693,40 @@ public static class GlobalDispatcher
     /// marker pos. <c>vtbl+400</c>. Continue
     /// <c>00CC864B</c>.
     /// </summary>
+    /// <summary>
+    /// <c>00CCC29A</c>: three required args else
+    /// <c>00CD17FD</c>. Optional arg4 appends to
+    /// name. IsTrue(arg5) skips if persist/binding
+    /// already has the name. <c>vtbl+364</c>
+    /// <c>008A9100</c> at marker pos. Empty or
+    /// IsTrue(arg3) extras <c>008ADF90</c>. Not
+    /// IsFalse(arg6) persist-binds <c>00CD3D2E</c>.
+    /// </summary>
+    internal static CommandResult ApplyCreate(
+        ScriptLine line, ScriptExecutionContext ctx)
+    {
+        var type = line.Arg(0);
+        var marker = line.Arg(1);
+        var name = line.Arg(2);
+        if (type.Length == 0 || marker.Length == 0 || name.Length == 0)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        if (line.Arg(4).Length > 0)
+            name += line.Arg(4);
+        if (ScriptLine.IsTrue(line.Arg(5)) && ctx.Bindings.Resolve(name) is not null)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name);
+        var markerThing = ctx.FindThing(marker);
+        var pos = markerThing is { PositionX: not null }
+            ? RegionTravel.PositionOf(markerThing)
+            : (System.Numerics.Vector3?)null;
+        var extras = line.Arg(3).Length == 0 || ScriptLine.IsTrue(line.Arg(3));
+        var spawned = ctx.World.Spawn(type, marker, name, pos, extras);
+        ctx.Runtime.AddThing(spawned);
+        if (!ScriptLine.IsFalse(line.Arg(6)))
+            ctx.Bindings.BindCreated(name, type, marker, pos, spawned);
+        return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+            $"{type}->{name}", extras ? $"Created:{name}" : "");
+    }
+
     internal static CommandResult ApplyCreateEffect(
         ScriptLine line, ScriptExecutionContext ctx)
     {
