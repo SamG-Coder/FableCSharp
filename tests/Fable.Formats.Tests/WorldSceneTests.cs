@@ -282,7 +282,12 @@ public sealed class WorldSceneTests
         Assert.Equal(0x00CCA26Du, RegionTravel.PlayAviOpcode);
         Assert.Equal(0x00CD17F8u, RegionTravel.PlayAviJoin);
         Assert.Equal(1476, RegionTravel.PlayAviVtbl);
+        Assert.Equal(0x0088F890u, RegionTravel.PlayAviApplyFn);
+        Assert.Equal(0x0040D2A0u, RegionTravel.PlayAviSingleton);
+        Assert.Equal(0x006286F0u, RegionTravel.PlayAviPlayer);
+        Assert.Equal(0x1B, RegionTravel.PlayAviMode);
         Assert.True(RegionTravel.FirstSeenPlayAviDoesNotYield);
+        Assert.True(RegionTravel.FirstSeenPlayAviIsBlocking);
         Assert.Equal(@"Data\Video\", RegionTravel.PlayAviPrefix);
         Assert.Equal("dream_sequence_comp.xmv", RegionTravel.IntroPlayAvi);
         Assert.Equal(0x00CC9E6Au, RegionTravel.NoLoadUseCameraSite);
@@ -293,6 +298,15 @@ public sealed class WorldSceneTests
         Assert.True(RegionTravel.FirstSeenUseCameraYields);
         Assert.True(RegionTravel.FirstSeenNoLoadUseCameraYields);
         Assert.False(RegionTravel.FirstSeenPlayAvi);
+        Assert.Equal("Hero", RegionTravel.IntroHeroActor);
+        Assert.Equal("Father", RegionTravel.IntroFatherActor);
+        Assert.Equal("MK_OVI_ID_HERO", RegionTravel.IntroHeroTeleportMarker);
+        Assert.Equal("MK_OVI_ID_DAD", RegionTravel.IntroFatherTeleportMarker);
+        Assert.Equal(0x0089B780u, RegionTravel.TeleportApplyFn);
+        Assert.Equal(0x004AA980u, RegionTravel.TeleportMarkerPos);
+        Assert.Equal(124, RegionTravel.TeleportSetPosVtbl);
+        Assert.True(RegionTravel.FirstSeenTeleportAppliesPos);
+        Assert.False(RegionTravel.FirstSeenTeleportAppliesYaw);
         Assert.False(RegionTravel.FirstSeenWatchBarrelsSpawnsBeetle);
         Assert.False(RegionTravel.FirstSeenHandsPlayerControl);
         Assert.False(RegionTravel.FirstSeenCameraNameInExe);
@@ -701,8 +715,14 @@ public sealed class WorldSceneTests
         Assert.Contains("Father.Teleport MK_OVI_ID_DAD", intro.Executed);
         Assert.Contains("Father.LookToThing Hero,FOREVER", intro.Executed);
         Assert.True(RegionTravel.FirstSeenTeleportDoesNotYield);
+        Assert.True(RegionTravel.FirstSeenTeleportAppliesPos);
+        Assert.False(RegionTravel.FirstSeenTeleportAppliesYaw);
+        Assert.False(RegionTravel.FirstSeenTeleportChangesRegion);
         Assert.True(RegionTravel.FirstSeenLookToThingYields);
         Assert.Equal(0x00CC4678u, RegionTravel.TeleportOpcode);
+        Assert.Equal(0x0089B780u, RegionTravel.TeleportApplyFn);
+        Assert.Equal(0x004AA980u, RegionTravel.TeleportMarkerPos);
+        Assert.Equal(124, RegionTravel.TeleportSetPosVtbl);
         Assert.Equal(0x00CC3B3Fu, RegionTravel.LookToThingOpcode);
         Assert.True(intro.Yielded);
         Assert.False(intro.ExecutedVerb("UseCamera"));
@@ -719,6 +739,15 @@ public sealed class WorldSceneTests
         Assert.Equal(RegionTravel.IntroFirstSeenCamera, camera.ActiveName);
         Assert.Contains(runtime.Teleports, t => t.Actor == "Hero" && t.Marker == "MK_OVI_ID_HERO");
         Assert.Contains(runtime.Teleports, t => t.Actor == "Father" && t.Marker == "MK_OVI_ID_DAD");
+        Assert.True(runtime.ActorPositions.TryGetValue(RegionTravel.IntroHeroActor, out var heroPos));
+        Assert.True(runtime.ActorPositions.TryGetValue(RegionTravel.IntroFatherActor, out var fatherPos));
+        var heroMarker = things.First(t => t.ScriptName == RegionTravel.IntroHeroTeleportMarker);
+        var dadMarker = things.First(t => t.ScriptName == RegionTravel.IntroFatherTeleportMarker);
+        Assert.Equal(RegionTravel.PositionOf(heroMarker), heroPos);
+        Assert.Equal(RegionTravel.PositionOf(dadMarker), fatherPos);
+        var spawn = RegionTravel.FindPlayerStart(things);
+        Assert.NotNull(spawn);
+        Assert.NotEqual(RegionTravel.PositionOf(spawn), heroPos);
         Assert.Equal("MUSIC_SET_NULL", runtime.LastMusic);
         Assert.False(script.Gate80);
         script.Update(0.1f);
@@ -1769,6 +1798,51 @@ public sealed class WorldSceneTests
         Assert.True(attract.CommandsLayoutProven);
         Assert.Equal("SetTime 14", attract.Commands[0]);
         Assert.StartsWith("NoLoadUseCamera ", attract.Commands[3], StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void First_seen_Teleport_moves_kid_and_places_father()
+    {
+        var install = Require();
+        using var levels = new LevelLibrary(install);
+        var things = levels.LoadThings("StartOakValeWest").Things.ToList();
+        var spawn = RegionTravel.FindPlayerStart(things);
+        Assert.NotNull(spawn);
+        var heroMarker = things.First(t => t.ScriptName == RegionTravel.IntroHeroTeleportMarker);
+        var dadMarker = things.First(t => t.ScriptName == RegionTravel.IntroFatherTeleportMarker);
+        var runtime = ScriptRuntime.StartNewGame(install, things);
+        Assert.Equal(RegionTravel.PositionOf(heroMarker), runtime.ActorPositions[RegionTravel.IntroHeroActor]);
+        Assert.Equal(RegionTravel.PositionOf(dadMarker), runtime.ActorPositions[RegionTravel.IntroFatherActor]);
+        Assert.NotEqual(RegionTravel.PositionOf(spawn), runtime.ActorPositions[RegionTravel.IntroHeroActor]);
+        Assert.Equal(0x0089B780u, RegionTravel.TeleportApplyFn);
+        Assert.Equal(0x004AA980u, RegionTravel.TeleportMarkerPos);
+        Assert.True(RegionTravel.FirstSeenTeleportAppliesPos);
+        Assert.False(RegionTravel.FirstSeenPlayAvi);
+
+        var world = WorldGeometry.Build(
+            install, "StartOakValeWest", things, actorPositions: runtime.ActorPositions);
+        var nearHero = CountPropNear(
+            world, heroMarker.PositionX!.Value, heroMarker.PositionY!.Value, 4f);
+        var nearSpawn = CountPropNear(
+            world, spawn.PositionX!.Value, spawn.PositionY!.Value, 4f);
+        var nearDad = CountPropNear(
+            world, dadMarker.PositionX!.Value, dadMarker.PositionY!.Value, 4f);
+        Assert.True(nearHero > 10, $"kid mesh missing at MK_OVI_ID_HERO nearHero={nearHero}");
+        Assert.True(nearDad > 10, $"Father mesh missing at MK_OVI_ID_DAD nearDad={nearDad}");
+        Assert.True(nearHero > nearSpawn, $"kid still at NOVStartHSP nearHero={nearHero} nearSpawn={nearSpawn}");
+    }
+
+    private static int CountPropNear(WorldGeometry world, float x, float y, float radius)
+    {
+        var r2 = radius * radius;
+        return world.Triangles.Count(t =>
+        {
+            if (t.Layer != Fable.Formats.Meshes.SceneLayer.Prop)
+                return false;
+            var mx = (t.A.X + t.B.X + t.C.X) / 3f - x;
+            var my = (t.A.Y + t.B.Y + t.C.Y) / 3f - y;
+            return mx * mx + my * my < r2;
+        });
     }
 
     [Fact]

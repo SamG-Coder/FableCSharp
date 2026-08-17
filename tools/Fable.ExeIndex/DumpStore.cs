@@ -14,8 +14,8 @@ internal sealed class DumpStore
     public const int SplitVersion = 2;
     public const int LandscapeTraceVersion = 5;
     public const int RenderTraceVersion = 2;
-    public const int NewGameTraceVersion = 117;
-    public const int ScriptRuntimeVersion = 42;
+    public const int NewGameTraceVersion = 118;
+    public const int ScriptRuntimeVersion = 43;
     public const int ScriptBankVersion = 7;
     public const int ShaderTokensVersion = 7;
 

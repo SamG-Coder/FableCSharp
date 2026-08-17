@@ -121,9 +121,15 @@ public static class RegionTravel
     public const uint PlayAviJoin = 0x00CD17F8;
     public const uint PlayAviConcat = 0x0099F570;
     public const int PlayAviVtbl = 1476;
+    public const uint PlayAviApplyFn = 0x0088F890;
+    public const uint PlayAviSingleton = 0x0040D2A0;
+    public const uint PlayAviSingletonVa = 0x013B7D4C;
+    public const uint PlayAviPlayer = 0x006286F0;
+    public const int PlayAviMode = 0x1B;
     public const string PlayAviPrefix = @"Data\Video\";
     public const string IntroPlayAvi = "dream_sequence_comp.xmv";
     public const bool FirstSeenPlayAviDoesNotYield = true;
+    public const bool FirstSeenPlayAviIsBlocking = true;
     public const uint NoLoadUseCameraSite = 0x00CC9E6A;
     /// <summary>
     /// <c>00CC9F39</c> <c>UseCamera</c>. Empty / null
@@ -201,6 +207,38 @@ public static class RegionTravel
     public const uint TeleportOpcode = 0x00CC4678;
     public const uint TeleportApply = 0x00CC47EB;
     public const int TeleportApplyVtbl = 1892;
+    /// <summary>
+    /// <c>00CC47EB</c> <c>vtbl+1892</c> is
+    /// <c>0089B780</c>. Marker pos
+    /// <c>004AA980</c> is <c>[handle+4].vtbl+24</c>
+    /// (TNG <c>CTCPhysicsStandard.Position*</c>).
+    /// Yaw <c>004AAA40</c> is <c>vtbl+40</c>, default
+    /// <c>[0x122DEDC]=0</c>. Apply writes
+    /// <c>[thing+96].vtbl+124(pos)</c>. Same-region
+    /// first-seen skips <c>0049EAF0</c>.
+    /// <c>00DB86B0</c> binds actor names
+    /// <c>Hero</c> / <c>Father</c> via
+    /// <c>00CD3D2E</c> / <c>008ABD10</c> before
+    /// <c>00CBFB7D</c>.
+    /// </summary>
+    public const uint TeleportApplyFn = 0x0089B780;
+    public const uint TeleportMarkerPos = 0x004AA980;
+    public const uint TeleportMarkerYaw = 0x004AAA40;
+    public const int TeleportMarkerPosVtbl = 24;
+    public const int TeleportMarkerYawVtbl = 40;
+    public const int TeleportSetPosVtbl = 124;
+    public const int TeleportThingPosOffset = 96;
+    public const uint TeleportHandleValid = 0x004AB130;
+    public const uint TeleportActorBind = 0x00CD3D2E;
+    public const uint TeleportActorSlot = 0x008ABD10;
+    public const uint TeleportActorMapCtor = 0x00CDBF70;
+    public const string IntroHeroActor = "Hero";
+    public const string IntroFatherActor = "Father";
+    public const string IntroHeroTeleportMarker = "MK_OVI_ID_HERO";
+    public const string IntroFatherTeleportMarker = "MK_OVI_ID_DAD";
+    public const bool FirstSeenTeleportAppliesPos = true;
+    public const bool FirstSeenTeleportAppliesYaw = false;
+    public const bool FirstSeenTeleportChangesRegion = false;
     public const uint LookToThingOpcode = 0x00CC3B3F;
     public const uint LookToThingYield = 0x00CC3CAD;
     public const uint ActorCommandJoin = 0x00CC707C;

@@ -44,6 +44,7 @@ public sealed class ScriptRuntime : IScriptHost
     public IReadOnlyDictionary<string, bool> PersistFields => _persist;
     public IReadOnlyDictionary<string, string> NamedScripts => _named;
     public IReadOnlyList<ScriptTeleport> Teleports => _teleports;
+    public IReadOnlyDictionary<string, Vector3> ActorPositions => _actorPositions;
     public IReadOnlyList<ScriptAnimation> Animations => _animations;
     public IReadOnlyList<ScriptSpeech> Speeches => _speeches;
     public IReadOnlyList<ScriptInteractiveSpeech> InteractiveSpeeches => _interactive;
@@ -64,6 +65,7 @@ public sealed class ScriptRuntime : IScriptHost
     private readonly List<ScriptFiber> _fibers = [];
     private readonly List<ScriptInterpreter> _interpreters = [];
     private readonly List<ScriptTeleport> _teleports = [];
+    private readonly Dictionary<string, Vector3> _actorPositions = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<ScriptAnimation> _animations = [];
     private readonly List<ScriptSpeech> _speeches = [];
     private readonly List<ScriptInteractiveSpeech> _interactive = [];
@@ -324,6 +326,13 @@ public sealed class ScriptRuntime : IScriptHost
 
     void IScriptHost.CameraPause(string arguments) => _ = arguments;
 
+    /// <summary>
+    /// <c>00CC4678</c> → <c>vtbl+1892</c>
+    /// <c>0089B780</c>: marker pos
+    /// <c>004AA980</c> (<c>[handle+4].vtbl+24</c>),
+    /// then <c>[thing+96].vtbl+124(pos)</c>.
+    /// Do not invent yaw / region-change.
+    /// </summary>
     void IScriptHost.Teleport(string? actor, string arguments)
     {
         var args = ScriptCommand.SplitArgs(arguments);
@@ -331,6 +340,8 @@ public sealed class ScriptRuntime : IScriptHost
         var thing = FindThing(marker);
         Vector3? position = thing is { PositionX: not null } ? RegionTravel.PositionOf(thing) : null;
         _teleports.Add(new ScriptTeleport(actor, marker, position));
+        if (actor is { Length: > 0 } && position is { } pos)
+            _actorPositions[actor] = pos;
     }
 
     void IScriptHost.LookToThing(string? actor, string arguments) =>
@@ -338,8 +349,11 @@ public sealed class ScriptRuntime : IScriptHost
 
     /// <summary>
     /// <c>00CCA26D</c>: prefix <c>Data\Video\</c> then
-    /// <c>vtbl+1476</c>. Interpreter <c>jmp 00CD17F8</c>
-    /// (no yield). Do not invent video playback.
+    /// <c>vtbl+1476</c> <c>0088F890</c> →
+    /// <c>0040D2A0</c> then blocking
+    /// <c>006286F0(edx=0x1B)</c>. Interpreter
+    /// <c>jmp 00CD17F8</c> (no yield). First-seen
+    /// is after LookToThing. Do not invent video.
     /// </summary>
     void IScriptHost.PlayAvi(string arguments)
     {

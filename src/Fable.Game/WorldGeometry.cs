@@ -27,7 +27,8 @@ public sealed class WorldGeometry
         string region,
         IEnumerable<ThingInstance> things,
         bool adjacentStaticMaps = true,
-        LandscapeFrustum.Plane[]? landscapePlanes = null)
+        LandscapeFrustum.Plane[]? landscapePlanes = null,
+        IReadOnlyDictionary<string, Vector3>? actorPositions = null)
     {
         var headerPath = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "meshdata.h");
         var graphicsPath = Path.Combine(install.DataRoot, "graphics", "graphics.big");
@@ -55,7 +56,9 @@ public sealed class WorldGeometry
         using var levels = new LevelLibrary(install);
         var textureHeader = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h");
         var landscapeEnums = File.Exists(textureHeader) ? HeaderEnums.Load(textureHeader) : null;
-        var primaryThings = things as IReadOnlyList<ThingInstance> ?? things.ToList();
+        var primaryThings = PlaceActors(
+            things as IReadOnlyList<ThingInstance> ?? things.ToList(),
+            actorPositions);
 
         var maps = adjacentStaticMaps
             ? StaticMapsAround(levels.World, install, region)
@@ -94,7 +97,11 @@ public sealed class WorldGeometry
                            ?? 0;
             if (playerMeshId != 0)
             {
-                var hero = CloneAs(start, RegionTravel.KidCreature);
+                Vector3? heroPos = null;
+                if (actorPositions is not null &&
+                    actorPositions.TryGetValue(RegionTravel.IntroHeroActor, out var teleported))
+                    heroPos = teleported;
+                var hero = CloneAs(start, RegionTravel.KidCreature, heroPos);
                 AddInstances([hero], 0, 0, defs, enums, big, byId, cache, triangles, ref instances, ref missing, missingDefs);
                 if (cache.TryGetValue((uint)playerMeshId, out var kid) && kid is not null)
                     playerHeight = (kid.BoundsMax.Z - kid.BoundsMin.Z) * MeshToWorld;
@@ -119,7 +126,41 @@ public sealed class WorldGeometry
     private static bool IsPrimaryStart(string region) =>
         region.Equals(RegionTravel.NewGameRegion, StringComparison.OrdinalIgnoreCase);
 
-    private static ThingInstance CloneAs(ThingInstance source, string definitionType) =>
+    /// <summary>
+    /// <c>00DB86B0</c> binds <c>Father</c> to
+    /// <c>NOVI_LiveFather</c>. TNG has no physics
+    /// pos; first-seen <c>Teleport</c> writes
+    /// <c>MK_OVI_ID_DAD</c> via <c>0089B780</c>.
+    /// </summary>
+    private static IReadOnlyList<ThingInstance> PlaceActors(
+        IReadOnlyList<ThingInstance> things,
+        IReadOnlyDictionary<string, Vector3>? actorPositions)
+    {
+        if (actorPositions is null ||
+            !actorPositions.TryGetValue(RegionTravel.IntroFatherActor, out var fatherPos))
+            return things;
+
+        var list = new List<ThingInstance>(things.Count);
+        foreach (var thing in things)
+        {
+            if (thing.ScriptName is not null &&
+                thing.ScriptName.Equals(RegionTravel.LiveFatherScript, StringComparison.OrdinalIgnoreCase))
+            {
+                list.Add(CloneAs(
+                    thing,
+                    thing.DefinitionType ?? RegionTravel.LiveFatherCreature,
+                    fatherPos));
+                continue;
+            }
+
+            list.Add(thing);
+        }
+
+        return list;
+    }
+
+    private static ThingInstance CloneAs(
+        ThingInstance source, string definitionType, Vector3? position = null) =>
         new()
         {
             Kind = source.Kind,
@@ -128,9 +169,9 @@ public sealed class WorldGeometry
             ScriptName = source.ScriptName,
             Uid = source.Uid,
             Player = source.Player,
-            PositionX = source.PositionX,
-            PositionY = source.PositionY,
-            PositionZ = source.PositionZ,
+            PositionX = position?.X ?? source.PositionX,
+            PositionY = position?.Y ?? source.PositionY,
+            PositionZ = position?.Z ?? source.PositionZ,
             Properties = source.Properties,
         };
 

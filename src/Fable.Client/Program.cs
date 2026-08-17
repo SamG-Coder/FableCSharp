@@ -238,14 +238,12 @@ void EnterRegion(string next, RegionExit? arrivedFromExit)
     }
 
     Console.WriteLine($"Building {region}...");
-    world = WorldGeometry.Build(install, region, things.Things, landscapePlanes: planes);
-    map = levels.World.FindMap(region);
-    exits = RegionTravel.ActiveExits(things.Things);
-    Console.WriteLine($"Instanced {world.MeshInstances} meshes ({world.Triangles.Count} tris), missing {world.MissingMeshes}");
+    IReadOnlyDictionary<string, Vector3>? actorPositions = null;
     if (region == RegionTravel.NewGameRegion)
     {
         var runtime = ScriptRuntime.StartNewGame(install, things.Things, gameCam);
         intro = new NewGameScript(runtime);
+        actorPositions = runtime.ActorPositions;
         var ip = runtime.ActiveInterpreter?.InstructionPointer ?? 0;
         Console.WriteLine(
             $"Intro {RegionTravel.IntroQuest}/{RegionTravel.IntroScriptName} " +
@@ -256,6 +254,12 @@ void EnterRegion(string next, RegionExit? arrivedFromExit)
     }
     else
         intro = null;
+
+    world = WorldGeometry.Build(
+        install, region, things.Things, landscapePlanes: planes, actorPositions: actorPositions);
+    map = levels.World.FindMap(region);
+    exits = RegionTravel.ActiveExits(things.Things);
+    Console.WriteLine($"Instanced {world.MeshInstances} meshes ({world.Triangles.Count} tris), missing {world.MissingMeshes}");
 
     if (planes is null && spawn is not null)
     {
