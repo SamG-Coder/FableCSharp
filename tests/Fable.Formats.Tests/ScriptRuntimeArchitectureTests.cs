@@ -893,6 +893,123 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void CreateLight_spawns_at_marker_with_rgb()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "MK_L",
+                PositionX = 5,
+                PositionY = 6,
+                PositionZ = 1,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], null);
+        var interp = new ScriptInterpreter("cl",
+            ["CreateLight MK_L,255,128,0,2.5,1.0,1,LAMP1,TRUE"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Single(runtime.World.Lights);
+        Assert.Equal("LAMP1", runtime.World.Lights[0].Name);
+        Assert.Equal("Light", runtime.World.Spawned[0].DefinitionType);
+        Assert.Equal("1", runtime.World.Spawned[0].Properties["Light"]);
+        Assert.Equal((byte)255, runtime.World.LightColors["LAMP1"].R);
+        Assert.Equal((byte)128, runtime.World.LightColors["LAMP1"].G);
+        Assert.Equal((byte)0, runtime.World.LightColors["LAMP1"].B);
+        Assert.Equal(5f, runtime.World.Positions["LAMP1"].X);
+        Assert.Single(runtime.World.Effects);
+        Assert.NotNull(runtime.Bindings.Resolve("LAMP1"));
+        Assert.Equal(0x00CCBB61u, ScriptCommandMap.Find("CreateLight")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("CreateEffect")!.Value.ApplySite,
+            ScriptCommandMap.Find("CreateLight")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void CreateLight_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("CreateLight ", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "CreateLight MK_L,255,128,0,2.5,1.0,1,LAMP1,TRUE";
+        hit ??= bank.Find("CS_OAKVALE_INTRO_FATHER") ?? bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("CreateLight", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        Assert.True(parsed.Arg(7).Length > 0);
+
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        using var levels = new LevelLibrary(install);
+        runtime.BindScene(levels.LoadThings(RegionTravel.NewGameRegion).Things.ToList(), null);
+        if (runtime.FindThingByName(parsed.Arg(0)) is null)
+        {
+            runtime.BindScene(
+            [
+                new ThingInstance
+                {
+                    Kind = "CTC",
+                    Section = "Thing",
+                    DefinitionType = "Marker",
+                    ScriptName = parsed.Arg(0),
+                    PositionX = 1,
+                    PositionY = 2,
+                    PositionZ = 0,
+                    Properties = new Dictionary<string, string>(),
+                },
+            ], null);
+        }
+
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-clight", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("CreateLight", StringComparison.OrdinalIgnoreCase));
+        Assert.NotEmpty(runtime.World.Lights);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-clight.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-createlight.txt"),
+            """
+            CreateLight 00CCB933 / apply 00CCBB61
+              9 required args else 00CD17FD
+              lookup arg0 marker vtbl+280/288
+              atof arg1-3; 00BFEA70 fistp -> RGB bytes
+              atof arg4/5 floats; arg6>0 flag
+              arg7 name; IsTrue(arg8) -> 008ADF90 extras
+              vtbl+408(out,pos,rgba,name,f4,f5,flag) — not 364/400/404
+              jmp 00CC864B no yield
+            """);
+    }
+
+    [Fact]
     public void DummyEffect_real_script_bank_line()
     {
         var install = GameInstall.TryLocate();

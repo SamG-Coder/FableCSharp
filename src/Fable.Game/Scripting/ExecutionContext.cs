@@ -652,6 +652,7 @@ public sealed class WorldRuntime
     public readonly List<(bool Hide, string Mode)> ExtraOps = [];
     public readonly List<(string Verb, string Arg)> RemoveFamily = [];
     public readonly List<ScriptCreate> Effects = [];
+    public readonly List<ScriptCreate> Lights = [];
     public readonly Dictionary<string, (byte R, byte G, byte B, byte A)> LightColors =
         new(StringComparer.OrdinalIgnoreCase);
     public int ActiveLightScene { get; set; } = -1;
@@ -793,6 +794,44 @@ public sealed class WorldRuntime
         return tagged;
     }
 
+    /// <summary>
+    /// <c>00CCB986</c> <c>vtbl+408</c> light factory.
+    /// Distinct from Create 364 / Effect 400 / Dummy 404.
+    /// </summary>
+    public ThingInstance SpawnLight(
+        string marker, string name, byte r, byte g, byte b,
+        float param0, float param1, bool flag, Vector3? pos, bool extras)
+    {
+        var thing = Spawn("Light", marker, name, pos);
+        var props = new Dictionary<string, string>(thing.Properties, StringComparer.OrdinalIgnoreCase)
+        {
+            ["Light"] = "1",
+            ["R"] = r.ToString(CultureInfo.InvariantCulture),
+            ["G"] = g.ToString(CultureInfo.InvariantCulture),
+            ["B"] = b.ToString(CultureInfo.InvariantCulture),
+            ["Param0"] = param0.ToString(CultureInfo.InvariantCulture),
+            ["Param1"] = param1.ToString(CultureInfo.InvariantCulture),
+            ["Flag"] = flag ? "1" : "0",
+        };
+        var tagged = new ThingInstance
+        {
+            Kind = thing.Kind,
+            Section = thing.Section,
+            DefinitionType = thing.DefinitionType,
+            ScriptName = thing.ScriptName,
+            PositionX = thing.PositionX,
+            PositionY = thing.PositionY,
+            PositionZ = thing.PositionZ,
+            Properties = props,
+        };
+        Spawned[^1] = tagged;
+        Lights.Add(new ScriptCreate("Light", marker, name));
+        LightColors[name] = (r, g, b, 255);
+        if (extras)
+            Effects.Add(new ScriptCreate("Light", marker, name));
+        return tagged;
+    }
+
     public void Destroy(string name)
     {
         if (name.Length == 0)
@@ -807,6 +846,9 @@ public sealed class WorldRuntime
         Collide.Remove(name);
         Effects.RemoveAll(e =>
             e.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        Lights.RemoveAll(e =>
+            e.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        LightColors.Remove(name);
     }
 
     /// <summary>

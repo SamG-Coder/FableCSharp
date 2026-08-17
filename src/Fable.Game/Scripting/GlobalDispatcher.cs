@@ -348,6 +348,9 @@ public static class GlobalDispatcher
         if (Eq(v, "DummyEffect"))
             return ApplyDummyEffect(line, ctx);
 
+        if (Eq(v, "CreateLight"))
+            return ApplyCreateLight(line, ctx);
+
         if (Eq(v, "CreateNear"))
         {
             var type = line.Arg(0);
@@ -692,6 +695,57 @@ public static class GlobalDispatcher
             $"{type}->{name} z={z:0.##}",
             name.Length > 0 ? $"Created:{name}" : "");
     }
+
+    /// <summary>
+    /// <c>00CCB986</c>: nine required args. Marker
+    /// lookup arg0. atof arg1-3 → bytes via
+    /// <c>00BFEA70</c> (R,G,B). atof arg4/5 floats.
+    /// arg6 &gt; 0 flag. arg7 name. IsTrue(arg8)
+    /// extras. <c>vtbl+408</c>. Continue
+    /// <c>00CC864B</c>.
+    /// </summary>
+    internal static CommandResult ApplyCreateLight(
+        ScriptLine line, ScriptExecutionContext ctx)
+    {
+        for (var i = 0; i < 9; i++)
+        {
+            if (line.Arg(i).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        }
+
+        var marker = line.Arg(0);
+        var name = line.Arg(7);
+        ScriptLine.TryFloat(line.Arg(1), out var rf);
+        ScriptLine.TryFloat(line.Arg(2), out var gf);
+        ScriptLine.TryFloat(line.Arg(3), out var bf);
+        ScriptLine.TryFloat(line.Arg(4), out var p0);
+        ScriptLine.TryFloat(line.Arg(5), out var p1);
+        ScriptLine.TryFloat(line.Arg(6), out var flagf);
+        var extras = ScriptLine.IsTrue(line.Arg(8));
+        var markerThing = ctx.FindThing(marker);
+        Vector3? pos = null;
+        if (markerThing is { PositionX: not null })
+            pos = RegionTravel.PositionOf(markerThing);
+        else if (ctx.World.Positions.TryGetValue(marker, out var stored))
+            pos = stored;
+        else
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, marker);
+        var spawned = ctx.World.SpawnLight(
+            marker, name, FloatToByte(rf), FloatToByte(gf), FloatToByte(bf),
+            p0, p1, flagf > 0f, pos, extras);
+        ctx.Runtime.AddThing(spawned);
+        if (name.Length > 0)
+            ctx.Bindings.BindCreated(name, "Light", marker, pos, spawned);
+        return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+            $"{name} {FloatToByte(rf)},{FloatToByte(gf)},{FloatToByte(bf)}",
+            name.Length > 0 ? $"Created:{name}" : "");
+    }
+
+    /// <summary>
+    /// <c>00BFEA70</c> fistp → <c>al</c>.
+    /// </summary>
+    internal static byte FloatToByte(float value) =>
+        unchecked((byte)(int)value);
 
     /// <summary>
     /// <c>00CCBDB6</c>: type,marker,arg2 required.

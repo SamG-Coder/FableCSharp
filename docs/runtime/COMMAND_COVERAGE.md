@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 91
-RECOVERED RETURN: 91
+RECOVERED DISPATCH: 92
+RECOVERED RETURN: 92
 RECOVERED APPLY: 16
 IMPLEMENTED RUNTIME: 13
-UNREAD: 94
+UNREAD: 93
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -65,7 +65,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | CreateNear | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | DummyEffect | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | CreateEffect | Global | Proven | Proven | Proven | Partial | Partial | Partial |
-| CreateLight | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| CreateLight | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | WaitFlag | Global | Proven | Proven | Proven | Proven | Proven | Proven |
 | CameraFOVLookBetweenPos | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | CameraPath | Global | Proven | Proven | Proven | Partial | Partial | Partial |
