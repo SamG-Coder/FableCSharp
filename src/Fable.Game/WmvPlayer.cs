@@ -41,6 +41,7 @@ public sealed class WmvPlayer : IDisposable
     internal static int QueryDirectionCalls { get; set; }
     internal static int MemInputQiCalls { get; set; }
     internal static int ConnectedToCalls { get; set; }
+    internal static int MiscFlagsCalls { get; set; }
 
     public static string? LastError { get; private set; }
 
@@ -65,6 +66,7 @@ public sealed class WmvPlayer : IDisposable
         QueryDirectionCalls = 0;
         MemInputQiCalls = 0;
         ConnectedToCalls = 0;
+        MiscFlagsCalls = 0;
         if (!File.Exists(path) || !RegionTravel.FileHasAsfMagic(path))
         {
             LastError = "missing-or-not-asf";
@@ -199,7 +201,7 @@ public sealed class WmvPlayer : IDisposable
             return $"Run {hr:X8}";
 
         if (!_renderer.IsConnected)
-            return $"renderer-not-connected enumPins={EnumPinsCalls} next={PinNextCalls} dir={QueryDirectionCalls} conn={ConnectedToCalls} memqi={MemInputQiCalls} qa={QueryAcceptCalls} rc={ReceiveConnectionCalls} vis=" +
+            return $"renderer-not-connected enumPins={EnumPinsCalls} next={PinNextCalls} dir={QueryDirectionCalls} conn={ConnectedToCalls} memqi={MemInputQiCalls} qa={QueryAcceptCalls} rc={ReceiveConnectionCalls} misc={MiscFlagsCalls} vis=" +
                    GraphPinVisible() + " " + GraphSummary();
 
         var deadline = Environment.TickCount64 + 5000;
@@ -744,6 +746,15 @@ public sealed class WmvPlayer : IDisposable
     }
 
     [ComImport]
+    [Guid("56a868a5-0ad4-11ce-b03a-0020af0ba770")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IQualityControl
+    {
+        [PreserveSig] int Notify(IBaseFilter self, IntPtr quality);
+        [PreserveSig] int SetSink(IntPtr sink);
+    }
+
+    [ComImport]
     [Guid("56a8689c-0ad4-11ce-b03a-0020af0ba770")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     private interface IMemInputPin
@@ -830,7 +841,7 @@ public sealed class WmvPlayer : IDisposable
 
     [ComVisible(true)]
     [ClassInterface(ClassInterfaceType.None)]
-    private sealed class TextureRenderer : IBaseFilter, IPin, IMemInputPin, IAMFilterMiscFlags, ICustomQueryInterface
+    private sealed class TextureRenderer : IBaseFilter, IAMFilterMiscFlags
     {
         private readonly RendererPin _pin;
         private int _state;
@@ -839,14 +850,20 @@ public sealed class WmvPlayer : IDisposable
 
         // CBaseRenderer::GetMiscFlags. 64-bit
         // RenderFile only QueryAccepts an in-graph
-        // pin when this bit is set (dir=32 conn=6
-        // qa=0 without it).
-        public int GetMiscFlags() => 1;
+        // pin when this bit is set.
+        public int GetMiscFlags()
+        {
+            MiscFlagsCalls++;
+            return 1;
+        }
 
         public TextureRenderer(Action<int, int, byte[]> onSample) =>
             _pin = new RendererPin(this, onSample);
 
-        public IPin Pin => this;
+        // 00CA6A30 GetPin / 00CA4F40 pin ctor:
+        // IPin is a separate 0xE0 object, COM
+        // identity at pin+12 (00CA7CE0).
+        public IPin Pin => _pin;
         public bool IsConnected => _pin.IsConnected;
 
         public int GetClassID(out Guid clsid)
@@ -896,59 +913,20 @@ public sealed class WmvPlayer : IDisposable
         public int EnumPins(out IEnumPins enumerator)
         {
             EnumPinsCalls++;
-            // Same COM object as IPin (exe pin at +12).
-            enumerator = new PinEnum(this);
+            // 00CAC890: CEnumPins over GetPin.
+            // GetPin returns the heap pin, not this.
+            enumerator = new PinEnum(_pin);
             return 0;
         }
 
         public int FindPin(string id, out IPin? pin)
         {
-            // 00CA4910 lstrcmpiW vs "In" (0x129D184),
-            // then returns this+12.
+            // 00CA4910 lstrcmpiW vs "In", then
+            // GetPin and return pin+12.
             pin = string.Equals(id, RegionTravel.PlayAviPinName, StringComparison.OrdinalIgnoreCase)
-                ? this
+                ? _pin
                 : null;
             return pin is null ? unchecked((int)0x80040216) : 0;
-        }
-
-        public int Connect(IPin receive, IntPtr type) => _pin.Connect(receive, type);
-        public int ReceiveConnection(IPin connector, IntPtr type) =>
-            _pin.ReceiveConnection(connector, type);
-        public int Disconnect() => _pin.Disconnect();
-        public int ConnectedTo(out IntPtr pin) => _pin.ConnectedTo(out pin);
-        public int ConnectionMediaType(out AMMediaType type) => _pin.ConnectionMediaType(out type);
-        public int QueryPinInfo(out PinInfo info) => _pin.QueryPinInfo(out info);
-        public int QueryDirection(out PinDirection direction) => _pin.QueryDirection(out direction);
-        public int QueryId(out string id) => _pin.QueryId(out id);
-        public int QueryAccept(IntPtr type) => _pin.QueryAccept(type);
-        public int EnumMediaTypes(out IEnumMediaTypes enumerator) =>
-            _pin.EnumMediaTypes(out enumerator);
-        public int QueryInternalConnections(IntPtr pins, ref int count) =>
-            _pin.QueryInternalConnections(pins, ref count);
-        public int EndOfStream() => _pin.EndOfStream();
-        public int BeginFlush() => _pin.BeginFlush();
-        public int EndFlush() => _pin.EndFlush();
-        public int NewSegment(long start, long stop, double rate) =>
-            _pin.NewSegment(start, stop, rate);
-        public int GetAllocator(out IntPtr allocator) => _pin.GetAllocator(out allocator);
-        public int NotifyAllocator(IntPtr allocator, bool readOnly) =>
-            _pin.NotifyAllocator(allocator, readOnly);
-        public int GetAllocatorRequirements(out AllocatorProperties props) =>
-            _pin.GetAllocatorRequirements(out props);
-        public int Receive(IMediaSample sample) => _pin.Receive(sample);
-        public int ReceiveMultiple(IMediaSample[] samples, int count, out int processed) =>
-            _pin.ReceiveMultiple(samples, count, out processed);
-        public int ReceiveCanBlock() => _pin.ReceiveCanBlock();
-
-        // Exe pin QI 00A3BD00 / IMemInputPin 00A3BD60
-        // this-adjust onto the same object. RenderFile
-        // QIs IMemInputPin after QueryDirection.
-        public CustomQueryInterfaceResult GetInterface(ref Guid iid, out IntPtr ppv)
-        {
-            if (iid == typeof(IMemInputPin).GUID)
-                MemInputQiCalls++;
-            ppv = IntPtr.Zero;
-            return CustomQueryInterfaceResult.NotHandled;
         }
 
         public int QueryFilterInfo(out FilterInfo info)
@@ -976,7 +954,7 @@ public sealed class WmvPlayer : IDisposable
 
     [ComVisible(true)]
     [ClassInterface(ClassInterfaceType.None)]
-    private sealed class RendererPin : IPin, IMemInputPin
+    private sealed class RendererPin : IPin, IMemInputPin, IQualityControl, ICustomQueryInterface
     {
         private readonly TextureRenderer _filter;
         private readonly Action<int, int, byte[]> _onSample;
@@ -1067,6 +1045,30 @@ public sealed class WmvPlayer : IDisposable
         public int QueryId(out string id)
         {
             id = "In";
+            return 0;
+        }
+
+        // Pin IMemInputPin is pin+152. IPin QI
+        // does not handle that IID; the pin
+        // subobject does. Count the QI only.
+        public CustomQueryInterfaceResult GetInterface(ref Guid iid, out IntPtr ppv)
+        {
+            if (iid == typeof(IMemInputPin).GUID)
+                MemInputQiCalls++;
+            ppv = IntPtr.Zero;
+            return CustomQueryInterfaceResult.NotHandled;
+        }
+
+        // 00CA7CE0 IQualityControl is pin+16.
+        public int Notify(IBaseFilter self, IntPtr quality)
+        {
+            _ = (self, quality);
+            return 0;
+        }
+
+        public int SetSink(IntPtr sink)
+        {
+            _ = sink;
             return 0;
         }
 
