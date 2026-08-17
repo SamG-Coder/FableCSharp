@@ -203,6 +203,9 @@ public sealed class MeshFormatTests
         Assert.Equal(0x013D2880u, WorldShading.SseMatrixFlag);
         Assert.Equal(1, WorldShading.FirstSeenSseMatrixFlag);
         Assert.True(WorldShading.FirstSeenBoneDestUsesSsePath);
+        Assert.Equal(0x00BD2D90u, WorldShading.PalskinPacker);
+        Assert.Equal(288, WorldShading.PalskinPackerDestOffset);
+        Assert.True(WorldShading.FirstSeenPalskinPackerRebuildsWhenDestNull);
         Assert.Equal(0x00BD2F91u, WorldShading.BoneDestX87);
         Assert.Equal(0x00AA0090u, WorldShading.BoneHierarchyBuild);
         for (var i = 0; i < palettes.Length; i++)

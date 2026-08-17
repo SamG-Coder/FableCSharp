@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Numerics;
 using Silk.NET.Vulkan;
 using Buffer = Silk.NET.Vulkan.Buffer;
@@ -373,18 +374,23 @@ public sealed unsafe partial class VulkanLineRenderer
             serial == _videoSerial)
             return;
         _videoSerial = serial;
+        var upload0 = Stopwatch.GetTimestamp();
         if (_videoTexture.Image.Handle != 0 &&
             _videoTexture.Id == width &&
             _videoReady)
-        {
             UpdateVideoPixels(width, height, rgba);
-            return;
+        else
+        {
+            DestroyVideoTexture();
+            EnsureVideoPool();
+            _videoTexture = UploadVideoTexture(width, height, rgba);
+            _videoReady = _videoTexture.Set.Handle != 0;
         }
 
-        DestroyVideoTexture();
-        EnsureVideoPool();
-        _videoTexture = UploadVideoTexture(width, height, rgba);
-        _videoReady = _videoTexture.Set.Handle != 0;
+        VideoSerialPresented = serial;
+        var uploadTicks = Stopwatch.GetTimestamp() - upload0;
+        if (VideoUploads == 1 || VideoUploads % 100 == 0)
+            RecordVideoPresent(serial, uploadTicks);
     }
 
     public void ClearVideoFrame()
@@ -396,15 +402,15 @@ public sealed unsafe partial class VulkanLineRenderer
 
     private DeviceTexture UploadVideoTexture(int width, int height, byte[] rgba)
     {
-        var bytes = (ulong)rgba.Length;
-        CreateBuffer(bytes,
-            BufferUsageFlags.TransferSrcBit,
-            MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
-            out var staging, out var stagingMemory);
+        // First image only. Staging is the persistent
+        // LockRect analogue; later frames reuse it.
+        EnsureVideoStaging((ulong)rgba.Length);
         void* mapped;
-        Check(_vk.MapMemory(_device, stagingMemory, 0, bytes, 0, &mapped));
+        Check(_vk.MapMemory(_device, _videoStagingMemory, 0, (ulong)rgba.Length, 0, &mapped));
+        VideoMaps++;
         rgba.AsSpan().CopyTo(new Span<byte>(mapped, rgba.Length));
-        _vk.UnmapMemory(_device, stagingMemory);
+        _vk.UnmapMemory(_device, _videoStagingMemory);
+        VideoUnmaps++;
 
         var imageInfo = new ImageCreateInfo
         {
@@ -429,11 +435,9 @@ public sealed unsafe partial class VulkanLineRenderer
         };
         Check(_vk.AllocateMemory(_device, in alloc, null, out var memory));
         Check(_vk.BindImageMemory(_device, image, memory, 0));
-        Transition(image, ImageLayout.Undefined, ImageLayout.TransferDstOptimal);
-        CopyBufferToImage(staging, image, (uint)width, (uint)height);
-        Transition(image, ImageLayout.TransferDstOptimal, ImageLayout.ShaderReadOnlyOptimal);
-        _vk.DestroyBuffer(_device, staging, null);
-        _vk.FreeMemory(_device, stagingMemory, null);
+        VideoImageCreates++;
+        _videoTexture.Image = image;
+        UploadVideoStaging(width, height, firstLayout: true);
 
         var viewInfo = new ImageViewCreateInfo
         {
@@ -474,6 +478,8 @@ public sealed unsafe partial class VulkanLineRenderer
             PImageInfo = &imageWrite,
         };
         _vk.UpdateDescriptorSets(_device, 1, in write, 0, null);
+        VideoDescriptorUpdates++;
+        VideoUploads++;
         return new DeviceTexture
         {
             Id = width,
@@ -505,26 +511,132 @@ public sealed unsafe partial class VulkanLineRenderer
 
     private void UpdateVideoPixels(int width, int height, byte[] rgba)
     {
-        var bytes = (ulong)rgba.Length;
+        // 009FA450 LockRect on the existing
+        // texture, copy, 009F9DE0 Unlock.
+        // One persistent staging map, one
+        // submit — not a new buffer and
+        // three QueueWaitIdle per frame.
+        EnsureVideoStaging((ulong)rgba.Length);
+        void* mapped;
+        Check(_vk.MapMemory(_device, _videoStagingMemory, 0, (ulong)rgba.Length, 0, &mapped));
+        VideoMaps++;
+        rgba.AsSpan().CopyTo(new Span<byte>(mapped, rgba.Length));
+        _vk.UnmapMemory(_device, _videoStagingMemory);
+        VideoUnmaps++;
+        UploadVideoStaging(width, height, firstLayout: false);
+        VideoUploads++;
+    }
+
+    private void EnsureVideoStaging(ulong bytes)
+    {
+        if (_videoStaging.Handle != 0 && _videoStagingSize >= bytes)
+            return;
+        DestroyVideoStaging();
         CreateBuffer(bytes,
             BufferUsageFlags.TransferSrcBit,
             MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
-            out var staging, out var stagingMemory);
-        void* mapped;
-        Check(_vk.MapMemory(_device, stagingMemory, 0, bytes, 0, &mapped));
-        rgba.AsSpan().CopyTo(new Span<byte>(mapped, rgba.Length));
-        _vk.UnmapMemory(_device, stagingMemory);
-        Transition(_videoTexture.Image, ImageLayout.ShaderReadOnlyOptimal, ImageLayout.TransferDstOptimal);
-        CopyBufferToImage(staging, _videoTexture.Image, (uint)width, (uint)height);
-        Transition(_videoTexture.Image, ImageLayout.TransferDstOptimal, ImageLayout.ShaderReadOnlyOptimal);
-        _vk.DestroyBuffer(_device, staging, null);
-        _vk.FreeMemory(_device, stagingMemory, null);
+            out _videoStaging, out _videoStagingMemory);
+        _videoStagingSize = bytes;
+        VideoStagingCreates++;
+        VideoBufferCreates++;
+        VideoMemoryAllocs++;
+        VideoStagingAlive = 1;
+        VideoStagingBytesAlive = bytes;
+    }
+
+    private void UploadVideoStaging(int width, int height, bool firstLayout)
+    {
+        var command = BeginOneTime();
+        if (firstLayout)
+            CmdTransition(command, _videoTexture.Image, ImageLayout.Undefined, ImageLayout.TransferDstOptimal);
+        else
+            CmdTransition(command, _videoTexture.Image, ImageLayout.ShaderReadOnlyOptimal, ImageLayout.TransferDstOptimal);
+        var region = new BufferImageCopy
+        {
+            ImageSubresource = new ImageSubresourceLayers
+            {
+                AspectMask = ImageAspectFlags.ColorBit,
+                LayerCount = 1,
+            },
+            ImageExtent = new Extent3D { Width = (uint)width, Height = (uint)height, Depth = 1 },
+        };
+        _vk.CmdCopyBufferToImage(command, _videoStaging, _videoTexture.Image, ImageLayout.TransferDstOptimal, 1, in region);
+        CmdTransition(command, _videoTexture.Image, ImageLayout.TransferDstOptimal, ImageLayout.ShaderReadOnlyOptimal);
+        EndOneTime(command);
+        VideoCmdAllocs++;
+        VideoQueueSubmits++;
+        VideoWaitIdles++;
+    }
+
+    private void CmdTransition(CommandBuffer command, Image image, ImageLayout oldLayout, ImageLayout newLayout)
+    {
+        var barrier = new ImageMemoryBarrier
+        {
+            SType = StructureType.ImageMemoryBarrier,
+            OldLayout = oldLayout,
+            NewLayout = newLayout,
+            SrcQueueFamilyIndex = Vk.QueueFamilyIgnored,
+            DstQueueFamilyIndex = Vk.QueueFamilyIgnored,
+            Image = image,
+            SubresourceRange = new ImageSubresourceRange
+            {
+                AspectMask = ImageAspectFlags.ColorBit,
+                LevelCount = 1,
+                LayerCount = 1,
+            },
+        };
+        PipelineStageFlags srcStage, dstStage;
+        if (oldLayout == ImageLayout.Undefined && newLayout == ImageLayout.TransferDstOptimal)
+        {
+            barrier.SrcAccessMask = 0;
+            barrier.DstAccessMask = AccessFlags.TransferWriteBit;
+            srcStage = PipelineStageFlags.TopOfPipeBit;
+            dstStage = PipelineStageFlags.TransferBit;
+        }
+        else if (oldLayout == ImageLayout.TransferDstOptimal && newLayout == ImageLayout.ShaderReadOnlyOptimal)
+        {
+            barrier.SrcAccessMask = AccessFlags.TransferWriteBit;
+            barrier.DstAccessMask = AccessFlags.ShaderReadBit;
+            srcStage = PipelineStageFlags.TransferBit;
+            dstStage = PipelineStageFlags.FragmentShaderBit;
+        }
+        else if (oldLayout == ImageLayout.ShaderReadOnlyOptimal && newLayout == ImageLayout.TransferDstOptimal)
+        {
+            barrier.SrcAccessMask = AccessFlags.ShaderReadBit;
+            barrier.DstAccessMask = AccessFlags.TransferWriteBit;
+            srcStage = PipelineStageFlags.FragmentShaderBit;
+            dstStage = PipelineStageFlags.TransferBit;
+        }
+        else
+            throw new InvalidOperationException($"Unsupported layout {oldLayout} -> {newLayout}.");
+
+        _vk.CmdPipelineBarrier(command, srcStage, dstStage, 0, 0, null, 0, null, 1, in barrier);
+    }
+
+    private void DestroyVideoStaging()
+    {
+        if (_videoStaging.Handle != 0)
+        {
+            _vk.DestroyBuffer(_device, _videoStaging, null);
+            _videoStaging = default;
+        }
+
+        if (_videoStagingMemory.Handle != 0)
+        {
+            _vk.FreeMemory(_device, _videoStagingMemory, null);
+            _videoStagingMemory = default;
+        }
+
+        _videoStagingSize = 0;
+        VideoStagingAlive = 0;
+        VideoStagingBytesAlive = 0;
     }
 
     private void DestroyVideoTexture()
     {
         DestroyTexture(_videoTexture);
         _videoTexture = default;
+        DestroyVideoStaging();
         if (_videoPool.Handle != 0)
         {
             _vk.DestroyDescriptorPool(_device, _videoPool, null);

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -54,6 +55,104 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     private Vector4 _videoDest = new(0, 0, 1, 1);
     private bool _videoReady;
     private int _videoSerial = -1;
+    private Buffer _videoStaging;
+    private DeviceMemory _videoStagingMemory;
+    private ulong _videoStagingSize;
+    /// <summary>
+    /// <c>009FA450</c> LockRect is one persistent
+    /// texture. These count the video upload path.
+    /// </summary>
+    public static int VideoStagingCreates { get; private set; }
+    public static int VideoUploads { get; private set; }
+    public static int VideoWaitIdles { get; private set; }
+    public static int VideoDeviceWaitIdles { get; private set; }
+    public static int VideoBufferCreates { get; private set; }
+    public static int VideoMemoryAllocs { get; private set; }
+    public static int VideoMaps { get; private set; }
+    public static int VideoUnmaps { get; private set; }
+    public static int VideoCmdAllocs { get; private set; }
+    public static int VideoQueueSubmits { get; private set; }
+    public static int VideoFences { get; private set; }
+    public static int VideoFenceWaits { get; private set; }
+    public static int VideoImageCreates { get; private set; }
+    public static int VideoDescriptorUpdates { get; private set; }
+    public static int VideoStagingAlive { get; private set; }
+    public static ulong VideoStagingBytesAlive { get; private set; }
+    public static int VideoDeferredDestroys { get; private set; }
+    public static int VideoSerialPresented { get; private set; }
+    public static int VideoSerialReceived { get; set; }
+    public static readonly List<VideoPresentSample> PresentSamples = [];
+    private static long _videoTraceStart;
+
+    public static void ResetVideoTrace()
+    {
+        VideoStagingCreates = 0;
+        VideoUploads = 0;
+        VideoWaitIdles = 0;
+        VideoDeviceWaitIdles = 0;
+        VideoBufferCreates = 0;
+        VideoMemoryAllocs = 0;
+        VideoMaps = 0;
+        VideoUnmaps = 0;
+        VideoCmdAllocs = 0;
+        VideoQueueSubmits = 0;
+        VideoFences = 0;
+        VideoFenceWaits = 0;
+        VideoImageCreates = 0;
+        VideoDescriptorUpdates = 0;
+        VideoStagingAlive = 0;
+        VideoStagingBytesAlive = 0;
+        VideoDeferredDestroys = 0;
+        VideoSerialPresented = 0;
+        VideoSerialReceived = 0;
+        PresentSamples.Clear();
+        _videoTraceStart = Stopwatch.GetTimestamp();
+    }
+
+    /// <summary>
+    /// After <see cref="SetVideoFrame"/> returns,
+    /// the DirectShow serial may have moved on
+    /// during QueueWaitIdle. Snap that gap.
+    /// </summary>
+    public static void NoteReceived(int received)
+    {
+        VideoSerialReceived = received;
+        if (PresentSamples.Count > 0 &&
+            PresentSamples[^1].Presented == VideoUploads)
+            PresentSamples[^1].ReceivedSerial = received;
+    }
+
+    private static void RecordVideoPresent(int serial, long uploadTicks)
+    {
+        if (_videoTraceStart == 0)
+            _videoTraceStart = Stopwatch.GetTimestamp();
+        var wallMs = (Stopwatch.GetTimestamp() - _videoTraceStart) * 1000.0 / Stopwatch.Frequency;
+        var uploadMs = uploadTicks * 1000.0 / Stopwatch.Frequency;
+        PresentSamples.Add(new VideoPresentSample
+        {
+            Presented = VideoUploads,
+            ReceivedSerial = VideoSerialReceived != 0 ? VideoSerialReceived : serial,
+            PresentedSerial = serial,
+            WallMs = wallMs,
+            UploadMs = uploadMs,
+            StagingCreates = VideoStagingCreates,
+            BufferCreates = VideoBufferCreates,
+            MemoryAllocs = VideoMemoryAllocs,
+            Maps = VideoMaps,
+            Unmaps = VideoUnmaps,
+            CmdAllocs = VideoCmdAllocs,
+            QueueSubmits = VideoQueueSubmits,
+            Fences = VideoFences,
+            FenceWaits = VideoFenceWaits,
+            QueueWaitIdle = VideoWaitIdles,
+            DeviceWaitIdle = VideoDeviceWaitIdles,
+            StagingAlive = VideoStagingAlive,
+            StagingBytes = VideoStagingBytesAlive,
+            DeferredDestroys = VideoDeferredDestroys,
+            ImageCreates = VideoImageCreates,
+            DescriptorUpdates = VideoDescriptorUpdates,
+        });
+    }
     private DescriptorSetLayout _descriptorSetLayout;
     private DescriptorPool _descriptorPool;
     private Sampler _sampler;
@@ -1181,4 +1280,34 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         if (result != Result.Success)
             throw new InvalidOperationException($"Vulkan error: {result}");
     }
+}
+
+/// <summary>
+/// One sample of the video upload/present path.
+/// Observation of <c>009FA450</c> LockRect vs
+/// per-frame staging.
+/// </summary>
+public sealed class VideoPresentSample
+{
+    public int Presented { get; init; }
+    public int ReceivedSerial { get; set; }
+    public int PresentedSerial { get; init; }
+    public double WallMs { get; init; }
+    public double UploadMs { get; init; }
+    public int StagingCreates { get; init; }
+    public int BufferCreates { get; init; }
+    public int MemoryAllocs { get; init; }
+    public int Maps { get; init; }
+    public int Unmaps { get; init; }
+    public int CmdAllocs { get; init; }
+    public int QueueSubmits { get; init; }
+    public int Fences { get; init; }
+    public int FenceWaits { get; init; }
+    public int QueueWaitIdle { get; init; }
+    public int DeviceWaitIdle { get; init; }
+    public int StagingAlive { get; init; }
+    public ulong StagingBytes { get; init; }
+    public int DeferredDestroys { get; init; }
+    public int ImageCreates { get; init; }
+    public int DescriptorUpdates { get; init; }
 }

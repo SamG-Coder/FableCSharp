@@ -324,6 +324,13 @@ public sealed class ShaderFormatTests
         Assert.Equal(0.25f, WorldShading.DirLightColor.Z);
         Assert.Equal(1f, WorldShading.DirLightColor.W);
         Assert.Equal(new Vector4(0f, 0f, 0f, 1f), WorldShading.LitColor);
+        Assert.Equal(0x00F39D40u, WorldShading.LightApply);
+        Assert.Equal(0x0098B2C0u, WorldShading.C35Setter);
+        Assert.False(WorldShading.FirstSeenLightApplyWritesC35);
+        Assert.True(WorldShading.FirstSeenC35IsSetterDefault);
+        Assert.Equal(0x00BD2D90u, WorldShading.PalskinPacker);
+        Assert.Equal(288, WorldShading.PalskinPackerDestOffset);
+        Assert.True(WorldShading.FirstSeenPalskinPackerRebuildsWhenDestNull);
         Assert.Contains(WorldShading.PaletteSkinStartRegister, skin.ConstRegisters);
         Assert.DoesNotContain(WorldShading.PointLightStartRegister, land.ConstRegisters);
         Assert.DoesNotContain(WorldShading.PointLightStartRegister, stat.ConstRegisters);

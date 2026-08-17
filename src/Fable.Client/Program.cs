@@ -152,6 +152,7 @@ window.Update += dt =>
                 runtime.AviWidth, runtime.AviHeight, runtime.AviRgba,
                 new Vector4(dest.X0, dest.Y0, dest.X1, dest.Y1),
                 runtime.AviFrameSerial);
+            VulkanLineRenderer.NoteReceived(runtime.AviFrameSerial);
         }
         else
             renderer.ClearVideoFrame();

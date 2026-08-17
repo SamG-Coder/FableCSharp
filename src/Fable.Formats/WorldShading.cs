@@ -367,6 +367,21 @@ public static class WorldShading
     /// <c>[+100]=1</c>. First-seen VS do <c>MAD c35</c>, not <c>LIT</c>.
     /// </summary>
     public static readonly Vector4 LitColor = new(0f, 0f, 0f, 1f);
+    public const uint LightApply = 0x00F39D40;
+    public const uint C35Setter = 0x0098B2C0;
+    /// <summary>
+    /// <c>00F39D40</c> copies dir/colour into the
+    /// light record and writes <c>+32=1</c> /
+    /// <c>+36=0</c> then <c>ret 4</c>. It does
+    /// not store c35. First-seen c35 is the
+    /// <c>0098B2C0</c> stack default
+    /// <c>(0,0,0,1)</c>.
+    /// </summary>
+    public const bool FirstSeenLightApplyWritesC35 = false;
+    public const bool FirstSeenC35IsSetterDefault = true;
+    public const uint PalskinPacker = 0x00BD2D90;
+    public const int PalskinPackerDestOffset = 288;
+    public const bool FirstSeenPalskinPackerRebuildsWhenDestNull = true;
 
     /// <summary>
     /// LayoutBasic <c>00BDBB70</c> <c>[esi+56]=18</c> count

@@ -293,6 +293,12 @@ public static class RegionTravel
     public const int PlayAviCopyVtbl = 172;
     public const uint PlayAviLockRect = 0x009FA450;
     public const uint PlayAviUnlock = 0x009F9DE0;
+    /// <summary>
+    /// <c>00A3B730</c> LockRect is the same D3D
+    /// texture each sample — no create/destroy
+    /// per frame. Vulkan staging must reuse.
+    /// </summary>
+    public const bool FirstSeenPlayAviLockRectReusesTexture = true;
     public const uint PlayAviWaitIat = 0x0143FE08;
     public const uint PlayAviWaitSite = 0x00628A9E;
     public const uint PlayAviSetEventIat = 0x0143FDE0;

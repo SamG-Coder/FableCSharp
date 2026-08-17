@@ -1,6 +1,10 @@
+using System.Numerics;
 using System.Text;
 using Fable.Core;
 using Fable.Game;
+using Fable.Render;
+using Silk.NET.Maths;
+using Silk.NET.Windowing;
 
 var install = GameInstall.TryLocate();
 if (install is null)
@@ -135,6 +139,95 @@ if (args.Any(a => a is "--pace"))
     }
 
     File.WriteAllText(Path.Combine(paceDir, "samples.md"), md.ToString());
+    Console.Write(md.ToString());
+}
+
+if (args.Any(a => a is "--present"))
+{
+    if (player is null)
+        return 1;
+    var presentDir = Path.Combine(
+        Path.GetDirectoryName(typeof(Program).Assembly.Location) ?? ".",
+        "..", "..", "..", "..", "Fable.ExeIndex", "out", "01-sections", "playavi-present");
+    if (outDir is not null)
+        presentDir = outDir;
+    Directory.CreateDirectory(presentDir);
+
+    // Isolated Client.SetVideoFrame path. DirectShow
+    // pacing/allocator/WaitEx are unchanged. 009FA450
+    // LockRect is one persistent texture; this run
+    // counts whether Vulkan staging matches that.
+    const int targetUploads = 1600;
+    var options = WindowOptions.DefaultVulkan with
+    {
+        Title = "PlayAVI present probe",
+        Size = new Vector2D<int>(640, 360),
+        VSync = true,
+    };
+    using var window = Window.Create(options);
+    VulkanLineRenderer? renderer = null;
+    var dest = new Vector4(0, 0, 1, 1);
+    VulkanLineRenderer.ResetVideoTrace();
+    window.Load += () =>
+    {
+        renderer = new VulkanLineRenderer(window);
+        VulkanLineRenderer.ResetVideoTrace();
+    };
+    window.Update += dt =>
+    {
+        if (renderer is null)
+            return;
+        player.TryAdvance((float)dt);
+        if (player.Rgba is { } rgba && player.Width > 0 && player.Height > 0)
+        {
+            renderer.SetVideoFrame(
+                player.Width, player.Height, rgba, dest, player.FrameSerial);
+            VulkanLineRenderer.NoteReceived(player.FrameSerial);
+        }
+
+        if (player.Ended ||
+            VulkanLineRenderer.VideoUploads >= targetUploads)
+            window.Close();
+    };
+    window.Render += _ =>
+    {
+        if (renderer is null || window.FramebufferSize.X == 0)
+            return;
+        renderer.Draw(Matrix4x4.Identity);
+    };
+    window.Closing += () =>
+    {
+        renderer?.Dispose();
+        renderer = null;
+    };
+    window.Run();
+
+    var md = new StringBuilder();
+    md.AppendLine("# PlayAVI present samples");
+    md.AppendLine();
+    md.AppendLine("`009FA450` LockRect writes a persistent");
+    md.AppendLine("D3D texture. This run is the Vulkan");
+    md.AppendLine("upload of the same GetPointer pixels.");
+    md.AppendLine("DirectShow WaitEx / Receive / allocator");
+    md.AppendLine("are unchanged.");
+    md.AppendLine();
+    md.AppendLine($"ended `{player.Ended}` recv `{player.FrameSerial}`");
+    md.AppendLine($"uploads `{VulkanLineRenderer.VideoUploads}`");
+    md.AppendLine($"stagingCreates `{VulkanLineRenderer.VideoStagingCreates}`");
+    md.AppendLine($"stagingAlive `{VulkanLineRenderer.VideoStagingAlive}`");
+    md.AppendLine($"stagingBytes `{VulkanLineRenderer.VideoStagingBytesAlive}`");
+    md.AppendLine($"waitIdle `{VulkanLineRenderer.VideoWaitIdles}`");
+    md.AppendLine($"imageCreates `{VulkanLineRenderer.VideoImageCreates}`");
+    md.AppendLine();
+    md.AppendLine("| n | recv | pres | wall_ms | upload_ms | stg | buf | mem | map | unmap | cmd | submit | fence | fwait | qwi | dwi | alive | bytes | def | img | desc |");
+    md.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+    foreach (var s in VulkanLineRenderer.PresentSamples)
+    {
+        md.AppendLine(
+            $"| {s.Presented} | {s.ReceivedSerial} | {s.PresentedSerial} | {s.WallMs:F1} | {s.UploadMs:F3} | {s.StagingCreates} | {s.BufferCreates} | {s.MemoryAllocs} | {s.Maps} | {s.Unmaps} | {s.CmdAllocs} | {s.QueueSubmits} | {s.Fences} | {s.FenceWaits} | {s.QueueWaitIdle} | {s.DeviceWaitIdle} | {s.StagingAlive} | {s.StagingBytes} | {s.DeferredDestroys} | {s.ImageCreates} | {s.DescriptorUpdates} |");
+    }
+
+    File.WriteAllText(Path.Combine(presentDir, "samples.md"), md.ToString());
     Console.Write(md.ToString());
 }
 
