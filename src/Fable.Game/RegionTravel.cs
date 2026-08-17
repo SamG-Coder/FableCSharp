@@ -401,15 +401,30 @@ public static class RegionTravel
     public const string IntroCutsceneLastCommand = "Hero.SneakTo MK_OVIF_HERO5,0.0,TRUE";
     /// <summary>
     /// Persist vector 1 is a second CString list at
-    /// def+72. <c>00CD17FD</c> end-of-list recopies
-    /// <c>+60</c> only when <c>[ebp+120]==1</c>; it
-    /// does not walk +72. First-seen does not auto-run
-    /// vector 1. Reader of +72 is UNREAD.
+    /// def+72. Reader is <c>00CC017C</c> inside
+    /// <c>00CBFB7D</c>: <c>00CBEB7E</c> skip true and
+    /// <c>[ebp-21]==0</c> then <c>0049B760</c> clear
+    /// and <c>00432EE9</c> copy. <c>00CBEB7E</c> is
+    /// <c>[0x143E8F4]</c> ? <c>vtbl+168</c>
+    /// <c>00894440</c> : <c>vtbl+176</c>
+    /// <c>00893B00</c>. <c>00CD17FD</c> end-of-list
+    /// recopies <c>+60</c> only when
+    /// <c>[ebp+120]==1</c>; it does not walk +72.
+    /// First-seen skip is false so vector 1 does not
+    /// run. Skip-key bodies UNREAD.
     /// </summary>
     public const int IntroCutsceneVector1Offset = 72;
     public const int IntroCutsceneVector1Count = 7;
     public const uint CutsceneListEnd = 0x00CD17FD;
+    public const uint CutsceneVector1Copy = 0x00CC017C;
+    public const uint CutsceneSkipPredicate = 0x00CBEB7E;
+    public const uint CutsceneSkipGlobal = 0x0143E8F4;
+    public const int CutsceneSkipVtblA = 168;
+    public const int CutsceneSkipVtblB = 176;
+    public const uint CutsceneSkipFnA = 0x00894440;
+    public const uint CutsceneSkipFnB = 0x00893B00;
     public const bool FirstSeenCutsceneVector1AutoRuns = false;
+    public const bool FirstSeenCutsceneSkipFires = false;
     /// <summary>
     /// <c>00CC15E3</c> <c>.PlayCombatAnim</c> (persist
     /// <c>PlayCombatAnimation</c>). Empty actor / name

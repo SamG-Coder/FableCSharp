@@ -377,7 +377,10 @@ public sealed class WorldSceneTests
         Assert.Equal("Hero.SneakTo MK_OVIF_HERO5,0.0,TRUE", RegionTravel.IntroCutsceneLastCommand);
         Assert.Equal(72, RegionTravel.IntroCutsceneVector1Offset);
         Assert.Equal(7, RegionTravel.IntroCutsceneVector1Count);
+        Assert.Equal(0x00CC017Cu, RegionTravel.CutsceneVector1Copy);
+        Assert.Equal(0x00CBEB7Eu, RegionTravel.CutsceneSkipPredicate);
         Assert.False(RegionTravel.FirstSeenCutsceneVector1AutoRuns);
+        Assert.False(RegionTravel.FirstSeenCutsceneSkipFires);
         Assert.Equal(0f, RegionTravel.IntroSneakSpeed);
         Assert.Equal(0x00CC15E3u, RegionTravel.PlayCombatAnimationOpcode);
         Assert.Equal(76, RegionTravel.PlayCombatAnimationApplyVtbl);
@@ -1123,6 +1126,9 @@ public sealed class WorldSceneTests
             s.Speed == 0f &&
             s.Wait);
         Assert.False(RegionTravel.FirstSeenSneakToAppliesMove);
+        Assert.False(intro.SkipListApplied);
+        Assert.DoesNotContain("Hero.Teleport MK_OVIF_HERO5", intro.Executed);
+        Assert.DoesNotContain("FadeOut", intro.Executed);
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 
@@ -1251,6 +1257,34 @@ public sealed class WorldSceneTests
         public void DialogadSpeak(string? actor, string target, string text, int mode) { }
 
         public void LookInDirection(string? actor, float degrees, bool flag) { }
+    }
+
+    [Fact]
+    public void Intro_vector1_copies_only_on_skip_predicate()
+    {
+        var install = Require();
+        var bank = ScriptBank.Load(install);
+        var father = bank.Find(RegionTravel.IntroCutscene);
+        Assert.NotNull(father);
+        Assert.Equal(7, father.Vectors[1].Count);
+        Assert.Equal("FadeOut", father.Vectors[1][0]);
+        Assert.Equal("FadeIn", father.Vectors[1][^1]);
+        Assert.Equal(0x00CC017Cu, RegionTravel.CutsceneVector1Copy);
+        Assert.Equal(0x00CBEB7Eu, RegionTravel.CutsceneSkipPredicate);
+        Assert.False(RegionTravel.FirstSeenCutsceneVector1AutoRuns);
+        Assert.False(RegionTravel.FirstSeenCutsceneSkipFires);
+        var interpreter = new ScriptInterpreter(father.InstanceName, father.Commands);
+        interpreter.RunUntilYield();
+        Assert.False(interpreter.SkipListApplied);
+        Assert.Equal(father.Commands[0], interpreter.Commands[0]);
+        interpreter.ApplySkipList(father.Vectors[1]);
+        Assert.True(interpreter.SkipListApplied);
+        Assert.Equal(0, interpreter.InstructionPointer);
+        Assert.Equal("FadeOut", interpreter.Commands[0]);
+        Assert.Equal("FadeIn", interpreter.Commands[^1]);
+        Assert.Equal(7, interpreter.Commands.Count);
+        interpreter.ApplySkipList(["ignored"]);
+        Assert.Equal("FadeOut", interpreter.Commands[0]);
     }
 
     [Fact]
@@ -1656,6 +1690,14 @@ public sealed class WorldSceneTests
         Assert.Empty(father.Vectors[6]);
         Assert.Empty(father.Vectors[7]);
         Assert.False(RegionTravel.FirstSeenCutsceneVector1AutoRuns);
+        Assert.False(RegionTravel.FirstSeenCutsceneSkipFires);
+        Assert.Equal(0x00CC017Cu, RegionTravel.CutsceneVector1Copy);
+        Assert.Equal(0x00CBEB7Eu, RegionTravel.CutsceneSkipPredicate);
+        Assert.Equal(0x0143E8F4u, RegionTravel.CutsceneSkipGlobal);
+        Assert.Equal(168, RegionTravel.CutsceneSkipVtblA);
+        Assert.Equal(176, RegionTravel.CutsceneSkipVtblB);
+        Assert.Equal(0x00894440u, RegionTravel.CutsceneSkipFnA);
+        Assert.Equal(0x00893B00u, RegionTravel.CutsceneSkipFnB);
         Assert.DoesNotContain(father.Commands, line => line.Equals("CCutsceneDef", StringComparison.Ordinal));
         Assert.True(father.Commands.Count >= 60);
         Assert.True(father.Vectors[0].Count == father.Commands.Count);

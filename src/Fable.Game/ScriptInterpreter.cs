@@ -10,10 +10,11 @@ namespace Fable.Game;
 public sealed class ScriptInterpreter
 {
     public string Name { get; }
-    public IReadOnlyList<string> Commands { get; }
+    public IReadOnlyList<string> Commands { get; private set; }
     public int InstructionPointer { get; private set; }
     public bool Yielded { get; private set; }
     public bool Finished { get; private set; }
+    public bool SkipListApplied { get; private set; }
     public bool FadeSpecialCaseApplied { get; private set; }
     public string? UnsupportedCommand { get; private set; }
     public int ScriptFrameRemaining { get; private set; }
@@ -100,6 +101,28 @@ public sealed class ScriptInterpreter
         Yielded = false;
         UnsupportedCommand = null;
         RunUntilYield(host);
+    }
+
+    /// <summary>
+    /// <c>00CC017C</c>: when <c>00CBEB7E</c> is true
+    /// and <c>[ebp-21]==0</c>, clear the working list
+    /// and copy def+72. First-seen skip is false so
+    /// New Game does not call this.
+    /// </summary>
+    public void ApplySkipList(IReadOnlyList<string> lines)
+    {
+        if (SkipListApplied)
+            return;
+        Commands = lines;
+        InstructionPointer = 0;
+        Yielded = false;
+        Finished = false;
+        UnsupportedCommand = null;
+        SkipListApplied = true;
+        ScriptFrameRemaining = 0;
+        GamePauseTarget = 0f;
+        GamePauseCounter = 0f;
+        _gamePausePhase = 0;
     }
 
     public bool ExecutedVerb(string verb) =>
