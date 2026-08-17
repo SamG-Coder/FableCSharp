@@ -138,7 +138,13 @@ window.Update += dt =>
 
     var avi = intro?.Runtime.AviPlaying == true;
     if (avi && !wasAvi)
+    {
         PlayAviTimeline.Reset("csharp");
+        var rt = intro!.Runtime;
+        Console.WriteLine(
+            $"PlayAVI {rt.AviRelativePath} {rt.AviWidth}x{rt.AviHeight} " +
+            $"frames={rt.AviFrameSerial} err={WmvPlayer.LastError ?? "ok"}");
+    }
     if (!avi && wasAvi)
         PlayAviTimeline.Write(name: "csharp");
     wasAvi = avi;
@@ -218,7 +224,8 @@ string Title()
     var mapLabel = map is null ? region : $"{map.ScriptName}  ({map.MapX},{map.MapY})";
     var pos = debugFly ? debugCam.Position : gameCam.Position;
     var camLabel = debugFly ? "debug" : (gameCam.ActiveName.Length == 0 ? "script" : gameCam.ActiveName);
-    return $"FableCSharp — {mapLabel} — {world.MeshInstances} meshes / {scene.ThingCount} things — {camLabel} {pos.X:0.0}, {pos.Y:0.0}, {pos.Z:0.0}";
+    var aviLabel = intro?.Runtime.AviPlaying == true ? " AVI" : "";
+    return $"FableCSharp — {mapLabel} — {world.MeshInstances} meshes / {scene.ThingCount} things — {camLabel} {pos.X:0.0}, {pos.Y:0.0}, {pos.Z:0.0}{aviLabel}";
 }
 
 void OnMouseMove(Vector2 point)

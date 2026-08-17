@@ -2069,7 +2069,9 @@ public sealed class WorldSceneTests
         runtime.Update(0.1f);
         runtime.Update(0.1f);
         Assert.Contains("PlayAVI dream_sequence_comp.xmv", intro.Executed);
-        Assert.True(runtime.AviPlaying);
+        Assert.True(runtime.AviPlaying, WmvPlayer.LastError ?? "PlayAVI open failed");
+        Assert.NotNull(runtime.AviRgba);
+        Assert.True(runtime.AviWidth >= 16 && runtime.AviHeight >= 16);
         Assert.Equal(file, runtime.AviFile, StringComparer.OrdinalIgnoreCase);
         Assert.True(RegionTravel.FirstSeenPlayAviBlocksUpdatePump);
         var fadeAt = runtime.FadeElapsed;
