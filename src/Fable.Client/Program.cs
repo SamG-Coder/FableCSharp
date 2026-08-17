@@ -125,6 +125,8 @@ window.Update += dt =>
     }
 
     intro?.Update((float)dt);
+    if (renderer is not null)
+        renderer.FadeOverlayAlpha = intro?.Runtime.OverlayAlphaByte ?? 0;
 
     TryWalk();
 

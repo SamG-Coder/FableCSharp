@@ -156,6 +156,13 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
 
     public bool ShowGizmos { get; set; }
 
+    /// <summary>
+    /// <c>006496BC</c> overlay alpha. 255 skips the
+    /// world pass so the already-black clear is the
+    /// stay-faded frame. 2D primitive UNREAD.
+    /// </summary>
+    public byte FadeOverlayAlpha { get; set; }
+
     public void Draw(
         Matrix4x4 viewProjection,
         Vector3 cameraPosition = default,
@@ -870,7 +877,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         // the row-major bytes already transposes. Do not Transpose() again.
         var viewProj = viewProjection;
 
-        if (_meshCount > 0 && _meshBuffer.Handle != 0)
+        if (_meshCount > 0 && _meshBuffer.Handle != 0 && FadeOverlayAlpha < 255)
         {
             _skyViewProj = skyViewProjection;
             _worldViewProj = viewProjection;

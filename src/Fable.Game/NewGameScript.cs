@@ -52,6 +52,8 @@ public sealed class NewGameScript
     public bool FadeOutReached => Runtime.ExecutedVerb(RegionTravel.IntroCutscene, "FadeOut");
     public float FadeDuration => Runtime.FadeDuration;
     public float FadeParam => Runtime.FadeParam;
+    public float OverlayAlpha => Runtime.OverlayAlpha;
+    public byte OverlayAlphaByte => Runtime.OverlayAlphaByte;
 
     public void ApplyPersist(bool attackOver) =>
         Runtime.ApplyPersist(PersistAttackOverName, attackOver);

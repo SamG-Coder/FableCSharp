@@ -265,7 +265,10 @@ public sealed class WorldSceneTests
         Assert.Equal(0x00434C00u, RegionTravel.FadeStateWrite);
         Assert.Equal(0x01260F0Cu, RegionTravel.FadeInterfaceVtbl);
         Assert.True(RegionTravel.FirstSeenFadeOutIsBlack);
-        Assert.True(RegionTravel.FirstSeenFadeOverlayDrawUnread);
+        Assert.True(RegionTravel.FirstSeenFadeOverlayDraws);
+        Assert.False(RegionTravel.FirstSeenFadeOverlayDrawUnread);
+        Assert.Equal(0x006496BCu, RegionTravel.FadeOverlayDraw);
+        Assert.Equal(0x004348D0u, RegionTravel.FadeOverlayAlphaFn);
         Assert.False(RegionTravel.FirstSeenFadeSpecialCaseRuns);
         Assert.Equal("FadeOut 0.5,0", RegionTravel.FadeSpecialCase);
         Assert.Equal(0.5f, RegionTravel.FadeSpecialCaseSeconds);
@@ -1634,6 +1637,43 @@ public sealed class WorldSceneTests
     }
 
     [Fact]
+    public void FadeOut_overlay_alpha_is_elapsed_over_duration_then_stays()
+    {
+        Assert.Equal(0x006496BCu, RegionTravel.FadeOverlayDraw);
+        Assert.Equal(0x00648820u, RegionTravel.FadeOverlayDrawFn);
+        Assert.Equal(0x004348D0u, RegionTravel.FadeOverlayAlphaFn);
+        Assert.Equal(0x00434870u, RegionTravel.FadeOverlayTick);
+        Assert.Equal(0x0088E4C0u, RegionTravel.FadeInApply);
+        Assert.Equal(1496, RegionTravel.FadeInApplyVtbl);
+        Assert.Equal(0x00434C90u, RegionTravel.FadeInClearLock);
+        Assert.Equal(255f, RegionTravel.FadeAlphaScale);
+        Assert.Equal(0.0001f, RegionTravel.FadeAlphaEpsilon);
+        Assert.True(RegionTravel.FirstSeenFadeOverlayDraws);
+        Assert.False(RegionTravel.FirstSeenFadeOverlayDrawUnread);
+        var runtime = new ScriptRuntime();
+        runtime.CreateFiber("fade");
+        ((IScriptHost)runtime).FadeOut(0.5f, 0f);
+        Assert.True(runtime.FadeActive);
+        Assert.True(runtime.FadeRising);
+        Assert.Equal(0f, runtime.OverlayAlpha);
+        Assert.Equal(0, runtime.OverlayAlphaByte);
+        runtime.Update(0.25f);
+        Assert.Equal(0.5f, runtime.OverlayAlpha);
+        Assert.Equal(127, runtime.OverlayAlphaByte);
+        runtime.Update(0.25f);
+        Assert.Equal(1f, runtime.OverlayAlpha);
+        Assert.Equal(255, runtime.OverlayAlphaByte);
+        Assert.True(runtime.FadeActive);
+        Assert.False(runtime.FadeRising);
+        ((IScriptHost)runtime).FadeIn(0.5f, 0f);
+        Assert.False(runtime.FadeLocked);
+        Assert.True(runtime.FadeFalling);
+        runtime.Update(0.1f);
+        Assert.False(runtime.FadeActive);
+        Assert.Equal(0f, runtime.OverlayAlpha);
+    }
+
+    [Fact]
     public void FadeOut_packs_black_and_locks_second_apply()
     {
         var install = Require();
@@ -1647,7 +1687,18 @@ public sealed class WorldSceneTests
         Assert.Equal(0x008907E0u, RegionTravel.FadeApplyFn);
         Assert.Equal(188, RegionTravel.FadeActiveOffset);
         Assert.Equal(216, RegionTravel.FadeLockOffset);
-        Assert.True(RegionTravel.FirstSeenFadeOverlayDrawUnread);
+        Assert.True(RegionTravel.FirstSeenFadeOverlayDraws);
+        Assert.False(RegionTravel.FirstSeenFadeOverlayDrawUnread);
+        Assert.Equal(0, runtime.OverlayAlpha);
+        Assert.Equal(0, runtime.OverlayAlphaByte);
+        Assert.True(runtime.FadeRising);
+        runtime.Update(0.25f);
+        Assert.Equal(0.5f, runtime.OverlayAlpha);
+        runtime.Update(0.25f);
+        Assert.Equal(1f, runtime.OverlayAlpha);
+        Assert.Equal(255, runtime.OverlayAlphaByte);
+        Assert.True(runtime.FadeActive);
+        Assert.False(runtime.FadeRising);
     }
 
     [Fact]

@@ -164,7 +164,30 @@ public static class RegionTravel
     public const byte FadeOutBlue = 0;
     public const byte FadeOutAlpha = 255;
     public const bool FirstSeenFadeOutIsBlack = true;
-    public const bool FirstSeenFadeOverlayDrawUnread = true;
+    /// <summary>
+    /// Overlay draw <c>006496BC</c> inside
+    /// <c>00648820</c>: skip when <c>[+188]==0</c>.
+    /// Else RGB from <c>[+212]</c>, A =
+    /// <c>004364C0</c> → <c>004348D0</c> * 255
+    /// (<c>00BFEA70</c>). First-seen +201=1 so A is
+    /// elapsed/0.5 then stays 1 after the tick
+    /// completes. <c>FadeIn</c> <c>vtbl+1496</c>
+    /// <c>0088E4C0</c> clears +216 then
+    /// <c>00434C90</c>. 2D primitive body UNREAD —
+    /// live consume is skip-mesh when A==255.
+    /// </summary>
+    public const uint FadeOverlayDraw = 0x006496BC;
+    public const uint FadeOverlayDrawFn = 0x00648820;
+    public const uint FadeOverlayAlphaFn = 0x004348D0;
+    public const uint FadeOverlayTick = 0x00434870;
+    public const uint FadeInOpcode = 0x00CD0922;
+    public const uint FadeInApply = 0x0088E4C0;
+    public const int FadeInApplyVtbl = 1496;
+    public const uint FadeInClearLock = 0x00434C90;
+    public const float FadeAlphaScale = 255f;
+    public const float FadeAlphaEpsilon = 0.0001f;
+    public const bool FirstSeenFadeOverlayDraws = true;
+    public const bool FirstSeenFadeOverlayDrawUnread = false;
     public const bool FirstSeenPlayMusicDoesNotYield = true;
     public const string IntroPlayMusic = "PlayMusic MUSIC_SET_NULL";
     public const uint TeleportOpcode = 0x00CC4678;

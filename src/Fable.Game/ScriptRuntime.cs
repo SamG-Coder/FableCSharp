@@ -17,9 +17,21 @@ public sealed class ScriptRuntime : IScriptHost
     public float DtAtPlus8 { get; private set; }
     public float FadeDuration { get; private set; }
     public float FadeParam { get; private set; }
+    public float FadeElapsed { get; private set; }
+    public float FadeRemaining { get; private set; }
     public bool FadeActive { get; private set; }
     public bool FadeLocked { get; private set; }
+    public bool FadeRising { get; private set; }
+    public bool FadeFalling { get; private set; }
     public (byte R, byte G, byte B, byte A) FadeColor { get; private set; }
+    /// <summary>
+    /// <c>004348D0</c> fraction. Draw
+    /// <c>006496BC</c> uses this * 255 as the
+    /// overlay alpha.
+    /// </summary>
+    public float OverlayAlpha => OverlayFraction();
+    public byte OverlayAlphaByte =>
+        (byte)Math.Clamp((int)(OverlayFraction() * RegionTravel.FadeAlphaScale), 0, 255);
     public string? LastMusic { get; private set; }
     public string? LastAvi { get; private set; }
     public bool SoundsMuted { get; private set; }
@@ -161,11 +173,67 @@ public sealed class ScriptRuntime : IScriptHost
         DtAtPlus8 = dt;
         foreach (var fiber in _fibers)
             fiber.DtAtPlus8 = dt;
+        TickFade(dt);
         foreach (var interpreter in _interpreters)
         {
             if (interpreter.Yielded)
                 interpreter.Resume(this);
         }
+    }
+
+    /// <summary>
+    /// <c>00434870</c> on the +188 fade record.
+    /// Rising adds dt to elapsed until duration.
+    /// Falling subtracts dt from remaining then
+    /// clears +188.
+    /// </summary>
+    private void TickFade(float dt)
+    {
+        if (FadeRising)
+        {
+            FadeElapsed += dt;
+            if (FadeElapsed >= FadeDuration)
+            {
+                FadeElapsed = FadeDuration;
+                FadeRising = false;
+            }
+
+            return;
+        }
+
+        if (!FadeFalling)
+            return;
+        FadeRemaining -= dt;
+        if (FadeRemaining > 0f)
+            return;
+        FadeRemaining = 0f;
+        FadeActive = false;
+        FadeFalling = false;
+        FadeRising = false;
+    }
+
+    /// <summary>
+    /// <c>004348D0</c>: rising elapsed/duration,
+    /// falling remaining/param, else +188 → 1 else 0.
+    /// Duration ≤ 0.0001 returns 1.
+    /// </summary>
+    private float OverlayFraction()
+    {
+        if (FadeRising)
+        {
+            if (FadeDuration <= RegionTravel.FadeAlphaEpsilon)
+                return 1f;
+            return FadeElapsed / FadeDuration;
+        }
+
+        if (FadeFalling)
+        {
+            if (FadeParam <= RegionTravel.FadeAlphaEpsilon)
+                return 1f;
+            return FadeRemaining / FadeParam;
+        }
+
+        return FadeActive ? 1f : 0f;
     }
 
     /// <summary>
@@ -193,8 +261,9 @@ public sealed class ScriptRuntime : IScriptHost
     /// <summary>
     /// <c>008907E0</c> <c>vtbl+1488</c>: pack
     /// <c>(0,0,0,255)</c>, call <c>vtbl+1492</c> →
-    /// <c>00434C00</c>. If <c>[+216]</c> already set,
-    /// only <c>[+232]=0</c>. Overlay draw UNREAD.
+    /// <c>00434C00</c> (+188=1, +201=1, +192=seconds).
+    /// Then <c>[+216]=1</c> lock. Overlay draw is
+    /// <c>006496BC</c> gated on +188.
     /// </summary>
     void IScriptHost.FadeOut(float seconds, float param)
     {
@@ -205,12 +274,28 @@ public sealed class ScriptRuntime : IScriptHost
             return;
         FadeActive = true;
         FadeLocked = true;
+        FadeRising = true;
+        FadeFalling = false;
+        FadeElapsed = 0f;
+        FadeRemaining = 0f;
     }
 
+    /// <summary>
+    /// Bare <c>FadeIn</c> is <c>vtbl+1496</c>
+    /// <c>0088E4C0</c>: clear <c>[+216]</c> then
+    /// <c>00434C90</c> (+201=0, +200=1). Next
+    /// <c>00434870</c> tick can clear +188.
+    /// </summary>
     void IScriptHost.FadeIn(float seconds, float param)
     {
         FadeDuration = seconds;
         FadeParam = param;
+        FadeLocked = false;
+        if (!FadeActive)
+            return;
+        FadeRising = false;
+        FadeFalling = true;
+        FadeRemaining = param;
     }
 
     void IScriptHost.UseCamera(string name) => BindCamera(name);
