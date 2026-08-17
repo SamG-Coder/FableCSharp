@@ -118,6 +118,9 @@ public static class GlobalDispatcher
         if (Eq(v, "CameraFOVLookBetween"))
             return ApplyCameraFovLookBetween(line, ctx);
 
+        if (Eq(v, "CameraFOVLookBetweenPos"))
+            return ApplyCameraFovLookBetweenPos(line, ctx);
+
         if (Eq(v, "PutInFrontOf"))
         {
             var mover = line.Arg(0);
@@ -657,6 +660,48 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, side);
         return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
             "CameraFOVLookBetween vtbl+1632", side);
+    }
+
+    /// <summary>
+    /// <c>00CCB0D0</c>: four required args. Lookup
+    /// arg0/arg1 things. atof arg3 duration. Optional
+    /// arg4-6 add to arg2 thing/handle pos. Arg4 also
+    /// FOV degrees * 1/360 (default -1).
+    /// <c>vtbl+1636</c>(posA, posB, camPos, dur, fov).
+    /// Yield if <c>[ebp+103]</c>.
+    /// </summary>
+    internal static CommandResult ApplyCameraFovLookBetweenPos(
+        ScriptLine line, ScriptExecutionContext ctx)
+    {
+        var nameA = line.Arg(0);
+        var nameB = line.Arg(1);
+        var namePos = line.Arg(2);
+        if (nameA.Length == 0 || nameB.Length == 0 ||
+            namePos.Length == 0 || line.Arg(3).Length == 0)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        ScriptLine.TryFloat(line.Arg(3), out var duration);
+        var offset = ReadOffset(line, 4);
+        var fov = -1f;
+        if (line.Arg(4).Length > 0)
+            ScriptLine.TryFloat(line.Arg(4), out fov);
+        System.Numerics.Vector3? camPos = null;
+        var posThing = ctx.FindThing(namePos);
+        if (posThing is { PositionX: not null })
+            camPos = RegionTravel.PositionOf(posThing) + offset;
+        else if (ctx.World.Positions.TryGetValue(namePos, out var stored))
+            camPos = stored + offset;
+        ctx.Camera.LookBetweenPos(
+            ctx.Runtime.Camera,
+            ctx.FindThing(nameA), nameA,
+            ctx.FindThing(nameB), nameB,
+            camPos, duration, fov);
+        var side = camPos is { } p
+            ? $"{nameA}|{nameB}@{p.X:0.##},{p.Y:0.##} d={duration:0.##}"
+            : $"{nameA}|{nameB} d={duration:0.##}";
+        if (!ctx.Cutscene.YieldEnable)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, side);
+        return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
+            "CameraFOVLookBetweenPos vtbl+1636", side);
     }
 
     private static System.Numerics.Vector3 ReadOffset(ScriptLine line, int start)

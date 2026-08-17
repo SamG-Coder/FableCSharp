@@ -126,6 +126,7 @@ public sealed class CameraRuntime
     public string LookBetweenB { get; private set; } = "";
     public float LookBetweenDuration { get; private set; }
     public float LookBetweenFov { get; private set; } = -1f;
+    public Vector3? LookBetweenCameraPos { get; private set; }
 
     /// <summary>
     /// <c>00CCAA6C</c> apply <c>vtbl+1632</c>: look
@@ -159,6 +160,24 @@ public sealed class CameraRuntime
             camera?.SetLookAt(onlyA);
         else if (posB is { } onlyB)
             camera?.SetLookAt(onlyB);
+    }
+
+    /// <summary>
+    /// <c>00CCB0D0</c> apply <c>vtbl+1636</c>: look
+    /// between A/B from a third position (arg2 thing or
+    /// table handle) plus arg4-6. Blend unread.
+    /// </summary>
+    public void LookBetweenPos(
+        ScriptedCamera? camera,
+        ThingInstance? a, string nameA,
+        ThingInstance? b, string nameB,
+        Vector3? cameraPos,
+        float duration, float fovDegrees)
+    {
+        LookBetween(camera, a, nameA, b, nameB, default, default, duration, fovDegrees);
+        LookBetweenCameraPos = cameraPos;
+        if (cameraPos is { } pos)
+            camera?.SetPosition(pos);
     }
 
     /// <summary>

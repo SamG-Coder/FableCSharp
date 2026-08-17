@@ -103,6 +103,8 @@ public sealed class ScriptedCamera
 
     public void SetLookAt(Vector3 lookAt) => LookAt = lookAt;
 
+    public void SetPosition(Vector3 position) => Position = position;
+
     public void SetFovDegrees(float fovDegrees) => FovDegrees = fovDegrees;
 
     public bool UseCamera(IEnumerable<ThingInstance> things, string name) =>

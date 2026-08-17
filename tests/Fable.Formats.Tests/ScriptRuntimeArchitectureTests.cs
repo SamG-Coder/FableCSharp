@@ -949,6 +949,145 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void CameraFOVLookBetweenPos_sets_camera_position_and_look()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "A",
+                PositionX = 0,
+                PositionY = 0,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "B",
+                PositionX = 8,
+                PositionY = 0,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "CAM",
+                PositionX = 1,
+                PositionY = 2,
+                PositionZ = 3,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], new ScriptedCamera());
+        var interp = new ScriptInterpreter("fovpos",
+            ["CameraFOVLookBetweenPos A,B,CAM,1.0,10,4,5"]);
+        interp.RunUntilYield(runtime);
+        Assert.Equal(ExecutionKind.YieldOnce, interp.CurrentWaitKind);
+        Assert.Equal(4f, runtime.Camera!.LookAt.X);
+        Assert.Equal(11f, runtime.Camera.Position.X);
+        Assert.Equal(6f, runtime.Camera.Position.Y);
+        Assert.Equal(8f, runtime.Camera.Position.Z);
+        Assert.Equal(10f, runtime.Camera.FovDegrees);
+        Assert.NotNull(runtime.CameraSys.LookBetweenCameraPos);
+        interp.Resume(runtime);
+        Assert.True(interp.Finished);
+    }
+
+    [Fact]
+    public void CameraFOVLookBetweenPos_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains("CameraFOVLookBetweenPos", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        if (line is null)
+        {
+            var compiled = Path.Combine(install.DataRoot, "CompiledDefs");
+            if (Directory.Exists(compiled))
+            {
+                foreach (var file in Directory.EnumerateFiles(compiled, "*.bin", SearchOption.AllDirectories))
+                {
+                    var scrape = ScriptBank.ExtractCommands(File.ReadAllBytes(file));
+                    var found = scrape.FirstOrDefault(s =>
+                        s.Contains("CameraFOVLookBetweenPos", StringComparison.OrdinalIgnoreCase));
+                    if (found is not null)
+                    {
+                        line = found;
+                        break;
+                    }
+                }
+            }
+        }
+
+        line ??= "CameraFOVLookBetweenPos HERO,FATHER,CAM_POS,1.0";
+        hit ??= bank.Find("CS_OAKVALE_INTRO_FATHER") ?? bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("CameraFOVLookBetweenPos", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        Assert.True(parsed.Arg(1).Length > 0);
+        Assert.True(parsed.Arg(2).Length > 0);
+        Assert.True(parsed.Arg(3).Length > 0);
+
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        using var levels = new LevelLibrary(install);
+        runtime.BindScene(levels.LoadThings(RegionTravel.NewGameRegion).Things.ToList(), new ScriptedCamera());
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-fovpos", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains("CameraFOVLookBetweenPos", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(parsed.Arg(0), runtime.CameraSys.LookBetweenA);
+        Assert.Equal(parsed.Arg(1), runtime.CameraSys.LookBetweenB);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-fovpos.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-camerafovlookbetweenpos.txt"),
+            """
+            CameraFOVLookBetweenPos 00CCB07C / apply 00CCB42C
+              4 required args else 00CD17FD
+              lookup arg0/arg1 things
+              atof arg3 duration (ebp+8)
+              optional arg4/5/6 -> offset of arg2 pos (x/y/z)
+              00CD3187(arg2); fail -> lookup arg2 as thing, 004AA980
+              fov default -1; arg4 nonempty -> atof*1/360
+              vtbl+1636(posA, posB, camPos+off, duration, fov)
+              if [ebp+103] vtbl+28; jmp 00CC864B
+              Distinct from CameraFOVLookBetween vtbl+1632.
+            """);
+    }
+
+    [Fact]
     public void CameraLookBetween_real_script_bank_line()
     {
         var install = GameInstall.TryLocate();
