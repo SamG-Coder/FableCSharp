@@ -143,6 +143,10 @@ public sealed class CameraRuntime
     public readonly List<string> TintTargets = [];
     public int TintHandle { get; private set; }
     public bool TintToActive { get; private set; }
+    public string RotateThing { get; private set; } = "";
+    public float RotateParam { get; private set; }
+    public Vector3 RotateAxis { get; private set; }
+    public bool RotateActive { get; private set; }
     private int _tintSerial;
 
     public void Bind(ScriptedCamera? camera, IReadOnlyList<ThingInstance> things, string name)
@@ -234,6 +238,23 @@ public sealed class CameraRuntime
         TintToActive = true;
         TintHandle = ++_tintSerial;
         return TintHandle;
+    }
+
+    /// <summary>
+    /// <c>00CCA609</c> <c>vtbl+1616</c>(thing, xyz, param)
+    /// then <c>00CC907D</c> yield. Orbit body unread.
+    /// </summary>
+    public void Rotate(
+        ScriptedCamera? camera, ThingInstance? thing, string name,
+        float param, Vector3 axis)
+    {
+        RotateThing = name;
+        RotateParam = param;
+        RotateAxis = axis;
+        RotateActive = true;
+        Busy = true;
+        if (thing is { PositionX: not null })
+            camera?.SetLookAt(RegionTravel.PositionOf(thing));
     }
 
     public void LookAtThing(ScriptedCamera? camera, ThingInstance? thing, string name)

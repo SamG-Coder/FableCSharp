@@ -60,6 +60,7 @@
 | NoDialogCam | `—` | `—` | IsTrue | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | runner local |
 | AnimationPause | `00CC718B` | `00CC718B` | flag | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | IsFalse store like CameraPause; apply body unread |
 | CameraLookAt | `00CCA73F` | `00CCA953` | thing,mode[,floats] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | empty skip; vtbl+1628; yield if [ebp+103] |
+| CameraRotateThing | `00CCA5B6` | `00CCA712` | thing,param,x,y,z | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | 5 required; vtbl+1616(thing,xyz,param); jmp 00CC907D |
 | CameraLookBetween | `00CCAA6C` | `00CCADB9` | a,b,mode,dur[,offA][,offB] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | 4 required; vtbl+1632(posA+off,posB+off,dur,-1); yield if [ebp+103] |
 | CameraFOVLookBetween | `00CCB479` | `00CCB728` | a,b,mode,dur[,fovDeg] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | same vtbl+1632; arg4 degrees*1/360 or -1; yield if [ebp+103] |
 | CameraFOVLookBetweenPos | `00CCB07C` | `00CCB42C` | a,b,pos,dur[,xyz/fov] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+1636(posA,posB,camPos+off,dur,fov); yield if [ebp+103] |

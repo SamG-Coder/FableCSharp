@@ -101,6 +101,9 @@ public static class GlobalDispatcher
                 ctx.Cutscene.AnimationPauseEnabled ? "TRUE" : "FALSE");
         }
 
+        if (Eq(v, "CameraRotateThing"))
+            return ApplyCameraRotateThing(line, ctx);
+
         if (Eq(v, "CameraLookAt"))
         {
             var name = line.Arg(0);
@@ -741,6 +744,31 @@ public static class GlobalDispatcher
         ctx.Cutscene.FlagRewriteDone = true;
         return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
             "SetFlag 00CC907D", $"{name}={value}");
+    }
+
+    /// <summary>
+    /// <c>00CCA609</c>: five required args. Lookup
+    /// arg0. atof arg1 param, arg2-4 xyz.
+    /// <c>vtbl+1616</c>(thing,xyz,param).
+    /// Yield <c>00CC907D</c>.
+    /// </summary>
+    internal static CommandResult ApplyCameraRotateThing(
+        ScriptLine line, ScriptExecutionContext ctx)
+    {
+        var name = line.Arg(0);
+        if (name.Length == 0 || line.Arg(1).Length == 0 ||
+            line.Arg(2).Length == 0 || line.Arg(3).Length == 0 ||
+            line.Arg(4).Length == 0)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        ScriptLine.TryFloat(line.Arg(1), out var param);
+        ScriptLine.TryFloat(line.Arg(2), out var x);
+        ScriptLine.TryFloat(line.Arg(3), out var y);
+        ScriptLine.TryFloat(line.Arg(4), out var z);
+        ctx.Camera.Rotate(
+            ctx.Runtime.Camera, ctx.FindThing(name), name,
+            param, new Vector3(x, y, z));
+        return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
+            "CameraRotateThing vtbl+1616", $"{name} {param:0.##}");
     }
 
     /// <summary>

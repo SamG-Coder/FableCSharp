@@ -1644,6 +1644,109 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void CameraRotateThing_looks_at_target_and_yields()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "HERO",
+                PositionX = 3,
+                PositionY = 4,
+                PositionZ = 1,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], new ScriptedCamera());
+        var interp = new ScriptInterpreter("rot",
+            ["CameraRotateThing HERO,1.5,0,0,1", "CameraPause FALSE"]);
+        interp.RunUntilYield(runtime);
+        Assert.Equal(ExecutionKind.YieldOnce, interp.CurrentWaitKind);
+        Assert.True(runtime.CameraSys.RotateActive);
+        Assert.Equal("HERO", runtime.CameraSys.RotateThing);
+        Assert.Equal(1.5f, runtime.CameraSys.RotateParam);
+        Assert.Equal(1f, runtime.CameraSys.RotateAxis.Z);
+        Assert.Equal(3f, runtime.Camera!.LookAt.X);
+        interp.Resume(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(0x00CCA712u, ScriptCommandMap.Find("CameraRotateThing")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void CameraRotateThing_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("CameraRotateThing ", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "CameraRotateThing HERO,1.5,0,0,1";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("CameraRotateThing", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        Assert.True(parsed.Arg(4).Length > 0);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = parsed.Arg(0),
+                PositionX = 1,
+                PositionY = 2,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], new ScriptedCamera());
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-rot", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("CameraRotateThing", StringComparison.OrdinalIgnoreCase));
+        Assert.True(runtime.CameraSys.RotateActive);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-rot.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-camerarotatething.txt"),
+            """
+            CameraRotateThing 00CCA5B6 / apply 00CCA712
+              5 required args else 00CD17FD
+              lookup arg0 vtbl+280/288
+              atof arg1 param; arg2-4 xyz
+              vtbl+1616(thing, xyz, param)
+              jmp 00CC907D YieldOnce
+              orbit body UNREAD
+            """);
+    }
+
+    [Fact]
     public void CameraLookBetween_aims_midpoint_and_yields()
     {
         var runtime = ScriptRuntime.Detached();
