@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 70
-RECOVERED RETURN: 70
+RECOVERED DISPATCH: 72
+RECOVERED RETURN: 72
 RECOVERED APPLY: 14
 IMPLEMENTED RUNTIME: 11
-UNREAD: 115
+UNREAD: 113
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -177,8 +177,8 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | FightStop | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
 | FightWith | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
 | Killable | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
-| StopFollowingThing | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
-| FollowThing | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
+| StopFollowingThing | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
+| FollowThing | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
 | WaitPlayAnimation | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
 | PlayLoopingAnim | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
 | PlayCombatAnim | Entity | Proven | Proven | Proven | Partial | Partial | Partial |

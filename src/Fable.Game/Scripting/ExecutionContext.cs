@@ -378,6 +378,9 @@ public sealed class MovementRuntime
         return Queue(actor, EntityTaskKind.Run, marker, dest, ResolveSpeed(actor, speed, true));
     }
 
+    public PendingOperation Follow(string? actor, string target, float speed, Vector3? dest) =>
+        Queue(actor, EntityTaskKind.Follow, target, dest, speed > 0f ? speed : 1f);
+
     public void Clear(string? actor)
     {
         Tasks.Clear(actor);

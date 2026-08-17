@@ -422,6 +422,12 @@ public static class ScriptCommandMap
         Spec("LookAtNothing", 0, 0, "",
             ScriptReturn.CompleteNow, CommandParity.ScriptLayer,
             "clear look"),
+        Spec("FollowThing", 0x00CC19F2, 0x00CC1AE9, "target[,speed]",
+            ScriptReturn.YieldAfter, CommandParity.ScriptLayer,
+            "default speed 1.0; actor vtbl+28; yield 00CC0E96 if [ebp+103]"),
+        Spec("StopFollowingThing", 0x00CC1B2F, 0x00CC1BF4, "[target]",
+            ScriptReturn.YieldAfter, CommandParity.ScriptLayer,
+            "actor vtbl+32; jmp 00CC568C leftover"),
     ];
 
     public static ScriptCommandSpec? Find(string verb)

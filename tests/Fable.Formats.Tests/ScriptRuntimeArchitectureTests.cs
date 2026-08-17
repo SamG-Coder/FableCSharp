@@ -600,6 +600,36 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void FollowThing_queues_follow_task_and_StopFollowing_cancels()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "FATHER",
+                PositionX = 8,
+                PositionY = 0,
+                PositionZ = 2,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], null);
+        var interp = new ScriptInterpreter("fl",
+            ["HERO.FollowThing FATHER,0.5", "HERO.StopFollowingThing"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Yielded);
+        Assert.Equal(EntityTaskKind.Follow, runtime.Movement.Tasks.Current("HERO")!.Kind);
+        Assert.Equal(8f, runtime.World.Positions["HERO"].X);
+        interp.Resume(runtime);
+        Assert.True(runtime.Movement.Tasks.Current("HERO")!.Cancelled);
+        interp.Resume(runtime);
+        Assert.True(interp.Finished);
+    }
+
+    [Fact]
     public void ObjectCreate_inserts_world_thing()
     {
         var runtime = ScriptRuntime.Detached();

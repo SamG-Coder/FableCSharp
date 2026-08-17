@@ -117,6 +117,32 @@ public static class EntityDispatcher
                 $"{v} vtbl+20 stub", marker, op.Id);
         }
 
+        if (Eq(v, "FollowThing"))
+        {
+            var target = line.Arg(0);
+            if (target.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            var followSpeed = 1f;
+            if (line.Arg(1).Length > 0 && ScriptLine.TryFloat(line.Arg(1), out var parsedFollow))
+                followSpeed = parsedFollow;
+            var followThing = ctx.FindThing(target);
+            System.Numerics.Vector3? followDest = followThing is { PositionX: not null }
+                ? RegionTravel.PositionOf(followThing)
+                : ctx.World.Positions.TryGetValue(target, out var fp) ? fp : null;
+            var followOp = ctx.Movement.Follow(line.Target, target, followSpeed, followDest);
+            if (followDest is { } fd && line.Target is { Length: > 0 })
+                ctx.World.Positions[line.Target] = fd;
+            return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Entity,
+                "FollowThing actor-vtbl+28", target, followOp.Id);
+        }
+
+        if (Eq(v, "StopFollowingThing"))
+        {
+            ctx.Movement.Clear(line.Target);
+            return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Entity,
+                "StopFollowingThing actor-vtbl+32", line.Arg(0));
+        }
+
         if (Eq(v, "Speak"))
         {
             var target = line.Arg(0);

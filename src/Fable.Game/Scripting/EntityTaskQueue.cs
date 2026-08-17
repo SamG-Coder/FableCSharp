@@ -46,7 +46,8 @@ public sealed class EntityTaskQueue
         {
             if (task.Complete)
                 continue;
-            if (task.Kind is EntityTaskKind.Walk or EntityTaskKind.Run or EntityTaskKind.Sneak)
+            if (task.Kind is EntityTaskKind.Walk or EntityTaskKind.Run
+                or EntityTaskKind.Sneak or EntityTaskKind.Follow)
                 task.TickMove(dt, world);
             else if (task.Kind is EntityTaskKind.Animate or EntityTaskKind.CombatAnimate
                      or EntityTaskKind.LoopAnimate)
@@ -64,6 +65,7 @@ public enum EntityTaskKind
     Animate,
     LoopAnimate,
     CombatAnimate,
+    Follow,
 }
 
 public sealed class EntityTask
