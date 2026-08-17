@@ -189,6 +189,7 @@ internal static class FunctionMap
         ("WaitTask hero poll", 0x006A9550),
         ("SneakTo token", 0x00CC0CB5),
         ("SneakTo thing vtbl+20 stub", 0x004C72B0),
+        ("SneakTo wait poll", 0x00CC0F1A),
         ("PlayCombatAnim token", 0x00CC15E3),
         ("PlayCombatAnim Father vtbl+76", 0x00834760),
         ("CActionPlayCombatAnimation", 0x009035F0),

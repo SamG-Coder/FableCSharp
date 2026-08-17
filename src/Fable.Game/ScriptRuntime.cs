@@ -322,8 +322,9 @@ public sealed class ScriptRuntime : IScriptHost
 
     /// <summary>
     /// <c>00CC0CB5</c>: thing <c>vtbl+20</c> is
-    /// <c>004C72B0</c> stub. First-seen does not
-    /// wait for arrival. Record only — no mesh move.
+    /// <c>004C72B0</c> stub. TRUE wait polls
+    /// <c>vtbl+104</c> leftover once. Record only —
+    /// no mesh move.
     /// </summary>
     void IScriptHost.SneakTo(string? actor, string marker, float speed, bool wait) =>
         _sneaks.Add(new ScriptSneakTo(actor, marker, speed, wait));

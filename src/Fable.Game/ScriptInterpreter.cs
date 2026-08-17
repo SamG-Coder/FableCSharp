@@ -630,7 +630,9 @@ public readonly struct ScriptCommand
             var move = ParseSneakTo(command.Arguments);
             if (move.Marker.Length == 0)
                 return ScriptFlow.Continue;
-            return move.Wait ? ScriptFlow.Yield : ScriptFlow.YieldAfter;
+            if (verb.Equals("WalkTo", StringComparison.OrdinalIgnoreCase) && move.Wait)
+                return ScriptFlow.Yield;
+            return ScriptFlow.YieldAfter;
         }
         if (IsPlayCombatAnimation(verb))
         {

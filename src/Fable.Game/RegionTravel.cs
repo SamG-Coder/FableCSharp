@@ -385,6 +385,21 @@ public static class RegionTravel
     public const string IntroSneakMarker = "MK_OVIF_HERO4";
     public const float IntroSneakSpeed = 0f;
     /// <summary>
+    /// First-seen wait is <c>Hero.SneakTo MK_OVIF_HERO5,0.0,TRUE</c>.
+    /// Arg2 IsTrue takes <c>00CC0F1A</c> thing <c>vtbl+104</c>
+    /// poll. Hero +104 is <c>006A9550</c> /
+    /// <c>00661A40</c> leftover busy → one
+    /// <c>vtbl+28</c> then idle <c>00CC7081</c>.
+    /// Apply is still <c>004C72B0</c> — no mesh move.
+    /// </summary>
+    public const uint SneakToWaitPoll = 0x00CC0F1A;
+    public const uint SneakToWaitYield = 0x00CC0ECD;
+    public const int SneakToWaitPollVtbl = 104;
+    public const bool FirstSeenSneakToTruePollsArrival = true;
+    public const bool FirstSeenSneakToTrueYieldsOnce = true;
+    public const string IntroSneakWaitMarker = "MK_OVIF_HERO5";
+    public const string IntroCutsceneLastCommand = "Hero.SneakTo MK_OVIF_HERO5,0.0,TRUE";
+    /// <summary>
     /// <c>00CC15E3</c> <c>.PlayCombatAnim</c> (persist
     /// <c>PlayCombatAnimation</c>). Empty actor / name
     /// → <c>00CC7081</c>. Defaults then arg2/3 IsTrue
