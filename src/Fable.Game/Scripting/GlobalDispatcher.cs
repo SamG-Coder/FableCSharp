@@ -322,6 +322,9 @@ public static class GlobalDispatcher
         if (Eq(v, "CreateEffect"))
             return ApplyCreateEffect(line, ctx);
 
+        if (Eq(v, "DummyEffect"))
+            return ApplyDummyEffect(line, ctx);
+
         if (Eq(v, "CreateNear"))
         {
             var type = line.Arg(0);
@@ -664,6 +667,38 @@ public static class GlobalDispatcher
             ctx.Bindings.BindCreated(name, type, marker, pos, spawned);
         return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
             $"{type}->{name} z={z:0.##}",
+            name.Length > 0 ? $"Created:{name}" : "");
+    }
+
+    /// <summary>
+    /// <c>00CCBDB6</c>: type,marker,arg2 required.
+    /// Optional arg3 name (default empty).
+    /// <c>vtbl+404</c> not CreateEffect 400.
+    /// Continue <c>00CC864B</c>.
+    /// </summary>
+    internal static CommandResult ApplyDummyEffect(
+        ScriptLine line, ScriptExecutionContext ctx)
+    {
+        var type = line.Arg(0);
+        var marker = line.Arg(1);
+        var param = line.Arg(2);
+        if (type.Length == 0 || marker.Length == 0 || param.Length == 0)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        var name = line.Arg(3);
+        var markerThing = ctx.FindThing(marker);
+        Vector3? pos = null;
+        if (markerThing is { PositionX: not null })
+            pos = RegionTravel.PositionOf(markerThing);
+        else if (ctx.World.Positions.TryGetValue(marker, out var stored))
+            pos = stored;
+        else
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, marker);
+        var spawned = ctx.World.SpawnDummy(type, marker, name, param, pos);
+        ctx.Runtime.AddThing(spawned);
+        if (name.Length > 0)
+            ctx.Bindings.BindCreated(name, type, marker, pos, spawned);
+        return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+            $"{type}/{param}->{name}",
             name.Length > 0 ? $"Created:{name}" : "");
     }
 

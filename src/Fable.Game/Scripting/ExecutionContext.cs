@@ -639,6 +639,35 @@ public sealed class WorldRuntime
         return tagged;
     }
 
+    /// <summary>
+    /// <c>00CCBDB6</c> <c>vtbl+404</c> dummy factory.
+    /// Distinct from CreateEffect <c>vtbl+400</c>.
+    /// </summary>
+    public ThingInstance SpawnDummy(
+        string type, string marker, string name, string param, Vector3? pos)
+    {
+        var thing = Spawn(type, marker, name, pos);
+        var props = new Dictionary<string, string>(thing.Properties, StringComparer.OrdinalIgnoreCase)
+        {
+            ["Dummy"] = "1",
+            ["DummyParam"] = param,
+        };
+        var tagged = new ThingInstance
+        {
+            Kind = thing.Kind,
+            Section = thing.Section,
+            DefinitionType = thing.DefinitionType,
+            ScriptName = thing.ScriptName,
+            PositionX = thing.PositionX,
+            PositionY = thing.PositionY,
+            PositionZ = thing.PositionZ,
+            Properties = props,
+        };
+        Spawned[^1] = tagged;
+        Effects.Add(new ScriptCreate(type, marker, name));
+        return tagged;
+    }
+
     public void Destroy(string name)
     {
         if (name.Length == 0)

@@ -859,6 +859,119 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void DummyEffect_spawns_via_separate_factory()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "MK_D",
+                PositionX = 2,
+                PositionY = 3,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], null);
+        var interp = new ScriptInterpreter("dummy",
+            ["DummyEffect FX_DUMMY,MK_D,PARAM,D1"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Single(runtime.World.Effects);
+        Assert.Equal("FX_DUMMY", runtime.World.Spawned[0].DefinitionType);
+        Assert.Equal("D1", runtime.World.Spawned[0].ScriptName);
+        Assert.Equal("1", runtime.World.Spawned[0].Properties["Dummy"]);
+        Assert.Equal("PARAM", runtime.World.Spawned[0].Properties["DummyParam"]);
+        Assert.Equal(2f, runtime.World.Positions["D1"].X);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("CreateEffect")!.Value.ApplySite,
+            ScriptCommandMap.Find("DummyEffect")!.Value.ApplySite);
+        Assert.Equal(0x00CCBE5Fu, ScriptCommandMap.Find("DummyEffect")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void DummyEffect_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("DummyEffect ", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "DummyEffect FX_DUMMY,MK_D,PARAM,D1";
+        hit ??= bank.Find("CS_OAKVALE_INTRO_FATHER") ?? bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("DummyEffect", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        Assert.True(parsed.Arg(1).Length > 0);
+        Assert.True(parsed.Arg(2).Length > 0);
+
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        using var levels = new LevelLibrary(install);
+        runtime.BindScene(levels.LoadThings(RegionTravel.NewGameRegion).Things.ToList(), null);
+        if (runtime.FindThingByName(parsed.Arg(1)) is null)
+        {
+            runtime.BindScene(
+            [
+                new ThingInstance
+                {
+                    Kind = "CTC",
+                    Section = "Thing",
+                    DefinitionType = "Marker",
+                    ScriptName = parsed.Arg(1),
+                    PositionX = 1,
+                    PositionY = 2,
+                    PositionZ = 0,
+                    Properties = new Dictionary<string, string>(),
+                },
+            ], null);
+        }
+
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-dummy", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("DummyEffect", StringComparison.OrdinalIgnoreCase));
+        Assert.NotEmpty(runtime.World.Effects);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-dummy.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-dummyeffect.txt"),
+            """
+            DummyEffect 00CCBD62 / apply 00CCBE5F
+              arg0 type + arg1 marker + arg2 required else 00CD17FD
+              00CBF9DE(arg1); fail -> 00CC864B
+              default name empty 0x122D70E; arg3 overwrites
+              vtbl+404(out,type,marker,arg2,name,0,1) — not CreateEffect 400
+              vtbl+2048(spawn,2); IsTrue(arg4) or empty -> 008ADF90
+              jmp 00CC864B no yield
+            """);
+    }
+
+    [Fact]
     public void CameraShake_stores_both_floats_and_continues()
     {
         var runtime = ScriptRuntime.Detached();
