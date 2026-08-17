@@ -22,6 +22,12 @@ public sealed class WmvPlayer : IDisposable
     public int Height { get; private set; }
     public byte[]? Rgba { get; private set; }
     public bool Ended { get; private set; }
+    /// <summary>
+    /// Incremented by <c>00A3B740</c> each sample
+    /// copy. Present <c>006286F0</c> reads the
+    /// latest frame after the 33 ms wait.
+    /// </summary>
+    public int FrameSerial { get; private set; }
 
     public static string? LastError { get; private set; }
 
@@ -95,6 +101,11 @@ public sealed class WmvPlayer : IDisposable
         return player;
     }
 
+    /// <summary>
+    /// One <c>006286F0</c> present tick. The graph
+    /// already runs; this is the game-window blit
+    /// wait, not a second video window.
+    /// </summary>
     public bool TryAdvance(float dt)
     {
         if (Ended)
@@ -162,6 +173,13 @@ public sealed class WmvPlayer : IDisposable
 
         if (hr < 0)
             return $"Run {hr:X8}";
+
+        if (_renderer is { IsConnected: false })
+        {
+            LastError = "renderer-not-connected";
+            _graph.RemoveFilter(_renderer);
+            _renderer = null;
+        }
 
         HideVideoWindow();
 
@@ -262,12 +280,18 @@ public sealed class WmvPlayer : IDisposable
 
     private void Pump()
     {
+        // 006286F0: WaitForSingleObject(event, 33)
+        // then blit. Samples arrive on Receive
+        // (00A3B740). Grab only if the custom
+        // renderer never connected.
         while (!_stop)
         {
             DrainEvents();
+            if (_renderer is not { IsConnected: true })
+                TryGrabBasicVideo();
             if (Ended)
                 break;
-            Thread.Sleep(15);
+            Thread.Sleep(RegionTravel.PlayAviPresentMs);
         }
 
         try
@@ -302,6 +326,7 @@ public sealed class WmvPlayer : IDisposable
             Width = width;
             Height = height;
             Rgba = rgba;
+            FrameSerial++;
         }
     }
 
@@ -647,6 +672,7 @@ public sealed class WmvPlayer : IDisposable
             _pin = new RendererPin(this, onSample);
 
         public IPin Pin => _pin;
+        public bool IsConnected => _pin.IsConnected;
 
         public int GetClassID(out Guid clsid)
         {
@@ -740,6 +766,8 @@ public sealed class WmvPlayer : IDisposable
         private int _bitCount;
         private int _stride;
         private bool _topDown;
+
+        public bool IsConnected => _connected is not null;
 
         public RendererPin(TextureRenderer filter, Action<int, int, byte[]> onSample)
         {

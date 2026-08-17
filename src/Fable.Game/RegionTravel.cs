@@ -190,6 +190,31 @@ public static class RegionTravel
     public const int PlayAviTextureFormatArgb = 21;
     public const int PlayAviTextureFormat555 = 25;
     public const uint PlayAviSeekZeroVa = 0x0122ED70;
+    /// <summary>
+    /// <c>00A3B740</c> is the sample blit: pin
+    /// <c>IMediaSample::GetPointer</c> (+12) RGB24,
+    /// <c>009FA450</c> <c>LockRect</c> (texture
+    /// vtbl+76), expand to format 21
+    /// <c>A8R8G8B8</c> (A=255) or pack 25
+    /// <c>A1R5G5B5</c>, unlock <c>009F9DE0</c>,
+    /// <c>[player+128]=texture</c>,
+    /// <c>SetEvent([player+124])</c>. Present
+    /// <c>006286F0</c> <c>WaitForSingleObject</c>
+    /// 33 ms (<c>[0x143FE08]</c>) then
+    /// <c>009FA4E0</c> + <c>009DC870</c> into the
+    /// existing game backbuffer. No
+    /// <c>IVideoWindow</c> / <c>GetCurrentImage</c>.
+    /// </summary>
+    public const uint PlayAviCopySample = 0x00A3B740;
+    public const uint PlayAviLockRect = 0x009FA450;
+    public const uint PlayAviUnlock = 0x009F9DE0;
+    public const uint PlayAviWaitIat = 0x0143FE08;
+    public const int PlayAviPresentMs = 33;
+    public const int PlayAviGetPointerVtbl = 12;
+    public const int PlayAviLockRectVtbl = 76;
+    public const bool FirstSeenPlayAviUsesVideoWindow = false;
+    public const bool FirstSeenPlayAviUsesGetCurrentImage = false;
+    public const bool FirstSeenPlayAviCopiesRgb24ToArgb = true;
     public static readonly Guid PlayAviFilterGraphClsid =
         new("e436ebb3-524f-11ce-9f53-0020af0ba770");
     public static readonly Guid PlayAviGraphBuilderIid =

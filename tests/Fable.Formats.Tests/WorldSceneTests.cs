@@ -316,6 +316,11 @@ public sealed class WorldSceneTests
         Assert.Equal(new Guid("56a868a9-0ad4-11ce-b03a-0020af0ba770"), RegionTravel.PlayAviGraphBuilderIid);
         Assert.True(RegionTravel.FirstSeenPlayAviIsDirectShow);
         Assert.False(RegionTravel.FirstSeenPlayAviIsMediaFoundation);
+        Assert.False(RegionTravel.FirstSeenPlayAviUsesVideoWindow);
+        Assert.False(RegionTravel.FirstSeenPlayAviUsesGetCurrentImage);
+        Assert.True(RegionTravel.FirstSeenPlayAviCopiesRgb24ToArgb);
+        Assert.Equal(33, RegionTravel.PlayAviPresentMs);
+        Assert.Equal(0x00A3B740u, RegionTravel.PlayAviCopySample);
         Assert.True(RegionTravel.FirstSeenPlayAviDraws);
         Assert.True(RegionTravel.FirstSeenPlayAviLetterbox);
         Assert.Equal(0x00CC9E6Au, RegionTravel.NoLoadUseCameraSite);
@@ -1893,6 +1898,19 @@ public sealed class WorldSceneTests
             player is { Rgba.Length: > 0, Width: >= 16, Height: >= 16 },
             $"WmvPlayer opened without a frame: {WmvPlayer.LastError}");
         Assert.True(player.Rgba.Any(b => b != 0), "first frame is all zero");
+        Assert.False(RegionTravel.FirstSeenPlayAviUsesVideoWindow);
+        Assert.False(RegionTravel.FirstSeenPlayAviUsesGetCurrentImage);
+        Assert.True(RegionTravel.FirstSeenPlayAviCopiesRgb24ToArgb);
+        Assert.Equal(33, RegionTravel.PlayAviPresentMs);
+        Assert.Equal(0x00A3B740u, RegionTravel.PlayAviCopySample);
+        Assert.Equal(0x009FA450u, RegionTravel.PlayAviLockRect);
+        var serial = player.FrameSerial;
+        var deadline = DateTime.UtcNow.AddMilliseconds(400);
+        while (DateTime.UtcNow < deadline && player.FrameSerial <= serial)
+            Thread.Sleep(RegionTravel.PlayAviPresentMs);
+        Assert.True(
+            player.FrameSerial > serial,
+            $"WMV did not advance past first sample serial={player.FrameSerial} start={serial} {WmvPlayer.LastError}");
 
         Assert.Equal(0x0099C1E0u, RegionTravel.PlayAviRewrite);
         Assert.Equal(0x00A3B9D0u, RegionTravel.PlayAviOpen);

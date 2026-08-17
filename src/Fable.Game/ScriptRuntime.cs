@@ -40,6 +40,7 @@ public sealed class ScriptRuntime : IScriptHost
     public int AviWidth => _avi?.Width ?? 0;
     public int AviHeight => _avi?.Height ?? 0;
     public byte[]? AviRgba => _avi?.Rgba;
+    public int AviFrameSerial => _avi?.FrameSerial ?? 0;
     public bool SoundsMuted { get; private set; }
     public int TimeCode { get; private set; }
     public float LastGamePause { get; private set; }
@@ -395,8 +396,11 @@ public sealed class ScriptRuntime : IScriptHost
     }
 
     /// <summary>
-    /// Present loop reads samples until the player
-    /// returns. EOF ends the blocking apply.
+    /// One <c>006286F0</c> iteration inside the
+    /// blocking PlayAVI apply: 33 ms wait analog
+    /// then the current sample. Interpreter
+    /// <c>TickPlayAvi</c> stays on the line until
+    /// this returns (EOF / skip). No extra window.
     /// </summary>
     private void TickAvi(float dt)
     {

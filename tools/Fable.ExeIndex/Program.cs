@@ -862,7 +862,7 @@ static void RunExportScriptBank(PeImage pe, DumpStore store, GameInstall? instal
     native.AppendLine("| PlayMusic | `00CC8EAC` / `00CBF7FE` | lookup `009E5120` then `vtbl+2784`. Jumps `00CD17FD` (no yield). |");
     native.AppendLine("| command loop | `00CD17FD` | `inc [ebp-72]` then `jb 00CC012E`. Next line is `FadeOut 0.5,0`. |");
     native.AppendLine("| FadeOut opcode | `00CD0987` | same-slice after PlayMusic. Parses 0.5 / 0 / default black. Apply `vtbl+1488(0.5,0)` then `jmp 00CD17FD`. |");
-    native.AppendLine("| PlayAVI | `00CCA26D` | first arg required else `jmp 00CD17FD`. Prefix `Data\\Video\\` via `0099F570`, `vtbl+1476` **`0088F890`** → `0040D2A0` then blocking **`006286F0(edx=0x1B)`**. `0099C1E0` rewrites wide `.xmv` (`0x1258DE0`) → `.wmv` (`0x1258DEC`). Open `00A3B9D0` CoCreate `0x12AB174`/`0x12A9934` (FilterGraph + IGraphBuilder), renderer ctor `00A3B510` size `0x180`, `AddFilter` vtbl+12, `RenderFile` vtbl+52. `00A3B5F0` copies VIDEOINFOHEADER biWidth/abs(biHeight); stride `((w+1)*3)&~3`. `00A3B130` `put_CurrentPosition(0)` then `Run` vtbl+28 retry 50. `DoRenderSample` `00A3BCF0` is `ret`. Sample is `IMediaSample::GetPointer`. Skip scan DIK 1/57/28/62. `jmp 00CD17F8`. **No** `vtbl+28`. After LookToThing (`FirstSeenPlayAvi=false`) but early intro — PC file is `dream_sequence_comp.wmv`. |");
+    native.AppendLine("| PlayAVI | `00CCA26D` | first arg required else `jmp 00CD17FD`. Prefix `Data\\Video\\` via `0099F570`, `vtbl+1476` **`0088F890`** → `0040D2A0` then blocking **`006286F0(edx=0x1B)`**. `0099C1E0` rewrites wide `.xmv` → `.wmv`. Open `00A3B9D0` CoCreate FilterGraph/`IGraphBuilder` (`0x12AB174`/`0x12A9934`). Custom renderer `00A3B510` (base `00CA7360`), `AddFilter` vtbl+12, `RenderFile` vtbl+52 — **no** `IVideoWindow` / `GetCurrentImage`. `00A3B5F0` reads `AM_MEDIA_TYPE.pbFormat` `VIDEOINFOHEADER` biWidth/abs(biHeight); stride `((w+1)*3)&~3`. Copy `00A3B740`: `IMediaSample::GetPointer` (+12) RGB24 → `009FA450` `LockRect` (vtbl+76) format 21/25, `SetEvent`. Present `WaitForSingleObject` **33** ms then `009DC870` into the **game** backbuffer, leftover×0.5. `00A3B130` `Run` retry 50. Skip DIK 1/57/28/62. `jmp 00CD17F8`. **No** `vtbl+28`. |");
     native.AppendLine("| MuteSounds | `00CC7258` | `00CBEE0C` IsFalse → `vtbl+2664(0)` else `(1)`. `jmp 00CC8464` (next token). **No** `vtbl+28`. First-seen `false` unmutes. Apply body UNREAD. |");
     native.AppendLine("| NoLoadUseCamera | `00CC9E6A` | separate token from `UseCamera`. |");
     native.AppendLine("| .Teleport | `00CC4678` | lookup marker `vtbl+280/+288`. Apply `00CC47B4` calls yaw `004AAA40` (`vtbl+40`, default `[0x122DEDC]=0`) then pos `004AA980` then `vtbl+1892` **`0089B780`**. `0089B780` writes `[thing+96].vtbl+124(pos)` and later `vtbl+1896` (LookInDirection) with that yaw. Second arg `00CBEE0C` is **IsFalse**. **No** `vtbl+28`. `jmp 00CC707C`. `00DB86B0` binds `Hero`/`Father` via `00CD3D2E`/`008ABD10`. |");
@@ -1051,6 +1051,9 @@ static void RunTraceScriptRuntime(PeImage pe, DumpStore store)
         WriteWalkPart(pe, store, family, "PlayAVI CheckMediaType 00A3B5F0", 0x00A3B5F0, 40),
         WriteWalkPart(pe, store, family, "PlayAVI Run 00A3B130", 0x00A3B130, 30),
         WriteFnPart(pe, store, family, "PlayAVI DoRenderSample 00A3BCF0", 0x00A3BCF0, 4, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI copy sample 00A3B740", 0x00A3B740, 80, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "PlayAVI LockRect 009FA450", 0x009FA450, 30),
+        WriteWalkPart(pe, store, family, "PlayAVI event pump 00A3B000", 0x00A3B000, 40),
         WriteVtblPart(pe, store, family, "PlayAVI renderer IBaseFilter 0129D08C", 0x0129D08C, 24),
         WriteVtblPart(pe, store, family, "PlayAVI renderer IMemInputPin 0129D008", 0x0129D008, 8),
         WriteGuidPart(pe, store, family, "PlayAVI FilterGraph CLSID 012AB174", 0x012AB174),
@@ -1734,6 +1737,9 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteWalkPart(pe, store, family, "PlayAVI CheckMediaType 00A3B5F0", 0x00A3B5F0, 40),
         WriteWalkPart(pe, store, family, "PlayAVI Run 00A3B130", 0x00A3B130, 30),
         WriteFnPart(pe, store, family, "PlayAVI DoRenderSample 00A3BCF0", 0x00A3BCF0, 4, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI copy sample 00A3B740", 0x00A3B740, 80, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "PlayAVI LockRect 009FA450", 0x009FA450, 30),
+        WriteWalkPart(pe, store, family, "PlayAVI event pump 00A3B000", 0x00A3B000, 40),
         WriteVtblPart(pe, store, family, "PlayAVI renderer IBaseFilter 0129D08C", 0x0129D08C, 24),
         WriteVtblPart(pe, store, family, "PlayAVI renderer IMemInputPin 0129D008", 0x0129D008, 8),
         WriteGuidPart(pe, store, family, "PlayAVI FilterGraph CLSID 012AB174", 0x012AB174),
