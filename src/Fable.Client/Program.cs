@@ -135,6 +135,8 @@ window.Update += dt =>
             debugCam.Move(Vector3.Normalize(move), (float)dt, keyboard.IsKeyPressed(Key.ShiftLeft));
     }
 
+    var avi = intro?.Runtime.AviPlaying == true;
+    renderer?.SetPlayAviPump(avi);
     intro?.Update((float)dt);
     if (renderer is not null)
     {

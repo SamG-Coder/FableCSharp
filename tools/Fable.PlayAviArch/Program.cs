@@ -171,6 +171,7 @@ if (args.Any(a => a is "--present"))
     window.Load += () =>
     {
         renderer = new VulkanLineRenderer(window);
+        renderer.SetPlayAviPump(true);
         VulkanLineRenderer.ResetVideoTrace();
     };
     window.Update += dt =>

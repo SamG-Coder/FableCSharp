@@ -153,6 +153,27 @@ public static class RegionTravel
     /// </summary>
     public const uint PlayAviBlit = 0x009DC870;
     public const uint PlayAviFlush = 0x009D9C80;
+    /// <summary>
+    /// <c>006286F0</c> after WaitEx:
+    /// <c>009BEF20</c> BeginScene <c>[dev+164]</c>,
+    /// blit/flush, <c>009BEF50</c> EndScene
+    /// <c>[dev+168]</c>, <c>009BEEB0</c>
+    /// <c>IDirect3DDevice9::Present</c>
+    /// <c>[dev+68]</c> (NULL,NULL,NULL,NULL).
+    /// The apply does not return, so
+    /// <c>00A44880</c> does not resume other
+    /// fibers or tick fade. No 3D draw.
+    /// WaitEx is the wait between Presents.
+    /// </summary>
+    public const uint PlayAviBeginScene = 0x009BEF20;
+    public const uint PlayAviEndScene = 0x009BEF50;
+    public const uint PlayAviPresent = 0x009BEEB0;
+    public const int PlayAviBeginSceneVtbl = 164;
+    public const int PlayAviEndSceneVtbl = 168;
+    public const int PlayAviPresentVtbl = 68;
+    public const bool FirstSeenPlayAviBlocksUpdatePump = true;
+    public const bool FirstSeenPlayAviDrawsWorld = false;
+    public const bool FirstSeenPlayAviPresentIsDevicePresent = true;
     public const uint PlayAviLetterboxHalfVa = 0x0122F59C;
     public const float PlayAviLetterboxHalf = 0.5f;
     /// <summary>

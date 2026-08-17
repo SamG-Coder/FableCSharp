@@ -1973,6 +1973,15 @@ public sealed class WorldSceneTests
         Assert.False(RegionTravel.FirstSeenPlayAviUnlockWaitsGpu);
         Assert.False(RegionTravel.FirstSeenPlayAviBlitIsSeparateGpuWait);
         Assert.True(RegionTravel.FirstSeenPlayAviUnlockThenNormalPresent);
+        Assert.Equal(0x009BEF20u, RegionTravel.PlayAviBeginScene);
+        Assert.Equal(0x009BEF50u, RegionTravel.PlayAviEndScene);
+        Assert.Equal(0x009BEEB0u, RegionTravel.PlayAviPresent);
+        Assert.Equal(164, RegionTravel.PlayAviBeginSceneVtbl);
+        Assert.Equal(168, RegionTravel.PlayAviEndSceneVtbl);
+        Assert.Equal(68, RegionTravel.PlayAviPresentVtbl);
+        Assert.True(RegionTravel.FirstSeenPlayAviBlocksUpdatePump);
+        Assert.False(RegionTravel.FirstSeenPlayAviDrawsWorld);
+        Assert.True(RegionTravel.FirstSeenPlayAviPresentIsDevicePresent);
         var serial = player.FrameSerial;
         Thread.Sleep(200);
         Assert.True(
@@ -2017,6 +2026,11 @@ public sealed class WorldSceneTests
         Assert.Contains("PlayAVI dream_sequence_comp.xmv", intro.Executed);
         Assert.True(runtime.AviPlaying);
         Assert.Equal(file, runtime.AviFile, StringComparer.OrdinalIgnoreCase);
+        Assert.True(RegionTravel.FirstSeenPlayAviBlocksUpdatePump);
+        var fadeAt = runtime.FadeElapsed;
+        runtime.Update(0.1f);
+        Assert.Equal(fadeAt, runtime.FadeElapsed);
+        Assert.True(runtime.AviPlaying);
         Assert.False(intro.ExecutedVerb("MuteSounds"));
         runtime.SkipAvi();
         runtime.Update(0.1f);

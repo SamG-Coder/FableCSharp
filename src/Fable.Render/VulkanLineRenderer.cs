@@ -202,6 +202,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     private uint _meshCount;
     private int _frame;
     private bool _resized;
+    private bool _playAviPump;
 
     public VulkanLineRenderer(IWindow window)
     {
@@ -293,6 +294,13 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     public byte FadeOverlayAlpha { get; set; }
     public (byte R, byte G, byte B) FadeOverlayRgb { get; set; }
     public bool VideoOverlayActive => _videoReady;
+
+    /// <summary>
+    /// <c>006286F0</c> owns the pump: WaitEx then
+    /// BeginScene/blit/EndScene/Present. Does not
+    /// change the 3D swapchain interval.
+    /// </summary>
+    public void SetPlayAviPump(bool on) => _playAviPump = on;
 
     public void Draw(
         Matrix4x4 viewProjection,
@@ -1088,7 +1096,12 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         // the row-major bytes already transposes. Do not Transpose() again.
         var viewProj = viewProjection;
 
-        if (_meshCount > 0 && _meshBuffer.Handle != 0)
+        // 006286F0 BeginScene/blit/EndScene/Present
+        // does not draw landscape or fade.
+        var playAviOnly = _playAviPump ||
+            (_videoReady && _videoPipeline.Handle != 0 && _videoTexture.Set.Handle != 0);
+
+        if (!playAviOnly && _meshCount > 0 && _meshBuffer.Handle != 0)
         {
             _skyViewProj = skyViewProjection;
             _worldViewProj = viewProjection;
@@ -1111,7 +1124,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             DrawMeshBatches(commandBuffer);
         }
 
-        if (ShowGizmos && _vertexCount > 0 && _vertexBuffer.Handle != 0)
+        if (!playAviOnly && ShowGizmos && _vertexCount > 0 && _vertexBuffer.Handle != 0)
         {
             _vk.CmdBindPipeline(commandBuffer, PipelineBindPoint.Graphics, _linePipeline);
             _vk.CmdPushConstants(commandBuffer, _pipelineLayout, ShaderStageFlags.VertexBit, 0, 64, &viewProj);
@@ -1121,7 +1134,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             _vk.CmdDraw(commandBuffer, _vertexCount, 1, 0, 0);
         }
 
-        if (FadeOverlayAlpha > 0 && _overlayPipeline.Handle != 0)
+        if (!playAviOnly && FadeOverlayAlpha > 0 && _overlayPipeline.Handle != 0)
         {
             var color = new Vector4(
                 FadeOverlayRgb.R / 255f,

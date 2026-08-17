@@ -188,6 +188,15 @@ public sealed class ScriptRuntime : IScriptHost
         DtAtPlus8 = dt;
         foreach (var fiber in _fibers)
             fiber.DtAtPlus8 = dt;
+        // 006286F0 owns the pump until it
+        // returns. 00A44880 is stuck in that
+        // apply — no fade tick, no other resume.
+        if (AviPlaying)
+        {
+            TickAvi(dt);
+            return;
+        }
+
         TickFade(dt);
         TickAvi(dt);
         foreach (var interpreter in _interpreters)
