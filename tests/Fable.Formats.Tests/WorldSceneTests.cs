@@ -269,6 +269,11 @@ public sealed class WorldSceneTests
         Assert.False(RegionTravel.FirstSeenFadeOverlayDrawUnread);
         Assert.Equal(0x006496BCu, RegionTravel.FadeOverlayDraw);
         Assert.Equal(0x004348D0u, RegionTravel.FadeOverlayAlphaFn);
+        Assert.Equal(0x0041BEB0u, RegionTravel.FadeOverlayRecord);
+        Assert.Equal(0x22u, RegionTravel.FadeOverlayRecordType);
+        Assert.Equal(0xC0u, RegionTravel.FadeOverlaySubmit);
+        Assert.Equal(92, RegionTravel.FadeOverlaySubmitVtbl);
+        Assert.Equal(-8f, RegionTravel.FadeOverlaySizePad);
         Assert.False(RegionTravel.FirstSeenFadeSpecialCaseRuns);
         Assert.Equal("FadeOut 0.5,0", RegionTravel.FadeSpecialCase);
         Assert.Equal(0.5f, RegionTravel.FadeSpecialCaseSeconds);
@@ -1643,6 +1648,12 @@ public sealed class WorldSceneTests
         Assert.Equal(0x00648820u, RegionTravel.FadeOverlayDrawFn);
         Assert.Equal(0x004348D0u, RegionTravel.FadeOverlayAlphaFn);
         Assert.Equal(0x00434870u, RegionTravel.FadeOverlayTick);
+        Assert.Equal(0x0041BEB0u, RegionTravel.FadeOverlayRecord);
+        Assert.Equal(0x22u, RegionTravel.FadeOverlayRecordType);
+        Assert.Equal(0xC0u, RegionTravel.FadeOverlaySubmit);
+        Assert.Equal(92, RegionTravel.FadeOverlaySubmitVtbl);
+        Assert.Equal(0x0125A298u, RegionTravel.FadeOverlaySizeVa);
+        Assert.Equal(-8f, RegionTravel.FadeOverlaySizePad);
         Assert.Equal(0x0088E4C0u, RegionTravel.FadeInApply);
         Assert.Equal(1496, RegionTravel.FadeInApplyVtbl);
         Assert.Equal(0x00434C90u, RegionTravel.FadeInClearLock);

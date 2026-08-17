@@ -45,6 +45,8 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     private Pipeline _linePipeline;
     private Pipeline _meshPipeline;
     private Pipeline _meshAlphaPipeline;
+    private PipelineLayout _overlayLayout;
+    private Pipeline _overlayPipeline;
     private DescriptorSetLayout _descriptorSetLayout;
     private DescriptorPool _descriptorPool;
     private Sampler _sampler;
@@ -157,11 +159,12 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     public bool ShowGizmos { get; set; }
 
     /// <summary>
-    /// <c>006496BC</c> overlay alpha. 255 skips the
-    /// world pass so the already-black clear is the
-    /// stay-faded frame. 2D primitive UNREAD.
+    /// <c>006496BC</c> / <c>0041BEB0</c> type
+    /// <c>0x22</c> overlay. RGB from <c>[+212]</c>,
+    /// A from <c>004348D0</c>.
     /// </summary>
     public byte FadeOverlayAlpha { get; set; }
+    public (byte R, byte G, byte B) FadeOverlayRgb { get; set; }
 
     public void Draw(
         Matrix4x4 viewProjection,
@@ -258,6 +261,10 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         _vk.DestroyPipeline(_device, _meshPipeline, null);
         if (_meshAlphaPipeline.Handle != 0)
             _vk.DestroyPipeline(_device, _meshAlphaPipeline, null);
+        if (_overlayPipeline.Handle != 0)
+            _vk.DestroyPipeline(_device, _overlayPipeline, null);
+        if (_overlayLayout.Handle != 0)
+            _vk.DestroyPipelineLayout(_device, _overlayLayout, null);
         _vk.DestroyPipelineLayout(_device, _pipelineLayout, null);
         if (_meshPipelineLayout.Handle != 0)
             _vk.DestroyPipelineLayout(_device, _meshPipelineLayout, null);
@@ -738,6 +745,36 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
 
         _vk.DestroyShaderModule(_device, meshVert, null);
         _vk.DestroyShaderModule(_device, meshFrag, null);
+
+        var ovVertSpv = GlslCompiler.Compile(LineShaders.OverlayVertex, ShaderKind.VertexShader, "fade.vert");
+        var ovFragSpv = GlslCompiler.Compile(LineShaders.OverlayFragment, ShaderKind.FragmentShader, "fade.frag");
+        var ovVert = CreateShaderModule(ovVertSpv);
+        var ovFrag = CreateShaderModule(ovFragSpv);
+        stages[0].Module = ovVert;
+        stages[1].Module = ovFrag;
+        var ovPush = new PushConstantRange
+        {
+            StageFlags = ShaderStageFlags.FragmentBit,
+            Size = 16,
+        };
+        var ovLayoutInfo = new PipelineLayoutCreateInfo
+        {
+            SType = StructureType.PipelineLayoutCreateInfo,
+            PushConstantRangeCount = 1,
+            PPushConstantRanges = &ovPush,
+        };
+        Check(_vk.CreatePipelineLayout(_device, in ovLayoutInfo, null, out _overlayLayout));
+        var emptyVertexInput = new PipelineVertexInputStateCreateInfo
+        {
+            SType = StructureType.PipelineVertexInputStateCreateInfo,
+        };
+        raster.CullMode = CullModeFlags.None;
+        pipelineInfo.PVertexInputState = &emptyVertexInput;
+        pipelineInfo.PDepthStencilState = &lineDepth;
+        pipelineInfo.Layout = _overlayLayout;
+        Check(_vk.CreateGraphicsPipelines(_device, default, 1, in pipelineInfo, null, out _overlayPipeline));
+        _vk.DestroyShaderModule(_device, ovVert, null);
+        _vk.DestroyShaderModule(_device, ovFrag, null);
         SilkMarshal.Free((nint)entry);
     }
 
@@ -877,7 +914,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         // the row-major bytes already transposes. Do not Transpose() again.
         var viewProj = viewProjection;
 
-        if (_meshCount > 0 && _meshBuffer.Handle != 0 && FadeOverlayAlpha < 255)
+        if (_meshCount > 0 && _meshBuffer.Handle != 0)
         {
             _skyViewProj = skyViewProjection;
             _worldViewProj = viewProjection;
@@ -908,6 +945,19 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             var vertexBuffer = _vertexBuffer;
             _vk.CmdBindVertexBuffers(commandBuffer, 0, 1, in vertexBuffer, in offset);
             _vk.CmdDraw(commandBuffer, _vertexCount, 1, 0, 0);
+        }
+
+        if (FadeOverlayAlpha > 0 && _overlayPipeline.Handle != 0)
+        {
+            var color = new Vector4(
+                FadeOverlayRgb.R / 255f,
+                FadeOverlayRgb.G / 255f,
+                FadeOverlayRgb.B / 255f,
+                FadeOverlayAlpha / 255f);
+            _vk.CmdBindPipeline(commandBuffer, PipelineBindPoint.Graphics, _overlayPipeline);
+            _vk.CmdPushConstants(
+                commandBuffer, _overlayLayout, ShaderStageFlags.FragmentBit, 0, 16, &color);
+            _vk.CmdDraw(commandBuffer, 3, 1, 0, 0);
         }
 
         _vk.CmdEndRenderPass(commandBuffer);

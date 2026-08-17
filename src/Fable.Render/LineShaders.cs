@@ -23,6 +23,29 @@ internal static class LineShaders
         }
         """;
 
+    /// <summary>
+    /// Screen-space triangle for <c>0041BEB0</c> type
+    /// <c>0x22</c> fade overlay. Color is the packed
+    /// RGB from <c>[+212]</c> and A from
+    /// <c>004348D0</c>.
+    /// </summary>
+    public const string OverlayVertex = """
+        #version 450
+        void main() {
+            vec2 p = vec2((gl_VertexIndex << 1) & 2, gl_VertexIndex & 2);
+            gl_Position = vec4(p * 2.0 - 1.0, 0.0, 1.0);
+        }
+        """;
+
+    public const string OverlayFragment = """
+        #version 450
+        layout(location = 0) out vec4 outColor;
+        layout(push_constant) uniform Push { vec4 color; } pc;
+        void main() {
+            outColor = pc.color;
+        }
+        """;
+
     public const string MeshVertex = """
         #version 450
         layout(location = 0) in vec3 inPosition;

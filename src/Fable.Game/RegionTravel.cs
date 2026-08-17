@@ -169,17 +169,25 @@ public static class RegionTravel
     /// <c>00648820</c>: skip when <c>[+188]==0</c>.
     /// Else RGB from <c>[+212]</c>, A =
     /// <c>004364C0</c> → <c>004348D0</c> * 255
-    /// (<c>00BFEA70</c>). First-seen +201=1 so A is
-    /// elapsed/0.5 then stays 1 after the tick
-    /// completes. <c>FadeIn</c> <c>vtbl+1496</c>
+    /// (<c>00BFEA70</c>). Record is <c>0041BEB0</c>
+    /// type <c>0x22</c>, submit <c>vtbl+92</c>
+    /// <c>0xC0</c>. Size pad <c>[0x125A298]=-8</c>.
+    /// First-seen +201=1 so A is elapsed/0.5 then
+    /// stays 1. <c>FadeIn</c> <c>vtbl+1496</c>
     /// <c>0088E4C0</c> clears +216 then
-    /// <c>00434C90</c>. 2D primitive body UNREAD —
-    /// live consume is skip-mesh when A==255.
+    /// <c>00434C90</c>. Live consume is a
+    /// screen-space type-0x22 color quad.
     /// </summary>
     public const uint FadeOverlayDraw = 0x006496BC;
     public const uint FadeOverlayDrawFn = 0x00648820;
     public const uint FadeOverlayAlphaFn = 0x004348D0;
     public const uint FadeOverlayTick = 0x00434870;
+    public const uint FadeOverlayRecord = 0x0041BEB0;
+    public const uint FadeOverlayRecordType = 0x22;
+    public const uint FadeOverlaySubmit = 0xC0;
+    public const int FadeOverlaySubmitVtbl = 92;
+    public const uint FadeOverlaySizeVa = 0x0125A298;
+    public const float FadeOverlaySizePad = -8f;
     public const uint FadeInOpcode = 0x00CD0922;
     public const uint FadeInApply = 0x0088E4C0;
     public const int FadeInApplyVtbl = 1496;

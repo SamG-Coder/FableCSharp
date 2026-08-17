@@ -221,6 +221,7 @@ internal static class FunctionMap
         ("fade overlay draw", 0x006496BC),
         ("fade overlay alpha", 0x004348D0),
         ("fade overlay tick", 0x00434870),
+        ("fade overlay record", 0x0041BEB0),
         ("Teleport token", 0x00CC4678),
         ("LookToThing token", 0x00CC3B3F),
         ("IsFalse arg", 0x00CBEE0C),
