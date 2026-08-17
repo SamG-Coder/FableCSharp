@@ -38,6 +38,8 @@ public sealed class GpuTextureTests
         Assert.Contains("inColor", LineShaders.MeshVertex, StringComparison.Ordinal);
         Assert.Contains("inExtra", LineShaders.MeshVertex, StringComparison.Ordinal);
         Assert.Contains("fragExtra.yz", LineShaders.MeshFragment, StringComparison.Ordinal);
+        Assert.Contains("fragUv", LineShaders.MeshFragment, StringComparison.Ordinal);
+        Assert.Contains("mode < 1.5 ? fragExtra.yz", LineShaders.MeshFragment, StringComparison.Ordinal);
         Assert.Contains("* 2.0", LineShaders.MeshFragment, StringComparison.Ordinal);
         Assert.DoesNotContain("mix(t0.rgb, t1.rgb, t1.a)", LineShaders.MeshFragment, StringComparison.Ordinal);
     }

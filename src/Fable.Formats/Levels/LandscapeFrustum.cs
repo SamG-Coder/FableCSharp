@@ -254,12 +254,24 @@ public static class LandscapeFrustum
     public const int WvpRegisterCount = 4;
     public const int WvpUploadOffset = 752;
     /// <summary>
-    /// <c>009883F0</c> writes <c>M11=M22=1</c>, Z from helper
-    /// near/far/minZ/maxZ, <c>M43=1</c>, <c>M44=0</c>. Cot lives
-    /// on camera+128, not in proj.
+    /// <c>009883F0</c> writes wrapper+624: <c>M11=M22=1</c>,
+    /// <c>+664 M33</c>, <c>+668 M34=Q</c>, <c>+680 M43=1</c>,
+    /// <c>M44=0</c>. VS <c>dp4 oPos, pos, c5–c8</c> on those
+    /// rows is <c>clip.z = M33*z + Q</c>, <c>clip.w = z</c>.
+    /// Numerics/GLSL store the upload-transpose
+    /// (<c>M34=1</c>, <c>M43=Q</c>) so <c>p*P</c> matches
+    /// that VS. Cot lives on camera+128, not in proj.
     /// </summary>
     public const bool FirstSeenProjXyIsIdentity = true;
-    public const float VulkanNdcYSign = -1f;
+    /// <summary>
+    /// VS <c>dp4 oPos.w, pos, c8</c> with c8 = <c>(0,0,1,0)</c>
+    /// is <c>clip.w = view.z</c>.
+    /// </summary>
+    public const bool FirstSeenProjWIsViewZ = true;
+    /// <summary>
+    /// <c>009883F0</c> <c>M22</c>. Not a Vulkan sign.
+    /// </summary>
+    public const float Dx9ProjectionYSign = 1f;
 
     public readonly record struct Plane(Vector3 Normal, float D);
 
@@ -361,22 +373,26 @@ public static class LandscapeFrustum
     }
 
     /// <summary>
-    /// Camera+128 after <c>00B30B50</c>: helper
-    /// <c>(right, look, up)</c> 3x4, then rows 0/1 scaled by
-    /// letterbox cots. Numerics columns are those three axes so
-    /// <c>p * view</c> matches VS <c>dp4</c> against wrapper rows.
+    /// Helper pack at +16 is <c>(right, look, up)</c>.
+    /// VS <c>clip.w = view.z</c>, so the Numerics 4x4
+    /// consumed with that proj puts look on Z and up on Y
+    /// (same axes as <see cref="CotScaledInverse"/>).
+    /// Putting look on Y sends SHOT2's look-at to NDC Y≈−8
+    /// and blacks the house (clip.w tracks up, not depth).
     /// </summary>
+    public const bool FirstSeenViewLookIsZ = true;
+
     public static Matrix4x4 CotScaledView(
         Vector3 position, Vector3 look, Vector3 up, float cotH, float cotV)
     {
         HelperViewAxes(look, up, out var right, out var lookN, out var upN);
         var view = new Matrix4x4(
-            right.X, lookN.X, upN.X, 0f,
-            right.Y, lookN.Y, upN.Y, 0f,
-            right.Z, lookN.Z, upN.Z, 0f,
+            right.X, upN.X, lookN.X, 0f,
+            right.Y, upN.Y, lookN.Y, 0f,
+            right.Z, upN.Z, lookN.Z, 0f,
             -Vector3.Dot(right, position),
-            -Vector3.Dot(lookN, position),
             -Vector3.Dot(upN, position),
+            -Vector3.Dot(lookN, position),
             1f);
         view.M11 *= cotH; view.M21 *= cotH; view.M31 *= cotH; view.M41 *= cotH;
         view.M12 *= cotV; view.M22 *= cotV; view.M32 *= cotV; view.M42 *= cotV;
@@ -384,16 +400,23 @@ public static class LandscapeFrustum
     }
 
     /// <summary>
-    /// <c>009883F0</c> XY identity plus viewport Z, with
-    /// <see cref="VulkanNdcYSign"/> on Y so the Vulkan NDC flip
-    /// stays out of the cot-scaled view.
+    /// Numerics/GLSL form whose upload-transpose matches
+    /// <c>009883F0</c> row-upload + VS <c>dp4</c>:
+    /// <c>clip.xy = (view.x, ySign*view.y)</c>,
+    /// <c>clip.z = m33*view.z + Q</c>,
+    /// <c>clip.w = view.z</c>.
+    /// Exe memory is <c>M34=Q</c> / <c>M43=1</c>; this
+    /// matrix is the transpose so <c>p*P</c> equals that VS.
     /// </summary>
+    public static Matrix4x4 FirstSeenDx9Projection(float m33, float m34) =>
+        FirstSeenProjection(m33, m34, Dx9ProjectionYSign);
+
     public static Matrix4x4 FirstSeenProjection(float m33, float m34, float ySign)
     {
         return new Matrix4x4(
             1f, 0f, 0f, 0f,
             0f, ySign, 0f, 0f,
-            0f, 0f, -m33, -1f,
+            0f, 0f, m33, 1f,
             0f, 0f, m34, 0f);
     }
 

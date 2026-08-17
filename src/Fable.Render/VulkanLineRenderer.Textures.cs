@@ -108,17 +108,10 @@ public sealed unsafe partial class VulkanLineRenderer
 
     private void CreateSamplerAndLayout()
     {
-        var samplerInfo = new SamplerCreateInfo
-        {
-            SType = StructureType.SamplerCreateInfo,
-            MagFilter = Filter.Linear,
-            MinFilter = Filter.Linear,
-            MipmapMode = SamplerMipmapMode.Linear,
-            AddressModeU = SamplerAddressMode.Repeat,
-            AddressModeV = SamplerAddressMode.Repeat,
-            AddressModeW = SamplerAddressMode.Repeat,
-            MaxLod = 1,
-        };
+        // Fable DX9: UNREAD first-seen D3DSAMP_* writes.
+        // Current Vulkan: LINEAR / REPEAT / MaxLod=1.
+        // Status: TEMPORARY — NOT PARITY PROVEN
+        var samplerInfo = Parity.Dx9Vulkan.Dx9VulkanSamplerState.FirstSeenTemporary();
         Check(_vk.CreateSampler(_device, in samplerInfo, null, out _sampler));
 
         var binding = new DescriptorSetLayoutBinding

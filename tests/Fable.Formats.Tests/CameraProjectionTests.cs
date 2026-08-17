@@ -137,9 +137,12 @@ public sealed class CameraProjectionTests
         var proj = FlyCamera.ProjectionMatrix(4f / 3f, 72f);
         Assert.True(LandscapeFrustum.FirstSeenProjXyIsIdentity);
         Assert.Equal(1f, proj.M11, 4);
-        Assert.Equal(LandscapeFrustum.VulkanNdcYSign, proj.M22, 4);
-        Assert.Equal(-m33, proj.M33, 4);
-        Assert.Equal(-1f, proj.M34, 4);
+        Assert.Equal(LandscapeFrustum.Dx9ProjectionYSign, proj.M22, 4);
+        Assert.Equal(Fable.Render.Parity.Dx9Vulkan.Dx9VulkanProjection.NdcYSign,
+            Fable.Render.Parity.Dx9Vulkan.Dx9VulkanProjection.ToVulkanProjection(proj).M22, 4);
+        Assert.True(LandscapeFrustum.FirstSeenProjWIsViewZ);
+        Assert.Equal(m33, proj.M33, 4);
+        Assert.Equal(1f, proj.M34, 4);
         Assert.Equal(m34, proj.M43, 4);
         var cam = new Vector3(40.033936f, 130.47711f, 16.78288f);
         var lookDir = new Vector3(-0.704544f, 0.6710376f, -0.23092493f);
@@ -151,11 +154,12 @@ public sealed class CameraProjectionTests
         Assert.Equal(0x00A14440u, LandscapeFrustum.HelperNormalize);
         Assert.Equal(0x00B314E0u, LandscapeFrustum.CameraUpdate);
         Assert.Equal(right.X * cotH, view.M11, 4);
-        Assert.Equal(lookN.X * cotV, view.M12, 4);
-        Assert.Equal(upN.X, view.M13, 4);
+        Assert.Equal(upN.X * cotV, view.M12, 4);
+        Assert.Equal(lookN.X, view.M13, 4);
+        Assert.True(LandscapeFrustum.FirstSeenViewLookIsZ);
         var inventedLookAt = Matrix4x4.CreateLookAt(cam, cam + lookDir, Vector3.UnitZ);
-        Assert.True(MathF.Abs(inventedLookAt.M12 - view.M12) > 0.05f,
-            "CreateLookAt Y axis is up, helper Y axis is look");
+        Assert.True(MathF.Abs(inventedLookAt.M31 + lookN.X) > 0.05f,
+            "CreateLookAt Z is -forward, first-seen Z is +look");
 
         var invented = Matrix4x4.CreatePerspectiveFieldOfView(
             float.DegreesToRadians(72f), 16f / 9f, 0.15f, 7000f);
@@ -260,7 +264,7 @@ public sealed class CameraProjectionTests
             LandscapeFrustum.FirstSeenMinZ, LandscapeFrustum.FirstSeenMaxZ,
             out var m33, out var m34);
         var view = LandscapeFrustum.CotScaledView(cam, camera.Forward, Vector3.UnitZ, cotH, cotV);
-        var proj = LandscapeFrustum.FirstSeenProjection(m33, m34, LandscapeFrustum.VulkanNdcYSign);
+        var proj = LandscapeFrustum.FirstSeenDx9Projection(m33, m34);
         var composed = LandscapeFrustum.ComposeWvp(
             LandscapeFrustum.IdentityWorld(), view, proj);
         var composedLook = FlyCamera.Project(composed, look);

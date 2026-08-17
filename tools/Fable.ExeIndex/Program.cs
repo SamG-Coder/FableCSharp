@@ -1572,6 +1572,7 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         WriteFnPart(pe, store, family, "Inner VS object ctor", 0x0098D4A0, 40),
         WriteFnPart(pe, store, family, "Engine stores 1436E14", 0x00B264E4, 40),
         WriteFnPart(pe, store, family, "State flush SetRenderState", 0x00A044E0, 50),
+        WriteFnPart(pe, store, family, "RS slot ctor type 1 00A04630", 0x00A04630, 90, stopOnRet: false),
         WriteFnPart(pe, store, family, "CULLMODE slot init", 0x00A047A7, 20),
         WriteFnPart(pe, store, family, "First-seen apply CCW cull", 0x00B24BF2, 40),
         WriteFnPart(pe, store, family, "Static-lit apply CCW cull", 0x00BB2DA2, 30),

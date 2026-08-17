@@ -95,8 +95,7 @@ public sealed class ScriptedCamera
             SkyPass.FirstSeenNear, SkyPass.FirstSeenFar,
             SkyPass.FirstSeenMinZ, SkyPass.FirstSeenMaxZ,
             out var m33, out var m34);
-        var proj = LandscapeFrustum.FirstSeenProjection(
-            m33, m34, LandscapeFrustum.VulkanNdcYSign);
+        var proj = LandscapeFrustum.FirstSeenDx9Projection(m33, m34);
         return LandscapeFrustum.ComposeWvp(
             LandscapeFrustum.IdentityWorld(), FlyView(aspect), proj);
     }
@@ -109,7 +108,6 @@ public sealed class ScriptedCamera
             LandscapeFrustum.FirstSeenMinZ,
             LandscapeFrustum.FirstSeenMaxZ,
             out var m33, out var m34);
-        return LandscapeFrustum.FirstSeenProjection(
-            m33, m34, LandscapeFrustum.VulkanNdcYSign);
+        return LandscapeFrustum.FirstSeenDx9Projection(m33, m34);
     }
 }

@@ -6,6 +6,7 @@ using Fable.Formats.Levels;
 using Fable.Formats.Meshes;
 using Fable.Formats.Sky;
 using Fable.Game;
+using Fable.Render;
 
 namespace Fable.Formats.Tests;
 
@@ -349,6 +350,58 @@ public sealed class WorldGeometryTests
     }
 
     [Fact]
+    public void First_seen_house_faces_shot2_and_kid_is_not_on_porch_until_sneak()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        var things = levels.LoadThings("StartOakValeWest").Things.ToList();
+        var runtime = ScriptRuntime.StartNewGame(install, things);
+        var world = WorldGeometry.Build(
+            install, "StartOakValeWest", things, actorPositions: runtime.ActorPositions);
+        var house = things.First(t => t.ScriptName == "HerosOldHouse");
+        var spawn = RegionTravel.FindPlayerStart(things)!;
+        var hero = things.First(t => t.ScriptName == RegionTravel.IntroHeroTeleportMarker);
+        var sneak = things.First(t => t.ScriptName == RegionTravel.IntroSneakMarker);
+        var shot = new ScriptedCamera();
+        Assert.True(shot.UseCamera(things, RegionTravel.IntroFirstSeenCamera));
+        var stand = new ScriptedCamera();
+        Assert.True(stand.UseCamera(things, RegionTravel.IntroStandupCamera));
+        var kid = runtime.ActorPositions[RegionTravel.IntroHeroActor];
+        var door = things.First(t => t.DefinitionType == "OBJECT_BUILDING_DOOR_3");
+        var hx = house.PositionX!.Value;
+        var hy = house.PositionY!.Value;
+        var near = world.Triangles.Where(t =>
+            t.Layer == SceneLayer.Prop && NearXY(t, hx, hy, 20f)).ToList();
+        var tex = string.Join(",", near.GroupBy(t => t.TextureId)
+            .OrderByDescending(g => g.Count()).Take(8)
+            .Select(g => $"{g.Key}x{g.Count()}"));
+        var mid = near.Count == 0 ? Vector3.Zero : (near[0].A + near[0].B + near[0].C) / 3f;
+        var clip = FlyCamera.Project(shot.ViewProjection(4f / 3f), mid);
+        var lookClip = FlyCamera.Project(shot.ViewProjection(4f / 3f), shot.LookAt);
+        var houseClip = FlyCamera.Project(
+            shot.ViewProjection(4f / 3f), new Vector3(hx, hy, shot.LookAt.Z));
+        var anyIn = CountPropInView(world, shot);
+        var shotHouse = CountInView(world, shot, GameBin.HerosOldHouseInteriorWallTexture);
+        var standHouse = CountInView(world, stand, GameBin.HerosOldHouseInteriorWallTexture);
+        var shotExt = CountInView(world, shot, 3180);
+        var notes =
+            $"SHOT2 {shot.Position} -> {shot.LookAt} int={shotHouse} ext={shotExt} any={anyIn} near={near.Count} tex={tex} " +
+            $"mid={mid} clip={clip} lookClip={lookClip} houseClip={houseClip}; " +
+            $"STANDUP {stand.Position} -> {stand.LookAt} int={standHouse}; " +
+            $"kid {kid} HSP {RegionTravel.PositionOf(spawn)} HERO {RegionTravel.PositionOf(hero)} " +
+            $"HERO4 {RegionTravel.PositionOf(sneak)} house {hx},{hy}";
+        Assert.InRange(lookClip.X, -0.25f, 0.25f);
+        Assert.InRange(lookClip.Y, -0.5f, 0.5f);
+        Assert.True(lookClip.W > 0f, "SHOT2 look-at behind camera: " + notes);
+        Assert.True(shotHouse + shotExt + anyIn > 20, "house not in SHOT2: " + notes);
+        Assert.True(
+            DistXy(kid, RegionTravel.PositionOf(hero)) < 1f,
+            "script Teleport did not place kid at MK_OVI_ID_HERO: " + notes);
+        Assert.Equal(RegionTravel.IntroFirstSeenCamera, shot.ActiveName);
+    }
+
+    [Fact]
     public void First_seen_sky_dome_is_6500_by_3250_ellipsoid()
     {
         var install = GameInstall.TryLocate();
@@ -522,5 +575,42 @@ public sealed class WorldGeometryTests
             var my = (t.A.Y + t.B.Y + t.C.Y) / 3f - y;
             return mx * mx + my * my < r2;
         });
+    }
+
+    private static float DistXy(Vector3 a, Vector3 b)
+    {
+        var dx = a.X - b.X;
+        var dy = a.Y - b.Y;
+        return MathF.Sqrt(dx * dx + dy * dy);
+    }
+
+    private static int CountInView(WorldGeometry world, ScriptedCamera camera, int textureId)
+    {
+        var vp = camera.ViewProjection(4f / 3f);
+        var n = 0;
+        foreach (var t in world.Triangles)
+        {
+            if (t.Layer != SceneLayer.Prop || t.TextureId != textureId)
+                continue;
+            if (InView(vp, (t.A + t.B + t.C) / 3f))
+                n++;
+        }
+
+        return n;
+    }
+
+    private static int CountPropInView(WorldGeometry world, ScriptedCamera camera)
+    {
+        var vp = camera.ViewProjection(4f / 3f);
+        return world.Triangles.Count(t =>
+            t.Layer == SceneLayer.Prop && InView(vp, (t.A + t.B + t.C) / 3f));
+    }
+
+    private static bool InView(Matrix4x4 vp, Vector3 mid)
+    {
+        var clip = FlyCamera.Project(vp, mid);
+        return clip.W > 0f
+            && clip.X is >= -1.2f and <= 1.2f
+            && clip.Y is >= -1.2f and <= 1.2f;
     }
 }

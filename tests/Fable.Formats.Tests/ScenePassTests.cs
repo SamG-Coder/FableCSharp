@@ -57,6 +57,13 @@ public sealed class ScenePassTests
         Assert.Equal(2, D3dDeviceState.CullCw);
         Assert.Equal(0x01396FB0u, D3dDeviceState.CullTable);
         Assert.Equal(0x01396FB8u, D3dDeviceState.CullTableNone);
+        Assert.Equal(1, D3dDeviceState.FlushTypeRenderState);
+        Assert.Equal(17, D3dDeviceState.FlushTypeOffset);
+        Assert.Equal(12, D3dDeviceState.FlushRsOffset);
+        Assert.Equal(228, D3dDeviceState.SetRenderStateVtbl);
+        Assert.Equal(0x00A04630u, D3dDeviceState.SlotCtor);
+        Assert.Equal(0x00A044E0u, D3dDeviceState.SlotFlush);
+        Assert.True(D3dDeviceState.FirstSeenCullFlushIsSetRenderState);
         Assert.False(WorldShading.FirstSeenPalskinWritesCullMode);
         Assert.True(WorldShading.FirstSeenPalskinInheritsCullCcw);
         Assert.Equal(29, D3dDeviceState.SpecularEnable);
@@ -91,6 +98,10 @@ public sealed class ScenePassTests
         Assert.Equal(0, D3dDeviceState.FirstSeenFogTableMode);
         Assert.Equal(140, D3dDeviceState.FogVertexMode);
         Assert.Equal(0, D3dDeviceState.FirstSeenFogVertexMode);
+        Assert.Equal(23, D3dDeviceState.ZFunc);
+        Assert.Equal(4, D3dDeviceState.FirstSeenZFunc);
+        Assert.Equal(7, D3dDeviceState.ZEnable);
+        Assert.Equal(14, D3dDeviceState.ZWriteEnable);
         Assert.True(WorldShading.FirstSeenAppliesVertexFogBlend);
         Assert.Equal(Vector3.Zero, WorldShading.BlendVertexFog(new Vector3(1f, 1f, 1f), 0f));
         Assert.Equal(new Vector3(1f, 1f, 1f), WorldShading.BlendVertexFog(new Vector3(1f, 1f, 1f), 1f));

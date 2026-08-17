@@ -342,7 +342,14 @@ public sealed class WorldGeometry
                         n = Vector3.UnitZ;
                     else
                         n = Vector3.Normalize(n);
-                    triangles.Add(tri with { A = a, B = b, C = c, Normal = n });
+                    var na = TransformUnitNormal(tri.NormalA, transform);
+                    var nb = TransformUnitNormal(tri.NormalB, transform);
+                    var nc = TransformUnitNormal(tri.NormalC, transform);
+                    triangles.Add(tri with
+                    {
+                        A = a, B = b, C = c, Normal = n,
+                        NormalA = na, NormalB = nb, NormalC = nc,
+                    });
                 }
 
                 any = true;
@@ -392,6 +399,14 @@ public sealed class WorldGeometry
             up.X, up.Y, up.Z, 0,
             position.X, position.Y, position.Z, 1);
         return Matrix4x4.CreateScale(scale) * basis;
+    }
+
+    private static Vector3 TransformUnitNormal(Vector3 normal, Matrix4x4 transform)
+    {
+        if (normal.LengthSquared() < 1e-8f)
+            return Vector3.Zero;
+        var n = Vector3.TransformNormal(normal, transform);
+        return n.LengthSquared() < 1e-8f ? Vector3.Zero : Vector3.Normalize(n);
     }
 
     private static float ReadObjectScale(ThingInstance thing)

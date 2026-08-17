@@ -136,6 +136,7 @@ public sealed class MeshFormatTests
         Assert.False(WorldShading.FirstSeenFlag1WritesLayerType20);
         Assert.False(WorldShading.FirstSeenStaticLitReadsFlag1);
         Assert.DoesNotContain(mesh.Triangles, t => t.SrcAlphaBlend);
+        Assert.Contains(mesh.Triangles, t => t.NormalA.LengthSquared() > 0.25f);
         Assert.False(GameBin.FirstSeenHouseFloor3184HasPrims);
         Assert.Equal(3184, GameBin.HerosOldHouseFloorTexture);
     }

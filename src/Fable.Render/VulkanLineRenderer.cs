@@ -346,10 +346,16 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             throw new InvalidOperationException($"AcquireNextImage failed: {acquire}");
 
         _vk.ResetFences(_device, 1, in _inFlight[_frame]);
-        Record(
-            _commandBuffers[_frame], imageIndex, viewProjection, cameraPosition, fogPlane,
-            skyViewProjection ?? viewProjection,
+        // Fable cameras submit the 009883F0 WVP (M22=+1).
+        // Flip clip Y here — the only proven DX9→Vulkan site.
+        var vkView = Parity.Dx9Vulkan.Dx9VulkanProjection.ToVulkanWvp(viewProjection);
+        var vkSky = Parity.Dx9Vulkan.Dx9VulkanProjection.ToVulkanWvp(
+            skyViewProjection ?? viewProjection);
+        var vkLand = Parity.Dx9Vulkan.Dx9VulkanProjection.ToVulkanWvp(
             landscapeViewProjection ?? viewProjection);
+        Record(
+            _commandBuffers[_frame], imageIndex, vkView, cameraPosition, fogPlane,
+            vkSky, vkLand);
 
         var wait = _imageAvailable[_frame];
         var signal = _renderFinished[_frame];
@@ -780,7 +786,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             SType = StructureType.PipelineInputAssemblyStateCreateInfo,
             Topology = PrimitiveTopology.LineList,
         };
-        var viewport = new Viewport { Width = _extent.Width, Height = _extent.Height, MaxDepth = 1 };
+        var viewport = Parity.Dx9Vulkan.Dx9VulkanViewport.FromFramebuffer(_extent.Width, _extent.Height);
         var scissor = new Rect2D { Extent = _extent };
         var viewportState = new PipelineViewportStateCreateInfo
         {
@@ -800,21 +806,20 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         var raster = new PipelineRasterizationStateCreateInfo
         {
             SType = StructureType.PipelineRasterizationStateCreateInfo,
-            PolygonMode = PolygonMode.Fill,
+            // Fable DX9: UNREAD first-seen FILLMODE write (D3D default SOLID).
+            // Vulkan: VK_POLYGON_MODE_FILL
+            // Status: TEMPORARY — NOT PARITY PROVEN
+            PolygonMode = Parity.Dx9Vulkan.Dx9VulkanRasterState.FirstSeenFillMode,
             LineWidth = 1f,
             CullMode = CullModeFlags.None,
-            FrontFace = FrontFace.CounterClockwise,
+            FrontFace = Parity.Dx9Vulkan.Dx9VulkanRasterState.FirstSeenFrontFace,
         };
         var multi = new PipelineMultisampleStateCreateInfo
         {
             SType = StructureType.PipelineMultisampleStateCreateInfo,
             RasterizationSamples = SampleCountFlags.Count1Bit,
         };
-        var blendAttachment = new PipelineColorBlendAttachmentState
-        {
-            ColorWriteMask = ColorComponentFlags.RBit | ColorComponentFlags.GBit |
-                             ColorComponentFlags.BBit | ColorComponentFlags.ABit,
-        };
+        var blendAttachment = Parity.Dx9Vulkan.Dx9VulkanBlendState.Opaque();
         var blend = new PipelineColorBlendStateCreateInfo
         {
             SType = StructureType.PipelineColorBlendStateCreateInfo,
@@ -857,13 +862,15 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             DepthWriteEnable = false,
             DepthCompareOp = CompareOp.Always,
         };
-        var meshDepth = new PipelineDepthStencilStateCreateInfo
-        {
-            SType = StructureType.PipelineDepthStencilStateCreateInfo,
-            DepthTestEnable = true,
-            DepthWriteEnable = true,
-            DepthCompareOp = CompareOp.LessOrEqual,
-        };
+        // Fable DX9:
+        // D3DRS_ZFUNC = D3DCMP_LESSEQUAL
+        //
+        // Vulkan equivalent:
+        // depthCompareOp = VK_COMPARE_OP_LESS_OR_EQUAL
+        //
+        // Evidence:
+        // D3dDeviceState.FirstSeenZFunc / PARITY first-seen lock.
+        var meshDepth = Parity.Dx9Vulkan.Dx9VulkanDepth.FirstSeenOpaque();
 
         var pipelineInfo = new GraphicsPipelineCreateInfo
         {
@@ -914,25 +921,35 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             VertexAttributeDescriptionCount = 5,
             PVertexAttributeDescriptions = meshAttributes,
         };
-        inputAssembly.Topology = PrimitiveTopology.TriangleList;
-        // D3DCULL_CCW (0x01396FB0 = 3) on first-seen landscape/static-lit.
-        // PALSKIN 00BD3070 does not write CULLMODE; it inherits that CCW.
-        // FlyCamera flips projection M22 for Vulkan Y-down NDC, so D3D CCW
-        // cull keeps the same world faces as Vulkan FrontFace.CCW + Back.
-        raster.CullMode = CullModeFlags.BackBit;
-        raster.FrontFace = FrontFace.CounterClockwise;
+        inputAssembly.Topology = Parity.Dx9Vulkan.Dx9VulkanPrimitive.World;
+        // Fable DX9:
+        // D3DRS_CULLMODE = D3DCULL_CCW (0x01396FB0 = 3)
+        //
+        // Vulkan equivalent:
+        // FrontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE
+        // CullMode = VK_CULL_MODE_BACK_BIT
+        //
+        // Difference:
+        // Dx9VulkanProjection flips clip Y; clip-CCW stays
+        // framebuffer-CCW and is kept by CCW + Back.
+        //
+        // Proof:
+        // D3dDeviceState.CullCcw / Dx9VulkanRasterState.
+        raster.CullMode = Parity.Dx9Vulkan.Dx9VulkanRasterState.FirstSeenCullMode;
+        raster.FrontFace = Parity.Dx9Vulkan.Dx9VulkanRasterState.FirstSeenFrontFace;
         pipelineInfo.PVertexInputState = &meshVertexInput;
         pipelineInfo.PDepthStencilState = &meshDepth;
         pipelineInfo.Layout = _meshPipelineLayout;
         Check(_vk.CreateGraphicsPipelines(_device, default, 1, in pipelineInfo, null, out _meshPipeline));
-        // PALSKIN 00BD3867/00BD38D4: SRCALPHA / INVSRCALPHA, no Flag1 test.
-        blendAttachment.BlendEnable = true;
-        blendAttachment.SrcColorBlendFactor = BlendFactor.SrcAlpha;
-        blendAttachment.DstColorBlendFactor = BlendFactor.OneMinusSrcAlpha;
-        blendAttachment.ColorBlendOp = BlendOp.Add;
-        blendAttachment.SrcAlphaBlendFactor = BlendFactor.SrcAlpha;
-        blendAttachment.DstAlphaBlendFactor = BlendFactor.OneMinusSrcAlpha;
-        blendAttachment.AlphaBlendOp = BlendOp.Add;
+        // Fable DX9:
+        // PALSKIN 00BD3867/00BD38D4 SRCALPHA / INVSRCALPHA.
+        //
+        // Vulkan equivalent:
+        // src=SRC_ALPHA dst=ONE_MINUS_SRC_ALPHA op=ADD
+        //
+        // Evidence:
+        // D3dDeviceState.FirstSeenPalskinSrcBlend.
+        blendAttachment = Parity.Dx9Vulkan.Dx9VulkanBlendState.PalskinSrcAlpha();
         Check(_vk.CreateGraphicsPipelines(_device, default, 1, in pipelineInfo, null, out _meshAlphaPipeline));
 
         _vk.DestroyShaderModule(_device, meshVert, null);
@@ -1110,7 +1127,11 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
 
         var clears = stackalloc ClearValue[]
         {
-            new() { Color = new ClearColorValue(0f, 0f, 0f, 1f) },
+            new() { Color = new ClearColorValue(
+                Parity.Dx9Vulkan.Dx9VulkanColor.FirstSeenClear.X,
+                Parity.Dx9Vulkan.Dx9VulkanColor.FirstSeenClear.Y,
+                Parity.Dx9Vulkan.Dx9VulkanColor.FirstSeenClear.Z,
+                Parity.Dx9Vulkan.Dx9VulkanColor.FirstSeenClear.W) },
             new() { DepthStencil = new ClearDepthStencilValue { Depth = 1f } },
         };
         var pass = new RenderPassBeginInfo
@@ -1124,7 +1145,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         };
         _vk.CmdBeginRenderPass(commandBuffer, in pass, SubpassContents.Inline);
 
-        var viewport = new Viewport { Width = _extent.Width, Height = _extent.Height, MaxDepth = 1 };
+        var viewport = Parity.Dx9Vulkan.Dx9VulkanViewport.FromFramebuffer(_extent.Width, _extent.Height);
         var scissor = new Rect2D { Extent = _extent };
         _vk.CmdSetViewport(commandBuffer, 0, 1, in viewport);
         _vk.CmdSetScissor(commandBuffer, 0, 1, in scissor);

@@ -141,9 +141,12 @@ internal static class LineShaders
         } pc;
         void main() {
             float mode = pc.pass.x;
-            // FG VS: oT0.xy = v3.yz (ExtraRgb.YZ). BG VS: oT0 = v3 (ExtraRgb.XY).
-            // Albedo oT1 = dp4(pos,c40/c41) = (0,0) first-seen. Mesh UV is oT1.
-            vec2 ot0 = mode < 0.5 ? fragExtra.xy : fragExtra.yz;
+            // BG (mode 0): oT0 = v3 (ExtraRgb.XY).
+            // FG (mode 1): oT0.xy = v3.yz; oT1 = dp4(pos,c40/c41)=(0,0).
+            // STATIC/PALSKIN (mode 3): oT0 = v2 / v4 = mesh UV (fragUv).
+            vec2 ot0 = mode < 0.5 ? fragExtra.xy
+                     : mode < 1.5 ? fragExtra.yz
+                     : fragUv;
             vec2 ot1 = fragUv;
             vec4 t0 = texture(albedo0, ot0);
             vec4 t1 = texture(albedo1, ot1);

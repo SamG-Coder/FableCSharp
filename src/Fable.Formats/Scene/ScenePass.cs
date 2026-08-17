@@ -126,6 +126,22 @@ public static class D3dDeviceState
     public const uint CullTableNone = 0x01396FB8;
 
     /// <summary>
+    /// Wrapper ctor <c>00A04630</c> <c>mov edx, 1</c> then
+    /// every RS slot including CULLMODE <c>+10384</c>
+    /// <c>[+17]=dl</c>. Flush <c>00A044E0</c> decs that
+    /// type: 1 → <c>IDirect3DDevice9::SetRenderState</c>
+    /// <c>[vtbl+228]</c> with <c>[slot+12]</c> (RS 22)
+    /// and <c>[slot+4]</c> (first-seen 3).
+    /// </summary>
+    public const int FlushTypeRenderState = 1;
+    public const int FlushTypeOffset = 17;
+    public const int FlushRsOffset = 12;
+    public const int SetRenderStateVtbl = 228;
+    public const uint SlotCtor = 0x00A04630;
+    public const uint SlotFlush = 0x00A044E0;
+    public const bool FirstSeenCullFlushIsSetRenderState = true;
+
+    /// <summary>
     /// D3DRS_SPECULARENABLE. Slot init <c>00A04B44</c> writes
     /// <c>0x1D</c> at wrapper <c>+10736</c>; slot base
     /// <c>+10724</c>, value <c>+10728</c>. PALSKIN bind
@@ -211,4 +227,33 @@ public static class D3dDeviceState
     /// </summary>
     public const int FirstSeenPalskinSrcBlend = BlendSrcAlpha;
     public const int FirstSeenPalskinDestBlend = BlendInvSrcAlpha;
+
+    /// <summary>D3DRS_ZENABLE. D3D default TRUE.</summary>
+    public const int ZEnable = 7;
+
+    /// <summary>D3DRS_ZWRITEENABLE. D3D default TRUE.</summary>
+    public const int ZWriteEnable = 14;
+
+    /// <summary>D3DRS_ZFUNC. D3D default / first-seen LESSEQUAL.</summary>
+    public const int ZFunc = 23;
+
+    /// <summary>D3DCMP_LESSEQUAL.</summary>
+    public const int CmpLessEqual = 4;
+
+    /// <summary>
+    /// First-seen lock: landscape / static-lit consume
+    /// D3DCMP_LESSEQUAL. The SetRenderState site for
+    /// ZENABLE/ZWRITE is UNREAD; D3D defaults are TRUE.
+    /// </summary>
+    public const int FirstSeenZFunc = CmpLessEqual;
+    public const int FirstSeenZEnable = 1;
+    public const int FirstSeenZWriteEnable = 1;
+
+    /// <summary>D3DRS_FILLMODE. First-seen write UNREAD.</summary>
+    public const int FillMode = 8;
+    public const int FillSolid = 3;
+
+    /// <summary>D3DRS_COLORWRITEENABLE. First-seen write UNREAD.</summary>
+    public const int ColorWriteEnable = 168;
+    public const int ColorWriteAll = 0xF;
 }

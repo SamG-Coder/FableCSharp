@@ -234,6 +234,8 @@ public sealed class MeshFile
             var uvs = new Vector2[vertCount];
             var palettes = hasBones && bones.Length > 0 ? WorldShading.FirstSeenPalettes(bones) : [];
             var posSize = packedPos ? 4 : 12;
+            var normals = new Vector3[vertCount];
+            var normalOffset = PackedNormalOffset(entryType, stride, initFlags, hasBones);
             for (var v = 0; v < vertCount; v++)
             {
                 var o = v * stride;
@@ -263,6 +265,7 @@ public sealed class MeshFile
                 }
 
                 positions[v] = p;
+                normals[v] = ReadNormal(vertices, o + normalOffset, packedNorm, entryType);
                 uvs[v] = ReadUv(vertices, o + uvOffset, packedNorm, entryType);
                 boundsMin = Vector3.Min(boundsMin, p);
                 boundsMax = Vector3.Max(boundsMax, p);
@@ -288,7 +291,8 @@ public sealed class MeshFile
                 }
                 n = Vector3.Normalize(n);
                 triangles.Add(new MeshTriangle(pa, pb, pc, n, uvs[a], uvs[b], uvs[c], textureId,
-                    SrcAlphaBlend: hasBones));
+                    SrcAlphaBlend: hasBones,
+                    NormalA: normals[a], NormalB: normals[b], NormalC: normals[c]));
             }
 
             if (blocks.Count == 0)
@@ -472,7 +476,22 @@ public sealed class MeshFile
         return System.Text.Encoding.ASCII.GetString(names, offset, end - offset);
     }
 
-    internal static int PackedUvOffset(int entryType, int stride, uint initFlags, bool hasBones)
+    public static int PackedNormalOffset(int entryType, int stride, uint initFlags, bool hasBones)
+    {
+        var packedPos = (initFlags & 4) != 0 && (initFlags & 0x10) == 0;
+        var packedNorm = (initFlags & 4) != 0;
+        if (entryType == 4 || (stride == 36 && !hasBones))
+            return 12;
+        if (!hasBones && stride == 24 && !packedPos && !packedNorm)
+            return 12;
+        if (!hasBones && stride == 20 && packedPos && !packedNorm)
+            return 4;
+
+        var posSize = packedPos ? 4 : 12;
+        return posSize + (hasBones ? 8 : 0);
+    }
+
+    public static int PackedUvOffset(int entryType, int stride, uint initFlags, bool hasBones)
     {
         var packedPos = (initFlags & 4) != 0 && (initFlags & 0x10) == 0;
         var packedNorm = (initFlags & 4) != 0;
@@ -486,6 +505,25 @@ public sealed class MeshFile
         var posSize = packedPos ? 4 : 12;
         var normOff = posSize + (hasBones ? 8 : 0);
         return normOff + (packedNorm ? 4 : 12);
+    }
+
+    internal static Vector3 ReadNormal(byte[] vertices, int offset, bool packedNorm, int entryType)
+    {
+        if (offset < 0)
+            return Vector3.Zero;
+        if (packedNorm && entryType != 4)
+        {
+            if (offset + 4 > vertices.Length)
+                return Vector3.Zero;
+            return PackedDirection.Unpack(BitConverter.ToUInt32(vertices, offset));
+        }
+
+        if (offset + 12 > vertices.Length)
+            return Vector3.Zero;
+        return new Vector3(
+            BitConverter.ToSingle(vertices, offset),
+            BitConverter.ToSingle(vertices, offset + 4),
+            BitConverter.ToSingle(vertices, offset + 8));
     }
 
     internal static Vector2 ReadUv(byte[] vertices, int offset, bool packedNorm, int entryType)

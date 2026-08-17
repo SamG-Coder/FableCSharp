@@ -58,10 +58,9 @@ public sealed class FlyCamera
             LandscapeFrustum.FirstSeenMinZ,
             LandscapeFrustum.FirstSeenMaxZ,
             out var m33, out var m34);
-        // 009883F0 is XY identity. Cot is on camera+128.
-        // M22 = VulkanNdcYSign. clip.w = view.z after the RH look-at.
-        return LandscapeFrustum.FirstSeenProjection(
-            m33, m34, LandscapeFrustum.VulkanNdcYSign);
+        // 009883F0 is XY identity (M22=+1). Cot is on camera+128.
+        // clip.w = view.z. Vulkan NDC Y is applied in Draw.
+        return LandscapeFrustum.FirstSeenDx9Projection(m33, m34);
     }
 
     public Matrix4x4 ViewProjection(float aspect) =>
@@ -87,8 +86,7 @@ public sealed class FlyCamera
             Fable.Formats.Sky.SkyPass.FirstSeenMinZ,
             Fable.Formats.Sky.SkyPass.FirstSeenMaxZ,
             out var m33, out var m34);
-        return LandscapeFrustum.FirstSeenProjection(
-            m33, m34, LandscapeFrustum.VulkanNdcYSign);
+        return LandscapeFrustum.FirstSeenDx9Projection(m33, m34);
     }
 
     public Matrix4x4 SkyViewProjection(float aspect) =>
