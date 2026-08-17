@@ -1073,23 +1073,20 @@ public sealed class WmvPlayer : IDisposable
         public int QueryAccept(IntPtr type)
         {
             QueryAcceptCalls++;
-            // CBasePin::QueryAccept maps CheckMediaType
-            // 00A3B5F0: read pbFormat VIDEOINFOHEADER
-            // biWidth / abs(biHeight). Failed check
-            // becomes S_FALSE (1), not an error.
+            // 00CA84C0: null → E_POINTER. Else this-12
+            // and C++ vtbl+32 → 00CA5200 → filter
+            // vtbl+176 00A3B590. Failed check (any
+            // negative) becomes S_FALSE (1).
             if (type == IntPtr.Zero)
-                return 1;
+                return unchecked((int)0x80004003);
             var major = Marshal.PtrToStructure<Guid>(type);
-            if (major != Ds.Video)
+            var subtype = Marshal.PtrToStructure<Guid>(type + 16);
+            var formatType = Marshal.PtrToStructure<Guid>(type + 44);
+            if (formatType != Ds.VideoInfo ||
+                major != Ds.Video ||
+                subtype != Ds.Rgb24)
                 return 1;
-            var format = IntPtr.Size == 8
-                ? Marshal.ReadIntPtr(type, 80)
-                : Marshal.ReadIntPtr(type, 68);
-            if (format == IntPtr.Zero)
-                return 1;
-            var width = Marshal.ReadInt32(format, 52);
-            var height = Math.Abs(Marshal.ReadInt32(format, 56));
-            return width > 0 && height > 0 ? 0 : 1;
+            return 0;
         }
 
         public int EnumMediaTypes(out IEnumMediaTypes enumerator)
@@ -1308,45 +1305,14 @@ public sealed class WmvPlayer : IDisposable
 
         public int Next(int count, IntPtr types, IntPtr fetched)
         {
-            var n = 0;
-            if (_index == 0 && count > 0 && types != IntPtr.Zero)
-            {
-                Marshal.WriteIntPtr(types, AllocRgb24());
-                _index = 1;
-                n = 1;
-            }
-
+            // 00CA84F0 GetMediaType is
+            // E_UNEXPECTED. EnumMediaTypes Next
+            // therefore yields no types.
+            _ = (count, types);
+            _index++;
             if (fetched != IntPtr.Zero)
-                Marshal.WriteInt32(fetched, n);
-            return n == count ? 0 : 1;
-        }
-
-        private static IntPtr AllocRgb24()
-        {
-            const int width = 640;
-            const int height = 480;
-            var vih = Marshal.AllocCoTaskMem(88);
-            for (var i = 0; i < 88; i++)
-                Marshal.WriteByte(vih, i, 0);
-            Marshal.WriteInt32(vih, 48, 40);
-            Marshal.WriteInt32(vih, 52, width);
-            Marshal.WriteInt32(vih, 56, height);
-            Marshal.WriteInt16(vih, 60, 1);
-            Marshal.WriteInt16(vih, 62, 24);
-            Marshal.WriteInt32(vih, 68, (((width + 1) * 3) & ~3) * height);
-            var type = new AMMediaType
-            {
-                MajorType = Ds.Video,
-                SubType = Ds.Rgb24,
-                FixedSizeSamples = 1,
-                SampleSize = width * height * 3,
-                FormatType = Ds.VideoInfo,
-                FormatSize = 88,
-                FormatPtr = vih,
-            };
-            var ptr = Marshal.AllocCoTaskMem(Marshal.SizeOf<AMMediaType>());
-            Marshal.StructureToPtr(type, ptr, false);
-            return ptr;
+                Marshal.WriteInt32(fetched, 0);
+            return 1;
         }
 
         public int Skip(int count)

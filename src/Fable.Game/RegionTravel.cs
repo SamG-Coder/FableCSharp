@@ -176,10 +176,54 @@ public static class RegionTravel
     public const uint PlayAviCoCreateIat = 0x01440640;
     public const uint PlayAviRendererCtor = 0x00A3B510;
     public const uint PlayAviCheckMediaType = 0x00A3B5F0;
+    /// <summary>
+    /// QueryAccept check is C++ vtbl+176
+    /// <c>00A3B590</c>, not connection
+    /// <c>00A3B5F0</c>. Requires
+    /// <c>FORMAT_VideoInfo</c> at
+    /// <c>AM_MEDIA_TYPE+44</c>,
+    /// <c>MEDIATYPE_Video</c>, subtype
+    /// RGB24. RGB32 has zero code refs.
+    /// Failed check becomes <c>S_FALSE</c>.
+    /// </summary>
+    public const uint PlayAviAcceptMediaType = 0x00A3B590;
+    public const uint PlayAviQueryAccept = 0x00CA84C0;
+    public const uint PlayAviGetMediaType = 0x00CA84F0;
+    public const uint PlayAviGetMediaTypeUnexpected = 0x8000FFFF;
+    public const uint PlayAviIPinQi = 0x00CA7CE0;
+    public const uint PlayAviIPinAdjust = 12;
+    public const uint PlayAviIPinVtbl = 0x012BF3C0;
+    public const uint PlayAviPinObjectSize = 0xE0;
+    public const uint PlayAviPinCtor = 0x00CA4F40;
+    public const uint PlayAviGetPin = 0x00CA6A30;
+    public const uint PlayAviIPinIidVa = 0x012A9B04;
+    public const uint PlayAviRgb24Va = 0x012AB604;
+    public const uint PlayAviFormatVideoInfoVa = 0x012AABB4;
+    public const uint PlayAviMediaTypeVideoVa = 0x012AB884;
+    public static readonly Guid PlayAviIPinIid =
+        new("56a86891-0ad4-11ce-b03a-0020af0ba770");
+    public static readonly Guid PlayAviRgb24 =
+        new("e436eb7d-524f-11ce-9f53-0020af0ba770");
+    public static readonly Guid PlayAviFormatVideoInfo =
+        new("05589f80-c356-11ce-bf01-00aa0055595a");
+    public static readonly Guid PlayAviMediaTypeVideo =
+        new("73646976-0000-0010-8000-00aa00389b71");
+    public const bool FirstSeenPlayAviQueryAcceptRequiresRgb24 = true;
+    public const bool FirstSeenPlayAviEnumMediaTypesEmpty = true;
+    public const bool FirstSeenPlayAviIPinIsSeparateObject = true;
     public const uint PlayAviRun = 0x00A3B130;
     public const uint PlayAviDoRenderSample = 0x00A3BCF0;
     public const uint PlayAviRendererVtbl = 0x0129D08C;
+    /// <summary>
+    /// Filter COM subobject at +12 is
+    /// <c>IBaseFilter</c> (QI
+    /// <c>00CA7500</c> <c>add eax,12</c>),
+    /// not <c>IPin</c>. Real <c>IPin</c> is
+    /// the heap pin from <c>00CA6A30</c>
+    /// at pin+12, vtbl <c>0x012BF3C0</c>.
+    /// </summary>
     public const uint PlayAviPinVtbl = 0x0129D04C;
+    public const uint PlayAviIBaseFilterComVtbl = 0x0129D04C;
     public const uint PlayAviMemInputVtbl = 0x0129D008;
     public const int PlayAviRendererSize = 0x180;
     public const int PlayAviAddFilterVtbl = 12;
@@ -228,14 +272,13 @@ public static class RegionTravel
     public const bool FirstSeenPlayAviUsesGetCurrentImage = false;
     public const bool FirstSeenPlayAviCopiesRgb24ToArgb = true;
     /// <summary>
-    /// <c>00A3B5F0</c> CheckMediaType reads
+    /// Connection <c>00A3B5F0</c> reads
     /// <c>AM_MEDIA_TYPE.pbFormat</c>
     /// <c>VIDEOINFOHEADER</c> biWidth / abs(biHeight)
     /// and RGB24 stride. D3D <c>GetLevelDesc</c>
     /// format must be 21 or 25 else
-    /// <c>0x8004022A</c>. No subtype compare.
-    /// CBasePin <c>QueryAccept</c> maps a failed
-    /// check to <c>S_FALSE</c>.
+    /// <c>0x8004022A</c>. QueryAccept uses
+    /// <c>00A3B590</c> and requires RGB24.
     /// </summary>
     public const uint PlayAviTypeNotAccepted = 0x8004022A;
     public const bool FirstSeenPlayAviCheckMediaTypeReadsVih = true;
