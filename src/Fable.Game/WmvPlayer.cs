@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 namespace Fable.Game;
@@ -57,6 +58,11 @@ public sealed class WmvPlayer : IDisposable
     internal static bool CaptureQi { get; set; }
     internal static string LastFilterQi { get; set; } = "";
     internal static string LastPinQi { get; set; } = "";
+    internal static long PresentWaitTicks { get; set; }
+    internal static int ScratchAllocs { get; set; }
+    internal static int RgbaAllocs { get; set; }
+    public static readonly List<PlayAviPaceSample> PaceSamples = [];
+    private static readonly long PaceStart = Stopwatch.GetTimestamp();
 
     public static string? LastError { get; private set; }
     public static int LastAddFilterHr { get; private set; }
@@ -150,6 +156,10 @@ public sealed class WmvPlayer : IDisposable
         CaptureQi = true;
         LastFilterQi = "";
         LastPinQi = "";
+        PresentWaitTicks = 0;
+        ScratchAllocs = 0;
+        RgbaAllocs = 0;
+        PaceSamples.Clear();
         LastAddFilterHr = 0;
         LastRenderFileHr = 0;
         LastRunHr = 0;
@@ -238,7 +248,9 @@ public sealed class WmvPlayer : IDisposable
             return false;
         if (dt > 0f)
             _elapsedHns += (long)(dt * 10_000_000d);
+        var wait0 = Stopwatch.GetTimestamp();
         _frameEvent.WaitOne(RegionTravel.PlayAviPresentMs);
+        PresentWaitTicks += Stopwatch.GetTimestamp() - wait0;
         return Rgba is not null;
     }
 
@@ -581,9 +593,13 @@ public sealed class WmvPlayer : IDisposable
             Width = width;
             Height = height;
             if (Rgba is null || Rgba.Length != rgba.Length)
+            {
+                RgbaAllocs++;
                 Rgba = new byte[rgba.Length];
+            }
             rgba.AsSpan().CopyTo(Rgba);
             FrameSerial++;
+            LastFrames = FrameSerial;
         }
 
         // 00A3B730 SetEvent([player+124])
@@ -1392,9 +1408,14 @@ public sealed class WmvPlayer : IDisposable
             // managed IMediaSample RCW keeps the
             // native buffer until GC; a 1-buffer
             // allocator then never Receives again.
+            var recv0 = Stopwatch.GetTimestamp();
             ReceiveCalls++;
+            long copyTicks = 0;
+            long sampleStart = 0;
+            long sampleEnd = 0;
             try
             {
+                _ = sample.GetTime(out sampleStart, out sampleEnd);
                 var gp = sample.GetPointer(out var data);
                 if (gp >= 0 && data != IntPtr.Zero)
                     GetPointerCalls++;
@@ -1405,7 +1426,9 @@ public sealed class WmvPlayer : IDisposable
                     length = sample.GetSize();
                 if (_width <= 0 || _height <= 0 || length <= 0)
                     return 0;
+                var copy0 = Stopwatch.GetTimestamp();
                 var rgba = CopySample(data, length);
+                copyTicks = Stopwatch.GetTimestamp() - copy0;
                 if (rgba is not null)
                     _onSample(_width, _height, rgba);
                 return 0;
@@ -1413,6 +1436,9 @@ public sealed class WmvPlayer : IDisposable
             finally
             {
                 Marshal.ReleaseComObject(sample);
+                var recvTicks = Stopwatch.GetTimestamp() - recv0;
+                if (ReceiveCalls == 1 || ReceiveCalls % 100 == 0)
+                    RecordPace(recvTicks, copyTicks, sampleStart, sampleEnd);
             }
         }
 
@@ -1468,7 +1494,10 @@ public sealed class WmvPlayer : IDisposable
                 return null;
             var need = pixels * 4;
             if (_rgbaScratch is null || _rgbaScratch.Length != need)
+            {
+                ScratchAllocs++;
                 _rgbaScratch = new byte[need];
+            }
             var rgba = _rgbaScratch;
             if (_subType == Ds.Yuy2)
                 return CopyYuy2(data, length, rgba);
@@ -1520,6 +1549,37 @@ public sealed class WmvPlayer : IDisposable
 
         private static byte ClampByte(int value) =>
             (byte)Math.Clamp(value, 0, 255);
+    }
+
+    private static void RecordPace(long recvTicks, long copyTicks, long sampleStart, long sampleEnd)
+    {
+        using var proc = Process.GetCurrentProcess();
+        proc.Refresh();
+        var freq = (double)Stopwatch.Frequency;
+        PaceSamples.Add(new PlayAviPaceSample
+        {
+            Receive = ReceiveCalls,
+            GetPointer = GetPointerCalls,
+            FrameSerial = LastFrames,
+            SampleStartHns = sampleStart,
+            SampleEndHns = sampleEnd,
+            WallMs = (Stopwatch.GetTimestamp() - PaceStart) * 1000d / freq,
+            ReceiveMs = recvTicks * 1000d / freq,
+            CopyMs = copyTicks * 1000d / freq,
+            PresentWaitMs = PresentWaitTicks * 1000d / freq,
+            HeapBytes = GC.GetTotalMemory(false),
+            Gen0 = GC.CollectionCount(0),
+            Gen1 = GC.CollectionCount(1),
+            Gen2 = GC.CollectionCount(2),
+            WorkingSet = proc.WorkingSet64,
+            PrivateBytes = proc.PrivateMemorySize64,
+            ScratchAllocs = ScratchAllocs,
+            RgbaAllocs = RgbaAllocs,
+            FilterQiChars = LastFilterQi.Length,
+            PinQiChars = LastPinQi.Length,
+            FilterQi = FilterQiCalls,
+            PinQi = PinQiCalls,
+        });
     }
 
     private static string IidName(Guid iid)
@@ -1729,4 +1789,33 @@ public sealed class PlayAviGraphTrace
     public int Width { get; init; }
     public int Height { get; init; }
     public string? Error { get; init; }
+}
+
+/// <summary>
+/// One sample of a complete PlayAVI run.
+/// Observation only — no pacing change.
+/// </summary>
+public sealed class PlayAviPaceSample
+{
+    public int Receive { get; init; }
+    public int GetPointer { get; init; }
+    public int FrameSerial { get; init; }
+    public long SampleStartHns { get; init; }
+    public long SampleEndHns { get; init; }
+    public double WallMs { get; init; }
+    public double ReceiveMs { get; init; }
+    public double CopyMs { get; init; }
+    public double PresentWaitMs { get; init; }
+    public long HeapBytes { get; init; }
+    public int Gen0 { get; init; }
+    public int Gen1 { get; init; }
+    public int Gen2 { get; init; }
+    public long WorkingSet { get; init; }
+    public long PrivateBytes { get; init; }
+    public int ScratchAllocs { get; init; }
+    public int RgbaAllocs { get; init; }
+    public int FilterQiChars { get; init; }
+    public int PinQiChars { get; init; }
+    public int FilterQi { get; init; }
+    public int PinQi { get; init; }
 }

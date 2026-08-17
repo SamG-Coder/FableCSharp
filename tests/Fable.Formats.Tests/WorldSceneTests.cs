@@ -363,6 +363,8 @@ public sealed class WorldSceneTests
         Assert.False(RegionTravel.FirstSeenPlayAviUsesGetCurrentImage);
         Assert.True(RegionTravel.FirstSeenPlayAviCopiesRgb24ToArgb);
         Assert.Equal(33, RegionTravel.PlayAviPresentMs);
+        Assert.Equal(0x00628A9Eu, RegionTravel.PlayAviWaitSite);
+        Assert.True(RegionTravel.FirstSeenPlayAviWaitIsTimeoutNotSleep);
         Assert.Equal(0x00A3B730u, RegionTravel.PlayAviCopySample);
         Assert.Equal(172, RegionTravel.PlayAviCopyVtbl);
         Assert.Equal("Fable Texture Renderer Filter", RegionTravel.PlayAviFilterName);
@@ -1957,6 +1959,10 @@ public sealed class WorldSceneTests
         Assert.False(RegionTravel.FirstSeenPlayAviUsesGetCurrentImage);
         Assert.True(RegionTravel.FirstSeenPlayAviCopiesRgb24ToArgb);
         Assert.Equal(33, RegionTravel.PlayAviPresentMs);
+        Assert.Equal(0x00628A9Eu, RegionTravel.PlayAviWaitSite);
+        Assert.Equal(0x0143FDE0u, RegionTravel.PlayAviSetEventIat);
+        Assert.True(RegionTravel.FirstSeenPlayAviWaitIsTimeoutNotSleep);
+        Assert.True(RegionTravel.FirstSeenPlayAviWaitIsAlertable);
         Assert.Equal(0x00A3B730u, RegionTravel.PlayAviCopySample);
         Assert.Equal(172, RegionTravel.PlayAviCopyVtbl);
         Assert.Equal("Fable Texture Renderer Filter", RegionTravel.PlayAviFilterName);

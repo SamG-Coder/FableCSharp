@@ -14,11 +14,12 @@ internal sealed class DumpStore
     public const int SplitVersion = 2;
     public const int LandscapeTraceVersion = 5;
     public const int RenderTraceVersion = 2;
-    public const int NewGameTraceVersion = 131;
-    public const int ScriptRuntimeVersion = 57;
+    public const int NewGameTraceVersion = 132;
+    public const int ScriptRuntimeVersion = 58;
     public const int ScriptBankVersion = 8;
     public const int ShaderTokensVersion = 7;
     public const int QuartzTraceVersion = 2;
+    public const int PlayAviPaceVersion = 1;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

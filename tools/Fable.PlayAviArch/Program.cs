@@ -102,4 +102,40 @@ if (outDir is not null)
     File.WriteAllText(Path.Combine(outDir, name), sb.ToString());
 }
 
+if (args.Any(a => a is "--pace"))
+{
+    if (player is null)
+        return 1;
+    var deadline = Environment.TickCount64 + 180_000;
+    while (!player.Ended && Environment.TickCount64 < deadline)
+        player.TryAdvance(0.016f);
+    var paceDir = Path.Combine(
+        Path.GetDirectoryName(typeof(Program).Assembly.Location) ?? ".",
+        "..", "..", "..", "..", "Fable.ExeIndex", "out", "01-sections", "playavi-pace");
+    if (outDir is not null)
+        paceDir = outDir;
+    Directory.CreateDirectory(paceDir);
+    var md = new StringBuilder();
+    md.AppendLine("# PlayAVI pace samples");
+    md.AppendLine();
+    md.AppendLine("`00628A9E` is `WaitForSingleObjectEx([player+124], 33, TRUE)`:");
+    md.AppendLine("wait until SetEvent or 33 ms. Not a fixed sleep.");
+    md.AppendLine("`00A3B8EB` `SetEvent` after GetPointer copy on the");
+    md.AppendLine("DirectShow Receive thread. `006286F0` presents the");
+    md.AppendLine("latest completed sample. No pacing change in this run.");
+    md.AppendLine();
+    md.AppendLine($"ended `{player.Ended}` serial `{player.FrameSerial}`");
+    md.AppendLine();
+    md.AppendLine("| n | recv | gp | serial | sampleStart_hns | wall_ms | recv_ms | copy_ms | wait_ms | heap | gen0 | gen1 | gen2 | ws | priv | scratch | rgba | fqi_chars | pqi_chars |");
+    md.AppendLine("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+    foreach (var s in WmvPlayer.PaceSamples)
+    {
+        md.AppendLine(
+            $"| {s.Receive} | {s.Receive} | {s.GetPointer} | {s.FrameSerial} | {s.SampleStartHns} | {s.WallMs:F1} | {s.ReceiveMs:F3} | {s.CopyMs:F3} | {s.PresentWaitMs:F1} | {s.HeapBytes} | {s.Gen0} | {s.Gen1} | {s.Gen2} | {s.WorkingSet} | {s.PrivateBytes} | {s.ScratchAllocs} | {s.RgbaAllocs} | {s.FilterQiChars} | {s.PinQiChars} |");
+    }
+
+    File.WriteAllText(Path.Combine(paceDir, "samples.md"), md.ToString());
+    Console.Write(md.ToString());
+}
+
 return player is { SamplesFromGetPointer: true, FrameSerial: > 0 } ? 0 : 1;

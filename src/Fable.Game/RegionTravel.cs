@@ -294,6 +294,19 @@ public static class RegionTravel
     public const uint PlayAviLockRect = 0x009FA450;
     public const uint PlayAviUnlock = 0x009F9DE0;
     public const uint PlayAviWaitIat = 0x0143FE08;
+    public const uint PlayAviWaitSite = 0x00628A9E;
+    public const uint PlayAviSetEventIat = 0x0143FDE0;
+    /// <summary>
+    /// <c>00628AA1</c> <c>push 1; push 33; push [esi+124];
+    /// call [0x143FE08]</c>. Three args is
+    /// <c>WaitForSingleObjectEx(h, 33, TRUE)</c>:
+    /// wait until the event is signaled or 33 ms
+    /// elapse. Not a fixed sleep. <c>00A3B8EB</c>
+    /// <c>SetEvent([player+124])</c> after the
+    /// GetPointer copy.
+    /// </summary>
+    public const bool FirstSeenPlayAviWaitIsTimeoutNotSleep = true;
+    public const bool FirstSeenPlayAviWaitIsAlertable = true;
     public const int PlayAviPresentMs = 33;
     public const int PlayAviGetPointerVtbl = 12;
     public const int PlayAviLockRectVtbl = 76;
