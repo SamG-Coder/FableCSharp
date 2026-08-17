@@ -588,12 +588,110 @@ public sealed class ScriptRuntimeArchitectureTests
         interp.RunUntilYield(runtime);
         Assert.True(interp.Yielded);
         Assert.Equal("PlaySound", ScriptLine.Parse(interp.Executed[0]).Verb);
+        Assert.Equal(2760, runtime.Audio.Instances[0].Vtbl);
         interp.Resume(runtime);
         Assert.True(interp.Finished);
         Assert.Equal(2, runtime.Audio.Instances.Count);
         Assert.True(runtime.Audio.Instances[0].Spatial);
+        Assert.False(runtime.Audio.Instances[0].Criteria);
         Assert.False(runtime.Audio.Instances[1].Spatial);
+        Assert.Equal(2768, runtime.Audio.Instances[1].Vtbl);
         Assert.False(runtime.AviPlaying);
+        Assert.Equal(0x00CC8FC1u, ScriptCommandMap.Find("PlaySound")!.Value.ApplySite);
+        Assert.Equal(0x00CBF8DAu, ScriptCommandMap.Find("Play2DSound")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void PlaySound_null_source_is_vtbl_2768()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("n", ["PlaySound NULL,SND_RACEWHISTLE"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Yielded);
+        Assert.False(runtime.Audio.Instances[0].Spatial);
+        Assert.Equal(2768, runtime.Audio.Instances[0].Vtbl);
+    }
+
+    [Fact]
+    public void PlaySound_criteria_uses_vtbl_2756()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("c", ["PlaySound GUARD,SND_X,criteria"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(runtime.Audio.Instances[0].Criteria);
+        Assert.Equal(2756, runtime.Audio.Instances[0].Vtbl);
+    }
+
+    [Fact]
+    public void PlaySound_real_script_bank_line_is_not_PlayAVI()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_PRISON_RACE_INTRO_END");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.StartsWith("PlaySound ", StringComparison.OrdinalIgnoreCase))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("PlaySound", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        Assert.True(parsed.Arg(1).Length > 0);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        runtime.AddThing(new ThingInstance
+        {
+            Kind = "CTC",
+            Section = "Thing",
+            DefinitionType = "Creature",
+            ScriptName = parsed.Arg(0),
+            Properties = new Dictionary<string, string>(),
+        });
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-sound", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("PlaySound ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Yielded);
+        Assert.False(runtime.AviPlaying);
+        Assert.Single(runtime.Audio.Instances);
+        Assert.Equal(parsed.Arg(1), runtime.Audio.Instances[0].Name);
+        Assert.Equal(parsed.Arg(0), runtime.Audio.Instances[0].Source);
+        Assert.True(runtime.Audio.Instances[0].Spatial);
+        Assert.Equal(2760, runtime.Audio.Instances[0].Vtbl);
+        var oak = runtime.LookupMusic("MUSIC_SET_OAKVALE");
+        Assert.False(string.IsNullOrEmpty(oak));
+        Assert.True(File.Exists(oak));
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-sound.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-playsound.txt"),
+            """
+            PlaySound 00CC8F4E / apply 00CC8FC1
+              source + name required; empty → 00CD17FD
+              IsNull(source) vtbl+2768 then leftover 00CC907D
+              else 00CBF9DE (HERO → vtbl+280, else thing)
+                criteria present → vtbl+2756 else vtbl+2760
+              leftover vtbl+28 then inc [0x13B83C8] → 00CD17FD
+            Play2DSound 00CBF89E / apply 00CBF8DA
+              NOT a 00BFEAF8 token
+              leftover helper 00CBF7FE vtbl+2768(name) no yield
+              not PlayAVI; not 009E5120+2792
+            PlayMusic 00CC8EAC / 009E5120 then vtbl+2784
+              jmp 00CD17FD; Sound/*.ogg lookup; player UNREAD
+            """);
     }
 
     [Fact]

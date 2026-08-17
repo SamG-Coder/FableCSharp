@@ -512,25 +512,43 @@ public sealed class CameraRuntime
 public sealed class AudioRuntime
 {
     public string? Music { get; private set; }
+    public string? MusicResource { get; private set; }
     public string? Sound { get; private set; }
     public bool Muted { get; private set; }
     public readonly List<ScriptAudioInstance> Instances = [];
 
-    public void PlayMusic(string track) => Music = track;
+    public void PlayMusic(string track, string? resource = null)
+    {
+        Music = track;
+        MusicResource = resource;
+    }
 
-    public ScriptAudioInstance PlaySound(string name, string? source, bool spatial)
+    public ScriptAudioInstance PlaySound(
+        string name, string? source, bool spatial,
+        bool criteria = false, int vtbl = 0, string? resource = null)
     {
         Sound = name;
-        var inst = new ScriptAudioInstance(name, source, spatial);
+        var inst = new ScriptAudioInstance(name, source, spatial, criteria, vtbl, resource);
         Instances.Add(inst);
         return inst;
     }
 
-    public void StopMusic() => Music = "";
+    public void StopMusic()
+    {
+        Music = "";
+        MusicResource = null;
+    }
+
     public void Mute(bool mute) => Muted = mute;
 }
 
-public readonly record struct ScriptAudioInstance(string Name, string? Source, bool Spatial);
+public readonly record struct ScriptAudioInstance(
+    string Name,
+    string? Source,
+    bool Spatial,
+    bool Criteria = false,
+    int Vtbl = 0,
+    string? Resource = null);
 
 public sealed class DialogueRuntime
 {

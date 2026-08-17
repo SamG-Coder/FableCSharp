@@ -160,6 +160,42 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
         return _textLines is not null && _textLines.TryGetValue(id, out var body) ? body : null;
     }
 
+    /// <summary>
+    /// <c>009E5120</c> music map analog: resolve
+    /// <c>MUSIC_SET_*</c> / track to <c>data/Sound/*.ogg</c>.
+    /// Miss returns null (native still calls vtbl+2784
+    /// with id 0). Lug decode UNREAD.
+    /// </summary>
+    public string? LookupMusic(string track)
+    {
+        if (track.Length == 0 || _install is null)
+            return null;
+        var dir = _install.SoundDirectory;
+        if (!Directory.Exists(dir))
+            return null;
+        var stem = track;
+        const string prefix = "MUSIC_SET_";
+        if (stem.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            stem = stem[prefix.Length..];
+        if (stem.Equals("NULL", StringComparison.OrdinalIgnoreCase))
+            return null;
+        foreach (var ext in new[] { ".ogg", ".OGG" })
+        {
+            var path = Path.Combine(dir, stem + ext);
+            if (File.Exists(path))
+                return path;
+        }
+
+        foreach (var file in Directory.EnumerateFiles(dir, "*.ogg"))
+        {
+            if (Path.GetFileNameWithoutExtension(file)
+                    .Equals(stem, StringComparison.OrdinalIgnoreCase))
+                return file;
+        }
+
+        return null;
+    }
+
     private void EnsureText()
     {
         if (_textLines is not null || _install is null || !File.Exists(_install.TextBigPath))

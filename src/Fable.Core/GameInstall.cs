@@ -28,6 +28,7 @@ public sealed class GameInstall
     public string BwdPath => Path.Combine(LevelsDirectory, "FinalAlbion.bwd");
     public string GtgPath => Path.Combine(LevelsDirectory, "FinalAlbion.gtg");
     public string VideoDirectory => Path.Combine(DataRoot, "Video");
+    public string SoundDirectory => Path.Combine(DataRoot, "Sound");
     public string BonesDirectory => Path.Combine(DataRoot, "Bones");
     public string TextBigPath => Path.Combine(DataRoot, "lang", "English", "text.big");
     public string ShadersBigPath => Path.Combine(DataRoot, "shaders", "pc", "shaders.big");

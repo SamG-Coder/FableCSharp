@@ -3,7 +3,7 @@ GLOBAL: 124
 ENTITY: 61
 RECOVERED DISPATCH: 97
 RECOVERED RETURN: 97
-RECOVERED APPLY: 27
+RECOVERED APPLY: 30
 IMPLEMENTED RUNTIME: 13
 UNREAD: 88
 # Native command coverage
@@ -19,8 +19,8 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | StartTimeCode | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | DoCameraPreloading | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | StopMusic | Global | Proven | Proven | Proven | Partial | Partial | Partial |
-| PlayMusic | Global | Proven | Proven | Proven | Partial | Partial | Partial |
-| Play2DSound | Global | Proven | Proven | Proven | Partial | Partial | Partial |
+| PlayMusic | Global | Proven | Proven | Proven | Proven | Partial | Partial |
+| Play2DSound | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | SetLightScene | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | CameraShake | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | CameraEffect | Global | Proven | Proven | Proven | Partial | Partial | Partial |
@@ -85,7 +85,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | HeroTattoo | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | HeroHair | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | RemoveHeroWeapons | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| PlaySound | Global | Proven | Proven | Proven | Partial | Partial | Partial |
+| PlaySound | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | CacheMusic | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | EnableSounds | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | SetChestOpen | Global | Proven | Proven | Proven | Proven | Partial | Partial |

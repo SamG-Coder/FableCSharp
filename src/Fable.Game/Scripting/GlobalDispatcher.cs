@@ -14,8 +14,11 @@ public static class GlobalDispatcher
         var v = line.Verb;
         if (Eq(v, "PlayMusic"))
         {
-            ctx.Audio.PlayMusic(line.Arg(0));
-            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, line.Arg(0));
+            var track = line.Arg(0);
+            if (track.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ctx.Audio.PlayMusic(track, ctx.Runtime.LookupMusic(track));
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, track);
         }
 
         if (Eq(v, "StopMusic"))
@@ -29,26 +32,30 @@ public static class GlobalDispatcher
             var name = line.Arg(0);
             if (name.Length == 0)
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
-            ctx.Audio.PlaySound(name, null, spatial: false);
+            // leftover helper 00CBF7FE: vtbl+2768(name), no yield.
+            ctx.Audio.PlaySound(name, null, spatial: false, vtbl: 2768);
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name);
         }
 
         if (Eq(v, "PlaySound"))
         {
-            var arg0 = line.Arg(0);
-            var arg1 = line.Arg(1);
-            if (arg0.Length == 0 || arg1.Length == 0)
+            var source = line.Arg(0);
+            var name = line.Arg(1);
+            if (source.Length == 0 || name.Length == 0)
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
-            if (ScriptLine.IsNull(arg0))
+            if (ScriptLine.IsNull(source))
             {
-                ctx.Audio.PlaySound(arg1, null, spatial: false);
+                ctx.Audio.PlaySound(name, null, spatial: false, vtbl: 2768);
                 return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
-                    "PlaySound NULL vtbl+2768", arg1);
+                    "PlaySound NULL vtbl+2768", name);
             }
 
-            ctx.Audio.PlaySound(arg1, arg0, spatial: true);
+            var criteria = line.Arg(2).Length > 0;
+            var vtbl = criteria ? 2756 : 2760;
+            var thing = ResolveSoundSource(ctx, source);
+            ctx.Audio.PlaySound(name, thing?.ScriptName ?? source, spatial: true, criteria, vtbl);
             return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
-                "PlaySound vtbl+2760 00CC907D", $"{arg0},{arg1}");
+                $"PlaySound vtbl+{vtbl} 00CC907D", $"{source},{name}");
         }
 
         if (Eq(v, "MuteSounds"))
@@ -1318,6 +1325,17 @@ public static class GlobalDispatcher
         if (frac > 1f)
             return 1f;
         return frac;
+    }
+
+    /// <summary>
+    /// <c>00CBF9DE</c>: <c>HERO</c> is vtbl+280,
+    /// else persist / thing lookup.
+    /// </summary>
+    private static ThingInstance? ResolveSoundSource(ScriptExecutionContext ctx, string source)
+    {
+        if (source.Equals("HERO", StringComparison.OrdinalIgnoreCase))
+            return ctx.FindThing("HERO") ?? ctx.FindThing("Hero");
+        return ctx.FindThing(source);
     }
 
     private static bool Eq(string a, string b) =>

@@ -210,14 +210,20 @@ public static class ScriptCommandMap
     public static readonly ScriptCommandSpec[] All =
     [
         Spec("PlayMusic", 0x00CC8EAC, 0x00CBF7FE, "track",
-            ScriptReturn.CompleteNow, CommandParity.ScriptLayer,
-            "lookup 009E5120 then vtbl+2784; jmp 00CD17FD; host stores track"),
-        Spec("Play2DSound", 0x00CBF89E, 0x009E5120, "name",
-            ScriptReturn.CompleteNow, CommandParity.ScriptLayer,
-            "009E5120 + vtbl+2792; empty skip; jmp 00CD17FD; not PlayAVI"),
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "009E5120 map then vtbl+2784; jmp 00CD17FD; Sound/*.ogg; player UNREAD"),
+        Spec("Play2DSound", 0x00CBF89E, 0x00CBF8DA, "name",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "leftover helper 00CBF7FE vtbl+2768; not 00BFEAF8; not PlayAVI"),
         Spec("PlaySound", 0x00CC8F4E, 0x00CC8FC1, "source,name[,criteria]",
-            ScriptReturn.YieldAfter, CommandParity.ScriptLayer,
-            "NULL arg0 vtbl+2768; else lookup + vtbl+2756/2760; yield 00CC907D"),
+            ScriptReturn.YieldAfter, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "empty skip; IsNull vtbl+2768; else 00CBF9DE + 2756/2760; leftover +28"),
         Spec("FadeOut", 0x00CD0987, 0x008907E0, "seconds,param",
             ScriptReturn.CompleteNow, CommandParity.Complete,
             "vtbl+1488 pack black; 00434C00 +188"),
