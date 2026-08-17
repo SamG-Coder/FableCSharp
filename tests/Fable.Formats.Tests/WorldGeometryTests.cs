@@ -310,6 +310,36 @@ public sealed class WorldGeometryTests
         Assert.False(GameBin.FirstSeenInstancesAsC3d("THING", "TRACK_NODE_BASIC"));
         Assert.False(GameBin.FirstSeenInstancesAsC3d("THING", "CAMERA_POINT_SCRIPTED_SPLINE"));
         Assert.True(GameBin.FirstSeenInstancesAsC3d("BUILDING", house.DefinitionType));
+        var graphicsPath = Path.Combine(install.DataRoot, "graphics", "graphics.big");
+        using (var big = Fable.Formats.Banks.BigArchive.Open(graphicsPath))
+        {
+            var meshBank = big.SubBanks.First(item => item.Name.Contains("MESH", StringComparison.OrdinalIgnoreCase));
+            var entries = big.ReadEntries(meshBank);
+            var extraMaps = new List<string>();
+            foreach (var def in worldTypes)
+            {
+                foreach (var id in bin.FindMeshIds(def))
+                {
+                    var entry = entries.FirstOrDefault(item => item.Id == id);
+                    if (entry is null)
+                        continue;
+                    var mesh = MeshFile.TryParse(big.Read(entry), (int)entry.Type);
+                    if (mesh is null)
+                        continue;
+                    extraMaps.AddRange(mesh.Materials
+                        .Where(m => m.BumpMapId != 0 || m.ReflectionMapId != 0 || m.IlluminationMapId != 0)
+                        .Select(m => $"{def}/{id}/{m.Name} b={m.BumpMapId} r={m.ReflectionMapId} i={m.IlluminationMapId}"));
+                }
+            }
+
+            Assert.True(WorldShading.FirstSeenHouseAreaC3dStoresBump);
+            Assert.False(WorldShading.FirstSeenBindsC3dBump);
+            Assert.Equal(1, WorldShading.FirstSeenStaticTextureStages);
+            Assert.Equal("PSHADER_TEXTURE_DIFFUSE", WorldShading.FirstSeenStaticPsName);
+            Assert.Contains(extraMaps, s => s.Contains($"b={WorldShading.FirstSeenRugBumpMapId}"));
+            Assert.Contains(extraMaps, s => s.Contains($"b={WorldShading.FirstSeenBookBumpMapId}"));
+            Assert.DoesNotContain(extraMaps, s => s.Contains("r=") && !s.Contains("r=0"));
+        }
         Assert.True(world.MissingMeshes == 0,
             "first-seen C3D holes: " + string.Join(", ", world.MissingMeshDefs.Take(20))
             + $" count={world.MissingMeshes}");

@@ -158,6 +158,9 @@ public sealed class MeshFormatTests
         Assert.Contains(interior.Triangles, t => t.TextureId == GameBin.HerosOldHouseInteriorWallTexture);
         Assert.DoesNotContain(interior.Triangles, t => t.TextureId == GameBin.HerosOldHouseFloorTexture);
         Assert.False(GameBin.FirstSeenHouseFloor3184HasPrims);
+        Assert.All(interior.Materials, m => Assert.True(
+            m.BumpMapId == 0 && m.ReflectionMapId == 0 && m.IlluminationMapId == 0,
+            $"{m.Name} bump={m.BumpMapId} refl={m.ReflectionMapId} illum={m.IlluminationMapId}"));
     }
 
     [Fact]
@@ -259,6 +262,9 @@ public sealed class MeshFormatTests
         Assert.Equal(0x00BD549Du, WorldShading.FirstSeenPalskinDefaultDraw);
         Assert.True(WorldShading.FirstSeenPalskinUsesA0RelativeC38);
         Assert.DoesNotContain(mesh.Materials, m => m.Name == "DegenerateTriangles");
+        Assert.All(mesh.Materials, m => Assert.True(
+            m.BumpMapId == 0 && m.ReflectionMapId == 0 && m.IlluminationMapId == 0,
+            $"{m.Name} bump={m.BumpMapId} refl={m.ReflectionMapId} illum={m.IlluminationMapId}"));
         Assert.Equal(0x00A23DE0u, WorldShading.MeshLodInfoReady);
         Assert.Equal(0x0129CDB4u, WorldShading.MeshLodInfoVtbl);
         Assert.Equal(36, WorldShading.MeshLodInfoPtrOffset);

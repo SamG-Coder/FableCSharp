@@ -468,6 +468,17 @@ public static class WorldShading
     public const uint FirstSeenStaticSetVertexShader = 0x00988020;
     public const uint FirstSeenStaticAttachPixelShader = 0x00988140;
     public const int FirstSeenStaticTextureStages = 1;
+    /// <summary>
+    /// House-area C3D stores bump ids (rugs <c>1740</c>,
+    /// books <c>2315</c>). First-seen static-lit
+    /// <c>00BB30A0</c> still pushes texture-count 1 and
+    /// <c>PSHADER_TEXTURE_DIFFUSE</c> samples only
+    /// <c>t0</c>. Do not bind bump on first-seen.
+    /// </summary>
+    public const bool FirstSeenHouseAreaC3dStoresBump = true;
+    public const bool FirstSeenBindsC3dBump = false;
+    public const int FirstSeenRugBumpMapId = 1740;
+    public const int FirstSeenBookBumpMapId = 2315;
     public const string FirstSeenStaticPsName = "PSHADER_TEXTURE_DIFFUSE";
     public const string FirstSeenStaticVsName = "VSHADER_STATIC_DIRLIGHT_FOG";
     public const bool FirstSeenStaticPsMulX2 = true;
