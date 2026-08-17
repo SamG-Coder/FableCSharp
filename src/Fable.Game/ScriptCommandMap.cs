@@ -252,6 +252,9 @@ public static class ScriptCommandMap
         Spec("WaitForCamera", 0x00CCA41F, 0x00CCA58F, "",
             ScriptReturn.YieldAfterOrWait, CommandParity.ScriptLayer,
             "poll vtbl+1672; idle -> 00CD17FD; busy -> vtbl+28 then re-poll"),
+        Spec("WaitForMessageCamera", 0x00CCFF91, 0x00CD0006, "name",
+            ScriptReturn.YieldAfterOrWait, CommandParity.ScriptLayer,
+            "poll vtbl+2316(name); idle continue; leftover 00CCFFB2"),
         Spec("ResetCamera", 0x00CC9DF1, 0x00CC9E40, "",
             ScriptReturn.CompleteNow, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

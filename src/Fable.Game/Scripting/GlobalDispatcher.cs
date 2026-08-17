@@ -251,6 +251,19 @@ public static class GlobalDispatcher
                 "WaitForCamera vtbl+1672", "camera-idle", op.Id, ctx.Camera.ActiveName);
         }
 
+        if (Eq(v, "WaitForMessageCamera"))
+        {
+            var name = line.Arg(0);
+            if (name.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            var op = ctx.Camera.WaitForMessage(name);
+            if (op.Complete)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name);
+            return CommandResult.Wait(
+                ExecutionKind.WaitOperation, CommandStatus.Proven, CommandFamily.Global,
+                "WaitForMessageCamera leftover vtbl+2316", "message-camera", op.Id, name);
+        }
+
         if (Eq(v, "DoCameraPreloading"))
         {
             foreach (var raw in ctx.Cutscene.Commands)

@@ -2161,6 +2161,89 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void WaitForMessageCamera_idles_when_no_message_camera()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("msgc",
+            ["WaitForMessageCamera CAM_MSG", "CameraPause FALSE"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal("CAM_MSG", runtime.CameraSys.MessageCamera);
+        Assert.Equal(0x00CD0006u, ScriptCommandMap.Find("WaitForMessageCamera")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void WaitForMessageCamera_polls_until_complete()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.CameraSys.BeginMessageCamera("CAM_MSG");
+        var interp = new ScriptInterpreter("msgw",
+            ["WaitForMessageCamera CAM_MSG", "CameraPause FALSE"]);
+        interp.RunUntilYield(runtime);
+        Assert.Equal(ExecutionKind.WaitOperation, interp.CurrentWaitKind);
+        Assert.False(runtime.CameraSys.MessageWaitOp!.Complete);
+        runtime.CameraSys.CompleteWait();
+        interp.Resume(runtime);
+        Assert.True(interp.Finished);
+        Assert.Contains("CameraPause FALSE", interp.Executed);
+    }
+
+    [Fact]
+    public void WaitForMessageCamera_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("WaitForMessageCamera ", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "WaitForMessageCamera CAM_MSG";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("WaitForMessageCamera", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-msgcam", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("WaitForMessageCamera", StringComparison.OrdinalIgnoreCase));
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-msgcam.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-waitformessagecamera.txt"),
+            """
+            WaitForMessageCamera 00CCFF91 / apply 00CD0006
+              arg0 name required else 00CD17FD
+              leftover-poll vtbl+2316(name) until true
+              00CBEB7E skip; vtbl+28 if [ebp+103]; timecode
+              [0x13D2838]+5 abort unread
+              done -> 00CD17F8 / 00CD17FD
+              Distinct from WaitForCamera vtbl+1672
+            """);
+    }
+
+    [Fact]
     public void SetFlag_writes_byte_and_yields_then_WaitFlag_continues()
     {
         var runtime = ScriptRuntime.Detached();

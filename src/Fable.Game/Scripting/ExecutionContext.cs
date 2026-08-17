@@ -339,6 +339,9 @@ public sealed class CameraRuntime
     }
 
     public PendingOperation? WaitOp { get; private set; }
+    public PendingOperation? MessageWaitOp { get; private set; }
+    public string MessageCamera { get; private set; } = "";
+    public bool MessageBusy { get; private set; }
     private int _waitSerial;
 
     public PendingOperation WaitForCamera()
@@ -356,11 +359,40 @@ public sealed class CameraRuntime
         return WaitOp;
     }
 
+    /// <summary>
+    /// <c>00CCFF91</c> leftover-polls
+    /// <c>vtbl+2316(name)</c> until true.
+    /// Idle (no message camera) returns complete.
+    /// </summary>
+    public PendingOperation WaitForMessage(string name)
+    {
+        MessageCamera = name;
+        if (!MessageBusy)
+        {
+            return new PendingOperation($"msgcam-{++_waitSerial}", "WaitForMessageCamera", null, name)
+            {
+                Complete = true,
+            };
+        }
+
+        MessageWaitOp = new PendingOperation($"msgcam-{++_waitSerial}", "WaitForMessageCamera", null, name);
+        return MessageWaitOp;
+    }
+
+    public void BeginMessageCamera(string name)
+    {
+        MessageCamera = name;
+        MessageBusy = true;
+    }
+
     public void CompleteWait()
     {
         Busy = false;
+        MessageBusy = false;
         if (WaitOp is not null)
             WaitOp.Complete = true;
+        if (MessageWaitOp is not null)
+            MessageWaitOp.Complete = true;
     }
 
     public void Preload(string name)

@@ -291,6 +291,8 @@ public sealed class ScriptInterpreter
             return dialog.Complete;
         if (ctx.Camera.WaitOp is { } cam && cam.Id == id)
             return cam.Complete;
+        if (ctx.Camera.MessageWaitOp is { } msg && msg.Id == id)
+            return msg.Complete;
         if (ctx.Flags.WaitOp is { } flag && flag.Id == id)
             return ctx.Flags.Poll();
         foreach (var op in ctx.Animation.ByActor.Values)

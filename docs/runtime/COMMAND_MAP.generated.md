@@ -13,6 +13,7 @@
 | UseCamera | `00CC9F3A` | `00B23B50` | name | YieldAfter | Proven | Proven | Proven | Proven | Partial | Partial | TNG lookup; bind ScriptedCamera pos/look/fov; one vtbl+28; spline unread |
 | NoLoadUseCamera | `00CC9E6A` | `00CC907D` | name | YieldAfter | Proven | Proven | Proven | Proven | Partial | Partial | separate token; same TNG bind; yield helper 00CC907D |
 | WaitForCamera | `00CCA41F` | `00CCA58F` |  | YieldAfterOrWait | Proven | Proven | Proven | Partial | Partial | Partial | poll vtbl+1672; idle -> 00CD17FD; busy -> vtbl+28 then re-poll |
+| WaitForMessageCamera | `00CCFF91` | `00CD0006` | name | YieldAfterOrWait | Proven | Proven | Proven | Partial | Partial | Partial | poll vtbl+2316(name); idle continue; leftover 00CCFFB2 |
 | ResetCamera | `00CC9DF1` | `00CC9E40` |  | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | vtbl+1668(0.0) then vtbl+1664; jmp 00CD17FD; restores gameplay snapshot |
 | CameraShake | `00CD131F` | `00CD1366` | arg0,arg1 | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | atof both; vtbl+1696(arg1,arg0); jmp 00CD17FD; decay unread |
 | CameraEffect | `00CD1258` | `00CD12C2` | arg0,arg1,arg2 | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | atof three; vtbl+1676(a,b,c); jmp 00CD17FD; filter unread |
