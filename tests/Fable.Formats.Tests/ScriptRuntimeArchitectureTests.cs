@@ -2355,6 +2355,93 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void SetDoorOpen_and_SetChestOpen_write_world_flags()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("doorchest",
+        [
+            "SetDoorOpen GATE,TRUE",
+            "SetChestOpen BOX,FALSE",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.True(runtime.World.Doors["GATE"]);
+        Assert.False(runtime.World.Chests["BOX"]);
+        Assert.Equal(0x00CC8BEBu, ScriptCommandMap.Find("SetDoorOpen")!.Value.ApplySite);
+        Assert.Equal(0x00CC8D73u, ScriptCommandMap.Find("SetChestOpen")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("SetDoorOpen")!.Value.TokenSite,
+            ScriptCommandMap.Find("SetChestOpen")!.Value.TokenSite);
+    }
+
+    [Fact]
+    public void SetChestOpen_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("SetChestOpen ", StringComparison.OrdinalIgnoreCase) ||
+                    raw.StartsWith("SetDoorOpen ", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "SetChestOpen CHEST,TRUE";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.True(
+            parsed.Verb.Equals("SetChestOpen", StringComparison.OrdinalIgnoreCase) ||
+            parsed.Verb.Equals("SetDoorOpen", StringComparison.OrdinalIgnoreCase));
+        Assert.True(parsed.Arg(0).Length > 0);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-door", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith(parsed.Verb, StringComparison.OrdinalIgnoreCase));
+        var open = !ScriptLine.IsFalse(parsed.Arg(1));
+        if (parsed.Verb.Equals("SetChestOpen", StringComparison.OrdinalIgnoreCase))
+            Assert.Equal(open, runtime.World.Chests[parsed.Arg(0)]);
+        else
+            Assert.Equal(open, runtime.World.Doors[parsed.Arg(0)]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-door.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-setdoorchest.txt"),
+            """
+            SetDoorOpen 00CC8A8D / apply 00CC8BEB
+              arg0 required else 00CD17FD
+              IsFalse(arg1) -> vtbl+1704 close
+              else vtbl+1700 open
+              jmp 00CD17F8 no yield
+            SetChestOpen 00CC8C14 / apply 00CC8D73
+              same parse
+              IsFalse(arg1) -> vtbl+1744 close
+              else vtbl+1740(thing, 0) open
+              jmp 00CD17F8 no yield
+              Distinct tokens and vtbls — not aliases
+            """);
+    }
+
+    [Fact]
     public void WaitForCamera_idles_when_camera_not_busy()
     {
         var runtime = ScriptRuntime.Detached();

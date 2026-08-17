@@ -546,8 +546,21 @@ public static class GlobalDispatcher
             var door = line.Arg(0);
             if (door.Length == 0)
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
-            ctx.World.Doors[door] = !ScriptLine.IsFalse(line.Arg(1));
-            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, door);
+            var open = !ScriptLine.IsFalse(line.Arg(1));
+            ctx.World.Doors[door] = open;
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                open ? $"{door} open" : $"{door} close");
+        }
+
+        if (Eq(v, "SetChestOpen"))
+        {
+            var chest = line.Arg(0);
+            if (chest.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            var open = !ScriptLine.IsFalse(line.Arg(1));
+            ctx.World.Chests[chest] = open;
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                open ? $"{chest} open" : $"{chest} close");
         }
 
         if (Eq(v, "WaitActiveDialog"))

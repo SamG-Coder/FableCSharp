@@ -77,7 +77,8 @@
 | CrowdAcquire | `00CCCEA7` | `00515700` | type,alias | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | real members only as alias0..n |
 | CrowdClearActions | `—` | `—` | crowd | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | clear member entity tasks |
 | GiveHero | `—` | `—` | item[,n] | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | gift list; count default 1 |
-| SetDoorOpen | `—` | `—` | door,IsTrue | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | door flag |
+| SetDoorOpen | `00CC8A8D` | `00CC8BEB` | name,IsFalse? | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | IsFalse(arg1)->vtbl+1704 close else vtbl+1700 open; jmp 00CD17F8 |
+| SetChestOpen | `00CC8C14` | `00CC8D73` | name,IsFalse? | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | IsFalse(arg1)->vtbl+1744 close else vtbl+1740(thing,0) open; jmp 00CD17F8 |
 | ClearCommands | `—` | `—` | IsTrue[,…] | YieldAfterUnlessFalse | Proven | Proven | Proven | Partial | Partial | Partial | cancel entity task slot; TRUE continue else vtbl+28 |
 | AddScriptedMode | `—` | `—` | mode | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | record mode |
 | RemoveScriptedMode | `—` | `—` | mode | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | record mode |

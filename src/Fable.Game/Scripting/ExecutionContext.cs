@@ -751,6 +751,7 @@ public sealed class WorldRuntime
     public readonly Dictionary<string, string> LookTargets = new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, Vector3> Positions = new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, bool> Doors = new(StringComparer.OrdinalIgnoreCase);
+    public readonly Dictionary<string, bool> Chests = new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, bool> Drawable = new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, bool> Collide = new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, float> Alpha = new(StringComparer.OrdinalIgnoreCase);
@@ -951,6 +952,8 @@ public sealed class WorldRuntime
             t.ScriptName.Equals(name, StringComparison.OrdinalIgnoreCase));
         Positions.Remove(name);
         Drawable.Remove(name);
+        Doors.Remove(name);
+        Chests.Remove(name);
         Collide.Remove(name);
         Effects.RemoveAll(e =>
             e.Name.Equals(name, StringComparison.OrdinalIgnoreCase));

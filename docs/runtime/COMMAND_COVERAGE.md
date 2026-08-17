@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 95
-RECOVERED RETURN: 95
-RECOVERED APPLY: 18
+RECOVERED DISPATCH: 96
+RECOVERED RETURN: 96
+RECOVERED APPLY: 20
 IMPLEMENTED RUNTIME: 13
-UNREAD: 90
+UNREAD: 89
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -88,8 +88,8 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | PlaySound | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | CacheMusic | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | EnableSounds | Global | Proven | Proven | Proven | Partial | Partial | Partial |
-| SetChestOpen | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| SetDoorOpen | Global | Proven | Proven | Proven | Partial | Partial | Partial |
+| SetChestOpen | Global | Proven | Proven | Proven | Proven | Partial | Partial |
+| SetDoorOpen | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | GamePause | Global | Proven | Proven | Proven | Proven | Proven | Proven |
 | TakeObjectFromHero | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | StopProgressSpinner | Global | Unread | Unread | Unread | Unread | Unread | Unread |
