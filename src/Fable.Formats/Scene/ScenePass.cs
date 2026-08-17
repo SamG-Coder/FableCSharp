@@ -99,7 +99,49 @@ public static class ScenePasses
         };
         return Registration.Where(p => submit.Contains(p.Submit)).ToArray();
     }
+
+    /// <summary>
+    /// First-seen bits recovered for New Game Oakvale. Unread
+    /// registration entries stay Unread — they are not flattened
+    /// into one opaque pass.
+    /// </summary>
+    public static IReadOnlyList<FirstSeenLayerContract> FirstSeenLayers { get; } =
+    [
+        new(0x4, SceneSubmit.LandscapeBit4, "landscape background",
+            "VSHADER_LANDSCAPE_FOREGROUND family slot 0",
+            "PSHADER_LANDSCAPE_BACKGROUND mul_x2 t0*v0",
+            "LESSEQUAL", "off", "CCW", "VS oFog",
+            "T(cam) native / identity host STB", "landscape"),
+        new(0x40, SceneSubmit.LandscapeBit40, "landscape foreground",
+            "VSHADER_LANDSCAPE_FOREGROUND",
+            "PSHADER_LANDSCAPE_FOREGROUND mul_x2 t1*v0",
+            "LESSEQUAL", "off", "CCW", "VS oFog",
+            "T(cam) native / identity host STB", "landscape"),
+        new(0x20, SceneSubmit.Primitives, "static + PALSKIN",
+            "VSHADER_STATIC_DIRLIGHT_FOG / VSHADER_PALSKIN_DIRLIGHT_FOG",
+            "PSHADER_TEXTURE_DIFFUSE",
+            "LESSEQUAL", "off; PALSKIN SRCALPHA/INVSRCALPHA", "CCW inherit",
+            "VS oFog", "identity W", "static / PALSKIN"),
+        new(0x2000, SceneSubmit.SkyElse, "inner sky else-path",
+            "VSHADER_INNER_SKY dp4 oPos v0 c5-c8",
+            "PSHADER_INNER_SKY or _SIMPLE; PS c0/c1/c2 UNREAD",
+            "MinZ 0.99 MaxZ 1", "UNREAD", "CCW", "UNREAD",
+            "identity W; sky P 100/10000", "sky"),
+    ];
 }
+
+public readonly record struct FirstSeenLayerContract(
+    uint Bit,
+    SceneSubmit Submit,
+    string Contents,
+    string VertexShader,
+    string PixelShader,
+    string Depth,
+    string Blend,
+    string Cull,
+    string Fog,
+    string WorldTransform,
+    string Family);
 
 /// <summary>
 /// D3D9 render-state numbers the first-seen landscape / static-lit paths

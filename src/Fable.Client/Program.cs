@@ -281,6 +281,9 @@ void EnterRegion(string next, RegionExit? arrivedFromExit)
     }
 
     Console.WriteLine($"Building {region}...");
+    if (region.Equals(RegionTravel.NewGameRegion, StringComparison.OrdinalIgnoreCase) &&
+        gameCam.ActiveName.Length > 0)
+        Console.WriteLine($"first-seen region {region} camera {gameCam.ActiveName}");
     IReadOnlyDictionary<string, Vector3>? actorPositions = null;
     if (region == RegionTravel.NewGameRegion)
     {

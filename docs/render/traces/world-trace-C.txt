@@ -1,0 +1,25 @@
+CATEGORY C static prop
+SOURCE
+  file graphics.big + TNG
+  object/mesh id 0
+  source bytes OBJECT_OAKVALE_FENCE_01
+  decoded vertex 42.43408 136.5188 15.95337
+SPACE
+  source coordinate space C3D local → RHSetForward/Up + TNG pos
+  region conversion <42.434082, 136.5188>
+  world coordinate 42.43408 136.5188 15.95337
+  camera-relative 0 0 0
+TRANSFORM
+  W 1,0,0,0; 0,1,0,0; 0,0,1,0; 0,0,0,1
+  V -0.949,0,-0.705,0; -0.997,0,0.671,0; 0,1.835,-0.231,0; 168.044,-30.8,-55.474,1
+  P 1,0,0,0; 0,1,0,0; 0,0,0.99,1; 0,0,-0.089,0
+  clip -8.299866 -1.522289 2.440258 2.554745
+  NDC -3.248804 -0.595868 0.955187 2.554745
+SUBMISSION
+  layer 0x20 static + PALSKIN
+  shader VSHADER_STATIC_DIRLIGHT_FOG / VSHADER_PALSKIN_DIRLIGHT_FOG / PSHADER_TEXTURE_DIFFUSE
+  material/texture 0
+  UV C3D UV oT0=v2
+  depth LESSEQUAL
+  cull CCW inherit
+  blend off; PALSKIN SRCALPHA/INVSRCALPHA

@@ -1,0 +1,25 @@
+CATEGORY D PALSKIN father
+SOURCE
+  file graphics.big CREATURE_HERO_FATHER
+  object/mesh id 0
+  source bytes file idx 9,21,0 (register offsets) group[3]
+  decoded vertex 10.99707 10.70381 111.7417
+SPACE
+  source coordinate space C3D packed / PALSKIN dest[group[a0/3]]
+  region conversion <39.28589, 130.64539>
+  world coordinate 39.39586 130.7524 16.8695
+  camera-relative 0 0 0
+TRANSFORM
+  W 1,0,0,0; 0,1,0,0; 0,0,1,0; 0,0,0,1
+  V -0.949,0,-0.705,0; -0.997,0,0.671,0; 0,1.835,-0.231,0; 168.044,-30.8,-55.474,1
+  P 1,0,0,0; 0,1,0,0; 0,0,0.99,1; 0,0,-0.089,0
+  clip 0.331314 0.158964 0.519169 0.6143
+  NDC 0.539336 0.258773 0.845139 0.6143
+SUBMISSION
+  layer 0x20 static + PALSKIN
+  shader VSHADER_STATIC_DIRLIGHT_FOG / VSHADER_PALSKIN_DIRLIGHT_FOG / PSHADER_TEXTURE_DIFFUSE
+  material/texture 0
+  UV PALSKIN oT0=v4
+  depth LESSEQUAL
+  cull CCW inherit
+  blend off; PALSKIN SRCALPHA/INVSRCALPHA

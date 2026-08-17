@@ -1,0 +1,25 @@
+CATEGORY B static house
+SOURCE
+  file graphics.big C3D 6909/6911
+  object/mesh id 6911
+  source bytes mid <25.783026, 133.6891, 17.94488>
+  decoded vertex 25.78303 133.6891 17.94488
+SPACE
+  source coordinate space C3D cm → ObjectTransform region-local
+  region conversion <25.783026, 133.6891>
+  world coordinate 25.78303 133.6891 17.94488
+  camera-relative 0 0 0
+TRANSFORM
+  W 1,0,0,0; 0,1,0,0; 0,0,1,0; 0,0,0,1
+  V -0.949,0,-0.705,0; -0.997,0,0.671,0; 0,1.835,-0.231,0; 168.044,-30.8,-55.474,1
+  P 1,0,0,0; 0,1,0,0; 0,0,0.99,1; 0,0,-0.089,0
+  clip 10.32657 2.132473 11.71941 11.92743
+  NDC 0.865783 0.178787 0.98256 11.92743
+SUBMISSION
+  layer 0x20 static + PALSKIN
+  shader VSHADER_STATIC_DIRLIGHT_FOG / VSHADER_PALSKIN_DIRLIGHT_FOG / PSHADER_TEXTURE_DIFFUSE
+  material/texture 3172
+  UV C3D UV oT0=v2
+  depth LESSEQUAL
+  cull CCW inherit
+  blend off; PALSKIN SRCALPHA/INVSRCALPHA

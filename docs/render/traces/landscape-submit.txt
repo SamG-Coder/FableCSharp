@@ -1,0 +1,6 @@
+region StartOakValeWest map=(3456,736)
+tiles=112 grid289=33
+primaryStripFaces=74014 edgeStrips=524 edgeFaces=106113
+submittedLandscapeTris=187517
+IndexCount=PrimitiveCount+2 rewindNz=False
+invented1mFill=false

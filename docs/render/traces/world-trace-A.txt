@@ -1,0 +1,26 @@
+CATEGORY A landscape
+SOURCE
+  file FinalAlbion_RT.stb .lev
+  object/mesh id 0
+  source bytes u16 XY (3490,872) z=15.75
+  decoded vertex 3490 872 15.75
+SPACE
+  source coordinate space STB file WLD
+  region conversion <34, 136>
+  world coordinate 34 136 15.75
+  camera-relative -6.033936 5.522888 -1.032881
+TRANSFORM
+  W 1,0,0,0; 0,1,0,0; 0,0,1,0; 0,0,0,1
+  V -0.949,0,-0.705,0; -0.997,0,0.671,0; 0,1.835,-0.231,0; 168.044,-30.8,-55.474,1
+  P 1,0,0,0; 0,1,0,0; 0,0,0.99,1; 0,0,-0.089,0
+  clip 0.223343 -1.895517 8.024986 8.195759
+  native clip 0.223339 -1.895518 8.02498 8.195757
+  NDC 0.027251 -0.23128 0.979163 8.195759
+SUBMISSION
+  layer 0x4 landscape background
+  shader VSHADER_LANDSCAPE_FOREGROUND family slot 0 / PSHADER_LANDSCAPE_BACKGROUND mul_x2 t0*v0
+  material/texture 4130
+  UV STB extra.yz / oT1=0
+  depth LESSEQUAL
+  cull CCW
+  blend off
