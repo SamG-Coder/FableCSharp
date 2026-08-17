@@ -1,19 +1,19 @@
 # Recovered `00CBFB7D` command map
 
-Statuses: **PROVEN** (side effect reproduced), **PARTIAL**
-(token + return proven; apply body unread or record-only),
-**UNREAD** (not implemented; interpreter yields).
+Statuses: **PROVEN** (recovered script-layer apply + return),
+**PARTIAL** (token + return proven; apply unread),
+**UNREAD** (not implemented; interpreter blocks).
 
 Unknown verbs are **UNREAD**. They are not complete no-ops.
 
-Generated from `ScriptCommandMap.All`.
+Generated from `ScriptCommandMap.All` (see `COMMAND_MAP.generated.md`).
 
 | Verb | Token | Apply | Args | Return | Status | Evidence |
 |---|---|---|---|---|---|---|
 | PlayMusic | `00CC8EAC` | `00CBF7FE` | track | CompleteNow | Partial | lookup 009E5120 then vtbl+2784; jmp 00CD17FD; host stores track |
 | FadeOut | `00CD0987` | `008907E0` | seconds,param | CompleteNow | Proven | vtbl+1488 pack black; 00434C00 +188 |
 | FadeIn | `00CC4B22` | `0088E4C0` | seconds,param | CompleteNow | Proven | vtbl+1496 clear lock; falling overlay |
-| CameraPause | `—` | `—` | flag | CompleteNow | Partial | first-seen FALSE; apply body UNREAD — record only |
+| CameraPause | `00CC71F1` | `00CC7241` | flag | CompleteNow | Proven | IsFalse → [ebp-37]=0; ctor 00CBFD53=1; gates UseCamera vtbl+28 |
 | Teleport | `00CC4678` | `0089B780` | marker[,IsFalse] | CompleteNow | Proven | marker pos 004AA980; vtbl+124; no vtbl+28; yaw write unread |
 | LookToThing | `00CC3B3F` | `—` | target[,mode][,IsFalse] | YieldAfterUnlessFalse | Partial | vtbl+1992; FOREVER wait; body UNREAD — record + yield |
 | DoScriptFrame | `00CC7085` | `—` | [count] | WaitFrames | Proven | atoi; each count one vtbl+28 |
@@ -38,7 +38,7 @@ Generated from `ScriptCommandMap.All`.
 | Create | `00CCC246` | `—` | type,marker,name | CompleteNow | Partial | vtbl+364; spawn body UNREAD |
 | Remove | `00CD0116` | `—` | name | CompleteNow | Partial | vtbl+432; teardown UNREAD |
 | LookInDirection | `00CC3F73` | `0089BDF0` | degrees[,IsFalse] | CompleteNow | Partial | vtbl+1896; heading body UNREAD |
-| SetTime | `—` | `—` |  | Unread | Unread | attract list; not first-seen |
+| SetTime | `00CD07D6` | `00CD082A` | hours[,flag][,duration] | CompleteNow | Proven | wrap 24 * 1/24 clamp [0,1] at clock+8; vtbl+2584 0088FDC0 |
 
 ## StartNewGame bindings
 

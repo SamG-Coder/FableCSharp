@@ -3,6 +3,7 @@ using Fable.Formats;
 using Fable.Formats.Levels;
 using Fable.Formats.World;
 using Fable.Game;
+using Fable.Game.Scripting;
 
 namespace Fable.Formats.Tests;
 
@@ -35,14 +36,13 @@ public sealed class ScriptRuntimeParityTests
         Assert.Equal(CommandStatus.Proven, ScriptCommandMap.StatusOf("UseCamera"));
         Assert.Equal(CommandStatus.Proven, ScriptCommandMap.StatusOf("PlayAVI"));
         Assert.Equal(CommandStatus.Proven, ScriptCommandMap.StatusOf("DoScriptFrame"));
-        Assert.Equal(CommandStatus.Partial, ScriptCommandMap.StatusOf("PlayAnimation"));
-        Assert.Equal(CommandStatus.Partial, ScriptCommandMap.StatusOf("LookToThing"));
-        Assert.Equal(CommandStatus.Partial, ScriptCommandMap.StatusOf("MuteSounds"));
-        Assert.Equal(CommandStatus.Unread, ScriptCommandMap.StatusOf("SetTime"));
+        Assert.Equal(CommandStatus.Proven, ScriptCommandMap.StatusOf("PlayAnimation"));
+        Assert.Equal(CommandStatus.Proven, ScriptCommandMap.StatusOf("LookToThing"));
+        Assert.Equal(CommandStatus.Proven, ScriptCommandMap.StatusOf("MuteSounds"));
         Assert.Equal(CommandStatus.Unread, ScriptCommandMap.StatusOf("NotARealVerb"));
-        Assert.False(ScriptCommandMap.IsImplementedComplete("PlayAnimation"));
-        Assert.False(ScriptCommandMap.IsImplementedComplete("SetTime"));
-        Assert.Equal(ScriptFlow.Yield, ScriptCommand.Classify(ScriptCommand.Parse("SetTime 14")));
+        Assert.True(ScriptCommandMap.IsImplementedComplete("PlayAnimation"));
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(ScriptCommand.Parse("SetTime 14")));
+        Assert.Equal(ScriptFlow.Yield, ScriptCommand.Classify(ScriptCommand.Parse("NotARealVerb")));
         Assert.Contains(ScriptCommandMap.All, s => s.Status == CommandStatus.Unread);
         Assert.Equal(0x00A447D0u, ScriptFiberTable.Create);
         Assert.Equal(0x00A44880u, ScriptFiberTable.Update);
@@ -82,8 +82,10 @@ public sealed class ScriptRuntimeParityTests
         Assert.Contains(a.Trace.Steps, s => s.Verb == "FadeOut");
         Assert.Contains(a.Trace.Steps, s => s.Verb == "Teleport" && s.World.Contains("Hero"));
         Assert.Contains(a.Trace.Steps, s => s.Verb == "LookToThing" && s.Yielded);
-        Assert.Equal(CommandStatus.Partial, a.Trace.Steps.First(s => s.Verb == "LookToThing").Status);
+        Assert.Equal(CommandStatus.Proven, a.Trace.Steps.First(s => s.Verb == "LookToThing").Status);
+        Assert.Equal(ExecutionKind.YieldOnce, a.Trace.Steps.First(s => s.Verb == "LookToThing").Result);
         Assert.DoesNotContain(a.Trace.Steps, s => s.Status == CommandStatus.Unread && s.Verb == "PlayMusic");
+        Assert.Contains(a.Quests, q => q.Name == RegionTravel.IntroScriptName);
         Assert.Equal(PersistKind.Bool, a.PersistType(NewGameScript.PersistAttackOverName));
         Assert.False(a.PersistBool(NewGameScript.PersistAttackOverName));
         Assert.Equal(BindingKind.ProvenGeneric, a.StartNewGameFactoryKind);

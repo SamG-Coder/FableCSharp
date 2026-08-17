@@ -1,15 +1,14 @@
 using System.Numerics;
 using Fable.Core;
 using Fable.Formats.Tng;
+using Fable.Game.Scripting;
 
 namespace Fable.Game;
 
 /// <summary>
-/// Generic script VM: name table <c>00CB8230</c>, thing
-/// activate <c>004C97B0</c> / <c>00CB8960</c>, microthread
-/// <c>00A44880</c>, interpreter <c>00CBFB7D</c>. Scene
-/// behaviour comes from exported command lists, not a
-/// handcrafted Oakvale state machine.
+/// Orchestrator: quest/fiber scheduler + persist +
+/// CCutsceneDef children. S_QNOVI is a
+/// <see cref="QuestInstance"/>, not a command list.
 /// </summary>
 public sealed class ScriptRuntime : IScriptHost, IScriptTrace
 {
@@ -32,7 +31,11 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     public float OverlayAlpha => OverlayFraction();
     public byte OverlayAlphaByte =>
         (byte)Math.Clamp((int)(OverlayFraction() * RegionTravel.FadeAlphaScale), 0, 255);
-    public string? LastMusic { get; private set; }
+    public string? LastMusic
+    {
+        get => Audio.Music;
+        private set => Audio.PlayMusic(value ?? "");
+    }
     public string? LastAvi { get; private set; }
     public string? AviRelativePath { get; private set; }
     public string? AviFile { get; private set; }
@@ -41,63 +44,98 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     public int AviHeight => _avi?.Height ?? 0;
     public byte[]? AviRgba => _avi?.Rgba;
     public int AviFrameSerial => _avi?.FrameSerial ?? 0;
-    public bool SoundsMuted { get; private set; }
-    public int TimeCode { get; private set; }
-    public float LastGamePause { get; private set; }
+    public bool SoundsMuted
+    {
+        get => Audio.Muted;
+        private set => Audio.Mute(value);
+    }
+    public int TimeCode { get; set; }
+    public float LastGamePause { get; set; }
     public string? ActiveCutscene => _interpreters.Count == 0 ? null : _interpreters[^1].Name;
     public ScriptInterpreter? ActiveInterpreter =>
         _interpreters.Count == 0 ? null : _interpreters[^1];
     public string CameraName => _camera?.ActiveName ?? "";
     public IReadOnlyList<ScriptInterpreter> Interpreters => _interpreters;
-    public IReadOnlyDictionary<string, PersistValue> PersistSlots => _persist;
-    public IReadOnlyDictionary<string, bool> PersistFields =>
-        _persist.ToDictionary(p => p.Key, p => p.Value.Bool, StringComparer.OrdinalIgnoreCase);
     public IReadOnlyDictionary<string, string> NamedScripts => _named;
     public RuntimeTrace Trace { get; } = new();
     public int Frame { get; private set; }
     public float Time { get; private set; }
     public BindingKind StartNewGameFactoryKind => BindingKind.ProvenGeneric;
     public BindingKind StartNewGameFiberKind => BindingKind.ProvenGeneric;
-    public IReadOnlyList<ScriptTeleport> Teleports => _teleports;
-    public IReadOnlyDictionary<string, Vector3> ActorPositions => _actorPositions;
-    public IReadOnlyList<ScriptAnimation> Animations => _animations;
-    public IReadOnlyList<ScriptSpeech> Speeches => _speeches;
-    public IReadOnlyList<ScriptInteractiveSpeech> InteractiveSpeeches => _interactive;
-    public IReadOnlyList<ScriptDialogSpeech> DialogSpeeches => _dialogs;
-    public IReadOnlyList<ScriptWaitTask> WaitTasks => _waits;
-    public IReadOnlyList<ScriptSneakTo> SneakTos => _sneaks;
-    public IReadOnlyList<ScriptWalkTo> WalkTos => _walks;
-    public IReadOnlyList<ScriptCombatAnimation> CombatAnimations => _combatAnims;
-    public IReadOnlyList<ScriptCreate> Creates => _creates;
-    public IReadOnlyList<string> Removes => _removes;
-    public IReadOnlyList<ScriptDialogAdSpeech> DialogAdSpeeches => _dialogAds;
-    public IReadOnlyList<ScriptLookInDirection> LookInDirections => _looks;
-    public int WaitActiveDialogCount { get; private set; }
-    public IReadOnlyList<string> PreloadedCameras => _preloadedCameras;
+    public int WaitActiveDialogCount { get; internal set; }
+    public IReadOnlyList<string> PreloadedCameras => CameraSys.Preloaded;
+    public string? LastCameraPause { get; internal set; }
+    public IReadOnlyList<ScriptLookToThing> LookToThings => World.LookToThings;
+    public float TimeOfDayHours { get; internal set; }
+    public float TimeOfDayFraction { get; internal set; }
+    public string ActiveQuestName => _quests.Count == 0 ? "" : _quests[^1].Name;
+    public FiberState? ActiveFiber => Scheduler.Fibers.LastOrDefault();
+    public IReadOnlyList<ThingInstance> Things => _things;
+    public ScriptedCamera? Camera => _camera;
+    public ScriptBindings Bindings { get; } = new();
+    public ScriptArguments Arguments { get; } = new();
+    public PersistStore Persist { get; } = new();
+    public ScriptScheduler Scheduler { get; } = new();
+    public CameraRuntime CameraSys { get; } = new();
+    public AudioRuntime Audio { get; } = new();
+    public DialogueRuntime Dialogue { get; } = new();
+    public AnimationRuntime Animation { get; } = new();
+    public MovementRuntime Movement { get; } = new();
+    public WorldRuntime World { get; } = new();
+    public IReadOnlyList<QuestInstance> Quests => _quests;
 
     private readonly Dictionary<string, string> _named = new(StringComparer.OrdinalIgnoreCase);
-    private readonly Dictionary<string, PersistValue> _persist = new(StringComparer.OrdinalIgnoreCase);
     private readonly List<ScriptFiber> _fibers = [];
     private readonly List<ScriptInterpreter> _interpreters = [];
-    private readonly List<ScriptTeleport> _teleports = [];
-    private readonly Dictionary<string, Vector3> _actorPositions = new(StringComparer.OrdinalIgnoreCase);
-    private readonly List<ScriptAnimation> _animations = [];
-    private readonly List<ScriptSpeech> _speeches = [];
-    private readonly List<ScriptInteractiveSpeech> _interactive = [];
-    private readonly List<ScriptDialogSpeech> _dialogs = [];
-    private readonly List<ScriptWaitTask> _waits = [];
-    private readonly List<ScriptSneakTo> _sneaks = [];
-    private readonly List<ScriptWalkTo> _walks = [];
-    private readonly List<ScriptCombatAnimation> _combatAnims = [];
-    private readonly List<ScriptCreate> _creates = [];
-    private readonly List<string> _removes = [];
-    private readonly List<ScriptDialogAdSpeech> _dialogAds = [];
-    private readonly List<ScriptLookInDirection> _looks = [];
-    private readonly List<string> _preloadedCameras = [];
+    private readonly List<QuestInstance> _quests = [];
     private IReadOnlyList<ThingInstance> _things = [];
     private ScriptedCamera? _camera;
     private GameInstall? _install;
     private WmvPlayer? _avi;
+    private int _questId;
+    private int _cutsceneId;
+
+    public IReadOnlyList<ScriptTeleport> Teleports => World.Teleports;
+    public IReadOnlyDictionary<string, Vector3> ActorPositions => World.Positions;
+    public IReadOnlyList<ScriptAnimation> Animations => Animation.Plays;
+    public IReadOnlyList<ScriptSpeech> Speeches => Dialogue.Speeches;
+    public IReadOnlyList<ScriptInteractiveSpeech> InteractiveSpeeches => Dialogue.Interactive;
+    public IReadOnlyList<ScriptDialogSpeech> DialogSpeeches => Dialogue.Dialogs;
+    public IReadOnlyList<ScriptWaitTask> WaitTasks => _waits;
+    public IReadOnlyList<ScriptSneakTo> SneakTos => Movement.Sneaks;
+    public IReadOnlyList<ScriptWalkTo> WalkTos => Movement.Walks;
+    public IReadOnlyList<ScriptCombatAnimation> CombatAnimations => Animation.Combat;
+    public IReadOnlyList<ScriptCreate> Creates => World.Creates;
+    public IReadOnlyList<string> Removes => World.Removes;
+    public IReadOnlyList<ScriptDialogAdSpeech> DialogAdSpeeches => Dialogue.DialogAds;
+    public IReadOnlyList<ScriptLookInDirection> LookInDirections => World.Looks;
+
+    private readonly List<ScriptWaitTask> _waits = [];
+
+    public static ScriptRuntime Detached() => new();
+
+    public ScriptExecutionContext BindInterpreter(ScriptInterpreter interpreter)
+    {
+        if (interpreter.State.InstanceId == 0)
+            interpreter.State.InstanceId = ++_cutsceneId;
+        return new ScriptExecutionContext(
+            this, Bindings, Arguments, Persist, CameraSys, Audio,
+            Dialogue, Animation, Movement, World, interpreter.State);
+    }
+
+    public ThingInstance? FindThingByName(string name)
+    {
+        if (name.Length == 0)
+            return null;
+        foreach (var thing in _things)
+        {
+            if (thing.ScriptName is not null &&
+                thing.ScriptName.Equals(name, StringComparison.OrdinalIgnoreCase))
+                return thing;
+        }
+
+        return Bindings.Resolve(name)?.Thing;
+    }
 
     public void Load(ScriptBank bank, GameInstall? install = null)
     {
@@ -109,6 +147,17 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     {
         _things = things as IReadOnlyList<ThingInstance> ?? things.ToList();
         _camera = camera;
+        ThingInstance? hero = null;
+        foreach (var thing in _things)
+        {
+            Bindings.BindSceneThing(thing);
+            if (thing.DefinitionType is not null &&
+                thing.DefinitionType.Equals(RegionTravel.KidCreature, StringComparison.OrdinalIgnoreCase))
+                hero = thing;
+        }
+
+        Bindings.BindHero(hero);
+        _ = Bindings.DrainChanges();
     }
 
     /// <summary>
@@ -128,14 +177,15 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     {
         foreach (var factory in ScriptFactoryTable.Recovered)
             RegisterNamedScript(factory.ScriptName, factory.CutsceneName);
-        foreach (var slot in PersistTable.Recovered)
-        {
-            if (!_persist.ContainsKey(slot.Name))
-                _persist[slot.Name] = PersistValue.FromBool(slot.DefaultBool);
-        }
-
+        Persist.InstallRecovered();
         foreach (var fiber in ScriptFiberTable.Recovered)
+        {
             CreateFiber(fiber.Name, fiber.PersistField);
+            var quest = new QuestInstance(++_questId, fiber.Name, fiber.PersistField);
+            var state = Scheduler.Create(fiber.Name, fiber.PersistField);
+            quest.AttachFiber(state);
+            _quests.Add(quest);
+        }
     }
 
     /// <summary>
@@ -144,22 +194,23 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// </summary>
     public ScriptFiber CreateFiber(string name, string? persistField = null)
     {
-        if (persistField is not null && !_persist.ContainsKey(persistField))
-            _persist[persistField] = PersistValue.FromBool(false);
+        if (persistField is not null && Persist.TypeOf(persistField) == PersistKind.Unread)
+            Persist.SetBool(persistField, false);
         var fiber = new ScriptFiber(name, persistField);
         _fibers.Add(fiber);
         return fiber;
     }
 
-    public void ApplyPersist(string name, bool value) =>
-        _persist[name] = PersistValue.FromBool(value);
+    public void ApplyPersist(string name, bool value) => Persist.SetBool(name, value);
 
-    public bool PersistBool(string name) =>
-        _persist.TryGetValue(name, out var value) &&
-        value.Kind == PersistKind.Bool && value.Bool;
+    public bool PersistBool(string name) => Persist.Bool(name);
 
-    public PersistKind PersistType(string name) =>
-        _persist.TryGetValue(name, out var value) ? value.Kind : PersistKind.Unread;
+    public PersistKind PersistType(string name) => Persist.TypeOf(name);
+
+    public IReadOnlyDictionary<string, PersistValue> PersistSlots => Persist.Slots;
+
+    public IReadOnlyDictionary<string, bool> PersistFields =>
+        Persist.Slots.ToDictionary(p => p.Key, p => p.Value.Bool, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// <c>004C97B0</c> / <c>00CB8960</c>: start the named
@@ -194,12 +245,46 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
             return null;
         var interpreter = new ScriptInterpreter(def.InstanceName, def.Commands);
         _interpreters.Add(interpreter);
-        interpreter.RunUntilYield(this);
+        if (_quests.Count > 0)
+            _quests[^1].StartChildCutscene(cutsceneName);
+        interpreter.RunUntilYield(BindInterpreter(interpreter));
         return interpreter;
     }
 
     public ScriptInterpreter? FindInterpreter(string name) =>
         _interpreters.Find(item => item.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+
+    /// <summary>
+    /// Resume a cutscene past frame/time/task waits.
+    /// PlayAVI is skipped (DIK 1/57/28/62 analog) so
+    /// fixtures can continue after the blocking apply.
+    /// WaitOperation leftover polls go idle on the
+    /// next tick (vtbl+104 / +1472).
+    /// </summary>
+    public int PumpUntilSettled(ScriptInterpreter intro, int maxUpdates = 10_000)
+    {
+        var n = 0;
+        while (n < maxUpdates && !intro.Finished && !intro.Blocked)
+        {
+            if (!intro.Yielded)
+                break;
+            if (intro.CurrentWaitKind == ExecutionKind.BlockPump)
+                SkipAvi();
+            if (intro.CurrentWaitKind == ExecutionKind.WaitOperation)
+            {
+                foreach (var op in Animation.ByActor.Values)
+                    op.Complete = true;
+                foreach (var op in Movement.ByActor.Values)
+                    op.Complete = true;
+                Dialogue.CompleteWait();
+            }
+
+            Update(RegionTravel.GamePauseIncrement / RegionTravel.GamePauseScale);
+            n++;
+        }
+
+        return n;
+    }
 
     public bool HasStarted(string cutsceneName) => FindInterpreter(cutsceneName) is not null;
 
@@ -233,11 +318,28 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
 
         TickFade(dt);
         TickAvi(dt);
-        foreach (var interpreter in _interpreters)
+        if (Scheduler.Fibers.Count == 0)
         {
-            if (interpreter.Yielded)
-                interpreter.Resume(this);
+            foreach (var interpreter in _interpreters)
+            {
+                if (interpreter.Yielded && !interpreter.Blocked)
+                    interpreter.Resume(BindInterpreter(interpreter));
+            }
+
+            return;
         }
+
+        Scheduler.Pump(dt, fiber =>
+        {
+            fiber.State = FiberRunState.Running;
+            foreach (var interpreter in _interpreters)
+            {
+                if (interpreter.Yielded && !interpreter.Blocked)
+                    interpreter.Resume(BindInterpreter(interpreter));
+            }
+
+            fiber.State = FiberRunState.Ready;
+        });
     }
 
     /// <summary>
@@ -317,37 +419,21 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
 
     void IScriptTrace.OnStep(RuntimeTraceStep step) => Trace.Add(step);
 
-    internal string TraceSideEffect(string verb)
-    {
-        if (verb.Equals("PlayMusic", StringComparison.OrdinalIgnoreCase))
-            return LastMusic ?? "";
-        if (verb.Equals("FadeOut", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("FadeIn", StringComparison.OrdinalIgnoreCase))
-            return $"fade {FadeDuration},{FadeParam} a={OverlayAlphaByte}";
-        if (verb.Equals("UseCamera", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("NoLoadUseCamera", StringComparison.OrdinalIgnoreCase))
-            return _camera?.ActiveName ?? "";
-        if (verb.Equals("Teleport", StringComparison.OrdinalIgnoreCase))
-            return _teleports.Count == 0 ? "" : $"{_teleports[^1].Actor}->{_teleports[^1].Marker}";
-        if (verb.Equals("PlayAVI", StringComparison.OrdinalIgnoreCase))
-            return AviRelativePath ?? "";
-        return verb;
-    }
-
-    internal string TracePersistSnapshot()
-    {
-        if (_persist.Count == 0)
-            return "";
-        return string.Join(",", _persist.Select(p => $"{p.Key}={p.Value.Kind}:{p.Value.Bool}"));
-    }
-
     internal string TraceWorldSnapshot()
     {
-        if (_actorPositions.Count == 0)
+        if (World.Positions.Count == 0)
             return "";
-        return string.Join(",", _actorPositions.Select(p =>
+        return string.Join(",", World.Positions.Select(p =>
             $"{p.Key}:{p.Value.X:0.##},{p.Value.Y:0.##},{p.Value.Z:0.##}"));
     }
+
+    public void ApplyFadeOut(float seconds, float param) =>
+        ((IScriptHost)this).FadeOut(seconds, param);
+
+    public void ApplyFadeIn(float seconds, float param) =>
+        ((IScriptHost)this).FadeIn(seconds, param);
+
+    public void BeginAvi(string file) => ((IScriptHost)this).PlayAvi(file);
 
     void IScriptHost.PlayMusic(string track) => LastMusic = track;
 
@@ -411,11 +497,8 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
         var args = ScriptCommand.SplitArgs(arguments);
         var name = args.Length == 0 ? "" : args[0];
         var flags = ScriptCommand.ParsePlayAnimationFlags(arguments);
-        _animations.Add(new ScriptAnimation(
-            actor, name, flags.Flag1, flags.Flag2, flags.Flag3, flags.Flag4, flags.Flag5));
+        Animation.Play(actor, name, flags.Flag1, flags.Flag2, flags.Flag3, flags.Flag4, flags.Flag5);
     }
-
-    public string? LastCameraPause { get; private set; }
 
     void IScriptHost.CameraPause(string arguments) => LastCameraPause = arguments;
 
@@ -432,18 +515,13 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     {
         var args = ScriptCommand.SplitArgs(arguments);
         var marker = args.Length == 0 ? "" : args[0];
-        var thing = FindThing(marker);
+        var thing = FindThingByName(marker);
         Vector3? position = thing is { PositionX: not null } ? RegionTravel.PositionOf(thing) : null;
-        _teleports.Add(new ScriptTeleport(actor, marker, position));
-        if (actor is { Length: > 0 } && position is { } pos)
-            _actorPositions[actor] = pos;
+        World.Teleport(actor, marker, position);
     }
 
-    public IReadOnlyList<ScriptLookToThing> LookToThings => _lookToThings;
-    private readonly List<ScriptLookToThing> _lookToThings = [];
-
     void IScriptHost.LookToThing(string? actor, string arguments) =>
-        _lookToThings.Add(new ScriptLookToThing(actor, arguments));
+        World.LookToThings.Add(new ScriptLookToThing(actor, arguments));
 
     /// <summary>
     /// <c>00CCA26D</c>: prefix <c>Data\Video\</c> then
@@ -528,7 +606,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// Do not invent dialogue UI.
     /// </summary>
     void IScriptHost.Speak(string? actor, string target, string text, int mode) =>
-        _speeches.Add(new ScriptSpeech(actor, target, text, mode));
+        Dialogue.Speak(actor, target, text, mode);
 
     /// <summary>
     /// <c>00CC2EAA</c>: context <c>vtbl+1456/1460/1464</c>
@@ -537,7 +615,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// </summary>
     void IScriptHost.InteractiveSpeak(
         string? actor, string listener, string prompt, bool wait, string response) =>
-        _interactive.Add(new ScriptInteractiveSpeech(actor, listener, prompt, wait, response));
+        Dialogue.InteractiveSpeak(actor, listener, prompt, wait, response);
 
     /// <summary>
     /// <c>00CC3165</c>: context <c>vtbl+1456/1460/1464</c>
@@ -545,7 +623,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// Bodies UNREAD — record only.
     /// </summary>
     void IScriptHost.DialogSpeak(string? actor, string listener, string text) =>
-        _dialogs.Add(new ScriptDialogSpeech(actor, listener, text));
+        Dialogue.DialogSpeak(actor, listener, text);
 
     /// <summary>
     /// <c>00CC0783</c>: name unused. Poll thing
@@ -553,8 +631,11 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// leftover is busy so one <c>vtbl+28</c> then
     /// continue. Do not invent a task table.
     /// </summary>
-    void IScriptHost.WaitTask(string? actor, string name) =>
+    public void NoteWaitTask(string? actor, string name) =>
         _waits.Add(new ScriptWaitTask(actor, name));
+
+    void IScriptHost.WaitTask(string? actor, string name) =>
+        NoteWaitTask(actor, name);
 
     /// <summary>
     /// <c>00CC0CB5</c>: thing <c>vtbl+20</c> is
@@ -563,7 +644,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// no mesh move.
     /// </summary>
     void IScriptHost.SneakTo(string? actor, string marker, float speed, bool wait) =>
-        _sneaks.Add(new ScriptSneakTo(actor, marker, speed, wait));
+        Movement.Sneak(actor, marker, speed, wait);
 
     /// <summary>
     /// <c>00CC083D</c>: thing <c>vtbl+20</c> is
@@ -571,7 +652,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// wait for arrival. Record only — no mesh move.
     /// </summary>
     void IScriptHost.WalkTo(string? actor, string marker, float speed, bool wait) =>
-        _walks.Add(new ScriptWalkTo(actor, marker, speed, wait));
+        Movement.Walk(actor, marker, speed, wait);
 
     /// <summary>
     /// <c>00CC15E3</c>: thing <c>vtbl+76</c> does not
@@ -580,7 +661,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// </summary>
     void IScriptHost.PlayCombatAnimation(
         string? actor, string name, bool flagA, bool flagB, bool flagC, bool flagD, bool flagE, int count) =>
-        _combatAnims.Add(new ScriptCombatAnimation(actor, name, flagA, flagB, flagC, flagD, flagE, count));
+        Animation.PlayCombat(actor, name, flagA, flagB, flagC, flagD, flagE, count);
 
     /// <summary>
     /// <c>00CCC246</c>: <c>vtbl+364</c> then
@@ -588,7 +669,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// UNREAD — record only.
     /// </summary>
     void IScriptHost.Create(string type, string marker, string name) =>
-        _creates.Add(new ScriptCreate(type, marker, name));
+        World.Creates.Add(new ScriptCreate(type, marker, name));
 
     /// <summary>
     /// <c>00CC656B</c>: leftover session poll
@@ -601,7 +682,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// <c>jmp 00CC864B</c>. No yield. Teardown
     /// UNREAD — record only.
     /// </summary>
-    void IScriptHost.Remove(string name) => _removes.Add(name);
+    void IScriptHost.Remove(string name) => World.Removes.Add(name);
 
     /// <summary>
     /// <c>00CC3354</c>: thing <c>vtbl+52</c> then
@@ -611,7 +692,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// do not invent dialogue UI.
     /// </summary>
     void IScriptHost.DialogadSpeak(string? actor, string target, string text, int mode) =>
-        _dialogAds.Add(new ScriptDialogAdSpeech(actor, target, text, mode));
+        Dialogue.DialogAdSpeak(actor, target, text, mode);
 
     /// <summary>
     /// <c>00CC3F73</c>: context <c>vtbl+1896</c>
@@ -620,7 +701,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// only, do not invent a yaw write.
     /// </summary>
     void IScriptHost.LookInDirection(string? actor, float degrees, bool flag) =>
-        _looks.Add(new ScriptLookInDirection(actor, degrees, flag));
+        World.Looks.Add(new ScriptLookInDirection(actor, degrees, flag));
 
     /// <summary>
     /// <c>00CC86D0</c> default path: <c>00CBF29F</c> with
@@ -644,9 +725,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
                 !command.Verb.Equals("CameraFOVLookBetween", StringComparison.OrdinalIgnoreCase))
                 continue;
             var name = ScriptInterpreter.FirstToken(command.Arguments);
-            if (name.Length == 0 || _preloadedCameras.Contains(name, StringComparer.OrdinalIgnoreCase))
-                continue;
-            _preloadedCameras.Add(name);
+            CameraSys.Preload(name);
         }
     }
 

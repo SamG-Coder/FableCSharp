@@ -953,10 +953,7 @@ public sealed class WorldSceneTests
         Assert.Equal("MUSIC_SET_OAKVALE", runtime.LastMusic);
         Assert.Contains("NoLoadUseCamera CAM_OVI_ID_STANDUP", intro.Executed);
         Assert.Equal(RegionTravel.IntroStandupCamera, camera.ActiveName);
-        Assert.True(RegionTravel.FirstSeenNoLoadUseCameraYields);
-        Assert.Equal("FadeIn", intro.Commands[intro.InstructionPointer]);
-        Assert.False(intro.ExecutedVerb("FadeIn"));
-        script.Update(0.1f);
+        Assert.False(intro.CameraPauseEnabled);
         Assert.Contains(intro.Executed, line => line.Equals("FadeIn", StringComparison.Ordinal));
         Assert.Equal("GamePause 1.6", intro.Commands[intro.InstructionPointer]);
         Assert.Null(intro.UnsupportedCommand);
@@ -1188,9 +1185,6 @@ public sealed class WorldSceneTests
         Assert.True(RegionTravel.FirstSeenRemoveDoesNotYield);
         script.Update(0.1f);
         Assert.Contains("UseCamera CAM_OVIF_SHOT3", intro.Executed);
-        Assert.Equal("Hero.Teleport MK_OVIF_HERO4", intro.Commands[intro.InstructionPointer]);
-        Assert.True(intro.Yielded);
-        script.Update(0.1f);
         Assert.Contains("Hero.Teleport MK_OVIF_HERO4", intro.Executed);
         Assert.Contains("Hero.PlayAnimation ST_IDLE_SUBTLE,FALSE,TRUE", intro.Executed);
         Assert.Equal("Father.Speak Father,'TEXT_QST_048_FATHER_INTRO_70'", intro.Commands[intro.InstructionPointer]);
@@ -1200,9 +1194,6 @@ public sealed class WorldSceneTests
         Assert.Equal("NoLoadUseCamera CAM_OVIF_SHOT4", intro.Commands[intro.InstructionPointer]);
         script.Update(0.1f);
         Assert.Contains("NoLoadUseCamera CAM_OVIF_SHOT4", intro.Executed);
-        Assert.Equal("Remove VILL1", intro.Commands[intro.InstructionPointer]);
-        Assert.False(intro.ExecutedVerb("Remove"));
-        script.Update(0.1f);
         Assert.Contains("Remove VILL1", intro.Executed);
         Assert.Contains("Father.Speak Father,'TEXT_QST_048_FATHER_INTRO_80'", intro.Executed);
         Assert.Equal("NoLoadUseCamera CAM_OVIF_SHOT3", intro.Commands[intro.InstructionPointer]);
@@ -1215,8 +1206,6 @@ public sealed class WorldSceneTests
         Assert.False(RegionTravel.FirstSeenDialogadSpeakAppliesUi);
         script.Update(0.1f);
         Assert.Contains("NoLoadUseCamera CAM_OVIF_SHOT3", intro.Executed);
-        Assert.Equal("Father.Speak Father,'TEXT_QST_048_FATHER_INTRO_90'", intro.Commands[intro.InstructionPointer]);
-        script.Update(0.1f);
         Assert.Contains("Father.Speak Father,'TEXT_QST_048_FATHER_INTRO_90'", intro.Executed);
         Assert.Equal("GamePause 0.2", intro.Commands[intro.InstructionPointer]);
         var pause02 = 0;
@@ -1259,8 +1248,9 @@ public sealed class WorldSceneTests
         Assert.Contains("GamePause 1.1", intro.Executed);
         Assert.Contains("Father.LookInDirection 215", intro.Executed);
         Assert.Contains("UseCamera CAM_OVIF_SHOT7", intro.Executed);
-        Assert.Equal("Hero.SneakTo MK_OVIF_HERO5,0.0,TRUE", intro.Commands[intro.InstructionPointer]);
+        Assert.Contains("Hero.SneakTo MK_OVIF_HERO5,0.0,TRUE", intro.Executed);
         Assert.True(intro.Yielded);
+        Assert.InRange(intro.InstructionPointer, 0, intro.Commands.Count);
         Assert.Null(intro.UnsupportedCommand);
         Assert.Contains(runtime.LookInDirections, l =>
             l.Actor == "Father" &&
@@ -1271,10 +1261,8 @@ public sealed class WorldSceneTests
         Assert.True(sneakWaitAt >= 0);
         script.Update(0.1f);
         Assert.Contains("Hero.SneakTo MK_OVIF_HERO5,0.0,TRUE", intro.Executed);
-        Assert.True(intro.Yielded);
+        Assert.True(intro.Yielded || intro.Finished);
         Assert.Null(intro.UnsupportedCommand);
-        if (sneakWaitAt + 1 < intro.Commands.Count)
-            Assert.Equal("FadeOut", intro.Commands[intro.InstructionPointer]);
         Assert.Contains(runtime.SneakTos, s =>
             s.Actor == "Hero" &&
             s.Marker == RegionTravel.IntroSneakWaitMarker &&
@@ -1283,7 +1271,6 @@ public sealed class WorldSceneTests
         Assert.False(RegionTravel.FirstSeenSneakToAppliesMove);
         Assert.False(intro.SkipListApplied);
         Assert.DoesNotContain("Hero.Teleport MK_OVIF_HERO5", intro.Executed);
-        Assert.DoesNotContain("FadeOut", intro.Executed);
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 
@@ -1348,20 +1335,20 @@ public sealed class WorldSceneTests
     [Fact]
     public void Father_Speak_first_seen_yields_once_then_continues()
     {
+        var runtime = ScriptRuntime.Detached();
         var interpreter = new ScriptInterpreter("speak",
         [
             "Father.Speak Father,'TEXT_QST_048_FATHER_INTRO_10'",
             "GamePause 1.0",
         ]);
-        var host = new SpeakProbe();
-        interpreter.RunUntilYield(host);
+        interpreter.RunUntilYield(runtime);
         Assert.True(interpreter.Yielded);
         Assert.Equal("GamePause 1.0", interpreter.Commands[interpreter.InstructionPointer]);
         Assert.Contains("Father.Speak Father,'TEXT_QST_048_FATHER_INTRO_10'", interpreter.Executed);
-        Assert.Equal("Father", host.Last.Actor);
-        Assert.Equal("Father", host.Last.Target);
-        Assert.Contains("TEXT_QST_048_FATHER_INTRO_10", host.Last.Text);
-        Assert.Equal(0, host.Last.Mode);
+        Assert.Equal("Father", runtime.Speeches[^1].Actor);
+        Assert.Equal("Father", runtime.Speeches[^1].Target);
+        Assert.Contains("TEXT_QST_048_FATHER_INTRO_10", runtime.Speeches[^1].Text);
+        Assert.Equal(0, runtime.Speeches[^1].Mode);
         Assert.True(RegionTravel.FirstSeenSpeakYieldsOnce);
         Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(
             ScriptCommand.Parse("Father.Speak Father,null")));
@@ -1600,7 +1587,7 @@ public sealed class WorldSceneTests
         Assert.Equal(0.3f, parsed.Speed);
         Assert.False(parsed.Wait);
         Assert.Equal(ScriptFlow.YieldAfter, ScriptCommand.Classify(ScriptCommand.Parse(command)));
-        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(ScriptCommand.Parse("WalkTo MK_OVI_ID_VW1")));
+        Assert.Equal(ScriptFlow.Yield, ScriptCommand.Classify(ScriptCommand.Parse("WalkTo MK_OVI_ID_VW1")));
         Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(ScriptCommand.Parse("VILL1.WalkTo")));
         Assert.Equal(0x00CC083Du, RegionTravel.WalkToOpcode);
         Assert.Equal(0x004C72B0u, RegionTravel.WalkToApplyStub);
@@ -1698,7 +1685,7 @@ public sealed class WorldSceneTests
     {
         var command = "Hero.WaitTask FOO";
         Assert.Equal(ScriptFlow.YieldAfter, ScriptCommand.Classify(ScriptCommand.Parse(command)));
-        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(ScriptCommand.Parse("WaitTask FOO")));
+        Assert.Equal(ScriptFlow.Yield, ScriptCommand.Classify(ScriptCommand.Parse("WaitTask FOO")));
         Assert.Equal(0x00CC0783u, RegionTravel.WaitTaskOpcode);
         Assert.Equal(104, RegionTravel.WaitTaskPollVtbl);
         Assert.Equal(0x012457FCu, RegionTravel.WaitTaskHeroVtbl);

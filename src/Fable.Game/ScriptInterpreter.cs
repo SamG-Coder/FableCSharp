@@ -1,125 +1,207 @@
 using System.Globalization;
+using Fable.Game.Scripting;
 
 namespace Fable.Game;
 
 /// <summary>
-/// <c>00CBFB7D</c> command walk over the <c>+60</c>
-/// CString vector. Continue is <c>jmp 00CD17FD</c> /
-/// actor join <c>00CC707C</c>. Unread waits stay put.
+/// <c>00CBFB7D</c> fetch / dispatch / PC loop over the
+/// def+60 CString vector. Handlers return results;
+/// this loop does not consult <see cref="ScriptCommand.Classify"/>.
 /// </summary>
 public sealed class ScriptInterpreter
 {
-    public string Name { get; }
-    public IReadOnlyList<string> Commands { get; private set; }
-    public int InstructionPointer { get; private set; }
-    public bool Yielded { get; private set; }
-    public bool Finished { get; private set; }
-    public bool SkipListApplied { get; private set; }
-    public bool FadeSpecialCaseApplied { get; private set; }
-    public string? UnsupportedCommand { get; private set; }
-    public int ScriptFrameRemaining { get; private set; }
-    public float GamePauseTarget { get; private set; }
-    public float GamePauseCounter { get; private set; }
-    public IReadOnlyList<string> Executed => _executed;
+    public string Name => State.Name;
+    public IReadOnlyList<string> Commands
+    {
+        get => State.Commands;
+        private set => State.Commands = value;
+    }
 
-    private readonly List<string> _executed = [];
-    private int _gamePausePhase;
-    private int _aviAt = -1;
+    public int InstructionPointer
+    {
+        get => State.Pc;
+        private set => State.Pc = value;
+    }
+
+    public bool Yielded
+    {
+        get => State.Yielded;
+        private set => State.Yielded = value;
+    }
+
+    public bool Finished
+    {
+        get => State.Finished;
+        private set => State.Finished = value;
+    }
+
+    public bool SkipListApplied
+    {
+        get => State.SkipListApplied;
+        private set => State.SkipListApplied = value;
+    }
+
+    public bool FadeSpecialCaseApplied
+    {
+        get => State.FadeSpecialCaseApplied;
+        private set => State.FadeSpecialCaseApplied = value;
+    }
+
+    public string? UnsupportedCommand { get; private set; }
+    public int ScriptFrameRemaining
+    {
+        get => State.ScriptFrameRemaining;
+        private set => State.ScriptFrameRemaining = value;
+    }
+
+    public float GamePauseTarget
+    {
+        get => State.GamePauseTarget;
+        private set => State.GamePauseTarget = value;
+    }
+
+    public float GamePauseCounter
+    {
+        get => State.GamePauseCounter;
+        private set => State.GamePauseCounter = value;
+    }
+
+    public IReadOnlyList<string> Executed => State.Executed;
+    public bool Blocked => State.Blocked;
+    public string? BlockReason => State.BlockReason;
+    public bool CameraPauseEnabled => State.CameraPauseEnabled;
+    public ExecutionKind CurrentWaitKind => State.WaitKind;
+    internal CutsceneState State { get; }
 
     public ScriptInterpreter(string name, IReadOnlyList<string> commands)
     {
-        Name = name;
-        Commands = commands;
+        State = new CutsceneState(name, commands);
     }
 
     public void RunUntilYield(IScriptHost? host = null)
     {
-        if (Finished || Yielded)
+        var runtime = host as ScriptRuntime ?? ScriptRuntime.Detached();
+        RunUntilYield(runtime.BindInterpreter(this));
+    }
+
+    public void RunUntilYield(ScriptExecutionContext ctx)
+    {
+        if (Finished || Yielded || Blocked)
             return;
         if (InstructionPointer == 0 && !FadeSpecialCaseApplied)
-            TryFadeSpecialCase(host);
+            TryFadeSpecialCase(ctx.Runtime);
 
         while (InstructionPointer < Commands.Count)
         {
+            if (State.WaitKind is ExecutionKind.WaitFrames
+                or ExecutionKind.WaitScaledFrames
+                or ExecutionKind.BlockPump
+                or ExecutionKind.WaitOperation)
+            {
+                if (!TickWait(ctx))
+                {
+                    Yielded = true;
+                    return;
+                }
+
+                var done = Commands[InstructionPointer];
+                if (!State.Executed.Contains(done))
+                    State.Executed.Add(done);
+                State.WaitKind = ExecutionKind.Continue;
+                State.WaitOperationId = null;
+                InstructionPointer++;
+                continue;
+            }
+
             var raw = Commands[InstructionPointer];
-            var command = ScriptCommand.Parse(raw);
-            if (command.Verb.Equals("DoScriptFrame", StringComparison.OrdinalIgnoreCase))
+            var line = ScriptLine.Parse(raw);
+            var resolved = ctx.Arguments.Substitute(line, out var unresolved);
+            if (unresolved is not null)
             {
-                if (!TickScriptFrame(command.Arguments))
-                {
-                    Yielded = true;
-                    Record(host, command, ScriptFlow.Yield);
-                    return;
-                }
-
-                _executed.Add(raw);
-                InstructionPointer++;
-                Record(host, command, ScriptFlow.Continue);
-                continue;
-            }
-
-            if (command.Verb.Equals("GamePause", StringComparison.OrdinalIgnoreCase))
-            {
-                if (!TickGamePause(command.Arguments))
-                {
-                    Yielded = true;
-                    Record(host, command, ScriptFlow.Yield);
-                    return;
-                }
-
-                host?.GamePause(ParseGamePauseSeconds(command.Arguments));
-                _executed.Add(raw);
-                InstructionPointer++;
-                Record(host, command, ScriptFlow.Continue);
-                continue;
-            }
-
-            if (command.Verb.Equals("PlayAVI", StringComparison.OrdinalIgnoreCase))
-            {
-                if (!TickPlayAvi(raw, command.Arguments, host))
-                {
-                    Yielded = true;
-                    Record(host, command, ScriptFlow.Yield);
-                    return;
-                }
-
-                Record(host, command, ScriptFlow.Continue);
-                continue;
-            }
-
-            var flow = ScriptCommand.Classify(command);
-            if (flow == ScriptFlow.Yield)
-            {
-                UnsupportedCommand = raw;
-                Yielded = true;
-                Record(host, command, flow);
+                EnterBlocked("UNRESOLVED ARG", raw);
+                Record(ctx, resolved, CommandResult.Blocked(
+                    "UNRESOLVED ARG", CommandStatus.Unread, resolved.Family, raw));
                 return;
             }
 
-            Dispatch(command, host);
-            _executed.Add(raw);
-            InstructionPointer++;
-            if (flow == ScriptFlow.YieldAfter)
-                Yielded = true;
-            Record(host, command, flow);
-            if (flow == ScriptFlow.YieldAfter)
+            var result = resolved.Family == CommandFamily.Entity
+                ? EntityDispatcher.Dispatch(resolved, ctx)
+                : GlobalDispatcher.Dispatch(resolved, ctx);
+
+            if (result.Kind == ExecutionKind.Blocked)
+            {
+                EnterBlocked(result.YieldReason, raw);
+                Record(ctx, resolved, result);
                 return;
+            }
+
+            if (result.Kind == ExecutionKind.Continue)
+            {
+                if (!State.Executed.Contains(raw))
+                    State.Executed.Add(raw);
+                if (result.AdvancePc)
+                    InstructionPointer++;
+                Record(ctx, resolved, result);
+                continue;
+            }
+
+            State.WaitKind = result.Kind;
+            State.WaitOperationId = result.OperationId;
+            State.YieldReason = result.YieldReason;
+            State.ResumeReason = result.ResumeReason;
+            Yielded = true;
+            if (result.Kind is ExecutionKind.YieldOnce or ExecutionKind.BlockPump
+                or ExecutionKind.WaitOperation)
+            {
+                if (!State.Executed.Contains(raw))
+                    State.Executed.Add(raw);
+                if (result.Kind == ExecutionKind.YieldOnce && result.AdvancePc)
+                    InstructionPointer++;
+            }
+
+            Record(ctx, resolved, result);
+            return;
         }
 
         Finished = true;
     }
 
+    public CommandResult EvaluateOne(ScriptRuntime runtime)
+    {
+        var ctx = runtime.BindInterpreter(this);
+        var line = ScriptLine.Parse(Commands[InstructionPointer]);
+        var resolved = ctx.Arguments.Substitute(line, out var unresolved);
+        if (unresolved is not null)
+            return CommandResult.Blocked("UNRESOLVED ARG", CommandStatus.Unread, resolved.Family, line.Raw);
+        return resolved.Family == CommandFamily.Entity
+            ? EntityDispatcher.Dispatch(resolved, ctx)
+            : GlobalDispatcher.Dispatch(resolved, ctx);
+    }
+
     /// <summary>
     /// <c>00A44660</c> resume: continue after <c>vtbl+28</c>.
-    /// Unread waits re-yield on the same IP.
+    /// Blocked / unread waits stay on the same PC.
     /// </summary>
     public void Resume(IScriptHost? host = null)
     {
-        if (Finished)
+        if (Finished || Blocked)
             return;
         Yielded = false;
         UnsupportedCommand = null;
+        if (State.WaitKind == ExecutionKind.YieldOnce)
+            State.WaitKind = ExecutionKind.Continue;
         RunUntilYield(host);
+    }
+
+    internal void Resume(ScriptExecutionContext ctx)
+    {
+        if (Finished || Blocked)
+            return;
+        Yielded = false;
+        UnsupportedCommand = null;
+        if (State.WaitKind == ExecutionKind.YieldOnce)
+            State.WaitKind = ExecutionKind.Continue;
+        RunUntilYield(ctx);
     }
 
     /// <summary>
@@ -141,21 +223,72 @@ public sealed class ScriptInterpreter
         ScriptFrameRemaining = 0;
         GamePauseTarget = 0f;
         GamePauseCounter = 0f;
-        _gamePausePhase = 0;
+        State.GamePausePhase = 0;
+        State.WaitKind = ExecutionKind.Continue;
     }
 
     public bool ExecutedVerb(string verb) =>
-        _executed.Any(line =>
+        State.Executed.Any(line =>
             ScriptCommand.Parse(line).Verb.Equals(verb, StringComparison.OrdinalIgnoreCase));
 
-    private void TryFadeSpecialCase(IScriptHost? host)
+    private void TryFadeSpecialCase(ScriptRuntime runtime)
     {
         if (Commands.Count == 0)
             return;
         if (!Commands[0].Equals(RegionTravel.FadeSpecialCase, StringComparison.Ordinal))
             return;
         FadeSpecialCaseApplied = true;
-        host?.FadeOut(RegionTravel.FadeSpecialCaseSeconds, 0f);
+        runtime.ApplyFadeOut(RegionTravel.FadeSpecialCaseSeconds, 0f);
+    }
+
+    private void EnterBlocked(string reason, string raw)
+    {
+        State.Blocked = true;
+        State.BlockReason = reason;
+        UnsupportedCommand = raw;
+        Yielded = true;
+    }
+
+    private bool TickWait(ScriptExecutionContext ctx)
+    {
+        switch (State.WaitKind)
+        {
+            case ExecutionKind.WaitFrames:
+                return TickScriptFrame("");
+            case ExecutionKind.WaitScaledFrames:
+                return TickGamePause("");
+            case ExecutionKind.BlockPump:
+                if (ctx.Runtime.AviPlaying)
+                    return false;
+                State.AviAt = -1;
+                return true;
+            case ExecutionKind.WaitOperation:
+                return OperationComplete(ctx);
+            default:
+                return true;
+        }
+    }
+
+    private static bool OperationComplete(ScriptExecutionContext ctx)
+    {
+        var id = ctx.Cutscene.WaitOperationId;
+        if (id is null)
+            return true;
+        if (ctx.Dialogue.WaitOp is { } dialog && dialog.Id == id)
+            return dialog.Complete;
+        foreach (var op in ctx.Animation.ByActor.Values)
+        {
+            if (op.Id == id)
+                return op.Complete;
+        }
+
+        foreach (var op in ctx.Movement.ByActor.Values)
+        {
+            if (op.Id == id)
+                return op.Complete;
+        }
+
+        return false;
     }
 
     /// <summary>
@@ -178,35 +311,6 @@ public sealed class ScriptInterpreter
     }
 
     /// <summary>
-    /// <c>006286F0</c> is a blocking apply: no
-    /// <c>vtbl+28</c>, then <c>jmp 00CD17F8</c>.
-    /// Stay on this line until the player returns.
-    /// </summary>
-    private bool TickPlayAvi(string raw, string arguments, IScriptHost? host)
-    {
-        if (host is null)
-        {
-            _executed.Add(raw);
-            InstructionPointer++;
-            return true;
-        }
-
-        if (_aviAt != InstructionPointer)
-        {
-            host.PlayAvi(arguments);
-            _executed.Add(raw);
-            _aviAt = InstructionPointer;
-        }
-
-        if (host.AviPlaying)
-            return false;
-
-        InstructionPointer++;
-        _aviAt = -1;
-        return true;
-    }
-
-    /// <summary>
     /// <c>00CC88D1</c> default path (no <c>clock</c>):
     /// <c>0099E690</c> atof, target = seconds *
     /// <c>[0x124E640]=15</c>, first <c>vtbl+28</c>,
@@ -216,20 +320,20 @@ public sealed class ScriptInterpreter
     /// </summary>
     private bool TickGamePause(string arguments)
     {
-        if (_gamePausePhase == 0)
+        if (State.GamePausePhase == 0)
         {
             GamePauseTarget = ParseGamePauseSeconds(arguments) * RegionTravel.GamePauseScale;
             GamePauseCounter = 0f;
-            _gamePausePhase = 1;
+            State.GamePausePhase = 1;
             return false;
         }
 
-        if (_gamePausePhase == 1)
+        if (State.GamePausePhase == 1)
         {
-            _gamePausePhase = 2;
+            State.GamePausePhase = 2;
             if (GamePauseCounter >= GamePauseTarget)
             {
-                _gamePausePhase = 0;
+                State.GamePausePhase = 0;
                 return true;
             }
 
@@ -239,7 +343,7 @@ public sealed class ScriptInterpreter
         GamePauseCounter += RegionTravel.GamePauseIncrement;
         if (GamePauseCounter < GamePauseTarget)
             return false;
-        _gamePausePhase = 0;
+        State.GamePausePhase = 0;
         return true;
     }
 
@@ -282,119 +386,19 @@ public sealed class ScriptInterpreter
         return negative ? -n : n;
     }
 
-    private static void Dispatch(ScriptCommand command, IScriptHost? host)
-    {
-        if (host is null)
-            return;
-        if (command.Verb.Equals("PlayMusic", StringComparison.OrdinalIgnoreCase))
-            host.PlayMusic(command.Arguments);
-        else if (command.Verb.Equals("FadeOut", StringComparison.OrdinalIgnoreCase))
+    /// <summary>
+    /// Evidence-only helper. Execution does not use this.
+    /// Prefer <see cref="EvaluateOne"/>.
+    /// </summary>
+    public static ScriptFlow FlowOf(CommandResult result) =>
+        result.Kind switch
         {
-            ParseFadeArgs(command.Arguments, out var seconds, out var param);
-            host.FadeOut(seconds, param);
-        }
-        else if (command.Verb.Equals("FadeIn", StringComparison.OrdinalIgnoreCase))
-        {
-            ParseFadeArgs(command.Arguments, out var seconds, out var param);
-            host.FadeIn(seconds, param);
-        }
-        else if (command.Verb.Equals("UseCamera", StringComparison.OrdinalIgnoreCase))
-            host.UseCamera(FirstToken(command.Arguments));
-        else if (command.Verb.Equals("NoLoadUseCamera", StringComparison.OrdinalIgnoreCase))
-            host.NoLoadUseCamera(FirstToken(command.Arguments));
-        else if (command.Verb.Equals("PlayAnimation", StringComparison.OrdinalIgnoreCase))
-            host.PlayAnimation(command.Actor, command.Arguments);
-        else if (command.Verb.Equals("CameraPause", StringComparison.OrdinalIgnoreCase))
-            host.CameraPause(command.Arguments);
-        else if (command.Verb.Equals("Teleport", StringComparison.OrdinalIgnoreCase))
-            host.Teleport(command.Actor, command.Arguments);
-        else if (command.Verb.Equals("LookToThing", StringComparison.OrdinalIgnoreCase))
-            host.LookToThing(command.Actor, command.Arguments);
-        else if (command.Verb.Equals("DoCameraPreloading", StringComparison.OrdinalIgnoreCase))
-            host.DoCameraPreloading(command.Arguments);
-        else if (command.Verb.Equals("PlayAVI", StringComparison.OrdinalIgnoreCase))
-            host.PlayAvi(command.Arguments);
-        else if (command.Verb.Equals("MuteSounds", StringComparison.OrdinalIgnoreCase))
-            host.MuteSounds(command.Arguments);
-        else if (command.Verb.Equals("StartTimeCode", StringComparison.OrdinalIgnoreCase))
-            host.StartTimeCode();
-        else if (command.Verb.Equals("Speak", StringComparison.OrdinalIgnoreCase))
-        {
-            var speech = ScriptCommand.ParseSpeak(command.Arguments);
-            if (speech.Target.Length != 0 &&
-                speech.Text.Length != 0 &&
-                !ScriptCommand.IsNullArg(speech.Text))
-                host.Speak(command.Actor, speech.Target, speech.Text, speech.Mode);
-        }
-        else if (command.Verb.Equals("InteractiveSpeak", StringComparison.OrdinalIgnoreCase))
-        {
-            var speech = ScriptCommand.ParseInteractiveSpeak(command.Arguments);
-            host.InteractiveSpeak(
-                command.Actor, speech.Listener, speech.Prompt, speech.Wait, speech.Response);
-        }
-        else if (command.Verb.Equals("DialogSpeak", StringComparison.OrdinalIgnoreCase))
-        {
-            var speech = ScriptCommand.ParseDialogSpeak(command.Arguments);
-            if (speech.Listener.Length != 0 &&
-                speech.Text.Length != 0 &&
-                !ScriptCommand.IsNullArg(speech.Text))
-                host.DialogSpeak(command.Actor, speech.Listener, speech.Text);
-        }
-        else if (command.Verb.Equals("WaitTask", StringComparison.OrdinalIgnoreCase))
-        {
-            if (!string.IsNullOrEmpty(command.Actor))
-                host.WaitTask(command.Actor, ScriptInterpreter.FirstToken(command.Arguments));
-        }
-        else if (command.Verb.Equals("SneakTo", StringComparison.OrdinalIgnoreCase))
-        {
-            var sneak = ScriptCommand.ParseSneakTo(command.Arguments);
-            if (sneak.Marker.Length != 0)
-                host.SneakTo(command.Actor, sneak.Marker, sneak.Speed, sneak.Wait);
-        }
-        else if (command.Verb.Equals("WalkTo", StringComparison.OrdinalIgnoreCase))
-        {
-            var walk = ScriptCommand.ParseSneakTo(command.Arguments);
-            if (walk.Marker.Length != 0)
-                host.WalkTo(command.Actor, walk.Marker, walk.Speed, walk.Wait);
-        }
-        else if (ScriptCommand.IsPlayCombatAnimation(command.Verb))
-        {
-            var anim = ScriptCommand.ParsePlayCombatAnimation(command.Arguments);
-            if (anim.Name.Length != 0)
-                host.PlayCombatAnimation(
-                    command.Actor, anim.Name, anim.FlagA, anim.FlagB, anim.FlagC, anim.FlagD, anim.FlagE, anim.Count);
-        }
-        else if (command.Verb.Equals("Create", StringComparison.OrdinalIgnoreCase))
-        {
-            var create = ScriptCommand.ParseCreate(command.Arguments);
-            if (create.Type.Length != 0 &&
-                create.Marker.Length != 0 &&
-                create.Name.Length != 0)
-                host.Create(create.Type, create.Marker, create.Name);
-        }
-        else if (command.Verb.Equals("WaitActiveDialog", StringComparison.OrdinalIgnoreCase))
-            host.WaitActiveDialog();
-        else if (command.Verb.Equals("Remove", StringComparison.OrdinalIgnoreCase))
-        {
-            var name = ScriptInterpreter.FirstToken(command.Arguments);
-            if (name.Length != 0)
-                host.Remove(name);
-        }
-        else if (command.Verb.Equals("DialogadSpeak", StringComparison.OrdinalIgnoreCase))
-        {
-            var speech = ScriptCommand.ParseDialogadSpeak(command.Arguments);
-            if (!string.IsNullOrEmpty(command.Actor) &&
-                speech.Target.Length != 0 &&
-                speech.Text.Length != 0)
-                host.DialogadSpeak(command.Actor, speech.Target, speech.Text, speech.Mode);
-        }
-        else if (command.Verb.Equals("LookInDirection", StringComparison.OrdinalIgnoreCase))
-        {
-            var look = ScriptCommand.ParseLookInDirection(command.Arguments);
-            if (!string.IsNullOrEmpty(command.Actor) && look.HasDegrees)
-                host.LookInDirection(command.Actor, look.Degrees, look.Flag);
-        }
-    }
+            ExecutionKind.Continue => ScriptFlow.Continue,
+            ExecutionKind.Blocked => ScriptFlow.Yield,
+            ExecutionKind.WaitFrames or ExecutionKind.WaitScaledFrames
+                or ExecutionKind.BlockPump or ExecutionKind.WaitOperation => ScriptFlow.Yield,
+            _ => ScriptFlow.YieldAfter,
+        };
 
     internal static void ParseFadeArgs(string arguments, out float seconds, out float param)
     {
@@ -409,32 +413,45 @@ public sealed class ScriptInterpreter
             float.TryParse(parts[1], NumberStyles.Float, CultureInfo.InvariantCulture, out param);
     }
 
-    private void Record(IScriptHost? host, ScriptCommand command, ScriptFlow flow)
+    private void Record(ScriptExecutionContext ctx, ScriptLine line, CommandResult result)
     {
-        if (host is not IScriptTrace trace)
-            return;
-        var runtime = host as ScriptRuntime;
-        var lastAnim = runtime is { Animations.Count: > 0 }
-            ? runtime.Animations[^1].Name
-            : "";
-        trace.OnStep(new RuntimeTraceStep(
-            runtime?.Frame ?? 0,
-            runtime?.Time ?? 0f,
+        var runtime = ctx.Runtime;
+        var lastAnim = runtime.Animations.Count > 0 ? runtime.Animations[^1].Name : "";
+        var changes = ctx.Bindings.DrainChanges();
+        runtime.Trace.Add(new RuntimeTraceStep(
+            runtime.Frame,
+            runtime.Time,
+            ctx.Runtime.ActiveQuestName,
             Name,
             InstructionPointer,
-            command.Raw,
-            command.Verb,
-            command.Arguments,
-            flow,
+            line.Raw,
+            line.Verb,
+            line.Target ?? "",
+            string.Join(",", line.Args),
+            line.Family,
+            result.Kind,
+            result.Status,
+            result.YieldReason,
+            result.ResumeReason,
+            result.OperationId ?? "",
             Yielded,
             Finished,
-            ScriptCommandMap.StatusOf(command.Verb),
-            runtime?.TraceSideEffect(command.Verb) ?? "",
-            runtime?.TracePersistSnapshot() ?? "",
-            runtime?.Interpreters.Count ?? 0,
-            runtime?.CameraName ?? "",
+            Blocked,
+            result.SideEffect,
+            ctx.Persist.Snapshot(),
+            runtime.Interpreters.Count,
+            runtime.CameraName,
             lastAnim,
-            runtime?.TraceWorldSnapshot() ?? ""));
+            runtime.TraceWorldSnapshot(),
+            string.Join(",", changes),
+            runtime.ActiveFiber?.Id ?? 0,
+            State.InstanceId,
+            runtime.ActiveFiber?.State.ToString() ?? "",
+            runtime.ActiveFiber?.WakeTime ?? 0f,
+            State.WaitKind.ToString(),
+            State.WaitOperationId ?? "",
+            result.OperationId ?? "",
+            State.ResumeReason));
     }
 
     internal static string FirstToken(string arguments)
@@ -461,13 +478,9 @@ public readonly struct ScriptCommand
 
     public static ScriptCommand Parse(string raw)
     {
-        var space = raw.IndexOf(' ');
-        var head = space < 0 ? raw : raw[..space];
-        var arguments = space < 0 ? "" : raw[(space + 1)..];
-        var dot = head.LastIndexOf('.');
-        if (dot > 0)
-            return new ScriptCommand(raw, head[(dot + 1)..], head[..dot], arguments);
-        return new ScriptCommand(raw, head, null, arguments);
+        var line = ScriptLine.Parse(raw);
+        var arguments = line.Args.Count == 0 ? "" : string.Join(",", line.Args);
+        return new ScriptCommand(raw, line.Verb, line.Target, arguments);
     }
 
     /// <summary>
@@ -663,92 +676,14 @@ public readonly struct ScriptCommand
         return parts;
     }
 
+    /// <summary>
+    /// Dry-run the real dispatcher. Not a Verb→ScriptFlow table.
+    /// </summary>
     public static ScriptFlow Classify(ScriptCommand command)
     {
-        var verb = command.Verb;
-        if (verb.Equals("PlayMusic", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("FadeOut", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("FadeIn", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("CameraPause", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("Teleport", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("DoCameraPreloading", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("PlayAVI", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("MuteSounds", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("StartTimeCode", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("Create", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("Remove", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("DialogadSpeak", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("LookInDirection", StringComparison.OrdinalIgnoreCase))
-            return ScriptFlow.Continue;
-        if (verb.Equals("UseCamera", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("NoLoadUseCamera", StringComparison.OrdinalIgnoreCase))
-        {
-            var name = ScriptInterpreter.FirstToken(command.Arguments);
-            if (name.Length == 0 || IsNullArg(name))
-                return ScriptFlow.Continue;
-            return ScriptFlow.YieldAfter;
-        }
-
-        if (verb.Equals("PlayAnimation", StringComparison.OrdinalIgnoreCase))
-            return ScriptFlow.YieldAfter;
-        if (verb.Equals("Speak", StringComparison.OrdinalIgnoreCase))
-        {
-            var speech = ParseSpeak(command.Arguments);
-            if (speech.Target.Length == 0 ||
-                speech.Text.Length == 0 ||
-                IsNullArg(speech.Text))
-                return ScriptFlow.Continue;
-            return ScriptFlow.YieldAfter;
-        }
-
-        if (verb.Equals("InteractiveSpeak", StringComparison.OrdinalIgnoreCase))
-        {
-            var speech = ParseInteractiveSpeak(command.Arguments);
-            if (speech.Listener.Length == 0 || speech.Prompt.Length == 0)
-                return ScriptFlow.Continue;
-            return speech.Wait ? ScriptFlow.Yield : ScriptFlow.YieldAfter;
-        }
-        if (verb.Equals("DialogSpeak", StringComparison.OrdinalIgnoreCase))
-        {
-            var speech = ParseDialogSpeak(command.Arguments);
-            if (speech.Listener.Length == 0 ||
-                speech.Text.Length == 0 ||
-                IsNullArg(speech.Text))
-                return ScriptFlow.Continue;
-            return ScriptFlow.YieldAfter;
-        }
-        if (verb.Equals("WaitTask", StringComparison.OrdinalIgnoreCase))
-            return string.IsNullOrEmpty(command.Actor) ? ScriptFlow.Continue : ScriptFlow.YieldAfter;
-        if (verb.Equals("WaitActiveDialog", StringComparison.OrdinalIgnoreCase))
-            return ScriptFlow.YieldAfter;
-        if (verb.Equals("SneakTo", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("WalkTo", StringComparison.OrdinalIgnoreCase))
-        {
-            if (string.IsNullOrEmpty(command.Actor))
-                return ScriptFlow.Continue;
-            var move = ParseSneakTo(command.Arguments);
-            if (move.Marker.Length == 0)
-                return ScriptFlow.Continue;
-            if (verb.Equals("WalkTo", StringComparison.OrdinalIgnoreCase) && move.Wait)
-                return ScriptFlow.Yield;
-            return ScriptFlow.YieldAfter;
-        }
-        if (IsPlayCombatAnimation(verb))
-        {
-            var anim = ParsePlayCombatAnimation(command.Arguments);
-            if (anim.Name.Length == 0)
-                return ScriptFlow.Continue;
-            return ScriptFlow.YieldAfter;
-        }
-        if (verb.Equals("LookToThing", StringComparison.OrdinalIgnoreCase))
-        {
-            var args = SplitArgs(command.Arguments);
-            if (args.Length >= 3 && IsFalseArg(args[2]))
-                return ScriptFlow.Continue;
-            return ScriptFlow.YieldAfter;
-        }
-
-        return ScriptFlow.Yield;
+        var runtime = ScriptRuntime.Detached();
+        var interpreter = new ScriptInterpreter("classify", [command.Raw]);
+        return ScriptInterpreter.FlowOf(interpreter.EvaluateOne(runtime));
     }
 }
 
