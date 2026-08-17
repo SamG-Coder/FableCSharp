@@ -328,6 +328,8 @@ public sealed class WorldSceneTests
         Assert.Equal(0x8004022Au, RegionTravel.PlayAviTypeNotAccepted);
         Assert.True(RegionTravel.FirstSeenPlayAviCheckMediaTypeReadsVih);
         Assert.Equal(1, RegionTravel.PlayAviFilterMiscIsRenderer);
+        Assert.Equal(0x00CA68F0u, RegionTravel.PlayAviConnectedTo);
+        Assert.Equal(0x80040209u, RegionTravel.PlayAviNotConnected);
         Assert.True(RegionTravel.FirstSeenPlayAviDraws);
         Assert.True(RegionTravel.FirstSeenPlayAviLetterbox);
         Assert.Equal(0x00CC9E6Au, RegionTravel.NoLoadUseCameraSite);

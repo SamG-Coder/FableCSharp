@@ -240,6 +240,9 @@ public static class RegionTravel
     public const uint PlayAviTypeNotAccepted = 0x8004022A;
     public const bool FirstSeenPlayAviCheckMediaTypeReadsVih = true;
     public const int PlayAviFilterMiscIsRenderer = 1;
+    public const uint PlayAviConnectedTo = 0x00CA68F0;
+    public const uint PlayAviNotConnected = 0x80040209;
+    public const uint PlayAviQueryDirection = 0x00CA76F0;
     public static readonly Guid PlayAviFilterGraphClsid =
         new("e436ebb3-524f-11ce-9f53-0020af0ba770");
     public static readonly Guid PlayAviGraphBuilderIid =

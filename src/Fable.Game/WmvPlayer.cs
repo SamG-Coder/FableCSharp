@@ -273,10 +273,12 @@ public sealed class WmvPlayer : IDisposable
             {
                 if (pin.QueryDirection(out var dir) < 0 || dir != PinDirection.Output)
                     continue;
-                if (pin.ConnectedTo(out var dest) >= 0 && dest is not null)
+                if (pin.ConnectedTo(out var dest) >= 0 && dest != IntPtr.Zero)
                 {
+                    var destPin = (IPin)Marshal.GetObjectForIUnknown(dest);
+                    Marshal.Release(dest);
                     _graph.Disconnect(pin);
-                    _graph.Disconnect(dest);
+                    _graph.Disconnect(destPin);
                 }
 
                 tried++;
@@ -697,7 +699,7 @@ public sealed class WmvPlayer : IDisposable
         [PreserveSig] int Connect(IPin receive, IntPtr type);
         [PreserveSig] int ReceiveConnection(IPin connector, IntPtr type);
         [PreserveSig] int Disconnect();
-        [PreserveSig] int ConnectedTo(out IPin? pin);
+        [PreserveSig] int ConnectedTo(out IntPtr pin);
         [PreserveSig] int ConnectionMediaType(out AMMediaType type);
         [PreserveSig] int QueryPinInfo(out PinInfo info);
         [PreserveSig] int QueryDirection(out PinDirection direction);
@@ -913,7 +915,7 @@ public sealed class WmvPlayer : IDisposable
         public int ReceiveConnection(IPin connector, IntPtr type) =>
             _pin.ReceiveConnection(connector, type);
         public int Disconnect() => _pin.Disconnect();
-        public int ConnectedTo(out IPin? pin) => _pin.ConnectedTo(out pin);
+        public int ConnectedTo(out IntPtr pin) => _pin.ConnectedTo(out pin);
         public int ConnectionMediaType(out AMMediaType type) => _pin.ConnectionMediaType(out type);
         public int QueryPinInfo(out PinInfo info) => _pin.QueryPinInfo(out info);
         public int QueryDirection(out PinDirection direction) => _pin.QueryDirection(out direction);
@@ -1021,11 +1023,21 @@ public sealed class WmvPlayer : IDisposable
             return 0;
         }
 
-        public int ConnectedTo(out IPin? pin)
+        public int ConnectedTo(out IntPtr pin)
         {
+            // 00CA68F0 / strmbase ConnectedTo writes
+            // *ppPin. out IPin? left a non-null slot
+            // so RenderFile treated the pin as already
+            // connected and never QueryAccept'd.
             ConnectedToCalls++;
-            pin = _connected;
-            return pin is null ? unchecked((int)0x80040209) : 0;
+            if (_connected is null)
+            {
+                pin = IntPtr.Zero;
+                return unchecked((int)0x80040209);
+            }
+
+            pin = Marshal.GetComInterfaceForObject(_connected, typeof(IPin));
+            return 0;
         }
 
         public int ConnectionMediaType(out AMMediaType type)
