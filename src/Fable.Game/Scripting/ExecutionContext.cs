@@ -508,6 +508,7 @@ public sealed class WorldRuntime
     public readonly List<(string Item, int Count)> HeroGifts = [];
     public readonly List<(bool Hide, string Mode)> ExtraOps = [];
     public readonly List<(string Verb, string Arg)> RemoveFamily = [];
+    public readonly List<ScriptCreate> Effects = [];
     public bool SwordsUp { get; set; }
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
@@ -551,6 +552,11 @@ public sealed class WorldRuntime
 
     public ThingInstance Spawn(string type, string marker, string name, Vector3? pos)
     {
+        var props = new Dictionary<string, string>
+        {
+            ["Marker"] = marker,
+            ["Created"] = "1",
+        };
         var thing = new ThingInstance
         {
             Kind = "CTC",
@@ -560,11 +566,7 @@ public sealed class WorldRuntime
             PositionX = pos?.X,
             PositionY = pos?.Y,
             PositionZ = pos?.Z,
-            Properties = new Dictionary<string, string>
-            {
-                ["Marker"] = marker,
-                ["Created"] = "1",
-            },
+            Properties = props,
         };
         Creates.Add(new ScriptCreate(type, marker, name));
         Spawned.Add(thing);
@@ -572,6 +574,33 @@ public sealed class WorldRuntime
         if (pos is { } p)
             Positions[name] = p;
         return thing;
+    }
+
+    /// <summary>
+    /// <c>00CCBBEE</c> <c>vtbl+400</c> effect factory.
+    /// Distinct from Create <c>vtbl+364</c>.
+    /// </summary>
+    public ThingInstance SpawnEffect(string type, string marker, string name, Vector3? pos)
+    {
+        var thing = Spawn(type, marker, name, pos);
+        var props = new Dictionary<string, string>(thing.Properties, StringComparer.OrdinalIgnoreCase)
+        {
+            ["Effect"] = "1",
+        };
+        var tagged = new ThingInstance
+        {
+            Kind = thing.Kind,
+            Section = thing.Section,
+            DefinitionType = thing.DefinitionType,
+            ScriptName = thing.ScriptName,
+            PositionX = thing.PositionX,
+            PositionY = thing.PositionY,
+            PositionZ = thing.PositionZ,
+            Properties = props,
+        };
+        Spawned[^1] = tagged;
+        Effects.Add(new ScriptCreate(type, marker, name));
+        return tagged;
     }
 
     public void Destroy(string name)

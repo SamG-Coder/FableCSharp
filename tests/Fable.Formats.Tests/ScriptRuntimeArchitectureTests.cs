@@ -823,6 +823,121 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void CreateEffect_spawns_at_marker_plus_z()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "MK_FX",
+                PositionX = 3,
+                PositionY = 4,
+                PositionZ = 1,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], null);
+        var interp = new ScriptInterpreter("fx",
+            ["CreateEffect FX_FIRE,MK_FX,FLAME,2.5"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Single(runtime.World.Effects);
+        Assert.Equal("FX_FIRE", runtime.World.Effects[0].Type);
+        Assert.Equal("FLAME", runtime.World.Effects[0].Name);
+        Assert.Equal(3f, runtime.World.Positions["FLAME"].X);
+        Assert.Equal(4f, runtime.World.Positions["FLAME"].Y);
+        Assert.Equal(3.5f, runtime.World.Positions["FLAME"].Z);
+        Assert.Equal("1", runtime.World.Spawned[0].Properties["Effect"]);
+        Assert.NotNull(runtime.Bindings.Resolve("FLAME"));
+        Assert.Equal(0x00CCBCDAu, ScriptCommandMap.Find("CreateEffect")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("Create")!.Value.ApplySite,
+            ScriptCommandMap.Find("CreateEffect")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void CreateEffect_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("CreateEffect ", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "CreateEffect FX_FIRE,MK_FX,FLAME,0";
+        hit ??= bank.Find("CS_OAKVALE_INTRO_FATHER") ?? bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("CreateEffect", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        Assert.True(parsed.Arg(1).Length > 0);
+
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        using var levels = new LevelLibrary(install);
+        runtime.BindScene(levels.LoadThings(RegionTravel.NewGameRegion).Things.ToList(), null);
+        if (runtime.FindThingByName(parsed.Arg(1)) is null)
+        {
+            runtime.BindScene(
+            [
+                new ThingInstance
+                {
+                    Kind = "CTC",
+                    Section = "Thing",
+                    DefinitionType = "Marker",
+                    ScriptName = parsed.Arg(1),
+                    PositionX = 1,
+                    PositionY = 2,
+                    PositionZ = 0,
+                    Properties = new Dictionary<string, string>(),
+                },
+            ], null);
+        }
+
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-fx", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("CreateEffect", StringComparison.OrdinalIgnoreCase));
+        Assert.NotEmpty(runtime.World.Effects);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-fx.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-createeffect.txt"),
+            """
+            CreateEffect 00CCBB9A / apply 00CCBCDA
+              arg0 type + arg1 marker required else 00CD17FD
+              00CBF9DE(arg1); fail -> continue 00CC864B
+              default name empty CString 0x122D70E; arg2 overwrites
+              default z=0; arg3 atof added to marker+8
+              vtbl+400(type, pos, name) — not Create 364 / Near 368 / Object 392
+              vtbl+2048(spawn,2); IsTrue(arg4) or empty -> 008ADF90 extras
+              jmp 00CC864B no yield
+            """);
+    }
+
+    [Fact]
     public void CreateNear_spawns_at_near_thing_position()
     {
         var runtime = ScriptRuntime.Detached();

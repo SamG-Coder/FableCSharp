@@ -1,3 +1,4 @@
+using System.Numerics;
 using Fable.Formats.Tng;
 
 namespace Fable.Game.Scripting;
@@ -294,6 +295,9 @@ public static class GlobalDispatcher
                 $"{type}->{name}", $"Created:{name}");
         }
 
+        if (Eq(v, "CreateEffect"))
+            return ApplyCreateEffect(line, ctx);
+
         if (Eq(v, "CreateNear"))
         {
             var type = line.Arg(0);
@@ -576,6 +580,44 @@ public static class GlobalDispatcher
         ctx.Bindings.Unbind(name);
         return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name,
             $"unbind {name}");
+    }
+
+    /// <summary>
+    /// <c>00CCBBEE</c>: arg0 type + arg1 marker required.
+    /// Optional arg2 name (default empty CString
+    /// <c>0x122D70E</c>). Optional arg3 Z added to
+    /// marker pos. <c>vtbl+400</c>. Continue
+    /// <c>00CC864B</c>.
+    /// </summary>
+    internal static CommandResult ApplyCreateEffect(
+        ScriptLine line, ScriptExecutionContext ctx)
+    {
+        var type = line.Arg(0);
+        var marker = line.Arg(1);
+        if (type.Length == 0 || marker.Length == 0)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        var name = line.Arg(2);
+        var z = 0f;
+        if (line.Arg(3).Length > 0)
+            ScriptLine.TryFloat(line.Arg(3), out z);
+        var markerThing = ctx.FindThing(marker);
+        Vector3? pos = null;
+        if (markerThing is { PositionX: not null })
+        {
+            var p = RegionTravel.PositionOf(markerThing);
+            pos = new Vector3(p.X, p.Y, p.Z + z);
+        }
+        else if (ctx.World.Positions.TryGetValue(marker, out var stored))
+            pos = new Vector3(stored.X, stored.Y, stored.Z + z);
+        else
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, marker);
+        var spawned = ctx.World.SpawnEffect(type, marker, name, pos);
+        ctx.Runtime.AddThing(spawned);
+        if (name.Length > 0)
+            ctx.Bindings.BindCreated(name, type, marker, pos, spawned);
+        return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+            $"{type}->{name} z={z:0.##}",
+            name.Length > 0 ? $"Created:{name}" : "");
     }
 
     /// <summary>

@@ -17,6 +17,7 @@
 | ScriptFrame | `00CC7124` | `00CC7181` | [IsFalse] | CompleteNow | Proven | Proven | Proven | Proven | Proven | Proven | IsFalse -> [ebp+103]=!IsFalse yield-enable; jmp 00CC8464 |
 | DoOneFrame | `00CC75A8` | `00CC7605` |  | YieldAfter | Proven | Proven | Proven | Proven | Proven | Proven | if [ebp+103] vtbl+28; timecode; jmp 00CC8464 |
 | CreateNear | `00CCBEE7` | `00CCC027` | type,near,name[,radius] | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | atof arg3; 004AA980 pos; vtbl+368 factory (not 364/392); offset unread |
+| CreateEffect | `00CCBB9A` | `00CCBCDA` | type,marker[,name][,z][,IsTrue] | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | 00CBF9DE marker; vtbl+400; z on marker+8; jmp 00CC864B |
 | ObjectCreate | `00CCC4FC` | `00CCC62E` | type,marker,name | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+392 object factory; empty any skip; jmp 00CC864B |
 | CrowdCreate | `00CCC92F` | `00CCCAA1` | type,source,alias[,IsTrue] | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+300(source); per-item vtbl+364; alias+i via 0099F570; 00CD3D2E |
 | CrowdCreateMixed | `00CCC64D` | `00CCC7A8` | typeA,typeB,source,alias | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+300(source); rand 00BFEB16%2 picks typeA/typeB; vtbl+364 each |
