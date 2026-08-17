@@ -153,6 +153,9 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "reset");
         }
 
+        if (Eq(v, "SetLightScene"))
+            return ApplySetLightScene(line, ctx);
+
         if (Eq(v, "CameraShake"))
         {
             if (line.Arg(0).Length == 0 || line.Arg(1).Length == 0)
@@ -829,6 +832,31 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, side);
         return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
             "CameraFOVLookBetweenPos vtbl+1636", side);
+    }
+
+    /// <summary>
+    /// <c>00CD1425</c>: atoi arg0 indexes <c>+96</c>
+    /// scene strings. Out of range <c>00CD17FD</c>.
+    /// Blacks <c>+84</c> defs then applies comma
+    /// indices via <c>vtbl+2180</c>. Yield if
+    /// <c>[ebp+103]</c>.
+    /// </summary>
+    internal static CommandResult ApplySetLightScene(
+        ScriptLine line, ScriptExecutionContext ctx)
+    {
+        if (line.Arg(0).Length == 0)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        if (!ScriptLine.TryInt(line.Arg(0), out var index))
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        if ((uint)index >= (uint)ctx.Cutscene.LightScenes.Count)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                index.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        ctx.World.ApplyLightScene(ctx.Cutscene.LightDefs, ctx.Cutscene.LightScenes, index);
+        var side = index.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (!ctx.Cutscene.YieldEnable)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, side);
+        return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
+            "SetLightScene vtbl+2180", side);
     }
 
     /// <summary>

@@ -16,6 +16,16 @@ public sealed class ScriptBank
     public const int CutscenePreambleBytes = 5;
     public const int CutsceneVectorCount = 8;
     public const int CommandVectorIndex = 0;
+    /// <summary>
+    /// Persist fourth read is <c>this+84</c> light defs
+    /// (<c>NAME:r,g,b</c>) used by SetLightScene.
+    /// </summary>
+    public const int LightDefVectorIndex = 3;
+    /// <summary>
+    /// Persist fifth read is <c>this+96</c> scene
+    /// strings (comma-separated def indices).
+    /// </summary>
+    public const int LightSceneVectorIndex = 4;
     public const int CommandRuntimeOffset = 60;
     public const uint PersistFn = 0x00F2A1D0;
     public const uint VectorPersist = 0x004331F9;

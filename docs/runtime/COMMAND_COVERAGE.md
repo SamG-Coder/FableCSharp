@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 87
-RECOVERED RETURN: 87
+RECOVERED DISPATCH: 88
+RECOVERED RETURN: 88
 RECOVERED APPLY: 16
 IMPLEMENTED RUNTIME: 13
-UNREAD: 98
+UNREAD: 97
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -21,7 +21,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | StopMusic | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | PlayMusic | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | Play2DSound | Global | Proven | Proven | Proven | Partial | Partial | Partial |
-| SetLightScene | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| SetLightScene | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | CameraShake | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | CameraEffect | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | TintScreenOut | Global | Unread | Unread | Unread | Unread | Unread | Unread |

@@ -78,6 +78,15 @@ public sealed class ScriptInterpreter
         State = new CutsceneState(name, commands);
     }
 
+    /// <summary>
+    /// Persist <c>+84/+96</c> tables for SetLightScene.
+    /// </summary>
+    public void BindLightTables(IReadOnlyList<string> defs, IReadOnlyList<string> scenes)
+    {
+        State.LightDefs = defs;
+        State.LightScenes = scenes;
+    }
+
     public void RunUntilYield(IScriptHost? host = null)
     {
         var runtime = host as ScriptRuntime ?? ScriptRuntime.Detached();

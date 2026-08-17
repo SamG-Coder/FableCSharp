@@ -1281,6 +1281,116 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void SetLightScene_blacks_defs_then_applies_scene_rgb()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("ls",
+            ["SetLightScene 0", "CameraPause FALSE"]);
+        interp.BindLightTables(
+            ["LAMP:255,128,0", "FILL:10,20,30"],
+            ["0", "1", "0,1"]);
+        interp.RunUntilYield(runtime);
+        Assert.Equal(ExecutionKind.YieldOnce, interp.CurrentWaitKind);
+        Assert.Equal(0, runtime.World.ActiveLightScene);
+        Assert.Equal((byte)255, runtime.World.LightColors["LAMP"].R);
+        Assert.Equal((byte)128, runtime.World.LightColors["LAMP"].G);
+        Assert.Equal((byte)0, runtime.World.LightColors["FILL"].R);
+        interp.Resume(runtime);
+        Assert.True(interp.Finished);
+
+        var two = new ScriptInterpreter("ls2", ["SetLightScene 2"]);
+        two.BindLightTables(
+            ["LAMP:255,128,0", "FILL:10,20,30"],
+            ["0", "1", "0,1"]);
+        two.RunUntilYield(runtime);
+        Assert.Equal((byte)255, runtime.World.LightColors["LAMP"].R);
+        Assert.Equal((byte)10, runtime.World.LightColors["FILL"].R);
+        Assert.Equal(0x00CD172Au, ScriptCommandMap.Find("SetLightScene")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void SetLightScene_out_of_range_continues()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("ls0", ["SetLightScene 5", "CameraPause FALSE"]);
+        interp.BindLightTables(["LAMP:1,2,3"], ["0"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(-1, runtime.World.ActiveLightScene);
+        Assert.Empty(runtime.World.LightColors);
+    }
+
+    [Fact]
+    public void SetLightScene_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("SetLightScene ", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "SetLightScene 0";
+        hit ??= bank.Find("CS_OAKVALE_INTRO_FATHER") ?? bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("SetLightScene", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        Assert.Equal(3, ScriptBank.LightDefVectorIndex);
+        Assert.Equal(4, ScriptBank.LightSceneVectorIndex);
+
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-light", [line]);
+        var defs = hit.Vectors.Count > ScriptBank.LightDefVectorIndex
+            ? hit.Vectors[ScriptBank.LightDefVectorIndex]
+            : [];
+        var scenes = hit.Vectors.Count > ScriptBank.LightSceneVectorIndex
+            ? hit.Vectors[ScriptBank.LightSceneVectorIndex]
+            : (IReadOnlyList<string>)["0"];
+        if (defs.Count == 0)
+            isolated.BindLightTables(["LAMP:255,128,0"], ["0"]);
+        else
+            isolated.BindLightTables(defs, scenes);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("SetLightScene", StringComparison.OrdinalIgnoreCase));
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-light.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-setlightscene.txt"),
+            """
+            SetLightScene 00CD1425 / apply 00CD172A
+              atoi arg0 indexes persist +96 (ScriptBank vector 4)
+              index >= count -> 00CD17FD no yield
+              +84 (vector 3) defs NAME:r,g,b via 00CBF050 (colon + comma atoi bytes)
+              first loop vtbl+2180 each thing color (0,0,0,255)
+              scene string: comma-separated def indices, spaces skipped
+              selected vtbl+2180(thing, r,g,b,255)
+              yield vtbl+28 if [ebp+103]
+            persist 00F2A1D0: +60 +72 +108 +84 +96 +120 +132 +90
+            """);
+    }
+
+    [Fact]
     public void CameraPath_sits_at_first_marker_and_continues()
     {
         var runtime = ScriptRuntime.Detached();

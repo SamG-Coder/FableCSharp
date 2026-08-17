@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Numerics;
 using Fable.Formats.Tng;
 
@@ -78,6 +79,8 @@ public sealed class CutsceneState
     /// A later SetFlag with IsTrue(arg2) skips rewrite.
     /// </summary>
     public bool FlagRewriteDone { get; set; }
+    public IReadOnlyList<string> LightDefs { get; set; } = [];
+    public IReadOnlyList<string> LightScenes { get; set; } = [];
     public int ScriptFrameRemaining { get; set; }
     public float GamePauseTarget { get; set; }
     public float GamePauseCounter { get; set; }
@@ -574,6 +577,9 @@ public sealed class WorldRuntime
     public readonly List<(bool Hide, string Mode)> ExtraOps = [];
     public readonly List<(string Verb, string Arg)> RemoveFamily = [];
     public readonly List<ScriptCreate> Effects = [];
+    public readonly Dictionary<string, (byte R, byte G, byte B, byte A)> LightColors =
+        new(StringComparer.OrdinalIgnoreCase);
+    public int ActiveLightScene { get; set; } = -1;
     public bool SwordsUp { get; set; }
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
@@ -729,5 +735,83 @@ public sealed class WorldRuntime
             return false;
         Destroy(name);
         return true;
+    }
+
+    /// <summary>
+    /// <c>00CD1425</c>: black every <c>+84</c> def via
+    /// <c>vtbl+2180</c>, then apply scene
+    /// <c>+96[index]</c> comma indices with parsed RGB.
+    /// </summary>
+    public void ApplyLightScene(
+        IReadOnlyList<string> defs, IReadOnlyList<string> scenes, int index)
+    {
+        ActiveLightScene = index;
+        var parsed = new List<(string Name, byte R, byte G, byte B)>(defs.Count);
+        foreach (var raw in defs)
+        {
+            if (!TryParseLightDef(raw, out var name, out var r, out var g, out var b))
+                continue;
+            parsed.Add((name, r, g, b));
+            LightColors[name] = (0, 0, 0, 255);
+        }
+
+        if ((uint)index >= (uint)scenes.Count)
+            return;
+        var scene = scenes[index];
+        var token = new System.Text.StringBuilder();
+        void Flush()
+        {
+            if (token.Length == 0)
+                return;
+            if (int.TryParse(token.ToString(), NumberStyles.Integer,
+                    CultureInfo.InvariantCulture, out var i) &&
+                (uint)i < (uint)parsed.Count)
+            {
+                var light = parsed[i];
+                LightColors[light.Name] = (light.R, light.G, light.B, 255);
+            }
+
+            token.Clear();
+        }
+
+        foreach (var ch in scene)
+        {
+            if (ch == ',')
+                Flush();
+            else if (ch != ' ')
+                token.Append(ch);
+        }
+
+        Flush();
+    }
+
+    internal static bool TryParseLightDef(
+        string raw, out string name, out byte r, out byte g, out byte b)
+    {
+        name = "";
+        r = 0;
+        g = 0;
+        b = 0;
+        if (raw.Length == 0)
+            return false;
+        var colon = raw.IndexOf(':');
+        if (colon < 0)
+        {
+            name = raw;
+            return true;
+        }
+
+        name = raw[..colon];
+        var parts = raw[(colon + 1)..].Split(',');
+        if (parts.Length > 0 && int.TryParse(parts[0].Trim(), NumberStyles.Integer,
+                CultureInfo.InvariantCulture, out var rv))
+            r = (byte)rv;
+        if (parts.Length > 1 && int.TryParse(parts[1].Trim(), NumberStyles.Integer,
+                CultureInfo.InvariantCulture, out var gv))
+            g = (byte)gv;
+        if (parts.Length > 2 && int.TryParse(parts[2].Trim(), NumberStyles.Integer,
+                CultureInfo.InvariantCulture, out var bv))
+            b = (byte)bv;
+        return name.Length > 0;
     }
 }

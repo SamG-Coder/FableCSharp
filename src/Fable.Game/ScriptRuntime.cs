@@ -263,6 +263,12 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
         if (def is null)
             return null;
         var interpreter = new ScriptInterpreter(def.InstanceName, def.Commands);
+        if (def.Vectors.Count > ScriptBank.LightDefVectorIndex)
+            interpreter.BindLightTables(
+                def.Vectors[ScriptBank.LightDefVectorIndex],
+                def.Vectors.Count > ScriptBank.LightSceneVectorIndex
+                    ? def.Vectors[ScriptBank.LightSceneVectorIndex]
+                    : []);
         _interpreters.Add(interpreter);
         if (_quests.Count > 0)
             _quests[^1].StartChildCutscene(cutsceneName);
