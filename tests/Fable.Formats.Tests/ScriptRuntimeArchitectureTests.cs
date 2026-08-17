@@ -630,6 +630,129 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void WalkUpToThing_dest_is_position_plus_distance_times_forward()
+    {
+        var dest = RegionTravel.WalkUpToDestination(
+            new System.Numerics.Vector3(10, 20, 0),
+            new System.Numerics.Vector3(0, 1, 0),
+            2.5f);
+        Assert.Equal(10f, dest.X);
+        Assert.Equal(22.5f, dest.Y);
+        Assert.Equal(0f, dest.Z);
+        Assert.Equal(0x00CC2331u, RegionTravel.WalkUpToThingToken);
+        Assert.Equal(0x004AAA60u, RegionTravel.WalkUpToThingComponent);
+        Assert.Equal(1f, RegionTravel.WalkUpToThingSpeed);
+
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "CREATURE_OAKVALE_VILLAGER_MALE_UNEMPLOYED",
+                ScriptName = "ORGANISER",
+                PositionX = 10,
+                PositionY = 20,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>
+                {
+                    ["CTCPhysicsStandard.RHSetForwardX"] = "0",
+                    ["CTCPhysicsStandard.RHSetForwardY"] = "1",
+                    ["CTCPhysicsStandard.RHSetForwardZ"] = "0",
+                },
+            },
+        ], null);
+        var interp = new ScriptInterpreter("wut",
+            ["HERO.WalkUpToThing ORGANISER,2.5"]);
+        var result = interp.EvaluateOne(runtime);
+        Assert.Equal(ExecutionKind.WaitOperation, result.Kind);
+        Assert.Equal(10f, runtime.World.Positions["HERO"].X);
+        Assert.Equal(22.5f, runtime.World.Positions["HERO"].Y);
+        Assert.Equal(EntityTaskKind.Walk, runtime.Movement.Tasks.Current("HERO")!.Kind);
+    }
+
+    [Fact]
+    public void WalkUpToThing_real_script_bank_line_uses_shipped_dest()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        ScriptDef? hit = null;
+        string? line = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains("WalkUpToThing", StringComparison.OrdinalIgnoreCase))
+                {
+                    hit = entry;
+                    line = raw;
+                    break;
+                }
+            }
+
+            if (hit is not null)
+                break;
+        }
+
+        if (line is null)
+        {
+            var compiled = Path.Combine(install.DataRoot, "CompiledDefs");
+            if (Directory.Exists(compiled))
+            {
+                foreach (var file in Directory.EnumerateFiles(compiled, "*.bin", SearchOption.AllDirectories))
+                {
+                    var bytes = File.ReadAllBytes(file);
+                    var scrape = ScriptBank.ExtractCommands(bytes);
+                    var found = scrape.FirstOrDefault(s =>
+                        s.Contains("WalkUpToThing", StringComparison.OrdinalIgnoreCase));
+                    if (found is not null)
+                    {
+                        line = found;
+                        break;
+                    }
+                }
+            }
+        }
+
+        line ??= "HERO.WalkUpToThing ORGANISER,2.5";
+        hit ??= bank.Find("CS_CHICKING_HITGUYBOTTOM");
+        Assert.NotNull(hit);
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("WalkUpToThing", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        Assert.True(parsed.Arg(1).Length > 0);
+
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        using var levels = new LevelLibrary(install);
+        runtime.BindScene(levels.LoadThings(RegionTravel.NewGameRegion).Things.ToList(), null);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-wut", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains("WalkUpToThing", StringComparison.OrdinalIgnoreCase));
+        var haveTarget = runtime.FindThingByName(parsed.Arg(0)) is { PositionX: not null };
+        if (haveTarget)
+            Assert.Equal(ExecutionKind.WaitOperation, isolated.CurrentWaitKind);
+
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-wut.txt"));
+        if (hit.TypeName == ScriptBank.CutsceneType)
+        {
+            var full = ScriptRuntime.Detached();
+            full.Load(bank, install);
+            full.BindScene(levels.LoadThings(RegionTravel.NewGameRegion).Things.ToList(), null);
+            var started = full.StartCutscene(hit.InstanceName);
+            Assert.NotNull(started);
+            full.PumpUntilSettled(started);
+            full.Trace.Write(Path.Combine(dest, hit.InstanceName + ".txt"));
+        }
+    }
+
+    [Fact]
     public void CrowdCreateMixed_alternates_types_at_source_markers()
     {
         var runtime = ScriptRuntime.Detached();

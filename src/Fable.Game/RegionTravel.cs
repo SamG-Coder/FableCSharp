@@ -852,6 +852,27 @@ public static class RegionTravel
     public const int SneakToApplyVtbl = 20;
     public const uint SneakToApplyStub = 0x004C72B0;
     public const int SneakToMode = 2;
+    /// <summary>
+    /// <c>00CC2331</c> WalkUpToThing: atof(arg1) *
+    /// thing basis <c>vtbl+288()+12</c> added to
+    /// thing pos <c>[esi+12/16/20]</c>. Actor
+    /// <c>vtbl+16</c> speed <c>fld1</c>. Leftover
+    /// <c>vtbl+104</c> then <c>00CC707C</c>.
+    /// </summary>
+    public const uint WalkUpToThingToken = 0x00CC2331;
+    public const uint WalkUpToThingComponent = 0x004AAA60;
+    public const uint WalkUpToThingAtof = 0x0099E690;
+    public const int WalkUpToThingGoVtbl = 16;
+    public const int WalkUpToThingPollVtbl = 104;
+    public const float WalkUpToThingSpeed = 1f;
+    public const uint WalkUpToThingRunLit = 0x012C24A0;
+
+    public static Vector3 WalkUpToDestination(Vector3 thingPosition, Vector3 forward, float distance)
+    {
+        var dir = forward.LengthSquared() > 1e-6f ? Vector3.Normalize(forward) : Vector3.UnitY;
+        return thingPosition + dir * distance;
+    }
+
     public const float SneakToDefaultSpeed = 0.3f;
     public const uint SneakToDefaultSpeedBits = 0x3E99999A;
     public const bool FirstSeenSneakToWaitsForArrival = false;

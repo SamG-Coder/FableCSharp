@@ -143,6 +143,34 @@ public static class EntityDispatcher
                 "StopFollowingThing actor-vtbl+32", line.Arg(0));
         }
 
+        if (Eq(v, "WalkUpToThing"))
+        {
+            var target = line.Arg(0);
+            if (target.Length == 0 || line.Arg(1).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            if (!ScriptLine.TryFloat(line.Arg(1), out var distance))
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            var thing = ctx.FindThing(target);
+            if (thing is not { PositionX: not null } &&
+                !ctx.World.Positions.TryGetValue(target, out _))
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, target);
+            var pos = thing is { PositionX: not null }
+                ? RegionTravel.PositionOf(thing)
+                : ctx.World.Positions[target];
+            var forward = thing is not null
+                ? RegionTravel.ForwardOf(thing)
+                : System.Numerics.Vector3.UnitY;
+            var dest = RegionTravel.WalkUpToDestination(pos, forward, distance);
+            var op = ctx.Movement.Walk(
+                line.Target, target, RegionTravel.WalkUpToThingSpeed, wait: true, dest);
+            if (line.Target is { Length: > 0 })
+                ctx.World.Positions[line.Target] = dest;
+            ctx.World.LookTargets[line.Target ?? ""] = target;
+            return CommandResult.Wait(
+                ExecutionKind.WaitOperation, CommandStatus.Proven, CommandFamily.Entity,
+                "WalkUpToThing vtbl+16 then vtbl+104", "arrival leftover", op.Id, target);
+        }
+
         if (Eq(v, "Speak"))
         {
             var target = line.Arg(0);
