@@ -156,6 +156,9 @@ public static class GlobalDispatcher
         if (Eq(v, "SetLightScene"))
             return ApplySetLightScene(line, ctx);
 
+        if (Eq(v, "TintScreenTo"))
+            return ApplyTintScreenTo(line, ctx);
+
         if (Eq(v, "TintScreenOut"))
         {
             if (line.Arg(0).Length == 0)
@@ -843,6 +846,101 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, side);
         return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
             "CameraFOVLookBetweenPos vtbl+1636", side);
+    }
+
+    /// <summary>
+    /// <c>00CD0CE4</c>: seven required args.
+    /// atof arg0-4. Arg5 comma-split RGB * 1/255
+    /// if three tokens. Arg6 comma-split
+    /// <c>ALL:</c> / <c>ALLDEF:</c> / thing.
+    /// <c>vtbl+2700</c> writes handle to
+    /// <c>[ebp-112]</c>. Continue <c>00CD17FD</c>.
+    /// </summary>
+    internal static CommandResult ApplyTintScreenTo(
+        ScriptLine line, ScriptExecutionContext ctx)
+    {
+        for (var i = 0; i < 7; i++)
+        {
+            if (line.Arg(i).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        }
+
+        ScriptLine.TryFloat(line.Arg(0), out var a0);
+        ScriptLine.TryFloat(line.Arg(1), out var a1);
+        ScriptLine.TryFloat(line.Arg(2), out var a2);
+        ScriptLine.TryFloat(line.Arg(3), out var a3);
+        ScriptLine.TryFloat(line.Arg(4), out var a4);
+        var rgb = ParseTintRgb(line.Arg(5));
+        var filters = SplitComma(line.Arg(6));
+        var targets = new List<string>();
+        foreach (var filter in filters)
+        {
+            if (ScriptLine.TokenMatches(filter, "ALLDEF:"))
+            {
+                var type = filter.Length > 7 ? filter[7..] : "";
+                foreach (var thing in ctx.World.CollectByType(ctx.Runtime.Things, type))
+                {
+                    if (thing.ScriptName is { Length: > 0 } n)
+                        targets.Add(n);
+                }
+
+                continue;
+            }
+
+            if (ScriptLine.TokenMatches(filter, "ALL:"))
+            {
+                var prefix = filter.Length > 4 ? filter[4..] : "";
+                foreach (var thing in ctx.World.CollectByName(ctx.Runtime.Things, prefix))
+                {
+                    if (thing.ScriptName is { Length: > 0 } n)
+                        targets.Add(n);
+                }
+
+                continue;
+            }
+
+            if (ctx.FindThing(filter) is { ScriptName: { Length: > 0 } name })
+                targets.Add(name);
+            else
+                targets.Add(filter);
+        }
+
+        var handle = ctx.Camera.TintTo(a0, a1, a2, a3, a4, rgb, filters, targets);
+        ctx.Cutscene.TintHold = handle;
+        return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+            $"hold={handle} rgb={rgb.X:0.###},{rgb.Y:0.###},{rgb.Z:0.###}");
+    }
+
+    internal const float TintRgbScale = 1f / 255f;
+
+    internal static Vector3 ParseTintRgb(string raw)
+    {
+        var parts = SplitComma(raw);
+        if (parts.Count != 3)
+            return default;
+        ScriptLine.TryFloat(parts[0], out var r);
+        ScriptLine.TryFloat(parts[1], out var g);
+        ScriptLine.TryFloat(parts[2], out var b);
+        return new Vector3(r * TintRgbScale, g * TintRgbScale, b * TintRgbScale);
+    }
+
+    internal static List<string> SplitComma(string raw)
+    {
+        var list = new List<string>();
+        if (raw.Length == 0)
+            return list;
+        var start = 0;
+        for (var i = 0; i <= raw.Length; i++)
+        {
+            if (i < raw.Length && raw[i] != ',')
+                continue;
+            var token = raw[start..i].Trim();
+            if (token.Length > 0)
+                list.Add(token);
+            start = i + 1;
+        }
+
+        return list;
     }
 
     /// <summary>

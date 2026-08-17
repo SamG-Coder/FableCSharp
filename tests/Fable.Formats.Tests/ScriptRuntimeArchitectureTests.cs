@@ -1297,6 +1297,142 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void TintScreenTo_writes_hold_and_scales_rgb()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Hero",
+                ScriptName = "Hero",
+                Properties = new Dictionary<string, string>(),
+            },
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "CREATURE_BANDIT",
+                ScriptName = "Bandit0",
+                Properties = new Dictionary<string, string>(),
+            },
+        ], null);
+        var interp = new ScriptInterpreter("tintto",
+        [
+            "TintScreenTo 0.2,0.1,0,0,1.0,'255,0,0',HERO",
+            "TintScreenOut 0.5",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.True(runtime.CameraSys.TintToActive);
+        Assert.True(runtime.CameraSys.TintHandle > 0);
+        Assert.Equal(1f, runtime.CameraSys.TintRgb.X, 3);
+        Assert.Equal(0f, runtime.CameraSys.TintRgb.Y);
+        Assert.Contains("Hero", runtime.CameraSys.TintTargets);
+        Assert.True(runtime.CameraSys.TintOutActive);
+        Assert.Equal(0f, interp.TintHold);
+        Assert.Equal(0x00CD115Au, ScriptCommandMap.Find("TintScreenTo")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void TintScreenTo_alldef_collects_by_type()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "CREATURE_BANDIT",
+                ScriptName = "Bandit0",
+                Properties = new Dictionary<string, string>(),
+            },
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "CREATURE_BANDIT",
+                ScriptName = "Bandit1",
+                Properties = new Dictionary<string, string>(),
+            },
+        ], null);
+        var interp = new ScriptInterpreter("alldef",
+            ["TintScreenTo 1,0,0,0,0,'0,0,0',ALLDEF:CREATURE_BANDIT"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Contains("Bandit0", runtime.CameraSys.TintTargets);
+        Assert.Contains("Bandit1", runtime.CameraSys.TintTargets);
+        Assert.Contains(runtime.CameraSys.TintFilters, f =>
+            f.StartsWith("ALLDEF:", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public void TintScreenTo_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("TintScreenTo ", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "TintScreenTo 0.2,0.1,0,0,1.0,'255,0,0',HERO";
+        hit ??= bank.Find("CS_OAKVALE_INTRO_FATHER") ?? bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("TintScreenTo", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        Assert.True(parsed.Arg(6).Length > 0);
+
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        using var levels = new LevelLibrary(install);
+        runtime.BindScene(levels.LoadThings(RegionTravel.NewGameRegion).Things.ToList(), null);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-tintto", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("TintScreenTo", StringComparison.OrdinalIgnoreCase));
+        Assert.True(runtime.CameraSys.TintToActive);
+        Assert.True(isolated.TintHold > 0f);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-tintto.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-tintscreento.txt"),
+            """
+            TintScreenTo 00CD0CE4 / apply 00CD115A
+              7 required args else 00CD17FD
+              atof arg0-4; arg0 also initial [ebp-112]
+              00CBFACA split arg5; if 3 tokens RGB * 0x1231724=1/255
+              00CBFACA split arg6 filters
+              ALL: -> vtbl+300 collect; ALLDEF: -> vtbl+320
+              else lookup thing (HERO / vtbl+280/288)
+              vtbl+2700(a0,a1,a2,a3,a4,rgb,list); [ebp-112]=eax handle
+              jmp 00CD17FD no yield
+            """);
+    }
+
+    [Fact]
     public void SetLightScene_blacks_defs_then_applies_scene_rgb()
     {
         var runtime = ScriptRuntime.Detached();

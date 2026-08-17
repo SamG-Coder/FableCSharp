@@ -133,6 +133,17 @@ public sealed class CameraRuntime
     public float TintOutDuration { get; private set; }
     public float TintOutHold { get; private set; }
     public bool TintOutActive { get; private set; }
+    public float TintArg0 { get; private set; }
+    public float TintArg1 { get; private set; }
+    public float TintArg2 { get; private set; }
+    public float TintArg3 { get; private set; }
+    public float TintArg4 { get; private set; }
+    public Vector3 TintRgb { get; private set; }
+    public readonly List<string> TintFilters = [];
+    public readonly List<string> TintTargets = [];
+    public int TintHandle { get; private set; }
+    public bool TintToActive { get; private set; }
+    private int _tintSerial;
 
     public void Bind(ScriptedCamera? camera, IReadOnlyList<ThingInstance> things, string name)
     {
@@ -199,6 +210,30 @@ public sealed class CameraRuntime
         TintOutHold = hold;
         TintOutDuration = duration;
         TintOutActive = true;
+    }
+
+    /// <summary>
+    /// <c>00CD0CE4</c> <c>vtbl+2700</c> then
+    /// <c>[ebp-112]=eax</c>. RGB scaled by
+    /// <c>1/255</c> at <c>0x1231724</c>.
+    /// </summary>
+    public int TintTo(
+        float a0, float a1, float a2, float a3, float a4,
+        Vector3 rgb, IReadOnlyList<string> filters, IReadOnlyList<string> targets)
+    {
+        TintArg0 = a0;
+        TintArg1 = a1;
+        TintArg2 = a2;
+        TintArg3 = a3;
+        TintArg4 = a4;
+        TintRgb = rgb;
+        TintFilters.Clear();
+        TintFilters.AddRange(filters);
+        TintTargets.Clear();
+        TintTargets.AddRange(targets);
+        TintToActive = true;
+        TintHandle = ++_tintSerial;
+        return TintHandle;
     }
 
     public void LookAtThing(ScriptedCamera? camera, ThingInstance? thing, string name)
@@ -634,6 +669,21 @@ public sealed class WorldRuntime
 
             if (thing.DefinitionType is not null &&
                 thing.DefinitionType.Equals(source, StringComparison.OrdinalIgnoreCase))
+                hits.Add(thing);
+        }
+
+        return hits;
+    }
+
+    public IReadOnlyList<ThingInstance> CollectByType(IEnumerable<ThingInstance> things, string type)
+    {
+        var hits = new List<ThingInstance>();
+        if (type.Length == 0)
+            return hits;
+        foreach (var thing in things)
+        {
+            if (thing.DefinitionType is not null &&
+                thing.DefinitionType.Equals(type, StringComparison.OrdinalIgnoreCase))
                 hits.Add(thing);
         }
 

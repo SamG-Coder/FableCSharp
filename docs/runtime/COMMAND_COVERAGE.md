@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 89
-RECOVERED RETURN: 89
+RECOVERED DISPATCH: 90
+RECOVERED RETURN: 90
 RECOVERED APPLY: 16
 IMPLEMENTED RUNTIME: 13
-UNREAD: 96
+UNREAD: 95
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -25,7 +25,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | CameraShake | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | CameraEffect | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | TintScreenOut | Global | Proven | Proven | Proven | Partial | Partial | Partial |
-| TintScreenTo | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| TintScreenTo | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | FadeOut | Global | Proven | Proven | Proven | Proven | Proven | Proven |
 | FadeIn | Global | Proven | Proven | Proven | Proven | Proven | Proven |
 | StayFadedOut | Global | Proven | Proven | Proven | Partial | Partial | Partial |
