@@ -30,8 +30,8 @@
 | ObjectCreate | `00CCC4FC` | `00CCC62E` | type,marker,name | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+392 object factory; empty any skip; jmp 00CC864B |
 | CrowdCreate | `00CCC92F` | `00CCCAA1` | type,source,alias[,IsTrue] | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+300(source); per-item vtbl+364; alias+i via 0099F570; 00CD3D2E |
 | CrowdCreateMixed | `00CCC64D` | `00CCC7A8` | typeA,typeB,source,alias | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+300(source); rand 00BFEB16%2 picks typeA/typeB; vtbl+364 each |
-| PlayAnimation | `00CC14B8` | `004C7470` | name[,flags] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+72; CTCAnimationComplex +68 is 00686920 al=1; inner 0070D580 not this path |
-| PlayLoopingAnim | `00CC1731` | `—` | name[,flags] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | separate token after PlayCombatAnim; entity task slot |
+| PlayAnimation | `00CC14B8` | `00CC15DA` | name[,IsTrue]x3[,IsFalse][,IsTrue] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+72(name,f0-2,f3=1,byte_1375748,0,f4); [ebp-22] yield 00CC5691 else 00CC7081 |
+| PlayLoopingAnim | `00CC1731` | `00CC186C` | name,loops[,flags] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+80(name,atoi arg1,f0-4); not PlayAnimation; same [ebp-22] yield |
 | PlayAVI | `00CCA26D` | `006286F0` | file | BlockPump | Proven | Proven | Proven | Proven | Proven | Proven | Data\Video\ prefix; blocking 006286F0; no vtbl+28 |
 | MuteSounds | `00CC7258` | `—` | IsFalse? | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+2664; jmp 00CC8464; apply body UNREAD |
 | StartTimeCode | `00CD1373` | `—` |  | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | and [0x13B83C8],0; leftover increment not a pose clock |

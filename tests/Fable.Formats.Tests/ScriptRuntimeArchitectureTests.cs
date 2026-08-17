@@ -2552,6 +2552,108 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void PlayAnimation_sets_clip_and_yields_unless_animation_pause()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("anim",
+            ["HERO.PlayAnimation CS_TIRED,FALSE,FALSE,TRUE,FALSE"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Yielded);
+        Assert.Equal("CS_TIRED", runtime.Animation.States["HERO"].Name);
+        Assert.False(runtime.Animation.States["HERO"].Looping);
+        Assert.True(runtime.Animation.States["HERO"].F3);
+        Assert.False(runtime.Animation.States["HERO"].F4);
+        Assert.Equal(0x00CC15DAu, ScriptCommandMap.Find("PlayAnimation")!.Value.ApplySite);
+
+        var paused = ScriptRuntime.Detached();
+        var noYield = new ScriptInterpreter("animp",
+            ["AnimationPause FALSE", "HERO.PlayAnimation CS_TIRED"]);
+        noYield.RunUntilYield(paused);
+        Assert.True(noYield.Finished);
+        Assert.Equal("CS_TIRED", paused.Animation.States["HERO"].Name);
+    }
+
+    [Fact]
+    public void PlayLoopingAnim_is_vtbl80_not_PlayAnimation()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("loopanim",
+            ["HERO.PlayLoopingAnim WALK,3,FALSE,FALSE,FALSE,TRUE"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Yielded);
+        Assert.Equal("WALK", runtime.Animation.States["HERO"].Name);
+        Assert.True(runtime.Animation.States["HERO"].Looping);
+        Assert.Equal(3, runtime.Animation.States["HERO"].Loops);
+        Assert.Equal(0x00CC186Cu, ScriptCommandMap.Find("PlayLoopingAnim")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("PlayAnimation")!.Value.ApplySite,
+            ScriptCommandMap.Find("PlayLoopingAnim")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void PlayAnimation_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".PlayAnimation ", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "HERO.PlayAnimation CS_TIRED,FALSE,FALSE,TRUE,FALSE";
+        hit ??= bank.Find("CS_OAKVALE_INTRO_FATHER") ?? bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("PlayAnimation", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-anim", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains("PlayAnimation", StringComparison.OrdinalIgnoreCase));
+        if (parsed.Target.Length > 0)
+            Assert.Equal(parsed.Arg(0), runtime.Animation.States[parsed.Target].Name);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-anim.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-playanimation.txt"),
+            """
+            PlayAnimation 00CC14B8 / apply 00CC15DA
+              actor + arg0 required else 00CC7081
+              flags: IsTrue arg1/2/3, IsFalse arg4 (default 1), IsTrue arg5
+              actor.vtbl+72(name,f0,f1,f2,f3,byte_1375748,0,f4)
+              004C7470 walks [this+68..+72] components; +68 accept
+              [ebp-22] default 1 (00CBFD57 / AnimationPause)
+                0 -> 00CC7081 continue
+                1 -> 00CC5691 yield if [ebp+103]
+            PlayLoopingAnim 00CC1731 / apply 00CC186C
+              arg0 + arg1 required; arg1 atoi 0099E7F0
+              actor.vtbl+80 — not vtbl+72
+            Clip pose / PALSKIN unread
+            """);
+    }
+
+    [Fact]
     public void WaitForCamera_idles_when_camera_not_busy()
     {
         var runtime = ScriptRuntime.Detached();

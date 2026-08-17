@@ -643,12 +643,31 @@ public sealed class AnimationRuntime
         string? actor, string name, bool f1, bool f2, bool f3, bool f4, bool f5)
     {
         Plays.Add(new ScriptAnimation(actor, name, f1, f2, f3, f4, f5));
-        var looping = f1 || f3;
         if (actor is { Length: > 0 })
-            States[actor] = new AnimationState(actor, name, looping, f1, f2, f3, f4, f5);
-        var kind = looping ? EntityTaskKind.LoopAnimate : EntityTaskKind.Animate;
+            States[actor] = new AnimationState(actor, name, false, f1, f2, f3, f4, f5);
+        var kind = EntityTaskKind.Animate;
         var task = Tasks.Replace(actor, kind, name, null, 0f);
         var op = new PendingOperation(task.Id, "PlayAnimation", actor, name);
+        if (actor is { Length: > 0 })
+            ByActor[actor] = op;
+        _next++;
+        return op;
+    }
+
+    /// <summary>
+    /// <c>00CC1788</c> <c>vtbl+80</c>. Arg1 is the
+    /// <c>0099E7F0</c> loop integer, not a flag.
+    /// Clip pose unread.
+    /// </summary>
+    public PendingOperation PlayLoop(
+        string? actor, string name, int loops,
+        bool f1, bool f2, bool f3, bool f4, bool f5)
+    {
+        Plays.Add(new ScriptAnimation(actor, name, f1, f2, f3, f4, f5));
+        if (actor is { Length: > 0 })
+            States[actor] = new AnimationState(actor, name, true, f1, f2, f3, f4, f5) { Loops = loops };
+        var task = Tasks.Replace(actor, EntityTaskKind.LoopAnimate, name, null, 0f);
+        var op = new PendingOperation(task.Id, "PlayLoopingAnim", actor, name);
         if (actor is { Length: > 0 })
             ByActor[actor] = op;
         _next++;
@@ -680,15 +699,32 @@ public sealed class AnimationRuntime
         actor is { Length: > 0 } && ByActor.TryGetValue(actor, out var op) ? op : null;
 }
 
-public readonly record struct AnimationState(
-    string Actor,
-    string Name,
-    bool Looping,
-    bool F1,
-    bool F2,
-    bool F3,
-    bool F4,
-    bool F5);
+public sealed class AnimationState
+{
+    public string Actor { get; }
+    public string Name { get; }
+    public bool Looping { get; }
+    public bool F1 { get; }
+    public bool F2 { get; }
+    public bool F3 { get; }
+    public bool F4 { get; }
+    public bool F5 { get; }
+    public int Loops { get; set; }
+
+    public AnimationState(
+        string actor, string name, bool looping,
+        bool f1, bool f2, bool f3, bool f4, bool f5)
+    {
+        Actor = actor;
+        Name = name;
+        Looping = looping;
+        F1 = f1;
+        F2 = f2;
+        F3 = f3;
+        F4 = f4;
+        F5 = f5;
+    }
+}
 
 public sealed class MovementRuntime
 {

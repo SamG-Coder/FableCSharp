@@ -50,14 +50,33 @@ public static class EntityDispatcher
         if (Eq(v, "LookAt") || Eq(v, "LookAtNothing"))
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, v);
 
-        if (Eq(v, "PlayAnimation") || Eq(v, "PlayLoopingAnim"))
+        if (Eq(v, "PlayAnimation"))
         {
             var name = line.Arg(0);
+            if (name.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
             var flags = ParseAnimFlags(line);
             var op = ctx.Animation.Play(
                 line.Target, name, flags.F1, flags.F2, flags.F3, flags.F4, flags.F5);
+            if (!ctx.Cutscene.AnimationPauseEnabled)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, name);
             return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Entity,
-                "PlayAnimation vtbl+28", name, op.Id);
+                "PlayAnimation vtbl+72", name, op.Id);
+        }
+
+        if (Eq(v, "PlayLoopingAnim"))
+        {
+            var name = line.Arg(0);
+            if (name.Length == 0 || line.Arg(1).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            ScriptLine.TryInt(line.Arg(1), out var loops);
+            var flags = ParseLoopingFlags(line);
+            var op = ctx.Animation.PlayLoop(
+                line.Target, name, loops, flags.F1, flags.F2, flags.F3, flags.F4, flags.F5);
+            if (!ctx.Cutscene.AnimationPauseEnabled)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, name);
+            return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Entity,
+                "PlayLoopingAnim vtbl+80", name, op.Id);
         }
 
         if (Eq(v, "WaitPlayAnimation"))
@@ -300,6 +319,17 @@ public static class EntityDispatcher
             ScriptLine.IsTrue(line.Arg(3)),
             line.Args.Count <= 4 || !ScriptLine.IsFalse(line.Arg(4)),
             ScriptLine.IsTrue(line.Arg(5)));
+
+    /// <summary>
+    /// <c>00CC17B3</c>: flags start at arg2 because
+    /// arg1 is the <c>0099E7F0</c> loop integer.
+    /// </summary>
+    private static (bool F1, bool F2, bool F3, bool F4, bool F5) ParseLoopingFlags(ScriptLine line) =>
+        (ScriptLine.IsTrue(line.Arg(2)),
+            ScriptLine.IsTrue(line.Arg(3)),
+            ScriptLine.IsTrue(line.Arg(4)),
+            !ScriptLine.IsFalse(line.Arg(5)),
+            ScriptLine.IsTrue(line.Arg(6)));
 
     private static (string Name, bool A, bool B, bool C, bool D, bool E, int Count)
         ParseCombat(ScriptLine line)
