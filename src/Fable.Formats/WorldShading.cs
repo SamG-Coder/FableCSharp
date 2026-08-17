@@ -379,6 +379,11 @@ public static class WorldShading
     /// </summary>
     public const bool FirstSeenLightApplyWritesC35 = false;
     public const bool FirstSeenC35IsSetterDefault = true;
+    /// <summary>
+    /// First-seen FG / static / PALSKIN VS have no
+    /// <c>LIT</c> opcode. They <c>MAD</c> <c>c35</c>.
+    /// </summary>
+    public const bool FirstSeenVsUsesLitC35 = false;
     public const uint PalskinPacker = 0x00BD2D90;
     public const int PalskinPackerDestOffset = 288;
     public const bool FirstSeenPalskinPackerRebuildsWhenDestNull = true;

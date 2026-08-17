@@ -190,6 +190,7 @@ public sealed class ShaderFormatTests
             Assert.Contains(3, vs.ConstRegisters);
             Assert.Contains(18, vs.ConstRegisters);
             Assert.False(vs.HasLit);
+            Assert.False(WorldShading.FirstSeenVsUsesLitC35);
             Assert.Equal(0x10u, ShaderProgram.LitOpcode);
             Assert.True(vs.TryGetDirLightAddsC3(), vs.Name);
         }

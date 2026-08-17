@@ -232,6 +232,7 @@ public sealed class LevFormatTests
         Assert.NotEqual(1911, LandscapeTextures.Resolve("GROUND_PATH_SAND", enums));
         Assert.True(LandscapeTextures.IsWaterOrSeaPass("SEA_OAKVALE_2"));
         Assert.True(LandscapeTextures.IsWaterOrSeaPass("WATER_GREYCLIFF_ET"));
+        Assert.False(LandscapeTextures.FirstSeenWaterDrawShouldSubmit);
         Assert.Null(LandscapeTextures.TryResolve("SEA_OAKVALE_2", enums));
         Assert.Null(LandscapeTextures.TryResolve("WATER_GREYCLIFF_ET", enums));
         Assert.Null(LandscapeTextures.TryResolve("WATER_BWLAKE_0", enums));
@@ -284,7 +285,24 @@ public sealed class LevFormatTests
         Assert.Equal(0x00B429CBu, LandscapeTextures.LoadWaterDataOnlyCaller);
         Assert.Equal(0x00B420E4u, LandscapeTextures.LoadWaterDataMissingInternRet);
         Assert.Equal(0x00B783F0u, LandscapeTextures.WaterDraw);
+        Assert.Equal(0x00B7851Du, LandscapeTextures.WaterDrawEmptyCheck);
         Assert.Equal(0x00B7A865u, LandscapeTextures.WaterDrawEmptyReturn);
+        Assert.Equal(0x00B72180u, LandscapeTextures.WaterDrawSecondGate);
+        Assert.Equal(0x00B78584u, LandscapeTextures.WaterDrawSecondGateSite);
+        Assert.False(LandscapeTextures.FirstSeenWaterDrawReachesSecondGate);
+        Assert.False(LandscapeTextures.FirstSeenWaterDrawShouldSubmit);
+        Assert.False(LandscapeTextures.WaterDrawShouldSubmit_00B783F0(
+            false, false, false, false, false, false,
+            false, false, false, false, false));
+        Assert.True(LandscapeTextures.WaterDrawShouldSubmit_00B783F0(
+            true, false, false, false, false, false,
+            false, false, false, false, false));
+        Assert.True(LandscapeTextures.WaterDrawShouldSubmit_00B783F0(
+            false, false, false, false, false, false,
+            false, false, false, true, true));
+        Assert.False(LandscapeTextures.WaterDrawShouldSubmit_00B783F0(
+            false, false, false, false, false, false,
+            false, false, false, true, false));
         Assert.Equal(0x012A3364u, LandscapeTextures.WaterRendererVtbl);
         Assert.Equal(16, LandscapeTextures.WaterDrawVtblOffset);
         Assert.Equal(0x00B71FB0u, LandscapeTextures.WaterPrepare);

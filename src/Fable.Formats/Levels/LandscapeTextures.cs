@@ -140,11 +140,45 @@ public static class LandscapeTextures
     public const uint LoadWaterDataOnlyCaller = 0x00B429CB;
     public const uint LoadWaterDataMissingInternRet = 0x00B420E4;
     public const uint WaterDraw = 0x00B783F0;
+    public const uint WaterDrawEmptyCheck = 0x00B7851D;
     public const uint WaterDrawEmptyReturn = 0x00B7A865;
+    public const uint WaterDrawSecondGate = 0x00B72180;
+    public const uint WaterDrawSecondGateSite = 0x00B78584;
     public const uint WaterRendererVtbl = 0x012A3364;
     public const int WaterDrawVtblOffset = 16;
     public const bool FirstSeenLoadWaterDataFindsIntern = false;
     public const bool FirstSeenWaterDrawEmptyIsBareRet = true;
+    /// <summary>
+    /// <c>00B72180</c> is only <c>E8</c> from
+    /// <c>00B78584</c>, after the empty check fails.
+    /// First-seen ctor zeros never take that call.
+    /// </summary>
+    public const bool FirstSeenWaterDrawReachesSecondGate = false;
+
+    /// <summary>
+    /// <c>00B783F0</c> empty-out: all draw-vector
+    /// begin==end and not (<c>[+630] &amp;&amp; [+645]</c>)
+    /// → <c>je 00B7A865</c> bare <c>ret 4</c>. Zero
+    /// <c>E8</c> callers (vtbl+16). First-seen ctor
+    /// zeros every tested field.
+    /// </summary>
+    public static bool FirstSeenWaterDrawShouldSubmit =>
+        WaterDrawShouldSubmit_00B783F0(
+            false, false, false, false, false, false,
+            false, false, false, false, false);
+
+    public static bool WaterDrawShouldSubmit_00B783F0(
+        bool vec508, bool vec520, bool vec532,
+        bool vec544, bool vec556, bool vec568,
+        bool vec580, bool vec592, bool vec604,
+        bool meshReady630, bool meshReady645)
+    {
+        var meshReady = meshReady630 && meshReady645;
+        return vec508 || vec520 || vec532
+            || vec544 || vec556 || vec568
+            || vec580 || vec592 || vec604
+            || meshReady;
+    }
     /// <summary>
     /// Water vtbl+4 <c>00B71FB0</c> (query <c>00B7ED70</c> returns
     /// 1 so the component walk calls it). Every
@@ -355,9 +389,9 @@ public static class LandscapeTextures
         if (!IsUsable(materialName))
             return null;
         // LoadWaterData 00B41FA0 rejects unless the bank u32 is 8.
-        // StartOakVale sea is 7363. Draw 00B783F0 returns when the
-        // renderer vectors are empty. Not landscape FG.
-        if (IsWaterOrSeaPass(materialName))
+        // StartOakVale sea is 7363. Draw 00B783F0 first-seen
+        // ctor zeros take je 00B7A865. Not landscape FG.
+        if (IsWaterOrSeaPass(materialName) && !FirstSeenWaterDrawShouldSubmit)
             return null;
         return textures is null ? DefaultId : Resolve(materialName, textures);
     }
