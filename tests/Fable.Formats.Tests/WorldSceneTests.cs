@@ -1971,7 +1971,15 @@ public sealed class WorldSceneTests
         Assert.True(
             player.SamplesFromGetPointer,
             $"samples are not IMediaSample::GetPointer: {WmvPlayer.LastError}");
+        var trace = WmvPlayer.CaptureTrace();
+        Assert.True(trace.Receive > 0, $"Receive={trace.Receive} err={trace.Error}");
+        Assert.True(trace.GetPointer > 0, $"GetPointer={trace.GetPointer}");
+        Assert.True(trace.SampleRcwRelease > 0, $"SampleRcwRelease={trace.SampleRcwRelease}");
+        Assert.Equal(0, trace.SampleHeldAtReturn);
+        Assert.True(trace.Connected);
+        Assert.True(trace.ReceiveConnection > 0, $"ReceiveConnection={trace.ReceiveConnection}");
         Assert.True(player.Rgba.Any(b => b != 0), "first frame is all zero");
+        Assert.True(player.TryAdvance(0.033f));
         Assert.False(RegionTravel.FirstSeenPlayAviUsesVideoWindow);
         Assert.False(RegionTravel.FirstSeenPlayAviUsesGetCurrentImage);
         Assert.True(RegionTravel.FirstSeenPlayAviCopiesRgb24ToArgb);

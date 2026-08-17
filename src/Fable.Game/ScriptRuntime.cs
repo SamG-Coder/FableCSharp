@@ -391,9 +391,7 @@ public sealed class ScriptRuntime : IScriptHost
             : RegionTravel.ResolvePlayAviFile(_install, LastAvi);
         _avi?.Dispose();
         _avi = AviFile is null ? null : WmvPlayer.TryOpen(AviFile);
-        // 006286F0: open 00A3B9D0 jl 00628DEB
-        // skips WaitEx/Present and returns 0.
-        AviPlaying = _avi is not null;
+        AviPlaying = AviFile is not null;
     }
 
     /// <summary>

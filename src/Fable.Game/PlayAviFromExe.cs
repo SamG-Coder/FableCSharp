@@ -20,15 +20,22 @@ public interface IPlayAviSample
 }
 
 /// <summary>
-/// C# generated from Fable.exe
-/// <c>playavi-timeline</c> v6. Method names are
-/// VAs. Control flow matches the listings.
-/// <c>00A3BCD0</c> never stores a clock, so
-/// <c>00CA49F0</c> returns draw-now and
-/// <c>00CA4AA0</c> only SetEvent(+84). The
-/// decoder queue is the CMemAllocator from
-/// <c>00CA89F0</c> plus the one sample at +108.
-/// Present wait is <c>00628A9E</c> WaitEx 33.
+/// Recovered PlayAVI listings. Evidence only.
+/// Not wired into the live FilterGraph.
+/// <para>
+/// A — Microsoft CBaseRenderer / CBasePin /
+/// CMemAllocator. Quartz already runs this.
+/// Do not execute a second copy on the graph.
+/// </para>
+/// <para>
+/// B — Lionhead overrides that the live
+/// player must own: <c>00A3BCD0</c>
+/// SetSyncSource no-op, <c>00A3BCF0</c>
+/// DoRenderSample ret, <c>00A3B730</c>
+/// GetPointer copy, <c>00CA8EC0</c> reqs
+/// E_NOTIMPL, <c>00A3B590</c> RGB24,
+/// <c>00628A9E</c> WaitEx 33.
+/// </para>
 /// </summary>
 public sealed class PlayAviFromExe : IDisposable
 {

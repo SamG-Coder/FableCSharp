@@ -31,7 +31,9 @@ public sealed class WmvPlayer : IDisposable
     /// </summary>
     public int FrameSerial { get; private set; }
     /// <summary>Decoder queue writes, not the shown frame.</summary>
-    public int RecvSerial => _exe.RecvSerial;
+    public int RecvSerial => _recvSerial;
+    internal static int SampleRcwRelease { get; set; }
+    internal static int SampleHeldAtReturn { get; set; }
     /// <summary>
     /// True when pixels came from
     /// <c>IMediaSample::GetPointer</c> (<c>00A3B730</c>),
@@ -97,6 +99,8 @@ public sealed class WmvPlayer : IDisposable
             MemInputQi = MemInputQiCalls,
             Receive = ReceiveCalls,
             GetPointer = GetPointerCalls,
+            SampleRcwRelease = SampleRcwRelease,
+            SampleHeldAtReturn = SampleHeldAtReturn,
             Connect = ConnectCalls,
             MiscFlags = MiscFlagsCalls,
             FilterQi = LastFilterQi,
@@ -123,7 +127,8 @@ public sealed class WmvPlayer : IDisposable
     public static int LastHeight { get; private set; }
 
     private readonly object _gate = new();
-    private readonly PlayAviFromExe _exe = new();
+    private readonly AutoResetEvent _frameEvent = new(false);
+    private int _recvSerial;
     private Thread? _thread;
     private volatile bool _stop;
     private IGraphBuilder? _graph;
@@ -162,6 +167,8 @@ public sealed class WmvPlayer : IDisposable
         PresentWaitTicks = 0;
         ScratchAllocs = 0;
         RgbaAllocs = 0;
+        SampleRcwRelease = 0;
+        SampleHeldAtReturn = 0;
         PaceSamples.Clear();
         LastAddFilterHr = 0;
         LastRenderFileHr = 0;
@@ -243,27 +250,31 @@ public sealed class WmvPlayer : IDisposable
 
     /// <summary>
     /// <c>00628A9E</c> WaitEx then the latest
-    /// texture from <see cref="PlayAviFromExe"/>.
+    /// GetPointer frame. DirectShow owns
+    /// CBaseRenderer scheduling; this wait is
+    /// only the Fable present pump.
     /// </summary>
     public bool TryAdvance(float dt)
     {
-        _ = dt;
         if (Ended)
             return false;
-        var ok = _exe.WaitEx_00628A9E();
-        PullTexture();
-        return ok;
+        if (dt > 0f)
+            _ = dt;
+        var wait0 = Stopwatch.GetTimestamp();
+        _frameEvent.WaitOne(RegionTravel.PlayAviPresentMs);
+        PresentWaitTicks += Stopwatch.GetTimestamp() - wait0;
+        return Rgba is not null;
     }
 
     public void Dispose()
     {
         _stop = true;
-        _exe.Stop();
+        _frameEvent.Set();
         if (_thread is { IsAlive: true } &&
             !_thread.Join(TimeSpan.FromSeconds(2)))
             LastError ??= "sta-join";
         _thread = null;
-        _exe.Dispose();
+        _frameEvent.Dispose();
     }
 
     private string? BuildGraph(string path)
@@ -285,7 +296,7 @@ public sealed class WmvPlayer : IDisposable
         // IMediaSeeking / IMediaEvent / IBasicAudio
         // — not IVideoWindow. Pixels are
         // IMediaSample::GetPointer in 00A3B730.
-        _renderer = new TextureRenderer(_exe);
+        _renderer = new TextureRenderer(OnGetPointerSample);
         hr = _graph.AddFilter(_renderer, RegionTravel.PlayAviFilterName);
         LastAddFilterHr = hr;
         if (hr < 0)
@@ -323,12 +334,6 @@ public sealed class WmvPlayer : IDisposable
         if (hr < 0)
             return $"Run {hr:X8}";
 
-        // Graph IMediaControl.Run should have
-        // called IBaseFilter.Run → 00CA4D80.
-        // Call it here too so WaitForRenderTime
-        // is not left waiting on +84.
-        _exe.Run();
-
         NoteGraphClock();
         LastGraph = GraphSummary();
         LastPinVisible = GraphPinVisible();
@@ -341,19 +346,14 @@ public sealed class WmvPlayer : IDisposable
         while (Environment.TickCount64 < deadline && !_stop)
         {
             DrainEvents();
-            if (_exe.WaitEx_00628A9E())
-            {
-                PullTexture();
+            if (_frameEvent.WaitOne(RegionTravel.PlayAviPresentMs) && Rgba is not null)
                 return null;
-            }
-
-            PullTexture();
             if (Rgba is not null)
                 return null;
         }
 
         return Rgba is null
-            ? $"first-sample-timeout st={_exe.State} stream={_exe.Streaming} w={_exe.Width} recv={_exe.RecvSerial} held={_exe.SampleHeld} in={_exe.InReceive} qa={QueryAcceptCalls} rc={ReceiveConnectionCalls} recvCalls={ReceiveCalls} gp={GetPointerCalls}"
+            ? $"first-sample-timeout qa={QueryAcceptCalls} rc={ReceiveConnectionCalls} recv={ReceiveCalls} gp={GetPointerCalls} rcwRel={SampleRcwRelease} held={SampleHeldAtReturn} vis={LastPinVisible} {LastGraph}"
             : null;
     }
 
@@ -601,27 +601,27 @@ public sealed class WmvPlayer : IDisposable
         }
     }
 
-    private void PullTexture()
+    private void OnGetPointerSample(int width, int height, byte[] rgba)
     {
-        _exe.SnapshotTexture(out var width, out var height, out var rgba, out var serial);
+        SamplesFromGetPointer = true;
         lock (_gate)
         {
             Width = width;
             Height = height;
-            if (rgba is not null)
+            if (Rgba is null || Rgba.Length != rgba.Length)
             {
-                SamplesFromGetPointer = true;
-                if (Rgba is null || Rgba.Length != rgba.Length)
-                {
-                    RgbaAllocs++;
-                    Rgba = new byte[rgba.Length];
-                }
-
-                rgba.AsSpan().CopyTo(Rgba);
-                FrameSerial = serial;
-                LastFrames = serial;
+                RgbaAllocs++;
+                Rgba = new byte[rgba.Length];
             }
+
+            rgba.AsSpan().CopyTo(Rgba);
+            _recvSerial++;
+            FrameSerial = _recvSerial;
+            LastFrames = FrameSerial;
         }
+
+        // 00A3B730 SetEvent([player+124])
+        _frameEvent.Set();
     }
 
     private void NoteGraphClock()
@@ -1078,56 +1078,12 @@ public sealed class WmvPlayer : IDisposable
         public int Prefix;
     }
 
-    private sealed class SampleAdapter : IPlayAviSample
-    {
-        private readonly IMediaSample _sample;
-
-        public bool Released { get; private set; }
-        public bool GotPointer { get; private set; }
-        public long Start { get; private set; }
-        public long End { get; private set; }
-
-        public SampleAdapter(IMediaSample sample) => _sample = sample;
-
-        public int GetTime(out long start, out long end)
-        {
-            var hr = _sample.GetTime(out start, out end);
-            Start = start;
-            End = end;
-            return hr;
-        }
-
-        public int GetPointer(out IntPtr data)
-        {
-            var hr = _sample.GetPointer(out data);
-            if (hr >= 0 && data != IntPtr.Zero)
-                GotPointer = true;
-            return hr;
-        }
-
-        public int GetActualDataLength() => _sample.GetActualDataLength();
-
-        public int GetSize() => _sample.GetSize();
-
-        public void AddRef()
-        {
-        }
-
-        public void Release()
-        {
-            if (Released)
-                return;
-            Released = true;
-            Marshal.ReleaseComObject(_sample);
-        }
-    }
-
     [ComVisible(true)]
     [ClassInterface(ClassInterfaceType.None)]
     private sealed class TextureRenderer : IBaseFilter, IAMFilterMiscFlags, ICustomQueryInterface
     {
         private readonly RendererPin _pin;
-        private readonly PlayAviFromExe _exe;
+        private int _state;
         private IntPtr _graph;
         private string _name = RegionTravel.PlayAviFilterName;
 
@@ -1140,11 +1096,8 @@ public sealed class WmvPlayer : IDisposable
             return 1;
         }
 
-        public TextureRenderer(PlayAviFromExe exe)
-        {
-            _exe = exe;
-            _pin = new RendererPin(this, exe);
-        }
+        public TextureRenderer(Action<int, int, byte[]> onSample) =>
+            _pin = new RendererPin(this, onSample);
 
         // 00CA6A30 GetPin / 00CA4F40 pin ctor:
         // IPin is a separate 0xE0 object, COM
@@ -1160,25 +1113,37 @@ public sealed class WmvPlayer : IDisposable
             return 0;
         }
 
-        public int Stop() => _exe.Stop();
+        public int Stop()
+        {
+            _state = 0;
+            return 0;
+        }
 
-        public int Pause() => _exe.Pause();
+        public int Pause()
+        {
+            _state = 1;
+            return 0;
+        }
 
         public int Run(long start)
         {
             _ = start;
-            return _exe.Run();
+            _state = 2;
+            return 0;
         }
 
         public int GetState(int timeout, out int state)
         {
             _ = timeout;
-            state = _exe.State;
+            state = _state;
             return 0;
         }
 
-        public int SetSyncSource(IntPtr clock) =>
-            _exe.SetSyncSource_00A3BCD0(clock);
+        public int SetSyncSource(IntPtr clock)
+        {
+            _ = clock;
+            return 0;
+        }
 
         public int GetSyncSource(out IntPtr clock)
         {
@@ -1259,7 +1224,7 @@ public sealed class WmvPlayer : IDisposable
     private sealed class RendererPin : IPin, IMemInputPin, IQualityControl, IPinConnection, ICustomQueryInterface
     {
         private readonly TextureRenderer _filter;
-        private readonly PlayAviFromExe _exe;
+        private readonly Action<int, int, byte[]> _onSample;
         private IPin? _connected;
         private AMMediaType _type;
         private int _width;
@@ -1268,14 +1233,15 @@ public sealed class WmvPlayer : IDisposable
         private int _stride;
         private bool _topDown;
         private Guid _subType;
+        private IntPtr _allocator;
         private byte[]? _rgbaScratch;
 
         public bool IsConnected => _connected is not null;
 
-        public RendererPin(TextureRenderer filter, PlayAviFromExe exe)
+        public RendererPin(TextureRenderer filter, Action<int, int, byte[]> onSample)
         {
             _filter = filter;
-            _exe = exe;
+            _onSample = onSample;
         }
 
         public CustomQueryInterfaceResult GetInterface(ref Guid iid, out IntPtr ppv)
@@ -1330,10 +1296,6 @@ public sealed class WmvPlayer : IDisposable
             {
                 _type = Marshal.PtrToStructure<AMMediaType>(type);
                 ReadVideoInfo(type);
-                var hr = _exe.CheckMediaType_00A3B5F0(
-                    _width, _height, _bitCount, _topDown);
-                if (hr < 0)
-                    return hr;
             }
             return 0;
         }
@@ -1430,8 +1392,11 @@ public sealed class WmvPlayer : IDisposable
             var major = Marshal.PtrToStructure<Guid>(type);
             var subtype = Marshal.PtrToStructure<Guid>(type + 16);
             var formatType = Marshal.PtrToStructure<Guid>(type + 44);
-            var hr = PlayAviFromExe.AcceptType_00A3B590(major, subtype, formatType);
-            return hr < 0 ? 1 : 0;
+            if (formatType != Ds.VideoInfo ||
+                major != Ds.Video ||
+                subtype != Ds.Rgb24)
+                return 1;
+            return 0;
         }
 
         public int EnumMediaTypes(out IEnumMediaTypes enumerator)
@@ -1460,54 +1425,100 @@ public sealed class WmvPlayer : IDisposable
             return 0;
         }
 
-        public int GetAllocator(out IntPtr allocator) =>
-            _exe.GetAllocator_00CA89F0(out allocator);
+        public int GetAllocator(out IntPtr allocator)
+        {
+            // 00CA5D50: return stored allocator.
+            // Empty → VFW_E_NO_ALLOCATOR so the
+            // decoder/output pin provides CMemAllocator.
+            // Do not CoCreate a second queue here.
+            if (_allocator == IntPtr.Zero)
+            {
+                allocator = IntPtr.Zero;
+                return unchecked((int)0x8004020A);
+            }
 
-        public int NotifyAllocator(IntPtr allocator, bool readOnly) =>
-            _exe.NotifyAllocator_00CA8AC0(allocator, readOnly);
+            allocator = _allocator;
+            Marshal.AddRef(_allocator);
+            return 0;
+        }
+
+        public int NotifyAllocator(IntPtr allocator, bool readOnly)
+        {
+            _ = readOnly;
+            if (allocator == IntPtr.Zero)
+                return unchecked((int)0x80004003);
+            if (_allocator != IntPtr.Zero)
+                Marshal.Release(_allocator);
+            _allocator = allocator;
+            Marshal.AddRef(_allocator);
+            return 0;
+        }
 
         public int GetAllocatorRequirements(out AllocatorProperties props)
         {
-            var hr = _exe.GetAllocatorRequirements_00CA8EC0(
-                out var count, out var size, out var align, out var prefix);
-            props = new AllocatorProperties
-            {
-                Count = count,
-                Size = size,
-                Alignment = align,
-                Prefix = prefix,
-            };
-            return hr;
+            props = default;
+            return unchecked((int)0x80004001);
         }
 
         public int Receive(IMediaSample sample)
         {
-            ReceiveCalls++;
-            if (_exe.Width <= 0 && _width > 0)
-                _exe.CheckMediaType_00A3B5F0(_width, _height, _bitCount, _topDown);
+            // Fable override of DoRenderSample is ret.
+            // Live copy is 00A3B730 GetPointer then
+            // return. We do not retain the RCW past
+            // this call (no PrepareReceive hold).
+            // ReleaseComObject drops the incoming
+            // RCW so a 1-buffer allocator can
+            // GetBuffer again — not a native AddRef
+            // pair.
             var recv0 = Stopwatch.GetTimestamp();
-            var wrap = new SampleAdapter(sample);
-            var hr = _exe.PinReceive_00CA7210(wrap);
-            if (wrap.GotPointer)
-                GetPointerCalls++;
-            if (!wrap.Released && !_exe.SampleHeld)
-                wrap.Release();
-            var recvTicks = Stopwatch.GetTimestamp() - recv0;
-            if (ReceiveCalls == 1 || ReceiveCalls % 100 == 0)
-                RecordPace(recvTicks, 0, wrap.Start, wrap.End);
-            return hr;
+            ReceiveCalls++;
+            long copyTicks = 0;
+            long sampleStart = 0;
+            long sampleEnd = 0;
+            try
+            {
+                _ = sample.GetTime(out sampleStart, out sampleEnd);
+                var gp = sample.GetPointer(out var data);
+                if (gp >= 0 && data != IntPtr.Zero)
+                    GetPointerCalls++;
+                if (gp < 0 || data == IntPtr.Zero)
+                    return 0;
+                var length = sample.GetActualDataLength();
+                if (length <= 0)
+                    length = sample.GetSize();
+                if (_width <= 0 || _height <= 0 || length <= 0)
+                    return 0;
+                var copy0 = Stopwatch.GetTimestamp();
+                var rgba = CopySample(data, length);
+                copyTicks = Stopwatch.GetTimestamp() - copy0;
+                if (rgba is not null)
+                    _onSample(_width, _height, rgba);
+                return 0;
+            }
+            finally
+            {
+                Marshal.ReleaseComObject(sample);
+                SampleRcwRelease++;
+                SampleHeldAtReturn = 0;
+                var recvTicks = Stopwatch.GetTimestamp() - recv0;
+                if (ReceiveCalls == 1 || ReceiveCalls % 100 == 0)
+                    RecordPace(recvTicks, copyTicks, sampleStart, sampleEnd);
+            }
         }
 
         public int ReceiveMultiple(IMediaSample[] samples, int count, out int processed)
         {
             processed = 0;
-            var wrap = new IPlayAviSample[count];
             for (var i = 0; i < count; i++)
-                wrap[i] = new SampleAdapter(samples[i]);
-            return _exe.ReceiveMultiple_00CA8CF0(wrap, count, out processed);
+            {
+                Receive(samples[i]);
+                processed++;
+            }
+
+            return 0;
         }
 
-        public int ReceiveCanBlock() => _exe.ReceiveCanBlock_00CA8D50();
+        public int ReceiveCanBlock() => 0;
 
         private void ReadVideoInfo(IntPtr type)
         {
@@ -1827,6 +1838,8 @@ public sealed class PlayAviGraphTrace
     public int MemInputQi { get; init; }
     public int Receive { get; init; }
     public int GetPointer { get; init; }
+    public int SampleRcwRelease { get; init; }
+    public int SampleHeldAtReturn { get; init; }
     public int Connect { get; init; }
     public int MiscFlags { get; init; }
     public int MediaPositionQi { get; init; }
