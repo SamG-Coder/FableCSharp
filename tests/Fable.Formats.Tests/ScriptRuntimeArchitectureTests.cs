@@ -823,6 +823,34 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void CreateNear_spawns_at_near_thing_position()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "HERO_POS",
+                PositionX = 4,
+                PositionY = 5,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], null);
+        var interp = new ScriptInterpreter("cn",
+            ["CreateNear CREATURE_DOG,HERO_POS,DOG1,2"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Single(runtime.World.Spawned);
+        Assert.Equal("DOG1", runtime.World.Spawned[0].ScriptName);
+        Assert.Equal(4f, runtime.World.Positions["DOG1"].X);
+        Assert.Equal(5f, runtime.World.Positions["DOG1"].Y);
+    }
+
+    [Fact]
     public void ObjectCreate_inserts_world_thing()
     {
         var runtime = ScriptRuntime.Detached();

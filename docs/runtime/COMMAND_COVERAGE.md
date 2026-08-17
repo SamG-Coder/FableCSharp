@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 75
-RECOVERED RETURN: 75
+RECOVERED DISPATCH: 76
+RECOVERED RETURN: 76
 RECOVERED APPLY: 14
 IMPLEMENTED RUNTIME: 11
-UNREAD: 110
+UNREAD: 109
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -62,7 +62,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | Create | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | SmashWindows | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | RegisterScript | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| CreateNear | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| CreateNear | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | DummyEffect | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | CreateEffect | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | CreateLight | Global | Unread | Unread | Unread | Unread | Unread | Unread |

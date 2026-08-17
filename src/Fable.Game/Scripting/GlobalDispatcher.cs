@@ -285,6 +285,25 @@ public static class GlobalDispatcher
                 $"{type}->{name}", $"Created:{name}");
         }
 
+        if (Eq(v, "CreateNear"))
+        {
+            var type = line.Arg(0);
+            var near = line.Arg(1);
+            var name = line.Arg(2);
+            if (type.Length == 0 || near.Length == 0 || name.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ScriptLine.TryFloat(line.Arg(3), out var radius);
+            var nearThing = ctx.FindThing(near);
+            var pos = nearThing is { PositionX: not null }
+                ? RegionTravel.PositionOf(nearThing)
+                : (System.Numerics.Vector3?)null;
+            var spawned = ctx.World.Spawn(type, near, name, pos);
+            ctx.Runtime.AddThing(spawned);
+            ctx.Bindings.BindCreated(name, type, near, pos, spawned);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                $"{type}->{name} r={radius:0.##}", $"Created:{name}");
+        }
+
         if (Eq(v, "ObjectCreate"))
         {
             var type = line.Arg(0);
