@@ -113,6 +113,10 @@ public sealed class CameraRuntime
     /// </summary>
     public float ShakeArg1 { get; private set; }
     public bool ShakeActive { get; private set; }
+    public float EffectArg0 { get; private set; }
+    public float EffectArg1 { get; private set; }
+    public float EffectArg2 { get; private set; }
+    public bool EffectActive { get; private set; }
 
     public void Bind(ScriptedCamera? camera, IReadOnlyList<ThingInstance> things, string name)
     {
@@ -132,6 +136,18 @@ public sealed class CameraRuntime
         ShakeArg0 = arg0;
         ShakeArg1 = arg1;
         ShakeActive = true;
+    }
+
+    /// <summary>
+    /// <c>00CD1258</c> <c>vtbl+1676(arg0,arg1,arg2)</c>.
+    /// Filter body unread — host stores the triple.
+    /// </summary>
+    public void Effect(float arg0, float arg1, float arg2)
+    {
+        EffectArg0 = arg0;
+        EffectArg1 = arg1;
+        EffectArg2 = arg2;
+        EffectActive = true;
     }
 
     public void LookAtThing(ScriptedCamera? camera, ThingInstance? thing, string name)

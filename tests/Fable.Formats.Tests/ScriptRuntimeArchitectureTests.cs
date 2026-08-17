@@ -875,6 +875,61 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void CameraEffect_stores_three_floats_and_continues()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("ceff",
+            ["CameraEffect 1,0.5,2", "CameraPause FALSE"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.True(runtime.CameraSys.EffectActive);
+        Assert.Equal(1f, runtime.CameraSys.EffectArg0);
+        Assert.Equal(0.5f, runtime.CameraSys.EffectArg1);
+        Assert.Equal(2f, runtime.CameraSys.EffectArg2);
+        Assert.Contains(runtime.Trace.Steps, s =>
+            s.Verb == "CameraEffect" && s.Result == ExecutionKind.Continue);
+        Assert.Equal(0x00CD12C2u, ScriptCommandMap.Find("CameraEffect")!.Value.ApplySite);
+
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("CameraEffect ", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "CameraEffect 1,0.5,2";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("CameraEffect", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        var bankRt = ScriptRuntime.Detached();
+        bankRt.Load(bank, install);
+        var iso = new ScriptInterpreter(hit.InstanceName + "-ceff", [line]);
+        iso.RunUntilYield(bankRt);
+        Assert.True(bankRt.CameraSys.EffectActive);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        bankRt.Trace.Write(Path.Combine(dest, hit.InstanceName + "-ceff.txt"));
+    }
+
+    [Fact]
     public void RemoveEffect_destroys_created_effect_not_via_Remove_lookup()
     {
         var runtime = ScriptRuntime.Detached();

@@ -164,6 +164,19 @@ public static class GlobalDispatcher
                 $"{a:0.##},{b:0.##}");
         }
 
+        if (Eq(v, "CameraEffect"))
+        {
+            if (line.Arg(0).Length == 0 || line.Arg(1).Length == 0 ||
+                line.Arg(2).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ScriptLine.TryFloat(line.Arg(0), out var a);
+            ScriptLine.TryFloat(line.Arg(1), out var b);
+            ScriptLine.TryFloat(line.Arg(2), out var c);
+            ctx.Camera.Effect(a, b, c);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                $"{a:0.##},{b:0.##},{c:0.##}");
+        }
+
         if (Eq(v, "ScriptFrame"))
         {
             ctx.Cutscene.YieldEnable = !ScriptLine.IsFalse(line.Arg(0));
