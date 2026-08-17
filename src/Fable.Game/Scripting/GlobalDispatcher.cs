@@ -105,11 +105,32 @@ public static class GlobalDispatcher
             var name = line.Arg(0);
             if (name.Length == 0 || line.Arg(1).Length == 0)
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
-            ctx.Camera.LookAtThing(name);
+            ctx.Camera.LookAtThing(ctx.Runtime.Camera, ctx.FindThing(name), name);
             if (!ctx.Cutscene.YieldEnable)
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name);
             return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
                 "CameraLookAt vtbl+1628", name);
+        }
+
+        if (Eq(v, "ResetCamera"))
+        {
+            ctx.Camera.Reset(ctx.Runtime.Camera);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "reset");
+        }
+
+        if (Eq(v, "ScriptFrame"))
+        {
+            ctx.Cutscene.YieldEnable = !ScriptLine.IsFalse(line.Arg(0));
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                ctx.Cutscene.YieldEnable ? "TRUE" : "FALSE");
+        }
+
+        if (Eq(v, "DoOneFrame"))
+        {
+            if (!ctx.Cutscene.YieldEnable)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "no-yield");
+            return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
+                "DoOneFrame vtbl+28", "1");
         }
 
         if (Eq(v, "PutUpYourSwords"))
@@ -132,7 +153,7 @@ public static class GlobalDispatcher
             if (name.Length == 0 || ScriptLine.IsNull(name))
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
             ctx.Camera.Bind(ctx.Runtime.Camera, ctx.Runtime.Things, name);
-            if (!ctx.Cutscene.CameraPauseEnabled)
+            if (!ctx.Cutscene.CameraPauseEnabled || !ctx.Cutscene.YieldEnable)
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name);
             return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
                 "UseCamera vtbl+28", name);
@@ -237,6 +258,48 @@ public static class GlobalDispatcher
             ctx.Bindings.BindCreated(name, type, marker, pos, spawned);
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
                 $"{type}->{name}", $"Created:{name}");
+        }
+
+        if (Eq(v, "ObjectCreate"))
+        {
+            var type = line.Arg(0);
+            var marker = line.Arg(1);
+            var name = line.Arg(2);
+            if (type.Length == 0 || marker.Length == 0 || name.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            var markerThing = ctx.FindThing(marker);
+            var pos = markerThing is { PositionX: not null }
+                ? RegionTravel.PositionOf(markerThing)
+                : (System.Numerics.Vector3?)null;
+            var spawned = ctx.World.Spawn(type, marker, name, pos);
+            ctx.Runtime.AddThing(spawned);
+            ctx.Bindings.BindCreated(name, type, marker, pos, spawned);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                $"{type}->{name}", $"Created:{name}");
+        }
+
+        if (Eq(v, "CrowdCreate"))
+        {
+            var type = line.Arg(0);
+            var source = line.Arg(1);
+            var alias = line.Arg(2);
+            if (type.Length == 0 || source.Length == 0 || alias.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            var sources = ctx.World.CollectByName(ctx.Runtime.Things, source);
+            var spawned = new List<ThingInstance>();
+            for (var i = 0; i < sources.Count; i++)
+            {
+                var src = sources[i];
+                var pos = src.PositionX is not null ? RegionTravel.PositionOf(src) : (System.Numerics.Vector3?)null;
+                var member = alias + i.ToString(System.Globalization.CultureInfo.InvariantCulture);
+                var thing = ctx.World.Spawn(type, src.ScriptName ?? source, member, pos);
+                ctx.Runtime.AddThing(thing);
+                spawned.Add(thing);
+            }
+
+            ctx.Bindings.BindCrowd(type, alias, spawned);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                $"{type}->{alias}x{spawned.Count}", $"Crowd:{alias}");
         }
 
         if (Eq(v, "RemoveAllThings"))

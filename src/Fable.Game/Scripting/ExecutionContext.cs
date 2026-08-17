@@ -106,10 +106,27 @@ public sealed class CameraRuntime
 
     public void ClearBusy() => Busy = false;
 
-    public void LookAtThing(string name)
+    public void LookAtThing(ScriptedCamera? camera, ThingInstance? thing, string name)
     {
         LookAt = name;
         Busy = true;
+        if (thing is { PositionX: not null })
+            camera?.SetLookAt(RegionTravel.PositionOf(thing));
+    }
+
+    /// <summary>
+    /// <c>00CC9DF1</c> <c>vtbl+1668(0)</c> +
+    /// <c>vtbl+1664</c>. Clears script camera and
+    /// restores the gameplay snapshot.
+    /// </summary>
+    public void Reset(ScriptedCamera? camera)
+    {
+        camera?.Reset();
+        ActiveName = camera?.ActiveName ?? "";
+        LookAt = "";
+        Busy = false;
+        if (WaitOp is not null)
+            WaitOp.Complete = true;
     }
 
     public PendingOperation? WaitOp { get; private set; }
@@ -440,6 +457,27 @@ public sealed class WorldRuntime
         Teleports.Add(new ScriptTeleport(actor, marker, position));
         if (actor is { Length: > 0 } && position is { } pos)
             Positions[actor] = pos;
+    }
+
+    public IReadOnlyList<ThingInstance> CollectByName(IEnumerable<ThingInstance> things, string source)
+    {
+        var hits = new List<ThingInstance>();
+        foreach (var thing in things)
+        {
+            if (thing.ScriptName is not null &&
+                (thing.ScriptName.Equals(source, StringComparison.OrdinalIgnoreCase) ||
+                 thing.ScriptName.StartsWith(source, StringComparison.OrdinalIgnoreCase)))
+            {
+                hits.Add(thing);
+                continue;
+            }
+
+            if (thing.DefinitionType is not null &&
+                thing.DefinitionType.Equals(source, StringComparison.OrdinalIgnoreCase))
+                hits.Add(thing);
+        }
+
+        return hits;
     }
 
     public ThingInstance Spawn(string type, string marker, string name, Vector3? pos)

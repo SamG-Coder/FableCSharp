@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 65
-RECOVERED RETURN: 65
-RECOVERED APPLY: 9
-IMPLEMENTED RUNTIME: 9
-UNREAD: 120
+RECOVERED DISPATCH: 70
+RECOVERED RETURN: 70
+RECOVERED APPLY: 14
+IMPLEMENTED RUNTIME: 11
+UNREAD: 115
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -15,7 +15,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | CameraFOVLookBetween | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | CameraLookBetween | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | CameraLookAt | Global | Proven | Proven | Proven | Partial | Partial | Partial |
-| UseCamera | Global | Proven | Proven | Proven | Partial | Partial | Partial |
+| UseCamera | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | StartTimeCode | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | DoCameraPreloading | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | StopMusic | Global | Proven | Proven | Proven | Partial | Partial | Partial |
@@ -56,9 +56,9 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | FallbackAcquire | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | CrowdAcquire | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | CreditScreen | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| CrowdCreate | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| CrowdCreate | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | CrowdCreateMixed | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| ObjectCreate | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| ObjectCreate | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | Create | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | SmashWindows | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | RegisterScript | Global | Unread | Unread | Unread | Unread | Unread | Unread |
@@ -74,8 +74,8 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | WaitForCamera | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | TeleportToHSP | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | PlayAVI | Global | Proven | Proven | Proven | Proven | Proven | Proven |
-| NoLoadUseCamera | Global | Proven | Proven | Proven | Partial | Partial | Partial |
-| ResetCamera | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| NoLoadUseCamera | Global | Proven | Proven | Proven | Proven | Partial | Partial |
+| ResetCamera | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | DrawThing | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | UseCameraFOVMarkerList | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | CameraRig | Global | Unread | Unread | Unread | Unread | Unread | Unread |
@@ -106,7 +106,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | CameraPreload | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | FadeThingIn | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | FadeThingOut | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| DoOneFrame | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| DoOneFrame | Global | Proven | Proven | Proven | Proven | Proven | Proven |
 | PlayObjectAnim | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | LookAtNothing | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | NoDialogCam | Global | Proven | Proven | Proven | Partial | Partial | Partial |
@@ -114,7 +114,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | MuteSounds | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | CameraPause | Global | Proven | Proven | Proven | Proven | Proven | Proven |
 | AnimationPause | Global | Proven | Proven | Proven | Partial | Partial | Partial |
-| ScriptFrame | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| ScriptFrame | Global | Proven | Proven | Proven | Proven | Proven | Proven |
 | DoScriptFrame | Global | Proven | Proven | Proven | Proven | Proven | Proven |
 | return | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | RemoveExtras | Global | Proven | Proven | Proven | Partial | Partial | Partial |

@@ -10,9 +10,14 @@
 | LookToThing | `00CC3B3F` | `—` | target[,mode][,IsFalse] | YieldAfterUnlessFalse | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+1992; FOREVER wait; body UNREAD — record + yield |
 | DoScriptFrame | `00CC7085` | `—` | [count] | WaitFrames | Proven | Proven | Proven | Proven | Proven | Proven | atoi; each count one vtbl+28 |
 | DoCameraPreloading | `00CC86D0` | `00CBF29F` | [IsTrue] | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | collects UseCamera names vtbl+1648; vtbl+1560/1568 UNREAD |
-| UseCamera | `00CC9F3A` | `00B23B50` | name | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | TNG lookup; bind helper; one vtbl+28 |
-| NoLoadUseCamera | `00CC9E6A` | `00CC907D` | name | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | separate token; yield helper 00CC907D |
+| UseCamera | `00CC9F3A` | `00B23B50` | name | YieldAfter | Proven | Proven | Proven | Proven | Partial | Partial | TNG lookup; bind ScriptedCamera pos/look/fov; one vtbl+28; spline unread |
+| NoLoadUseCamera | `00CC9E6A` | `00CC907D` | name | YieldAfter | Proven | Proven | Proven | Proven | Partial | Partial | separate token; same TNG bind; yield helper 00CC907D |
 | WaitForCamera | `00CCA41F` | `00CCA58F` |  | YieldAfterOrWait | Proven | Proven | Proven | Partial | Partial | Partial | poll vtbl+1672; idle -> 00CD17FD; busy -> vtbl+28 then re-poll |
+| ResetCamera | `00CC9DF1` | `00CC9E40` |  | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | vtbl+1668(0.0) then vtbl+1664; jmp 00CD17FD; restores gameplay snapshot |
+| ScriptFrame | `00CC7124` | `00CC7181` | [IsFalse] | CompleteNow | Proven | Proven | Proven | Proven | Proven | Proven | IsFalse -> [ebp+103]=!IsFalse yield-enable; jmp 00CC8464 |
+| DoOneFrame | `00CC75A8` | `00CC7605` |  | YieldAfter | Proven | Proven | Proven | Proven | Proven | Proven | if [ebp+103] vtbl+28; timecode; jmp 00CC8464 |
+| ObjectCreate | `00CCC4FC` | `00CCC62E` | type,marker,name | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+392 object factory; empty any skip; jmp 00CC864B |
+| CrowdCreate | `00CCC92F` | `00CCCAA1` | type,source,alias[,IsTrue] | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+300(source); per-item vtbl+364; alias+i via 0099F570; 00CD3D2E |
 | PlayAnimation | `00CC14B8` | `004C7470` | name[,flags] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+72; CTCAnimationComplex +68 is 00686920 al=1; inner 0070D580 not this path |
 | PlayLoopingAnim | `00CC1731` | `—` | name[,flags] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | separate token after PlayCombatAnim; entity task slot |
 | PlayAVI | `00CCA26D` | `006286F0` | file | BlockPump | Proven | Proven | Proven | Proven | Proven | Proven | Data\Video\ prefix; blocking 006286F0; no vtbl+28 |

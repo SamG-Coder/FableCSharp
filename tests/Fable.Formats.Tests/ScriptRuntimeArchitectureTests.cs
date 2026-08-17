@@ -249,6 +249,8 @@ public sealed class ScriptRuntimeArchitectureTests
     [InlineData("CS_CHICKING_TOPPRIZE")]
     [InlineData("CS_OPENGRAVE_CRYPTCAM")]
     [InlineData("CS_PUNCHCLUB_BS_RUNFORESTRUN")]
+    [InlineData("CS_PRISON_RACE_INTRO_END")]
+    [InlineData("CS_BANDITKING_INTRO_BLACK")]
     public void Fixture_runs_from_pc0_and_writes_ordered_trace(string name)
     {
         var install = GameInstall.TryLocate();
@@ -288,6 +290,10 @@ public sealed class ScriptRuntimeArchitectureTests
         var dest = Path.Combine(Scratch(), "traces");
         Directory.CreateDirectory(dest);
         runtime.Trace.Write(Path.Combine(dest, name + ".txt"));
+        var goalScratch = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(goalScratch);
+        runtime.Trace.Write(Path.Combine(goalScratch, name + ".txt"));
         var got = runtime.Trace.Steps
             .Select(s => $"{s.Pc} {s.Verb} {s.Result}")
             .ToList();
@@ -395,6 +401,15 @@ public sealed class ScriptRuntimeArchitectureTests
             "1 FadeOut Continue",
             "1 GamePause WaitScaledFrames",
         ],
+        "CS_PRISON_RACE_INTRO_END" =>
+        [
+            "1 ResetCamera Continue",
+        ],
+        "CS_BANDITKING_INTRO_BLACK" =>
+        [
+            "1 FadeOut Continue",
+            "1 DoScriptFrame WaitFrames",
+        ],
         _ => [],
     };
 
@@ -496,6 +511,106 @@ public sealed class ScriptRuntimeArchitectureTests
         Assert.Equal(10, runtime.World.Positions["HERO"].X);
         Assert.NotNull(runtime.Movement.Tasks.Current("HERO"));
         Assert.Equal(EntityTaskKind.Walk, runtime.Movement.Tasks.Current("HERO")!.Kind);
+    }
+
+    [Fact]
+    public void ResetCamera_restores_gameplay_snapshot_after_UseCamera()
+    {
+        var camera = new ScriptedCamera();
+        camera.Bind("GAMEPLAY", new System.Numerics.Vector3(1, 2, 3),
+            new System.Numerics.Vector3(0, 1, 0), System.Numerics.Vector3.UnitZ, 60f);
+        camera.SnapshotGameplay();
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "CTCCameraPointScripted",
+                ScriptName = "CAM_A",
+                PositionX = 10,
+                PositionY = 20,
+                PositionZ = 30,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], camera);
+        var interp = new ScriptInterpreter("rc",
+            ["UseCamera CAM_A", "ResetCamera"]);
+        interp.RunUntilYield(runtime);
+        Assert.Equal("CAM_A", camera.ActiveName);
+        interp.Resume(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal("GAMEPLAY", camera.ActiveName);
+        Assert.Equal(1f, camera.Position.X);
+        Assert.False(camera.ScriptCameraActive);
+        Assert.False(runtime.CameraSys.Busy);
+    }
+
+    [Fact]
+    public void ScriptFrame_false_disables_UseCamera_yield()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("sf",
+            ["ScriptFrame FALSE", "UseCamera CAM_A", "DoOneFrame"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Contains("UseCamera CAM_A", interp.Executed);
+        Assert.Contains("DoOneFrame", interp.Executed);
+    }
+
+    [Fact]
+    public void CrowdCreate_spawns_indexed_members_at_source_markers()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "BKC40",
+                PositionX = 5,
+                PositionY = 0,
+                PositionZ = 1,
+                Properties = new Dictionary<string, string>(),
+            },
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "BKC41",
+                PositionX = 6,
+                PositionY = 0,
+                PositionZ = 1,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], null);
+        var interp = new ScriptInterpreter("cc",
+            ["CrowdCreate CREATURE_BANDIT_GRUNT,BKC4,CROWDBANDITS,FALSE"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.NotNull(runtime.Bindings.Resolve("CROWDBANDITS0"));
+        Assert.NotNull(runtime.Bindings.Resolve("CROWDBANDITS1"));
+        Assert.Equal(2, runtime.World.Spawned.Count);
+        Assert.Equal("CREATURE_BANDIT_GRUNT", runtime.World.Spawned[0].DefinitionType);
+        Assert.Equal(5f, runtime.World.Positions["CROWDBANDITS0"].X);
+    }
+
+    [Fact]
+    public void ObjectCreate_inserts_world_thing()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("oc",
+            ["ObjectCreate OBJECT_CHEST,MK_A,CHEST1"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Single(runtime.World.Spawned);
+        Assert.Equal("OBJECT_CHEST", runtime.World.Spawned[0].DefinitionType);
+        Assert.Equal("CHEST1", runtime.World.Spawned[0].ScriptName);
+        Assert.NotNull(runtime.Bindings.Resolve("CHEST1"));
     }
 
     [Fact]

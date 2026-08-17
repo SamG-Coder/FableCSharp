@@ -36,6 +36,14 @@ public sealed class ScriptedCamera
     public Vector3 LookAt { get; private set; }
     public Vector3 Up { get; private set; } = LandscapeFrustum.FirstSeenCameraUp;
     public float FovDegrees { get; private set; } = RegionTravel.IntroCameraFovDegrees;
+    public bool ScriptCameraActive { get; private set; }
+
+    private string _gameplayName = "";
+    private Vector3 _gameplayPos;
+    private Vector3 _gameplayLook;
+    private Vector3 _gameplayUp = LandscapeFrustum.FirstSeenCameraUp;
+    private float _gameplayFov = RegionTravel.IntroCameraFovDegrees;
+    private bool _hasGameplay;
 
     public Vector3 Forward
     {
@@ -52,12 +60,48 @@ public sealed class ScriptedCamera
     /// </summary>
     public void Bind(string name, Vector3 position, Vector3 lookAt, Vector3 up, float fovDegrees)
     {
+        if (!_hasGameplay)
+            SnapshotGameplay();
         ActiveName = name;
         Position = position;
         LookAt = lookAt;
         Up = up.LengthSquared() > 1e-8f ? Vector3.Normalize(up) : LandscapeFrustum.FirstSeenCameraUp;
         FovDegrees = fovDegrees;
+        ScriptCameraActive = true;
     }
+
+    public void SnapshotGameplay()
+    {
+        _gameplayName = ActiveName;
+        _gameplayPos = Position;
+        _gameplayLook = LookAt;
+        _gameplayUp = Up;
+        _gameplayFov = FovDegrees;
+        _hasGameplay = true;
+    }
+
+    /// <summary>
+    /// <c>00CC9DF1</c>: <c>vtbl+1668(0.0)</c> then
+    /// <c>vtbl+1664</c>. No yield. Restores the
+    /// pre-script gameplay camera snapshot.
+    /// </summary>
+    public void Reset()
+    {
+        ScriptCameraActive = false;
+        if (!_hasGameplay)
+        {
+            ActiveName = "";
+            return;
+        }
+
+        ActiveName = _gameplayName;
+        Position = _gameplayPos;
+        LookAt = _gameplayLook;
+        Up = _gameplayUp;
+        FovDegrees = _gameplayFov;
+    }
+
+    public void SetLookAt(Vector3 lookAt) => LookAt = lookAt;
 
     public bool UseCamera(IEnumerable<ThingInstance> things, string name) =>
         RegionTravel.TryNamedCamera(things, name, out var position, out var lookAt, out var fov, out var up)
