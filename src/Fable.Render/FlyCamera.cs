@@ -72,6 +72,15 @@ public sealed class FlyCamera
             LandscapeFrustum.LandscapeWorld(Position), ViewMatrixAt(aspect), ProjectionMatrix(aspect, FovDegrees));
 
     /// <summary>
+    /// Host STB is world-space. Fable <c>T(cam)</c> is
+    /// for a camera-relative VB. This is the equivalent
+    /// <c>p_world * I * V * P</c>.
+    /// </summary>
+    public Matrix4x4 HostLandscapeViewProjection(float aspect) =>
+        LandscapeFrustum.ComposeWvp(
+            LandscapeFrustum.HostWorldSpaceLandscapeWorld(), ViewMatrixAt(aspect), ProjectionMatrix(aspect, FovDegrees));
+
+    /// <summary>
     /// <c>00B662F0</c> else-path <c>00B30B50</c> with sky source
     /// near 100 / far 10000 / minZ 0.99 / maxZ 1, then
     /// <c>VSHADER_INNER_SKY</c> <c>dp4 oPos, v0, c5–c8</c>.

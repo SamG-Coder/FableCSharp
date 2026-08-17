@@ -43,4 +43,28 @@ public static class Dx9VulkanShaderConstants
     public static Vector4 C1 => WorldShading.FirstSeenC1;
     public static Vector4 C3 => WorldShading.FirstSeenC3;
     public static Vector4 FogColor => WorldShading.FogRecordColor;
+
+    // PALSKIN: LayoutBasic c1=(256)×4 turns D3DCOLOR
+    // 0–1 into a0 ≈ byte. 00BCFB00 SetVSConstantF
+    // start 38, count = influences*3. First-seen dest
+    // is identity (no play-anim).
+    public const int PaletteStartRegister = WorldShading.DerivedPaletteStartRegister;
+    public const int PaletteFloat4sPerBone = WorldShading.BoneFloat4sPerInfluence;
+    public const bool FirstSeenPaletteIsBindPose = true;
+
+    // Fable 00BF46A2 T(cam) is for a camera-relative
+    // landscape VB. Host STB tiles are world-space
+    // (LevTileMesh). p_world * T(cam) is DISPROVEN.
+    // EQUIVALENT: identity world, same as
+    // (p_world-cam)*T(cam).
+    public static Matrix4x4 PackWorldSpaceLandscapeWvp(Matrix4x4 view, Matrix4x4 dx9Proj) =>
+        PackWvp(LandscapeFrustum.HostWorldSpaceLandscapeWorld(), view, dx9Proj);
+
+    // First-seen dirlight: dp3 n,-c19; max; square; *c20;
+    // mad c35; add c3. Unlit faces are leftover
+    // c3=(0,0.125,0) then PS mul_x2 — dark green, not a
+    // missing ambient to invent. Sky PS c0/c1/c2 have no
+    // first-seen writer (UNREAD).
+    public const bool UnlitRgbIsC3Leftover = true;
+    public const bool SkyPsConstantsUnread = true;
 }

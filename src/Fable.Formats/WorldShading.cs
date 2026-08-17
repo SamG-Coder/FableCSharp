@@ -181,17 +181,317 @@ public static class WorldShading
     }
 
     /// <summary>
+    /// Kid <c>4300</c> C3D: flags <c>0x14</c> (float3 pos,
+    /// packed n/UV) + 8 bone bytes. VS inputs:
+    /// <c>v0</c> pos, <c>v1</c> D3DCOLOR indices,
+    /// <c>v2</c> D3DCOLOR weights, <c>v3</c> normal,
+    /// <c>v4</c> UV (<c>mov oT0, v4</c>).
+    /// </summary>
+    /// <summary>
+    /// Kid <c>4300</c> C3D writes stride 28 / flags
+    /// <c>0x14</c> via primitive serialize
+    /// <c>00A8FD40</c> <c>[esi+16]</c> / initFlags.
+    /// Father <c>CREATURE_HERO_FATHER</c> writes stride
+    /// 20 / flags <c>4</c> (packed pos). Both are file
+    /// fields, not a single PALSKIN FVF.
+    /// </summary>
+    public const int FirstSeenPalskinStrideBytes = 28;
+    public const uint FirstSeenPalskinInitFlags = 0x14;
+    public const int FatherPalskinStrideBytes = 20;
+    public const uint FatherPalskinInitFlags = 4;
+    public const bool FatherPalskinPosIsPacked = true;
+    /// <summary>
+    /// Animated-block serialize <c>00A8E770</c> /
+    /// read <c>00A8E8A0</c>+<c>00A8EB10</c>: stream is
+    /// u32,u32,u8,u8,u8,u32,u16,u8,u8 count, then
+    /// count bone ids. Count lives at record+23;
+    /// ids at +24. <c>00BCFB00</c> reads the same
+    /// offsets.
+    /// </summary>
+    public const uint C3dPrimitiveSerialize = 0x00A8FD40;
+    public const uint C3dAnimatedBlockWrite = 0x00A8E770;
+    public const uint C3dAnimatedBlockReadHead = 0x00A8E8A0;
+    public const uint C3dAnimatedBlockReadTail = 0x00A8EB10;
+    public const int C3dAnimatedInfluenceCountOffset = 23;
+    public const int C3dAnimatedBoneListOffset = 24;
+    public const int FirstSeenPalskinPosInput = 0;
+    public const int FirstSeenPalskinIndexInput = 1;
+    public const int FirstSeenPalskinWeightInput = 2;
+    public const int FirstSeenPalskinNormalInput = 3;
+    public const bool FirstSeenPalskinSkinsNormal = true;
+    /// <summary>
+    /// <c>00BCFB00</c> packs 3 float4s per influence
+    /// sequentially from dest[<c>bone*64</c>]. VS
+    /// <c>mov a0.x, index*c1</c> then <c>c[38+a0]</c>.
+    /// File bytes that are mesh bone ids are the CPU
+    /// palette index; GPU <c>a0</c> is the packed
+    /// slot times 3. First-seen dest is identity so
+    /// both paths are bind-pose.
+    /// </summary>
+    public const int PalskinGpuRegisterStride = 3;
+    public const bool FirstSeenPalskinCpuPaletteIsMeshBone = true;
+    public const bool FirstSeenPalskinGpuA0IsPackedSlotTimes3 = true;
+
+    /// <summary>
+    /// D3DCOLOR memory is BGRA. The VS expands to
+    /// <c>(R,G,B,A)</c> then <c>.zyxw</c>:
+    /// <c>(B,G,R,A)</c> = memory bytes
+    /// <c>[0,1,2,3]</c>. First influence is memory B.
+    /// Weights use the same map so pairs stay matched.
+    /// The weighted sum is order-independent.
+    /// </summary>
+    public static readonly int[] D3dColorZyxwFromMemory = [0, 1, 2, 3];
+
+    public static void PalskinInfluencesFromD3dColor(
+        ReadOnlySpan<byte> indexBytes, ReadOnlySpan<byte> weightBytes,
+        Span<byte> indices, Span<byte> weights)
+    {
+        var n = Math.Min(4, Math.Min(indexBytes.Length, weightBytes.Length));
+        for (var i = 0; i < n && i < indices.Length && i < weights.Length; i++)
+        {
+            var s = D3dColorZyxwFromMemory[i];
+            indices[i] = s < indexBytes.Length ? indexBytes[s] : (byte)0;
+            weights[i] = s < weightBytes.Length ? weightBytes[s] : (byte)0;
+        }
+    }
+
+    public static int PalskinGpuAddressOffset(int packedSlot) =>
+        packedSlot * PalskinGpuRegisterStride;
+
+    /// <summary>
+    /// All 16 entries. Bind-pose dest is identity;
+    /// a 3×3-only check hid M23/M32/M41–43 leftovers.
+    /// </summary>
+    public static bool IsNearIdentity(Matrix4x4 m, float epsilon = 1e-3f)
+    {
+        static bool Near(float a, float b, float e) => MathF.Abs(a - b) <= e;
+        return Near(m.M11, 1f, epsilon) && Near(m.M22, 1f, epsilon)
+            && Near(m.M33, 1f, epsilon) && Near(m.M44, 1f, epsilon)
+            && Near(m.M12, 0f, epsilon) && Near(m.M13, 0f, epsilon)
+            && Near(m.M14, 0f, epsilon) && Near(m.M21, 0f, epsilon)
+            && Near(m.M23, 0f, epsilon) && Near(m.M24, 0f, epsilon)
+            && Near(m.M31, 0f, epsilon) && Near(m.M32, 0f, epsilon)
+            && Near(m.M34, 0f, epsilon) && Near(m.M41, 0f, epsilon)
+            && Near(m.M42, 0f, epsilon) && Near(m.M43, 0f, epsilon);
+    }
+
+    /// <summary>
     /// VS: <c>mul r2, v1.zyxw, c1</c> (indices),
     /// <c>mov r3, v2.zyxw</c> (weights 0–1),
     /// <c>mov a0.x, r2.x</c>, then
     /// <c>mul/mad r, r3, c[38+a0]</c> (relative).
-    /// File bytes are the integer bone ids / UBYTE weights.
-    /// D3DCOLOR×<see cref="FirstSeenC1"/> recovers those ids.
-    /// Both streams use the same <c>.zyxw</c> so pairs stay matched.
-    /// <c>00BCFB00</c> uploads 3 float4s per influence.
-    /// Missing bones leave the position unchanged.
+    /// File bytes are D3DCOLOR; <see cref="PalskinInfluencesFromD3dColor"/>
+    /// recovers the VS order. <c>00BCFB00</c> uploads 3 float4s
+    /// per influence. Missing bones leave the position unchanged.
     /// </summary>
     public static Vector3 SkinPosition(
+        Vector3 position, ReadOnlySpan<byte> indices, ReadOnlySpan<byte> weights, Matrix4x4[] palettes) =>
+        SkinPosition(position, indices, weights, palettes, []);
+
+    /// <summary>
+    /// <c>00BCFB00</c> copies <c>dest[record[+24+i]*64]</c>
+    /// (12 dwords) into a packed bank then
+    /// <c>SetVSConstantF(c38, count*3)</c>. The VS
+    /// <c>a0</c> is the file byte, a register offset
+    /// into that bank. Slot <c>a0/3</c> selects
+    /// <paramref name="groupBones"/>; that byte is the
+    /// mesh bone used as dest index. Empty group keeps
+    /// the file byte as a mesh-bone id (no subset).
+    /// </summary>
+    public static Vector3 SkinPosition(
+        Vector3 position, ReadOnlySpan<byte> indices, ReadOnlySpan<byte> weights,
+        Matrix4x4[] palettes, ReadOnlySpan<byte> groupBones)
+    {
+        Span<byte> idx = stackalloc byte[4];
+        Span<byte> wgt = stackalloc byte[4];
+        PalskinInfluencesFromD3dColor(indices, weights, idx, wgt);
+        RemapPalskinIndicesToMeshBones(idx, groupBones);
+        return SkinPositionUnswizzled(position, idx, wgt, palettes);
+    }
+
+    /// <summary>
+    /// VS <c>dp3 r1, v3, r4/r5/r6</c> after the same
+    /// palette rows as position (no translation).
+    /// </summary>
+    public static Vector3 SkinNormal(
+        Vector3 normal, ReadOnlySpan<byte> indices, ReadOnlySpan<byte> weights, Matrix4x4[] palettes) =>
+        SkinNormal(normal, indices, weights, palettes, []);
+
+    public static Vector3 SkinNormal(
+        Vector3 normal, ReadOnlySpan<byte> indices, ReadOnlySpan<byte> weights,
+        Matrix4x4[] palettes, ReadOnlySpan<byte> groupBones)
+    {
+        Span<byte> idx = stackalloc byte[4];
+        Span<byte> wgt = stackalloc byte[4];
+        PalskinInfluencesFromD3dColor(indices, weights, idx, wgt);
+        RemapPalskinIndicesToMeshBones(idx, groupBones);
+        var n = Math.Min(idx.Length, wgt.Length);
+        var sum = 0;
+        for (var i = 0; i < n; i++)
+            sum += wgt[i];
+        if (sum == 0 || palettes.Length == 0)
+            return normal;
+
+        var acc = Vector3.Zero;
+        for (var i = 0; i < n; i++)
+        {
+            if (wgt[i] == 0)
+                continue;
+            var bone = idx[i];
+            if (bone >= palettes.Length)
+                continue;
+            var m = palettes[bone];
+            var w = wgt[i] / 255f;
+            acc.X += w * (normal.X * m.M11 + normal.Y * m.M12 + normal.Z * m.M13);
+            acc.Y += w * (normal.X * m.M21 + normal.Y * m.M22 + normal.Z * m.M23);
+            acc.Z += w * (normal.X * m.M31 + normal.Y * m.M32 + normal.Z * m.M33);
+        }
+
+        var len = acc.Length();
+        return len > 1e-8f ? acc / len : normal;
+    }
+
+    /// <summary>
+    /// First-seen PALSKIN VS uses <c>v2.zyxw</c> x/y/z only —
+    /// there is no fourth <c>mad</c> on <c>r2.w</c>.
+    /// </summary>
+    public const int PalskinVsInfluenceCount = 3;
+
+    /// <summary>
+    /// Pack dest 3×4 rows as the <c>00BCFB00</c> upload:
+    /// <c>c[38+3i]</c> = row0, <c>+1</c> row1, <c>+2</c> row2.
+    /// </summary>
+    public static Vector4[] PackPaletteRegisters(IReadOnlyList<Matrix4x4> palettes)
+    {
+        var regs = new Vector4[palettes.Count * BoneFloat4sPerInfluence];
+        for (var i = 0; i < palettes.Count; i++)
+        {
+            var m = palettes[i];
+            var o = i * BoneFloat4sPerInfluence;
+            regs[o] = new Vector4(m.M11, m.M12, m.M13, m.M14);
+            regs[o + 1] = new Vector4(m.M21, m.M22, m.M23, m.M24);
+            regs[o + 2] = new Vector4(m.M31, m.M32, m.M33, m.M34);
+        }
+
+        return regs;
+    }
+
+    /// <summary>
+    /// vs_1_1 <c>a0.x</c> from <c>v1.zyxw * c1</c> with
+    /// <c>c1=256</c>: D3DCOLOR 0–1 × 256 ≈ byte.
+    /// </summary>
+    public static int PalskinAddressRegister(byte indexByte) =>
+        (int)(indexByte * FirstSeenC1.X / 255f);
+
+    /// <summary>
+    /// <c>00BCFB00</c> packed slot from the VS address
+    /// register. File bytes on father prims are 0,3,6,9…
+    /// matching this stride.
+    /// </summary>
+    public static int PalskinSubsetSlot(byte indexByte) =>
+        PalskinAddressRegister(indexByte) / PalskinGpuRegisterStride;
+
+    /// <summary>
+    /// Mesh bone id <c>00BCFB00</c> reads at
+    /// <c>record+24+slot</c> (the C3D animated-block
+    /// group list).
+    /// </summary>
+    public static int PalskinMeshBoneFromFileIndex(byte indexByte, ReadOnlySpan<byte> groupBones)
+    {
+        if (groupBones.Length == 0)
+            return indexByte;
+        var slot = PalskinSubsetSlot(indexByte);
+        if ((uint)slot >= (uint)groupBones.Length)
+            return -1;
+        return groupBones[slot];
+    }
+
+    public static void RemapPalskinIndicesToMeshBones(Span<byte> indices, ReadOnlySpan<byte> groupBones)
+    {
+        if (groupBones.Length == 0)
+            return;
+        for (var i = 0; i < indices.Length; i++)
+        {
+            var bone = PalskinMeshBoneFromFileIndex(indices[i], groupBones);
+            indices[i] = bone < 0 ? (byte)255 : (byte)bone;
+        }
+    }
+
+    /// <summary>
+    /// <c>00BCFB00</c> upload bank: dest of each group
+    /// bone as 3 float4s, in group order.
+    /// </summary>
+    public static Vector4[] PackSubsetRegisters(Matrix4x4[] palettes, ReadOnlySpan<byte> groupBones)
+    {
+        var regs = new Vector4[groupBones.Length * BoneFloat4sPerInfluence];
+        for (var i = 0; i < groupBones.Length; i++)
+        {
+            var bone = groupBones[i];
+            var m = bone < palettes.Length ? palettes[bone] : Matrix4x4.Identity;
+            var o = i * BoneFloat4sPerInfluence;
+            regs[o] = new Vector4(m.M11, m.M12, m.M13, m.M14);
+            regs[o + 1] = new Vector4(m.M21, m.M22, m.M23, m.M24);
+            regs[o + 2] = new Vector4(m.M31, m.M32, m.M33, m.M34);
+        }
+
+        return regs;
+    }
+
+    /// <summary>
+    /// Exact first-seen PALSKIN VS position:
+    /// three influences, <c>r4/r5/r6 = Σ w_i * c[38+a0_i]</c>,
+    /// <c>dp4</c> against <c>v0</c>. Register offset is the
+    /// byte itself (not ×3) — the file byte must already be
+    /// the packed slot stride if dest is uploaded densely.
+    /// </summary>
+    public static Vector3 EvaluatePalskinVsPosition(
+        Vector3 position, ReadOnlySpan<byte> indexBytes, ReadOnlySpan<byte> weightBytes,
+        Vector4[] registers)
+    {
+        Span<byte> idx = stackalloc byte[4];
+        Span<byte> wgt = stackalloc byte[4];
+        PalskinInfluencesFromD3dColor(indexBytes, weightBytes, idx, wgt);
+        var r4 = Vector4.Zero;
+        var r5 = Vector4.Zero;
+        var r6 = Vector4.Zero;
+        var n = Math.Min(PalskinVsInfluenceCount, Math.Min(idx.Length, wgt.Length));
+        for (var i = 0; i < n; i++)
+        {
+            if (wgt[i] == 0)
+                continue;
+            var a0 = PalskinAddressRegister(idx[i]);
+            var o = a0;
+            if (o < 0 || o + 2 >= registers.Length)
+                continue;
+            var w = wgt[i] / 255f;
+            r4 += registers[o] * w;
+            r5 += registers[o + 1] * w;
+            r6 += registers[o + 2] * w;
+        }
+
+        var p = new Vector4(position, 1f);
+        return new Vector3(Vector4.Dot(p, r4), Vector4.Dot(p, r5), Vector4.Dot(p, r6));
+    }
+
+    /// <summary>
+    /// Host CPU path: <c>palettes[byte]</c> as a 3×4, four
+    /// influences. Diverges from the VS when the file byte
+    /// is a register offset (0,3,6,…) rather than a mesh
+    /// bone id, or when dest is not identity.
+    /// </summary>
+    public static Vector3 EvaluatePalskinHostPosition(
+        Vector3 position, ReadOnlySpan<byte> indexBytes, ReadOnlySpan<byte> weightBytes,
+        Matrix4x4[] palettes) =>
+        SkinPosition(position, indexBytes, weightBytes, palettes);
+
+    public static Vector4 EvaluatePalskinVsClip(
+        Vector3 skinned, Matrix4x4 wvp)
+    {
+        var p = new Vector4(skinned, 1f);
+        return Vector4.Transform(p, wvp);
+    }
+
+    public static Vector3 SkinPositionUnswizzled(
         Vector3 position, ReadOnlySpan<byte> indices, ReadOnlySpan<byte> weights, Matrix4x4[] palettes)
     {
         var n = Math.Min(indices.Length, weights.Length);

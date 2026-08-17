@@ -89,6 +89,15 @@ public sealed class ScriptedCamera
         LandscapeFrustum.ComposeWvp(
             LandscapeFrustum.LandscapeWorld(Position), FlyView(aspect), WorldProj());
 
+    /// <summary>
+    /// Host STB is world-space. Fable <c>T(cam)</c> is
+    /// for a camera-relative VB. This is the equivalent
+    /// <c>p_world * I * V * P</c>.
+    /// </summary>
+    public Matrix4x4 HostLandscapeViewProjection(float aspect) =>
+        LandscapeFrustum.ComposeWvp(
+            LandscapeFrustum.HostWorldSpaceLandscapeWorld(), FlyView(aspect), WorldProj());
+
     public Matrix4x4 SkyViewProjection(float aspect)
     {
         LandscapeFrustum.ViewportZTerms(

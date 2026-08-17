@@ -20,6 +20,7 @@ public sealed class MeshFile
     public int BoneCount { get; init; }
     public IReadOnlyList<MeshBone> Bones { get; init; } = [];
     public IReadOnlyList<MeshPrimitiveReport> PrimitiveReports { get; init; } = [];
+    public IReadOnlyList<MeshPalskinSample> PalskinSamples { get; init; } = [];
 
     /// <summary>
     /// Exe serialize <c>00A89525</c> / getter <c>00A4BD70</c>: 60-byte
@@ -142,6 +143,7 @@ public sealed class MeshFile
         var noBlockFaces = 0;
         var degenerateSkipped = 0;
         var primitiveReports = new List<MeshPrimitiveReport>(Math.Max(primitiveCount, 0));
+        var palskinSamples = new List<MeshPalskinSample>();
 
         for (var i = 0; i < primitiveCount; i++)
         {
@@ -179,10 +181,24 @@ public sealed class MeshFile
                 blocks.Add((count, start, strip));
             }
 
+            var groupBoneCount = 0;
+            byte group0 = 0, group1 = 0, group2 = 0, group3 = 0;
+            var groupBones = Array.Empty<byte>();
             for (var b = 0; b < animatedBlocks; b++)
             {
                 cursor += 8 + 3 + 4 + 2 + 1;
                 var groupCount = data[cursor++];
+                if (b == 0)
+                {
+                    groupBoneCount = groupCount;
+                    groupBones = groupCount > 0
+                        ? data.AsSpan(cursor, groupCount).ToArray()
+                        : [];
+                    if (groupCount > 0) group0 = data[cursor];
+                    if (groupCount > 1) group1 = data[cursor + 1];
+                    if (groupCount > 2) group2 = data[cursor + 2];
+                    if (groupCount > 3) group3 = data[cursor + 3];
+                }
                 cursor += groupCount;
             }
 
@@ -236,6 +252,34 @@ public sealed class MeshFile
             var posSize = packedPos ? 4 : 12;
             var normals = new Vector3[vertCount];
             var normalOffset = PackedNormalOffset(entryType, stride, initFlags, hasBones);
+            uint sampleIndexDword = 0;
+            uint sampleWeightDword = 0;
+            var maxBlendIndex = 0;
+            var weightSumMin = 0;
+            var weightSumMax = 0;
+            var skinned = hasBones && palettes.Length > 0;
+            if (skinned && vertCount > 0 && posSize + 8 <= stride)
+            {
+                sampleIndexDword = BitConverter.ToUInt32(vertices, posSize);
+                sampleWeightDword = BitConverter.ToUInt32(vertices, posSize + 4);
+                weightSumMin = int.MaxValue;
+                for (var v = 0; v < vertCount; v++)
+                {
+                    var bo = v * stride + posSize;
+                    if (bo + 8 > vertices.Length)
+                        break;
+                    var wsum = 0;
+                    for (var k = 0; k < 4; k++)
+                    {
+                        maxBlendIndex = Math.Max(maxBlendIndex, vertices[bo + k]);
+                        wsum += vertices[bo + 4 + k];
+                    }
+                    weightSumMin = Math.Min(weightSumMin, wsum);
+                    weightSumMax = Math.Max(weightSumMax, wsum);
+                }
+                if (weightSumMin == int.MaxValue)
+                    weightSumMin = 0;
+            }
             for (var v = 0; v < vertCount; v++)
             {
                 var o = v * stride;
@@ -255,18 +299,35 @@ public sealed class MeshFile
                         BitConverter.ToSingle(vertices, o + 8));
                 }
 
-                if (hasBones && palettes.Length > 0 && o + posSize + 8 <= vertices.Length)
+                var n = ReadNormal(vertices, o + normalOffset, packedNorm, entryType);
+                var uv = ReadUv(vertices, o + uvOffset, packedNorm, entryType);
+                if (skinned && o + posSize + 8 <= vertices.Length)
                 {
-                    p = WorldShading.SkinPosition(
-                        p,
-                        vertices.AsSpan(o + posSize, 4),
-                        vertices.AsSpan(o + posSize + 4, 4),
-                        palettes);
+                    var idx = vertices.AsSpan(o + posSize, 4);
+                    var wgt = vertices.AsSpan(o + posSize + 4, 4);
+                    var skinnedP = WorldShading.SkinPosition(p, idx, wgt, palettes, groupBones);
+                    var skinnedN = WorldShading.SkinNormal(n, idx, wgt, palettes, groupBones);
+                    if (palskinSamples.Count < 16 && (v < 4 || v == vertCount / 2 || v == vertCount - 1))
+                    {
+                        palskinSamples.Add(new MeshPalskinSample(
+                            i, v, stride, initFlags, posSize,
+                            p, skinnedP, n, skinnedN, uv,
+                            idx[0], idx[1], idx[2], idx[3],
+                            wgt[0], wgt[1], wgt[2], wgt[3],
+                            BitConverter.ToUInt32(vertices, o),
+                            posSize >= 8 ? BitConverter.ToUInt32(vertices, o + 4) : 0,
+                            posSize >= 12 ? BitConverter.ToUInt32(vertices, o + 8) : 0,
+                            BitConverter.ToUInt32(vertices, o + posSize),
+                            BitConverter.ToUInt32(vertices, o + posSize + 4),
+                            groupBones, scale, offset));
+                    }
+                    p = skinnedP;
+                    n = skinnedN;
                 }
 
                 positions[v] = p;
-                normals[v] = ReadNormal(vertices, o + normalOffset, packedNorm, entryType);
-                uvs[v] = ReadUv(vertices, o + uvOffset, packedNorm, entryType);
+                normals[v] = n;
+                uvs[v] = uv;
                 boundsMin = Vector3.Min(boundsMin, p);
                 boundsMax = Vector3.Max(boundsMax, p);
             }
@@ -301,7 +362,6 @@ public sealed class MeshFile
                 for (var t = 0; t + 2 < indexCount16; t += 3)
                     AddTri(IndexAt(t), IndexAt(t + 1), IndexAt(t + 2));
                 noBlockFaces += triangles.Count - before;
-                continue;
             }
 
             foreach (var block in blocks)
@@ -345,7 +405,18 @@ public sealed class MeshFile
                 declaredTriangles - declaredBefore,
                 triangles.Count - emitBefore,
                 degenerateSkipped - degBefore,
-                blocks.Count));
+                blocks.Count,
+                stride,
+                initFlags,
+                (int)animatedBlocks,
+                groupBoneCount,
+                group0, group1, group2, group3,
+                sampleIndexDword,
+                sampleWeightDword,
+                maxBlendIndex,
+                weightSumMin,
+                weightSumMax,
+                groupBones));
             }
             catch (Exception ex)
             {
@@ -375,6 +446,7 @@ public sealed class MeshFile
             BoneCount = boneCount,
             Bones = bones,
             PrimitiveReports = primitiveReports,
+            PalskinSamples = palskinSamples,
         };
     }
 
@@ -491,6 +563,26 @@ public sealed class MeshFile
         return posSize + (hasBones ? 8 : 0);
     }
 
+    /// <summary>
+    /// PALSKIN file: D3DCOLOR indices immediately after pos,
+    /// then D3DCOLOR weights. VS <c>v1</c>/<c>v2</c>.
+    /// </summary>
+    public static int PalskinBlendIndexOffset(int entryType, int stride, uint initFlags, bool hasBones)
+    {
+        if (!hasBones)
+            return -1;
+        var packedPos = (initFlags & 4) != 0 && (initFlags & 0x10) == 0;
+        if (entryType == 4 || (stride == 36 && !hasBones))
+            return 12;
+        return packedPos ? 4 : 12;
+    }
+
+    public static int PalskinBlendWeightOffset(int entryType, int stride, uint initFlags, bool hasBones)
+    {
+        var idx = PalskinBlendIndexOffset(entryType, stride, initFlags, hasBones);
+        return idx < 0 ? -1 : idx + 4;
+    }
+
     public static int PackedUvOffset(int entryType, int stride, uint initFlags, bool hasBones)
     {
         var packedPos = (initFlags & 4) != 0 && (initFlags & 0x10) == 0;
@@ -553,7 +645,7 @@ public sealed class MeshFile
 
     internal static float DecompressUv(short value) => value / 2048f - 8f;
 
-    private static Vector3 UnpackPosition(uint packed, Vector3 scale, Vector3 offset)
+    public static Vector3 UnpackPosition(uint packed, Vector3 scale, Vector3 offset)
     {
         var ix = (int)(packed & 0x7FF);
         if ((ix & 0x400) != 0) ix |= unchecked((int)0xFFFFF800);
@@ -660,7 +752,63 @@ public readonly record struct MeshPrimitiveReport(
     int DeclaredTriangles,
     int EmittedTriangles,
     int DegenerateSkipped,
-    int BlockCount);
+    int BlockCount,
+    int Stride = 0,
+    uint InitFlags = 0,
+    int AnimatedBlocks = 0,
+    int GroupBoneCount = 0,
+    byte GroupBone0 = 0,
+    byte GroupBone1 = 0,
+    byte GroupBone2 = 0,
+    byte GroupBone3 = 0,
+    uint SampleIndexDword = 0,
+    uint SampleWeightDword = 0,
+    int MaxBlendIndex = 0,
+    int WeightSumMin = 0,
+    int WeightSumMax = 0,
+    byte[]? GroupBones = null)
+{
+    public byte SampleIndex0 => (byte)SampleIndexDword;
+    public byte SampleIndex1 => (byte)(SampleIndexDword >> 8);
+    public byte SampleIndex2 => (byte)(SampleIndexDword >> 16);
+    public byte SampleIndex3 => (byte)(SampleIndexDword >> 24);
+    public byte SampleWeight0 => (byte)SampleWeightDword;
+    public byte SampleWeight1 => (byte)(SampleWeightDword >> 8);
+    public byte SampleWeight2 => (byte)(SampleWeightDword >> 16);
+    public byte SampleWeight3 => (byte)(SampleWeightDword >> 24);
+}
+
+/// <summary>
+/// One live C3D PALSKIN vertex: packed dwords plus the
+/// decoded bind-pose and first-seen skinned results.
+/// </summary>
+public readonly record struct MeshPalskinSample(
+    int Primitive,
+    int Vertex,
+    int Stride,
+    uint InitFlags,
+    int PosSize,
+    Vector3 Position,
+    Vector3 SkinnedPosition,
+    Vector3 Normal,
+    Vector3 SkinnedNormal,
+    Vector2 Uv,
+    byte Index0,
+    byte Index1,
+    byte Index2,
+    byte Index3,
+    byte Weight0,
+    byte Weight1,
+    byte Weight2,
+    byte Weight3,
+    uint PosDword0,
+    uint PosDword1,
+    uint PosDword2,
+    uint IndexDword,
+    uint WeightDword,
+    byte[]? GroupBones = null,
+    Vector3 Scale = default,
+    Vector3 Offset = default);
 
 public readonly record struct MeshMaterial(
     int Id,

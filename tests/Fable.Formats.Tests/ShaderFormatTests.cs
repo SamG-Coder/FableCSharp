@@ -199,6 +199,13 @@ public sealed class ShaderFormatTests
         Assert.True(skin.TryGetPalskinA0RelativeC38());
         Assert.False(land.TryGetPalskinA0RelativeC38());
         Assert.False(stat.TryGetPalskinA0RelativeC38());
+        Assert.True(skin.TryGetPalskinInputs(out var pIn, out var iIn, out var wIn, out var nIn, out var uvIn));
+        Assert.Equal(0, pIn);
+        Assert.Equal(1, iIn);
+        Assert.Equal(2, wIn);
+        Assert.Equal(3, nIn);
+        Assert.Equal(4, uvIn);
+        Assert.False(stat.TryGetPalskinInputs(out _, out _, out _, out _, out _));
         Assert.True(skin.TryGetOd0WFromC0Y());
         Assert.True(stat.TryGetOd0WFromC0Y());
         Assert.True(bgVs.TryGetOd0WFromC0Y());

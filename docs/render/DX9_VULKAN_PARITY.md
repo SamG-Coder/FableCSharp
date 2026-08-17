@@ -25,9 +25,14 @@ Translations live in `src/Fable.Render/Parity/Dx9Vulkan/`.
 | Alpha test | slot `D3DRS_ALPHATESTENABLE` | UNREAD first-seen | no discard | UNREAD | |
 | Fog | `00B46890` FOGENABLE=1; VS `oFog`; FOGCOLOR black | vertex fog, table/vertex NONE | `oFog` interpolate + `rgb*oFog` | PROVEN | |
 | Vertex layout | FVF `0x112` stride 32; land stride 24; packed C3D | pos/n/uv / extra D3DCOLOR | `MeshVertex` float streams | EQUIVALENT | normals now decoded |
+| PALSKIN decl | `00A8FD40` writes file stride / initFlags. Kid **4300** stride **28** flags `0x14`. Father stride **20** flags **4** (packed pos) | `v0` unpacked float3, `v1` D3DCOLOR idx, `v2` D3DCOLOR wgt, `v3` n, `v4` UV | CPU unpack + CPU skin | PROVEN | file field, not one FVF. `.zyxw` = memory BGRA |
+| PALSKIN palette | `00A8E770` group at +23/+24; `00BCFB00` copies `dest[group[i]*64]` packed to `c38`; VS `a0` = file byte | 3 float4s / influence | `PackSubsetRegisters` + `SkinPosition(..., group)` | PROVEN | file byte is register offset (0,3,6…), not mesh bone id |
+| Landscape world | `00BF46A2` `T(cam)` on **camera-relative** VB | `p_camrel + cam` | host STB is **world-space** → identity W | EQUIVALENT | **DISPROVEN** `T(cam)` on world file verts (`p+cam` leaves SHOT2) |
 | Index format | C3D / STB uint16 | INDEX16 | unwound triangle list | EQUIVALENT | |
 | Primitive topology | strip or list | D3DSTRIP / D3DLIST | `TRIANGLE_LIST` | EQUIVALENT | odd-index swap preserved |
 | Shader constants | `00988A50` c5–c8; fog c2; lights c19/c20/c35 | register file | push `mat4` + fog/light vec4s | EQUIVALENT | no extra transpose |
+| Unlit / leftover `c3` | per-cell table `0x0139C614` | `(0, 0.125, 0, 0)` then `mul_x2` | same addend in GLSL | PROVEN | dark green is this, not invented ambient |
+| Sky PS `c0/c1/c2` | no `def`; writer UNREAD | — | stand-in `t1*v0*v0.w` | UNREAD / TEMPORARY | do not invent `*c2=0` |
 | Draw order | `00B26A75` 34 layers | 0x4, 0x40, 0x20, 0x2000 | same rank sort | PROVEN | water 0x20000 empty |
 | Color / clear | FOGCOLOR `0xFF000000` | ARGB black | clear (0,0,0,1) | PROVEN | `Dx9VulkanColor` |
 | Fill mode | — | UNREAD (D3D SOLID) | FILL | TEMPORARY | |

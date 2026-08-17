@@ -203,6 +203,52 @@ public sealed class MeshFormatTests
         Assert.Equal(-103.51969f, bip.Matrix.M34, 4);
         var palettes = WorldShading.FirstSeenPalettes(mesh.Bones);
         Assert.Equal(76, palettes.Length);
+        Assert.Equal(28, WorldShading.FirstSeenPalskinStrideBytes);
+        Assert.Equal(0x14u, WorldShading.FirstSeenPalskinInitFlags);
+        Assert.Equal(0, WorldShading.FirstSeenPalskinPosInput);
+        Assert.Equal(1, WorldShading.FirstSeenPalskinIndexInput);
+        Assert.Equal(2, WorldShading.FirstSeenPalskinWeightInput);
+        Assert.Equal(3, WorldShading.FirstSeenPalskinNormalInput);
+        Assert.Equal(4, WorldShading.FirstSeenPalskinOt0Input);
+        Assert.True(WorldShading.FirstSeenPalskinSkinsNormal);
+        Assert.Equal(new int[] { 0, 1, 2, 3 }, WorldShading.D3dColorZyxwFromMemory);
+        Assert.Equal(0, WorldShading.PalskinGpuAddressOffset(0));
+        Assert.Equal(3, WorldShading.PalskinGpuAddressOffset(1));
+        Assert.True(WorldShading.FirstSeenPalskinCpuPaletteIsMeshBone);
+        Assert.True(WorldShading.FirstSeenPalskinGpuA0IsPackedSlotTimes3);
+        Assert.NotEmpty(mesh.PrimitiveReports);
+        Assert.All(mesh.PrimitiveReports, p =>
+        {
+            Assert.Equal(WorldShading.FirstSeenPalskinStrideBytes, p.Stride);
+            Assert.Equal(WorldShading.FirstSeenPalskinInitFlags, p.InitFlags);
+            Assert.True(p.AnimatedBlocks > 0, $"prim {p.MaterialIndex} animated={p.AnimatedBlocks}");
+            Assert.Equal(12, MeshFile.PalskinBlendIndexOffset(1, p.Stride, p.InitFlags, true));
+            Assert.Equal(16, MeshFile.PalskinBlendWeightOffset(1, p.Stride, p.InitFlags, true));
+            Assert.Equal(20, MeshFile.PackedNormalOffset(1, p.Stride, p.InitFlags, true));
+            Assert.Equal(24, MeshFile.PackedUvOffset(1, p.Stride, p.InitFlags, true));
+            Assert.True(p.MaxBlendIndex < mesh.BoneCount,
+                $"blend {p.MaxBlendIndex} bones={mesh.BoneCount}");
+            Assert.InRange(p.WeightSumMax, 1, 255 * 4);
+        });
+        var firstPrim = mesh.PrimitiveReports[0];
+        Span<byte> idx = stackalloc byte[4];
+        Span<byte> wgt = stackalloc byte[4];
+        WorldShading.PalskinInfluencesFromD3dColor(
+            new byte[]
+            {
+                firstPrim.SampleIndex0, firstPrim.SampleIndex1,
+                firstPrim.SampleIndex2, firstPrim.SampleIndex3,
+            },
+            new byte[]
+            {
+                firstPrim.SampleWeight0, firstPrim.SampleWeight1,
+                firstPrim.SampleWeight2, firstPrim.SampleWeight3,
+            },
+            idx, wgt);
+        Assert.Equal(firstPrim.SampleIndex0, idx[0]);
+        Assert.Equal(firstPrim.SampleIndex1, idx[1]);
+        Assert.Equal(firstPrim.SampleIndex2, idx[2]);
+        Assert.Equal(firstPrim.SampleIndex3, idx[3]);
         Assert.Equal(0x00A5B850u, WorldShading.SseDetect);
         Assert.Equal(0x013D2880u, WorldShading.SseMatrixFlag);
         Assert.Equal(1, WorldShading.FirstSeenSseMatrixFlag);
@@ -213,10 +259,18 @@ public sealed class MeshFormatTests
         Assert.Equal(0x00BD2F91u, WorldShading.BoneDestX87);
         Assert.Equal(0x00AA0090u, WorldShading.BoneHierarchyBuild);
         for (var i = 0; i < palettes.Length; i++)
-            AssertNearIdentity(palettes[i]);
+        {
+            Assert.True(WorldShading.IsNearIdentity(palettes[i]),
+                $"palette[{i}] {mesh.Bones[i].Name} not identity");
+        }
         var raw = new Vector3(-11.42f, 11.39f, 180.37f);
         Assert.Equal(raw, WorldShading.SkinPosition(
             raw, new byte[] { 0, 0, 0, 0 }, new byte[] { 255, 0, 0, 0 }, palettes));
+        var n = Vector3.Normalize(new Vector3(0.2f, 0.1f, 0.97f));
+        var skinnedN = WorldShading.SkinNormal(
+            n, new byte[] { 0, 0, 0, 0 }, new byte[] { 255, 0, 0, 0 }, palettes);
+        Assert.True((skinnedN - n).Length() < 1e-4f, $"skinnedN={skinnedN}");
+        Assert.Contains(mesh.Triangles, t => t.NormalA.LengthSquared() > 0.25f);
         Assert.Equal("VSHADER_PALSKIN_DIRLIGHT_FOG",
             WorldShading.PalskinFamilyShader(WorldShading.FirstSeenPackedLightCount));
         var hair = mesh.Materials.Single(m => m.Name.Contains("Hair", StringComparison.OrdinalIgnoreCase));
@@ -286,18 +340,34 @@ public sealed class MeshFormatTests
         Assert.Equal(0, WorldShading.MeshLodInfoReady_00A23DE0(1));
     }
 
-    private static void AssertNearIdentity(Matrix4x4 m)
+    [Fact]
+    public void Palskin_d3dcolor_zyxw_is_memory_bgra()
     {
-        Assert.Equal(1f, m.M11, 3);
-        Assert.Equal(1f, m.M22, 3);
-        Assert.Equal(1f, m.M33, 3);
-        Assert.Equal(1f, m.M44, 3);
-        Assert.Equal(0f, m.M12, 3);
-        Assert.Equal(0f, m.M13, 3);
-        Assert.Equal(0f, m.M14, 3);
-        Assert.Equal(0f, m.M21, 3);
-        Assert.Equal(0f, m.M24, 3);
-        Assert.Equal(0f, m.M31, 3);
-        Assert.Equal(0f, m.M34, 3);
+        // D3DCOLOR v=(R,G,B,A)=(b2,b1,b0,b3); .zyxw = (B,G,R,A)
+        // = memory [0,1,2,3]. Not .zwxy (0,3,2,1).
+        Span<byte> idx = stackalloc byte[4];
+        Span<byte> wgt = stackalloc byte[4];
+        WorldShading.PalskinInfluencesFromD3dColor(
+            new byte[] { 10, 20, 30, 40 },
+            new byte[] { 255, 128, 64, 0 },
+            idx, wgt);
+        Assert.Equal(new byte[] { 10, 20, 30, 40 }, idx.ToArray());
+        Assert.Equal(new byte[] { 255, 128, 64, 0 }, wgt.ToArray());
+        static Matrix4x4 C3dTranslate(float x, float y, float z) =>
+            new(1, 0, 0, x, 0, 1, 0, y, 0, 0, 1, z, 0, 0, 0, 1);
+        var palettes = new[]
+        {
+            Matrix4x4.Identity,
+            C3dTranslate(10f, 0f, 0f),
+            C3dTranslate(0f, 10f, 0f),
+            C3dTranslate(0f, 0f, 10f),
+            C3dTranslate(100f, 0f, 0f),
+        };
+        var p = WorldShading.SkinPosition(
+            Vector3.Zero, new byte[] { 1, 0, 0, 0 }, new byte[] { 255, 0, 0, 0 }, palettes);
+        Assert.Equal(new Vector3(10f, 0f, 0f), p);
+        var n = WorldShading.SkinNormal(
+            Vector3.UnitX, new byte[] { 0, 0, 0, 0 }, new byte[] { 255, 0, 0, 0 }, palettes);
+        Assert.Equal(Vector3.UnitX, n);
     }
 }

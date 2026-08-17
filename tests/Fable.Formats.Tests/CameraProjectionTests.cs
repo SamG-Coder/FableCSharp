@@ -206,6 +206,10 @@ public sealed class CameraProjectionTests
         Assert.Equal(144, LandscapeFrustum.PerCellWorldStack);
         Assert.Equal(0x00BF46A2u, LandscapeFrustum.PerCellWorldFill);
         Assert.True(LandscapeFrustum.FirstSeenLandscapeWorldIsCameraTranslation);
+        Assert.True(LandscapeFrustum.FirstSeenLandscapeFileVertsAreWorldSpace);
+        Assert.True(LandscapeFrustum.FirstSeenLandscapeDeviceVbIsCameraRelative);
+        Assert.True(LandscapeFrustum.HostTcamOnWorldSpaceLandscapeIsDisproven);
+        Assert.Equal(Matrix4x4.Identity, LandscapeFrustum.HostWorldSpaceLandscapeWorld());
         Assert.True(LandscapeFrustum.FirstSeenBindWritesViewFromCamera128);
         var cam = new Vector3(40.03f, 130.48f, 16.78f);
         LandscapeFrustum.LandscapeWorld3x4(cam, out var c0, out var c1, out var c2, out var c3);
@@ -256,6 +260,11 @@ public sealed class CameraProjectionTests
             MathF.Abs(landOfHouse.X - propOfHouse.X) > 0.1f ||
             MathF.Abs(landOfHouse.Y - propOfHouse.Y) > 0.1f,
             "landscape T(cam) must not be the shared prop VP");
+        var hostLand = camera.HostLandscapeViewProjection(4f / 3f);
+        var hostOfHouse = FlyCamera.Project(hostLand, house);
+        Assert.Equal(propOfHouse.X, hostOfHouse.X, 3);
+        Assert.Equal(propOfHouse.Y, hostOfHouse.Y, 3);
+        Assert.Equal(propOfHouse.Z, hostOfHouse.Z, 3);
 
         LandscapeFrustum.LetterboxCots(
             float.DegreesToRadians(72f), 4f, 3f, out var cotH, out var cotV);

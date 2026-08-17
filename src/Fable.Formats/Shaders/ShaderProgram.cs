@@ -742,6 +742,41 @@ public sealed class ShaderProgram
     }
 
     /// <summary>
+    /// PALSKIN: <c>mul r, v1.zyxw, c1</c>; <c>mov r, v2.zyxw</c>;
+    /// later <c>mov r, v0</c>; <c>dp3 r, v3, …</c>;
+    /// <c>mov oT0, v4</c>.
+    /// </summary>
+    public bool TryGetPalskinInputs(
+        out int pos, out int indices, out int weights, out int normal, out int uv)
+    {
+        pos = -1;
+        indices = -1;
+        weights = -1;
+        normal = -1;
+        uv = -1;
+        foreach (var insn in DecodeInstructions())
+        {
+            if (insn.Opcode == MulOpcode && insn.Src0Type == RegTypeInput
+                && insn.Src0SwizzleZyxw && insn.Src1Is(RegTypeConst, 1))
+                indices = insn.Src0Num;
+            if (insn.Opcode == MovOpcode && insn.Src0Type == RegTypeInput
+                && insn.Src0SwizzleZyxw && insn.DestType == 0)
+                weights = insn.Src0Num;
+            if (insn.Opcode == MovOpcode && insn.Src0Type == RegTypeInput
+                && insn.DestType == 0 && insn.DestMaskXYZW
+                && insn.Src0Swizzle0 == 0 && insn.Src0Swizzle1 == 1)
+                pos = insn.Src0Num;
+            if (insn.Opcode == Dp3Opcode && insn.Src0Type == RegTypeInput)
+                normal = insn.Src0Num;
+            if (insn.Opcode == MovOpcode && insn.DestType == RegTypeTexCrdOut
+                && insn.DestNum == 0 && insn.Src0Type == RegTypeInput)
+                uv = insn.Src0Num;
+        }
+
+        return pos == 0 && indices == 1 && weights == 2 && normal == 3 && uv == 4;
+    }
+
+    /// <summary>
     /// PALSKIN: <c>mov a0.x, …</c> then <c>mul/mad …, c38</c> with
     /// the vs_1_1 relative-address bit (0x2000) on the const src.
     /// </summary>
@@ -823,8 +858,12 @@ public sealed class ShaderProgram
         public int Src0Type => (int)((Src0 >> 28) & 7);
         public int Src0Swizzle0 => (int)((Src0 >> 16) & 3);
         public int Src0Swizzle1 => (int)((Src0 >> 18) & 3);
+        public int Src0Swizzle2 => (int)((Src0 >> 20) & 3);
         public int Src0SwizzleW => (int)((Src0 >> 22) & 3);
         public bool Src0SwizzleY => Src0Swizzle0 == 1;
+        /// <summary><c>.zyxw</c> = dest (z,y,x,w).</summary>
+        public bool Src0SwizzleZyxw =>
+            Src0Swizzle0 == 2 && Src0Swizzle1 == 1 && Src0Swizzle2 == 0 && Src0SwizzleW == 3;
         public int Src1Num => (int)(Src1 & 0x7FF);
         public int Src1Mod => (int)((Src1 >> 24) & 0xF);
         public bool Src1SwizzleW => ((Src1 >> 16) & 3) == 3;

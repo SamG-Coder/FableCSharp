@@ -234,6 +234,15 @@ public sealed class Dx9VulkanParityTests
         Assert.Equal(64, WorldShading.BoneRecordBytes);
         Assert.True(WorldShading.FirstSeenBoneUploadWritesC38);
         Assert.False(WorldShading.FirstSeenPlaysAnim);
+        Assert.Equal(38, Dx9VulkanShaderConstants.PaletteStartRegister);
+        Assert.Equal(3, Dx9VulkanShaderConstants.PaletteFloat4sPerBone);
+        Assert.True(Dx9VulkanShaderConstants.FirstSeenPaletteIsBindPose);
+        Assert.Equal(28, Dx9VulkanVertexFormat.FirstSeenPalskinStride);
+        Assert.Equal(0x14u, Dx9VulkanVertexFormat.FirstSeenPalskinInitFlags);
+        Assert.Equal(12, Dx9VulkanVertexFormat.PalskinBlendIndexOffset(1, 28, 0x14, true));
+        Assert.Equal(16, Dx9VulkanVertexFormat.PalskinBlendWeightOffset(1, 28, 0x14, true));
+        Assert.Equal(20, Dx9VulkanVertexFormat.PackedNormalOffset(1, 28, 0x14, true));
+        Assert.Equal(24, Dx9VulkanVertexFormat.PackedUvOffset(1, 28, 0x14, true));
 
         var install = GameInstall.TryLocate();
         Assert.NotNull(install);
@@ -307,5 +316,26 @@ public sealed class Dx9VulkanParityTests
         var house = new Vector3(34f, 129f, 14f);
         var ndc = Dx9VulkanProjection.ToNdc(Dx9VulkanProjection.TransformClip(packed, house));
         Assert.True(ndc.W > 0f);
+
+        var tcam = Dx9VulkanShaderConstants.PackWvp(
+            LandscapeFrustum.LandscapeWorld(cam), view, dx9);
+        var worldLand = Dx9VulkanShaderConstants.PackWorldSpaceLandscapeWvp(view, dx9);
+        Assert.Equal(packed, worldLand);
+        var tcamNdc = Dx9VulkanProjection.ToNdc(Dx9VulkanProjection.TransformClip(tcam, house));
+        Assert.True(
+            MathF.Abs(tcamNdc.X - ndc.X) > 0.1f || MathF.Abs(tcamNdc.Y - ndc.Y) > 0.1f,
+            "T(cam) on world-space house is not the host landscape WVP");
+        Assert.True(LandscapeFrustum.FirstSeenLandscapeFileVertsAreWorldSpace);
+        Assert.True(LandscapeFrustum.FirstSeenLandscapeDeviceVbIsCameraRelative);
+        Assert.True(LandscapeFrustum.HostTcamOnWorldSpaceLandscapeIsDisproven);
+        Assert.Equal(Matrix4x4.Identity, LandscapeFrustum.HostWorldSpaceLandscapeWorld());
+        Assert.True(Dx9VulkanShaderConstants.UnlitRgbIsC3Leftover);
+        Assert.True(Dx9VulkanShaderConstants.SkyPsConstantsUnread);
+        var unlit = WorldShading.EvaluateDirLightRgb(Vector3.Zero);
+        Assert.Equal(new Vector3(0f, 0.125f, 0f), unlit);
+        var unlitPs = WorldShading.FirstSeenEvaluateTextureDiffuseRgb(Vector3.One, unlit);
+        Assert.Equal(0f, unlitPs.X, 5);
+        Assert.Equal(0.25f, unlitPs.Y, 5);
+        Assert.Equal(0f, unlitPs.Z, 5);
     }
 }

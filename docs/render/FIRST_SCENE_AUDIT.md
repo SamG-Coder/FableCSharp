@@ -34,6 +34,8 @@ asset (graphics.big / textures.big / STB .lev / TNG / shaders.big)
 |---|---|---|---|
 | C3D parse (pos, UV, indices, materials, bones) | packed/unpacked layouts | proven | `MeshFile`, `MeshFormatTests` |
 | C3D vertex normal | packed 11-11-10 / float3 at `PackedNormalOffset` | proven | was dropped (face-normal only) — **DISPROVEN, corrected** |
+| PALSKIN decl / skin | `00A8FD40` stride/flags; father 20/4 packed; `00A8E770` group+23/+24; `00BCFB00` dest[bone*64]→c38; file byte = `a0` | proven | Host was indexing `palettes[fileByte]` as mesh bone — **DISPROVEN**, remapped `group[a0/3]` |
+| Landscape `T(cam)` on host STB | Fable VB is cam-relative; file verts are world | proven / equivalent | **DISPROVEN** host `p_world*T(cam)` — submit uses identity |
 | C3D → TNG transform | cm × 0.01, RHSetForward/Up | proven | `WorldGeometry.ObjectTransform` |
 | Landscape tile verts | 15-byte + 11-11-10 normal + extra | proven | `LevTileMesh` |
 | Landscape strip unwind | PrimitiveCount+2, odd swap | proven | |
@@ -85,6 +87,14 @@ asset (graphics.big / textures.big / STB .lev / TNG / shaders.big)
 3. **C3D vertex normals.** `MeshFile` decodes packed/unpacked normals
    into `NormalA/B/C`; `WorldGeometry` transforms them. First-seen VS
    `dp3 n, v1, -c19` no longer sees face-only normals.
+4. **PALSKIN skin + normal.** VS `dp3 v3, r4/r5/r6` after the same
+   palette rows. Host now calls `SkinNormal`. D3DCOLOR `.zyxw` is
+   memory BGRA `[0,1,2,3]` (not `.zwxy`). First-seen dest is
+   identity (full 16 entries).
+5. **Landscape world space.** `00BF46A2` `T(cam)` is for a
+   camera-relative VB. Host STB tiles are world-space. Submit uses
+   identity world (`HostLandscapeViewProjection`). Applying `T(cam)`
+   to world verts put the exterior at `p+cam` (black).
 
 
 ## UNREAD leftover (do not invent)

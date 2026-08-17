@@ -335,9 +335,27 @@ public static class LandscapeFrustum
     /// <summary>
     /// Numerics / GPU form of <see cref="LandscapeWorld3x4"/>:
     /// row-vector <c>p * T(cam)</c> = <c>p + cam</c>.
+    /// Fable's landscape VB is camera-relative so this
+    /// restores world. Host STB tiles are already
+    /// world-space — see
+    /// <see cref="HostWorldSpaceLandscapeWorld"/>.
     /// </summary>
     public static Matrix4x4 LandscapeWorld(Vector3 cameraPos) =>
         Matrix4x4.CreateTranslation(cameraPos);
+
+    /// <summary>
+    /// <see cref="LevTileMesh"/> file verts are world XY/Z.
+    /// Fable GPU expand is camera-relative, then
+    /// <c>00BF46A2</c> <c>T(cam)</c>. Applying
+    /// <see cref="LandscapeWorld"/> to world file verts
+    /// is <c>p+cam</c> (DISPROVEN). The equivalent of
+    /// <c>(p-cam)*T(cam)</c> is identity world.
+    /// </summary>
+    public const bool FirstSeenLandscapeFileVertsAreWorldSpace = true;
+    public const bool FirstSeenLandscapeDeviceVbIsCameraRelative = true;
+    public const bool HostTcamOnWorldSpaceLandscapeIsDisproven = true;
+
+    public static Matrix4x4 HostWorldSpaceLandscapeWorld() => IdentityWorld();
 
     /// <summary>
     /// Bind / static / PALSKIN world is identity

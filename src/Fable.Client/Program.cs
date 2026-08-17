@@ -194,7 +194,7 @@ window.Render += _ =>
         renderer.Draw(
             debugCam.ViewProjection(aspect), debugCam.Position, fogPlane,
             debugCam.SkyViewProjection(aspect),
-            debugCam.LandscapeViewProjection(aspect));
+            debugCam.HostLandscapeViewProjection(aspect));
     }
     else
     {
@@ -203,7 +203,7 @@ window.Render += _ =>
         renderer.Draw(
             gameCam.ViewProjection(aspect), gameCam.Position, fogPlane,
             gameCam.SkyViewProjection(aspect),
-            gameCam.LandscapeViewProjection(aspect));
+            gameCam.HostLandscapeViewProjection(aspect));
     }
 };
 

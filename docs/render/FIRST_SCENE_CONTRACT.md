@@ -19,7 +19,8 @@ is [DX9_VULKAN_PARITY.md](DX9_VULKAN_PARITY.md).
 | House exterior | C3D **6909**, 2 prims, diffuse **345** + **3180** | `MeshFormatTests`, game.bin Graphic |
 | House interior | C3D **6911** (`HerosOldHouseInteriorMeshId`) | `MeshFormatTests` |
 | House floor 3184 / roof 3182 | materials exist, **no prims** | `GameBin.FirstSeenHouseFloor3184HasPrims=false` |
-| Kid | C3D **4300** `MESH_YOUNGHERO_02`, 76 bones, bind-pose | `WorldShading.FirstSeenPlaysAnim=false` |
+| Kid | C3D **4300** `MESH_YOUNGHERO_02`, 76 bones, stride 28 flags `0x14`, bind-pose | `WorldShading.FirstSeenPlaysAnim=false` |
+| Father | `CREATURE_HERO_FATHER` C3D, stride **20** flags **4** packed pos, `00A8E770` group + `00BCFB00` c38 | file fields from `00A8FD40` |
 | Indoor props | bed / table / lamp / rug / fireplace / door / chairs / cupboard / bookshelf | `WorldGeometryTests` |
 | Landscape | STB tile strips + edge strips; no invented 1 m fill | `LevFormatTests` |
 | House floor land | `PATH_STONEY` / tex **4130** | `WorldGeometryTests` |
@@ -43,7 +44,7 @@ is [DX9_VULKAN_PARITY.md](DX9_VULKAN_PARITY.md).
 | MinZ / MaxZ | 0.1 / 0.99 | `0x01399D44` / `0x3F7D70A4` |
 | View | `(right, up, look)` on Z, cot-scaled +128 | `CotScaledView` |
 | World (static/PALSKIN/sky) | identity | `00B2FC50` / `009881F0` |
-| World (landscape 4 / 0x40) | `T(cam)` | `00BF46A2` |
+| World (landscape 4 / 0x40) | Fable VB: `T(cam)`; host STB world-space: **identity** | `00BF46A2` + `LevTileMesh` |
 | Proj (DX9) | XY identity, `clip.w = view.z` (Numerics transpose of exe `M34=Q`/`M43=1`) | `009883F0` |
 | WVP | `p * W * V * P` → `c5–c8` | `00988A50` |
 | Vulkan Y | `Dx9VulkanProjection.ToVulkanWvp` only | not `009883F0` |
@@ -61,7 +62,7 @@ is [DX9_VULKAN_PARITY.md](DX9_VULKAN_PARITY.md).
 | Landscape verts | 15-byte file → 24-byte GPU: XYZ + unpacked normal + D3DCOLOR extra |
 | Landscape UV | `oT1 = dp4(pos,c40/c41) = (0,0)` first-seen |
 | Landscape extra | `oT0.xy = v3.yz` (FG) / `v3` (BG) |
-| Skin | bind-pose palettes at `c38`, 3 float4s / bone; no anim |
+| Skin | `00BCFB00` packs `dest[record+24 bone * 64]` (the `00A8E770` group) to `c38`. File blend bytes are VS `a0` register offsets (0,3,6…). Host remaps `group[a0/3]`. Bind-pose dest ≈ identity. Three VS influences (x,y,z only). |
 
 ## SHADERS
 
