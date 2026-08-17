@@ -117,6 +117,11 @@ public sealed class CameraRuntime
     public float EffectArg1 { get; private set; }
     public float EffectArg2 { get; private set; }
     public bool EffectActive { get; private set; }
+    public string PathA { get; private set; } = "";
+    public string PathB { get; private set; } = "";
+    public string PathC { get; private set; } = "";
+    public string PathD { get; private set; } = "";
+    public float PathDuration { get; private set; }
 
     public void Bind(ScriptedCamera? camera, IReadOnlyList<ThingInstance> things, string name)
     {
@@ -148,6 +153,30 @@ public sealed class CameraRuntime
         EffectArg1 = arg1;
         EffectArg2 = arg2;
         EffectActive = true;
+    }
+
+    /// <summary>
+    /// <c>00CCAF70</c> <c>vtbl+1640</c>(pos0,pos2,pos1,pos3,dur).
+    /// Spline unread — host sits at first marker, looks at second.
+    /// </summary>
+    public void Path(
+        ScriptedCamera? camera,
+        ThingInstance? a, string nameA,
+        ThingInstance? b, string nameB,
+        ThingInstance? c, string nameC,
+        ThingInstance? d, string nameD,
+        float duration)
+    {
+        PathA = nameA;
+        PathB = nameB;
+        PathC = nameC;
+        PathD = nameD;
+        PathDuration = duration;
+        Busy = true;
+        if (a is { PositionX: not null })
+            camera?.SetPosition(RegionTravel.PositionOf(a));
+        if (b is { PositionX: not null })
+            camera?.SetLookAt(RegionTravel.PositionOf(b));
     }
 
     public void LookAtThing(ScriptedCamera? camera, ThingInstance? thing, string name)

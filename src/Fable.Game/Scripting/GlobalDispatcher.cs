@@ -164,6 +164,9 @@ public static class GlobalDispatcher
                 $"{a:0.##},{b:0.##}");
         }
 
+        if (Eq(v, "CameraPath"))
+            return ApplyCameraPath(line, ctx);
+
         if (Eq(v, "CameraEffect"))
         {
             if (line.Arg(0).Length == 0 || line.Arg(1).Length == 0 ||
@@ -826,6 +829,34 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, side);
         return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
             "CameraFOVLookBetweenPos vtbl+1636", side);
+    }
+
+    /// <summary>
+    /// <c>00CCAF70</c>: five required args. Lookup
+    /// arg0-3 as things. atof arg4 duration.
+    /// <c>vtbl+1640</c>(pos0,pos2,pos1,pos3,dur).
+    /// Continue <c>00CC864B</c>.
+    /// </summary>
+    internal static CommandResult ApplyCameraPath(
+        ScriptLine line, ScriptExecutionContext ctx)
+    {
+        var a = line.Arg(0);
+        var b = line.Arg(1);
+        var c = line.Arg(2);
+        var d = line.Arg(3);
+        if (a.Length == 0 || b.Length == 0 || c.Length == 0 ||
+            d.Length == 0 || line.Arg(4).Length == 0)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        ScriptLine.TryFloat(line.Arg(4), out var duration);
+        ctx.Camera.Path(
+            ctx.Runtime.Camera,
+            ctx.FindThing(a), a,
+            ctx.FindThing(b), b,
+            ctx.FindThing(c), c,
+            ctx.FindThing(d), d,
+            duration);
+        return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+            $"{a},{b},{c},{d} d={duration:0.##}");
     }
 
     private static System.Numerics.Vector3 ReadOffset(ScriptLine line, int start)

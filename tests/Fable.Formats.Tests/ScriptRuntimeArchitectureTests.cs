@@ -1281,6 +1281,107 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void CameraPath_sits_at_first_marker_and_continues()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            Marker("P0", 0, 0, 0),
+            Marker("P1", 4, 0, 0),
+            Marker("P2", 4, 4, 0),
+            Marker("P3", 0, 4, 0),
+        ], new ScriptedCamera());
+        var interp = new ScriptInterpreter("cpath",
+            ["CameraPath P0,P1,P2,P3,2.5", "CameraPause FALSE"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal("P0", runtime.CameraSys.PathA);
+        Assert.Equal("P1", runtime.CameraSys.PathB);
+        Assert.Equal(2.5f, runtime.CameraSys.PathDuration);
+        Assert.Equal(0f, runtime.Camera!.Position.X);
+        Assert.Equal(4f, runtime.Camera.LookAt.X);
+        Assert.Contains(runtime.Trace.Steps, s =>
+            s.Verb == "CameraPath" && s.Result == ExecutionKind.Continue);
+        Assert.Equal(0x00CCB048u, ScriptCommandMap.Find("CameraPath")!.Value.ApplySite);
+    }
+
+    private static ThingInstance Marker(string name, float x, float y, float z) =>
+        new()
+        {
+            Kind = "CTC",
+            Section = "Thing",
+            DefinitionType = "Marker",
+            ScriptName = name,
+            PositionX = x,
+            PositionY = y,
+            PositionZ = z,
+            Properties = new Dictionary<string, string>(),
+        };
+
+    [Fact]
+    public void CameraPath_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("CameraPath ", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "CameraPath A,B,C,D,1.0";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("CameraPath", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        Assert.True(parsed.Arg(4).Length > 0);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        runtime.BindScene(
+        [
+            Marker(parsed.Arg(0), 0, 0, 0),
+            Marker(parsed.Arg(1), 1, 0, 0),
+            Marker(parsed.Arg(2), 1, 1, 0),
+            Marker(parsed.Arg(3), 0, 1, 0),
+        ], new ScriptedCamera());
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-cpath", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("CameraPath", StringComparison.OrdinalIgnoreCase));
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-cpath.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-camerapath.txt"),
+            """
+            CameraPath 00CCAF1D / apply 00CCB048
+              5 required args else 00CD17FD
+              00CBF9DE lookup arg0-3
+              atof arg4 duration
+              vtbl+1640(pos0,pos2,pos1,pos3,dur)
+              jmp 00CC864B no yield
+              spline unread
+            """);
+    }
+
+    [Fact]
     public void CameraLookBetween_aims_midpoint_and_yields()
     {
         var runtime = ScriptRuntime.Detached();
