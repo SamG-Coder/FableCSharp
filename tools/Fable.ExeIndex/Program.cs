@@ -6,7 +6,7 @@ using Fable.Formats.Defs;
 using Fable.Formats.Qst;
 using Fable.Formats.Shaders;
 
-var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "fn" or "trace-render" or "trace-landscape" or "trace-newgame" or "trace-script" or "export-scripts" or "trace-shaders" or "trace-quartz" or "map-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp" or "scan" or "datascan") ?? "all";
+var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "fn" or "trace-render" or "trace-landscape" or "trace-newgame" or "trace-script" or "export-scripts" or "trace-shaders" or "trace-quartz" or "trace-playavi-live" or "trace-playavi-timeline" or "map-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp" or "scan" or "datascan") ?? "all";
 var force = args.Any(a => a is "--force" or "-f");
 var install = GameInstall.TryLocate();
 var exePath = args.FirstOrDefault(a =>
@@ -91,6 +91,13 @@ switch (cmd)
     case "trace-quartz":
         RunTraceQuartz(store, args);
         break;
+    case "trace-playavi-timeline":
+        RunTracePlayAviTimeline(pe, store);
+        break;
+    case "trace-playavi-live":
+        RunTracePlayAviTimeline(pe, store);
+        store.SaveManifest();
+        return PlayAviLiveTrace.Run(exePath, outDir, args);
     case "map-newgame":
         RunMapNewGame(pe, store);
         break;
@@ -2778,6 +2785,121 @@ static IndexLink WriteGuidFindPart(
     sb.AppendLine($"hits **{hits.Count}**");
     store.WritePart(family, slug, sb.ToString());
     return new IndexLink(slug, name, hits.Count > 0 ? hits[0] : 0);
+}
+
+static void RunTracePlayAviTimeline(PeImage pe, DumpStore store)
+{
+    const string family = "playavi-timeline";
+    if (!store.ShouldWrite(family, DumpStore.PlayAviTimelineVersion))
+    {
+        Console.WriteLine($"skip  {family}  v{DumpStore.PlayAviTimelineVersion} (exe unchanged)");
+        return;
+    }
+
+    var links = new List<IndexLink>
+    {
+        WriteFnPart(pe, store, family, "PlayAVI token 00CCA26D", 0x00CCA26D, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI apply 00CCA2BD", 0x00CCA2BD, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI vtbl+1476 0088F890", 0x0088F890, 20, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "PlayAVI singleton 0040D2A0", 0x0040D2A0, 30),
+        WriteWalkPart(pe, store, family, "PlayAVI player 006286F0", 0x006286F0, 400),
+        WriteFnPart(pe, store, family, "PlayAVI WaitEx 00628A9E", 0x00628A9E, 80, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "PlayAVI open 00A3B9D0", 0x00A3B9D0, 220),
+        WriteWalkPart(pe, store, family, "PlayAVI rewrite 0099C1E0", 0x0099C1E0, 40),
+        WriteWalkPart(pe, store, family, "PlayAVI ctor 00A3BC70", 0x00A3BC70, 30),
+        WriteWalkPart(pe, store, family, "PlayAVI renderer ctor 00A3B510", 0x00A3B510, 40),
+        WriteWalkPart(pe, store, family, "PlayAVI CheckMediaType 00A3B5F0", 0x00A3B5F0, 100),
+        WriteWalkPart(pe, store, family, "PlayAVI Run 00A3B130", 0x00A3B130, 80),
+        WriteWalkPart(pe, store, family, "PlayAVI event pump 00A3B000", 0x00A3B000, 40),
+        WriteFnPart(pe, store, family, "PlayAVI DoRenderSample 00A3BCF0", 0x00A3BCF0, 4, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI SetSyncSource 00A3BCD0", 0x00A3BCD0, 4, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI copy 00A3B730", 0x00A3B730, 120, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI SetEvent 00A3B8EB", 0x00A3B8EB, 16, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "PlayAVI LockRect 009FA450", 0x009FA450, 30),
+        WriteWalkPart(pe, store, family, "PlayAVI Unlock 009F9DE0", 0x009F9DE0, 20),
+        WriteWalkPart(pe, store, family, "PlayAVI CreateTexture 009FA280", 0x009FA280, 40),
+        WriteWalkPart(pe, store, family, "PlayAVI present texture 009FA4E0", 0x009FA4E0, 40),
+        WriteWalkPart(pe, store, family, "PlayAVI BeginScene 009BEF20", 0x009BEF20, 20),
+        WriteWalkPart(pe, store, family, "PlayAVI blit 009DC870", 0x009DC870, 80),
+        WriteWalkPart(pe, store, family, "PlayAVI flush 009D9C80", 0x009D9C80, 40),
+        WriteWalkPart(pe, store, family, "PlayAVI EndScene 009BEF50", 0x009BEF50, 16),
+        WriteWalkPart(pe, store, family, "PlayAVI Present 009BEEB0", 0x009BEEB0, 40),
+        WriteWalkPart(pe, store, family, "PlayAVI CBaseRenderer ctor 00CA7360", 0x00CA7360, 40),
+        WriteWalkPart(pe, store, family, "PlayAVI CBaseFilter ctor 00CA61D0", 0x00CA61D0, 50),
+        WriteFnPart(pe, store, family, "PlayAVI CUnknown clock+24 00CAC830", 0x00CAC830, 40, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "PlayAVI pin ctor 00CA4F40", 0x00CA4F40, 30),
+        WriteWalkPart(pe, store, family, "PlayAVI GetPin 00CA6A30", 0x00CA6A30, 80),
+        WriteFnPart(pe, store, family, "PlayAVI pin Receive 00CA7210", 0x00CA7210, 120, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI pin ReceiveMultiple 00CA8CF0", 0x00CA8CF0, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI pin ReceiveCanBlock 00CA8D50", 0x00CA8D50, 20, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI pin GetAllocator 00CA89F0", 0x00CA89F0, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI pin NotifyAllocator 00CA8AC0", 0x00CA8AC0, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI pin GetAllocatorReq 00CA8EC0", 0x00CA8EC0, 4, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "PlayAVI filter Receive 00CA6C40", 0x00CA6C40, 160),
+        WriteWalkPart(pe, store, family, "PlayAVI StartStreaming copy 00CA6E10", 0x00CA6E10, 140),
+        WriteFnPart(pe, store, family, "PlayAVI WaitForRenderTime 00CA65B0", 0x00CA65B0, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI Ready 00A3BCE0", 0x00A3BCE0, 4, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI thread signal 00CA6580", 0x00CA6580, 16, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI ClearPending 00CA4BF0", 0x00CA4BF0, 30, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI StartStreaming 00CA4D80", 0x00CA4D80, 50, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI leftover QI 00CA4780", 0x00CA4780, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI renderer QI 00CA6080", 0x00CA6080, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI CBaseFilter QI 00CA7500", 0x00CA7500, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI pin QI 00A3BD00", 0x00A3BD00, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI CBasePin QI 00CA7CE0", 0x00CA7CE0, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI pin C++ QI 00CA89A0", 0x00CA89A0, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI IPin QueryAccept 00CA84C0", 0x00CA84C0, 40, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "PlayAVI accept type 00A3B590", 0x00A3B590, 40),
+        WriteWalkPart(pe, store, family, "PlayAVI GetMediaType 00CA84F0", 0x00CA84F0, 40),
+        WriteWalkPart(pe, store, family, "PlayAVI ReceiveConnection 00CA66D0", 0x00CA66D0, 80),
+        WriteWalkPart(pe, store, family, "PlayAVI FindPin 00CA4910", 0x00CA4910, 30),
+        WriteWalkPart(pe, store, family, "PlayAVI GetPinCount 00CA53A0", 0x00CA53A0, 8),
+        WriteWalkPart(pe, store, family, "PlayAVI GetPin virtual 00CA53B0", 0x00CA53B0, 20),
+        WriteFnPart(pe, store, family, "PlayAVI ExecuteRender 00CA4B20", 0x00CA4B20, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI ScheduleSample 00CA4AA0", 0x00CA4AA0, 50, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI Schedule wrapper 00CA5CF0", 0x00CA5CF0, 20, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI GetSampleTimes 00CA49F0", 0x00CA49F0, 50, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI AdviseTime site 00CA4B07", 0x00CA4B07, 8, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI ShouldDrawSampleNow 00CA5850", 0x00CA5850, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI store sample 00CA4D80", 0x00CA4D80, 50, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "PlayAVI timer/schedule 00CA6F90", 0x00CA6F90, 50),
+        WriteWalkPart(pe, store, family, "PlayAVI no-clock 00CA4CC0", 0x00CA4CC0, 50),
+        WriteFnPart(pe, store, family, "PlayAVI filter IMem Receive 00CA6050", 0x00CA6050, 20, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI Receive helper 00CA5F50", 0x00CA5F50, 80, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "PlayAVI GetAllocator filter 00CA5D50", 0x00CA5D50, 24),
+        WriteWalkPart(pe, store, family, "PlayAVI NotifyAllocator filter 00CA5DA0", 0x00CA5DA0, 24),
+        WriteVtblPart(pe, store, family, "PlayAVI renderer C++ 0129D08C", 0x0129D08C, 48),
+        WriteVtblPart(pe, store, family, "PlayAVI pin C++ 012BF408", 0x012BF408, 24),
+        WriteVtblPart(pe, store, family, "PlayAVI pin IMemInputPin 012BF388", 0x012BF388, 12),
+        WriteVtblPart(pe, store, family, "PlayAVI pin IPin 012BF3C0", 0x012BF3C0, 20),
+        WriteWalkPart(pe, store, family, "PlayAVI volume 00A3B920", 0x00A3B920, 30),
+        WriteWalkPart(pe, store, family, "PlayAVI wait-state 00A3B0F0", 0x00A3B0F0, 30),
+        WriteWalkPart(pe, store, family, "PlayAVI release graph 00A3B380", 0x00A3B380, 80),
+        WriteFnPart(pe, store, family, "PlayAVI player dtor 00A3BC20", 0x00A3BC20, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI open-fail 00628DEB", 0x00628DEB, 24, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI StopStreaming 00CA4E30", 0x00CA4E30, 40, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI OnWaitStart 00CA5360", 0x00CA5360, 8, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI OnWaitEnd 00CA5380", 0x00CA5380, 12, stopOnRet: false),
+        WriteWalkPart(pe, store, family, "PlayAVI Inactive 00CA7030", 0x00CA7030, 40),
+        WriteWalkPart(pe, store, family, "PlayAVI Active 00CA6B00", 0x00CA6B00, 40),
+        WriteWalkPart(pe, store, family, "PlayAVI CancelNotify 00CA4A70", 0x00CA4A70, 30),
+        WriteWalkPart(pe, store, family, "PlayAVI OnReceiveFirst 00CA4B60", 0x00CA4B60, 30),
+        WriteWalkPart(pe, store, family, "PlayAVI OnRenderEnd 00CA4B90", 0x00CA4B90, 30),
+        WriteVtblPart(pe, store, family, "PlayAVI IBaseFilter COM 0129D04C", 0x0129D04C, 24),
+        WriteVtblPart(pe, store, family, "PlayAVI filter+16 0129D030", 0x0129D030, 20),
+        WriteCallsPart(pe, store, family, "calls PlayAVI copy 00A3B730", 0x00A3B730),
+        WriteCallsPart(pe, store, family, "calls PlayAVI pin Receive 00CA7210", 0x00CA7210),
+        WriteCallsPart(pe, store, family, "calls PlayAVI ExecuteRender 00CA4B20", 0x00CA4B20),
+        WriteCallsPart(pe, store, family, "calls PlayAVI player 006286F0", 0x006286F0),
+        WriteCallsPart(pe, store, family, "calls PlayAVI open 00A3B9D0", 0x00A3B9D0),
+    };
+    store.WriteIndex(
+        family,
+        DumpStore.PlayAviTimelineVersion,
+        "PlayAVI all functions",
+        "Full PlayAVI / texture-renderer / pin Receive / allocator / WaitEx / Present dump. Pin Receive is `00CA7210`. Player `006286F0` is WaitEx then blit/Present. Copy is one texture `00A3B730`.",
+        links);
+    Console.WriteLine($"wrote {family}  v{DumpStore.PlayAviTimelineVersion}");
 }
 
 static void RunTraceQuartz(DumpStore store, string[] args)

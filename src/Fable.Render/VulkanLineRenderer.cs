@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Fable.Core;
 using Silk.NET.Core;
 using Silk.NET.Core.Native;
 using Silk.NET.Shaderc;
@@ -300,7 +301,19 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     /// BeginScene/blit/EndScene/Present. Does not
     /// change the 3D swapchain interval.
     /// </summary>
-    public void SetPlayAviPump(bool on) => _playAviPump = on;
+    /// <summary>
+    /// <c>006286F0</c> owns the pump: WaitEx then
+    /// <c>009BEEB0</c> <c>IDirect3DDevice9::Present</c>.
+    /// That is not Mailbox (non-blocking). FIFO is
+    /// the vsync Present; recreate once on the edge.
+    /// </summary>
+    public void SetPlayAviPump(bool on)
+    {
+        if (_playAviPump == on)
+            return;
+        _playAviPump = on;
+        _resized = true;
+    }
 
     public void Draw(
         Matrix4x4 viewProjection,
@@ -313,6 +326,8 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             return;
 
         var frame0 = Stopwatch.GetTimestamp();
+        if (_playAviPump || _videoReady)
+            PlayAviTimeline.Note("beginscene", PlayAviTimeline.SiteBeginScene, _videoSerial);
         _vk.WaitForFences(_device, 1, in _inFlight[_frame], true, ulong.MaxValue);
         var other = (_frame + 1) % MaxFrames;
         VideoOtherFenceStatus = (int)_vk.GetFenceStatus(_device, _inFlight[other]);
@@ -352,6 +367,12 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             PSignalSemaphores = &signal,
         };
         Check(_vk.QueueSubmit(_graphicsQueue, 1, in submit, _inFlight[_frame]));
+        if (_playAviPump || _videoReady)
+        {
+            PlayAviTimeline.Note("blit", PlayAviTimeline.SiteBlit, _videoSerial);
+            PlayAviTimeline.Note("endscene", PlayAviTimeline.SiteEndScene, _videoSerial);
+            PlayAviTimeline.Note("present-enter", PlayAviTimeline.SitePresentEnter, _videoSerial);
+        }
 
         var swapchain = _swapchain;
         var present = new PresentInfoKHR
@@ -364,6 +385,14 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             PImageIndices = &imageIndex,
         };
         var presentResult = _khrSwapchain.QueuePresent(_presentQueue, in present);
+        if (_playAviPump || _videoReady)
+        {
+            PlayAviTimeline.Note(
+                "present-leave",
+                PlayAviTimeline.SitePresentLeave,
+                _videoSerial,
+                extra: presentResult.ToString());
+        }
         if (presentResult is Result.ErrorOutOfDateKhr or Result.SuboptimalKhr)
             RecreateSwapchain();
         else if (presentResult != Result.Success)
@@ -566,9 +595,17 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         if (surfaceFormat.Format == 0)
             surfaceFormat = formats[0];
 
-        var presentMode = presents.Contains(PresentModeKHR.MailboxKhr)
-            ? PresentModeKHR.MailboxKhr
-            : PresentModeKHR.FifoKhr;
+        // 009BEEB0 is IDirect3DDevice9::Present.
+        // Mailbox returns in <1 ms and lets WaitEx(33)
+        // beat the 33.3 ms sample clock (csharp timeline
+        // p10 present 0.82 ms, 44% WaitEx timeout).
+        // PlayAVI uses FIFO (vsync), same role as D3D
+        // INTERVAL_ONE. 3D keeps Mailbox when present.
+        var presentMode = _playAviPump || !presents.Contains(PresentModeKHR.MailboxKhr)
+            ? PresentModeKHR.FifoKhr
+            : PresentModeKHR.MailboxKhr;
+        PlayAviTimeline.NotePresentParams(
+            $"Vulkan PresentMode={presentMode} playAvi={_playAviPump} VSync={_window.VSync} images={Math.Max(caps.MinImageCount, 2)}");
 
         var width = caps.CurrentExtent.Width == uint.MaxValue
             ? (uint)Math.Clamp(_window.FramebufferSize.X, (int)caps.MinImageExtent.Width, (int)caps.MaxImageExtent.Width)

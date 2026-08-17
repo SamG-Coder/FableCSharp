@@ -19,10 +19,14 @@ dotnet run --project tools/Fable.ExeIndex -- --force trace-landscape
 dotnet run --project tools/Fable.ExeIndex -- --force trace-script
 dotnet run --project tools/Fable.ExeIndex -- --force export-scripts
 dotnet run --project tools/Fable.ExeIndex -- --force trace-quartz
+dotnet run --project tools/Fable.ExeIndex -- --force trace-playavi-timeline
+dotnet run --project tools/Fable.ExeIndex -- trace-playavi-live --seconds 30
 dotnet run --project tools/Fable.ExeIndex -- map-newgame
 ```
 
 `fn` / `disasm` / `calls` accept a PE32 `.dll` as well as `Fable.exe`. `trace-quartz` loads `C:\Windows\SysWOW64\quartz.dll` (the same 32-bit FilterGraph Fable PlayAVI uses) and dumps the RenderFile walk after QueryPinInfo / EnumMediaTypes. Do not copy that graph-builder into the game.
+
+`trace-playavi-timeline` persists the ScheduleSample / WaitEx / Present sites. `trace-playavi-live` is **attach-only** (does not launch Fable or send keys). Start the game yourself, then attach. `--launch` / `--keys` exist but take over the desktop — do not use them on a live session. Pair with `dotnet run --project tools/Fable.PlayAviArch -- --timeline --seconds 30`.
 
 ```
 dotnet run --project tools/Fable.ExeIndex -- disasm 0x00B25950 80

@@ -51,6 +51,7 @@ var looking = false;
 var f1WasDown = false;
 var f2WasDown = false;
 var gWasDown = false;
+var wasAvi = false;
 
 window.Load += () =>
 {
@@ -136,6 +137,11 @@ window.Update += dt =>
     }
 
     var avi = intro?.Runtime.AviPlaying == true;
+    if (avi && !wasAvi)
+        PlayAviTimeline.Reset("csharp");
+    if (!avi && wasAvi)
+        PlayAviTimeline.Write(name: "csharp");
+    wasAvi = avi;
     renderer?.SetPlayAviPump(avi);
     intro?.Update((float)dt);
     if (renderer is not null)
@@ -197,6 +203,8 @@ window.Render += _ =>
 
 window.Closing += () =>
 {
+    if (wasAvi || PlayAviTimeline.Snapshot().Count > 0)
+        PlayAviTimeline.Write(name: "csharp");
     renderer?.Dispose();
     renderer = null;
     input?.Dispose();

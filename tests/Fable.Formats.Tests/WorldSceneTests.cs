@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Fable.Core;
 using Fable.Formats;
 using Fable.Formats.Levels;
@@ -319,6 +321,21 @@ public sealed class WorldSceneTests
         Assert.Equal(0x00CA5D50u, RegionTravel.PlayAviGetAllocator);
         Assert.Equal(0x00CA5DA0u, RegionTravel.PlayAviNotifyAllocator);
         Assert.True(RegionTravel.FirstSeenPlayAviGetAllocatorReturnsStored);
+        Assert.Equal(0x00CA89F0u, RegionTravel.PlayAviPinGetAllocator);
+        Assert.Equal(0x00CA7210u, RegionTravel.PlayAviPinReceive);
+        Assert.Equal(0x00CA6C40u, RegionTravel.PlayAviPrepareReceive);
+        Assert.Equal(0x00CA6E10u, RegionTravel.PlayAviReceive);
+        Assert.Equal(0x00CA65B0u, RegionTravel.PlayAviWaitForRenderTime);
+        Assert.Equal(0x012AAC24u, RegionTravel.PlayAviMemoryAllocatorClsidVa);
+        Assert.Equal(0x012A9A54u, RegionTravel.PlayAviIMemAllocatorIidVa);
+        Assert.Equal(new Guid("1e651cc0-b199-11d0-8212-00c04fc32c45"), RegionTravel.PlayAviMemoryAllocatorClsid);
+        Assert.Equal(new Guid("56a8689c-0ad4-11ce-b03a-0020af0ba770"), RegionTravel.PlayAviIMemAllocatorIid);
+        Assert.True(RegionTravel.FirstSeenPlayAviPinGetAllocatorCreatesMemAllocator);
+        Assert.False(RegionTravel.FirstSeenPlayAviReceiveWaitsOnSampleTime);
+        Assert.Equal(0x00628DEBu, RegionTravel.PlayAviOpenFail);
+        Assert.Equal(0x00A3B380u, RegionTravel.PlayAviReleaseGraph);
+        Assert.Equal(0x00CA4E30u, RegionTravel.PlayAviStopStreaming);
+        Assert.True(RegionTravel.FirstSeenPlayAviOpenFailSkipsPresent);
         Assert.Equal(new Guid("71771540-2017-11cf-ae26-0020afd79767"), RegionTravel.PlayAviRendererClsid);
         Assert.Equal(0x0129D150u, RegionTravel.PlayAviRendererClsidVa);
         Assert.Equal(0x00CA84F0u, RegionTravel.PlayAviGetMediaType);
@@ -1960,6 +1977,14 @@ public sealed class WorldSceneTests
         Assert.True(RegionTravel.FirstSeenPlayAviCopiesRgb24ToArgb);
         Assert.Equal(33, RegionTravel.PlayAviPresentMs);
         Assert.Equal(0x00628A9Eu, RegionTravel.PlayAviWaitSite);
+        Assert.Equal(0x00628AACu, RegionTravel.PlayAviWaitLeave);
+        Assert.Equal(0x00A3B8EBu, RegionTravel.PlayAviSetEventSite);
+        Assert.Equal(0x00CA4AA0u, RegionTravel.PlayAviScheduleSample);
+        Assert.Equal(0x00CA49F0u, RegionTravel.PlayAviGetSampleTimes);
+        Assert.Equal(0x00CA4B07u, RegionTravel.PlayAviAdviseTimeSite);
+        Assert.False(RegionTravel.FirstSeenPlayAviSetSyncSourceStoresClock);
+        Assert.True(RegionTravel.FirstSeenPlayAviWaitZeroUpdatesTexture);
+        Assert.True(RegionTravel.FirstSeenPlayAviTimeoutStillPresents);
         Assert.Equal(0x0143FDE0u, RegionTravel.PlayAviSetEventIat);
         Assert.True(RegionTravel.FirstSeenPlayAviWaitIsTimeoutNotSleep);
         Assert.True(RegionTravel.FirstSeenPlayAviWaitIsAlertable);
@@ -1982,11 +2007,12 @@ public sealed class WorldSceneTests
         Assert.True(RegionTravel.FirstSeenPlayAviBlocksUpdatePump);
         Assert.False(RegionTravel.FirstSeenPlayAviDrawsWorld);
         Assert.True(RegionTravel.FirstSeenPlayAviPresentIsDevicePresent);
-        var serial = player.FrameSerial;
+        Assert.False(RegionTravel.FirstSeenPlayAviPresentIsMailbox);
+        var serial = player.RecvSerial;
         Thread.Sleep(200);
         Assert.True(
-            player.FrameSerial >= serial + 3,
-            $"WMV present too slow serial={player.FrameSerial} start={serial} {WmvPlayer.LastError}");
+            player.RecvSerial >= serial + 3,
+            $"WMV present too slow serial={player.RecvSerial} start={serial} {WmvPlayer.LastError}");
 
         Assert.Equal(0x0099C1E0u, RegionTravel.PlayAviRewrite);
         Assert.Equal(0x00A3B9D0u, RegionTravel.PlayAviOpen);
@@ -2036,6 +2062,83 @@ public sealed class WorldSceneTests
         runtime.Update(0.1f);
         Assert.False(runtime.AviPlaying);
         Assert.Contains("MuteSounds false", intro.Executed);
+    }
+
+    [Fact]
+    public void PlayAvi_from_exe_matches_no_clock_receive()
+    {
+        using var exe = new PlayAviFromExe();
+        Assert.Equal(0, exe.SetSyncSource_00A3BCD0(new IntPtr(1)));
+        Assert.Equal(IntPtr.Zero, exe.Clock);
+        Assert.Equal(0, exe.CheckMediaType_00A3B5F0(2, 2, 24, false));
+        Assert.Equal(0, exe.GetSampleTimes_00CA49F0(new FakeAviSample(), out _, out _));
+
+        // 00CA4D80 then 00CA7210: streaming so
+        // ScheduleSample SetEvent(+84) and
+        // WaitForRenderTime does not block.
+        exe.Run();
+        var first = new FakeAviSample();
+        Assert.Equal(0, exe.PinReceive_00CA7210(first));
+        Assert.Equal(1, exe.RecvSerial);
+        Assert.NotNull(exe.Rgba);
+        Assert.False(exe.SampleHeld);
+        Assert.True(first.Released);
+
+        var second = new FakeAviSample { Start = 330_000, End = 660_000 };
+        Assert.Equal(0, exe.PinReceive_00CA7210(second));
+        Assert.Equal(2, exe.RecvSerial);
+        Assert.True(exe.WaitEx_00628A9E());
+    }
+
+    private sealed class FakeAviSample : IPlayAviSample
+    {
+        public long Start;
+        public long End = 330_000;
+        public bool Released;
+        public readonly byte[] Pixels = [0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 255];
+
+        public int GetTime(out long start, out long end)
+        {
+            start = Start;
+            end = End;
+            return 0;
+        }
+
+        public int GetPointer(out IntPtr data)
+        {
+            var h = GCHandle.Alloc(Pixels, GCHandleType.Pinned);
+            data = h.AddrOfPinnedObject();
+            return 0;
+        }
+
+        public int GetActualDataLength() => Pixels.Length;
+        public int GetSize() => Pixels.Length;
+        public void AddRef() { }
+        public void Release() => Released = true;
+    }
+
+    [Fact]
+    public void PlayAvi_timeline_wait_names_match_WaitEx()
+    {
+        Assert.Equal("signaled", PlayAviTimeline.WaitName(PlayAviTimeline.WaitObject0));
+        Assert.Equal("timeout", PlayAviTimeline.WaitName(PlayAviTimeline.WaitTimeout));
+        Assert.Equal("apc", PlayAviTimeline.WaitName(PlayAviTimeline.WaitIoCompletion));
+        Assert.Equal(258, PlayAviTimeline.WaitTimeout);
+        // 00A3BCD0 never stores a clock. Receive
+        // copies immediately; WaitEx is Present.
+        Assert.False(RegionTravel.FirstSeenPlayAviSetSyncSourceStoresClock);
+        Assert.False(RegionTravel.FirstSeenPlayAviReceiveWaitsOnSampleTime);
+        PlayAviTimeline.Reset("test");
+        PlayAviTimeline.Note("copy", PlayAviTimeline.SiteCopy, 1, 0, 33_000_000);
+        PlayAviTimeline.Note("wait-leave", PlayAviTimeline.SiteWaitLeave, 1, waitResult: PlayAviTimeline.WaitObject0);
+        PlayAviTimeline.Note("present-leave", PlayAviTimeline.SitePresentLeave, 1);
+        PlayAviTimeline.Note("copy", PlayAviTimeline.SiteCopy, 2, 33_000_000, 66_000_000);
+        PlayAviTimeline.Note("present-leave", PlayAviTimeline.SitePresentLeave, 2);
+        var m = PlayAviTimeline.Measure(PlayAviTimeline.Snapshot());
+        Assert.Equal(2, m.Copies);
+        Assert.Equal(2, m.Presents);
+        Assert.Equal(1, m.WaitSignaled);
+        PlayAviTimeline.Enabled = false;
     }
 
     private static int CountPropNear(WorldGeometry world, float x, float y, float radius)

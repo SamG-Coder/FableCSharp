@@ -174,6 +174,13 @@ public static class RegionTravel
     public const bool FirstSeenPlayAviBlocksUpdatePump = true;
     public const bool FirstSeenPlayAviDrawsWorld = false;
     public const bool FirstSeenPlayAviPresentIsDevicePresent = true;
+    /// <summary>
+    /// <c>009BEEB0</c> is device Present, not a
+    /// non-blocking mailbox. C# 30 s log: Mailbox
+    /// present p10=0.82 ms + WaitEx 33 vs media
+    /// 33.3 ms is the wave. FIFO during the pump.
+    /// </summary>
+    public const bool FirstSeenPlayAviPresentIsMailbox = false;
     public const uint PlayAviLetterboxHalfVa = 0x0122F59C;
     public const float PlayAviLetterboxHalf = 0.5f;
     /// <summary>
@@ -339,7 +346,30 @@ public static class RegionTravel
     public const bool FirstSeenPlayAviUnlockThenNormalPresent = true;
     public const uint PlayAviWaitIat = 0x0143FE08;
     public const uint PlayAviWaitSite = 0x00628A9E;
+    public const uint PlayAviWaitLeave = 0x00628AAC;
     public const uint PlayAviSetEventIat = 0x0143FDE0;
+    public const uint PlayAviSetEventSite = 0x00A3B8EB;
+    public const uint PlayAviScheduleSample = 0x00CA4AA0;
+    public const uint PlayAviGetSampleTimes = 0x00CA49F0;
+    public const uint PlayAviAdviseTimeSite = 0x00CA4B07;
+    public const uint PlayAviShouldDrawSampleNow = 0x00CA5850;
+    public const uint PlayAviExecuteRender = 0x00CA4B20;
+    public const uint PlayAviGetTimeVtbl = 20;
+    public const uint PlayAviAdviseTimeVtbl = 16;
+    /// <summary>
+    /// Renderer <c>SetSyncSource</c> <c>00A3BCD0</c>
+    /// is <c>xor eax,eax; ret</c> — it does not
+    /// store <c>IReferenceClock</c>.
+    /// </summary>
+    public const bool FirstSeenPlayAviSetSyncSourceStoresClock = false;
+    /// <summary>
+    /// <c>00628AAC</c> <c>mov edi, eax</c> then
+    /// <c>test edi, edi; jne 00628BF2</c> skips
+    /// <c>009FA4E0</c> when WaitEx is not
+    /// <c>WAIT_OBJECT_0</c>. Blit+Present still run.
+    /// </summary>
+    public const bool FirstSeenPlayAviWaitZeroUpdatesTexture = true;
+    public const bool FirstSeenPlayAviTimeoutStillPresents = true;
     /// <summary>
     /// <c>00628AA1</c> <c>push 1; push 33; push [esi+124];
     /// call [0x143FE08]</c>. Three args is
@@ -406,6 +436,48 @@ public static class RegionTravel
     public const uint PlayAviNotifyAllocator = 0x00CA5DA0;
     public const uint PlayAviNoAllocator = 0x8004020A;
     public const bool FirstSeenPlayAviGetAllocatorReturnsStored = true;
+    /// <summary>
+    /// Pin IMemInputPin GetAllocator
+    /// <c>00CA89F0</c>. Empty [pin+4] CoCreates
+    /// <c>CLSID_MemoryAllocator</c> at
+    /// <c>0x12AAC24</c> +
+    /// <c>IID_IMemAllocator</c> at
+    /// <c>0x12A9A54</c>. That allocator is the
+    /// decoder queue. <c>00CA8EC0</c> reqs are
+    /// E_NOTIMPL so the decoder picks
+    /// <c>cBuffers</c>.
+    /// </summary>
+    public const uint PlayAviPinGetAllocator = 0x00CA89F0;
+    public const uint PlayAviPinReceive = 0x00CA7210;
+    public const uint PlayAviPrepareReceive = 0x00CA6C40;
+    public const uint PlayAviReceive = 0x00CA6E10;
+    public const uint PlayAviWaitForRenderTime = 0x00CA65B0;
+    public const uint PlayAviMemoryAllocatorClsidVa = 0x012AAC24;
+    public const uint PlayAviIMemAllocatorIidVa = 0x012A9A54;
+    public static readonly Guid PlayAviMemoryAllocatorClsid =
+        new("1e651cc0-b199-11d0-8212-00c04fc32c45");
+    public static readonly Guid PlayAviIMemAllocatorIid =
+        new("56a8689c-0ad4-11ce-b03a-0020af0ba770");
+    public const bool FirstSeenPlayAviPinGetAllocatorCreatesMemAllocator = true;
+    /// <summary>
+    /// <c>00A3BCD0</c> does not store a clock,
+    /// so <c>00CA49F0</c> returns S_OK (draw
+    /// now), <c>00CA4AA0</c> SetEvent(+84), and
+    /// <c>00CA65B0</c> returns without waiting
+    /// on sample time. Receive does not hold
+    /// the allocator for PTS.
+    /// </summary>
+    public const bool FirstSeenPlayAviReceiveWaitsOnSampleTime = false;
+    /// <summary>
+    /// <c>006286F0</c> <c>call 00A3B9D0; cmp eax,edi;
+    /// jl 00628DEB</c>. Failed open does not
+    /// enter WaitEx/Present. <c>00628DEB</c>
+    /// releases the player and <c>xor al,al; ret</c>.
+    /// </summary>
+    public const uint PlayAviOpenFail = 0x00628DEB;
+    public const uint PlayAviReleaseGraph = 0x00A3B380;
+    public const uint PlayAviStopStreaming = 0x00CA4E30;
+    public const bool FirstSeenPlayAviOpenFailSkipsPresent = true;
     public const uint PlayAviMediaControlIidVa = 0x012AA094;
     public const uint PlayAviMediaPositionIidVa = 0x012AA064;
     public const uint PlayAviMediaSeekingIidVa = 0x012A9A04;

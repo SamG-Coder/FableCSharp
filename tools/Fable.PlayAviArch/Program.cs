@@ -98,7 +98,12 @@ sb.AppendLine("AddFilter + RenderFile only. No Connect, no VMR steal.");
 
 Console.Write(sb.ToString());
 
-var outDir = args.FirstOrDefault(a => !a.StartsWith('-'));
+var outDir = args
+    .Select((a, i) => (a, i))
+    .Where(t => !t.a.StartsWith('-') &&
+                (t.i == 0 || args[t.i - 1] is not "--seconds" and not "--filter" and not "--wait"))
+    .Select(t => t.a)
+    .FirstOrDefault();
 if (outDir is not null)
 {
     Directory.CreateDirectory(outDir);
@@ -140,6 +145,71 @@ if (args.Any(a => a is "--pace"))
 
     File.WriteAllText(Path.Combine(paceDir, "samples.md"), md.ToString());
     Console.Write(md.ToString());
+}
+
+if (args.Any(a => a is "--timeline"))
+{
+    if (player is null)
+        return 1;
+    PlayAviTimeline.Reset("csharp");
+    PlayAviTimeline.NotePath(file);
+    var secondsTok = args.SkipWhile(a => a is not "--seconds").Skip(1).FirstOrDefault();
+    var seconds = 30;
+    if (secondsTok is not null && int.TryParse(secondsTok, out var parsed) && parsed > 0)
+        seconds = parsed;
+    var timelineDir = Path.Combine(
+        Path.GetDirectoryName(typeof(Program).Assembly.Location) ?? ".",
+        "..", "..", "..", "..", "Fable.ExeIndex", "out", "01-sections", "playavi-timeline");
+    if (outDir is not null)
+        timelineDir = outDir;
+    Directory.CreateDirectory(timelineDir);
+
+    var options = WindowOptions.DefaultVulkan with
+    {
+        Title = "PlayAVI timeline",
+        Size = new Vector2D<int>(1280, 720),
+        VSync = true,
+    };
+    using var window = Window.Create(options);
+    VulkanLineRenderer? renderer = null;
+    var dest = new Vector4(0, 0, 1, 1);
+    var deadline = Environment.TickCount64 + seconds * 1000L;
+    window.Load += () =>
+    {
+        renderer = new VulkanLineRenderer(window);
+        renderer.SetPlayAviPump(true);
+    };
+    window.Update += dt =>
+    {
+        if (renderer is null)
+            return;
+        player.TryAdvance((float)dt);
+        if (player.Rgba is { } rgba && player.Width > 0 && player.Height > 0)
+        {
+            renderer.SetVideoFrame(
+                player.Width, player.Height, rgba, dest, player.FrameSerial);
+            VulkanLineRenderer.NoteReceived(player.FrameSerial);
+        }
+
+        if (player.Ended || Environment.TickCount64 >= deadline)
+            window.Close();
+    };
+    window.Render += _ =>
+    {
+        if (renderer is null || window.FramebufferSize.X == 0)
+            return;
+        renderer.Draw(Matrix4x4.Identity);
+    };
+    window.Closing += () =>
+    {
+        renderer?.Dispose();
+        renderer = null;
+    };
+    window.Run();
+    var md = PlayAviTimeline.Write(timelineDir, "csharp");
+    Console.WriteLine(md);
+    Console.WriteLine($"events {PlayAviTimeline.Snapshot().Count} serial {player.FrameSerial}");
+    return 0;
 }
 
 if (args.Any(a => a is "--present"))
