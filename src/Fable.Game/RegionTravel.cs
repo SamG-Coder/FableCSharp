@@ -345,6 +345,10 @@ public static class RegionTravel
         new("256a6a22-fbad-11d1-82bf-00a0c9696c8f");
     public static readonly Guid PlayAviMemInputPinIid =
         new("56a8689d-0ad4-11ce-b03a-0020af0ba770");
+    public const uint PlayAviGetAllocator = 0x00CA5D50;
+    public const uint PlayAviNotifyAllocator = 0x00CA5DA0;
+    public const uint PlayAviNoAllocator = 0x8004020A;
+    public const bool FirstSeenPlayAviGetAllocatorReturnsStored = true;
     public const uint PlayAviMediaControlIidVa = 0x012AA094;
     public const uint PlayAviMediaPositionIidVa = 0x012AA064;
     public const uint PlayAviMediaSeekingIidVa = 0x012A9A04;

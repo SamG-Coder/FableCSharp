@@ -316,6 +316,9 @@ public sealed class WorldSceneTests
         Assert.True(RegionTravel.FirstSeenPlayAviRendererExposesMediaPosition);
         Assert.Equal(new Guid("256a6a22-fbad-11d1-82bf-00a0c9696c8f"), RegionTravel.PlayAviIPinConnectionIid);
         Assert.Equal(new Guid("56a8689d-0ad4-11ce-b03a-0020af0ba770"), RegionTravel.PlayAviMemInputPinIid);
+        Assert.Equal(0x00CA5D50u, RegionTravel.PlayAviGetAllocator);
+        Assert.Equal(0x00CA5DA0u, RegionTravel.PlayAviNotifyAllocator);
+        Assert.True(RegionTravel.FirstSeenPlayAviGetAllocatorReturnsStored);
         Assert.Equal(new Guid("71771540-2017-11cf-ae26-0020afd79767"), RegionTravel.PlayAviRendererClsid);
         Assert.Equal(0x0129D150u, RegionTravel.PlayAviRendererClsidVa);
         Assert.Equal(0x00CA84F0u, RegionTravel.PlayAviGetMediaType);

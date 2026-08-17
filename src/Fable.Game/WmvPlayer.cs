@@ -1145,6 +1145,7 @@ public sealed class WmvPlayer : IDisposable
         private int _stride;
         private bool _topDown;
         private Guid _subType;
+        private IntPtr _allocator;
 
         public bool IsConnected => _connected is not null;
 
@@ -1333,13 +1334,34 @@ public sealed class WmvPlayer : IDisposable
 
         public int GetAllocator(out IntPtr allocator)
         {
-            allocator = IntPtr.Zero;
-            return unchecked((int)0x8004020A);
+            // 00CA5D50: lock, *pp = [this+64], S_OK.
+            // Null until NotifyAllocator stores one
+            // → VFW_E_NO_ALLOCATOR so the output pin
+            // provides its allocator.
+            if (_allocator == IntPtr.Zero)
+            {
+                allocator = IntPtr.Zero;
+                return unchecked((int)0x8004020A);
+            }
+
+            allocator = _allocator;
+            Marshal.AddRef(_allocator);
+            return 0;
         }
 
         public int NotifyAllocator(IntPtr allocator, bool readOnly)
         {
-            _ = (allocator, readOnly);
+            // 00CA5DA0 is ret 8 (one out ptr). COM
+            // NotifyAllocator is this + allocator +
+            // readOnly. Store the provided allocator
+            // so GetAllocator can return it.
+            _ = readOnly;
+            if (allocator == IntPtr.Zero)
+                return unchecked((int)0x80004003);
+            if (_allocator != IntPtr.Zero)
+                Marshal.Release(_allocator);
+            _allocator = allocator;
+            Marshal.AddRef(_allocator);
             return 0;
         }
 
@@ -1351,21 +1373,32 @@ public sealed class WmvPlayer : IDisposable
 
         public int Receive(IMediaSample sample)
         {
+            // 00A3B730 GetPointer then return. A
+            // managed IMediaSample RCW keeps the
+            // native buffer until GC; a 1-buffer
+            // allocator then never Receives again.
             ReceiveCalls++;
-            var gp = sample.GetPointer(out var data);
-            if (gp >= 0 && data != IntPtr.Zero)
-                GetPointerCalls++;
-            if (gp < 0 || data == IntPtr.Zero)
+            try
+            {
+                var gp = sample.GetPointer(out var data);
+                if (gp >= 0 && data != IntPtr.Zero)
+                    GetPointerCalls++;
+                if (gp < 0 || data == IntPtr.Zero)
+                    return 0;
+                var length = sample.GetActualDataLength();
+                if (length <= 0)
+                    length = sample.GetSize();
+                if (_width <= 0 || _height <= 0 || length <= 0)
+                    return 0;
+                var rgba = CopySample(data, length);
+                if (rgba is not null)
+                    _onSample(_width, _height, rgba);
                 return 0;
-            var length = sample.GetActualDataLength();
-            if (length <= 0)
-                length = sample.GetSize();
-            if (_width <= 0 || _height <= 0 || length <= 0)
-                return 0;
-            var rgba = CopySample(data, length);
-            if (rgba is not null)
-                _onSample(_width, _height, rgba);
-            return 0;
+            }
+            finally
+            {
+                Marshal.ReleaseComObject(sample);
+            }
         }
 
         public int ReceiveMultiple(IMediaSample[] samples, int count, out int processed)
