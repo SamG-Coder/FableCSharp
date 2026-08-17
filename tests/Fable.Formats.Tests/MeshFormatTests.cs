@@ -257,6 +257,13 @@ public sealed class MeshFormatTests
         Assert.True(WorldShading.FirstSeenPalskinSrcAlphaBlend);
         Assert.Contains(mesh.Triangles, t => t.SrcAlphaBlend);
         Assert.False(WorldShading.FirstSeenPlaysAnim);
+        Assert.Equal(0x005B37F7u, WorldShading.AppearanceDefaultPlay);
+        Assert.Equal(0x0070C050u, WorldShading.AppearanceDefaultRequest);
+        Assert.Equal(0x0070D580u, WorldShading.AppearanceDefaultInnerPlay);
+        Assert.Equal(0x005B6881u, WorldShading.AppearanceDefaultClothingCaller);
+        Assert.Equal(0x005B8743u, WorldShading.AppearanceDefaultUiCaller);
+        Assert.False(WorldShading.FirstSeenAppearancePlaysDefault);
+        Assert.True(WorldShading.AppearanceDefaultCallsInnerPlay);
         Assert.Equal(new Vector4(256f, 256f, 256f, 256f), WorldShading.FirstSeenC1);
         Assert.Equal(0x00989BF0u, WorldShading.LayoutBasicFlush);
         Assert.Equal(0x00BD549Du, WorldShading.FirstSeenPalskinDefaultDraw);

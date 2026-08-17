@@ -623,8 +623,20 @@ public static class WorldShading
     /// <c>vtbl+72</c> <c>004C7470</c>; CTCAnimationComplex
     /// <c>+68</c> is a not-handled stub, so that path also
     /// does not write a palette.
+    /// <c>005B37F7</c> does play <c>DEFAULT</c> via
+    /// <c>0070C050</c> → <c>0070B460</c> → <c>0070D580</c>,
+    /// but its only <c>E8</c> callers are clothing GUI
+    /// <c>005B6881</c> and <c>PC_UI_FRAME</c> <c>005B8743</c>.
+    /// Create <c>006AC910</c> does not call it.
     /// </summary>
     public const bool FirstSeenPlaysAnim = false;
+    public const uint AppearanceDefaultPlay = 0x005B37F7;
+    public const uint AppearanceDefaultRequest = 0x0070C050;
+    public const uint AppearanceDefaultInnerPlay = 0x0070D580;
+    public const uint AppearanceDefaultClothingCaller = 0x005B6881;
+    public const uint AppearanceDefaultUiCaller = 0x005B8743;
+    public const bool FirstSeenAppearancePlaysDefault = false;
+    public const bool AppearanceDefaultCallsInnerPlay = true;
 
     /// <summary>
     /// First-seen landscape <c>00B24850</c> and static-lit
