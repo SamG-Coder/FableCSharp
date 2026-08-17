@@ -211,6 +211,23 @@ public static class RegionTravel
     public const bool FirstSeenPlayAviQueryAcceptRequiresRgb24 = true;
     public const bool FirstSeenPlayAviEnumMediaTypesEmpty = true;
     public const bool FirstSeenPlayAviIPinIsSeparateObject = true;
+    public const bool FirstSeenPlayAviAdvertisesRgb32 = false;
+
+    /// <summary>
+    /// <c>00A3B590</c> then <c>00CA84C0</c>:
+    /// null → <c>E_POINTER</c>. Else
+    /// FORMAT_VideoInfo + MEDIATYPE_Video +
+    /// RGB24 → <c>S_OK</c>. Any miss →
+    /// <c>S_FALSE</c>. RGB32 is not accepted.
+    /// </summary>
+    public static int PlayAviQueryAcceptHr(Guid major, Guid subtype, Guid formatType)
+    {
+        if (formatType != PlayAviFormatVideoInfo ||
+            major != PlayAviMediaTypeVideo ||
+            subtype != PlayAviRgb24)
+            return 1;
+        return 0;
+    }
     public const uint PlayAviRun = 0x00A3B130;
     public const uint PlayAviDoRenderSample = 0x00A3BCF0;
     public const uint PlayAviRendererVtbl = 0x0129D08C;

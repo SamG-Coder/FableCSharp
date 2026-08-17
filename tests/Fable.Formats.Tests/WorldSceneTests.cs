@@ -323,6 +323,20 @@ public sealed class WorldSceneTests
         Assert.True(RegionTravel.FirstSeenPlayAviQueryAcceptRequiresRgb24);
         Assert.True(RegionTravel.FirstSeenPlayAviEnumMediaTypesEmpty);
         Assert.True(RegionTravel.FirstSeenPlayAviIPinIsSeparateObject);
+        Assert.False(RegionTravel.FirstSeenPlayAviAdvertisesRgb32);
+        Assert.Equal(new Guid("73646976-0000-0010-8000-00aa00389b71"), RegionTravel.PlayAviMediaTypeVideo);
+        Assert.Equal(0, RegionTravel.PlayAviQueryAcceptHr(
+            RegionTravel.PlayAviMediaTypeVideo,
+            RegionTravel.PlayAviRgb24,
+            RegionTravel.PlayAviFormatVideoInfo));
+        Assert.Equal(1, RegionTravel.PlayAviQueryAcceptHr(
+            RegionTravel.PlayAviMediaTypeVideo,
+            new Guid("e436eb7e-524f-11ce-9f53-0020af0ba770"),
+            RegionTravel.PlayAviFormatVideoInfo));
+        Assert.Equal(1, RegionTravel.PlayAviQueryAcceptHr(
+            RegionTravel.PlayAviMediaTypeVideo,
+            RegionTravel.PlayAviRgb24,
+            Guid.Empty));
         Assert.Equal(0x00A3B130u, RegionTravel.PlayAviRun);
         Assert.Equal(0x00A3BCF0u, RegionTravel.PlayAviDoRenderSample);
         Assert.Equal(50, RegionTravel.PlayAviRunRetry);

@@ -42,8 +42,61 @@ public sealed class WmvPlayer : IDisposable
     internal static int MemInputQiCalls { get; set; }
     internal static int ConnectedToCalls { get; set; }
     internal static int MiscFlagsCalls { get; set; }
+    internal static int QueryPinInfoCalls { get; set; }
+    internal static int QueryIdCalls { get; set; }
+    internal static int EnumMediaTypesCalls { get; set; }
+    internal static int MediaTypeNextCalls { get; set; }
+    internal static int ReceiveCalls { get; set; }
+    internal static int GetPointerCalls { get; set; }
 
     public static string? LastError { get; private set; }
+    public static int LastAddFilterHr { get; private set; }
+    public static int LastRenderFileHr { get; private set; }
+    public static int LastRunHr { get; private set; }
+
+    /// <summary>
+    /// Live AddFilter+RenderFile counters for the
+    /// x86/x64 quartz experiment. Observation only.
+    /// </summary>
+    public static PlayAviGraphTrace CaptureTrace() =>
+        new()
+        {
+            ProcessArch = Environment.Is64BitProcess ? "x64" : "x86",
+            IntPtrSize = IntPtr.Size,
+            AddFilterHr = LastAddFilterHr,
+            RenderFileHr = LastRenderFileHr,
+            RunHr = LastRunHr,
+            EnumPins = EnumPinsCalls,
+            Next = PinNextCalls,
+            QueryDirection = QueryDirectionCalls,
+            ConnectedTo = ConnectedToCalls,
+            QueryPinInfo = QueryPinInfoCalls,
+            QueryId = QueryIdCalls,
+            EnumMediaTypes = EnumMediaTypesCalls,
+            MediaTypeNext = MediaTypeNextCalls,
+            QueryAccept = QueryAcceptCalls,
+            ReceiveConnection = ReceiveConnectionCalls,
+            MemInputQi = MemInputQiCalls,
+            Receive = ReceiveCalls,
+            GetPointer = GetPointerCalls,
+            MiscFlags = MiscFlagsCalls,
+            Graph = LastGraph,
+            PinVisible = LastPinVisible,
+            Connected = LastConnected,
+            SamplesFromGetPointer = LastSamplesFromGetPointer,
+            Frames = LastFrames,
+            Width = LastWidth,
+            Height = LastHeight,
+            Error = LastError,
+        };
+
+    public static string LastGraph { get; private set; } = "";
+    public static string LastPinVisible { get; private set; } = "";
+    public static bool LastConnected { get; private set; }
+    public static bool LastSamplesFromGetPointer { get; private set; }
+    public static int LastFrames { get; private set; }
+    public static int LastWidth { get; private set; }
+    public static int LastHeight { get; private set; }
 
     private readonly object _gate = new();
     private readonly AutoResetEvent _frameEvent = new(false);
@@ -67,6 +120,22 @@ public sealed class WmvPlayer : IDisposable
         MemInputQiCalls = 0;
         ConnectedToCalls = 0;
         MiscFlagsCalls = 0;
+        QueryPinInfoCalls = 0;
+        QueryIdCalls = 0;
+        EnumMediaTypesCalls = 0;
+        MediaTypeNextCalls = 0;
+        ReceiveCalls = 0;
+        GetPointerCalls = 0;
+        LastAddFilterHr = 0;
+        LastRenderFileHr = 0;
+        LastRunHr = 0;
+        LastGraph = "";
+        LastPinVisible = "";
+        LastConnected = false;
+        LastSamplesFromGetPointer = false;
+        LastFrames = 0;
+        LastWidth = 0;
+        LastHeight = 0;
         if (!File.Exists(path) || !RegionTravel.FileHasAsfMagic(path))
         {
             LastError = "missing-or-not-asf";
@@ -117,10 +186,20 @@ public sealed class WmvPlayer : IDisposable
         if (startError is not null || player.Rgba is null || player.Width < 16)
         {
             LastError = startError ?? "no-sample";
+            LastConnected = player._renderer?.IsConnected ?? false;
+            LastSamplesFromGetPointer = player.SamplesFromGetPointer;
+            LastFrames = player.FrameSerial;
+            LastWidth = player.Width;
+            LastHeight = player.Height;
             player.Dispose();
             return null;
         }
 
+        LastConnected = true;
+        LastSamplesFromGetPointer = player.SamplesFromGetPointer;
+        LastFrames = player.FrameSerial;
+        LastWidth = player.Width;
+        LastHeight = player.Height;
         return player;
     }
 
@@ -171,10 +250,14 @@ public sealed class WmvPlayer : IDisposable
         // IMediaSample::GetPointer in 00A3B730.
         _renderer = new TextureRenderer(OnGetPointerSample);
         hr = _graph.AddFilter(_renderer, RegionTravel.PlayAviFilterName);
+        LastAddFilterHr = hr;
         if (hr < 0)
             return $"AddFilter {hr:X8}";
 
         hr = _graph.RenderFile(path, null);
+        LastRenderFileHr = hr;
+        LastGraph = GraphSummary();
+        LastPinVisible = GraphPinVisible();
         if (hr < 0)
             return $"RenderFile {hr:X8}";
 
@@ -197,12 +280,16 @@ public sealed class WmvPlayer : IDisposable
                 break;
         }
 
+        LastRunHr = hr;
         if (hr < 0)
             return $"Run {hr:X8}";
 
+        LastGraph = GraphSummary();
+        LastPinVisible = GraphPinVisible();
+        LastConnected = _renderer.IsConnected;
         if (!_renderer.IsConnected)
-            return $"renderer-not-connected enumPins={EnumPinsCalls} next={PinNextCalls} dir={QueryDirectionCalls} conn={ConnectedToCalls} memqi={MemInputQiCalls} qa={QueryAcceptCalls} rc={ReceiveConnectionCalls} misc={MiscFlagsCalls} vis=" +
-                   GraphPinVisible() + " " + GraphSummary();
+            return $"renderer-not-connected enumPins={EnumPinsCalls} next={PinNextCalls} dir={QueryDirectionCalls} conn={ConnectedToCalls} qpi={QueryPinInfoCalls} qid={QueryIdCalls} emt={EnumMediaTypesCalls} memqi={MemInputQiCalls} qa={QueryAcceptCalls} rc={ReceiveConnectionCalls} misc={MiscFlagsCalls} vis=" +
+                   LastPinVisible + " " + LastGraph;
 
         var deadline = Environment.TickCount64 + 5000;
         while (Environment.TickCount64 < deadline && !_stop)
@@ -1026,6 +1113,10 @@ public sealed class WmvPlayer : IDisposable
 
         public int QueryPinInfo(out PinInfo info)
         {
+            // 00CA8420: IPin this+28 is the filter
+            // C++ object; returned Filter is that+12
+            // (IBaseFilter).
+            QueryPinInfoCalls++;
             info = new PinInfo
             {
                 Filter = Marshal.GetComInterfaceForObject(_filter, typeof(IBaseFilter)),
@@ -1044,6 +1135,7 @@ public sealed class WmvPlayer : IDisposable
 
         public int QueryId(out string id)
         {
+            QueryIdCalls++;
             id = "In";
             return 0;
         }
@@ -1093,6 +1185,7 @@ public sealed class WmvPlayer : IDisposable
 
         public int EnumMediaTypes(out IEnumMediaTypes enumerator)
         {
+            EnumMediaTypesCalls++;
             enumerator = new MediaTypeEnum();
             return 0;
         }
@@ -1136,7 +1229,11 @@ public sealed class WmvPlayer : IDisposable
 
         public int Receive(IMediaSample sample)
         {
-            if (sample.GetPointer(out var data) < 0 || data == IntPtr.Zero)
+            ReceiveCalls++;
+            var gp = sample.GetPointer(out var data);
+            if (gp >= 0 && data != IntPtr.Zero)
+                GetPointerCalls++;
+            if (gp < 0 || data == IntPtr.Zero)
                 return 0;
             var length = sample.GetActualDataLength();
             if (length <= 0)
@@ -1310,6 +1407,7 @@ public sealed class WmvPlayer : IDisposable
             // 00CA84F0 GetMediaType is
             // E_UNEXPECTED. EnumMediaTypes Next
             // therefore yields no types.
+            MediaTypeNextCalls++;
             _ = (count, types);
             _index++;
             if (fetched != IntPtr.Zero)
@@ -1335,4 +1433,40 @@ public sealed class WmvPlayer : IDisposable
             return 0;
         }
     }
+}
+
+/// <summary>
+/// Observation of one AddFilter+RenderFile
+/// attempt. Used by the x86/x64 quartz
+/// experiment; not a scene-flow object.
+/// </summary>
+public sealed class PlayAviGraphTrace
+{
+    public string ProcessArch { get; init; } = "";
+    public int IntPtrSize { get; init; }
+    public int AddFilterHr { get; init; }
+    public int RenderFileHr { get; init; }
+    public int RunHr { get; init; }
+    public int EnumPins { get; init; }
+    public int Next { get; init; }
+    public int QueryDirection { get; init; }
+    public int ConnectedTo { get; init; }
+    public int QueryPinInfo { get; init; }
+    public int QueryId { get; init; }
+    public int EnumMediaTypes { get; init; }
+    public int MediaTypeNext { get; init; }
+    public int QueryAccept { get; init; }
+    public int ReceiveConnection { get; init; }
+    public int MemInputQi { get; init; }
+    public int Receive { get; init; }
+    public int GetPointer { get; init; }
+    public int MiscFlags { get; init; }
+    public string Graph { get; init; } = "";
+    public string PinVisible { get; init; } = "";
+    public bool Connected { get; init; }
+    public bool SamplesFromGetPointer { get; init; }
+    public int Frames { get; init; }
+    public int Width { get; init; }
+    public int Height { get; init; }
+    public string? Error { get; init; }
 }
