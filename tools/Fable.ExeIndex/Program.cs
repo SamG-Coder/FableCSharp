@@ -2813,6 +2813,10 @@ static void RunTracePlayAviTimeline(PeImage pe, DumpStore store)
         WriteWalkPart(pe, store, family, "PlayAVI event pump 00A3B000", 0x00A3B000, 40),
         WriteFnPart(pe, store, family, "PlayAVI DoRenderSample 00A3BCF0", 0x00A3BCF0, 4, stopOnRet: false),
         WriteFnPart(pe, store, family, "PlayAVI SetSyncSource 00A3BCD0", 0x00A3BCD0, 4, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI COM SetSyncSource 00CA7680", 0x00CA7680, 50, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI COM GetSyncSource 00CA76F0", 0x00CA76F0, 50, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI COM Run 00CA68F0", 0x00CA68F0, 80, stopOnRet: false),
+        WriteFnPart(pe, store, family, "PlayAVI CBaseFilter Run 00CAACA0", 0x00CAACA0, 80, stopOnRet: false),
         WriteFnPart(pe, store, family, "PlayAVI copy 00A3B730", 0x00A3B730, 120, stopOnRet: false),
         WriteFnPart(pe, store, family, "PlayAVI SetEvent 00A3B8EB", 0x00A3B8EB, 16, stopOnRet: false),
         WriteWalkPart(pe, store, family, "PlayAVI LockRect 009FA450", 0x009FA450, 30),
@@ -2893,6 +2897,31 @@ static void RunTracePlayAviTimeline(PeImage pe, DumpStore store)
         WriteCallsPart(pe, store, family, "calls PlayAVI player 006286F0", 0x006286F0),
         WriteCallsPart(pe, store, family, "calls PlayAVI open 00A3B9D0", 0x00A3B9D0),
     };
+    store.WritePart(
+        family,
+        "playavi-sample-gettime-rcw",
+        """
+        # PlayAVI IMediaSample GetTime RCW vs vtbl
+
+        Native `00CA49F0` is `call [sample.vtbl+20]` (slot 5) then
+        WaitForRenderTime, then `00A3B730` `call [sample.vtbl+12]`
+        (slot 3) GetPointer. x86 byte offsets are +20 / +12.
+        The live process is pointer-sized: slot × `IntPtr.Size`.
+
+        RCW `IMediaSample.GetTime` from the decoder thread marshals
+        to the STA graph thread and sits (Receive nested in
+        RenderFile / first-frame wait). Native does not marshal.
+        Live GetTime / GetPointer use the raw `IMediaSample*`
+        (`GetComInterfaceForObject` AddRef, `Marshal.Release` once).
+        The decoder-owned sample is not released for that borrow.
+        Clock `AdviseTime` uses the `IReferenceClock*` from
+        `SetSyncSource` (`QueryInterface` AddRef, `Release` on
+        replace) at slot 4, not the RCW.
+
+        `FirstSeenPlayAviGetTimeBeforeGetPointer=true`
+        `FirstSeenPlayAviGetTimeRcwMarshalsApartment=true`
+        """);
+    links.Add(new IndexLink("playavi-sample-gettime-rcw", "PlayAVI IMediaSample GetTime RCW vs vtbl", 0x00CA49F0));
     store.WriteIndex(
         family,
         DumpStore.PlayAviTimelineVersion,

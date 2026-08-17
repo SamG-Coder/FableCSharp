@@ -111,6 +111,28 @@ if (outDir is not null)
     File.WriteAllText(Path.Combine(outDir, name), sb.ToString());
 }
 
+if (args.Any(a => a is "--wave"))
+{
+    if (player is null)
+        return 1;
+    var secondsTok = args.SkipWhile(a => a is not "--seconds").Skip(1).FirstOrDefault();
+    var seconds = 20;
+    if (secondsTok is not null && int.TryParse(secondsTok, out var parsed) && parsed > 0)
+        seconds = parsed;
+    var deadline = Environment.TickCount64 + seconds * 1000L;
+    while (!player.Ended && Environment.TickCount64 < deadline)
+        player.TryAdvance(0.033f);
+    var report = PlayAviWave.Report();
+    Console.WriteLine(report);
+    var waveDir = Path.Combine(
+        Path.GetDirectoryName(typeof(Program).Assembly.Location) ?? ".",
+        "..", "..", "..", "..", "Fable.ExeIndex", "out", "01-sections", "playavi-wave");
+    Directory.CreateDirectory(waveDir);
+    File.WriteAllText(Path.Combine(waveDir, "csharp-wave.txt"), report);
+    Console.WriteLine($"ended {player.Ended} serial {player.FrameSerial}");
+    return 0;
+}
+
 if (args.Any(a => a is "--pace"))
 {
     if (player is null)
@@ -209,6 +231,9 @@ if (args.Any(a => a is "--timeline"))
     var md = PlayAviTimeline.Write(timelineDir, "csharp");
     Console.WriteLine(md);
     Console.WriteLine($"events {PlayAviTimeline.Snapshot().Count} serial {player.FrameSerial}");
+    var wave = PlayAviWave.Report();
+    Console.WriteLine(wave);
+    File.WriteAllText(Path.Combine(timelineDir, "csharp-wave.txt"), wave);
     return 0;
 }
 

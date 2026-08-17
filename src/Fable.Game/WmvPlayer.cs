@@ -34,6 +34,24 @@ public sealed class WmvPlayer : IDisposable
     public int RecvSerial => _recvSerial;
     internal static int SampleRcwRelease { get; set; }
     internal static int SampleHeldAtReturn { get; set; }
+    public static int SyncSourceCalls { get; set; }
+    public static int FilterRunCalls { get; set; }
+    public static int AdviseCalls { get; set; }
+    public static int AdviseHr { get; set; }
+    public static long LastTStart { get; set; }
+    public static long LastSampleStart { get; set; }
+
+    public static int GetTimeEnter { get; set; }
+    public static int GetTimeLeave { get; set; }
+    public static int GetTimeHr { get; set; }
+    public static double LastGetTimeMs { get; set; }
+    public static int GetPointerEnter { get; set; }
+    public static int GetPointerLeave { get; set; }
+    public static double LastGetPointerMs { get; set; }
+    public static double VtblGetTimeMs { get; set; }
+    public static double RcwGetTimeMs { get; set; }
+    public static bool RcwGetTimeHangs { get; set; }
+    public static bool ComparedGetTime { get; set; }
     /// <summary>
     /// True when pixels came from
     /// <c>IMediaSample::GetPointer</c> (<c>00A3B730</c>),
@@ -135,7 +153,6 @@ public sealed class WmvPlayer : IDisposable
     private IMediaControl? _control;
     private IMediaEvent? _events;
     private IMediaPosition? _position;
-    private IMediaSeeking? _seeking;
     private TextureRenderer? _renderer;
 
     public static WmvPlayer? TryOpen(string path)
@@ -169,7 +186,26 @@ public sealed class WmvPlayer : IDisposable
         RgbaAllocs = 0;
         SampleRcwRelease = 0;
         SampleHeldAtReturn = 0;
+        SyncSourceCalls = 0;
+        FilterRunCalls = 0;
+        AdviseCalls = 0;
+        AdviseHr = 0;
+        LastTStart = 0;
+        LastSampleStart = 0;
+
+        GetTimeEnter = 0;
+        GetTimeLeave = 0;
+        GetTimeHr = 0;
+        LastGetTimeMs = 0;
+        GetPointerEnter = 0;
+        GetPointerLeave = 0;
+        LastGetPointerMs = 0;
+        VtblGetTimeMs = 0;
+        RcwGetTimeMs = 0;
+        RcwGetTimeHangs = false;
+        ComparedGetTime = false;
         PaceSamples.Clear();
+        PlayAviWave.Reset();
         LastAddFilterHr = 0;
         LastRenderFileHr = 0;
         LastRunHr = 0;
@@ -261,14 +297,20 @@ public sealed class WmvPlayer : IDisposable
         if (dt > 0f)
             _ = dt;
         var wait0 = Stopwatch.GetTimestamp();
-        _frameEvent.WaitOne(RegionTravel.PlayAviPresentMs);
+        var serialBefore = FrameSerial;
+        var recvBefore = ReceiveCalls;
+        var signaled = _frameEvent.WaitOne(RegionTravel.PlayAviPresentMs);
         PresentWaitTicks += Stopwatch.GetTimestamp() - wait0;
+        var recvSince = ReceiveCalls - recvBefore;
+        PlayAviWave.Wait(signaled, serialBefore, FrameSerial, recvSince);
+        PlayAviWave.Present(FrameSerial);
         return Rgba is not null;
     }
 
     public void Dispose()
     {
         _stop = true;
+        _renderer?.Stop();
         _frameEvent.Set();
         if (_thread is { IsAlive: true } &&
             !_thread.Join(TimeSpan.FromSeconds(2)))
@@ -312,7 +354,6 @@ public sealed class WmvPlayer : IDisposable
 
         _control = (IMediaControl)_graph;
         _position = (IMediaPosition)_graph;
-        _seeking = _graph as IMediaSeeking;
         _events = (IMediaEvent)_graph;
 
         // 00A3B130: put_CurrentPosition(0) then Run, retry 50.
@@ -334,6 +375,11 @@ public sealed class WmvPlayer : IDisposable
         if (hr < 0)
             return $"Run {hr:X8}";
 
+        // IMediaControl.Run should call IBaseFilter.Run
+        // (00CA68F0). If the CCW never saw that, arm
+        // tStart from the graph clock so AdviseTime
+        // has the same base 00CAACA0 would store.
+        _renderer.EnsureRunning();
         NoteGraphClock();
         LastGraph = GraphSummary();
         LastPinVisible = GraphPinVisible();
@@ -353,7 +399,7 @@ public sealed class WmvPlayer : IDisposable
         }
 
         return Rgba is null
-            ? $"first-sample-timeout qa={QueryAcceptCalls} rc={ReceiveConnectionCalls} recv={ReceiveCalls} gp={GetPointerCalls} rcwRel={SampleRcwRelease} held={SampleHeldAtReturn} vis={LastPinVisible} {LastGraph}"
+            ? $"first-sample-timeout qa={QueryAcceptCalls} rc={ReceiveConnectionCalls} recv={ReceiveCalls} gp={GetPointerCalls} gt={GetTimeEnter}/{GetTimeLeave} hr=0x{GetTimeHr:X8} pts={LastSampleStart} gtMs={LastGetTimeMs:F1} gpMs={LastGetPointerMs:F1} rcwRel={SampleRcwRelease} held={SampleHeldAtReturn} sync={SyncSourceCalls} run={FilterRunCalls} advise={AdviseCalls} ahr=0x{AdviseHr:X8} tStart={LastTStart} vis={LastPinVisible} {LastGraph}"
             : null;
     }
 
@@ -370,120 +416,6 @@ public sealed class WmvPlayer : IDisposable
         {
             Marshal.Release(slot);
         }
-    }
-
-    private int ConnectSourceToRenderer(IBaseFilter source)
-    {
-        if (_graph is null || _renderer is null)
-            return unchecked((int)0x80004005);
-        if (source.EnumPins(out var en) < 0 || en is null)
-            return unchecked((int)0x80004005);
-        var hr = unchecked((int)0x80040217); // VFW_E_CANNOT_CONNECT
-        while (NextPin(en) is { } pin)
-        {
-            if (pin.QueryDirection(out var dir) < 0 || dir != PinDirection.Output)
-                continue;
-            hr = _graph.Connect(pin, _renderer.Pin);
-            if (hr >= 0)
-                return 0;
-            hr = _graph.Render(pin);
-            if (hr >= 0 && _renderer.IsConnected)
-                return 0;
-        }
-
-        return hr;
-    }
-
-    private void StealWindowedInput()
-    {
-        if (_graph is null || _renderer is null)
-            return;
-        if (_graph.EnumFilters(out var filters) < 0 || filters is null)
-            return;
-        var batch = new IBaseFilter[8];
-        var tried = 0;
-        var lastHr = 0;
-        while (filters.Next(1, batch, IntPtr.Zero) == 0)
-        {
-            var filter = batch[0];
-            if (filter is null || ReferenceEquals(filter, _renderer))
-                continue;
-            if (filter.EnumPins(out var pins) < 0 || pins is null)
-                continue;
-            pins.Reset();
-            while (NextPin(pins) is { } pin)
-            {
-                if (pin.QueryDirection(out var dir) < 0 || dir != PinDirection.Output)
-                    continue;
-                if (pin.ConnectedTo(out var dest) >= 0 && dest != IntPtr.Zero)
-                {
-                    var destPin = (IPin)Marshal.GetObjectForIUnknown(dest);
-                    Marshal.Release(dest);
-                    _graph.Disconnect(pin);
-                    _graph.Disconnect(destPin);
-                }
-
-                tried++;
-                lastHr = _graph.Connect(pin, _renderer.Pin);
-                if (lastHr >= 0 && _renderer.IsConnected)
-                    return;
-                lastHr = _graph.Render(pin);
-                if (lastHr >= 0 && _renderer.IsConnected)
-                    return;
-            }
-        }
-
-        LastError = $"steal-tried={tried} hr={lastHr:X8}";
-    }
-
-    private void HideVideoWindow()
-    {
-        if (_graph is not IVideoWindow window)
-            return;
-        try
-        {
-            window.put_AutoShow(0);
-            window.put_Visible(0);
-            window.put_WindowState(0);
-        }
-        catch
-        {
-            // Custom renderer has no IVideoWindow.
-        }
-    }
-
-    /// <summary>
-    /// RenderFile may still insert VMR / Video
-    /// Renderer. Exe present is the game
-    /// backbuffer only — drop windowed filters.
-    /// </summary>
-    private void RemoveWindowedRenderers()
-    {
-        if (_graph is null)
-            return;
-        if (_graph.EnumFilters(out var en) < 0 || en is null)
-            return;
-        var batch = new IBaseFilter[16];
-        var drop = new List<IBaseFilter>();
-        while (en.Next(1, batch, IntPtr.Zero) == 0)
-        {
-            var filter = batch[0];
-            if (filter is null || ReferenceEquals(filter, _renderer))
-                continue;
-            if (filter.QueryFilterInfo(out var info) < 0)
-                continue;
-            if (info.Graph != IntPtr.Zero)
-                Marshal.Release(info.Graph);
-            var name = info.Name ?? "";
-            if (name.Contains("Video Renderer", StringComparison.OrdinalIgnoreCase) ||
-                name.Contains("Video Mixing", StringComparison.OrdinalIgnoreCase) ||
-                name.Contains("EVR", StringComparison.OrdinalIgnoreCase) ||
-                name.Contains("VMR", StringComparison.OrdinalIgnoreCase))
-                drop.Add(filter);
-        }
-
-        foreach (var filter in drop)
-            _graph.RemoveFilter(filter);
     }
 
     private string GraphSummary()
@@ -542,14 +474,13 @@ public sealed class WmvPlayer : IDisposable
     }
 
     private static unsafe void BgrToRgba(
-        IntPtr src, int srcStride, byte[] dest, int width, int height, int bpp, bool flip)
+        IntPtr src, int srcStride, byte[] dest, int width, int height, int bpp)
     {
         fixed (byte* d0 = dest)
         {
             for (var y = 0; y < height; y++)
             {
-                var srcY = flip ? height - 1 - y : y;
-                var s = (byte*)src + srcY * srcStride;
+                var s = (byte*)src + y * srcStride;
                 var d = d0 + y * width * 4;
                 for (var x = 0; x < width; x++)
                 {
@@ -621,13 +552,14 @@ public sealed class WmvPlayer : IDisposable
         }
 
         // 00A3B730 SetEvent([player+124])
+        PlayAviWave.Set(FrameSerial);
         _frameEvent.Set();
     }
 
     private void NoteGraphClock()
     {
-        // Observation only. 00A3BCD0 SetSyncSource
-        // on the renderer is xor eax,eax; ret.
+        // Observation only. Graph clock. Renderer
+        // clock is COM 00CA7680 at filter+24.
         if (_graph is null)
         {
             PlayAviTimeline.NoteClock("no-graph");
@@ -644,7 +576,7 @@ public sealed class WmvPlayer : IDisposable
                 return;
             }
 
-            PlayAviTimeline.NoteClock($"GetSyncSource hr=0x{hr:X8} clock=0x{clock:X}");
+            PlayAviTimeline.NoteClock($"GetSyncSource hr=0x{hr:X8} clock=0x{clock:X} filterRun={FilterRunCalls} sync={SyncSourceCalls} tStart={LastTStart} advise={AdviseCalls}");
             Marshal.Release(clock);
         }
         catch (Exception ex)
@@ -657,7 +589,6 @@ public sealed class WmvPlayer : IDisposable
     {
         _events = null;
         _position = null;
-        _seeking = null;
         if (_control is not null)
         {
             try { _control.Stop(); } catch { /* already stopped */ }
@@ -701,8 +632,6 @@ public sealed class WmvPlayer : IDisposable
         public static readonly Guid FilterGraph = new("e436ebb3-524f-11ce-9f53-0020af0ba770");
         public static readonly Guid Video = new("73646976-0000-0010-8000-00aa00389b71");
         public static readonly Guid Rgb24 = new("e436eb7d-524f-11ce-9f53-0020af0ba770");
-        public static readonly Guid Rgb32 = new("e436eb7e-524f-11ce-9f53-0020af0ba770");
-        public static readonly Guid Yuy2 = new("32595559-0000-0010-8000-00aa00389b71");
         public static readonly Guid VideoInfo = new("05589f80-c356-11ce-bf01-00aa0055595a");
     }
 
@@ -796,30 +725,6 @@ public sealed class WmvPlayer : IDisposable
     }
 
     [ComImport]
-    [Guid("36b73880-c2c8-11cf-8b46-00805f6cef60")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IMediaSeeking
-    {
-        [PreserveSig] int GetCapabilities(out int caps);
-        [PreserveSig] int CheckCapabilities(ref int caps);
-        [PreserveSig] int IsFormatSupported(ref Guid format);
-        [PreserveSig] int QueryPreferredFormat(out Guid format);
-        [PreserveSig] int GetTimeFormat(out Guid format);
-        [PreserveSig] int IsUsingTimeFormat(ref Guid format);
-        [PreserveSig] int SetTimeFormat(ref Guid format);
-        [PreserveSig] int GetDuration(out long duration);
-        [PreserveSig] int GetStopPosition(out long stop);
-        [PreserveSig] int GetCurrentPosition(out long position);
-        [PreserveSig] int ConvertTimeFormat(out long target, IntPtr targetFormat, long source, IntPtr sourceFormat);
-        [PreserveSig] int SetPositions(IntPtr current, int currentFlags, IntPtr stop, int stopFlags);
-        [PreserveSig] int GetPositions(out long current, out long stop);
-        [PreserveSig] int GetAvailable(out long earliest, out long latest);
-        [PreserveSig] int SetRate(double rate);
-        [PreserveSig] int GetRate(out double rate);
-        [PreserveSig] int GetPreroll(out long preroll);
-    }
-
-    [ComImport]
     [Guid("256a6a22-fbad-11d1-82bf-00a0c9696c8f")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     private interface IPinConnection
@@ -845,72 +750,6 @@ public sealed class WmvPlayer : IDisposable
         [PreserveSig] int CancelDefaultHandling(int code);
         [PreserveSig] int RestoreDefaultHandling(int code);
         [PreserveSig] int FreeEventParams(int code, IntPtr param1, IntPtr param2);
-    }
-
-    [ComImport]
-    [Guid("56a868b4-0ad4-11ce-b03a-0020af0ba770")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IVideoWindow
-    {
-        void GetTypeInfoCount(out int count);
-        void GetTypeInfo(int itinfo, int lcid, out IntPtr info);
-        void GetIDsOfNames(ref Guid iid, IntPtr names, int count, int lcid, IntPtr dispIds);
-        void Invoke(int dispId, ref Guid iid, int lcid, short flags, IntPtr dispParams, IntPtr result, IntPtr excep, IntPtr argErr);
-        [PreserveSig] int put_Caption([MarshalAs(UnmanagedType.BStr)] string caption);
-        [PreserveSig] int get_Caption([MarshalAs(UnmanagedType.BStr)] out string caption);
-        [PreserveSig] int put_WindowStyle(int style);
-        [PreserveSig] int get_WindowStyle(out int style);
-        [PreserveSig] int put_WindowStyleEx(int style);
-        [PreserveSig] int get_WindowStyleEx(out int style);
-        [PreserveSig] int put_AutoShow(int autoShow);
-        [PreserveSig] int get_AutoShow(out int autoShow);
-        [PreserveSig] int put_WindowState(int state);
-        [PreserveSig] int get_WindowState(out int state);
-        [PreserveSig] int put_BackgroundPalette(int background);
-        [PreserveSig] int get_BackgroundPalette(out int background);
-        [PreserveSig] int put_Visible(int visible);
-        [PreserveSig] int get_Visible(out int visible);
-    }
-
-    [ComImport]
-    [Guid("56a868b5-0ad4-11ce-b03a-0020af0ba770")]
-    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
-    private interface IBasicVideo
-    {
-        void GetTypeInfoCount(out int count);
-        void GetTypeInfo(int itinfo, int lcid, out IntPtr info);
-        void GetIDsOfNames(ref Guid iid, IntPtr names, int count, int lcid, IntPtr dispIds);
-        void Invoke(int dispId, ref Guid iid, int lcid, short flags, IntPtr dispParams, IntPtr result, IntPtr excep, IntPtr argErr);
-        [PreserveSig] int get_AvgTimePerFrame(out double time);
-        [PreserveSig] int get_BitRate(out int rate);
-        [PreserveSig] int get_BitErrorRate(out int rate);
-        [PreserveSig] int get_VideoWidth(out int width);
-        [PreserveSig] int get_VideoHeight(out int height);
-        [PreserveSig] int put_SourceLeft(int left);
-        [PreserveSig] int get_SourceLeft(out int left);
-        [PreserveSig] int put_SourceWidth(int width);
-        [PreserveSig] int get_SourceWidth(out int width);
-        [PreserveSig] int put_SourceTop(int top);
-        [PreserveSig] int get_SourceTop(out int top);
-        [PreserveSig] int put_SourceHeight(int height);
-        [PreserveSig] int get_SourceHeight(out int height);
-        [PreserveSig] int put_DestinationLeft(int left);
-        [PreserveSig] int get_DestinationLeft(out int left);
-        [PreserveSig] int put_DestinationWidth(int width);
-        [PreserveSig] int get_DestinationWidth(out int width);
-        [PreserveSig] int put_DestinationTop(int top);
-        [PreserveSig] int get_DestinationTop(out int top);
-        [PreserveSig] int put_DestinationHeight(int height);
-        [PreserveSig] int get_DestinationHeight(out int height);
-        [PreserveSig] int SetSourcePosition(int left, int top, int width, int height);
-        [PreserveSig] int GetSourcePosition(out int left, out int top, out int width, out int height);
-        [PreserveSig] int SetDefaultSourcePosition();
-        [PreserveSig] int SetDestinationPosition(int left, int top, int width, int height);
-        [PreserveSig] int GetDestinationPosition(out int left, out int top, out int width, out int height);
-        [PreserveSig] int SetDefaultDestinationPosition();
-        [PreserveSig] int GetVideoSize(out int width, out int height);
-        [PreserveSig] int GetVideoPaletteEntries(int start, int count, out int retrieved, IntPtr palette);
-        [PreserveSig] int GetCurrentImage(ref int size, IntPtr dib);
     }
 
     [ComImport]
@@ -1029,24 +868,137 @@ public sealed class WmvPlayer : IDisposable
         [PreserveSig] int SetMediaTime(IntPtr start, IntPtr end);
     }
 
+    /// <summary>
+    /// Native <c>00CA49F0</c> / <c>00A3B730</c>
+    /// call sample vtbl slot 5 / 3 on this
+    /// thread. x86 dumps are +20 / +12;
+    /// this process uses slot × IntPtr.Size.
+    /// <c>GetComInterfaceForObject</c> AddRefs;
+    /// <c>Marshal.Release</c> drops only that
+    /// ref. The decoder-owned sample RCW is
+    /// not released here.
+    /// </summary>
+    private static class SampleVtbl
+    {
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate int GetTimeFn(IntPtr self, out long start, out long end);
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate int GetPointerFn(IntPtr self, out IntPtr buffer);
+
+        public static int GetTime(IMediaSample sample, out long start, out long end)
+        {
+            GetTimeEnter++;
+            PlayAviWave.Site("gettime", "enter");
+            var t0 = Stopwatch.GetTimestamp();
+            start = 0;
+            end = 0;
+            // One AddRef for the raw IMediaSample*.
+            var p = Marshal.GetComInterfaceForObject(sample, typeof(IMediaSample));
+            try
+            {
+                var fn = Marshal.GetDelegateForFunctionPointer<GetTimeFn>(
+                    Marshal.ReadIntPtr(Marshal.ReadIntPtr(p), RegionTravel.PlayAviGetTimeSlot * IntPtr.Size));
+                GetTimeHr = fn(p, out start, out end);
+                LastSampleStart = start;
+                VtblGetTimeMs = (Stopwatch.GetTimestamp() - t0) * 1000d / Stopwatch.Frequency;
+                if (!ComparedGetTime)
+                {
+                    ComparedGetTime = true;
+                    // RCW GetTime on this Receive
+                    // thread marshals to STA and
+                    // sits. Do not invoke it here.
+                    RcwGetTimeHangs = true;
+                    PlayAviWave.Site("gettime-rcw", "skip-receive-thread", (long)(VtblGetTimeMs * 1000));
+                }
+
+                return GetTimeHr;
+            }
+            finally
+            {
+                Marshal.Release(p);
+                LastGetTimeMs = (Stopwatch.GetTimestamp() - t0) * 1000d / Stopwatch.Frequency;
+                GetTimeLeave++;
+                PlayAviWave.Site("gettime", "leave", start);
+            }
+        }
+
+        public static int GetPointer(IMediaSample sample, out IntPtr buffer)
+        {
+            GetPointerEnter++;
+            PlayAviWave.Site("getpointer", "enter");
+            var t0 = Stopwatch.GetTimestamp();
+            buffer = IntPtr.Zero;
+            var p = Marshal.GetComInterfaceForObject(sample, typeof(IMediaSample));
+            try
+            {
+                var fn = Marshal.GetDelegateForFunctionPointer<GetPointerFn>(
+                    Marshal.ReadIntPtr(Marshal.ReadIntPtr(p), RegionTravel.PlayAviGetPointerSlot * IntPtr.Size));
+                return fn(p, out buffer);
+            }
+            finally
+            {
+                Marshal.Release(p);
+                LastGetPointerMs = (Stopwatch.GetTimestamp() - t0) * 1000d / Stopwatch.Frequency;
+                GetPointerLeave++;
+                PlayAviWave.Site("getpointer", "leave");
+            }
+        }
+
+    }
+
+    /// <summary>
+    /// Native AdviseTime is
+    /// <c>[clock.vtbl+16]</c> (slot 4) on this
+    /// thread. RCW AdviseTime is not used.
+    /// </summary>
+    private static class ClockVtbl
+    {
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate int AdviseTimeFn(
+            IntPtr self, long baseTime, long streamTime, IntPtr handle, out IntPtr cookie);
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        private delegate int UnadviseFn(IntPtr self, IntPtr cookie);
+
+        public static int AdviseTime(
+            IntPtr clock, long baseTime, long streamTime, IntPtr handle, out IntPtr cookie)
+        {
+            cookie = IntPtr.Zero;
+            if (clock == IntPtr.Zero)
+                return unchecked((int)0x80004003);
+            var fn = Marshal.GetDelegateForFunctionPointer<AdviseTimeFn>(
+                Marshal.ReadIntPtr(Marshal.ReadIntPtr(clock), 4 * IntPtr.Size));
+            return fn(clock, baseTime, streamTime, handle, out cookie);
+        }
+
+        public static int Unadvise(IntPtr clock, IntPtr cookie)
+        {
+            if (clock == IntPtr.Zero)
+                return 0;
+            var fn = Marshal.GetDelegateForFunctionPointer<UnadviseFn>(
+                Marshal.ReadIntPtr(Marshal.ReadIntPtr(clock), 6 * IntPtr.Size));
+            return fn(clock, cookie);
+        }
+    }
+
+    [ComImport]
+    [Guid("56a86897-0ad4-11ce-b03a-0020af0ba770")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IReferenceClock
+    {
+        [PreserveSig] int GetTime(out long time);
+        [PreserveSig] int AdviseTime(long baseTime, long streamTime, IntPtr handle, out IntPtr cookie);
+        [PreserveSig] int AdvisePeriodic(long start, long period, IntPtr semaphore, out IntPtr cookie);
+        [PreserveSig] int Unadvise(IntPtr cookie);
+    }
+
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct FilterInfo
     {
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
         public string Name;
         public IntPtr Graph;
-    }
-
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-    private struct PinInfo
-    {
-        // 00CA7680 writes IBaseFilter* (AddRef'd).
-        // Interface fields here do not marshal a
-        // native IBaseFilter* that RenderFile can QI.
-        public IntPtr Filter;
-        public PinDirection Direction;
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
-        public string Name;
     }
 
     private enum PinDirection
@@ -1080,10 +1032,23 @@ public sealed class WmvPlayer : IDisposable
 
     [ComVisible(true)]
     [ClassInterface(ClassInterfaceType.None)]
-    private sealed class TextureRenderer : IBaseFilter, IAMFilterMiscFlags, ICustomQueryInterface
+    private sealed class TextureRenderer : IBaseFilter, IMediaFilter, IAMFilterMiscFlags, ICustomQueryInterface
     {
         private readonly RendererPin _pin;
+        // 00CB0190 CreateEvent(NULL, FALSE, FALSE, NULL)
+        // = auto-reset +84.
+        private readonly AutoResetEvent _renderEvent = new(false);
+        private readonly ManualResetEvent _threadSignal = new(false);
+        private readonly object _recvGate = new();
         private int _state;
+        private int _streaming;
+        private long _tStart;
+        private long _pendingStart;
+        private IReferenceClock? _clockObj;
+        private IntPtr _clockPtr;
+        private IntPtr _adviseCookie;
+        private IMediaSample? _pending;
+        private readonly int _graphThreadId = Environment.CurrentManagedThreadId;
         private IntPtr _graph;
         private string _name = RegionTravel.PlayAviFilterName;
 
@@ -1116,20 +1081,47 @@ public sealed class WmvPlayer : IDisposable
         public int Stop()
         {
             _state = 0;
+            _streaming = 0;
+            CancelAdvise();
+            _threadSignal.Set();
+            lock (_recvGate)
+                ClearPending_00CA4BF0();
             return 0;
         }
 
         public int Pause()
         {
             _state = 1;
+            _threadSignal.Reset();
             return 0;
         }
 
         public int Run(long start)
         {
-            _ = start;
+            // COM IBaseFilter Run 00CA68F0 → 00CAACA0
+            // stores tStart at COM this+20/+24 =
+            // filter+32/+36, state 2, then C++
+            // vtbl+124 StartStreaming 00CA4D80.
+            FilterRunCalls++;
+            LastTStart = start;
+            _tStart = start;
             _state = 2;
+            _streaming = 1;
+            _threadSignal.Reset();
+            lock (_recvGate)
+                SchedulePending_00CA4AA0();
+
             return 0;
+        }
+
+        internal void EnsureRunning()
+        {
+            if (_streaming == 1)
+                return;
+            long tStart = 0;
+            if (_clockObj is not null && _clockObj.GetTime(out var now) >= 0)
+                tStart = now;
+            Run(tStart);
         }
 
         public int GetState(int timeout, out int state)
@@ -1141,14 +1133,220 @@ public sealed class WmvPlayer : IDisposable
 
         public int SetSyncSource(IntPtr clock)
         {
-            _ = clock;
+            // COM IMediaFilter 00CA7680: IBaseFilter
+            // this (C++ +12). AddRef new, Release
+            // [this+12], store at +12 = filter+24.
+            // C++ virtual 00A3BCD0 is xor eax,eax;
+            // ret and is not the quartz call.
+            SyncSourceCalls++;
+            CancelAdvise();
+            if (_clockObj is not null)
+            {
+                Marshal.ReleaseComObject(_clockObj);
+                _clockObj = null;
+            }
+
+            if (_clockPtr != IntPtr.Zero)
+            {
+                Marshal.Release(_clockPtr);
+                _clockPtr = IntPtr.Zero;
+            }
+
+            if (clock == IntPtr.Zero)
+                return 0;
+            var iid = typeof(IReferenceClock).GUID;
+            var qi = Marshal.QueryInterface(clock, ref iid, out _clockPtr);
+            if (qi < 0 || _clockPtr == IntPtr.Zero)
+                return qi < 0 ? qi : unchecked((int)0x80004002);
+            _clockObj = (IReferenceClock)Marshal.GetObjectForIUnknown(_clockPtr);
             return 0;
         }
 
         public int GetSyncSource(out IntPtr clock)
         {
-            clock = IntPtr.Zero;
+            // 00CA76F0: AddRef [COM this+12] and write.
+            if (_clockObj is null)
+            {
+                clock = IntPtr.Zero;
+                return 0;
+            }
+
+            clock = Marshal.GetIUnknownForObject(_clockObj);
             return 0;
+        }
+
+        internal int WaitAndRender(IMediaSample sample, RendererPin pin)
+        {
+            // 00CA6E10: PrepareReceive 00CA6C40 →
+            // WaitForRenderTime 00CA65B0 →
+            // ExecuteRender 00CA4B20 →
+            // ClearPending 00CA4BF0.
+            int streaming;
+            lock (_recvGate)
+            {
+                if (_pending is not null)
+                    return unchecked((int)0x8000FFFF);
+                _pending = sample;
+                streaming = _streaming;
+            }
+
+            // Decoder thread: 00CA6E10 Schedule then
+            // WaitForRenderTime. STA graph thread is
+            // nested in RenderFile / Run and must
+            // return.
+            var decoder = streaming == 1 &&
+                Environment.CurrentManagedThreadId != _graphThreadId;
+            if (decoder)
+            {
+                SchedulePending_00CA4AA0();
+                var hr = WaitForRenderTime_00CA65B0();
+                if (hr < 0)
+                {
+                    lock (_recvGate)
+                        ClearPending_00CA4BF0();
+                    return 0;
+                }
+            }
+
+            IMediaSample? held;
+            lock (_recvGate)
+            {
+                held = _pending;
+                _pending = null;
+                CancelAdvise();
+            }
+
+            if (held is null || _state == 0)
+                return 0;
+            pin.CopyAndSignal(held, release: true);
+            return 0;
+        }
+
+        private void SchedulePending_00CA4AA0()
+        {
+            // 00CA4AA0: GetSampleTimes 00CA49F0.
+            // hr==0 SetEvent(+84). hr>0 AdviseTime
+            // [clock.vtbl+16] at 00CA4B07 using
+            // tStart at +32/+36.
+            CancelAdvise();
+            if (_pending is null)
+            {
+                _renderEvent.Set();
+                return;
+            }
+
+            int hr;
+            long start;
+            try
+            {
+                hr = GetSampleTimes_00CA49F0(_pending, out start, out _);
+            }
+            catch
+            {
+                _renderEvent.Set();
+                return;
+            }
+
+            _pendingStart = start;
+            LastSampleStart = start;
+            if (hr < 0 || hr == 0 || _clockObj is null)
+            {
+                _renderEvent.Set();
+                return;
+            }
+
+            var handle = _renderEvent.SafeWaitHandle.DangerousGetHandle();
+            AdviseCalls++;
+            AdviseHr = ClockVtbl.AdviseTime(_clockPtr, _tStart, start, handle, out _adviseCookie);
+            if (AdviseHr < 0)
+                _renderEvent.Set();
+        }
+
+        private int GetSampleTimes_00CA49F0(IMediaSample sample, out long start, out long end)
+        {
+            // 00CA49F0: call [sample.vtbl+20]
+            // GetTime, then [this+24]==0 → S_OK,
+            // else ShouldDraw vtbl+92. Direct vtbl
+            // — RCW GetTime marshals to STA and
+            // sits. Native does this before
+            // WaitForRenderTime and before
+            // GetPointer.
+            var hr = SampleVtbl.GetTime(sample, out start, out end);
+            if (hr < 0)
+                return 0;
+            if (end < start)
+                return unchecked((int)0x80040228);
+            if (_clockObj is null)
+                return 0;
+            // Stream time 0 is due at tStart.
+            // Run already stored tStart; AdviseTime
+            // (tStart, 0) has been seen not to
+            // SetEvent +84 in this process.
+            if (start == 0)
+                return 0;
+            return ShouldDrawSampleNow_00CA5850(ref start, ref end);
+        }
+
+        private static int ShouldDrawSampleNow_00CA5850(ref long start, ref long end)
+        {
+            // 00CA5850 subtracts 0x13880 (8 ms)
+            // when start >= that. Quality tail
+            // can return S_OK (late, draw now)
+            // or S_FALSE (schedule). Default
+            // schedule is S_FALSE — that is
+            // what arms AdviseTime.
+            const int earlyDrawHns = 0x13880;
+            if (start >= earlyDrawHns)
+            {
+                start -= earlyDrawHns;
+                end -= earlyDrawHns;
+            }
+
+            return 1;
+        }
+
+        private int WaitForRenderTime_00CA65B0()
+        {
+            // 00CA65B0: WaitForMultipleObjects
+            // (+88 thread, +84 render), retry on
+            // WAIT_TIMEOUT. Native timeout is
+            // 0x2710 because AdviseTime SetEvent
+            // wakes +84. The wake condition is
+            // clock >= tStart+start; wait that
+            // remaining time (not a fixed 33 ms).
+            if (_adviseCookie == IntPtr.Zero)
+                _renderEvent.Set();
+
+            WaitHandle[] handles = [_threadSignal, _renderEvent];
+            int which;
+            do
+            {
+                which = WaitHandle.WaitAny(handles, PlayAviFromExe.WaitForRenderTimeoutMs);
+            } while (which == WaitHandle.WaitTimeout);
+
+            if (which == 0)
+                return unchecked((int)0x80040223);
+            _adviseCookie = IntPtr.Zero;
+            return 0;
+        }
+
+        private void ClearPending_00CA4BF0()
+        {
+            CancelAdvise();
+            if (_pending is null)
+                return;
+            Marshal.ReleaseComObject(_pending);
+            SampleRcwRelease++;
+            SampleHeldAtReturn = 0;
+            _pending = null;
+        }
+
+        private void CancelAdvise()
+        {
+            if (_clockPtr == IntPtr.Zero || _adviseCookie == IntPtr.Zero)
+                return;
+            ClockVtbl.Unadvise(_clockPtr, _adviseCookie);
+            _adviseCookie = IntPtr.Zero;
         }
 
         public int EnumPins(out IEnumPins enumerator)
@@ -1229,10 +1427,7 @@ public sealed class WmvPlayer : IDisposable
         private AMMediaType _type;
         private int _width;
         private int _height;
-        private int _bitCount;
         private int _stride;
-        private bool _topDown;
-        private Guid _subType;
         private IntPtr _allocator;
         private byte[]? _rgbaScratch;
 
@@ -1462,47 +1657,54 @@ public sealed class WmvPlayer : IDisposable
 
         public int Receive(IMediaSample sample)
         {
-            // Fable override of DoRenderSample is ret.
-            // Live copy is 00A3B730 GetPointer then
-            // return. We do not retain the RCW past
-            // this call (no PrepareReceive hold).
-            // ReleaseComObject drops the incoming
-            // RCW so a 1-buffer allocator can
-            // GetBuffer again — not a native AddRef
-            // pair.
             var recv0 = Stopwatch.GetTimestamp();
             ReceiveCalls++;
-            long copyTicks = 0;
-            long sampleStart = 0;
-            long sampleEnd = 0;
+            PlayAviWave.Recv(ReceiveCalls, 0, LastFrames, "enter");
+            var hr = _filter.WaitAndRender(sample, this);
+            if (hr == unchecked((int)0x8000FFFF))
+            {
+                // PrepareReceive failed before AddRef.
+                // Decoder still owns the sample.
+                PlayAviWave.Recv(ReceiveCalls, 0, LastFrames, "reject");
+                return hr;
+            }
+
+            var recvTicks = Stopwatch.GetTimestamp() - recv0;
+            if (ReceiveCalls == 1 || ReceiveCalls % 100 == 0)
+                RecordPace(recvTicks, 0, 0, 0);
+            PlayAviWave.Recv(ReceiveCalls, 0, LastFrames, "leave");
+            return hr;
+        }
+
+        internal void CopyAndSignal(IMediaSample sample, bool release)
+        {
+            long sampleStart = LastSampleStart;
             try
             {
-                _ = sample.GetTime(out sampleStart, out sampleEnd);
-                var gp = sample.GetPointer(out var data);
+                PlayAviWave.Recv(ReceiveCalls, sampleStart, LastFrames, "time");
+                var gp = SampleVtbl.GetPointer(sample, out var data);
                 if (gp >= 0 && data != IntPtr.Zero)
                     GetPointerCalls++;
                 if (gp < 0 || data == IntPtr.Zero)
-                    return 0;
+                    return;
                 var length = sample.GetActualDataLength();
                 if (length <= 0)
                     length = sample.GetSize();
                 if (_width <= 0 || _height <= 0 || length <= 0)
-                    return 0;
-                var copy0 = Stopwatch.GetTimestamp();
+                    return;
                 var rgba = CopySample(data, length);
-                copyTicks = Stopwatch.GetTimestamp() - copy0;
                 if (rgba is not null)
                     _onSample(_width, _height, rgba);
-                return 0;
             }
             finally
             {
-                Marshal.ReleaseComObject(sample);
-                SampleRcwRelease++;
-                SampleHeldAtReturn = 0;
-                var recvTicks = Stopwatch.GetTimestamp() - recv0;
-                if (ReceiveCalls == 1 || ReceiveCalls % 100 == 0)
-                    RecordPace(recvTicks, copyTicks, sampleStart, sampleEnd);
+                if (release)
+                {
+                    Marshal.ReleaseComObject(sample);
+                    SampleRcwRelease++;
+                }
+
+                SampleHeldAtReturn = release ? 0 : 1;
             }
         }
 
@@ -1530,25 +1732,11 @@ public sealed class WmvPlayer : IDisposable
             var formatSize = Marshal.ReadInt32(type, 72);
             if (format == IntPtr.Zero || formatSize < 56)
                 return;
-            _subType = Marshal.PtrToStructure<Guid>(type + 16);
             _width = Marshal.ReadInt32(format, 52);
-            var rawHeight = Marshal.ReadInt32(format, 56);
-            _height = Math.Abs(rawHeight);
-            _topDown = rawHeight < 0;
-            _bitCount = _subType == Ds.Rgb32 ? 32 : 24;
-            if (formatSize >= 70)
-            {
-                var bits = Marshal.ReadInt16(format, 62);
-                if (bits is 24 or 32)
-                    _bitCount = bits;
-            }
+            _height = Math.Abs(Marshal.ReadInt32(format, 56));
 
             // 00A3B5F0: stride = ((width+1)*3) & ~3 for RGB24.
-            _stride = _subType == Ds.Yuy2
-                ? ((_width * 2 + 3) & ~3)
-                : _bitCount == 32
-                    ? _width * 4
-                    : ((_width + 1) * 3) & ~3;
+            _stride = ((_width + 1) * 3) & ~3;
         }
 
         private byte[]? CopySample(IntPtr data, int length)
@@ -1563,56 +1751,16 @@ public sealed class WmvPlayer : IDisposable
                 _rgbaScratch = new byte[need];
             }
             var rgba = _rgbaScratch;
-            if (_subType == Ds.Yuy2)
-                return CopyYuy2(data, length, rgba);
-            var bpp = _bitCount == 32 ? 4 : 3;
+            var bpp = 3;
             var stride = _stride > 0 ? _stride : ((_width * bpp + 3) & ~3);
             if (length < stride * _height && length >= pixels * bpp)
                 stride = _width * bpp;
             // 00A3B730 copies GetPointer row 0 into
             // LockRect row 0 — no V flip. Present
             // inverts V (LineShaders.VideoFragment).
-            BgrToRgba(data, stride, rgba, _width, _height, bpp, flip: false);
+            BgrToRgba(data, stride, rgba, _width, _height, bpp);
             return rgba;
         }
-
-        private unsafe byte[] CopyYuy2(IntPtr data, int length, byte[] rgba)
-        {
-            var stride = _stride > 0 ? _stride : ((_width * 2 + 3) & ~3);
-            if (length < stride * _height)
-                stride = _width * 2;
-            fixed (byte* d0 = rgba)
-            {
-                for (var y = 0; y < _height; y++)
-                {
-                    var s = (byte*)data + y * stride;
-                    var d = d0 + y * _width * 4;
-                    for (var x = 0; x + 1 < _width; x += 2)
-                    {
-                        YuvToRgba(s[0], s[1], s[3], d);
-                        YuvToRgba(s[2], s[1], s[3], d + 4);
-                        s += 4;
-                        d += 8;
-                    }
-                }
-            }
-
-            return rgba;
-        }
-
-        private static unsafe void YuvToRgba(int y, int u, int v, byte* dest)
-        {
-            var c = y - 16;
-            var d = u - 128;
-            var e = v - 128;
-            dest[0] = ClampByte((298 * c + 409 * e + 128) >> 8);
-            dest[1] = ClampByte((298 * c - 100 * d - 208 * e + 128) >> 8);
-            dest[2] = ClampByte((298 * c + 516 * d + 128) >> 8);
-            dest[3] = 255;
-        }
-
-        private static byte ClampByte(int value) =>
-            (byte)Math.Clamp(value, 0, 255);
     }
 
     private static void RecordPace(long recvTicks, long copyTicks, long sampleStart, long sampleEnd)

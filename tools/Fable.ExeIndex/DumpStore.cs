@@ -21,7 +21,7 @@ internal sealed class DumpStore
     public const int QuartzTraceVersion = 2;
     public const int PlayAviPaceVersion = 1;
     public const int PlayAviPresentVersion = 2;
-    public const int PlayAviTimelineVersion = 8;
+    public const int PlayAviTimelineVersion = 10;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

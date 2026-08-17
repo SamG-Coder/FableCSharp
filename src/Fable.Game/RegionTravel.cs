@@ -357,11 +357,42 @@ public static class RegionTravel
     public const uint PlayAviGetTimeVtbl = 20;
     public const uint PlayAviAdviseTimeVtbl = 16;
     /// <summary>
+    /// <c>00CA49F0</c> <c>call [sample.vtbl+20]</c>
+    /// GetTime runs in ScheduleSample, before
+    /// <c>00CA65B0</c> and before copy
+    /// <c>00A3B730</c> <c>call [sample.vtbl+12]</c>
+    /// GetPointer. Not after GetPointer.
+    /// </summary>
+    public const bool FirstSeenPlayAviGetTimeBeforeGetPointer = true;
+    /// <summary>
+    /// x86 byte offsets +12 / +20 are slots
+    /// 3 / 5. Live process uses
+    /// slot × IntPtr.Size.
+    /// </summary>
+    public const int PlayAviGetPointerSlot = 3;
+    public const int PlayAviGetTimeSlot = 5;
+    /// <summary>
+    /// RCW <c>IMediaSample.GetTime</c> from the
+    /// decoder thread marshals to the STA graph
+    /// thread and sits. Native is
+    /// <c>call [eax+20]</c> on this thread.
+    /// </summary>
+    public const bool FirstSeenPlayAviGetTimeRcwMarshalsApartment = true;
+    /// <summary>
     /// Renderer <c>SetSyncSource</c> <c>00A3BCD0</c>
     /// is <c>xor eax,eax; ret</c> — it does not
     /// store <c>IReferenceClock</c>.
     /// </summary>
     public const bool FirstSeenPlayAviSetSyncSourceStoresClock = false;
+    /// <summary>
+    /// COM IMediaFilter SetSyncSource is
+    /// <c>00CA7680</c> (IBaseFilter this+12).
+    /// It AddRef's the clock and stores it at
+    /// filter+24. C++ virtual <c>00A3BCD0</c>
+    /// is a no-op and is not the quartz call.
+    /// </summary>
+    public const uint PlayAviComSetSyncSource = 0x00CA7680;
+    public const bool FirstSeenPlayAviComSetSyncSourceStoresClock = true;
     /// <summary>
     /// <c>00628AAC</c> <c>mov edi, eax</c> then
     /// <c>test edi, edi; jne 00628BF2</c> skips
@@ -460,14 +491,15 @@ public static class RegionTravel
         new("56a8689c-0ad4-11ce-b03a-0020af0ba770");
     public const bool FirstSeenPlayAviPinGetAllocatorCreatesMemAllocator = true;
     /// <summary>
-    /// <c>00A3BCD0</c> does not store a clock,
-    /// so <c>00CA49F0</c> returns S_OK (draw
-    /// now), <c>00CA4AA0</c> SetEvent(+84), and
-    /// <c>00CA65B0</c> returns without waiting
-    /// on sample time. Receive does not hold
-    /// the allocator for PTS.
+    /// Quartz calls COM IMediaFilter
+    /// <c>00CA7680</c>, which stores the clock
+    /// at filter+24. <c>00CA49F0</c> then
+    /// calls ShouldDraw / <c>00CA4AA0</c>
+    /// AdviseTime, and <c>00CA65B0</c> waits
+    /// on +84 until the sample is due.
+    /// C++ <c>00A3BCD0</c> is not that call.
     /// </summary>
-    public const bool FirstSeenPlayAviReceiveWaitsOnSampleTime = false;
+    public const bool FirstSeenPlayAviReceiveWaitsOnSampleTime = true;
     /// <summary>
     /// <c>006286F0</c> <c>call 00A3B9D0; cmp eax,edi;
     /// jl 00628DEB</c>. Failed open does not

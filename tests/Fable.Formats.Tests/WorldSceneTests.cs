@@ -331,7 +331,7 @@ public sealed class WorldSceneTests
         Assert.Equal(new Guid("1e651cc0-b199-11d0-8212-00c04fc32c45"), RegionTravel.PlayAviMemoryAllocatorClsid);
         Assert.Equal(new Guid("56a8689c-0ad4-11ce-b03a-0020af0ba770"), RegionTravel.PlayAviIMemAllocatorIid);
         Assert.True(RegionTravel.FirstSeenPlayAviPinGetAllocatorCreatesMemAllocator);
-        Assert.False(RegionTravel.FirstSeenPlayAviReceiveWaitsOnSampleTime);
+        Assert.True(RegionTravel.FirstSeenPlayAviReceiveWaitsOnSampleTime);
         Assert.Equal(0x00628DEBu, RegionTravel.PlayAviOpenFail);
         Assert.Equal(0x00A3B380u, RegionTravel.PlayAviReleaseGraph);
         Assert.Equal(0x00CA4E30u, RegionTravel.PlayAviStopStreaming);
@@ -1990,7 +1990,15 @@ public sealed class WorldSceneTests
         Assert.Equal(0x00CA4AA0u, RegionTravel.PlayAviScheduleSample);
         Assert.Equal(0x00CA49F0u, RegionTravel.PlayAviGetSampleTimes);
         Assert.Equal(0x00CA4B07u, RegionTravel.PlayAviAdviseTimeSite);
+        Assert.True(RegionTravel.FirstSeenPlayAviGetTimeBeforeGetPointer);
+        Assert.Equal(20u, RegionTravel.PlayAviGetTimeVtbl);
+        Assert.Equal(12, RegionTravel.PlayAviGetPointerVtbl);
+        Assert.Equal(5, RegionTravel.PlayAviGetTimeSlot);
+        Assert.Equal(3, RegionTravel.PlayAviGetPointerSlot);
+        Assert.True(RegionTravel.FirstSeenPlayAviGetTimeRcwMarshalsApartment);
         Assert.False(RegionTravel.FirstSeenPlayAviSetSyncSourceStoresClock);
+        Assert.Equal(0x00CA7680u, RegionTravel.PlayAviComSetSyncSource);
+        Assert.True(RegionTravel.FirstSeenPlayAviComSetSyncSourceStoresClock);
         Assert.True(RegionTravel.FirstSeenPlayAviWaitZeroUpdatesTexture);
         Assert.True(RegionTravel.FirstSeenPlayAviTimeoutStillPresents);
         Assert.Equal(0x0143FDE0u, RegionTravel.PlayAviSetEventIat);
@@ -2017,10 +2025,13 @@ public sealed class WorldSceneTests
         Assert.True(RegionTravel.FirstSeenPlayAviPresentIsDevicePresent);
         Assert.False(RegionTravel.FirstSeenPlayAviPresentIsMailbox);
         var serial = player.RecvSerial;
-        Thread.Sleep(200);
+        // STA preroll may already have copied
+        // ~18 samples. The next decoder Receive
+        // waits tStart+GetTime (here ~0.6 s).
+        Thread.Sleep(1000);
         Assert.True(
             player.RecvSerial >= serial + 3,
-            $"WMV present too slow serial={player.RecvSerial} start={serial} {WmvPlayer.LastError}");
+            $"WMV present too slow serial={player.RecvSerial} start={serial} recv={WmvPlayer.CaptureTrace().Receive} pts={WmvPlayer.LastSampleStart} gt={WmvPlayer.GetTimeEnter}/{WmvPlayer.GetTimeLeave} gthr=0x{WmvPlayer.GetTimeHr:X8} vtblMs={WmvPlayer.VtblGetTimeMs:F1} rcwMs={WmvPlayer.RcwGetTimeMs:F1} rcwHang={WmvPlayer.RcwGetTimeHangs} gp={WmvPlayer.GetPointerEnter}/{WmvPlayer.GetPointerLeave} tStart={WmvPlayer.LastTStart} advise={WmvPlayer.AdviseCalls} ahr=0x{WmvPlayer.AdviseHr:X8} {WmvPlayer.LastError}");
 
         Assert.Equal(0x0099C1E0u, RegionTravel.PlayAviRewrite);
         Assert.Equal(0x00A3B9D0u, RegionTravel.PlayAviOpen);
@@ -2132,10 +2143,10 @@ public sealed class WorldSceneTests
         Assert.Equal("timeout", PlayAviTimeline.WaitName(PlayAviTimeline.WaitTimeout));
         Assert.Equal("apc", PlayAviTimeline.WaitName(PlayAviTimeline.WaitIoCompletion));
         Assert.Equal(258, PlayAviTimeline.WaitTimeout);
-        // 00A3BCD0 never stores a clock. Receive
-        // copies immediately; WaitEx is Present.
+        // C++ 00A3BCD0 never stores a clock.
+        // COM 00CA7680 does; Receive waits.
         Assert.False(RegionTravel.FirstSeenPlayAviSetSyncSourceStoresClock);
-        Assert.False(RegionTravel.FirstSeenPlayAviReceiveWaitsOnSampleTime);
+        Assert.True(RegionTravel.FirstSeenPlayAviReceiveWaitsOnSampleTime);
         PlayAviTimeline.Reset("test");
         PlayAviTimeline.Note("copy", PlayAviTimeline.SiteCopy, 1, 0, 33_000_000);
         PlayAviTimeline.Note("wait-leave", PlayAviTimeline.SiteWaitLeave, 1, waitResult: PlayAviTimeline.WaitObject0);

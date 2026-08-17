@@ -29,12 +29,15 @@ public interface IPlayAviSample
 /// </para>
 /// <para>
 /// B — Lionhead overrides that the live
-/// player must own: <c>00A3BCD0</c>
-/// SetSyncSource no-op, <c>00A3BCF0</c>
-/// DoRenderSample ret, <c>00A3B730</c>
-/// GetPointer copy, <c>00CA8EC0</c> reqs
-/// E_NOTIMPL, <c>00A3B590</c> RGB24,
-/// <c>00628A9E</c> WaitEx 33.
+/// player must own: C++ <c>00A3BCD0</c>
+/// SetSyncSource is <c>xor eax,eax; ret</c>
+/// (not the quartz call). COM
+/// <c>00CA7680</c> stores the clock at
+/// filter+24. <c>00A3BCF0</c> DoRenderSample
+/// ret, <c>00A3B730</c> GetPointer copy,
+/// <c>00CA8EC0</c> reqs E_NOTIMPL,
+/// <c>00A3B590</c> RGB24, <c>00628A9E</c>
+/// WaitEx 33.
 /// </para>
 /// </summary>
 public sealed class PlayAviFromExe : IDisposable
@@ -60,7 +63,9 @@ public sealed class PlayAviFromExe : IDisposable
 
     // +20
     public int State { get; private set; }
-    // +24 — ctor-zero; 00A3BCD0 does not write it.
+    // +24 IReferenceClock*. Ctor-zero. C++
+    // 00A3BCD0 does not write it. COM 00CA7680
+    // (IBaseFilter this+12) does.
     public IntPtr Clock { get; private set; }
     // +100
     public int Streaming { get; private set; }
@@ -255,8 +260,8 @@ public sealed class PlayAviFromExe : IDisposable
     /// <c>00CA5850</c>. Subtracts 8 ms
     /// (<c>0x13880</c>) from start and stop.
     /// Only reached when +24 is non-zero.
-    /// Returns S_FALSE (schedule) here because
-    /// Fable never stores a clock.
+    /// Returns S_FALSE (schedule). Live quartz
+    /// reaches this when 00CA7680 stored +24.
     /// </summary>
     public int ShouldDrawSampleNow_00CA5850(ref long start, ref long end)
     {
@@ -457,6 +462,9 @@ public sealed class PlayAviFromExe : IDisposable
         if (Width <= 0 || Height <= 0 || length <= 0)
             return 0;
 
+        // Native 00A3B730 does not GetTime.
+        // 00CA49F0 already called vtbl+20
+        // during ScheduleSample.
         sample.GetTime(out var start, out var end);
         PlayAviTimeline.Note("gettime", PlayAviTimeline.SiteGetSampleTimes, RecvSerial + 1, start, end);
 
