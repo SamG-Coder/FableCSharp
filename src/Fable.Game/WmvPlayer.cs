@@ -54,6 +54,7 @@ public sealed class WmvPlayer : IDisposable
     internal static int MediaPositionQiCalls { get; set; }
     internal static int MediaSeekingQiCalls { get; set; }
     internal static int OverlayQiCalls { get; set; }
+    internal static bool CaptureQi { get; set; }
     internal static string LastFilterQi { get; set; } = "";
     internal static string LastPinQi { get; set; } = "";
 
@@ -146,6 +147,7 @@ public sealed class WmvPlayer : IDisposable
         MediaPositionQiCalls = 0;
         MediaSeekingQiCalls = 0;
         OverlayQiCalls = 0;
+        CaptureQi = true;
         LastFilterQi = "";
         LastPinQi = "";
         LastAddFilterHr = 0;
@@ -277,6 +279,7 @@ public sealed class WmvPlayer : IDisposable
             return $"AddFilter {hr:X8}";
 
         hr = _graph.RenderFile(path, null);
+        CaptureQi = false;
         LastRenderFileHr = hr;
         LastGraph = GraphSummary();
         LastPinVisible = GraphPinVisible();
@@ -1115,18 +1118,25 @@ public sealed class WmvPlayer : IDisposable
         {
             // Observation only. NotHandled keeps the
             // CCW IBaseFilter / IAMFilterMiscFlags.
+            // Do not append after RenderFile — every
+            // streaming QI grew LastFilterQi and
+            // the graph got slower each frame.
             ppv = IntPtr.Zero;
-            FilterQiCalls++;
-            var name = IidName(iid);
-            if (LastFilterQi.Length > 0)
-                LastFilterQi += ",";
-            LastFilterQi += name;
-            if (iid == RegionTravel.PlayAviMediaPositionIid)
-                MediaPositionQiCalls++;
-            else if (iid == RegionTravel.PlayAviMediaSeekingIid)
-                MediaSeekingQiCalls++;
-            else if (iid == RegionTravel.PlayAviIOverlayIid)
-                OverlayQiCalls++;
+            if (CaptureQi)
+            {
+                FilterQiCalls++;
+                var name = IidName(iid);
+                if (LastFilterQi.Length > 0)
+                    LastFilterQi += ",";
+                LastFilterQi += name;
+                if (iid == RegionTravel.PlayAviMediaPositionIid)
+                    MediaPositionQiCalls++;
+                else if (iid == RegionTravel.PlayAviMediaSeekingIid)
+                    MediaSeekingQiCalls++;
+                else if (iid == RegionTravel.PlayAviIOverlayIid)
+                    OverlayQiCalls++;
+            }
+
             return CustomQueryInterfaceResult.NotHandled;
         }
     }
@@ -1146,6 +1156,7 @@ public sealed class WmvPlayer : IDisposable
         private bool _topDown;
         private Guid _subType;
         private IntPtr _allocator;
+        private byte[]? _rgbaScratch;
 
         public bool IsConnected => _connected is not null;
 
@@ -1158,13 +1169,17 @@ public sealed class WmvPlayer : IDisposable
         public CustomQueryInterfaceResult GetInterface(ref Guid iid, out IntPtr ppv)
         {
             ppv = IntPtr.Zero;
-            PinQiCalls++;
-            var name = IidName(iid);
-            if (LastPinQi.Length > 0)
-                LastPinQi += ",";
-            LastPinQi += name;
-            if (iid == new Guid("56a8689d-0ad4-11ce-b03a-0020af0ba770"))
-                MemInputQiCalls++;
+            if (CaptureQi)
+            {
+                PinQiCalls++;
+                var name = IidName(iid);
+                if (LastPinQi.Length > 0)
+                    LastPinQi += ",";
+                LastPinQi += name;
+                if (iid == new Guid("56a8689d-0ad4-11ce-b03a-0020af0ba770"))
+                    MemInputQiCalls++;
+            }
+
             return CustomQueryInterfaceResult.NotHandled;
         }
 
@@ -1451,7 +1466,10 @@ public sealed class WmvPlayer : IDisposable
             var pixels = _width * _height;
             if (pixels <= 0)
                 return null;
-            var rgba = new byte[pixels * 4];
+            var need = pixels * 4;
+            if (_rgbaScratch is null || _rgbaScratch.Length != need)
+                _rgbaScratch = new byte[need];
+            var rgba = _rgbaScratch;
             if (_subType == Ds.Yuy2)
                 return CopyYuy2(data, length, rgba);
             var bpp = _bitCount == 32 ? 4 : 3;
@@ -1459,7 +1477,8 @@ public sealed class WmvPlayer : IDisposable
             if (length < stride * _height && length >= pixels * bpp)
                 stride = _width * bpp;
             // 00A3B730 copies GetPointer row 0 into
-            // LockRect row 0 — no V flip.
+            // LockRect row 0 — no V flip. Present
+            // inverts V (LineShaders.VideoFragment).
             BgrToRgba(data, stride, rgba, _width, _height, bpp, flip: false);
             return rgba;
         }

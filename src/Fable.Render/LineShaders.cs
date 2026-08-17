@@ -74,10 +74,14 @@ internal static class LineShaders
                 return;
             }
             vec2 t = (fragUv - pc.dest.xy) / (pc.dest.zw - pc.dest.xy);
-            // 00A3B730 copies sample rows into LockRect
-            // with no extra V flip. Vulkan NDC y=-1 is
-            // the top of the window, matching dest.y.
-            outColor = texture(video, t);
+            // 00A3B730 writes GetPointer row 0 into
+            // LockRect row 0 (no CPU V flip). RGB24
+            // VIDEOINFOHEADER is a bottom-up DIB;
+            // 009DC870 2D dest has v=0 at dest top.
+            // Invert V so the first sample row sits
+            // at dest.w (screen bottom), matching
+            // that blit.
+            outColor = texture(video, vec2(t.x, 1.0 - t.y));
         }
         """;
 
