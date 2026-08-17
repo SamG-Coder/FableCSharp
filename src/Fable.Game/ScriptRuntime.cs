@@ -42,6 +42,7 @@ public sealed class ScriptRuntime : IScriptHost
     public IReadOnlyList<ScriptCombatAnimation> CombatAnimations => _combatAnims;
     public IReadOnlyList<ScriptCreate> Creates => _creates;
     public IReadOnlyList<string> Removes => _removes;
+    public IReadOnlyList<ScriptDialogAdSpeech> DialogAdSpeeches => _dialogAds;
     public int WaitActiveDialogCount { get; private set; }
     public IReadOnlyList<string> PreloadedCameras => _preloadedCameras;
 
@@ -60,6 +61,7 @@ public sealed class ScriptRuntime : IScriptHost
     private readonly List<ScriptCombatAnimation> _combatAnims = [];
     private readonly List<ScriptCreate> _creates = [];
     private readonly List<string> _removes = [];
+    private readonly List<ScriptDialogAdSpeech> _dialogAds = [];
     private readonly List<string> _preloadedCameras = [];
     private IReadOnlyList<ThingInstance> _things = [];
     private ScriptedCamera? _camera;
@@ -363,6 +365,16 @@ public sealed class ScriptRuntime : IScriptHost
     void IScriptHost.Remove(string name) => _removes.Add(name);
 
     /// <summary>
+    /// <c>00CC3354</c>: thing <c>vtbl+52</c> then
+    /// <c>jmp 00CC707C</c> / <c>00CC2C6B</c> →
+    /// <c>00CC7081</c>. No <c>vtbl+28</c>. Father
+    /// +52 is <c>004CD1B0</c> stub. Record only —
+    /// do not invent dialogue UI.
+    /// </summary>
+    void IScriptHost.DialogadSpeak(string? actor, string target, string text, int mode) =>
+        _dialogAds.Add(new ScriptDialogAdSpeech(actor, target, text, mode));
+
+    /// <summary>
     /// <c>00CC86D0</c> default path: <c>00CBF29F</c> with
     /// <c>dl=0</c> collects UseCamera names via
     /// <c>vtbl+1648</c>. First-seen has no TRUE arg so
@@ -471,3 +483,9 @@ public readonly record struct ScriptCombatAnimation(
     int Count);
 
 public readonly record struct ScriptCreate(string Type, string Marker, string Name);
+
+public readonly record struct ScriptDialogAdSpeech(
+    string? Actor,
+    string Target,
+    string Text,
+    int Mode);

@@ -309,6 +309,14 @@ public sealed class ScriptInterpreter
             if (name.Length != 0)
                 host.Remove(name);
         }
+        else if (command.Verb.Equals("DialogadSpeak", StringComparison.OrdinalIgnoreCase))
+        {
+            var speech = ScriptCommand.ParseDialogadSpeak(command.Arguments);
+            if (!string.IsNullOrEmpty(command.Actor) &&
+                speech.Target.Length != 0 &&
+                speech.Text.Length != 0)
+                host.DialogadSpeak(command.Actor, speech.Target, speech.Text, speech.Mode);
+        }
     }
 
     internal static void ParseFadeArgs(string arguments, out float seconds, out float param)
@@ -418,6 +426,15 @@ public readonly struct ScriptCommand
         var text = args.Length < 2 ? "" : args[1];
         return (listener, text);
     }
+
+    /// <summary>
+    /// <c>00CC3354</c>: target, text, optional
+    /// random/norepeat/sequence on arg3. Empty
+    /// actor / target / text skip via
+    /// <c>00CC7081</c>. No <c>00CBEE5E</c>.
+    /// </summary>
+    public static (string Target, string Text, int Mode) ParseDialogadSpeak(string arguments) =>
+        ParseSpeak(arguments);
 
     /// <summary>
     /// <c>00CC0CB5</c>: marker, optional speed
@@ -537,7 +554,8 @@ public readonly struct ScriptCommand
             verb.Equals("MuteSounds", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("StartTimeCode", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("Create", StringComparison.OrdinalIgnoreCase) ||
-            verb.Equals("Remove", StringComparison.OrdinalIgnoreCase))
+            verb.Equals("Remove", StringComparison.OrdinalIgnoreCase) ||
+            verb.Equals("DialogadSpeak", StringComparison.OrdinalIgnoreCase))
             return ScriptFlow.Continue;
         if (verb.Equals("UseCamera", StringComparison.OrdinalIgnoreCase) ||
             verb.Equals("NoLoadUseCamera", StringComparison.OrdinalIgnoreCase))
@@ -644,4 +662,5 @@ public interface IScriptHost
     void Create(string type, string marker, string name);
     void WaitActiveDialog();
     void Remove(string name);
+    void DialogadSpeak(string? actor, string target, string text, int mode);
 }

@@ -471,6 +471,34 @@ public static class RegionTravel
     public const uint RemoveInner = 0x004C9B80;
     public const bool FirstSeenRemoveDoesNotYield = true;
     public const string IntroRemoveName = "VILL1";
+    /// <summary>
+    /// <c>00CC3354</c> <c>.DialogadSpeak</c>. Empty
+    /// actor / target / text → <c>00CC7081</c>. Mode
+    /// arg3 random=1 / norepeat=2 / sequence=3.
+    /// Table <c>00CD3187</c> hit: thing <c>vtbl+52</c>
+    /// then <c>jmp 00CC707C</c>. Miss: context
+    /// <c>vtbl+280/+288</c> then <c>vtbl+52</c> and
+    /// <c>jmp 00CC2C6B</c> (<c>0099EAE0</c> then
+    /// <c>00CC7081</c>). No <c>vtbl+28</c>. Father
+    /// <c>0x0127293C</c> +52 is <c>004CD1B0</c>
+    /// <c>al=1</c>. No <c>00CBEE5E</c>. Do not invent
+    /// dialogue UI.
+    /// </summary>
+    public const uint DialogadSpeakOpcode = 0x00CC3354;
+    public const uint DialogadSpeakMode = 0x00CC34C8;
+    public const uint DialogadSpeakTable = 0x00CD3187;
+    public const uint DialogadSpeakHitJoin = 0x00CC707C;
+    public const uint DialogadSpeakMissJoin = 0x00CC2C6B;
+    public const uint DialogadSpeakSkip = 0x00CC7081;
+    public const int DialogadSpeakApplyVtbl = 52;
+    public const uint DialogadSpeakApplyStub = 0x004CD1B0;
+    public const uint DialogadSpeakThingVtbl = 0x0127293C;
+    public const int DialogadSpeakContextSameVtbl = 280;
+    public const int DialogadSpeakContextNameVtbl = 288;
+    public const bool FirstSeenDialogadSpeakDoesNotYield = true;
+    public const bool FirstSeenDialogadSpeakAppliesUi = false;
+    public const string IntroFatherDialogAd = "TEXT_QST_048_FATHER_INTRO_100";
+    public const string IntroDialogAdTarget = "Father";
     public const bool FirstSeenWatchBarrelsSpawnsBeetle = false;
     public const bool FirstSeenHandsPlayerControl = false;
     public const bool FirstSeenCameraNameInExe = false;

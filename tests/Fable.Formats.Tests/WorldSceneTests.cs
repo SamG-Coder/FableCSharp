@@ -399,6 +399,15 @@ public sealed class WorldSceneTests
         Assert.Equal(0x008910D0u, RegionTravel.RemoveApplyFn);
         Assert.True(RegionTravel.FirstSeenRemoveDoesNotYield);
         Assert.Equal("VILL1", RegionTravel.IntroRemoveName);
+        Assert.Equal(0x00CC3354u, RegionTravel.DialogadSpeakOpcode);
+        Assert.Equal(0x00CD3187u, RegionTravel.DialogadSpeakTable);
+        Assert.Equal(0x00CC2C6Bu, RegionTravel.DialogadSpeakMissJoin);
+        Assert.Equal(52, RegionTravel.DialogadSpeakApplyVtbl);
+        Assert.Equal(0x004CD1B0u, RegionTravel.DialogadSpeakApplyStub);
+        Assert.True(RegionTravel.FirstSeenDialogadSpeakDoesNotYield);
+        Assert.False(RegionTravel.FirstSeenDialogadSpeakAppliesUi);
+        Assert.Equal("TEXT_QST_048_FATHER_INTRO_100", RegionTravel.IntroFatherDialogAd);
+        Assert.Equal("Father", RegionTravel.IntroDialogAdTarget);
         Assert.Equal(0x00CC4B22u, RegionTravel.ScriptFadeInOut);
         Assert.Equal(0x00CB5D80u, RegionTravel.RegisteringScripts);
         Assert.Equal(0x00CB8110u, RegionTravel.QuestBaseCtor);
@@ -1027,6 +1036,37 @@ public sealed class WorldSceneTests
         Assert.Null(intro.UnsupportedCommand);
         Assert.Contains(runtime.Removes, name => name == RegionTravel.IntroRemoveName);
         Assert.False(intro.ExecutedVerb("DialogadSpeak"));
+        Assert.Equal(0x00CC3354u, RegionTravel.DialogadSpeakOpcode);
+        Assert.True(RegionTravel.FirstSeenDialogadSpeakDoesNotYield);
+        Assert.False(RegionTravel.FirstSeenDialogadSpeakAppliesUi);
+        script.Update(0.1f);
+        Assert.Contains("NoLoadUseCamera CAM_OVIF_SHOT3", intro.Executed);
+        Assert.Equal("Father.Speak Father,'TEXT_QST_048_FATHER_INTRO_90'", intro.Commands[intro.InstructionPointer]);
+        script.Update(0.1f);
+        Assert.Contains("Father.Speak Father,'TEXT_QST_048_FATHER_INTRO_90'", intro.Executed);
+        Assert.Equal("GamePause 0.2", intro.Commands[intro.InstructionPointer]);
+        var pause02 = 0;
+        while (intro.Yielded &&
+               !intro.ExecutedVerb("DialogadSpeak") &&
+               pause02 < 80)
+        {
+            script.Update(0.1f);
+            pause02++;
+        }
+
+        Assert.Contains("GamePause 0.2", intro.Executed);
+        Assert.Contains("NoLoadUseCamera CAM_OVIF_SHOT6START", intro.Executed);
+        Assert.Contains("Father.LookToThing Hero,FALSE", intro.Executed);
+        Assert.Contains("Father.DialogadSpeak Father,'TEXT_QST_048_FATHER_INTRO_100'", intro.Executed);
+        Assert.Equal("GamePause 0.5", intro.Commands[intro.InstructionPointer]);
+        Assert.True(intro.Yielded);
+        Assert.Null(intro.UnsupportedCommand);
+        Assert.Contains(runtime.DialogAdSpeeches, s =>
+            s.Actor == "Father" &&
+            s.Target.Equals(RegionTravel.IntroDialogAdTarget, StringComparison.OrdinalIgnoreCase) &&
+            s.Text.Contains(RegionTravel.IntroFatherDialogAd, StringComparison.Ordinal) &&
+            s.Mode == 0);
+        Assert.False(intro.ExecutedVerb("LookInDirection"));
         script.ApplyPersist(true);
         Assert.True(script.Gate80);
 
@@ -1151,6 +1191,49 @@ public sealed class WorldSceneTests
         public void WaitActiveDialog() { }
 
         public void Remove(string name) { }
+
+        public void DialogadSpeak(string? actor, string target, string text, int mode) { }
+    }
+
+    [Fact]
+    public void Father_DialogadSpeak_records_line_and_does_not_yield()
+    {
+        var command = "Father.DialogadSpeak Father,'TEXT_QST_048_FATHER_INTRO_100'";
+        var parsed = ScriptCommand.ParseDialogadSpeak(ScriptCommand.Parse(command).Arguments);
+        Assert.Equal("Father", parsed.Target);
+        Assert.Contains("TEXT_QST_048_FATHER_INTRO_100", parsed.Text);
+        Assert.Equal(0, parsed.Mode);
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(ScriptCommand.Parse(command)));
+        Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(ScriptCommand.Parse("Father.DialogadSpeak")));
+        Assert.Equal(1, ScriptCommand.ParseDialogadSpeak("Father,'X',_,random").Mode);
+        Assert.Equal(2, ScriptCommand.ParseDialogadSpeak("Father,'X',_,norepeat").Mode);
+        Assert.Equal(3, ScriptCommand.ParseDialogadSpeak("Father,'X',_,sequence").Mode);
+        Assert.Equal(0x00CC3354u, RegionTravel.DialogadSpeakOpcode);
+        Assert.Equal(0x00CC34C8u, RegionTravel.DialogadSpeakMode);
+        Assert.Equal(0x00CD3187u, RegionTravel.DialogadSpeakTable);
+        Assert.Equal(0x00CC707Cu, RegionTravel.DialogadSpeakHitJoin);
+        Assert.Equal(0x00CC2C6Bu, RegionTravel.DialogadSpeakMissJoin);
+        Assert.Equal(0x00CC7081u, RegionTravel.DialogadSpeakSkip);
+        Assert.Equal(52, RegionTravel.DialogadSpeakApplyVtbl);
+        Assert.Equal(0x004CD1B0u, RegionTravel.DialogadSpeakApplyStub);
+        Assert.Equal(0x0127293Cu, RegionTravel.DialogadSpeakThingVtbl);
+        Assert.Equal(280, RegionTravel.DialogadSpeakContextSameVtbl);
+        Assert.Equal(288, RegionTravel.DialogadSpeakContextNameVtbl);
+        Assert.True(RegionTravel.FirstSeenDialogadSpeakDoesNotYield);
+        Assert.False(RegionTravel.FirstSeenDialogadSpeakAppliesUi);
+        Assert.Equal("TEXT_QST_048_FATHER_INTRO_100", RegionTravel.IntroFatherDialogAd);
+        Assert.Equal("Father", RegionTravel.IntroDialogAdTarget);
+        var interpreter = new ScriptInterpreter("adspeak",
+        [
+            command,
+            "GamePause 0.5",
+            "NoLoadUseCamera CAM_OVIF_SHOT6",
+        ]);
+        interpreter.RunUntilYield();
+        Assert.Contains(command, interpreter.Executed);
+        Assert.Equal("GamePause 0.5", interpreter.Commands[interpreter.InstructionPointer]);
+        Assert.True(interpreter.Yielded);
+        Assert.Null(interpreter.UnsupportedCommand);
     }
 
     [Fact]
