@@ -3,7 +3,7 @@ GLOBAL: 124
 ENTITY: 61
 RECOVERED DISPATCH: 97
 RECOVERED RETURN: 97
-RECOVERED APPLY: 21
+RECOVERED APPLY: 24
 IMPLEMENTED RUNTIME: 13
 UNREAD: 88
 # Native command coverage
@@ -191,9 +191,9 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | SetDamageable | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
 | SetAttackable | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
 | SetFree | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
-| SneakTo | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
-| RunTo | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
-| WalkTo | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
+| SneakTo | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
+| RunTo | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
+| WalkTo | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
 | WaitTask | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
 | DoBossFight | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
 | SummonerAttack | Entity | Unread | Unread | Unread | Unread | Unread | Unread |

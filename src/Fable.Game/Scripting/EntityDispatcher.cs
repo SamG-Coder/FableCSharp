@@ -121,10 +121,7 @@ public static class EntityDispatcher
                 op = ctx.Movement.Walk(line.Target, marker, speed, wait, dest);
             else
                 op = ctx.Movement.Run(line.Target, marker, speed, wait, dest);
-            if (dest is { } d && line.Target is { Length: > 0 } && speed <= 0f
-                && !ctx.Movement.WalkSpeed.ContainsKey(line.Target)
-                && !ctx.Movement.RunSpeed.ContainsKey(line.Target))
-                ctx.World.Positions[line.Target] = d;
+            ctx.Movement.SeedStart(line.Target, ctx.FindThing(line.Target), ctx.World);
             if (Eq(v, "WalkTo") && wait)
                 return CommandResult.Wait(
                     ExecutionKind.WaitOperation, CommandStatus.Proven, CommandFamily.Entity,
@@ -149,8 +146,7 @@ public static class EntityDispatcher
                 ? RegionTravel.PositionOf(followThing)
                 : ctx.World.Positions.TryGetValue(target, out var fp) ? fp : null;
             var followOp = ctx.Movement.Follow(line.Target, target, followSpeed, followDest);
-            if (followDest is { } fd && line.Target is { Length: > 0 })
-                ctx.World.Positions[line.Target] = fd;
+            ctx.Movement.SeedStart(line.Target, ctx.FindThing(line.Target), ctx.World);
             return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Entity,
                 "FollowThing actor-vtbl+28", target, followOp.Id);
         }
@@ -182,8 +178,7 @@ public static class EntityDispatcher
             var dest = RegionTravel.WalkUpToDestination(pos, forward, distance);
             var op = ctx.Movement.Walk(
                 line.Target, target, RegionTravel.WalkUpToThingSpeed, wait: true, dest);
-            if (line.Target is { Length: > 0 })
-                ctx.World.Positions[line.Target] = dest;
+            ctx.Movement.SeedStart(line.Target, ctx.FindThing(line.Target), ctx.World);
             ctx.World.LookTargets[line.Target ?? ""] = target;
             return CommandResult.Wait(
                 ExecutionKind.WaitOperation, CommandStatus.Proven, CommandFamily.Entity,

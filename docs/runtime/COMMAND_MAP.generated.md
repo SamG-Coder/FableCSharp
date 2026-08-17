@@ -43,9 +43,9 @@
 | WaitTask | `00CC0783` | `—` | name | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | poll vtbl+104 leftover; entity task slot |
 | WaitActiveDialog | `00CC656B` | `—` |  | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | session poll vtbl+1472; dismiss UNREAD |
 | WaitPlayAnimation | `00CC2518` | `—` |  | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | poll current entity anim task |
-| SneakTo | `00CC0CB5` | `—` | marker[,speed][,wait] | YieldAfterOrWait | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+20 stub 004C72B0; TRUE wait leftover once; dest stored |
-| WalkTo | `00CC083D` | `—` | marker[,speed][,wait] | YieldAfterOrWait | Proven | Proven | Proven | Partial | Partial | Partial | same stub; dest + entity task; nav unread |
-| RunTo | `00CC25E4` | `—` | marker[,speed][,wait] | YieldAfterOrWait | Proven | Proven | Proven | Partial | Partial | Partial | same entity task slot as WalkTo |
+| SneakTo | `00CC0CB5` | `00CC0E5A` | marker[,speed][,wait] | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | thing vtbl+20 is 004C72B0 stub; dest+gait via vtbl+16 006A9960; TickMove |
+| WalkTo | `00CC083D` | `00CC09E2` | marker[,speed][,wait] | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | 012457FC/0127293C +20=004C72B0; dest+gait 006A5D90 or[this+146],2; no warp |
+| RunTo | `00CC0A79` | `00CC09E2` | marker[,speed][,wait] | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | same dest+gait slot as WalkTo; mode 1 |
 | PlayCombatAnimation | `00CC15E3` | `—` | name[,flags] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+76 does not read name; no TURNING_AC90 pose |
 | PlayCombatAnim | `00CC15E3` | `—` | name[,flags] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | exe token alias of PlayCombatAnimation |
 | Create | `00CCC246` | `—` | type,marker,name | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+364; spawn body UNREAD; C# inserts ThingInstance |

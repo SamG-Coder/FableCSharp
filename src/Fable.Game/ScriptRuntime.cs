@@ -342,8 +342,6 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// </summary>
     public void Update(float dt)
     {
-        if (_fibers.Count == 0 && _interpreters.Count == 0)
-            return;
         if (dt < 0f)
             return;
         Frame++;
@@ -364,6 +362,8 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
         TickAvi(dt);
         Movement.Tick(dt, World);
         Animation.Tasks.Tick(dt, World);
+        if (_fibers.Count == 0 && _interpreters.Count == 0)
+            return;
         if (Scheduler.Fibers.Count == 0)
         {
             foreach (var interpreter in _interpreters)

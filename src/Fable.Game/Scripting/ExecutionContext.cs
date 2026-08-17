@@ -737,8 +737,27 @@ public sealed class MovementRuntime
     public readonly Dictionary<string, float> RunSpeed = new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, Vector3> Destinations =
         new(StringComparer.OrdinalIgnoreCase);
+    public readonly HashSet<string> Moving = new(StringComparer.OrdinalIgnoreCase);
     public EntityTaskQueue Tasks { get; } = new();
     private int _next;
+
+    /// <summary>
+    /// <c>006A9960</c> / <c>006A5D90</c>: copy gait
+    /// speed and <c>or [this+146],2</c>. Do not warp.
+    /// Missing start stays at the actor thing, else 0.
+    /// </summary>
+    public void SeedStart(string? actor, ThingInstance? thing, WorldRuntime world)
+    {
+        if (actor is not { Length: > 0 })
+            return;
+        Moving.Add(actor);
+        if (world.Positions.ContainsKey(actor))
+            return;
+        if (thing is { PositionX: not null })
+            world.Positions[actor] = RegionTravel.PositionOf(thing);
+        else
+            world.Positions[actor] = Vector3.Zero;
+    }
 
     public PendingOperation Sneak(
         string? actor, string marker, float speed, bool wait, Vector3? dest)
@@ -774,7 +793,22 @@ public sealed class MovementRuntime
     public PendingOperation? Current(string? actor) =>
         actor is { Length: > 0 } && ByActor.TryGetValue(actor, out var op) ? op : null;
 
-    public void Tick(float dt, WorldRuntime world) => Tasks.Tick(dt, world);
+    public void Tick(float dt, WorldRuntime world)
+    {
+        Tasks.Tick(dt, world);
+        List<string>? done = null;
+        foreach (var actor in Moving)
+        {
+            var task = Tasks.Current(actor);
+            if (task is null || task.Complete)
+                (done ??= []).Add(actor);
+        }
+
+        if (done is null)
+            return;
+        foreach (var actor in done)
+            Moving.Remove(actor);
+    }
 
     private float ResolveSpeed(string? actor, float speed, bool run)
     {
@@ -788,7 +822,7 @@ public sealed class MovementRuntime
                 return walkMax;
         }
 
-        return 0f;
+        return 0.3f;
     }
 
     private PendingOperation Queue(

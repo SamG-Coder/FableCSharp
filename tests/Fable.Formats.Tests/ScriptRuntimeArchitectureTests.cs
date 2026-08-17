@@ -507,10 +507,98 @@ public sealed class ScriptRuntimeArchitectureTests
         ], null);
         var interp = new ScriptInterpreter("mv", ["HERO.WalkTo MK_A,0.0,FALSE"]);
         interp.RunUntilYield(runtime);
-        Assert.True(runtime.World.Positions.ContainsKey("HERO"));
-        Assert.Equal(10, runtime.World.Positions["HERO"].X);
+        Assert.Equal(10, runtime.Movement.Destinations["HERO"].X);
+        Assert.Equal(0f, runtime.World.Positions["HERO"].X);
+        Assert.True(runtime.Movement.Moving.Contains("HERO"));
         Assert.NotNull(runtime.Movement.Tasks.Current("HERO"));
         Assert.Equal(EntityTaskKind.Walk, runtime.Movement.Tasks.Current("HERO")!.Kind);
+        Assert.Equal(0.3f, runtime.Movement.Tasks.Current("HERO")!.Speed);
+        runtime.Update(40f);
+        Assert.Equal(10, runtime.World.Positions["HERO"].X);
+        Assert.Equal(4, runtime.World.Positions["HERO"].Z);
+        Assert.True(runtime.Movement.Tasks.Current("HERO")!.Complete);
+        Assert.Equal(0x00CC09E2u, ScriptCommandMap.Find("WalkTo")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void WalkTo_real_script_bank_line_ticks_toward_marker()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".WalkTo ", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "VILL1.WalkTo MK_OVI_ID_VW1,0.0,FALSE";
+        hit ??= bank.Find("CS_OAKVALE_INTRO_FATHER") ?? bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("WalkTo", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = parsed.Arg(0),
+                PositionX = 4,
+                PositionY = 0,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], null);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-walk", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.True(isolated.Yielded || isolated.Finished);
+        if (parsed.Target.Length > 0)
+        {
+            Assert.True(runtime.Movement.Destinations.ContainsKey(parsed.Target));
+            Assert.Equal(0f, runtime.World.Positions[parsed.Target].X);
+            runtime.Update(20f);
+            Assert.Equal(4f, runtime.World.Positions[parsed.Target].X);
+        }
+
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-walk.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-walkto.txt"),
+            """
+            WalkTo 00CC083D / apply 00CC09E2
+              actor.vtbl+20 on CThingPlayerCreature 012457FC
+              and CThingAICreature 0127293C is 004C72B0 (al=1; ret 4)
+              dest lookup vtbl+280/288; speed default 0.3
+              wait = IsTrue(arg2)|IsTrue(arg3) leftover vtbl+104
+            Creature go is sibling vtbl+16 006A9960:
+              00662930 / 006A5D90 stores dest
+              fld [gait+80] -> [this+176]
+              or [this+146], 2  moving
+              no warp on apply
+            TickMove advances World.Positions (ActorPositions -> FirstSceneWorld)
+            """);
     }
 
     [Fact]
@@ -622,7 +710,8 @@ public sealed class ScriptRuntimeArchitectureTests
         interp.RunUntilYield(runtime);
         Assert.True(interp.Yielded);
         Assert.Equal(EntityTaskKind.Follow, runtime.Movement.Tasks.Current("HERO")!.Kind);
-        Assert.Equal(8f, runtime.World.Positions["HERO"].X);
+        Assert.Equal(8f, runtime.Movement.Destinations["HERO"].X);
+        Assert.Equal(0f, runtime.World.Positions["HERO"].X);
         interp.Resume(runtime);
         Assert.True(runtime.Movement.Tasks.Current("HERO")!.Cancelled);
         interp.Resume(runtime);
@@ -697,9 +786,13 @@ public sealed class ScriptRuntimeArchitectureTests
             ["HERO.WalkUpToThing ORGANISER,2.5"]);
         var result = interp.EvaluateOne(runtime);
         Assert.Equal(ExecutionKind.WaitOperation, result.Kind);
+        Assert.Equal(10f, runtime.Movement.Destinations["HERO"].X);
+        Assert.Equal(22.5f, runtime.Movement.Destinations["HERO"].Y);
+        Assert.Equal(0f, runtime.World.Positions["HERO"].X);
+        Assert.Equal(EntityTaskKind.Walk, runtime.Movement.Tasks.Current("HERO")!.Kind);
+        runtime.Update(40f);
         Assert.Equal(10f, runtime.World.Positions["HERO"].X);
         Assert.Equal(22.5f, runtime.World.Positions["HERO"].Y);
-        Assert.Equal(EntityTaskKind.Walk, runtime.Movement.Tasks.Current("HERO")!.Kind);
     }
 
     [Fact]
