@@ -219,6 +219,15 @@ public static class RegionTravel
         new("71771540-2017-11cf-ae26-0020afd79767");
     public const bool FirstSeenPlayAviQueryAcceptRequiresRgb24 = true;
     public const bool FirstSeenPlayAviEnumMediaTypesEmpty = true;
+    /// <summary>
+    /// SysWOW64 quartz ConnectDirect
+    /// <c>1007F596</c> source
+    /// <c>IPin.Connect(dest, NULL)</c> walks dest
+    /// <c>EnumMediaTypes</c> first. Empty dest
+    /// never QueryAccepts. The pin must yield the
+    /// type <c>00A3B590</c> accepts.
+    /// </summary>
+    public const bool PlayAviQuartzDestEnumMustYieldRgb24 = true;
     public const bool FirstSeenPlayAviIPinIsSeparateObject = true;
     public const bool FirstSeenPlayAviAdvertisesRgb32 = false;
 
@@ -326,6 +335,16 @@ public static class RegionTravel
         new("56a868b6-0ad4-11ce-b03a-0020af0ba770");
     public static readonly Guid PlayAviBasicAudioIid =
         new("56a868b3-0ad4-11ce-b03a-0020af0ba770");
+    public const uint PlayAviIOverlayIidVa = 0x012AAB04;
+    public static readonly Guid PlayAviIOverlayIid =
+        new("1bd0ecb0-f8e2-11ce-aac6-0020af0b99a3");
+    public const uint PlayAviLeftoverQi = 0x00CA4780;
+    public const uint PlayAviRendererQi = 0x00CA6080;
+    public const bool FirstSeenPlayAviRendererExposesMediaPosition = true;
+    public static readonly Guid PlayAviIPinConnectionIid =
+        new("256a6a22-fbad-11d1-82bf-00a0c9696c8f");
+    public static readonly Guid PlayAviMemInputPinIid =
+        new("56a8689d-0ad4-11ce-b03a-0020af0ba770");
     public const uint PlayAviMediaControlIidVa = 0x012AA094;
     public const uint PlayAviMediaPositionIidVa = 0x012AA064;
     public const uint PlayAviMediaSeekingIidVa = 0x012A9A04;

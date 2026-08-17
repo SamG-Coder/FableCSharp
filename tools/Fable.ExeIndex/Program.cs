@@ -6,14 +6,16 @@ using Fable.Formats.Defs;
 using Fable.Formats.Qst;
 using Fable.Formats.Shaders;
 
-var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "fn" or "trace-render" or "trace-landscape" or "trace-newgame" or "trace-script" or "export-scripts" or "trace-shaders" or "map-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp" or "scan" or "datascan") ?? "all";
+var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "fn" or "trace-render" or "trace-landscape" or "trace-newgame" or "trace-script" or "export-scripts" or "trace-shaders" or "trace-quartz" or "map-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp" or "scan" or "datascan") ?? "all";
 var force = args.Any(a => a is "--force" or "-f");
 var install = GameInstall.TryLocate();
-var exePath = args.FirstOrDefault(a => a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+var exePath = args.FirstOrDefault(a =>
+                  a.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ||
+                  a.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
               ?? (install is null ? null : Path.Combine(install.Root, "Fable.exe"));
 if (exePath is null || !File.Exists(exePath))
 {
-    Console.Error.WriteLine("Fable.exe not found. Set FABLE_PATH or pass the path.");
+    Console.Error.WriteLine("PE not found. Set FABLE_PATH or pass an .exe/.dll path.");
     return 2;
 }
 
@@ -70,6 +72,7 @@ switch (cmd)
         RunTraceNewGame(pe, store);
         RunTraceScriptRuntime(pe, store);
         RunTraceShaders(pe, store);
+        RunTraceQuartz(store, args);
         break;
     case "trace-script":
         if (!File.Exists(Path.Combine(outDir, "00-index", "xrefs.tsv")))
@@ -84,6 +87,9 @@ switch (cmd)
         break;
     case "trace-shaders":
         RunTraceShaders(pe, store);
+        break;
+    case "trace-quartz":
+        RunTraceQuartz(store, args);
         break;
     case "map-newgame":
         RunMapNewGame(pe, store);
@@ -2651,6 +2657,294 @@ static IndexLink WriteU32Part(PeImage pe, DumpStore store, string family, string
 
     store.WritePart(family, slug, sb.ToString());
     return new IndexLink(slug, name, va);
+}
+
+static string ResolveQuartzPath(string[] args)
+{
+    var named = args.FirstOrDefault(a =>
+        a.EndsWith("quartz.dll", StringComparison.OrdinalIgnoreCase));
+    if (named is not null && File.Exists(named))
+        return Path.GetFullPath(named);
+    var wow = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.SystemX86),
+        "quartz.dll");
+    if (File.Exists(wow))
+        return wow;
+    return Path.Combine(@"C:\Windows\SysWOW64", "quartz.dll");
+}
+
+static List<uint> FindCallDisp(PeImage pe, uint disp, uint lo, uint hi)
+{
+    var hits = new List<uint>();
+    byte[] mods32 = [0x90, 0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97];
+    byte[] mods8 = [0x50, 0x51, 0x52, 0x53, 0x54, 0x55, 0x56, 0x57];
+    var data = pe.Data;
+    foreach (var sec in pe.Sections)
+    {
+        if (!pe.InCode((int)sec.FileOffset))
+            continue;
+        var end = Math.Min(data.Length, (int)(sec.FileOffset + sec.FileSize) - 6);
+        for (var i = (int)sec.FileOffset; i < end; i++)
+        {
+            if (data[i] != 0xFF)
+                continue;
+            uint va;
+            var is32 = false;
+            foreach (var m in mods32)
+            {
+                if (data[i + 1] == m)
+                {
+                    is32 = true;
+                    break;
+                }
+            }
+
+            if (is32)
+            {
+                if (BitConverter.ToUInt32(data, i + 2) != disp)
+                    continue;
+                va = pe.Va(i);
+            }
+            else if (disp <= 0x7F)
+            {
+                var is8 = false;
+                foreach (var m in mods8)
+                {
+                    if (data[i + 1] == m)
+                    {
+                        is8 = true;
+                        break;
+                    }
+                }
+
+                if (!is8 || data[i + 2] != (byte)disp)
+                    continue;
+                va = pe.Va(i);
+            }
+            else
+                continue;
+
+            if (va < lo || va > hi)
+                continue;
+            hits.Add(va);
+        }
+    }
+
+    return hits;
+}
+
+static uint SitePrologue(PeImage pe, uint site)
+{
+    var file = pe.FileOffset(site);
+    if (file < 0)
+        return site;
+    return pe.Va(X86.FindPrologue(pe, file));
+}
+
+static IndexLink WriteGuidFindPart(
+    PeImage pe, DumpStore store, string family, string name, Guid guid)
+{
+    var slug = DumpStore.Slug(name, 0);
+    var sb = new StringBuilder();
+    sb.AppendLine($"# {name}");
+    sb.AppendLine();
+    sb.AppendLine($"`{guid:D}`. [INDEX](INDEX.md)");
+    sb.AppendLine();
+    var hits = pe.FindBytes(guid.ToByteArray());
+    foreach (var va in hits)
+        sb.AppendLine($"- `0x{va:X8}`");
+    sb.AppendLine();
+    sb.AppendLine($"hits **{hits.Count}**");
+    store.WritePart(family, slug, sb.ToString());
+    return new IndexLink(slug, name, hits.Count > 0 ? hits[0] : 0);
+}
+
+static void RunTraceQuartz(DumpStore store, string[] args)
+{
+    const string family = "quartz-trace";
+    if (!store.ShouldWrite(family, DumpStore.QuartzTraceVersion))
+    {
+        Console.WriteLine($"skip  {family}  v{DumpStore.QuartzTraceVersion} (exe unchanged)");
+        return;
+    }
+
+    var path = ResolveQuartzPath(args);
+    if (!File.Exists(path))
+    {
+        Console.Error.WriteLine($"SysWOW64 quartz.dll not found at {path}");
+        return;
+    }
+
+    PeImage pe;
+    try
+    {
+        pe = PeImage.Load(path);
+    }
+    catch (Exception ex)
+    {
+        Console.Error.WriteLine($"quartz load failed: {ex.Message}");
+        return;
+    }
+
+    Console.WriteLine($"quartz {path}");
+    Console.WriteLine($"quartzId {pe.Identity}  base 0x{pe.ImageBase:X8}  size 0x{pe.SizeOfImage:X8}");
+
+    var lo = pe.ImageBase;
+    var hi = pe.ImageBase + pe.SizeOfImage;
+    var links = new List<IndexLink>();
+
+    var id = new StringBuilder();
+    id.AppendLine("# quartz identity");
+    id.AppendLine();
+    id.AppendLine($"path `{path}`");
+    id.AppendLine($"id `{pe.Identity}`");
+    id.AppendLine($"ImageBase `0x{pe.ImageBase:X8}` SizeOfImage `0x{pe.SizeOfImage:X8}` PE32");
+    id.AppendLine();
+    id.AppendLine("32-bit FilterGraph used by Fable.exe PlayAVI `00A3B9D0`.");
+    id.AppendLine("Dump only the RenderFile walk after QueryPinInfo /");
+    id.AppendLine("EnumMediaTypes. Do not copy quartz graph-building.");
+    id.AppendLine();
+    id.AppendLine("| section | rva | vsize | file |");
+    id.AppendLine("|---|---|---|---|");
+    foreach (var s in pe.Sections)
+        id.AppendLine($"| {s.Name} | 0x{s.Rva:X8} | 0x{s.VirtualSize:X} | 0x{s.FileOffset:X} |");
+    store.WritePart(family, "identity", id.ToString());
+    links.Add(new IndexLink("identity", "identity", pe.ImageBase));
+
+    var exp = new StringBuilder();
+    exp.AppendLine("# quartz exports");
+    exp.AppendLine();
+    foreach (var (name, va) in pe.Exports())
+        exp.AppendLine($"- `{name}` `0x{va:X8}`");
+    store.WritePart(family, "exports", exp.ToString());
+    links.Add(new IndexLink("exports", "exports", 0));
+
+    (string Name, Guid Id)[] guids =
+    [
+        ("IGraphBuilder", new Guid("56a868a9-0ad4-11ce-b03a-0020af0ba770")),
+        ("IFilterGraph2", new Guid("36b73882-c2c8-11cf-8b46-00805f6cef60")),
+        ("IStreamBuilder", new Guid("56a868bf-0ad4-11ce-b03a-0020af0ba770")),
+        ("IFilterMapper2", new Guid("b79bb0b0-33c1-11d1-abe1-00a0c905f375")),
+        ("IAMFilterMiscFlags", new Guid("2dd74950-a890-11d1-abe8-00a0c905f375")),
+        ("IMediaPosition", new Guid("56a868b2-0ad4-11ce-b03a-0020af0ba770")),
+        ("IMediaSeeking", new Guid("36b73880-c2c8-11cf-8b46-00805f6cef60")),
+        ("IOverlay", new Guid("1bd0ecb0-f8e2-11ce-aac6-0020af0b99a3")),
+        ("IPin", new Guid("56a86891-0ad4-11ce-b03a-0020af0ba770")),
+        ("IEnumMediaTypes", new Guid("89c31040-846b-11ce-97d3-00aa0055595a")),
+        ("IAMPluginControl", new Guid("0e26a181-f40c-4635-8226-024387ce6887")),
+        ("CLSID_FilterGraph", new Guid("e436ebb3-524f-11ce-9f53-0020af0ba770")),
+        ("CLSID_VideoRenderer", new Guid("6bc1cffa-8fc1-4261-ac22-cfb4cc38db50")),
+        ("MEDIATYPE_Video", new Guid("73646976-0000-0010-8000-00aa00389b71")),
+        ("MEDIASUBTYPE_RGB24", new Guid("e436eb7d-524f-11ce-9f53-0020af0ba770")),
+    ];
+    foreach (var (name, guid) in guids)
+    {
+        links.Add(WriteGuidFindPart(pe, store, family, "GUID " + name, guid));
+        var found = pe.FindBytes(guid.ToByteArray(), max: 4);
+        if (found.Count > 0)
+            links.Add(WriteImmPart(pe, store, family, "xref " + name, found[0], lo, hi));
+    }
+
+    links.Add(WriteCallDispPart(pe, store, family, "IPin Connect +0x0C", 0x0C, lo, hi));
+    links.Add(WriteCallDispPart(pe, store, family, "IPin ReceiveConnection +0x10", 0x10, lo, hi));
+    links.Add(WriteCallDispPart(pe, store, family, "IPin ConnectedTo +0x18", 0x18, lo, hi));
+    links.Add(WriteCallDispPart(pe, store, family, "IPin QueryPinInfo +0x20", 0x20, lo, hi));
+    links.Add(WriteCallDispPart(pe, store, family, "IPin QueryDirection +0x24", 0x24, lo, hi));
+    links.Add(WriteCallDispPart(pe, store, family, "IPin QueryAccept +0x2C", 0x2C, lo, hi));
+    links.Add(WriteCallDispPart(pe, store, family, "IPin EnumMediaTypes +0x30", 0x30, lo, hi));
+    links.Add(WriteCallDispPart(pe, store, family, "IPin QueryInternalConnections +0x34", 0x34, lo, hi));
+
+    var qpi = FindCallDisp(pe, 0x20, lo, hi);
+    var emt = FindCallDisp(pe, 0x30, lo, hi);
+    var qa = FindCallDisp(pe, 0x2C, lo, hi);
+    var cn = FindCallDisp(pe, 0x0C, lo, hi);
+    var qpiFns = qpi.Select(s => SitePrologue(pe, s)).ToHashSet();
+    var emtFns = emt.Select(s => SitePrologue(pe, s)).ToHashSet();
+    var qaFns = qa.Select(s => SitePrologue(pe, s)).ToHashSet();
+    var cnFns = cn.Select(s => SitePrologue(pe, s)).ToHashSet();
+    var afterQpi = qpiFns.Intersect(emtFns).OrderBy(v => v).ToList();
+
+    var summary = new StringBuilder();
+    summary.AppendLine("# RenderFile after QueryPinInfo");
+    summary.AppendLine();
+    summary.AppendLine("Functions that call both IPin.QueryPinInfo (`+0x20`)");
+    summary.AppendLine("and IPin.EnumMediaTypes (`+0x30`). That is the");
+    summary.AppendLine("window after our live `qpi=8 emt=4` and before");
+    summary.AppendLine("`qa=0 rc=0 cn=0`. Do not reimplement these");
+    summary.AppendLine("functions. Read the branch that skips");
+    summary.AppendLine("QueryAccept / Connect — that branch is the");
+    summary.AppendLine("missing renderer COM contract.");
+    summary.AppendLine();
+    summary.AppendLine($"QueryPinInfo sites **{qpi.Count}** fns **{qpiFns.Count}**");
+    summary.AppendLine($"EnumMediaTypes sites **{emt.Count}** fns **{emtFns.Count}**");
+    summary.AppendLine($"QueryAccept sites **{qa.Count}** fns **{qaFns.Count}**");
+    summary.AppendLine($"Connect sites **{cn.Count}** fns **{cnFns.Count}**");
+    summary.AppendLine($"both QPI+EMT **{afterQpi.Count}**");
+    summary.AppendLine();
+    summary.AppendLine("| fn | QueryAccept | Connect |");
+    summary.AppendLine("|---|---|---|");
+    foreach (var fn in afterQpi)
+    {
+        summary.AppendLine(
+            $"| `0x{fn:X8}` | {(qaFns.Contains(fn) ? "yes" : "no")} | {(cnFns.Contains(fn) ? "yes" : "no")} |");
+        links.Add(WriteWalkPart(pe, store, family, $"after-qpi {fn:X8}", fn, 220));
+    }
+
+    store.WritePart(family, "after-qpi", summary.ToString());
+    links.Add(new IndexLink("after-qpi", "after QueryPinInfo", 0));
+
+    // Hotpatch `mov edi, edi` then `push ebp` fools WalkFunction.
+    // Persist from the real frame so the reject branch is readable.
+    (string Name, uint Va, int N)[] sites =
+    [
+        ("Render after IStreamBuilder 1008DE87", 0x1008DE88, 220),
+        ("next candidate 1008CC39", 0x1008CC39, 280),
+        ("try candidate 1008DC05", 0x1008DC05, 80),
+        ("in-graph EnumPins connect 1008D31A", 0x1008D31A, 220),
+        ("ConnectDirect 1007F598", 0x1007F598, 80),
+        ("cycle check 1008C98E", 0x1008C98E, 80),
+        ("QueryInternalConnections wrap 1008C138", 0x1008C138, 160),
+        ("QIC E_NOTIMPL fallback 1008C1BB", 0x1008C1BB, 80),
+        ("dest EnumPins setup 100891B7", 0x100891B7, 40),
+        ("next dest pin 10089337", 0x10089337, 80),
+        ("hidden-tilde pin 1008946E", 0x1008946E, 40),
+    ];
+    foreach (var site in sites)
+        links.Add(WriteFnPart(pe, store, family, site.Name, site.Va, site.N, stopOnRet: false));
+
+    var rule = new StringBuilder();
+    rule.AppendLine("# dest EnumMediaTypes is required");
+    rule.AppendLine();
+    rule.AppendLine("SysWOW64 `quartz.dll` ImageBase `0x10000000`.");
+    rule.AppendLine("Render `1008DE87` → next-candidate `1008CC37`");
+    rule.AppendLine("(in-graph filters, state 1) → try `1008DC03` →");
+    rule.AppendLine("`1008D318` EnumPins on the filter → ConnectDirect");
+    rule.AppendLine("`1007F596`.");
+    rule.AppendLine();
+    rule.AppendLine("ConnectDirect `1007F596` calls source");
+    rule.AppendLine("`IPin.Connect(dest, pmt=NULL)` only after cycle");
+    rule.AppendLine("check `1008C98C`. Cycle check uses");
+    rule.AppendLine("`QueryInternalConnections` (`vtbl+52`).");
+    rule.AppendLine("`E_NOTIMPL` is allowed: fallback is");
+    rule.AppendLine("QueryPinInfo → filter EnumPins → QueryDirection.");
+    rule.AppendLine();
+    rule.AppendLine("After QueryPinInfo / EnumMediaTypes quartz QIs");
+    rule.AppendLine("dest `IMemInputPin` **`56a8689d`**. That is");
+    rule.AppendLine("Fable pin C++ QI `00CA89A0`. `56a8689c` is");
+    rule.AppendLine("`IMemAllocator` — a pin that only exposes");
+    rule.AppendLine("`56a8689c` is skipped (`qa=0 rc=0`).");
+    rule.AppendLine();
+    rule.AppendLine("Dest `EnumMediaTypes` should yield the type");
+    rule.AppendLine("`00A3B590` accepts — `MEDIATYPE_Video` + RGB24");
+    rule.AppendLine("+ `FORMAT_VideoInfo`. Do not advertise RGB32.");
+    rule.AppendLine("Do not reimplement this walker.");
+    store.WritePart(family, "dest-enum-required", rule.ToString());
+    links.Add(new IndexLink("dest-enum-required", "dest EnumMediaTypes required", 0));
+
+    store.WriteIndex(
+        family, DumpStore.QuartzTraceVersion, "quartz-trace",
+        "SysWOW64 quartz.dll RenderFile walk after QueryPinInfo/EnumMediaTypes. Dest EnumMediaTypes must yield RGB24 or Connect never QueryAccepts. Observation only — do not copy the graph builder.",
+        links);
 }
 
 static string ResolveOutDir(string[] args)

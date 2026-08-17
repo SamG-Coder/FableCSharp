@@ -18,6 +18,7 @@ internal sealed class DumpStore
     public const int ScriptRuntimeVersion = 56;
     public const int ScriptBankVersion = 8;
     public const int ShaderTokensVersion = 7;
+    public const int QuartzTraceVersion = 2;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

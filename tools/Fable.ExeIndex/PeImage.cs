@@ -132,6 +132,73 @@ internal sealed class PeImage
             end++;
         return System.Text.Encoding.ASCII.GetString(data, off, end - off);
     }
+
+    public List<uint> FindBytes(ReadOnlySpan<byte> needle, int max = 32)
+    {
+        var hits = new List<uint>();
+        var n = needle.Length;
+        if (n == 0)
+            return hits;
+        var data = Data;
+        var end = data.Length - n;
+        for (var i = 0; i <= end && hits.Count < max; i++)
+        {
+            var ok = true;
+            for (var j = 0; j < n; j++)
+            {
+                if (data[i + j] != needle[j])
+                {
+                    ok = false;
+                    break;
+                }
+            }
+
+            if (!ok)
+                continue;
+            hits.Add(Va(i));
+        }
+
+        return hits;
+    }
+
+    public IReadOnlyList<(string Name, uint Va)> Exports()
+    {
+        var list = new List<(string, uint)>();
+        if (Data.Length < 64)
+            return list;
+        var pe = BitConverter.ToInt32(Data, 0x3C);
+        var coff = pe + 4;
+        var opt = coff + 20;
+        if (BitConverter.ToUInt16(Data, opt) != 0x10B)
+            return list;
+        var exportRva = BitConverter.ToUInt32(Data, opt + 96);
+        if (exportRva == 0)
+            return list;
+        var dir = FileOffset(ImageBase + exportRva);
+        if (dir < 0 || dir + 40 > Data.Length)
+            return list;
+        var count = BitConverter.ToInt32(Data, dir + 24);
+        var namesRva = BitConverter.ToUInt32(Data, dir + 32);
+        var ordsRva = BitConverter.ToUInt32(Data, dir + 36);
+        var fnsRva = BitConverter.ToUInt32(Data, dir + 28);
+        var names = FileOffset(ImageBase + namesRva);
+        var ords = FileOffset(ImageBase + ordsRva);
+        var fns = FileOffset(ImageBase + fnsRva);
+        if (names < 0 || ords < 0 || fns < 0)
+            return list;
+        for (var i = 0; i < count && i < 256; i++)
+        {
+            var nameRva = BitConverter.ToUInt32(Data, names + i * 4);
+            var nameOff = FileOffset(ImageBase + nameRva);
+            if (nameOff < 0)
+                continue;
+            var ord = BitConverter.ToUInt16(Data, ords + i * 2);
+            var fnRva = BitConverter.ToUInt32(Data, fns + ord * 4);
+            list.Add((ReadCString(Data, nameOff), ImageBase + fnRva));
+        }
+
+        return list;
+    }
 }
 
 internal readonly record struct PeSection(

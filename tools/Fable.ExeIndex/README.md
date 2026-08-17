@@ -18,8 +18,11 @@ dotnet run --project tools/Fable.ExeIndex -- --force trace-shaders
 dotnet run --project tools/Fable.ExeIndex -- --force trace-landscape
 dotnet run --project tools/Fable.ExeIndex -- --force trace-script
 dotnet run --project tools/Fable.ExeIndex -- --force export-scripts
+dotnet run --project tools/Fable.ExeIndex -- --force trace-quartz
 dotnet run --project tools/Fable.ExeIndex -- map-newgame
 ```
+
+`fn` / `disasm` / `calls` accept a PE32 `.dll` as well as `Fable.exe`. `trace-quartz` loads `C:\Windows\SysWOW64\quartz.dll` (the same 32-bit FilterGraph Fable PlayAVI uses) and dumps the RenderFile walk after QueryPinInfo / EnumMediaTypes. Do not copy that graph-builder into the game.
 
 ```
 dotnet run --project tools/Fable.ExeIndex -- disasm 0x00B25950 80
@@ -40,7 +43,7 @@ dotnet run --project tools/Fable.ExeIndex -- trace-landscape
 
 Each dump family lives in `out/01-sections/<family>/` as one markdown file per VA, plus `INDEX.md` that links them. A stub `01-sections/<family>.md` points at that index. `out/manifest.json` stores the exe identity (`TimeDateStamp-SizeOfImage-fileLength`) and a **recipe version** per family. Re-running the same command skips a family unless the exe changed, the version constant in `DumpStore.cs` was bumped, or you pass `--force`.
 
-`calldisp` finds both `FF 5x disp8` and `FF 9x disp32` vtbl calls. Persist those hits with `trace-shaders` / `WriteCallDispPart` instead of grepping once. `fn` walks one function past early `ret` and stops at INT3 or the next frame prologue (`push ebp; mov ebp, esp` or `push ebp; lea ebp, [esp+disp]`). `--exact` skips prologue search. New Game map covers first-scene ranges only (not the rest of the exe). Steps (`index` / `split` / `translate` / `all` / `disasm` / `fn` / `calls` / `trace-render` / `trace-landscape` / `trace-newgame` / `trace-shaders` / `map-newgame` / `imm` / `vtbl` / `disp` / `scanff` / `floats` / `calldisp`):
+`calldisp` finds both `FF 5x disp8` and `FF 9x disp32` vtbl calls. Persist those hits with `trace-shaders` / `WriteCallDispPart` instead of grepping once. `fn` walks one function past early `ret` and stops at INT3 or the next frame prologue (`push ebp; mov ebp, esp` or `push ebp; lea ebp, [esp+disp]`). `--exact` skips prologue search. New Game map covers first-scene ranges only (not the rest of the exe). Steps (`index` / `split` / `translate` / `all` / `disasm` / `fn` / `calls` / `trace-render` / `trace-landscape` / `trace-newgame` / `trace-shaders` / `trace-quartz` / `map-newgame` / `imm` / `vtbl` / `disp` / `scanff` / `floats` / `calldisp`):
 
 | Dir | What |
 |---|---|

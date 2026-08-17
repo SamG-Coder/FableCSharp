@@ -310,6 +310,12 @@ public sealed class WorldSceneTests
         Assert.Equal(0x00A3B590u, RegionTravel.PlayAviAcceptMediaType);
         Assert.Equal(0x00CA84C0u, RegionTravel.PlayAviQueryAccept);
         Assert.Equal(0x00CA8420u, RegionTravel.PlayAviQueryPinInfo);
+        Assert.Equal(0x00CA4780u, RegionTravel.PlayAviLeftoverQi);
+        Assert.Equal(0x00CA6080u, RegionTravel.PlayAviRendererQi);
+        Assert.Equal(new Guid("1bd0ecb0-f8e2-11ce-aac6-0020af0b99a3"), RegionTravel.PlayAviIOverlayIid);
+        Assert.True(RegionTravel.FirstSeenPlayAviRendererExposesMediaPosition);
+        Assert.Equal(new Guid("256a6a22-fbad-11d1-82bf-00a0c9696c8f"), RegionTravel.PlayAviIPinConnectionIid);
+        Assert.Equal(new Guid("56a8689d-0ad4-11ce-b03a-0020af0ba770"), RegionTravel.PlayAviMemInputPinIid);
         Assert.Equal(new Guid("71771540-2017-11cf-ae26-0020afd79767"), RegionTravel.PlayAviRendererClsid);
         Assert.Equal(0x0129D150u, RegionTravel.PlayAviRendererClsidVa);
         Assert.Equal(0x00CA84F0u, RegionTravel.PlayAviGetMediaType);
@@ -325,6 +331,7 @@ public sealed class WorldSceneTests
         Assert.Equal(new Guid("05589f80-c356-11ce-bf01-00aa0055595a"), RegionTravel.PlayAviFormatVideoInfo);
         Assert.True(RegionTravel.FirstSeenPlayAviQueryAcceptRequiresRgb24);
         Assert.True(RegionTravel.FirstSeenPlayAviEnumMediaTypesEmpty);
+        Assert.True(RegionTravel.PlayAviQuartzDestEnumMustYieldRgb24);
         Assert.True(RegionTravel.FirstSeenPlayAviIPinIsSeparateObject);
         Assert.False(RegionTravel.FirstSeenPlayAviAdvertisesRgb32);
         Assert.Equal(new Guid("73646976-0000-0010-8000-00aa00389b71"), RegionTravel.PlayAviMediaTypeVideo);

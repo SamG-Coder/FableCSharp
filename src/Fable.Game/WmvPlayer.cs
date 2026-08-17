@@ -49,6 +49,13 @@ public sealed class WmvPlayer : IDisposable
     internal static int ReceiveCalls { get; set; }
     internal static int GetPointerCalls { get; set; }
     internal static int ConnectCalls { get; set; }
+    internal static int FilterQiCalls { get; set; }
+    internal static int PinQiCalls { get; set; }
+    internal static int MediaPositionQiCalls { get; set; }
+    internal static int MediaSeekingQiCalls { get; set; }
+    internal static int OverlayQiCalls { get; set; }
+    internal static string LastFilterQi { get; set; } = "";
+    internal static string LastPinQi { get; set; } = "";
 
     public static string? LastError { get; private set; }
     public static int LastAddFilterHr { get; private set; }
@@ -82,6 +89,11 @@ public sealed class WmvPlayer : IDisposable
             GetPointer = GetPointerCalls,
             Connect = ConnectCalls,
             MiscFlags = MiscFlagsCalls,
+            FilterQi = LastFilterQi,
+            PinQi = LastPinQi,
+            MediaPositionQi = MediaPositionQiCalls,
+            MediaSeekingQi = MediaSeekingQiCalls,
+            OverlayQi = OverlayQiCalls,
             Graph = LastGraph,
             PinVisible = LastPinVisible,
             Connected = LastConnected,
@@ -129,6 +141,13 @@ public sealed class WmvPlayer : IDisposable
         ReceiveCalls = 0;
         GetPointerCalls = 0;
         ConnectCalls = 0;
+        FilterQiCalls = 0;
+        PinQiCalls = 0;
+        MediaPositionQiCalls = 0;
+        MediaSeekingQiCalls = 0;
+        OverlayQiCalls = 0;
+        LastFilterQi = "";
+        LastPinQi = "";
         LastAddFilterHr = 0;
         LastRenderFileHr = 0;
         LastRunHr = 0;
@@ -291,7 +310,7 @@ public sealed class WmvPlayer : IDisposable
         LastPinVisible = GraphPinVisible();
         LastConnected = _renderer.IsConnected;
         if (!_renderer.IsConnected)
-            return $"renderer-not-connected enumPins={EnumPinsCalls} next={PinNextCalls} dir={QueryDirectionCalls} conn={ConnectedToCalls} qpi={QueryPinInfoCalls} qid={QueryIdCalls} emt={EnumMediaTypesCalls} memqi={MemInputQiCalls} qa={QueryAcceptCalls} rc={ReceiveConnectionCalls} cn={ConnectCalls} misc={MiscFlagsCalls} vis=" +
+            return $"renderer-not-connected enumPins={EnumPinsCalls} next={PinNextCalls} dir={QueryDirectionCalls} conn={ConnectedToCalls} qpi={QueryPinInfoCalls} qid={QueryIdCalls} emt={EnumMediaTypesCalls} memqi={MemInputQiCalls} qa={QueryAcceptCalls} rc={ReceiveConnectionCalls} cn={ConnectCalls} misc={MiscFlagsCalls} mp={MediaPositionQiCalls} ms={MediaSeekingQiCalls} ov={OverlayQiCalls} fqi={LastFilterQi} pqi={LastPinQi} vis=" +
                    LastPinVisible + " " + LastGraph;
 
         var deadline = Environment.TickCount64 + 5000;
@@ -602,6 +621,12 @@ public sealed class WmvPlayer : IDisposable
         [DllImport("ole32.dll")]
         public static extern int CoCreateInstance(
             ref Guid clsid, IntPtr outer, int ctx, ref Guid iid, out IntPtr ppv);
+
+        [DllImport("ole32.dll")]
+        public static extern IntPtr CoTaskMemAlloc(IntPtr size);
+
+        [DllImport("ole32.dll")]
+        public static extern void CoTaskMemFree(IntPtr mem);
     }
 
     private static class Ds
@@ -679,6 +704,49 @@ public sealed class WmvPlayer : IDisposable
         [PreserveSig] int get_Duration(out double duration);
         [PreserveSig] int put_CurrentPosition(double position);
         [PreserveSig] int get_CurrentPosition(out double position);
+        [PreserveSig] int get_StopTime(out double time);
+        [PreserveSig] int put_StopTime(double time);
+        [PreserveSig] int get_PrerollTime(out double time);
+        [PreserveSig] int put_PrerollTime(double time);
+        [PreserveSig] int put_Rate(double rate);
+        [PreserveSig] int get_Rate(out double rate);
+        [PreserveSig] int CanSeekForward(out int can);
+        [PreserveSig] int CanSeekBackward(out int can);
+    }
+
+    [ComImport]
+    [Guid("36b73880-c2c8-11cf-8b46-00805f6cef60")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IMediaSeeking
+    {
+        [PreserveSig] int GetCapabilities(out int caps);
+        [PreserveSig] int CheckCapabilities(ref int caps);
+        [PreserveSig] int IsFormatSupported(ref Guid format);
+        [PreserveSig] int QueryPreferredFormat(out Guid format);
+        [PreserveSig] int GetTimeFormat(out Guid format);
+        [PreserveSig] int IsUsingTimeFormat(ref Guid format);
+        [PreserveSig] int SetTimeFormat(ref Guid format);
+        [PreserveSig] int GetDuration(out long duration);
+        [PreserveSig] int GetStopPosition(out long stop);
+        [PreserveSig] int GetCurrentPosition(out long position);
+        [PreserveSig] int ConvertTimeFormat(out long target, IntPtr targetFormat, long source, IntPtr sourceFormat);
+        [PreserveSig] int SetPositions(IntPtr current, int currentFlags, IntPtr stop, int stopFlags);
+        [PreserveSig] int GetPositions(out long current, out long stop);
+        [PreserveSig] int GetAvailable(out long earliest, out long latest);
+        [PreserveSig] int SetRate(double rate);
+        [PreserveSig] int GetRate(out double rate);
+        [PreserveSig] int GetPreroll(out long preroll);
+    }
+
+    [ComImport]
+    [Guid("256a6a22-fbad-11d1-82bf-00a0c9696c8f")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IPinConnection
+    {
+        [PreserveSig] int DynamicQueryAccept(IntPtr type);
+        [PreserveSig] int NotifyEndOfStream(IntPtr notify);
+        [PreserveSig] int IsEndPin();
+        [PreserveSig] int DynamicDisconnect();
     }
 
     [ComImport]
@@ -845,7 +913,7 @@ public sealed class WmvPlayer : IDisposable
     }
 
     [ComImport]
-    [Guid("56a8689c-0ad4-11ce-b03a-0020af0ba770")]
+    [Guid("56a8689d-0ad4-11ce-b03a-0020af0ba770")]
     [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
     private interface IMemInputPin
     {
@@ -931,7 +999,7 @@ public sealed class WmvPlayer : IDisposable
 
     [ComVisible(true)]
     [ClassInterface(ClassInterfaceType.None)]
-    private sealed class TextureRenderer : IBaseFilter, IAMFilterMiscFlags
+    private sealed class TextureRenderer : IBaseFilter, IAMFilterMiscFlags, ICustomQueryInterface
     {
         private readonly RendererPin _pin;
         private int _state;
@@ -1042,11 +1110,30 @@ public sealed class WmvPlayer : IDisposable
             vendor = null;
             return unchecked((int)0x80004001);
         }
+
+        public CustomQueryInterfaceResult GetInterface(ref Guid iid, out IntPtr ppv)
+        {
+            // Observation only. NotHandled keeps the
+            // CCW IBaseFilter / IAMFilterMiscFlags.
+            ppv = IntPtr.Zero;
+            FilterQiCalls++;
+            var name = IidName(iid);
+            if (LastFilterQi.Length > 0)
+                LastFilterQi += ",";
+            LastFilterQi += name;
+            if (iid == RegionTravel.PlayAviMediaPositionIid)
+                MediaPositionQiCalls++;
+            else if (iid == RegionTravel.PlayAviMediaSeekingIid)
+                MediaSeekingQiCalls++;
+            else if (iid == RegionTravel.PlayAviIOverlayIid)
+                OverlayQiCalls++;
+            return CustomQueryInterfaceResult.NotHandled;
+        }
     }
 
     [ComVisible(true)]
     [ClassInterface(ClassInterfaceType.None)]
-    private sealed class RendererPin : IPin, IMemInputPin, IQualityControl
+    private sealed class RendererPin : IPin, IMemInputPin, IQualityControl, IPinConnection, ICustomQueryInterface
     {
         private readonly TextureRenderer _filter;
         private readonly Action<int, int, byte[]> _onSample;
@@ -1066,6 +1153,34 @@ public sealed class WmvPlayer : IDisposable
             _filter = filter;
             _onSample = onSample;
         }
+
+        public CustomQueryInterfaceResult GetInterface(ref Guid iid, out IntPtr ppv)
+        {
+            ppv = IntPtr.Zero;
+            PinQiCalls++;
+            var name = IidName(iid);
+            if (LastPinQi.Length > 0)
+                LastPinQi += ",";
+            LastPinQi += name;
+            if (iid == new Guid("56a8689d-0ad4-11ce-b03a-0020af0ba770"))
+                MemInputQiCalls++;
+            return CustomQueryInterfaceResult.NotHandled;
+        }
+
+        // Quartz QIs IPinConnection on the heap pin
+        // during RenderFile. DynamicQueryAccept is
+        // the same RGB24 check as IPin.QueryAccept.
+        public int DynamicQueryAccept(IntPtr type) => QueryAccept(type);
+
+        public int NotifyEndOfStream(IntPtr notify)
+        {
+            _ = notify;
+            return 0;
+        }
+
+        public int IsEndPin() => 0;
+
+        public int DynamicDisconnect() => Disconnect();
 
         public int Connect(IPin receive, IntPtr type)
         {
@@ -1355,6 +1470,36 @@ public sealed class WmvPlayer : IDisposable
             (byte)Math.Clamp(value, 0, 255);
     }
 
+    private static string IidName(Guid iid)
+    {
+        if (iid == Guid.Empty) return "Empty";
+        if (iid == new Guid("00000000-0000-0000-c000-000000000046")) return "IUnknown";
+        if (iid == new Guid("00000003-0000-0000-c000-000000000046")) return "IMarshal";
+        if (iid == new Guid("00020400-0000-0000-c000-000000000046")) return "IDispatch";
+        if (iid == RegionTravel.PlayAviIPinIid) return "IPin";
+        if (iid == new Guid("56a8689d-0ad4-11ce-b03a-0020af0ba770")) return "IMemInputPin";
+        if (iid == new Guid("56a8689c-0ad4-11ce-b03a-0020af0ba770")) return "IMemAllocator";
+        if (iid == new Guid("56a868a5-0ad4-11ce-b03a-0020af0ba770")) return "IQualityControl";
+        if (iid == new Guid("56a86895-0ad4-11ce-b03a-0020af0ba770")) return "IBaseFilter";
+        if (iid == new Guid("56a86899-0ad4-11ce-b03a-0020af0ba770")) return "IMediaFilter";
+        if (iid == new Guid("0000010c-0000-0000-c000-000000000046")) return "IPersist";
+        if (iid == new Guid("70ebd3e0-99d0-11d1-9f09-00c04f97dacc")) return "IAMFilterMiscFlags";
+        if (iid == RegionTravel.PlayAviMediaPositionIid) return "IMediaPosition";
+        if (iid == RegionTravel.PlayAviMediaSeekingIid) return "IMediaSeeking";
+        if (iid == RegionTravel.PlayAviIOverlayIid) return "IOverlay";
+        if (iid == new Guid("56a868b4-0ad4-11ce-b03a-0020af0ba770")) return "IVideoWindow";
+        if (iid == new Guid("56a868b5-0ad4-11ce-b03a-0020af0ba770")) return "IBasicVideo";
+        if (iid == new Guid("56a868bf-0ad4-11ce-b03a-0020af0ba770")) return "IStreamBuilder";
+        if (iid == new Guid("56a868b3-0ad4-11ce-b03a-0020af0ba770")) return "IBasicAudio";
+        if (iid == new Guid("56a868c0-0ad4-11ce-b03a-0020af0ba770")) return "IAMovieSetup";
+        if (iid == new Guid("56a868a2-0ad4-11ce-b03a-0020af0ba770")) return "IMediaEventSink";
+        if (iid == new Guid("89c330e2-8ac5-11d0-89dc-00c04fc9e26e")) return "IAMOpenProgress";
+        if (iid == RegionTravel.PlayAviIPinConnectionIid) return "IPinConnection";
+        if (iid == new Guid("31efac30-515c-11d0-a9aa-00aa0061be93")) return "IKsPropertySet";
+        if (iid == new Guid("8e1c39a1-de53-11cf-aa63-0080c744528d")) return "IAMGraphStreams";
+        return iid.ToString("D");
+    }
+
     [ComVisible(true)]
     [ClassInterface(ClassInterfaceType.None)]
     private sealed class PinEnum : IEnumPins
@@ -1411,15 +1556,34 @@ public sealed class WmvPlayer : IDisposable
 
         public int Next(int count, IntPtr types, IntPtr fetched)
         {
-            // 00CA84F0 GetMediaType is
-            // E_UNEXPECTED. EnumMediaTypes Next
-            // therefore yields no types.
+            // SysWOW64 quartz ConnectDirect
+            // 1007F596 → source IPin.Connect
+            // (pmt=NULL) walks dest EnumMediaTypes
+            // first. Empty dest (Fable GetMediaType
+            // 00CA84F0 E_UNEXPECTED) never
+            // QueryAccepts. Advertise the one type
+            // 00A3B590 accepts.
             MediaTypeNextCalls++;
-            _ = (count, types);
-            _index++;
+            if (count <= 0)
+                return unchecked((int)0x80070057);
+            if (types == IntPtr.Zero)
+                return unchecked((int)0x80004003);
+            if (count > 1 && fetched == IntPtr.Zero)
+                return unchecked((int)0x80070057);
+            var n = 0;
+            if (_index == 0)
+            {
+                var mt = AllocRgb24Type();
+                if (mt == IntPtr.Zero)
+                    return unchecked((int)0x8007000E);
+                Marshal.WriteIntPtr(types, mt);
+                _index = 1;
+                n = 1;
+            }
+
             if (fetched != IntPtr.Zero)
-                Marshal.WriteInt32(fetched, 0);
-            return 1;
+                Marshal.WriteInt32(fetched, n);
+            return n == count ? 0 : 1;
         }
 
         public int Skip(int count)
@@ -1439,6 +1603,37 @@ public sealed class WmvPlayer : IDisposable
             enumerator = new MediaTypeEnum { _index = _index };
             return 0;
         }
+    }
+
+    private static IntPtr AllocRgb24Type()
+    {
+        var mtSize = Marshal.SizeOf<AMMediaType>();
+        var mt = Ole32.CoTaskMemAlloc((IntPtr)mtSize);
+        if (mt == IntPtr.Zero)
+            return IntPtr.Zero;
+        for (var i = 0; i < mtSize; i++)
+            Marshal.WriteByte(mt, i, 0);
+        const int vihSize = 88;
+        var vih = Ole32.CoTaskMemAlloc((IntPtr)vihSize);
+        if (vih == IntPtr.Zero)
+        {
+            Ole32.CoTaskMemFree(mt);
+            return IntPtr.Zero;
+        }
+
+        for (var i = 0; i < vihSize; i++)
+            Marshal.WriteByte(vih, i, 0);
+        var t = new AMMediaType
+        {
+            MajorType = Ds.Video,
+            SubType = Ds.Rgb24,
+            FixedSizeSamples = 1,
+            FormatType = Ds.VideoInfo,
+            FormatSize = vihSize,
+            FormatPtr = vih,
+        };
+        Marshal.StructureToPtr(t, mt, false);
+        return mt;
     }
 }
 
@@ -1469,6 +1664,11 @@ public sealed class PlayAviGraphTrace
     public int GetPointer { get; init; }
     public int Connect { get; init; }
     public int MiscFlags { get; init; }
+    public int MediaPositionQi { get; init; }
+    public int MediaSeekingQi { get; init; }
+    public int OverlayQi { get; init; }
+    public string FilterQi { get; init; } = "";
+    public string PinQi { get; init; } = "";
     public string Graph { get; init; } = "";
     public string PinVisible { get; init; } = "";
     public bool Connected { get; init; }
