@@ -310,6 +310,7 @@ public sealed class WorldGeometryTests
         Assert.False(GameBin.FirstSeenInstancesAsC3d("MARKER", "MARKER_BASIC"));
         Assert.False(GameBin.FirstSeenInstancesAsC3d("MARKER", "GAZE_OUT_OF_BUILDING_MARKER"));
         Assert.False(GameBin.FirstSeenInstancesAsC3d("MARKER", "GAZE_AT_WORK_MARKER"));
+        Assert.False(GameBin.FirstSeenInstancesAsC3d("HOLY_SITE", "HOLY_SITE_PLAYER_START"));
         Assert.False(GameBin.FirstSeenInstancesAsC3d("THING", "PARTICLE_EMITTER_PLACEABLE"));
         Assert.False(GameBin.FirstSeenInstancesAsC3d("THING", "TRACK_NODE_BASIC"));
         Assert.False(GameBin.FirstSeenInstancesAsC3d("THING", "CAMERA_POINT_SCRIPTED_SPLINE"));

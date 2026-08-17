@@ -123,7 +123,7 @@ Statuses: **PROVEN**, **EQUIVALENT**, **UNREAD**, **DISPROVEN**,
 | Maps = Contains/Sees ∪ BWD AABB touch | `OpenStaticMaps` / `CLandscapeBackgroundPatch` | `WorldGeometry.StaticMapsAround` | PROVEN | `WorldGeometryTests` |
 | Sea maps skipped | `WorldMap.IsSea` | `TryAdd` | PROVEN | visibility records |
 | Landscape patch AABB 4-plane | `00BDC2D0` | `landscapePlanes` on Build | PROVEN | visibility + `WorldSceneTests` |
-| Object Graphic / CMultiStatic | `FirstSeenInstancesAsC3d` | gizmos rejected | PROVEN | visibility (marker reject) |
+| Object Graphic / CMultiStatic | `WorldGeometry.ResolveSubmit` + GameBin `TypeName` | gizmos rejected | PROVEN | visibility (GAZE TypeName=MARKER, HOLY_SITE TypeName=HOLY_SITE) |
 | LOD is ready-or-not | `00A23DE0`; no mesh swap | `MeshLodInfoReady_00A23DE0(0)==1` | PROVEN | visibility |
 | Indoor/outdoor both house meshes | InsideBuilding false | 6909+6911 | PROVEN | house rows |
 | Stars rejected | `00B65A20` | not emitted | PROVEN | visibility |

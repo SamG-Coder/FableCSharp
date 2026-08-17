@@ -329,7 +329,38 @@ public sealed class WorldPipelineTests
         Assert.Contains(scene.Visibility, r =>
             r.Kind == "house-floor-3184" && !r.Submitted);
         Assert.Contains(scene.Visibility, r =>
-            r.Kind == "object" && !r.Submitted && r.Reason.Contains("not FirstSeenInstancesAsC3d"));
+            r.Kind == "object" && !r.Submitted && r.Reason.Contains("FirstSeenInstancesAsC3d"));
+        Assert.Contains(scene.Visibility, r =>
+            r.Name.Contains("HOLY_SITE", StringComparison.OrdinalIgnoreCase) && !r.Submitted);
+        Assert.DoesNotContain(scene.Visibility, r =>
+            r.Name.Contains("GAZE", StringComparison.OrdinalIgnoreCase) && r.Submitted);
+        Assert.DoesNotContain(scene.Visibility, r =>
+            r.Name.Contains("HOLY_SITE", StringComparison.OrdinalIgnoreCase) && r.Submitted);
+        var defs = WorldGeometry.TryLoadDefs(scene.Install);
+        Assert.NotNull(defs);
+        var gaze = scene.Things.FirstOrDefault(t =>
+                       t.DefinitionType is not null &&
+                       t.DefinitionType.Contains("GAZE", StringComparison.OrdinalIgnoreCase))
+                   ?? new Fable.Formats.Tng.ThingInstance
+                   {
+                       Kind = "MARKER",
+                       Section = "NULL",
+                       DefinitionType = "GAZE_OUT_OF_BUILDING_MARKER",
+                       PositionX = 0f,
+                       PositionY = 0f,
+                       PositionZ = 0f,
+                       Properties = new Dictionary<string, string>(),
+                   };
+        var holy = scene.Things.First(t => t.DefinitionType == "HOLY_SITE_PLAYER_START");
+        var gazeSubmit = WorldGeometry.ResolveSubmit(defs, null, gaze);
+        var holySubmit = WorldGeometry.ResolveSubmit(defs, null, holy);
+        Assert.False(gazeSubmit.Submitted);
+        Assert.Equal("MARKER", gazeSubmit.TypeName);
+        Assert.False(holySubmit.Submitted);
+        Assert.Equal("HOLY_SITE", holySubmit.TypeName);
+        Assert.False(holySubmit.AsC3d);
+        Assert.False(GameBin.FirstSeenInstancesAsC3d("HOLY_SITE", "HOLY_SITE_PLAYER_START"));
+        Assert.False(GameBin.FirstSeenInstancesAsC3d("MARKER", "GAZE_OUT_OF_BUILDING_MARKER"));
 
         Assert.Equal(34, ScenePasses.Registration.Length);
         Assert.Equal(4, ScenePasses.FirstSeenLayers.Count);
@@ -405,6 +436,31 @@ public sealed class WorldPipelineTests
         Assert.Equal(0x2000u, a[4].Layer.Bit);
         Assert.Contains("UNREAD", a[4].Layer.PixelShader);
         Assert.Contains("register offsets", a[3].SourceBytes);
+        Assert.Contains("ObjectTransform", a[2].SourceSpace);
+        Assert.Contains("ObjectTransform", a[3].SourceSpace);
+        Assert.True(a[2].MeshId > 0, $"trace C mesh={a[2].MeshId}");
+        Assert.True(a[2].TextureId > 0, $"trace C tex={a[2].TextureId}");
+        Assert.True(a[3].MeshId > 0, $"trace D mesh={a[3].MeshId}");
+        Assert.True(a[3].TextureId > 0, $"trace D tex={a[3].TextureId}");
+        var propXform = WorldGeometry.ObjectTransform(scene.FenceThing);
+        Assert.True(
+            (Vector3.Transform(a[2].Decoded, propXform) - a[2].World).Length() < 1e-3f,
+            "trace C world must be ObjectTransform(C3D)");
+        Assert.Contains(scene.Geometry.Triangles, t =>
+            t.Layer == SceneLayer.Prop && t.TextureId == a[2].TextureId &&
+            WorldSpaces.DistanceXy((t.A + t.B + t.C) / 3f, a[2].World) < 4f);
+        var fatherXform = WorldGeometry.ObjectTransform(scene.FatherThing);
+        Assert.True(
+            (Vector3.Transform(a[3].Decoded, fatherXform) - a[3].World).Length() < 1e-3f,
+            "trace D world must be ObjectTransform(skinned), not Father+metres");
+        var invented = scene.Father + WorldSpaces.C3dLocalToMetres(a[3].Decoded);
+        Assert.True(
+            (invented - a[3].World).Length() > 1e-4f ||
+            (Vector3.Transform(a[3].Decoded, fatherXform) - invented).Length() < 1e-4f,
+            "ObjectTransform is the client W path");
+        Assert.Contains(scene.Geometry.Triangles, t =>
+            t.Layer == SceneLayer.Prop &&
+            WorldSpaces.DistanceXy((t.A + t.B + t.C) / 3f, a[3].World) < 8f);
         Assert.True(a[0].NativeClip is { } native &&
                     WorldSpaces.NearlyEqual(native, a[0].Clip, 1e-3f));
 

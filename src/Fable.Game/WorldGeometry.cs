@@ -38,7 +38,7 @@ public sealed class WorldGeometry
         var namesPath = install.FindCompiledDef("names.bin");
         var binPath = install.FindCompiledDef("game.bin");
         if (namesPath is not null && binPath is not null)
-            defs = GameBin.Load(binPath, NamesBin.Load(namesPath));
+            defs = TryLoadDefs(install);
         using var big = BigArchive.Open(graphicsPath);
         var bank = big.SubBanks.First(item => item.Name.Contains("MESH", StringComparison.OrdinalIgnoreCase));
         var entries = big.ReadEntries(bank);
@@ -298,28 +298,18 @@ public sealed class WorldGeometry
 
         foreach (var thing in things)
         {
-            if (thing.PositionX is null || thing.DefinitionType is null)
-                continue;
-
-            var meshIds = defs?.FindMeshIds(thing.DefinitionType) ?? [];
-            if (meshIds.Count == 0)
+            var resolved = ResolveSubmit(defs, enums, thing);
+            if (resolved.MeshIds.Count == 0)
             {
-                var one = defs?.FindMeshId(thing.DefinitionType) ?? enums?.FindMeshId(thing.DefinitionType);
-                if (one is > 0)
-                    meshIds = [one.Value];
-            }
-
-            if (meshIds.Count == 0)
-            {
-                var typeName = defs?.FindEntry(thing.DefinitionType)?.TypeName;
-                if (GameBin.FirstSeenInstancesAsC3d(typeName, thing.DefinitionType))
+                if (resolved.AsC3d)
                 {
                     missing++;
-                    missingDefs.Add(thing.DefinitionType);
+                    missingDefs.Add(thing.DefinitionType ?? thing.Kind);
                 }
                 continue;
             }
 
+            var meshIds = resolved.MeshIds;
             var transform = ObjectTransform(thing) * shift;
             var any = false;
             foreach (var meshId in meshIds)
@@ -360,16 +350,48 @@ public sealed class WorldGeometry
                 instances++;
             }
 
-            if (!any)
+            if (!any && resolved.AsC3d)
             {
-                var typeName = defs?.FindEntry(thing.DefinitionType)?.TypeName;
-                if (GameBin.FirstSeenInstancesAsC3d(typeName, thing.DefinitionType))
-                {
-                    missing++;
-                    missingDefs.Add(thing.DefinitionType);
-                }
+                missing++;
+                missingDefs.Add(thing.DefinitionType ?? thing.Kind);
             }
         }
+    }
+
+    /// <summary>
+    /// Same lookup <see cref="AddInstances"/> uses: GameBin
+    /// <c>TypeName</c> + <see cref="GameBin.FirstSeenInstancesAsC3d"/>
+    /// + <see cref="GameBin.FindMeshIds"/>. GAZE / HOLY_SITE are
+    /// TypeName MARKER (not a <c>MARKER_</c> prefix) and do not
+    /// submit Graphic.
+    /// </summary>
+    public static ThingSubmit ResolveSubmit(GameBin? defs, HeaderEnums? enums, ThingInstance thing)
+    {
+        if (thing.PositionX is null || thing.DefinitionType is null)
+            return new ThingSubmit(thing.Kind, null, [], false, false);
+
+        var entry = defs?.FindEntry(thing.DefinitionType);
+        var typeName = entry?.TypeName;
+        var asC3d = GameBin.FirstSeenInstancesAsC3d(typeName, thing.DefinitionType);
+        var meshIds = defs?.FindMeshIds(thing.DefinitionType) ?? [];
+        if (meshIds.Count == 0 && asC3d)
+        {
+            var one = defs?.FindMeshId(thing.DefinitionType) ?? enums?.FindMeshId(thing.DefinitionType);
+            if (one is > 0)
+                meshIds = [one.Value];
+        }
+
+        return new ThingSubmit(
+            thing.DefinitionType, typeName, meshIds, asC3d, asC3d && meshIds.Count > 0);
+    }
+
+    public static GameBin? TryLoadDefs(GameInstall install)
+    {
+        var namesPath = install.FindCompiledDef("names.bin");
+        var binPath = install.FindCompiledDef("game.bin");
+        if (namesPath is null || binPath is null)
+            return null;
+        return GameBin.Load(binPath, NamesBin.Load(namesPath));
     }
 
     /// <summary>
@@ -435,3 +457,10 @@ public sealed class WorldGeometry
         return fallback;
     }
 }
+
+public readonly record struct ThingSubmit(
+    string Definition,
+    string? TypeName,
+    IReadOnlyList<int> MeshIds,
+    bool AsC3d,
+    bool Submitted);

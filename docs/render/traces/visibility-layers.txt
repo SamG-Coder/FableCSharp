@@ -17,145 +17,184 @@ lod	C3DMeshLODInfo	submit	ready-or-not, not a mesh swap
 house-interior	6911	submit	CMultiStatic 6911 then 6909; InsideBuilding=false
 house-exterior	6909	submit	Graphic 6909
 house-floor-3184	3184	reject	material exists, no prims — not replaced
-object	OBJECT_CUPBOARD_MEDIUM	submit	submit Graphic / CMultiStatic
-object	OBJECT_CUPBOARD_TALL	submit	submit Graphic / CMultiStatic
-object	OBJECT_BOOKSHELF_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_BOOKSHELF_02	submit	submit Graphic / CMultiStatic
-object	OBJECT_BOOKSHELF_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_BOOKSHELF_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_CUPBOARD_TALL	submit	submit Graphic / CMultiStatic
-object	BUILDING_OAKVALE_HOUSE_MEDIUM_SINGLE_FLOOR_BUYABLE	submit	submit Graphic / CMultiStatic
-object	BUILDING_OAKVALE_HOUSE_MEDIUM_TWO_FLOORS	submit	submit Graphic / CMultiStatic
-object	BUILDING_OAKVALE_HOUSE_MEDIUM_SINGLE_FLOOR	submit	submit Graphic / CMultiStatic
-object	GENERIC_INTERNAL_FIREPLACE	submit	submit Graphic / CMultiStatic
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED_SPLINE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED_SPLINE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	OBJECT_BS_RUG_ROUND_SWIRLS_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_BS_RUG_ROUND_DIAMONDS_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_BS_RUG_ROUND_BLACKSUN_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_BS_TABLELAMP_UNLIT_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_TABLE_LARGE_ROUND_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_KHG_BED_03	submit	submit Graphic / CMultiStatic
-object	OBJECT_KHG_BED_02	submit	submit Graphic / CMultiStatic
-object	OBJECT_KHG_BED_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_FLOWER_JUG_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_TABLE_SMALL_SQUARE_01D	submit	submit Graphic / CMultiStatic
-object	OBJECT_BOOK_03	submit	submit Graphic / CMultiStatic
-object	OBJECT_BOOK_OPEN_03	submit	submit Graphic / CMultiStatic
-object	OBJECT_BOOK_LOCKED_03	submit	submit Graphic / CMultiStatic
-object	OBJECT_BOOK_OPEN_04	submit	submit Graphic / CMultiStatic
-object	OBJECT_FLOWER_JUG_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_TABLE_SMALL_CROPPED_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_RUG_BEARSKIN_POLAR	submit	submit Graphic / CMultiStatic
-object	OBJECT_TABLE_LARGE_RECTANGULAR_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_TABLE_LARGE_RECTANGULAR_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_RUG_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_BS_RUG_ROUND_SWIRLS_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_BS_RUG_ROUND_REDSUN_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_KHG_BED_03	submit	submit Graphic / CMultiStatic
-object	OBJECT_FLOWER_JUG_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_TABLE_LARGE_RECTANGULAR_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_KHG_BED_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_BOOK_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_BS_TABLELAMP_UNLIT_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_TABLE_LARGE_ROUND_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_RUG_BEARSKIN	submit	submit Graphic / CMultiStatic
-object	OBJECT_OAKVALE_FENCE_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_OAKVALE_FENCE_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_OAKVALE_FENCETRIPLE_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_OAKVALE_FENCETRIPLE_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_OAKVALE_FENCETRIPLE_BROKEN_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_OAKVALE_FENCEGATE_04	submit	submit Graphic / CMultiStatic
-object	OBJECT_CHAIR_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_CHAIR_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_CHAIR_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_CHAIR_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_CHAIR_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_CHAIR_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_CHAIR_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_CHAIR_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_BUILDING_DOOR_3	submit	submit Graphic / CMultiStatic
-object	OBJECT_BUILDING_DOOR_3	submit	submit Graphic / CMultiStatic
-object	OBJECT_BED	submit	submit Graphic / CMultiStatic
-object	OBJECT_WOODEN_LAMP_OFF	submit	submit Graphic / CMultiStatic
-object	OBJECT_WOODEN_LAMP_OFF	submit	submit Graphic / CMultiStatic
-object	OBJECT_BS_TABLELAMP_UNLIT_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_BS_GROG_BOTTLE_WHISKY_01	submit	submit Graphic / CMultiStatic
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	OBJECT_HOME_TABLE_3_STOOLS	submit	submit Graphic / CMultiStatic
-object	GAZE_OUT_OF_BUILDING_MARKER	submit	submit Graphic / CMultiStatic
-object	GAZE_OUT_OF_BUILDING_MARKER	submit	submit Graphic / CMultiStatic
-object	GAZE_OUT_OF_BUILDING_MARKER	submit	submit Graphic / CMultiStatic
-object	GAZE_OUT_OF_BUILDING_MARKER	submit	submit Graphic / CMultiStatic
-object	OBJECT_HOME_TABLE_3_STOOLS	submit	submit Graphic / CMultiStatic
-object	OBJECT_HOME_TABLE_3_STOOLS	submit	submit Graphic / CMultiStatic
-object	OBJECT_BS_TABLELAMP_UNLIT_01	submit	submit Graphic / CMultiStatic
-object	OBJECT_BS_TABLELAMP_UNLIT_01	submit	submit Graphic / CMultiStatic
-object	GAZE_OUT_OF_BUILDING_MARKER	submit	submit Graphic / CMultiStatic
-object	GAZE_OUT_OF_BUILDING_MARKER	submit	submit Graphic / CMultiStatic
-object	GAZE_OUT_OF_BUILDING_MARKER	submit	submit Graphic / CMultiStatic
-object	GAZE_OUT_OF_BUILDING_MARKER	submit	submit Graphic / CMultiStatic
-object	GAZE_OUT_OF_BUILDING_MARKER	submit	submit Graphic / CMultiStatic
-object	TRACK_NODE_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	HOLY_SITE_PLAYER_START	submit	submit Graphic / CMultiStatic
-object	CAMERA_POINT_SCRIPTED	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED_SPLINE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_LIGHT	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED_SPLINE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED_SPLINE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	PARTICLE_EMITTER_PLACEABLE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	PARTICLE_EMITTER_PLACEABLE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	PARTICLE_EMITTER_PLACEABLE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED_SPLINE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED_SPLINE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	CAMERA_POINT_SCRIPTED_SPLINE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_BASIC	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_LIGHT	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_LIGHT	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_LIGHT	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	PARTICLE_EMITTER_PLACEABLE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	PARTICLE_EMITTER_PLACEABLE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	PARTICLE_EMITTER_PLACEABLE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	PARTICLE_EMITTER_PLACEABLE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	PARTICLE_EMITTER_PLACEABLE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	PARTICLE_EMITTER_PLACEABLE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	PARTICLE_EMITTER_PLACEABLE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	PARTICLE_EMITTER_PLACEABLE	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_LIGHT	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
-object	MARKER_LIGHT	reject	reject not FirstSeenInstancesAsC3d (marker/gizmo)
+object	OBJECT_CUPBOARD_MEDIUM	submit	submit Graphic type=OBJECT meshes=7558
+object	OBJECT_CUPBOARD_TALL	submit	submit Graphic type=OBJECT meshes=7560
+object	OBJECT_BOOKSHELF_01	submit	submit Graphic type=OBJECT meshes=5523
+object	OBJECT_BOOKSHELF_02	submit	submit Graphic type=OBJECT meshes=5525
+object	OBJECT_BOOKSHELF_01	submit	submit Graphic type=OBJECT meshes=5523
+object	OBJECT_BOOKSHELF_01	submit	submit Graphic type=OBJECT meshes=5523
+object	OBJECT_CUPBOARD_TALL	submit	submit Graphic type=OBJECT meshes=7560
+object	BUILDING_OAKVALE_HOUSE_MEDIUM_SINGLE_FLOOR_BUYABLE	submit	submit Graphic type=BUILDING meshes=6909,6911
+object	BUILDING_OAKVALE_HOUSE_MEDIUM_TWO_FLOORS	submit	submit Graphic type=BUILDING meshes=6899,6900
+object	BUILDING_OAKVALE_HOUSE_MEDIUM_SINGLE_FLOOR	submit	submit Graphic type=BUILDING meshes=6909,6911
+object	GENERIC_INTERNAL_FIREPLACE	submit	submit Graphic type=OBJECT meshes=4572
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED_SPLINE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED_SPLINE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	GAZE_AT_WORK_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_AT_WORK_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_AT_WORK_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_AT_WORK_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_AT_WORK_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_AT_WORK_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_AT_WORK_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_AT_WORK_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_AT_WORK_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_AT_WORK_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	OBJECT_BS_RUG_ROUND_SWIRLS_01	submit	submit Graphic type=OBJECT meshes=4903
+object	OBJECT_BS_RUG_ROUND_DIAMONDS_01	submit	submit Graphic type=OBJECT meshes=4901
+object	OBJECT_BS_RUG_ROUND_BLACKSUN_01	submit	submit Graphic type=OBJECT meshes=4900
+object	OBJECT_BS_TABLELAMP_UNLIT_01	submit	submit Graphic type=OBJECT meshes=4808
+object	OBJECT_TABLE_LARGE_ROUND_01	submit	submit Graphic type=OBJECT meshes=7583
+object	OBJECT_KHG_BED_03	submit	submit Graphic type=OBJECT meshes=6556
+object	OBJECT_KHG_BED_02	submit	submit Graphic type=OBJECT meshes=6554
+object	OBJECT_KHG_BED_01	submit	submit Graphic type=OBJECT meshes=6552
+object	OBJECT_FLOWER_JUG_01	submit	submit Graphic type=OBJECT meshes=5515
+object	OBJECT_TABLE_SMALL_SQUARE_01D	submit	submit Graphic type=OBJECT meshes=7581
+object	OBJECT_BOOK_03	submit	submit Graphic type=OBJECT meshes=5482
+object	OBJECT_BOOK_OPEN_03	submit	submit Graphic type=OBJECT meshes=5484
+object	OBJECT_BOOK_LOCKED_03	submit	submit Graphic type=OBJECT meshes=5483
+object	OBJECT_BOOK_OPEN_04	submit	submit Graphic type=OBJECT meshes=5487
+object	OBJECT_FLOWER_JUG_01	submit	submit Graphic type=OBJECT meshes=5515
+object	OBJECT_TABLE_SMALL_CROPPED_01	submit	submit Graphic type=OBJECT meshes=7571
+object	OBJECT_RUG_BEARSKIN_POLAR	submit	submit Graphic type=OBJECT meshes=5529
+object	OBJECT_TABLE_LARGE_RECTANGULAR_01	submit	submit Graphic type=OBJECT meshes=7573
+object	OBJECT_TABLE_LARGE_RECTANGULAR_01	submit	submit Graphic type=OBJECT meshes=7573
+object	OBJECT_RUG_01	submit	submit Graphic type=OBJECT meshes=5526
+object	OBJECT_BS_RUG_ROUND_SWIRLS_01	submit	submit Graphic type=OBJECT meshes=4903
+object	OBJECT_BS_RUG_ROUND_REDSUN_01	submit	submit Graphic type=OBJECT meshes=4902
+object	OBJECT_KHG_BED_03	submit	submit Graphic type=OBJECT meshes=6556
+object	OBJECT_FLOWER_JUG_01	submit	submit Graphic type=OBJECT meshes=5515
+object	OBJECT_TABLE_LARGE_RECTANGULAR_01	submit	submit Graphic type=OBJECT meshes=7573
+object	OBJECT_KHG_BED_01	submit	submit Graphic type=OBJECT meshes=6552
+object	OBJECT_BOOK_01	submit	submit Graphic type=OBJECT meshes=5476
+object	OBJECT_BS_TABLELAMP_UNLIT_01	submit	submit Graphic type=OBJECT meshes=4808
+object	OBJECT_TABLE_LARGE_ROUND_01	submit	submit Graphic type=OBJECT meshes=7583
+object	OBJECT_RUG_BEARSKIN	submit	submit Graphic type=OBJECT meshes=5528
+object	HOLY_SITE_PLAYER_START	reject	reject TypeName=HOLY_SITE FirstSeenInstancesAsC3d
+object	OBJECT_OAKVALE_FENCE_01	submit	submit Graphic type=OBJECT meshes=7704
+object	OBJECT_OAKVALE_FENCE_01	submit	submit Graphic type=OBJECT meshes=7704
+object	OBJECT_OAKVALE_FENCETRIPLE_01	submit	submit Graphic type=OBJECT meshes=7706
+object	OBJECT_OAKVALE_FENCETRIPLE_01	submit	submit Graphic type=OBJECT meshes=7706
+object	OBJECT_OAKVALE_FENCETRIPLE_BROKEN_01	submit	submit Graphic type=OBJECT meshes=7710
+object	OBJECT_OAKVALE_FENCEGATE_04	submit	submit Graphic type=OBJECT meshes=7723
+object	OBJECT_CHAIR_01	submit	submit Graphic type=OBJECT meshes=196
+object	OBJECT_CHAIR_01	submit	submit Graphic type=OBJECT meshes=196
+object	OBJECT_CHAIR_01	submit	submit Graphic type=OBJECT meshes=196
+object	OBJECT_CHAIR_01	submit	submit Graphic type=OBJECT meshes=196
+object	OBJECT_CHAIR_01	submit	submit Graphic type=OBJECT meshes=196
+object	OBJECT_CHAIR_01	submit	submit Graphic type=OBJECT meshes=196
+object	OBJECT_CHAIR_01	submit	submit Graphic type=OBJECT meshes=196
+object	OBJECT_CHAIR_01	submit	submit Graphic type=OBJECT meshes=196
+object	OBJECT_BUILDING_DOOR_3	submit	submit Graphic type=OBJECT meshes=254
+object	OBJECT_BUILDING_DOOR_3	submit	submit Graphic type=OBJECT meshes=254
+object	OBJECT_BED	submit	submit Graphic type=OBJECT meshes=290
+object	OBJECT_WOODEN_LAMP_OFF	submit	submit Graphic type=OBJECT meshes=7544
+object	OBJECT_WOODEN_LAMP_OFF	submit	submit Graphic type=OBJECT meshes=7544
+object	OBJECT_BS_TABLELAMP_UNLIT_01	submit	submit Graphic type=OBJECT meshes=4808
+object	OBJECT_BS_GROG_BOTTLE_WHISKY_01	submit	submit Graphic type=OBJECT meshes=4806
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	OBJECT_HOME_TABLE_3_STOOLS	submit	submit Graphic type=OBJECT meshes=5560
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	OBJECT_HOME_TABLE_3_STOOLS	submit	submit Graphic type=OBJECT meshes=5560
+object	OBJECT_HOME_TABLE_3_STOOLS	submit	submit Graphic type=OBJECT meshes=5560
+object	OBJECT_BS_TABLELAMP_UNLIT_01	submit	submit Graphic type=OBJECT meshes=4808
+object	OBJECT_BS_TABLELAMP_UNLIT_01	submit	submit Graphic type=OBJECT meshes=4808
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	TRACK_NODE_BASIC	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	HOLY_SITE_PLAYER_START	reject	reject TypeName=HOLY_SITE FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	GAZE_OUT_OF_BUILDING_MARKER	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED_SPLINE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_LIGHT	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED_SPLINE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED_SPLINE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	PARTICLE_EMITTER_PLACEABLE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	PARTICLE_EMITTER_PLACEABLE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	PARTICLE_EMITTER_PLACEABLE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED_SPLINE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED_SPLINE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	CAMERA_POINT_SCRIPTED_SPLINE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_BASIC	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_LIGHT	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_LIGHT	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_LIGHT	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	PARTICLE_EMITTER_PLACEABLE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	PARTICLE_EMITTER_PLACEABLE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	PARTICLE_EMITTER_PLACEABLE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	PARTICLE_EMITTER_PLACEABLE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	PARTICLE_EMITTER_PLACEABLE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	PARTICLE_EMITTER_PLACEABLE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	PARTICLE_EMITTER_PLACEABLE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	PARTICLE_EMITTER_PLACEABLE	reject	reject TypeName=THING FirstSeenInstancesAsC3d
+object	MARKER_LIGHT	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d
+object	MARKER_LIGHT	reject	reject TypeName=MARKER FirstSeenInstancesAsC3d

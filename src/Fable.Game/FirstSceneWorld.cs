@@ -44,6 +44,7 @@ public sealed class FirstSceneWorld
     public required LevTileVertex TerrainFile { get; init; }
     public required ThingInstance HouseThing { get; init; }
     public required ThingInstance FenceThing { get; init; }
+    public required ThingInstance FatherThing { get; init; }
     public required LandscapeFrustum.Plane[] Planes { get; init; }
     public required IReadOnlyList<WorldVisibilityRecord> Visibility { get; init; }
 
@@ -72,9 +73,14 @@ public sealed class FirstSceneWorld
                      ?? throw new InvalidOperationException("STB");
         var houseThing = things.First(t => t.ScriptName == HouseScript);
         var house = PositionOf(houseThing);
+        var fatherSource = things.First(t =>
+            t.ScriptName is not null &&
+            t.ScriptName.Equals(RegionTravel.LiveFatherScript, StringComparison.OrdinalIgnoreCase));
         var father = runtime.ActorPositions.TryGetValue(RegionTravel.IntroFatherActor, out var fp)
             ? fp
-            : PositionOf(things.First(t => t.ScriptName == RegionTravel.LiveFatherScript));
+            : PositionOf(fatherSource);
+        var fatherThing = ClonePlaced(fatherSource,
+            fatherSource.DefinitionType ?? RegionTravel.LiveFatherCreature, father);
         var kid = runtime.ActorPositions.TryGetValue(RegionTravel.IntroHeroActor, out var kp)
             ? kp
             : RegionTravel.PositionOf(RegionTravel.FindPlayerStart(things)!);
@@ -109,6 +115,7 @@ public sealed class FirstSceneWorld
             TerrainFile = terrainFile,
             HouseThing = houseThing,
             FenceThing = fenceThing,
+            FatherThing = fatherThing,
             Planes = planes,
             Visibility = Classify(install, levels, things, geometry, planes, house),
         };
@@ -175,23 +182,37 @@ public sealed class FirstSceneWorld
     public WorldPrimitiveTrace TraceProp()
     {
         var (w, v, p) = WorldViewProj();
+        var defs = WorldGeometry.TryLoadDefs(Install)
+                   ?? throw new InvalidOperationException("game.bin");
+        var resolved = WorldGeometry.ResolveSubmit(defs, null, FenceThing);
+        var meshId = resolved.MeshIds.First();
+        var mesh = LoadMesh(meshId);
+        var local = mesh.Triangles[0].A;
         var xform = WorldGeometry.ObjectTransform(FenceThing);
-        var world = Vector3.Transform(Vector3.Zero, xform);
+        var world = Vector3.Transform(local, xform);
+        var submitted = Geometry.Triangles.First(t =>
+            t.Layer == SceneLayer.Prop &&
+            (NearVert(t.A, world) || NearVert(t.B, world) || NearVert(t.C, world)));
         var clip = WorldSpaces.Clip(world, w, v, p);
         var layer = ScenePasses.FirstSeenLayers.First(l => l.Bit == 0x20);
         return new WorldPrimitiveTrace(
-            "C", "static prop", "graphics.big + TNG",
-            0, FenceThing.DefinitionType ?? "",
-            world, "C3D local → RHSetForward/Up + TNG pos",
+            "C", "static prop", "graphics.big C3D + TNG",
+            meshId,
+            $"def {FenceThing.DefinitionType} C3D {Fmt(local)} mesh {meshId}",
+            local, "C3D cm → ObjectTransform (0.01, RHSetForward/Up)",
             new Vector2(world.X, world.Y), world, default,
             w, v, p, clip, WorldSpaces.ToNdc(clip),
-            layer, 0, "C3D UV oT0=v2");
+            layer, submitted.TextureId, "C3D UV oT0=v2");
     }
 
     public WorldPrimitiveTrace TracePalskin()
     {
         var (w, v, p) = WorldViewProj();
-        var sample = LoadFatherSample();
+        var defs = WorldGeometry.TryLoadDefs(Install)
+                   ?? throw new InvalidOperationException("game.bin");
+        var resolved = WorldGeometry.ResolveSubmit(defs, null, FatherThing);
+        var meshId = resolved.MeshIds.First();
+        var (mesh, sample) = LoadFatherMesh();
         var group = sample.GroupBones ?? [];
         var palettes = IdentityPalettes(64);
         var skinned = WorldShading.SkinPosition(
@@ -199,19 +220,25 @@ public sealed class FirstSceneWorld
             [sample.Index0, sample.Index1, sample.Index2, sample.Index3],
             [sample.Weight0, sample.Weight1, sample.Weight2, sample.Weight3],
             palettes, group);
-        var metres = WorldSpaces.C3dLocalToMetres(skinned);
-        var world = Father + metres;
+        var xform = WorldGeometry.ObjectTransform(FatherThing);
+        var world = Vector3.Transform(skinned, xform);
+        var submitted = Geometry.Triangles
+            .Where(t => t.Layer == SceneLayer.Prop)
+            .OrderBy(t => WorldSpaces.DistanceXy((t.A + t.B + t.C) / 3f, world))
+            .First();
         var clip = WorldSpaces.Clip(world, w, v, p);
         var layer = ScenePasses.FirstSeenLayers.First(l => l.Bit == 0x20);
+        _ = mesh;
         return new WorldPrimitiveTrace(
             "D", "PALSKIN father", "graphics.big CREATURE_HERO_FATHER",
-            0,
+            meshId,
             $"file idx {sample.Index0},{sample.Index1},{sample.Index2} " +
-            $"(register offsets) group[{(group.Length == 0 ? "-" : (sample.Index0 / 3).ToString())}]",
-            sample.Position, "C3D packed / PALSKIN dest[group[a0/3]]",
-            new Vector2(Father.X, Father.Y), world, default,
+            $"(register offsets) group[{(group.Length == 0 ? "-" : (sample.Index0 / 3).ToString())}] " +
+            "ObjectTransform 0.01 RHSetForward/Up",
+            skinned, "PALSKIN dest[group[a0/3]] → ObjectTransform",
+            new Vector2(world.X, world.Y), world, default,
             w, v, p, clip, WorldSpaces.ToNdc(clip),
-            layer, 0, "PALSKIN oT0=v4");
+            layer, submitted.TextureId, "PALSKIN oT0=v4");
     }
 
     public WorldPrimitiveTrace TraceSky()
@@ -320,20 +347,42 @@ public sealed class FirstSceneWorld
             File.WriteAllText(Path.Combine(directory, $"world-trace-{t.Id}.txt"), FormatTrace(t));
     }
 
-    private MeshPalskinSample LoadFatherSample()
+    private MeshFile LoadMesh(int meshId)
     {
-        var namesPath = Install.FindCompiledDef("names.bin");
-        var binPath = Install.FindCompiledDef("game.bin");
-        var bin = GameBin.Load(binPath!, NamesBin.Load(namesPath!));
-        var meshId = bin.FindMeshId(RegionTravel.LiveFatherCreature)
-                     ?? throw new InvalidOperationException("father mesh");
         var path = Path.Combine(Install.DataRoot, "graphics", "graphics.big");
         using var big = BigArchive.Open(path);
         var bank = big.SubBanks.First(item => item.Name.Contains("MESH", StringComparison.OrdinalIgnoreCase));
         var entry = big.ReadEntries(bank).First(e => e.Id == (uint)meshId);
-        var mesh = MeshFile.Parse(big.Read(entry), (int)entry.Type);
-        return mesh.PalskinSamples[0];
+        return MeshFile.Parse(big.Read(entry), (int)entry.Type);
     }
+
+    private (MeshFile Mesh, MeshPalskinSample Sample) LoadFatherMesh()
+    {
+        var defs = WorldGeometry.TryLoadDefs(Install)
+                   ?? throw new InvalidOperationException("game.bin");
+        var meshId = defs.FindMeshId(RegionTravel.LiveFatherCreature)
+                     ?? throw new InvalidOperationException("father mesh");
+        var mesh = LoadMesh(meshId);
+        return (mesh, mesh.PalskinSamples[0]);
+    }
+
+    private static ThingInstance ClonePlaced(ThingInstance source, string definitionType, Vector3 position) =>
+        new()
+        {
+            Kind = source.Kind,
+            Section = source.Section,
+            DefinitionType = definitionType,
+            ScriptName = source.ScriptName,
+            Uid = source.Uid,
+            Player = source.Player,
+            PositionX = position.X,
+            PositionY = position.Y,
+            PositionZ = position.Z,
+            Properties = source.Properties,
+        };
+
+    private static bool NearVert(Vector3 a, Vector3 b) =>
+        (a - b).LengthSquared() < 0.0025f;
 
     private static Matrix4x4[] IdentityPalettes(int count)
     {
@@ -436,20 +485,41 @@ public sealed class FirstSceneWorld
             GameBin.FirstSeenHouseFloor3184HasPrims,
             "material exists, no prims — not replaced"));
 
-        foreach (var thing in things.Where(t => t.PositionX is not null))
+        var defs = WorldGeometry.TryLoadDefs(install);
+        var headerPath = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "meshdata.h");
+        var enums = File.Exists(headerPath) ? HeaderEnums.Load(headerPath) : null;
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        void AddThing(ThingInstance thing)
         {
-            var near = WorldSpaces.DistanceXy(PositionOf(thing), house) < 25f;
-            if (!near)
-                continue;
-            var asC3d = GameBin.FirstSeenInstancesAsC3d(null, thing.DefinitionType);
-            var hasPos = thing.DefinitionType is not null;
+            var key = $"{thing.DefinitionType}:{thing.Uid}";
+            if (!seen.Add(key))
+                return;
+            var resolved = WorldGeometry.ResolveSubmit(defs, enums, thing);
+            var submittedInWorld = resolved.Submitted &&
+                geometry.Triangles.Any(t =>
+                    t.Layer == SceneLayer.Prop &&
+                    WorldSpaces.DistanceXy((t.A + t.B + t.C) / 3f, PositionOf(thing)) < 8f);
+            var submitted = resolved.Submitted && submittedInWorld;
+            var reason = submitted
+                ? $"submit Graphic type={resolved.TypeName} meshes={string.Join(",", resolved.MeshIds)}"
+                : resolved.AsC3d
+                    ? "reject no Graphic/CMultiStatic"
+                    : $"reject TypeName={resolved.TypeName ?? "?"} FirstSeenInstancesAsC3d";
             records.Add(new WorldVisibilityRecord(
-                "object", thing.DefinitionType ?? thing.Kind,
-                asC3d && hasPos,
-                asC3d ? "submit Graphic / CMultiStatic" : "reject not FirstSeenInstancesAsC3d (marker/gizmo)"));
+                "object", thing.DefinitionType ?? thing.Kind, submitted, reason));
         }
 
-        _ = geometry;
+        foreach (var thing in things)
+        {
+            var def = thing.DefinitionType ?? "";
+            var watch = def.Contains("GAZE", StringComparison.OrdinalIgnoreCase) ||
+                        def.Contains("HOLY_SITE", StringComparison.OrdinalIgnoreCase);
+            var near = thing.PositionX is not null &&
+                       WorldSpaces.DistanceXy(PositionOf(thing), house) < 25f;
+            if (near || watch)
+                AddThing(thing);
+        }
+
         return records;
     }
 

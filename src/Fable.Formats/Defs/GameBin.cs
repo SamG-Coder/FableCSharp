@@ -410,7 +410,7 @@ public sealed class GameBin
     public static bool FirstSeenInstancesAsC3d(string? typeName, string? instanceName)
     {
         var name = instanceName ?? typeName ?? "";
-        if (typeName is "MARKER")
+        if (typeName is "MARKER" or "HOLY_SITE")
             return false;
         if (name.StartsWith("MARKER_", StringComparison.OrdinalIgnoreCase))
             return false;
