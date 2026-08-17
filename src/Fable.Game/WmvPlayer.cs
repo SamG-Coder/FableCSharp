@@ -48,6 +48,7 @@ public sealed class WmvPlayer : IDisposable
     internal static int MediaTypeNextCalls { get; set; }
     internal static int ReceiveCalls { get; set; }
     internal static int GetPointerCalls { get; set; }
+    internal static int ConnectCalls { get; set; }
 
     public static string? LastError { get; private set; }
     public static int LastAddFilterHr { get; private set; }
@@ -79,6 +80,7 @@ public sealed class WmvPlayer : IDisposable
             MemInputQi = MemInputQiCalls,
             Receive = ReceiveCalls,
             GetPointer = GetPointerCalls,
+            Connect = ConnectCalls,
             MiscFlags = MiscFlagsCalls,
             Graph = LastGraph,
             PinVisible = LastPinVisible,
@@ -126,6 +128,7 @@ public sealed class WmvPlayer : IDisposable
         MediaTypeNextCalls = 0;
         ReceiveCalls = 0;
         GetPointerCalls = 0;
+        ConnectCalls = 0;
         LastAddFilterHr = 0;
         LastRenderFileHr = 0;
         LastRunHr = 0;
@@ -288,7 +291,7 @@ public sealed class WmvPlayer : IDisposable
         LastPinVisible = GraphPinVisible();
         LastConnected = _renderer.IsConnected;
         if (!_renderer.IsConnected)
-            return $"renderer-not-connected enumPins={EnumPinsCalls} next={PinNextCalls} dir={QueryDirectionCalls} conn={ConnectedToCalls} qpi={QueryPinInfoCalls} qid={QueryIdCalls} emt={EnumMediaTypesCalls} memqi={MemInputQiCalls} qa={QueryAcceptCalls} rc={ReceiveConnectionCalls} misc={MiscFlagsCalls} vis=" +
+            return $"renderer-not-connected enumPins={EnumPinsCalls} next={PinNextCalls} dir={QueryDirectionCalls} conn={ConnectedToCalls} qpi={QueryPinInfoCalls} qid={QueryIdCalls} emt={EnumMediaTypesCalls} memqi={MemInputQiCalls} qa={QueryAcceptCalls} rc={ReceiveConnectionCalls} cn={ConnectCalls} misc={MiscFlagsCalls} vis=" +
                    LastPinVisible + " " + LastGraph;
 
         var deadline = Environment.TickCount64 + 5000;
@@ -790,7 +793,7 @@ public sealed class WmvPlayer : IDisposable
         [PreserveSig] int Disconnect();
         [PreserveSig] int ConnectedTo(out IntPtr pin);
         [PreserveSig] int ConnectionMediaType(out AMMediaType type);
-        [PreserveSig] int QueryPinInfo(out PinInfo info);
+        [PreserveSig] int QueryPinInfo(IntPtr info);
         [PreserveSig] int QueryDirection(out PinDirection direction);
         [PreserveSig] int QueryId([MarshalAs(UnmanagedType.LPWStr)] out string id);
         [PreserveSig] int QueryAccept(IntPtr type);
@@ -955,7 +958,9 @@ public sealed class WmvPlayer : IDisposable
 
         public int GetClassID(out Guid clsid)
         {
-            clsid = new Guid("a3b51000-0000-0000-0000-000000a3b510");
+            // 00A3B510 push 0x129D150 into CBaseFilter
+            // +40; GetClassID 00CA7620 copies it.
+            clsid = RegionTravel.PlayAviRendererClsid;
             return 0;
         }
 
@@ -1041,7 +1046,7 @@ public sealed class WmvPlayer : IDisposable
 
     [ComVisible(true)]
     [ClassInterface(ClassInterfaceType.None)]
-    private sealed class RendererPin : IPin, IMemInputPin, IQualityControl, ICustomQueryInterface
+    private sealed class RendererPin : IPin, IMemInputPin, IQualityControl
     {
         private readonly TextureRenderer _filter;
         private readonly Action<int, int, byte[]> _onSample;
@@ -1064,8 +1069,12 @@ public sealed class WmvPlayer : IDisposable
 
         public int Connect(IPin receive, IntPtr type)
         {
+            // 00CAB470 CBasePin::Connect. Input
+            // pins are connected via
+            // ReceiveConnection. Count calls.
             _ = (receive, type);
-            return unchecked((int)0x80004001);
+            ConnectCalls++;
+            return unchecked((int)0x80040208);
         }
 
         public int ReceiveConnection(IPin connector, IntPtr type)
@@ -1111,18 +1120,26 @@ public sealed class WmvPlayer : IDisposable
             return _connected is null ? unchecked((int)0x80040209) : 0;
         }
 
-        public int QueryPinInfo(out PinInfo info)
+        public int QueryPinInfo(IntPtr info)
         {
-            // 00CA8420: IPin this+28 is the filter
-            // C++ object; returned Filter is that+12
-            // (IBaseFilter).
+            // 00CA8420 writes PIN_INFO itself:
+            // [p+0]=IBaseFilter* (filter C++ +12),
+            // [p+4]=dir from pin+28, [p+8]=name.
+            // out PinInfo left Filter unusable so
+            // ConnectDirect never QueryAccept'd.
             QueryPinInfoCalls++;
-            info = new PinInfo
+            if (info == IntPtr.Zero)
+                return unchecked((int)0x80004003);
+            var filter = Marshal.GetComInterfaceForObject(_filter, typeof(IBaseFilter));
+            Marshal.WriteIntPtr(info, filter);
+            Marshal.WriteInt32(info, IntPtr.Size, (int)PinDirection.Input);
+            var name = info + IntPtr.Size + 4;
+            var chars = RegionTravel.PlayAviPinName;
+            for (var i = 0; i < 128; i++)
             {
-                Filter = Marshal.GetComInterfaceForObject(_filter, typeof(IBaseFilter)),
-                Direction = PinDirection.Input,
-                Name = RegionTravel.PlayAviPinName,
-            };
+                var ch = i < chars.Length ? chars[i] : '\0';
+                Marshal.WriteInt16(name, i * 2, ch);
+            }
             return 0;
         }
 
@@ -1140,17 +1157,7 @@ public sealed class WmvPlayer : IDisposable
             return 0;
         }
 
-        // Pin IMemInputPin is pin+152. IPin QI
-        // does not handle that IID; the pin
-        // subobject does. Count the QI only.
-        public CustomQueryInterfaceResult GetInterface(ref Guid iid, out IntPtr ppv)
-        {
-            if (iid == typeof(IMemInputPin).GUID)
-                MemInputQiCalls++;
-            ppv = IntPtr.Zero;
-            return CustomQueryInterfaceResult.NotHandled;
-        }
-
+        // 00CA89A0 IMemInputPin is pin+0x98.
         // 00CA7CE0 IQualityControl is pin+16.
         public int Notify(IBaseFilter self, IntPtr quality)
         {
@@ -1460,6 +1467,7 @@ public sealed class PlayAviGraphTrace
     public int MemInputQi { get; init; }
     public int Receive { get; init; }
     public int GetPointer { get; init; }
+    public int Connect { get; init; }
     public int MiscFlags { get; init; }
     public string Graph { get; init; } = "";
     public string PinVisible { get; init; } = "";

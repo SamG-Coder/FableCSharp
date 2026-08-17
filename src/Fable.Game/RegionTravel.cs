@@ -188,6 +188,7 @@ public static class RegionTravel
     /// </summary>
     public const uint PlayAviAcceptMediaType = 0x00A3B590;
     public const uint PlayAviQueryAccept = 0x00CA84C0;
+    public const uint PlayAviQueryPinInfo = 0x00CA8420;
     public const uint PlayAviGetMediaType = 0x00CA84F0;
     public const uint PlayAviGetMediaTypeUnexpected = 0x8000FFFF;
     public const uint PlayAviIPinQi = 0x00CA7CE0;
@@ -208,6 +209,14 @@ public static class RegionTravel
         new("05589f80-c356-11ce-bf01-00aa0055595a");
     public static readonly Guid PlayAviMediaTypeVideo =
         new("73646976-0000-0010-8000-00aa00389b71");
+    /// <summary>
+    /// Ctor <c>00A3B510</c> push <c>0x129D150</c>.
+    /// Same CLSID as the SDK texture-renderer
+    /// sample. Stored at filter+40.
+    /// </summary>
+    public const uint PlayAviRendererClsidVa = 0x0129D150;
+    public static readonly Guid PlayAviRendererClsid =
+        new("71771540-2017-11cf-ae26-0020afd79767");
     public const bool FirstSeenPlayAviQueryAcceptRequiresRgb24 = true;
     public const bool FirstSeenPlayAviEnumMediaTypesEmpty = true;
     public const bool FirstSeenPlayAviIPinIsSeparateObject = true;
