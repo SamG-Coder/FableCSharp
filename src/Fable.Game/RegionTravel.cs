@@ -400,6 +400,17 @@ public static class RegionTravel
     public const string IntroSneakWaitMarker = "MK_OVIF_HERO5";
     public const string IntroCutsceneLastCommand = "Hero.SneakTo MK_OVIF_HERO5,0.0,TRUE";
     /// <summary>
+    /// Persist vector 1 is a second CString list at
+    /// def+72. <c>00CD17FD</c> end-of-list recopies
+    /// <c>+60</c> only when <c>[ebp+120]==1</c>; it
+    /// does not walk +72. First-seen does not auto-run
+    /// vector 1. Reader of +72 is UNREAD.
+    /// </summary>
+    public const int IntroCutsceneVector1Offset = 72;
+    public const int IntroCutsceneVector1Count = 7;
+    public const uint CutsceneListEnd = 0x00CD17FD;
+    public const bool FirstSeenCutsceneVector1AutoRuns = false;
+    /// <summary>
     /// <c>00CC15E3</c> <c>.PlayCombatAnim</c> (persist
     /// <c>PlayCombatAnimation</c>). Empty actor / name
     /// → <c>00CC7081</c>. Defaults then arg2/3 IsTrue
