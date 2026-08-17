@@ -112,6 +112,9 @@ public static class GlobalDispatcher
                 "CameraLookAt vtbl+1628", name);
         }
 
+        if (Eq(v, "CameraLookBetween"))
+            return ApplyCameraLookBetween(line, ctx);
+
         if (Eq(v, "PutInFrontOf"))
         {
             var mover = line.Arg(0);
@@ -588,6 +591,50 @@ public static class GlobalDispatcher
         ctx.Cutscene.FlagRewriteDone = true;
         return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
             "SetFlag 00CC907D", $"{name}={value}");
+    }
+
+    /// <summary>
+    /// <c>00CCAA6C</c>: four required args else
+    /// <c>00CD17FD</c>. Lookup arg0/arg1 things.
+    /// atof arg3 duration. Optional arg4-9 offsets.
+    /// <c>vtbl+1632</c>(posA+off, posB+off, …, duration, -1).
+    /// Yield <c>vtbl+28</c> if <c>[ebp+103]</c>.
+    /// </summary>
+    internal static CommandResult ApplyCameraLookBetween(
+        ScriptLine line, ScriptExecutionContext ctx)
+    {
+        var nameA = line.Arg(0);
+        var nameB = line.Arg(1);
+        if (nameA.Length == 0 || nameB.Length == 0 ||
+            line.Arg(2).Length == 0 || line.Arg(3).Length == 0)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        ScriptLine.TryFloat(line.Arg(3), out var duration);
+        var offsetA = ReadOffset(line, 4);
+        var offsetB = ReadOffset(line, 7);
+        ctx.Camera.LookBetween(
+            ctx.Runtime.Camera,
+            ctx.FindThing(nameA), nameA,
+            ctx.FindThing(nameB), nameB,
+            offsetA, offsetB, duration);
+        var side = $"{nameA}|{nameB} d={duration:0.##}";
+        if (!ctx.Cutscene.YieldEnable)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, side);
+        return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
+            "CameraLookBetween vtbl+1632", side);
+    }
+
+    private static System.Numerics.Vector3 ReadOffset(ScriptLine line, int start)
+    {
+        var x = 0f;
+        var y = 0f;
+        var z = 0f;
+        if (line.Arg(start).Length > 0)
+            ScriptLine.TryFloat(line.Arg(start), out x);
+        if (line.Arg(start + 1).Length > 0)
+            ScriptLine.TryFloat(line.Arg(start + 1), out y);
+        if (line.Arg(start + 2).Length > 0)
+            ScriptLine.TryFloat(line.Arg(start + 2), out z);
+        return new System.Numerics.Vector3(x, y, z);
     }
 
     /// <summary>

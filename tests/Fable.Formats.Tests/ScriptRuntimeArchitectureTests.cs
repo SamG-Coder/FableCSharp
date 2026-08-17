@@ -865,6 +865,115 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void CameraLookBetween_aims_midpoint_and_yields()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "A",
+                PositionX = 0,
+                PositionY = 0,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "B",
+                PositionX = 10,
+                PositionY = 4,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], new ScriptedCamera());
+        var interp = new ScriptInterpreter("clb",
+            ["CameraLookBetween A,B,MODE,1.5,0,0,0,0,0,0"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Yielded);
+        Assert.Equal(ExecutionKind.YieldOnce, interp.CurrentWaitKind);
+        Assert.Equal("A", runtime.CameraSys.LookBetweenA);
+        Assert.Equal("B", runtime.CameraSys.LookBetweenB);
+        Assert.Equal(1.5f, runtime.CameraSys.LookBetweenDuration);
+        Assert.Equal(5f, runtime.Camera!.LookAt.X);
+        Assert.Equal(2f, runtime.Camera.LookAt.Y);
+        Assert.Equal(CommandStatus.Partial, ScriptCommandMap.Find("CameraLookBetween")!.Value.Runtime);
+        interp.Resume(runtime);
+        Assert.True(interp.Finished);
+    }
+
+    [Fact]
+    public void CameraLookBetween_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("CameraLookBetween ", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "CameraLookBetween HERO,FATHER,MODE,1.0";
+        hit ??= bank.Find("CS_OAKVALE_INTRO_FATHER") ?? bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("CameraLookBetween", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        Assert.True(parsed.Arg(1).Length > 0);
+        Assert.True(parsed.Arg(2).Length > 0);
+        Assert.True(parsed.Arg(3).Length > 0);
+
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        using var levels = new LevelLibrary(install);
+        runtime.BindScene(levels.LoadThings(RegionTravel.NewGameRegion).Things.ToList(), new ScriptedCamera());
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-clb", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("CameraLookBetween", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(parsed.Arg(0), runtime.CameraSys.LookBetweenA);
+        Assert.Equal(parsed.Arg(1), runtime.CameraSys.LookBetweenB);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-clb.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-cameralookbetween.txt"),
+            """
+            CameraLookBetween 00CCAA6C
+              4 required args else 00CD17FD
+              lookup arg0/arg1 via vtbl+280/288
+              atof arg3 duration (ebp+12)
+              optional atof arg4-6 offset A, arg7-9 offset B
+              00CD3187(arg2) table; fail -> lookup arg2 as thing
+              vtbl+1632(posA+off, posB+off, handle, duration, -1.0 at 0x122DEE0)
+              if [ebp+103] vtbl+28; jmp 00CC864B
+              blend/spline body UNREAD — host aims midpoint
+            """);
+    }
+
+    [Fact]
     public void WaitForCamera_idles_when_camera_not_busy()
     {
         var runtime = ScriptRuntime.Detached();

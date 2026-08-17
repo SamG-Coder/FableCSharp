@@ -122,6 +122,41 @@ public sealed class CameraRuntime
             camera?.SetLookAt(RegionTravel.PositionOf(thing));
     }
 
+    public string LookBetweenA { get; private set; } = "";
+    public string LookBetweenB { get; private set; } = "";
+    public float LookBetweenDuration { get; private set; }
+
+    /// <summary>
+    /// <c>00CCAA6C</c> apply <c>vtbl+1632</c>: look
+    /// between thing0+off and thing1+off. Blend body
+    /// unread — host aims at the midpoint.
+    /// </summary>
+    public void LookBetween(
+        ScriptedCamera? camera,
+        ThingInstance? a, string nameA,
+        ThingInstance? b, string nameB,
+        Vector3 offsetA, Vector3 offsetB,
+        float duration)
+    {
+        LookBetweenA = nameA;
+        LookBetweenB = nameB;
+        LookBetweenDuration = duration;
+        LookAt = nameA + "|" + nameB;
+        Busy = true;
+        Vector3? posA = a is { PositionX: not null }
+            ? RegionTravel.PositionOf(a) + offsetA
+            : null;
+        Vector3? posB = b is { PositionX: not null }
+            ? RegionTravel.PositionOf(b) + offsetB
+            : null;
+        if (posA is { } pa && posB is { } pb)
+            camera?.SetLookAt((pa + pb) * 0.5f);
+        else if (posA is { } onlyA)
+            camera?.SetLookAt(onlyA);
+        else if (posB is { } onlyB)
+            camera?.SetLookAt(onlyB);
+    }
+
     /// <summary>
     /// <c>00CC9DF1</c> <c>vtbl+1668(0)</c> +
     /// <c>vtbl+1664</c>. Clears script camera and
