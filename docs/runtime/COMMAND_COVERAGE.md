@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 76
-RECOVERED RETURN: 76
-RECOVERED APPLY: 14
-IMPLEMENTED RUNTIME: 11
-UNREAD: 109
+RECOVERED DISPATCH: 78
+RECOVERED RETURN: 78
+RECOVERED APPLY: 16
+IMPLEMENTED RUNTIME: 13
+UNREAD: 107
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -66,11 +66,11 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | DummyEffect | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | CreateEffect | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | CreateLight | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| WaitFlag | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| WaitFlag | Global | Proven | Proven | Proven | Proven | Proven | Proven |
 | CameraFOVLookBetweenPos | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | CameraPath | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | CameraRotateThing | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| SetFlag | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| SetFlag | Global | Proven | Proven | Proven | Proven | Proven | Proven |
 | WaitForCamera | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | TeleportToHSP | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | PlayAVI | Global | Proven | Proven | Proven | Proven | Proven | Proven |

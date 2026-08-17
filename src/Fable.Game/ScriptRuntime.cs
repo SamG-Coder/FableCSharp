@@ -75,6 +75,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     public ScriptBindings Bindings { get; } = new();
     public ScriptArguments Arguments { get; } = new();
     public PersistStore Persist { get; } = new();
+    public FlagStore Flags { get; } = new();
     public ScriptScheduler Scheduler { get; } = new();
     public CameraRuntime CameraSys { get; } = new();
     public AudioRuntime Audio { get; } = new();
@@ -119,7 +120,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
         if (interpreter.State.InstanceId == 0)
             interpreter.State.InstanceId = ++_cutsceneId;
         return new ScriptExecutionContext(
-            this, Bindings, Arguments, Persist, CameraSys, Audio,
+            this, Bindings, Arguments, Persist, Flags, CameraSys, Audio,
             Dialogue, Animation, Movement, World, interpreter.State);
     }
 
@@ -277,18 +278,24 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// PlayAVI is skipped (DIK 1/57/28/62 analog) so
     /// fixtures can continue after the blocking apply.
     /// WaitOperation leftover polls go idle on the
-    /// next tick (vtbl+104 / +1472).
+    /// next tick (vtbl+104 / +1472) except WaitFlag,
+    /// which leftover-polls the named byte until a
+    /// SetFlag writes the expected value. Do not
+    /// auto-complete flag waits.
     /// </summary>
     public int PumpUntilSettled(ScriptInterpreter intro, int maxUpdates = 10_000)
     {
         var n = 0;
+        var flagStall = 0;
         while (n < maxUpdates && !intro.Finished && !intro.Blocked)
         {
             if (!intro.Yielded)
                 break;
             if (intro.CurrentWaitKind == ExecutionKind.BlockPump)
                 SkipAvi();
-            if (intro.CurrentWaitKind == ExecutionKind.WaitOperation)
+            var flagWait = intro.CurrentWaitKind == ExecutionKind.WaitOperation &&
+                           Flags.IsWaiting(intro.State.WaitOperationId);
+            if (intro.CurrentWaitKind == ExecutionKind.WaitOperation && !flagWait)
             {
                 foreach (var op in Animation.ByActor.Values)
                     op.Complete = true;
@@ -304,6 +311,14 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
 
             Update(RegionTravel.GamePauseIncrement / RegionTravel.GamePauseScale);
             n++;
+            if (flagWait && Flags.IsWaiting(intro.State.WaitOperationId))
+            {
+                flagStall++;
+                if (flagStall > 8)
+                    break;
+            }
+            else
+                flagStall = 0;
         }
 
         return n;

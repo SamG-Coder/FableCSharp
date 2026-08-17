@@ -529,6 +529,12 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, line.Arg(0));
         }
 
+        if (Eq(v, "SetFlag"))
+            return ApplySetFlag(line, ctx);
+
+        if (Eq(v, "WaitFlag"))
+            return ApplyWaitFlag(line, ctx);
+
         return CommandResult.Blocked(
             "UNKNOWN", CommandStatus.Unread, CommandFamily.Global, line.Raw);
     }
@@ -561,6 +567,48 @@ public static class GlobalDispatcher
         ctx.Bindings.Unbind(name);
         return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name,
             $"unbind {name}");
+    }
+
+    /// <summary>
+    /// <c>00CCA4C8</c>: arg0+arg1+[ebp+112] required else
+    /// <c>00CD17FD</c>. IsTrue(arg2) and <c>[ebp-39]</c>
+    /// skip rewrite. IsFalse(arg1) writes 0 else 1 via
+    /// <c>008ADF10</c>. Always <c>jmp 00CC907D</c>.
+    /// </summary>
+    internal static CommandResult ApplySetFlag(ScriptLine line, ScriptExecutionContext ctx)
+    {
+        var name = line.Arg(0);
+        if (name.Length == 0 || line.Arg(1).Length == 0)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        if (ScriptLine.IsTrue(line.Arg(2)) && ctx.Cutscene.FlagRewriteDone)
+            return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
+                "SetFlag skip-rewrite 00CC907D", name);
+        var value = (byte)(ScriptLine.IsFalse(line.Arg(1)) ? 0 : 1);
+        ctx.Flags.Set(name, value);
+        ctx.Cutscene.FlagRewriteDone = true;
+        return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
+            "SetFlag 00CC907D", $"{name}={value}");
+    }
+
+    /// <summary>
+    /// <c>00CCB893</c>: arg0+arg1+[ebp+112] required else
+    /// <c>00CD17FD</c>. IsTrue(arg1) expected=1 else 0.
+    /// Match continues. Mismatch leftover-polls
+    /// <c>00CCB8CE</c> (vtbl+28 if yield-enable).
+    /// </summary>
+    internal static CommandResult ApplyWaitFlag(ScriptLine line, ScriptExecutionContext ctx)
+    {
+        var name = line.Arg(0);
+        if (name.Length == 0 || line.Arg(1).Length == 0)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        var expected = (byte)(ScriptLine.IsTrue(line.Arg(1)) ? 1 : 0);
+        var op = ctx.Flags.Wait(name, expected);
+        if (op.Complete)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                $"{name}={expected}");
+        return CommandResult.Wait(
+            ExecutionKind.WaitOperation, CommandStatus.Proven, CommandFamily.Global,
+            "WaitFlag leftover 00CCB8CE", "flag-match", op.Id, $"{name}={expected}");
     }
 
     internal static void ParseFade(ScriptLine line, out float seconds, out float param)

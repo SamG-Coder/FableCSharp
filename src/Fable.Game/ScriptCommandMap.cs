@@ -440,6 +440,12 @@ public static class ScriptCommandMap
         Spec("StopFollowingThing", 0x00CC1B2F, 0x00CC1BF4, "[target]",
             ScriptReturn.YieldAfter, CommandParity.ScriptLayer,
             "actor vtbl+32; jmp 00CC568C leftover"),
+        Spec("SetFlag", 0x00CCA475, 0x00CCA4C8, "name,IsFalse?[,IsTrue skip]",
+            ScriptReturn.YieldAfter, CommandParity.Complete,
+            "008ADF10 write 0/1; [ebp-39] latch; jmp 00CC907D"),
+        Spec("WaitFlag", 0x00CCB840, 0x00CCB893, "name,IsTrue?",
+            ScriptReturn.YieldAfterOrWait, CommandParity.Complete,
+            "008ADF10 cmp [eax],bl; match 00CD17FD; else leftover 00CCB8CE"),
     ];
 
     public static ScriptCommandSpec? Find(string verb)

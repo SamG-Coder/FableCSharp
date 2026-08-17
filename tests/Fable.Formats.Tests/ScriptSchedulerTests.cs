@@ -88,6 +88,23 @@ public sealed class ScriptSchedulerTests
     }
 
     [Fact]
+    public void Flag_wait_then_set_from_second_fiber()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.Scheduler.Create("waiter", null);
+        runtime.Scheduler.Create("setter", null);
+        var wait = new ScriptInterpreter("wait", ["WaitFlag gate,true", "CameraPause FALSE"]);
+        var set = new ScriptInterpreter("set", ["SetFlag gate,true"]);
+        wait.RunUntilYield(runtime);
+        Assert.Equal(ExecutionKind.WaitOperation, wait.CurrentWaitKind);
+        set.RunUntilYield(runtime);
+        Assert.Equal((byte)1, runtime.Flags.GetOrInsert("gate"));
+        wait.Resume(runtime);
+        Assert.True(wait.Finished);
+        Assert.Contains("CameraPause FALSE", wait.Executed);
+    }
+
+    [Fact]
     public void Dialogue_wait_then_resume()
     {
         var runtime = ScriptRuntime.Detached();

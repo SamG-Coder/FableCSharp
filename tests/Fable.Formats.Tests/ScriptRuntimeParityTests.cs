@@ -46,6 +46,10 @@ public sealed class ScriptRuntimeParityTests
         Assert.Equal(CommandStatus.Proven, ScriptCommandMap.Find("WalkTo")!.Value.Dispatch);
         Assert.Equal(CommandStatus.Partial, ScriptCommandMap.Find("WalkTo")!.Value.Runtime);
         Assert.Equal(CommandStatus.Proven, ScriptCommandMap.Find("RemoveThing")!.Value.Dispatch);
+        Assert.Equal(CommandStatus.Proven, ScriptCommandMap.Find("SetFlag")!.Value.Runtime);
+        Assert.Equal(CommandStatus.Proven, ScriptCommandMap.Find("WaitFlag")!.Value.Runtime);
+        Assert.True(ScriptCommandMap.IsImplementedComplete("SetFlag"));
+        Assert.True(ScriptCommandMap.IsImplementedComplete("WaitFlag"));
         Assert.Equal(0x00CD0116u, ScriptCommandMap.Find("RemoveThing")!.Value.TokenSite);
         Assert.Equal(ScriptFlow.Continue, ScriptCommand.Classify(ScriptCommand.Parse("SetTime 14")));
         Assert.Equal(ScriptFlow.Yield, ScriptCommand.Classify(ScriptCommand.Parse("NotARealVerb")));

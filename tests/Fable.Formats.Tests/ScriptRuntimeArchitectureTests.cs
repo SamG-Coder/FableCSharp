@@ -874,6 +874,188 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void SetFlag_writes_byte_and_yields_then_WaitFlag_continues()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("flags",
+        [
+            "SetFlag fire,true",
+            "WaitFlag fire,true",
+            "FadeOut 0.5,0",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Yielded);
+        Assert.Equal(ExecutionKind.YieldOnce, interp.CurrentWaitKind);
+        Assert.Equal((byte)1, runtime.Flags.GetOrInsert("fire"));
+        Assert.Equal(CommandStatus.Proven, ScriptCommandMap.Find("SetFlag")!.Value.Runtime);
+        interp.Resume(runtime);
+        Assert.True(interp.Finished);
+        Assert.Contains(interp.Executed, l => l.StartsWith("WaitFlag", StringComparison.Ordinal));
+        Assert.Contains(interp.Executed, l => l.StartsWith("FadeOut", StringComparison.Ordinal));
+        Assert.Contains(runtime.Trace.Steps, s =>
+            s.Verb == "SetFlag" && s.Result == ExecutionKind.YieldOnce);
+        Assert.Contains(runtime.Trace.Steps, s =>
+            s.Verb == "WaitFlag" && s.Result == ExecutionKind.Continue);
+    }
+
+    [Fact]
+    public void WaitFlag_polls_until_SetFlag_and_is_not_a_timer()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var waiter = new ScriptInterpreter("wait",
+            ["WaitFlag fire,true", "FadeOut 0.5,0"]);
+        waiter.RunUntilYield(runtime);
+        Assert.Equal(ExecutionKind.WaitOperation, waiter.CurrentWaitKind);
+        Assert.False(runtime.Flags.WaitOp!.Complete);
+        Assert.Equal((byte)0, runtime.Flags.GetOrInsert("fire"));
+        for (var i = 0; i < 4; i++)
+            waiter.Resume(runtime);
+        Assert.Equal(ExecutionKind.WaitOperation, waiter.CurrentWaitKind);
+        Assert.DoesNotContain(waiter.Executed, l => l.StartsWith("FadeOut", StringComparison.Ordinal));
+
+        var setter = new ScriptInterpreter("set", ["SetFlag fire,true"]);
+        setter.RunUntilYield(runtime);
+        Assert.Equal((byte)1, runtime.Flags.GetOrInsert("fire"));
+        waiter.Resume(runtime);
+        Assert.True(waiter.Finished);
+        Assert.Contains(waiter.Executed, l => l.StartsWith("FadeOut", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SetFlag_false_writes_zero_and_arg2_true_skips_rewrite()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("sf",
+        [
+            "SetFlag fire,false",
+            "SetFlag fire,true,TRUE",
+        ]);
+        interp.RunUntilYield(runtime);
+        interp.Resume(runtime);
+        if (interp.Yielded)
+            interp.Resume(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal((byte)0, runtime.Flags.GetOrInsert("fire"));
+    }
+
+    [Fact]
+    public void WaitFlag_missing_args_continue_and_miss_inserts_zero()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("wf0",
+            ["WaitFlag", "WaitFlag fire", "WaitFlag unset,true"]);
+        interp.RunUntilYield(runtime);
+        Assert.Equal(ExecutionKind.WaitOperation, interp.CurrentWaitKind);
+        Assert.Equal((byte)0, runtime.Flags.GetOrInsert("unset"));
+        Assert.True(runtime.Flags.IsWaiting(null));
+    }
+
+    [Fact]
+    public void PumpUntilSettled_does_not_auto_complete_WaitFlag()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("hold", ["WaitFlag fire,true", "FadeOut 0.5,0"]);
+        interp.RunUntilYield(runtime);
+        runtime.PumpUntilSettled(interp, 32);
+        Assert.False(interp.Finished);
+        Assert.Equal(ExecutionKind.WaitOperation, interp.CurrentWaitKind);
+        Assert.DoesNotContain(interp.Executed, l => l.StartsWith("FadeOut", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void SetFlag_WaitFlag_real_script_bank_lines()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? setLine = null;
+        string? waitLine = null;
+        ScriptDef? setHit = null;
+        ScriptDef? waitHit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (setLine is null &&
+                    raw.StartsWith("SetFlag ", StringComparison.OrdinalIgnoreCase))
+                {
+                    setLine = raw;
+                    setHit = entry;
+                }
+
+                if (waitLine is null &&
+                    raw.StartsWith("WaitFlag ", StringComparison.OrdinalIgnoreCase))
+                {
+                    waitLine = raw;
+                    waitHit = entry;
+                }
+            }
+
+            if (setLine is not null && waitLine is not null)
+                break;
+        }
+
+        setLine ??= "SetFlag fire,true";
+        setHit ??= bank.Find("CS_OAKVALE_REVISITED") ?? bank.Entries[0];
+        Assert.NotNull(setHit);
+        var setParsed = ScriptLine.Parse(setLine);
+        Assert.Equal("SetFlag", setParsed.Verb);
+        Assert.True(setParsed.Arg(0).Length > 0);
+        Assert.True(setParsed.Arg(1).Length > 0);
+
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(setHit.InstanceName + "-flag", [setLine]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("SetFlag", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(ExecutionKind.YieldOnce, isolated.CurrentWaitKind);
+        var written = (byte)(ScriptLine.IsFalse(setParsed.Arg(1)) ? 0 : 1);
+        Assert.Equal(written, runtime.Flags.GetOrInsert(setParsed.Arg(0)));
+
+        if (waitLine is not null)
+        {
+            var waitParsed = ScriptLine.Parse(waitLine);
+            Assert.Equal("WaitFlag", waitParsed.Verb);
+            var expected = (byte)(ScriptLine.IsTrue(waitParsed.Arg(1)) ? 1 : 0);
+            runtime.Flags.Set(waitParsed.Arg(0), expected);
+            var waiter = new ScriptInterpreter((waitHit?.InstanceName ?? "wait") + "-wflag", [waitLine]);
+            waiter.RunUntilYield(runtime);
+            Assert.True(waiter.Finished);
+            Assert.Contains(waiter.Executed, l =>
+                l.StartsWith("WaitFlag", StringComparison.OrdinalIgnoreCase));
+        }
+
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, setHit.InstanceName + "-flag.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-waitflag.txt"),
+            """
+            SetFlag 00CCA475 / apply 00CCA4C8
+              arg0 name + arg1 required else 00CD17FD
+              [ebp+112] flag table required else 00CD17FD
+              IsTrue(arg2) + [ebp-39]!=0 -> skip rewrite, jmp 00CC907D
+              else IsFalse(arg1) -> 008ADF10 write 0 else write 1
+              [ebp-39]=1 after write
+              always jmp 00CC907D YieldOnce
+            WaitFlag 00CCB840 / apply 00CCB893
+              arg0 name + arg1 required else 00CD17FD
+              [ebp+112] required else 00CD17FD
+              IsTrue(arg1) expected=1 else 0
+              008ADF10 lookup, insert-on-miss default 0, return node+20
+              cmp [eax],bl match -> 00CD17FD
+              mismatch leftover 00CCB8CE: 00CBEB7E skip, vtbl+28 if [ebp+103],
+              timecode, [0x13D2838]+5 abort unread, re-poll
+            008ADF10 is a named byte map, not persist, not a timer.
+            """);
+    }
+
+    [Fact]
     public void Coverage_report_lists_native_tokens()
     {
         var report = ScriptCommandMap.FormatCoverage();

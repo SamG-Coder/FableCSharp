@@ -12,6 +12,7 @@ public sealed class ScriptExecutionContext
     public ScriptBindings Bindings { get; }
     public ScriptArguments Arguments { get; }
     public PersistStore Persist { get; }
+    public FlagStore Flags { get; }
     public CameraRuntime Camera { get; }
     public AudioRuntime Audio { get; }
     public DialogueRuntime Dialogue { get; }
@@ -25,6 +26,7 @@ public sealed class ScriptExecutionContext
         ScriptBindings bindings,
         ScriptArguments arguments,
         PersistStore persist,
+        FlagStore flags,
         CameraRuntime camera,
         AudioRuntime audio,
         DialogueRuntime dialogue,
@@ -37,6 +39,7 @@ public sealed class ScriptExecutionContext
         Bindings = bindings;
         Arguments = arguments;
         Persist = persist;
+        Flags = flags;
         Camera = camera;
         Audio = audio;
         Dialogue = dialogue;
@@ -70,6 +73,11 @@ public sealed class CutsceneState
     public bool YieldEnable { get; set; } = true;
     public bool StayFadedOut { get; set; }
     public bool NoDialogCam { get; set; }
+    /// <summary>
+    /// <c>[ebp-39]</c>: SetFlag sets 1 after a write.
+    /// A later SetFlag with IsTrue(arg2) skips rewrite.
+    /// </summary>
+    public bool FlagRewriteDone { get; set; }
     public int ScriptFrameRemaining { get; set; }
     public float GamePauseTarget { get; set; }
     public float GamePauseCounter { get; set; }
