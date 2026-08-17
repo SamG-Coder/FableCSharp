@@ -1,5 +1,6 @@
 using Fable.Core;
 using Fable.Formats.Banks;
+using Fable.Formats.Defs;
 using Fable.Formats.Textures;
 
 namespace Fable.Formats.Tests;
@@ -132,6 +133,59 @@ public sealed class TextureFormatTests
             Assert.Equal(TextureCompression.Dxt5, texture.Compression);
             Assert.Equal(64 * 64 * 4, texture.Rgba.Length);
             Assert.Contains(texture.Rgba.Where((_, i) => i % 4 == 3), a => a < 250);
+        }
+    }
+
+    [Fact]
+    public void First_seen_house_and_landscape_textures_are_dxt_create_not_rgba()
+    {
+        var (big, entries) = OpenMain();
+        using (big)
+        {
+            Assert.Equal(0x009BE8B0u, TextureFile.CreateTextureDxt1);
+            Assert.Equal(0x009BE800u, TextureFile.CreateTextureDxt1Probe);
+            Assert.Equal(0x009BE830u, TextureFile.CreateTextureDxt1Named);
+            Assert.Equal(0x009BE870u, TextureFile.CreateTextureDxt3);
+            Assert.Equal(40u, TextureFile.CreateTextureVtbl);
+            Assert.Equal(3, TextureFile.CreateTexturePoolScratch);
+            Assert.Equal(0, TextureFile.CreateTextureUsage);
+            Assert.Equal(452, TextureFile.CreateTextureLevelsOffset);
+            Assert.Equal(0x00416C8Au, TextureFile.InitGraphics);
+            Assert.Equal(0x00416D20u, TextureFile.InitGraphicsDxt5Name);
+            Assert.True(TextureFile.FirstSeenCreateTextureUsesDxtFourCc);
+            Assert.False(TextureFile.FirstSeenInitGraphicsDxt5NameIsCreateTexture);
+            Assert.True(TextureFile.FirstSeenTextureStoresRawLowerMips);
+            Assert.Equal(4, TextureFile.FirstSeenLowerMipStop);
+
+            TextureFile Load(int id)
+            {
+                var entry = entries.First(e => e.Id == (uint)id);
+                return TextureFile.Parse(entry.Id, entry.Name, entry.Type, entry.Info, big.Read(entry));
+            }
+
+            var grass = Load(414);
+            var floor = Load(4130);
+            var wall = Load(GameBin.HerosOldHouseInteriorWallTexture);
+            foreach (var tex in new[] { grass, floor, wall })
+            {
+                Assert.Equal(TextureCompression.Dxt1, tex.Compression);
+                var top = TextureFile.TopMipSize(tex.Width, tex.Height, tex.Compression);
+                var lower = TextureFile.RawLowerMipSize(tex.Width, tex.Height, tex.Compression);
+                var chain = TextureFile.ExpectedSize(tex.Width, tex.Height, tex.Compression);
+                Assert.True(top > 0 && lower > 0 && chain > top + lower,
+                    $"{tex.Name} top={top} lower={lower} chain={chain}");
+                Assert.True(tex.PayloadBytes == top,
+                    $"{tex.Name} payload={tex.PayloadBytes} top={top} leftover={tex.LeftoverBytes}");
+                Assert.True(tex.LeftoverBytes == lower,
+                    $"{tex.Name} leftover={tex.LeftoverBytes} lower={lower}");
+                Assert.True(tex.PayloadHasRawLowerMips, $"{tex.Name} leftover={tex.LeftoverBytes}");
+                Assert.False(tex.PayloadIsTopMipOnly);
+                Assert.False(tex.PayloadIsFullMipChain);
+                var mip256 = Dxt.Decode(
+                    tex.LowerMips.AsSpan(0, TextureFile.TopMipSize(256, 256, tex.Compression)),
+                    256, 256, DxtKind.Dxt1);
+                Assert.Contains(mip256, b => b != 0);
+            }
         }
     }
 }

@@ -3,8 +3,13 @@ namespace Fable.Formats.IO;
 /// <summary>Fable-framed LZO1X (uint16 size, 0xFFFF + uint32 for large blocks, last 3 bytes raw).</summary>
 internal static class Lzo
 {
-    public static byte[] DecompressFramed(ReadOnlySpan<byte> data, ref int cursor, int expectedSize)
+    public static byte[] DecompressFramed(ReadOnlySpan<byte> data, ref int cursor, int expectedSize) =>
+        DecompressFramed(data, ref cursor, expectedSize, out _);
+
+    public static byte[] DecompressFramed(
+        ReadOnlySpan<byte> data, ref int cursor, int expectedSize, out int produced)
     {
+        produced = 0;
         if (expectedSize <= 0)
             return [];
 
@@ -37,20 +42,22 @@ internal static class Lzo
             {
                 if (cursor + compressedSize > data.Length)
                     break;
-                var produced = DecompressRaw(data.Slice(cursor, compressedSize), result.AsSpan(written));
+                var rawProduced = DecompressRaw(data.Slice(cursor, compressedSize), result.AsSpan(written));
                 cursor += compressedSize;
-                written += produced;
-                if (produced == 0)
+                written += rawProduced;
+                if (rawProduced == 0)
                     break;
             }
         }
 
-        if (cursor + 3 <= data.Length && expectedSize >= 3)
+        if (cursor + 3 <= data.Length && expectedSize >= 3 && written >= target)
         {
             data.Slice(cursor, 3).CopyTo(result.AsSpan(expectedSize - 3));
             cursor += 3;
+            written = expectedSize;
         }
 
+        produced = written;
         return result;
     }
 
