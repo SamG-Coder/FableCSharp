@@ -156,6 +156,17 @@ public static class GlobalDispatcher
         if (Eq(v, "SetLightScene"))
             return ApplySetLightScene(line, ctx);
 
+        if (Eq(v, "TintScreenOut"))
+        {
+            if (line.Arg(0).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ScriptLine.TryFloat(line.Arg(0), out var seconds);
+            ctx.Camera.TintOut(ctx.Cutscene.TintHold, seconds);
+            ctx.Cutscene.TintHold = 0f;
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                seconds.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture));
+        }
+
         if (Eq(v, "CameraShake"))
         {
             if (line.Arg(0).Length == 0 || line.Arg(1).Length == 0)

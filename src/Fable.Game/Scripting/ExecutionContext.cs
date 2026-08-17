@@ -81,6 +81,11 @@ public sealed class CutsceneState
     public bool FlagRewriteDone { get; set; }
     public IReadOnlyList<string> LightDefs { get; set; } = [];
     public IReadOnlyList<string> LightScenes { get; set; } = [];
+    /// <summary>
+    /// <c>[ebp-112]</c> hold written by TintScreenTo,
+    /// consumed and cleared by TintScreenOut.
+    /// </summary>
+    public float TintHold { get; set; }
     public int ScriptFrameRemaining { get; set; }
     public float GamePauseTarget { get; set; }
     public float GamePauseCounter { get; set; }
@@ -125,6 +130,9 @@ public sealed class CameraRuntime
     public string PathC { get; private set; } = "";
     public string PathD { get; private set; } = "";
     public float PathDuration { get; private set; }
+    public float TintOutDuration { get; private set; }
+    public float TintOutHold { get; private set; }
+    public bool TintOutActive { get; private set; }
 
     public void Bind(ScriptedCamera? camera, IReadOnlyList<ThingInstance> things, string name)
     {
@@ -180,6 +188,17 @@ public sealed class CameraRuntime
             camera?.SetPosition(RegionTravel.PositionOf(a));
         if (b is { PositionX: not null })
             camera?.SetLookAt(RegionTravel.PositionOf(b));
+    }
+
+    /// <summary>
+    /// <c>00CD11D0</c> <c>vtbl+2704([ebp-112], dur)</c>
+    /// then clears the hold. Overlay body unread.
+    /// </summary>
+    public void TintOut(float hold, float duration)
+    {
+        TintOutHold = hold;
+        TintOutDuration = duration;
+        TintOutActive = true;
     }
 
     public void LookAtThing(ScriptedCamera? camera, ThingInstance? thing, string name)

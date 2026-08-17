@@ -1281,6 +1281,22 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void TintScreenOut_consumes_hold_and_continues()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("tint",
+            ["TintScreenOut 1.5", "CameraPause FALSE"]);
+        interp.SetTintHold(0.25f);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.True(runtime.CameraSys.TintOutActive);
+        Assert.Equal(1.5f, runtime.CameraSys.TintOutDuration);
+        Assert.Equal(0.25f, runtime.CameraSys.TintOutHold);
+        Assert.Equal(0f, interp.TintHold);
+        Assert.Equal(0x00CD11F7u, ScriptCommandMap.Find("TintScreenOut")!.Value.ApplySite);
+    }
+
+    [Fact]
     public void SetLightScene_blacks_defs_then_applies_scene_rgb()
     {
         var runtime = ScriptRuntime.Detached();

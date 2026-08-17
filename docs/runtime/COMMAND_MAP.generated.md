@@ -65,6 +65,7 @@
 | CameraFOVLookBetweenPos | `00CCB07C` | `00CCB42C` | a,b,pos,dur[,xyz/fov] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+1636(posA,posB,camPos+off,dur,fov); yield if [ebp+103] |
 | CameraPath | `00CCAF1D` | `00CCB048` | a,b,c,d,dur | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | 4 thing lookups; vtbl+1640(pos0,pos2,pos1,pos3,dur); jmp 00CC864B |
 | SetLightScene | `00CD1425` | `00CD172A` | index | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | atoi; +84 defs NAME:r,g,b; +96 comma indices; vtbl+2180; yield if [ebp+103] |
+| TintScreenOut | `00CD11D0` | `00CD11F7` | seconds | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | atof; vtbl+2704([ebp-112],dur); clear hold; jmp 00CD17FD |
 | PutUpYourSwords | `00CC9303` | `—` | IsFalse? | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | token 00CC9303; sheathe apply unread |
 | RegisterActor | `00CC662D` | `00CC669B` | name | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | empty skip; 004AC860 register; jmp 00CC7081 |
 | CrowdAcquire | `00CCCEA7` | `00515700` | type,alias | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | real members only as alias0..n |

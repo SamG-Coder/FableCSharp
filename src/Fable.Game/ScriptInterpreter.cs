@@ -87,6 +87,10 @@ public sealed class ScriptInterpreter
         State.LightScenes = scenes;
     }
 
+    public void SetTintHold(float hold) => State.TintHold = hold;
+
+    public float TintHold => State.TintHold;
+
     public void RunUntilYield(IScriptHost? host = null)
     {
         var runtime = host as ScriptRuntime ?? ScriptRuntime.Detached();
