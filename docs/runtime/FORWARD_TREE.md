@@ -238,8 +238,18 @@ Retail vtbl `01230CA0`: slot 1 start `0042F75E`, slot 2 pump `0042EC7C`.
         │     same-frame 00599E3F → 00596917
         │       00596763 slot 0x17 UI_FRONTEND_NEW_PROFILE_SCREEN
         │       00851700 [ui+96] +4=0 +5=0  skip 0059899A
+        │       00851770 UI_NEW_PROFILE_EDIT_BOX type 37
+        │         004069E0 [0x13B86A0]=0 → 0x122DE80 "Default"
+        │         input vtbl+8 + actions 33/34
         │   one name → 0059899A (not first-seen)
         │   else → 00597B20 UNREAD
+        msg 0x126 → 00851920  PROVEN
+        │   UI_ACCEPT_NEW_PROFILE def stores 0x126
+        │   nonempty trim → [ui+96+5]=1 [+4]=0
+        │   next 00599E3F → 0059697A
+        │     004067C0 / 00999AB0 writable first-seen
+        │     00595A06 UI_FRONTEND_MAIN_MENU_NO_LIVEAWARE_NO_CONTINUE
+        │     00595B24 / 00594FA9(0)
         msg 0x124 → 0059899A
           UI_FRONTEND_MAIN_MENU_NO_LIVEAWARE_NO_CONTINUE
           when continue list empty
@@ -247,6 +257,7 @@ Retail vtbl `01230CA0`: slot 1 start `0042F75E`, slot 2 pump `0042EC7C`.
         then 00594F28 [retail+41]=1
         0042EC7C reads +41 → Leave 0042F2A2
         Return→msg 15 from Press Start is DISPROVEN
+        Native 0xE5 / 0x126 poster UNREAD (0041E6D3 consumer)
     │              00404A80 → 00404C00 [0x13B7CD8+8]==0 skip
     │              009D9C80 / 009DA9F0(1)
     │              009BEF50 / 009BEEB0

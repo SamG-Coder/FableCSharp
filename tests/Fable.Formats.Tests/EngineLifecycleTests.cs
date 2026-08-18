@@ -371,6 +371,85 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Frontend_00851770_seeds_Default_then_0x126_is_0059697A_main_menu()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.DispatchFrontendMessage(EngineLifecycle.FrontendPressStartMessage);
+        Assert.True(life.Pump());
+        Assert.Equal(
+            EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        Assert.True(life.FrontendEditBoxBound);
+        Assert.Equal(
+            EngineLifecycle.FrontendProfileDefaultFallback,
+            life.FrontendEditBoxName);
+        Assert.False(life.FrontendUi96Armed);
+        Assert.Equal(37, EngineLifecycle.FrontendNewProfileEditType);
+        Assert.Equal(0x126, EngineLifecycle.FrontendAcceptProfileMessage);
+        Assert.Equal(0x0122DE80u, EngineLifecycle.FrontendProfileDefaultFallbackVa);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendUi96EditBoxFn &&
+            e.Action.Contains("type 37", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendProfileDefaultFn &&
+            e.Action.Contains("Default", StringComparison.Ordinal));
+        life.DispatchFrontendMessage(EngineLifecycle.FrontendAcceptProfileMessage);
+        Assert.True(life.FrontendUi96Armed);
+        Assert.False(life.FrontendUi96Accept);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendCommitNameFn &&
+            e.Action.Contains("[+4]=0", StringComparison.Ordinal));
+        Assert.True(life.Pump());
+        Assert.Equal(
+            EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
+        Assert.False(life.FrontendUi96Present);
+        Assert.False(life.RetailNewGameFlag);
+        Assert.Equal(EngineStage.Frontend, life.Stage);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendCommitProfileFn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendCanCreateProfileFn &&
+            e.Action.Contains("writable", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendMenuAttachFn &&
+            e.Action.Contains("NO_CONTINUE", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Frontend_new_profile_Return_is_0x126_then_main_menu_Return_leaves()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.QueueInput(EngineInput.TypeKey, RegionTravel.PlayAviSkipReturn);
+        Assert.True(life.Pump());
+        Assert.Equal(
+            EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        Assert.False(life.RetailNewGameFlag);
+        life.QueueInput(EngineInput.TypeKey, RegionTravel.PlayAviSkipReturn);
+        Assert.True(life.Pump());
+        Assert.Equal(
+            EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
+        Assert.False(life.RetailNewGameFlag);
+        Assert.Equal(EngineStage.Frontend, life.Stage);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendUiMessageFn &&
+            e.Action.Contains("msg=294", StringComparison.Ordinal));
+        life.QueueInput(EngineInput.TypeKey, RegionTravel.PlayAviSkipReturn);
+        Assert.True(life.Pump());
+        Assert.True(life.RetailNewGameFlag);
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.Equal("FinalAlbion.wld", life.WorldFileName);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.LeaveFrontendSite);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.InitGameSite);
+    }
+
+    [Fact]
     public void Frontend_0059A238_msg_124_attaches_main_menu_no_continue()
     {
         var life = new EngineLifecycle();
@@ -2780,6 +2859,12 @@ public sealed class EngineLifecycleTests
         Assert.Equal(
             "UI_FRONTEND_NEW_PROFILE_SCREEN",
             EngineLifecycle.FrontendNewProfileMenu);
+        Assert.Equal(0x126, EngineLifecycle.FrontendAcceptProfileMessage);
+        Assert.Equal(0x00851920u, EngineLifecycle.FrontendCommitNameFn);
+        Assert.Equal(0x0059697Au, EngineLifecycle.FrontendCommitProfileFn);
+        Assert.Equal(0x004069E0u, EngineLifecycle.FrontendProfileDefaultFn);
+        Assert.Equal("Default", EngineLifecycle.FrontendProfileDefaultFallback);
+        Assert.Equal(37, EngineLifecycle.FrontendNewProfileEditType);
         Assert.Equal(41, EngineLifecycle.RetailNewGameFlagOffset);
         Assert.Equal(0x00595A03u, EngineLifecycle.FrontendMenuMissFn);
         Assert.Equal("UI_TEXT_NEW_GAME", EngineLifecycle.FrontendMenuItems[0].Label);

@@ -368,6 +368,39 @@ public sealed class EngineLifecycle : IDisposable
     public const int FrontendNewProfileSlot = 0x17;
     public const string FrontendNewProfileMenu =
         "UI_FRONTEND_NEW_PROFILE_SCREEN";
+    public const string FrontendNewProfileEditBox =
+        "UI_NEW_PROFILE_EDIT_BOX";
+    public const string FrontendAcceptNewProfile =
+        "UI_ACCEPT_NEW_PROFILE";
+    /// <summary>
+    /// <c>00851770</c> <c>cmp eax, 37</c>
+    /// after vtbl+260. frontend.bin
+    /// <c>UI_NEW_PROFILE_EDIT_BOX</c>
+    /// type byte is 37.
+    /// </summary>
+    public const int FrontendNewProfileEditType = 37;
+    public const int FrontendEditBoxActionA = 33;
+    public const int FrontendEditBoxActionB = 34;
+    /// <summary>
+    /// <c>0059A238</c> msg <c>0x126</c>
+    /// → <c>00851920</c>. frontend.bin
+    /// <c>UI_ACCEPT_NEW_PROFILE</c>
+    /// stores 0x126.
+    /// </summary>
+    public const int FrontendAcceptProfileMessage = 0x126;
+    public const uint FrontendCommitNameFn = 0x00851920;
+    public const uint FrontendProfileDefaultFn = 0x004069E0;
+    public const string FrontendProfileDefaultText =
+        "TEXT_GUI_PROFILE_DEFAULT";
+    public const uint FrontendProfileDefaultFallbackVa = 0x0122DE80;
+    public const string FrontendProfileDefaultFallback = "Default";
+    /// <summary>
+    /// <c>00599E3F</c> when
+    /// <c>[ui+96+5]≠0</c> and
+    /// <c>+4==0</c>: <c>0059697A</c>.
+    /// </summary>
+    public const uint FrontendCommitProfileFn = 0x0059697A;
+    public const uint FrontendCanCreateProfileFn = 0x004067C0;
     /// <summary>
     /// <c>0059A238</c> msg <c>0x124</c>
     /// and one-name <c>00599D5C</c>.
@@ -1994,6 +2027,21 @@ public sealed class EngineLifecycle : IDisposable
     public bool FrontendUi96Present { get; private set; }
     public bool FrontendUi96Accept { get; private set; }
     public bool FrontendUi96Armed { get; private set; }
+    public bool FrontendEditBoxBound { get; private set; }
+    /// <summary>
+    /// <c>00851770</c> seeds via
+    /// <c>004069E0</c>. Game
+    /// singleton 0 and no text
+    /// bank → UTF-16
+    /// <c>0x122DE80</c> "Default".
+    /// </summary>
+    public string FrontendEditBoxName { get; private set; } = "";
+    /// <summary>
+    /// <c>004067C0</c> /
+    /// <c>00999AB0</c> writable
+    /// first-seen.
+    /// </summary>
+    public bool FrontendCanCreateProfile { get; set; } = true;
     public GameBin? FrontendDefs { get; private set; }
     public bool FrontendDefFound { get; private set; }
     public string? FrontendDefTypeName { get; private set; }
@@ -2492,11 +2540,13 @@ public sealed class EngineLifecycle : IDisposable
             if (key != RegionTravel.PlayAviSkipReturn)
                 continue;
             // Host stand-in only. Native
-            // key → 0xE5 is UNREAD.
+            // key → 0xE5 / 0x126 is UNREAD.
             // Return → msg 15 from Press
             // Start is DISPROVEN.
             if (FrontendMenuRoot == FrontendPressStartMenu)
                 DispatchFrontendMessage(FrontendPressStartMessage);
+            else if (FrontendMenuRoot == FrontendNewProfileMenu)
+                DispatchFrontendMessage(FrontendAcceptProfileMessage);
             else
                 DispatchFrontendMessage(FrontendNewGameMessage);
             return;
@@ -2770,6 +2820,8 @@ public sealed class EngineLifecycle : IDisposable
             return;
         if (FrontendUiArmed)
             BindNewProfileFromArmedTick();
+        if (FrontendUi96Present && FrontendUi96Armed && !FrontendUi96Accept)
+            CommitNewProfileFromArmedEdit();
         Note(FrontendWidgetTickFn, "Frontend", "UI",
             $"0052C7E0 vtbl+{FrontendWidgetTickVtbl} 0122F5D4");
         Note(FrontendDestLayoutFn, "Frontend", "UI",
@@ -2956,6 +3008,12 @@ public sealed class EngineLifecycle : IDisposable
             return;
         }
 
+        if (msg == FrontendAcceptProfileMessage)
+        {
+            AcceptNewProfileMessage();
+            return;
+        }
+
         if (msg != FrontendNewGameMessage)
             return;
         Note(FrontendNewGameApply, "Frontend", "UI",
@@ -3037,12 +3095,74 @@ public sealed class EngineLifecycle : IDisposable
         Note(FrontendUi96CtorFn, "Frontend", "UI",
             $"00851700 [ui+{FrontendUi96Offset}] +4=0 +5=0");
         Note(FrontendUi96EditBoxFn, "Frontend", "UI",
-            "00851770 UI_NEW_PROFILE_EDIT_BOX");
+            $"00851770 {FrontendNewProfileEditBox} type {FrontendNewProfileEditType}");
+        Note(FrontendProfileDefaultFn, "Frontend", "UI",
+            "004069E0 [0x13B86A0]=0 " + FrontendProfileDefaultText +
+            $" else 0x{FrontendProfileDefaultFallbackVa:X} " +
+            FrontendProfileDefaultFallback);
+        Note(InputActionGetter, "Frontend", "UI",
+            $"00851829 vtbl+8 then +12({FrontendEditBoxActionA}/{FrontendEditBoxActionB})");
         FrontendMenuRoot = FrontendNewProfileMenu;
         FrontendUi96Present = true;
         FrontendUi96Accept = false;
         FrontendUi96Armed = false;
+        FrontendEditBoxBound = true;
+        FrontendEditBoxName = FrontendProfileDefaultFallback;
         ResolveFrontendDef(FrontendNewProfileMenu);
+    }
+
+    /// <summary>
+    /// <c>0059A238</c> msg <c>0x126</c>
+    /// → <c>00851920</c>. Nonempty
+    /// edit text sets <c>+5=1</c>
+    /// <c>+4=0</c>.
+    /// </summary>
+    private void AcceptNewProfileMessage()
+    {
+        Note(FrontendCommitNameFn, "Frontend", "UI",
+            "00851920 " + FrontendAcceptNewProfile);
+        if (!FrontendUi96Present || FrontendUi96Armed)
+            return;
+        var len = FrontendEditBoxName.Trim().Length;
+        Note(0x00851890, "Frontend", "UI",
+            $"00851890 trim len={len}");
+        if (len <= 0)
+            return;
+        FrontendUi96Armed = true;
+        FrontendUi96Accept = false;
+        Note(FrontendCommitNameFn, "Frontend", "UI",
+            "00851920 [ui+96+5]=1 [+4]=0");
+    }
+
+    /// <summary>
+    /// <c>00599E3F</c> <c>+5≠0</c>
+    /// <c>+4==0</c>, empty
+    /// <c>005955AB</c> →
+    /// <c>0059697A</c>.
+    /// <c>004067C0</c> writable
+    /// attaches
+    /// <c>UI_FRONTEND_MAIN_MENU_NO_LIVEAWARE_NO_CONTINUE</c>.
+    /// </summary>
+    private void CommitNewProfileFromArmedEdit()
+    {
+        Note(FrontendUiTickFn, "Frontend", "UI",
+            "00599E3F [ui+96+5] 0059697A");
+        Note(FrontendCommitProfileFn, "Frontend", "UI", "0059697A");
+        Note(FrontendCanCreateProfileFn, "Frontend", "UI",
+            FrontendCanCreateProfile
+                ? "004067C0 00999AB0 writable"
+                : "004067C0 00999AB0 miss");
+        if (!FrontendCanCreateProfile)
+            return;
+        Note(FrontendMenuAttachFn, "Frontend", "UI",
+            "00595A06 " + FrontendMainMenuNoContinue);
+        Note(FrontendUiBuildMenu, "Frontend", "UI", "00595B24");
+        Note(0x00594FA9, "Frontend", "UI",
+            "00594FA9(0) clear [ui+96]");
+        FrontendMenuRoot = FrontendMainMenuNoContinue;
+        FrontendUi96Present = false;
+        FrontendUi96Armed = false;
+        ResolveFrontendDef(FrontendMainMenuNoContinue);
     }
 
     /// <summary>
