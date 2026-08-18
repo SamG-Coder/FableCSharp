@@ -276,6 +276,40 @@ public sealed class EngineLifecycle
     public const int WorldTickType = 1;
     public const uint CameraBodyFn = 0x004164E0;
     /// <summary>
+    /// <c>00417001</c> reads <c>[0x13B8630]</c>
+    /// after <c>WorldFrame&gt;1</c>. BSS 0 takes
+    /// interpolation <c>0041707E</c>. Positive
+    /// clamps to min <c>[0x1375550]=15</c> and
+    /// calls <c>004164E0</c>.
+    /// </summary>
+    public const uint CameraCatchupTicksVa = 0x013B8630;
+    public const uint CameraCatchupMinVa = 0x01375550;
+    public const int CameraCatchupMin = 15;
+    /// <summary>
+    /// <c>fmul qword [0x122EDB8]</c> = 1/15.
+    /// Loop count is <c>00BFEA70</c> fistp of
+    /// <c>arg * (1/15)</c> toward zero.
+    /// </summary>
+    public const uint CameraStepScaleVa = 0x0122EDB8;
+    public const double CameraStepScale = 1.0 / 15.0;
+    public const uint CameraInvArgVa = 0x0122DED8;
+    public const float CameraInvArgOne = 1f;
+    public const uint FistpFn = 0x00BFEA70;
+    public const uint WorldCameraApplyFn = 0x0049E080;
+    public const uint CameraManagerBlendFn = 0x006B42F0;
+    public const uint ThingWalkApplyFn = 0x0051EBD0;
+    public const uint DisplayApplyThunk = 0x00435F70;
+    public const uint DisplayApplyBodyFn = 0x00435530;
+    public const uint CameraTimeFn = 0x00416231;
+    public const uint CameraInterpolationFn = 0x0041707E;
+    public const int GamePlus80Offset = 80;
+    public const int GameCameraSlotOffset = 112;
+    public const int CameraRecordDwords = 13;
+    public const int CameraRecordSize = 52;
+    public const int GamePlus90424Offset = 90424;
+    public const int GamePlus104Offset = 104;
+    public const int GamePlus90594Offset = 90594;
+    /// <summary>
     /// <c>005066E0</c> inserts one ctor-zeroed
     /// 88-byte slot before WLD appends.
     /// Native index 0 is that dummy.
@@ -455,8 +489,40 @@ public sealed class EngineLifecycle
     /// <c>0049D870</c> <c>[0x13B89BC]</c>.
     /// </summary>
     public int WorldFrame { get; set; }
-    public int GamePlus72 { get; private set; }
+    /// <summary>
+    /// <c>[0x13B8630]</c>. Default 0.
+    /// </summary>
+    public int CameraCatchupTicks { get; set; }
+    /// <summary>
+    /// Game-mode camera tick watermark.
+    /// <c>004164E0</c> skips while
+    /// <c>[+80] &gt;= [+72]</c>.
+    /// </summary>
+    public int GamePlus72 { get; set; }
     public int GamePlus76 { get; private set; }
+    public int GamePlus80 { get; set; }
+    public int GamePlus104 { get; private set; }
+    public int GamePlus90424 { get; private set; }
+    public bool GamePlus90594 { get; private set; }
+    public float GamePlus112 { get; private set; }
+    public float GamePlus116 { get; private set; }
+    public float GamePlus120 { get; private set; }
+    public float GamePlus124 { get; private set; }
+    public float GamePlus128 { get; private set; }
+    public float GamePlus132 { get; private set; }
+    public float GamePlus136 { get; private set; }
+    public float GamePlus140 { get; private set; }
+    public int GamePlus160 { get; private set; }
+    public int CameraBodySteps { get; private set; }
+    public int LastCameraLoopCount { get; private set; }
+    public float LastCameraBlend { get; private set; }
+    public float LastCameraTime { get; private set; }
+    public bool CameraInterpolationUnread { get; private set; }
+    /// <summary>
+    /// Same camera the renderer consumes.
+    /// <c>006B42F0</c> slot lerp is PARTIAL.
+    /// </summary>
+    public ScriptedCamera Camera { get; } = new();
     public IReadOnlyList<int> GameTickTypes => _tickTypes;
     public bool LevelLoaderReady { get; private set; }
     public bool FirstRealRegionLoadDone { get; private set; }
@@ -947,7 +1013,118 @@ public sealed class EngineLifecycle
         }
 
         RenderBodyRan = true;
+        if (CameraCatchupTicks <= 0)
+        {
+            Note(CameraInterpolationFn, "GamePump", "Render",
+                "0041707E interpolation UNREAD");
+            CameraInterpolationUnread = true;
+            return;
+        }
+
+        if (CameraCatchupTicks < CameraCatchupMin)
+        {
+            CameraCatchupTicks = CameraCatchupMin;
+            Note(CameraCatchupTicksVa, "GamePump", "Render",
+                $"clamp [0x13B8630]={CameraCatchupTicks}");
+        }
+
+        ApplyCameraBody(CameraCatchupTicks);
+        GamePlus90594 = true;
+        Note(CameraBodyFn, "GamePump", "Render", "[game+90594]=1");
+    }
+
+    /// <summary>
+    /// <c>004164E0</c>. <paramref name="arg"/> is
+    /// the pushed catch-up tick count.
+    /// </summary>
+    public void ApplyCameraBody(int arg)
+    {
         Note(CameraBodyFn, "GamePump", "Render", "004164E0 camera body");
+        var count = FistpTowardZero(arg * CameraStepScale);
+        Note(FistpFn, "GamePump", "Render",
+            $"00BFEA70 count={count} arg={arg}");
+        LastCameraLoopCount = count;
+        if (GamePlus80 >= GamePlus72)
+        {
+            Note(CameraBodyFn, "GamePump", "Render",
+                $"[game+80]={GamePlus80}>=[game+72]={GamePlus72} skip");
+            return;
+        }
+
+        if (count <= 0)
+        {
+            Note(CameraBodyFn, "GamePump", "Render", "count<=0 skip");
+            return;
+        }
+
+        var invArg = CameraInvArgOne / arg;
+        for (var i = 0; i < count; i++)
+        {
+            Note(RenderStackZeroFn, "GamePump", "Render", "00415A60 record");
+            var tBlend = i / (float)count;
+            var tTime = (i + 1) * invArg;
+            var old112 = GamePlus112;
+            var old116 = GamePlus116;
+            var old128 = GamePlus128;
+            var old132 = GamePlus132;
+            GamePlus112 = tTime;
+            GamePlus116 = tBlend;
+            GamePlus120 = old112;
+            GamePlus124 = old116;
+            GamePlus128 = tTime;
+            GamePlus132 = tBlend;
+            GamePlus136 = old128;
+            GamePlus140 = old132;
+            GamePlus160 = GamePlus72;
+            LastCameraTime = tTime;
+            LastCameraBlend = tBlend;
+            ApplyWorldCamera(tBlend);
+            Note(CameraTimeFn, "GamePump", "Time",
+                "00416231 009E1BC0-[game+96]");
+            ApplyDisplayCamera();
+            GamePlus90424++;
+            GamePlus80 = GamePlus72;
+            GamePlus104 = 0;
+            CameraBodySteps++;
+            Note(CameraBodyFn, "GamePump", "Render",
+                $"step {i + 1}/{count} t={tBlend}");
+        }
+    }
+
+    /// <summary>
+    /// <c>00BFEA70</c> toward-zero fistp.
+    /// </summary>
+    public static int FistpTowardZero(double value) =>
+        value >= 0 ? (int)value : -(int)(-value);
+
+    /// <summary>
+    /// <c>0049E080</c>: store thing, walk
+    /// <c>0051EBD0</c>, blend
+    /// <c>006B42F0(world+24, t)</c>.
+    /// Slot lerp body is PARTIAL.
+    /// </summary>
+    public void ApplyWorldCamera(float tBlend)
+    {
+        if (tBlend < 0f)
+            tBlend = 0f;
+        else if (tBlend > 1f)
+            tBlend = 1f;
+        Note(WorldCameraApplyFn, "GamePump", "Camera", "0049E080");
+        Note(StoreActiveThingFn, "GamePump", "World", "004C74F0");
+        Note(ThingWalkApplyFn, "GamePump", "World", "0051EBD0");
+        Note(CameraManagerBlendFn, "GamePump", "Camera",
+            $"006B42F0 t={tBlend}");
+    }
+
+    /// <summary>
+    /// <c>00435F70</c> jmp <c>00435530</c>.
+    /// Display frame body PARTIAL.
+    /// </summary>
+    public void ApplyDisplayCamera()
+    {
+        Note(DisplayApplyThunk, "GamePump", "Display",
+            "00435F70 jmp 00435530");
+        Note(DisplayApplyBodyFn, "GamePump", "Display", "00435530");
     }
 
     /// <summary>

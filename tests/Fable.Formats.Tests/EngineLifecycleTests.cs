@@ -236,7 +236,9 @@ public sealed class EngineLifecycleTests
         life.WorldFrame = 2;
         life.RenderGameMode();
         Assert.True(life.RenderBodyRan);
-        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CameraBodyFn);
+        Assert.True(life.CameraInterpolationUnread);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CameraInterpolationFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.CameraBodyFn);
     }
 
     [Fact]
@@ -260,9 +262,94 @@ public sealed class EngineLifecycleTests
         Assert.Equal(2, life.WorldFrame);
         life.RenderGameMode();
         Assert.True(life.RenderBodyRan);
-        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CameraBodyFn);
+        Assert.True(life.CameraInterpolationUnread);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CameraInterpolationFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldTickFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.AdvanceGameTicksFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.CameraBodyFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Camera_004164E0_steps_arg_over_15_when_plus72_ahead()
+    {
+        var life = new EngineLifecycle();
+        life.GamePlus72 = 1;
+        life.GamePlus80 = 0;
+        life.ApplyCameraBody(15);
+        Assert.Equal(1, life.LastCameraLoopCount);
+        Assert.Equal(1, life.CameraBodySteps);
+        Assert.Equal(1, life.GamePlus80);
+        Assert.Equal(1, life.GamePlus72);
+        Assert.Equal(1f / 15f, life.LastCameraTime);
+        Assert.Equal(0f, life.LastCameraBlend);
+        Assert.Equal(1f / 15f, life.GamePlus112);
+        Assert.Equal(0f, life.GamePlus116);
+        Assert.Equal(0f, life.GamePlus120);
+        Assert.Equal(1, life.GamePlus160);
+        Assert.Equal(1, life.GamePlus90424);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CameraBodyFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FistpFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraApplyFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CameraManagerBlendFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ThingWalkApplyFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayApplyThunk);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayApplyBodyFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CameraTimeFn);
+        Assert.NotNull(life.Camera);
+    }
+
+    [Fact]
+    public void Camera_004164E0_skips_when_plus80_catches_plus72()
+    {
+        var life = new EngineLifecycle();
+        life.ApplyCameraBody(15);
+        Assert.Equal(1, life.LastCameraLoopCount);
+        Assert.Equal(0, life.CameraBodySteps);
+        Assert.Equal(0, life.GamePlus80);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.CameraBodyFn &&
+            e.Action.Contains("skip", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraApplyFn);
+    }
+
+    [Fact]
+    public void Camera_004164E0_two_steps_when_arg_is_30()
+    {
+        var life = new EngineLifecycle();
+        life.GamePlus72 = 4;
+        life.ApplyCameraBody(30);
+        Assert.Equal(2, life.LastCameraLoopCount);
+        Assert.Equal(2, life.CameraBodySteps);
+        Assert.Equal(4, life.GamePlus80);
+        Assert.Equal(2f / 30f, life.LastCameraTime);
+        Assert.Equal(0.5f, life.LastCameraBlend);
+        Assert.Equal(1f / 30f, life.GamePlus120);
+        Assert.Equal(0f, life.GamePlus124);
+    }
+
+    [Fact]
+    public void Render_00417001_clamps_catchup_ticks_and_runs_004164E0()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        life.WorldFrame = 2;
+        life.CameraCatchupTicks = 3;
+        life.GamePlus72 = 1;
+        life.RenderGameMode();
+        Assert.Equal(15, life.CameraCatchupTicks);
+        Assert.True(life.GamePlus90594);
+        Assert.Equal(1, life.CameraBodySteps);
+        Assert.Equal(1, life.GamePlus80);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CameraCatchupTicksVa);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CameraBodyFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraApplyFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.CameraInterpolationFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
     }
 
@@ -308,6 +395,22 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x0041726Du, EngineLifecycle.AdvanceGameTicksFn);
         Assert.Equal(0x0049DFB0u, EngineLifecycle.DispatchWorldCallbacksFn);
         Assert.Equal(0x004164E0u, EngineLifecycle.CameraBodyFn);
+        Assert.Equal(0x013B8630u, EngineLifecycle.CameraCatchupTicksVa);
+        Assert.Equal(0x01375550u, EngineLifecycle.CameraCatchupMinVa);
+        Assert.Equal(15, EngineLifecycle.CameraCatchupMin);
+        Assert.Equal(0x0122EDB8u, EngineLifecycle.CameraStepScaleVa);
+        Assert.Equal(1.0 / 15.0, EngineLifecycle.CameraStepScale);
+        Assert.Equal(0x00BFEA70u, EngineLifecycle.FistpFn);
+        Assert.Equal(0x0049E080u, EngineLifecycle.WorldCameraApplyFn);
+        Assert.Equal(0x006B42F0u, EngineLifecycle.CameraManagerBlendFn);
+        Assert.Equal(0x00435F70u, EngineLifecycle.DisplayApplyThunk);
+        Assert.Equal(0x00435530u, EngineLifecycle.DisplayApplyBodyFn);
+        Assert.Equal(0x0041707Eu, EngineLifecycle.CameraInterpolationFn);
+        Assert.Equal(13, EngineLifecycle.CameraRecordDwords);
+        Assert.Equal(52, EngineLifecycle.CameraRecordSize);
+        Assert.Equal(1, EngineLifecycle.FistpTowardZero(15 * EngineLifecycle.CameraStepScale));
+        Assert.Equal(2, EngineLifecycle.FistpTowardZero(30 * EngineLifecycle.CameraStepScale));
+        Assert.Equal(0, EngineLifecycle.FistpTowardZero(14 * EngineLifecycle.CameraStepScale));
         Assert.Equal(1, EngineLifecycle.WorldTickType);
         Assert.Equal(1, EngineLifecycle.RegionTableDummyCount);
         Assert.Equal(0x00500540u, EngineLifecycle.LoadRegionFn);
@@ -630,5 +733,71 @@ public sealed class EngineLifecycleTests
             @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
         Directory.CreateDirectory(dest);
         life.Trace.Write(Path.Combine(dest, "load-gtg.txt"));
+    }
+
+    [Fact]
+    public void Camera_004164E0_runs_on_install_after_WorldFrame()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.Equal(0, life.WorldFrame);
+        life.PlayerActionReady = true;
+        life.UpdateGameMode();
+        life.UpdateGameMode();
+        Assert.Equal(2, life.WorldFrame);
+        life.CameraCatchupTicks = 15;
+        life.GamePlus72 = 1;
+        life.RenderGameMode();
+        Assert.Equal(1, life.CameraBodySteps);
+        Assert.Equal(1, life.GamePlus80);
+        Assert.True(life.GamePlus90594);
+        Assert.NotNull(life.Camera);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CameraBodyFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraApplyFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CameraManagerBlendFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayApplyBodyFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+            "traces");
+        Directory.CreateDirectory(dest);
+        life.Trace.Write(Path.Combine(dest, "camera-004164E0.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-004164E0.txt"),
+            """
+            004164E0 camera body (86 insn, ret 4):
+              fild arg; fmul qword [0x122EDB8]=1/15
+              00BFEA70 fistp toward zero = loop count
+              skip if [game+80]>=[game+72] or count<=0
+              each step: 00415A60 52-byte record
+                +0/+16 = (i+1)/arg
+                +4/+20 = i/count
+                snapshot game+112/+116/+128/+132
+                +48 = game+72
+                rep movsd record -> game+112
+              0049E080 world apply:
+                004C74F0 [world+80]
+                0051EBD0 thing walk vtbl+84/+104
+                006B42F0(world+24, t) camera-manager lerp
+                  (slots +3084/+6188/+6296 PARTIAL)
+              00416231 time = 009E1BC0-[game+96]
+              00435F70 jmp 00435530 display (PARTIAL)
+              [game+90424]++ ; [game+80]=[game+72]
+            00417001: WorldFrame<=1 skip
+              [0x13B8630]<=0 -> 0041707E UNREAD
+              else clamp min [0x1375550]=15, call 004164E0
+              then [game+90594]=1
+            [0x13B8630] writers unread (3 imm sites).
+            [record+36] first writer still unread.
+            Not 00DBDE40.
+            """);
     }
 }
