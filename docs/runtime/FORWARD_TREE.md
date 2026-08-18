@@ -789,11 +789,14 @@ Fiber +41 setter 00CB78D0  PROVEN
 │   ├── 004B3CE0 stub  PROVEN
 │   │   [0x1375454] no writer → 0
 │   │   [quest+8]=0
-│   └── 00CB8220 skipped  PROVEN
-│       ([eax+8]==0). 00CB7C40/00CB7950
-│       / vtbl+4 00CDDBF0 / 00F013C0
-│       not first-seen. Host per-name
-│       00CB7950 + Runtime.Update leftover.
+│   ├── 00CB8220 skipped  PROVEN
+│   │   ([eax+8]==0). 00CB7C40/00CB7950
+│   │   / vtbl+4 00CDDBF0 / 00F013C0
+│   │   not first-seen. Host per-name
+│   │   00CB7950 + Runtime.Update leftover.
+│   └── 00449970 / 00487DC0  PROVEN miss
+│       0044BC10 00A01B10 +48=0
+│       00A01B50 0 → skip 004AFCA0
 └── 004A5DF3 006B3FF0 then 004A5E10
 009D9C80 first 250: dirty-list only. No type 0x22.
 

@@ -1643,7 +1643,17 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.QuestListPumpFn &&
             e.Action.Contains("skip", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerCreatureBindFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerCreatureThingFn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PlayerThingSmartPtrFn &&
+            e.Action.Contains("miss", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.QuestPlayerSyncFn &&
+            e.Action.Contains("skip", StringComparison.Ordinal));
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.QuestFiberAttachFn);
+        Assert.Equal(0x00A01B50u, EngineLifecycle.PlayerThingSmartPtrFn);
+        Assert.Equal(0x004AFCA0u, EngineLifecycle.QuestPlayerSyncFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
         Assert.Equal(0x01375454u, EngineLifecycle.QuestFactoryGateVa);
         Assert.Equal(0, EngineLifecycle.QuestFactoryGateFirstSeen);

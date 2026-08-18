@@ -1207,6 +1207,23 @@ public sealed class EngineLifecycle : IDisposable
     public const uint PlayerCreatureBindFn = 0x00449970;
     public const uint PlayerCreatureThingFn = 0x00487DC0;
     public const uint PlayerSlotWalkFn = 0x004498C0;
+    public const uint PlayerThingSmartPtrFn = 0x00A01B50;
+    public const uint PlayerThingSmartPtrCtor = 0x00A01B10;
+    public const int PlayerSlotPlus44Offset = 44;
+    /// <summary>
+    /// <c>004B4490</c> after
+    /// <c>00CB8220</c> skip:
+    /// <c>00449970</c> /
+    /// <c>00487DC0</c>. First-seen
+    /// slot <c>0044BC10</c>
+    /// <c>00A01B10</c> leaves
+    /// <c>+48=0</c> so
+    /// <c>00A01B50</c> is 0 and
+    /// <c>004AFCA0</c> is skipped.
+    /// </summary>
+    public const uint QuestPlayerSyncFn = 0x004AFCA0;
+    public const int PlayerThingPlus145Offset = 145;
+    public const int PlayerThingPlus142Offset = 142;
     public const uint PlayerCreatureFactoryFn = 0x0052B880;
     public const uint HolySiteFactoryFn = 0x0052AC90;
     public const uint CreateCharacterFn = 0x00489D40;
@@ -3868,7 +3885,9 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>004B3CE0</c> stubs
     /// <c>[quest+8]=0</c>.
     /// <c>cmp [eax+8]</c> skips
-    /// <c>00CB8220</c>.
+    /// <c>00CB8220</c>. Then
+    /// <c>00449970</c>/<c>00487DC0</c>
+    /// miss (<c>00A01B50</c> 0).
     /// </summary>
     public void PumpQuests()
     {
@@ -3880,6 +3899,15 @@ public sealed class EngineLifecycle : IDisposable
             "004B3CE0 stub [quest+8]=0");
         Note(QuestListPumpFn, "GamePump", "Quest",
             "00CB8220 skip [quest+8]=0");
+        Note(PlayerCreatureBindFn, "GamePump", "Player",
+            "00449970 [game+28]+28");
+        Note(PlayerSlotWalkFn, "GamePump", "Player", "004498C0");
+        Note(PlayerCreatureThingFn, "GamePump", "Player",
+            $"00487DC0 +{PlayerSlotPlus44Offset} jmp 00A01B50");
+        Note(PlayerThingSmartPtrFn, "GamePump", "Player",
+            "00A01B50 +48=0 miss");
+        Note(QuestPlayerSyncFn, "GamePump", "Quest",
+            "004AFCA0 skip");
         QuestPumpWalked = 0;
         QuestVtbl24Calls = 0;
         QuestPumpRan = true;
