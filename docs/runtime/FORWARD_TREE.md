@@ -389,16 +389,18 @@ then inner loop until [game+8]  PROVEN
 │   first-seen 1
 ├── [game+52]==0 → 009F8BA0(game+90556) then 004162B5  PROVEN
 │   [game+52]!=0 → 00417747 (not first-seen)
-├── 004162B5  GamePumpUpdate  SLOT
+├── 004162B5  GamePumpUpdate  PROVEN
 │   ├── 009A57B0  gate [engine+148]==GetTickCount
 │   ├── [game].vtbl+20  00418289  update
-│   ├── [game].vtbl+24  00416E78  PROVEN prefix even if WorldFrame<=1
-│   │   ├── [world+52].vtbl+4 + 00BFEA70
-│   │   ├── 00416392 → 0049E200
-│   │   ├── 009F4A90 [0x13B8388]+60 / +92=[game+72]
-│   │   ├── [0x13B8388].vtbl+8
-│   │   └── WorldFrame<=1 skip 004457F0 / 00446A30
-│   └── [game].vtbl+28  00417001  render
+│   │   └── 004AEBA0 → 004AEAA0 → 0041674A
+│   │       first-seen 0 → skip vtbl+24 / 0041726D  PROVEN
+│   │       1 → [game].vtbl+24  00416E78
+│   │           ├── [world+52].vtbl+4 + 00BFEA70
+│   │           ├── 00416392 → 0049E200
+│   │           ├── 009F4A90 [0x13B8388]+60 / +92=[game+72]
+│   │           ├── [0x13B8388].vtbl+8
+│   │           └── WorldFrame<=1 skip 004457F0 / 00446A30
+│   └── 009E9FB0==0 → [game].vtbl+28  00417001  render
 │       └── 00435530  BeginScene / layers / EndScene / 009BEEB0
 ├── 00416202 / 00415E85
 └── 0044C6B0 / 009AC9E0
@@ -406,8 +408,13 @@ then inner loop until [game+8]  PROVEN
 
 **First** `004189C2` sees index 0 (dummy). It does **not**
 `SetRegionAsLoaded` and does **not** `E8` `00501450`.
-Inner `0041726D` walks `game+164`; ctor 0 → `009F1750` empty
-(host type-1 seed DISPROVEN). `00501450` caller still UNREAD.
+`004189C2` writes `[game+96]=009E1BC0` and `[game+9]=1`.
+`0041674A` first-seen takes the dt path (`0x13B8688` has no
+writer) with `004166E2` startup 0 and `+9836=[game+72]=0`
+→ al=0. `004AEAA0` misses; `00418289` skips `00416E78`
+and `0041726D`. Host “always run vtbl+24” is DISPROVEN.
+`004162B5` does **not** call vtbl+24 (only vtbl+20 then
+vtbl+28). `00501450` caller still UNREAD.
 
 ---
 
@@ -617,9 +624,14 @@ constructs that quest object.
 ├── 009E1BC0 → [game+90544]
 ├── fade / player  004AEBA0  PROVEN (6)
 │   └── [+9826]==0 → al=0; else 004AEAA0
-├── world          0049D9E0  (ret — no work)
-├── game vtbl+24   00416E78
-└── 0041726D  WorldFrame  PROVEN (87)
+│       └── 0041674A  PROVEN
+│           ├── [game+9]==0 → 0
+│           ├── 0x13B8688!=0 → 1 (no writer; first-seen 0)
+│           └── else 004166E2*15 − +9836  fcomp 1.0
+│               first-seen 0 → 004AEAA0 miss 004AEB8A
+├── 004AEBA0==1 → world 0049D9E0  (ret)
+├── 004AEBA0==1 → game vtbl+24  00416E78
+└── 004AEBA0==1 → 0041726D  WorldFrame  PROVEN (87)
     └── 0049DFB0 type-1  PROVEN (73)
         table [0x13B9288]; type 1 special
 

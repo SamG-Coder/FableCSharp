@@ -700,6 +700,33 @@ public sealed class EngineLifecycle : IDisposable
     public const uint FadeApplyFn = 0x0041649C;
     public const uint PlayerActionFn = 0x004AEAA0;
     public const int PlayerActionFlagOffset = 9826;
+    /// <summary>
+    /// <c>0041674A</c> (<c>004AEAA0</c>
+    /// arg <c>+9836</c> = <c>[game+72]</c>
+    /// from <c>004AE9D0</c>).
+    /// <c>[game+9]==1</c> after
+    /// <c>004189C2</c>. BSS
+    /// <c>0x13B8688</c> has no <c>.text</c>
+    /// writer (two <c>cmp</c> only) so
+    /// first-seen takes the dt path:
+    /// <c>004166E2*15 − +9836</c>
+    /// <c>fcomp 1.0</c>; <c>&lt;=</c> → 0.
+    /// <c>004162B5</c> does not call
+    /// vtbl+24; <c>00416E78</c> runs only
+    /// when this returns 1.
+    /// </summary>
+    public const uint PlayerCatchupFn = 0x0041674A;
+    public const uint PlayerCatchupTimeFn = 0x004166E2;
+    public const int GamePlus9Offset = 9;
+    public const int GamePlus9FirstSeen = 1;
+    public const uint PlayerCatchupForceVa = 0x013B8688;
+    public const int PlayerCatchupForceFirstSeen = 0;
+    public const uint PlayerCatchupMenuVa = 0x013B860C;
+    public const int PlayerCatchupMenuFirstSeen = 0;
+    public const uint PlayerCatchupCutsceneVa = 0x013B8629;
+    public const int PlayerCatchupCutsceneFirstSeen = 0;
+    public const uint TickListAppendFn = 0x009F16F0;
+    public const uint TickListClearFn = 0x009F1720;
     public const uint GameVtbl24Fn = 0x00416E78;
     public const int GameVtbl24 = 24;
     /// <summary>
@@ -1329,6 +1356,27 @@ public sealed class EngineLifecycle : IDisposable
     /// always returns 1.
     /// </summary>
     public bool PlayerActionReady { get; set; }
+    /// <summary>
+    /// <c>[game+9]</c>. <c>004189C2</c>
+    /// writes 1 at entry, 0 on leave.
+    /// </summary>
+    public bool GamePlus9 { get; private set; }
+    /// <summary>
+    /// <c>004AE9D0</c> <c>+9836</c> =
+    /// <c>[game+72]</c>.
+    /// </summary>
+    public int PlayerBindSlot0 { get; private set; }
+    /// <summary>
+    /// <c>004AE9D0</c> <c>+9840</c> =
+    /// <c>00416392</c> (first-seen 0).
+    /// </summary>
+    public int PlayerBindSlot1 { get; private set; }
+    /// <summary>
+    /// <c>004AE9D0</c> <c>+9844</c> =
+    /// <c>[game+90428]</c> (first-seen 0).
+    /// </summary>
+    public int PlayerBindSlot2 { get; private set; }
+    public bool PlayerCatchupHit { get; private set; }
     public bool GameModePaused { get; set; }
     public int GameSleepMs { get; set; }
     public bool FrontEndQuery { get; private set; }
@@ -2415,8 +2463,13 @@ public sealed class EngineLifecycle : IDisposable
         Note(WorldThingCountApply, "InitGame", "GameStart",
             "0049E200 0051E530+[0x13B89BC]");
         if (PlayerActionReady)
+        {
+            PlayerBindSlot0 = GamePlus72;
+            PlayerBindSlot1 = WorldFrame;
+            PlayerBindSlot2 = 0;
             Note(PlayerBindAfterWorldFn, "InitGame", "Player",
-                $"004AE9D0 +{PlayerActionFlagOffset} +{PlayerBindSlot0Offset}/+{PlayerBindSlot1Offset}/+{PlayerBindSlot2Offset}");
+                $"004AE9D0 +{PlayerBindSlot0Offset}={PlayerBindSlot0} +{PlayerBindSlot1Offset}={PlayerBindSlot1} +{PlayerBindSlot2Offset}={PlayerBindSlot2}");
+        }
         var defaultIni = Install is null
             ? DefaultUserIniName
             : Path.Combine(Install.Root, DefaultUserIniName);
@@ -2682,6 +2735,7 @@ public sealed class EngineLifecycle : IDisposable
         if (Stage != EngineStage.Game)
             return;
         GamePumpFrames++;
+        GamePlus9 = true;
         if (GamePumpFirstDone)
         {
             EnqueueAfterDummy();
@@ -2692,7 +2746,9 @@ public sealed class EngineLifecycle : IDisposable
 
         Note(GamePump, "GamePump", "Game", "004189C2 vtbl+8");
         Note(GamePumpPlayerFn, "GamePump", "Player", "004AE9C0 game+80568");
-        Note(FrameDtFn, "GamePump", "Time", "009E1BC0 FrameDt");
+        Note(FrameDtFn, "GamePump", "Time", "009E1BC0 [game+96]");
+        Note(PlayerCatchupFn, "GamePump", "Time",
+            $"[game+{GamePlus9Offset}]={GamePlus9FirstSeen}");
         if (UseNamedStart)
         {
             Note(NamedStartFn, "GamePump", "Region", "00416268 named start");
@@ -2763,7 +2819,10 @@ public sealed class EngineLifecycle : IDisposable
     /// <summary>
     /// <c>004162B5</c> inner frame. Not map
     /// load. <c>009A57B0</c> false skips
-    /// vtbl+20 / vtbl+28.
+    /// vtbl+20 / vtbl+28. Does not call
+    /// vtbl+24; that is inside
+    /// <c>00418289</c> after
+    /// <c>004AEBA0</c> returns 1.
     /// </summary>
     public void PumpGameUpdate()
     {
@@ -2836,14 +2895,24 @@ public sealed class EngineLifecycle : IDisposable
                 $"004AEBA0 +{PlayerActionFlagOffset}={PlayerActionReady}");
             if (PlayerActionReady)
             {
-                Note(PlayerActionFn, "GamePump", "Player", "004AEAA0");
-                Note(GameUpdateWorldFn, "GamePump", "World", "0049D9E0 ret");
-                WorldUpdateRan = true;
-                Note(GameVtbl24Fn, "GamePump", "Update", "vtbl+24 00416E78");
-                PumpPlayerInterface();
-                GameVtbl24Ran = true;
-                Note(ClearGamePlus68Fn, "GamePump", "Update", "00416047 [game+68]=0");
-                AdvanceGameTicks();
+                PlayerCatchupHit = EvaluatePlayerCatchup();
+                Note(PlayerActionFn, "GamePump", "Player",
+                    PlayerCatchupHit
+                        ? "004AEAA0 0041674A=1"
+                        : "004AEAA0 0041674A=0 004AEB8A");
+                if (PlayerCatchupHit)
+                {
+                    Note(TickListAppendFn, "GamePump", "Player",
+                        "009F16F0 game+164 0x648 UNREAD");
+                    Note(TickListClearFn, "GamePump", "Player", "009F1720");
+                    Note(GameUpdateWorldFn, "GamePump", "World", "0049D9E0 ret");
+                    WorldUpdateRan = true;
+                    Note(GameVtbl24Fn, "GamePump", "Update", "vtbl+24 00416E78");
+                    PumpPlayerInterface();
+                    GameVtbl24Ran = true;
+                    Note(ClearGamePlus68Fn, "GamePump", "Update", "00416047 [game+68]=0");
+                    AdvanceGameTicks();
+                }
             }
         }
 
@@ -2854,12 +2923,45 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
+    /// <c>0041674A</c>. First-seen
+    /// <c>[game+9]==1</c>,
+    /// <c>0x13B8688==0</c> (no writer),
+    /// <c>004166E2</c> startup 0,
+    /// <c>+9836=[game+72]</c> ctor 0 →
+    /// <c>0 &lt;= 1.0</c> so al=0.
+    /// </summary>
+    public bool EvaluatePlayerCatchup()
+    {
+        Note(PlayerCatchupFn, "GamePump", "Time", "0041674A");
+        if (!GamePlus9)
+        {
+            Note(PlayerCatchupFn, "GamePump", "Time", "[game+9]=0");
+            return false;
+        }
+
+        Note(PlayerCatchupMenuVa, "GamePump", "Time",
+            $"013B860C={PlayerCatchupMenuFirstSeen}");
+        Note(PlayerCatchupForceVa, "GamePump", "Time",
+            $"013B8688={PlayerCatchupForceFirstSeen} no writer");
+        Note(PlayerCatchupTimeFn, "GamePump", "Time", "004166E2");
+        var scaled = DisplayTime * CameraCatchupMin - PlayerBindSlot0;
+        var hit = scaled > CameraInvArgOne;
+        Note(PlayerCatchupFn, "GamePump", "Time",
+            hit
+                ? $"004166E2*{CameraCatchupMin}-{PlayerBindSlot0} > 1"
+                : $"004166E2*{CameraCatchupMin}-{PlayerBindSlot0} <= 1");
+        return hit;
+    }
+
+    /// <summary>
     /// <c>00416E78</c>: prefix always
     /// (<c>[world+52].vtbl+4</c>,
     /// <c>00416392</c>, <c>009F4A90</c>,
     /// input <c>vtbl+8</c>).
     /// <c>004457F0</c> / <c>00446A30</c>
     /// only after <c>WorldFrame&gt;1</c>.
+    /// Reached only when
+    /// <c>004AEBA0</c> returns 1.
     /// </summary>
     public void PumpPlayerInterface()
     {

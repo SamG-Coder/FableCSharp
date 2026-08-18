@@ -681,7 +681,8 @@ public sealed class EngineLifecycleTests
             Not 00DBDE40 / CREATURE_HERO_CHILD.
             """);
         Assert.True(life.PlayerActionReady);
-        Assert.True(life.WorldUpdateRan);
+        Assert.False(life.WorldUpdateRan);
+        Assert.False(life.PlayerCatchupHit);
         Assert.Equal(0, life.WorldFrame);
         Assert.Equal("LookoutPoint", life.FirstSceneMapName);
         Assert.Contains(life.ThingsForMap("LookoutPoint"), t =>
@@ -957,6 +958,7 @@ public sealed class EngineLifecycleTests
         Assert.False(life.RenderBodyRan);
         Assert.Equal(0, life.GamePresentCount);
         life.WorldFrame = 2;
+        life.DisplayTime = 1.0;
         Assert.True(life.Pump());
         Assert.True(life.RenderBodyRan);
         Assert.True(life.GamePresentCount >= 1);
@@ -1034,6 +1036,7 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0, life.WorldFrame);
         Assert.Contains(life.Player.Listeners, l => l.Vtbl == ActionInputListener.VtblVa);
         life.WorldFrame = 2;
+        life.DisplayTime = 1.0;
         life.QueueInput(EngineInput.TypeKey, EngineInput.KeyMove3);
         life.Pump();
         Assert.True(life.Player.PumpCalls >= 1);
@@ -1238,11 +1241,13 @@ public sealed class EngineLifecycleTests
         Assert.True(life.PlayerActionReady);
         Assert.False(life.WorldUpdateRan);
         Assert.True(life.Pump());
-        Assert.True(life.WorldUpdateRan);
+        Assert.False(life.WorldUpdateRan);
+        Assert.False(life.PlayerCatchupHit);
         Assert.Equal(0, life.WorldFrame);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerObjectInit);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerObjectInitPredicate);
-        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameUpdateWorldFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerCatchupFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.GameUpdateWorldFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         var dest = Path.Combine(
             @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
@@ -1264,10 +1269,9 @@ public sealed class EngineLifecycleTests
               [esi+9824]=1
               return 1
             DISPROVEN: +9826 stays 0 after Create Players.
-            00418289 / 004AEBA0 therefore take the
-            player / 004AEAA0 / world / vtbl+24 path
-            on the first 004162B5 pump. WorldFrame
-            increments via 004A5E10. Not 00DBDE40.
+            004AEBA0 reaches 004AEAA0, but first-seen
+            0041674A is 0 so 00418289 skips vtbl+24
+            and 0041726D. Not 00DBDE40.
             """);
     }
 
@@ -1346,15 +1350,16 @@ public sealed class EngineLifecycleTests
         Assert.True(life.GameRenderEnabled);
         Assert.True(life.PlayerActionReady);
         Assert.False(life.FadeUiActive);
-        Assert.True(life.WorldUpdateRan);
-        Assert.True(life.GameVtbl24Ran);
+        Assert.False(life.WorldUpdateRan);
+        Assert.False(life.GameVtbl24Ran);
+        Assert.False(life.PlayerCatchupHit);
         Assert.False(life.RenderBodyRan);
         Assert.Equal(0, life.WorldFrame);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.EngineUpdateGateFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameUpdateFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameRenderFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameUpdatePlayerFn);
-        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameUpdateWorldFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.GameUpdateWorldFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerObjectInitPredicate);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.StoreActiveThingFn);
         Assert.Contains(life.Trace.Events, e =>
@@ -1524,11 +1529,16 @@ public sealed class EngineLifecycleTests
         Assert.True(enter > fade && leave > enter, "009F2660/009F26B0 after fade");
         Assert.True(innerDt > leave && update > innerDt,
             "009F8BA0 then 004162B5 after first-pump tail");
-        Assert.True(life.InputRecordStored);
-        Assert.Contains(events, e => e.Va == EngineLifecycle.InputStoreRecordFn);
+        Assert.False(life.InputRecordStored);
+        Assert.False(life.PlayerCatchupHit);
+        Assert.False(life.GameVtbl24Ran);
         Assert.Contains(events, e =>
-            e.Va == EngineLifecycle.GameVtbl24Fn &&
-            e.Action.Contains("skip 004457F0", StringComparison.Ordinal));
+            e.Va == EngineLifecycle.PlayerCatchupFn &&
+            e.Action.Contains("<= 1", StringComparison.Ordinal));
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.PlayerActionFn &&
+            e.Action.Contains("004AEB8A", StringComparison.Ordinal));
+        Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.GameVtbl24Fn);
         Assert.Contains(events, e =>
             e.Va == EngineLifecycle.DisplayEngineFadeFn &&
             e.Action.Contains("20", StringComparison.Ordinal));
@@ -1541,6 +1551,36 @@ public sealed class EngineLifecycleTests
         Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.LoadRegionFn);
         Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
+    }
+
+    [Fact]
+    public void First_pump_0041674A_is_0_so_00418289_skips_00416E78()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(0, life.PlayerBindSlot0);
+        Assert.Equal(0, life.PlayerBindSlot1);
+        Assert.Equal(0, life.PlayerBindSlot2);
+        Assert.True(life.Pump());
+        Assert.True(life.GamePlus9);
+        Assert.Equal(0.0, life.DisplayTime);
+        Assert.False(life.PlayerCatchupHit);
+        Assert.False(life.GameVtbl24Ran);
+        Assert.False(life.WorldUpdateRan);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.TickListAppendFn);
+        life.DisplayTime = 1.0;
+        life.UpdateGameMode();
+        Assert.True(life.PlayerCatchupHit);
+        Assert.True(life.GameVtbl24Ran);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.GameVtbl24Fn &&
+            e.Action.Contains("skip 004457F0", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.TickListAppendFn);
     }
 
     [Fact]
@@ -1850,8 +1890,11 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Pump());
         Assert.True(life.Pump());
         Assert.True(life.PlayerActionReady);
-        Assert.True(life.WorldUpdateRan);
+        Assert.False(life.WorldUpdateRan);
+        Assert.False(life.PlayerCatchupHit);
+        life.DisplayTime = 1.0;
         life.UpdateGameMode();
+        Assert.True(life.PlayerCatchupHit);
         Assert.True(life.WorldUpdateRan);
         Assert.True(life.GameVtbl24Ran);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerActionFn);
@@ -1898,12 +1941,16 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Pump());
         Assert.Empty(life.GameTickTypes);
         Assert.True(life.PlayerActionReady);
+        Assert.False(life.PlayerCatchupHit);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.WorldFrameIncSite);
         Assert.Equal(0, life.WorldFrame);
         Assert.False(life.RenderBodyRan);
-        Assert.Contains(life.Trace.Events, e =>
+        Assert.DoesNotContain(life.Trace.Events, e =>
             e.Va == EngineLifecycle.AdvanceGameTicksFn &&
-            e.Action.Contains("empty", StringComparison.Ordinal));
+            e.Stage == "GamePump");
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PlayerCatchupFn &&
+            e.Action.Contains("<= 1", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InnerLoopDtFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.CameraBodyFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
@@ -2095,6 +2142,12 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x00490A22u, EngineLifecycle.GuiBlockQueryFn);
         Assert.Equal(0x004AEAA0u, EngineLifecycle.PlayerActionFn);
         Assert.Equal(9826, EngineLifecycle.PlayerActionFlagOffset);
+        Assert.Equal(0x0041674Au, EngineLifecycle.PlayerCatchupFn);
+        Assert.Equal(0x004166E2u, EngineLifecycle.PlayerCatchupTimeFn);
+        Assert.Equal(9, EngineLifecycle.GamePlus9Offset);
+        Assert.Equal(0x013B8688u, EngineLifecycle.PlayerCatchupForceVa);
+        Assert.Equal(0, EngineLifecycle.PlayerCatchupForceFirstSeen);
+        Assert.Equal(0x009F16F0u, EngineLifecycle.TickListAppendFn);
         Assert.Equal(0x00416E78u, EngineLifecycle.GameVtbl24Fn);
         Assert.Equal(0x0049D870u, EngineLifecycle.WorldFrameGetter);
         Assert.Equal(0x004C74F0u, EngineLifecycle.StoreActiveThingFn);
