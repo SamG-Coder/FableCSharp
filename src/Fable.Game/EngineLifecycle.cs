@@ -178,7 +178,34 @@ public sealed class EngineLifecycle : IDisposable
     public const uint FrontendWidgetType0Ctor = 0x0041B800;
     public const uint FrontendWidgetVtbl = 0x0122F5D4;
     public const uint FrontendWidgetDrawFn = 0x0041AFA0;
+    /// <summary>
+    /// <c>0041B800</c> writes <c>[+376]=0</c>
+    /// <c>[+380]=0</c> so first-seen
+    /// <c>0041AFA0</c> takes
+    /// <c>0041BEB0</c> at <c>0041B47C</c>,
+    /// not sibling <c>0041BF60</c>.
+    /// </summary>
     public const uint FrontendWidgetQueueFn = 0x0041BEB0;
+    public const uint FrontendWidgetQueueSiblingFn = 0x0041BF60;
+    public const uint FrontendWidgetPostCtorFn = 0x0041AC20;
+    public const uint Frontend2dRecordType = RegionTravel.FadeOverlayRecordType;
+    public const int Frontend2dRecordBytes = unchecked((int)RegionTravel.FadeOverlaySubmit);
+    /// <summary>
+    /// Default enqueue is <c>[edx+92]</c>
+    /// dest <c>this+0x15C</c>. Alt is
+    /// <c>[esi+112]</c> when both args
+    /// at <c>esp+144</c>/<c>+152</c> are
+    /// set (00595222 first-seen passes
+    /// those as 0).
+    /// </summary>
+    public const int Frontend2dSubmitVtbl = RegionTravel.FadeOverlaySubmitVtbl;
+    public const int Frontend2dAltSubmitVtbl = 112;
+    public const int FrontendWidgetReadyOffset = 368;
+    public const int FrontendWidgetBlendOffset = 372;
+    public const int FrontendWidgetFontOffset = 376;
+    public const int FrontendWidgetTextureOffset = 380;
+    public const int FrontendWidgetSubmitDestOffset = 0x15C;
+    public const int FrontendWidgetBlendDefault = 2;
     public const int FrontendWidgetDefTypeOffset = 60;
     public const string FrontendMainMenuNoContinue =
         "UI_FRONTEND_MAIN_MENU_NO_LIVEAWARE_NO_CONTINUE";
@@ -195,6 +222,22 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public const uint FrontendDisplaySingletonVa = 0x013B7CD8;
     public const uint FrontendDisplayHelper2Fn = 0x00404C00;
+    /// <summary>
+    /// <c>00404C00</c>: <c>[ecx+8]==0</c>
+    /// returns. Else <c>[+76].vtbl+108</c>
+    /// byte to <c>[0x13750B0]</c>,
+    /// <c>00CB38E0(1,1)</c>,
+    /// <c>0041E5F2</c>, optional
+    /// <c>0041A980</c> if
+    /// <c>[input+184]</c>. First-seen
+    /// singleton <c>+8</c> is BSS 0.
+    /// </summary>
+    public const int FrontendDisplayFlagOffset = 8;
+    public const int FrontendDisplayObjectOffset = 76;
+    public const int FrontendDisplayVtbl = 108;
+    public const uint FrontendDisplayByteVa = 0x013750B0;
+    public const uint FrontendDisplayImeFn = 0x00CB38E0;
+    public const uint FrontendDisplayCursorFn = 0x0041A980;
     public const uint FrontendUiTickFn = 0x00599E3F;
     public const uint BeginSceneFn = RegionTravel.PlayAviBeginScene;
     public const uint EndSceneFn = RegionTravel.PlayAviEndScene;
@@ -941,6 +984,20 @@ public sealed class EngineLifecycle : IDisposable
     public int FrontendPresentCount { get; private set; }
     public int FrontendWidgetsDrawn { get; private set; }
     public int FrontendFlushCount { get; private set; }
+    public int Frontend2dRecordsQueued { get; private set; }
+    public uint Frontend2dLastType { get; private set; }
+    public uint Frontend2dLastPacker { get; private set; }
+    public int Frontend2dLastSubmitVtbl { get; private set; }
+    /// <summary>
+    /// <c>[0x13B7CD8+8]</c>. BSS 0 skips
+    /// the <c>00404C00</c> body.
+    /// </summary>
+    public bool FrontendDisplayFlag { get; private set; }
+    public bool FrontendDisplayImeRan { get; private set; }
+    public bool FrontendDisplayCursorRan { get; private set; }
+    public int FrontendWidgetBlend { get; private set; }
+    public int FrontendWidgetFont { get; private set; }
+    public int FrontendWidgetTexture { get; private set; }
     public string? FrontendMenuRoot { get; private set; }
     public bool FrontendMenuConstructed { get; private set; }
     public IReadOnlyList<string> FrontendMenuLabels =>
@@ -1412,7 +1469,11 @@ public sealed class EngineLifecycle : IDisposable
         Note(FrontendWidgetConstructFn, "Frontend", "UI",
             "0041D21B [def+60] type0 0041B800");
         Note(FrontendWidgetType0Ctor, "Frontend", "UI",
-            $"0041B800 vtbl 0x{FrontendWidgetVtbl:X}");
+            $"0041B800 vtbl 0x{FrontendWidgetVtbl:X} +{FrontendWidgetBlendOffset}={FrontendWidgetBlendDefault}");
+        Note(FrontendWidgetPostCtorFn, "Frontend", "UI", "0041AC20");
+        FrontendWidgetBlend = FrontendWidgetBlendDefault;
+        FrontendWidgetFont = 0;
+        FrontendWidgetTexture = 0;
         FrontendMenuRoot = FrontendMainMenuNoContinue;
         FrontendMenuConstructed = true;
         Note(FrontendUiBuildMenu, "Frontend", "UI", "00595B24");
@@ -1450,8 +1511,9 @@ public sealed class EngineLifecycle : IDisposable
         DrawFrontendWidgets();
         Note(InputActionGetter, "Frontend", "Input", "0041E5F2");
         FlushFrontendDisplay();
-        Note(FrontendDisplayHelperFn, "Frontend", "D3D9", "00404A80");
-        Note(FrontendDisplayHelper2Fn, "Frontend", "D3D9", "00404C00");
+        Note(FrontendDisplayHelperFn, "Frontend", "D3D9",
+            $"00404A80 0x{FrontendDisplaySingletonVa:X}");
+        ApplyFrontendDisplay();
         FlushFrontendDisplay();
         Note(EndSceneFn, "Frontend", "D3D9", "009BEF50 EndScene");
         Note(PresentFn, "Frontend", "D3D9", "009BEEB0 Present");
@@ -1468,6 +1530,7 @@ public sealed class EngineLifecycle : IDisposable
     private void DrawFrontendWidgets()
     {
         FrontendWidgetsDrawn = 0;
+        Frontend2dRecordsQueued = 0;
         Note(FrontendUiDrawFn, "Frontend", "UI",
             $"00595222 [ui+{FrontendWidgetListOffset}]");
         if (!FrontendMenuConstructed)
@@ -1476,10 +1539,65 @@ public sealed class EngineLifecycle : IDisposable
         // 00595B24 ids stay null and skip.
         Note(FrontendWidgetDrawFn, "Frontend", "UI",
             $"0041AFA0 vtbl+{FrontendWidgetDrawVtbl} 0122F5D4");
-        Note(FrontendWidgetQueueFn, "Frontend", "UI",
-            "0041BEB0 2D queue 0xC0");
+        QueueFrontend2dRecord();
         Note(FrontendWidgetNextFn, "Frontend", "UI", "004292C0");
         FrontendWidgetsDrawn = 1;
+    }
+
+    /// <summary>
+    /// <c>0041AFA0</c> first-seen:
+    /// <c>[+380]==0</c> and <c>[+376]==0</c>
+    /// so <c>0041BEB0</c> at <c>0041B47C</c>
+    /// (type <c>0x22</c>, dest 0xC0), then
+    /// <c>[edx+92]</c> because 00595222
+    /// passes the two optional args as 0.
+    /// Sibling <c>0041BF60</c> needs
+    /// <c>[+380]!=0</c> — ctor leaves 0.
+    /// Dest rect from +204/+248 is
+    /// <c>0041AC20</c> UNREAD; packer
+    /// still writes type/size.
+    /// </summary>
+    private void QueueFrontend2dRecord()
+    {
+        var sibling = FrontendWidgetTexture != 0;
+        var packer = sibling ? FrontendWidgetQueueSiblingFn : FrontendWidgetQueueFn;
+        Note(packer, "Frontend", "UI",
+            sibling
+                ? $"0041BF60 type 0x{Frontend2dRecordType:X} [+380]"
+                : $"0041BEB0 type 0x{Frontend2dRecordType:X} +{FrontendWidgetBlendOffset}={FrontendWidgetBlend}");
+        Note(packer, "Frontend", "UI",
+            $"[edx+{Frontend2dSubmitVtbl}] dest +{FrontendWidgetSubmitDestOffset:X} 0x{Frontend2dRecordBytes:X}");
+        Frontend2dLastType = Frontend2dRecordType;
+        Frontend2dLastPacker = packer;
+        Frontend2dLastSubmitVtbl = Frontend2dSubmitVtbl;
+        Frontend2dRecordsQueued++;
+    }
+
+    /// <summary>
+    /// <c>00404C00</c> on the
+    /// <c>00404A80</c> singleton.
+    /// First-seen <c>[+8]==0</c> returns
+    /// before IME / cursor.
+    /// </summary>
+    private void ApplyFrontendDisplay()
+    {
+        Note(FrontendDisplayHelper2Fn, "Frontend", "D3D9",
+            $"00404C00 [+{FrontendDisplayFlagOffset}]={(FrontendDisplayFlag ? 1 : 0)}");
+        if (!FrontendDisplayFlag)
+        {
+            Note(FrontendDisplayHelper2Fn, "Frontend", "D3D9",
+                "00404C00 skip BSS [+8]==0");
+            FrontendDisplayImeRan = false;
+            FrontendDisplayCursorRan = false;
+            return;
+        }
+
+        Note(FrontendDisplayImeFn, "Frontend", "D3D9", "00CB38E0(1,1)");
+        FrontendDisplayImeRan = true;
+        Note(InputActionGetter, "Frontend", "Input", "0041E5F2");
+        Note(FrontendDisplayCursorFn, "Frontend", "D3D9",
+            "0041A980 [input+184] UNREAD");
+        FrontendDisplayCursorRan = false;
     }
 
     /// <summary>

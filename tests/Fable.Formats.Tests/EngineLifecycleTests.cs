@@ -230,6 +230,31 @@ public sealed class EngineLifecycleTests
         Assert.NotEqual(0x0052D900u, EngineLifecycle.FrontendWidgetDrawFn);
         Assert.Equal(0x00404A80u, EngineLifecycle.FrontendDisplayHelperFn);
         Assert.Equal(0x013B7CD8u, EngineLifecycle.FrontendDisplaySingletonVa);
+        Assert.Equal(0x0041BEB0u, EngineLifecycle.FrontendWidgetQueueFn);
+        Assert.Equal(0x0041BF60u, EngineLifecycle.FrontendWidgetQueueSiblingFn);
+        Assert.Equal(0x22u, EngineLifecycle.Frontend2dRecordType);
+        Assert.Equal(0xC0, EngineLifecycle.Frontend2dRecordBytes);
+        Assert.Equal(92, EngineLifecycle.Frontend2dSubmitVtbl);
+        Assert.Equal(2, life.FrontendWidgetBlend);
+        Assert.Equal(0, life.FrontendWidgetFont);
+        Assert.Equal(0, life.FrontendWidgetTexture);
+        Assert.Equal(1, life.Frontend2dRecordsQueued);
+        Assert.Equal(0x0041BEB0u, life.Frontend2dLastPacker);
+        Assert.Equal(0x22u, life.Frontend2dLastType);
+        Assert.Equal(92, life.Frontend2dLastSubmitVtbl);
+        Assert.False(life.FrontendDisplayFlag);
+        Assert.False(life.FrontendDisplayImeRan);
+        Assert.False(life.FrontendDisplayCursorRan);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendWidgetQueueFn &&
+            e.Action.Contains("0041BEB0", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendDisplayHelper2Fn &&
+            e.Action.Contains("skip", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendDisplayImeFn);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendWidgetQueueSiblingFn);
         var begin = Array.IndexOf(vas, EngineLifecycle.BeginSceneFn);
         var ui = Array.IndexOf(vas, EngineLifecycle.FrontendUiDrawFn);
         var flush = Array.IndexOf(vas, EngineLifecycle.DisplayFlush2dFn);
@@ -258,8 +283,11 @@ public sealed class EngineLifecycleTests
                 00595582 / 00595222 [ui+84]
                 [node+20] vtbl+8 = 0041AFA0 (0122F5D4)
                 not 0052D900 / 012521A8
+                0041B800 [+372]=2 [+376]=0 [+380]=0
+                0041BEB0 type 0x22 (not 0041BF60)
+                [edx+92] dest +15C 0xC0
                 009D9C80 / 009DA9F0(1)
-                00404A80 / 00404C00
+                00404A80 / 00404C00 [+8]==0 skip
                 009D9C80 / 009DA9F0(1)
                 009BEF50 EndScene
                 009BEEB0 IDirect3DDevice9::Present
@@ -287,8 +315,12 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayFlush2dFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayFlushLayersFn);
         Assert.Equal(1, life.FrontendWidgetsDrawn);
+        Assert.Equal(1, life.Frontend2dRecordsQueued);
+        Assert.Equal(0x0041BEB0u, life.Frontend2dLastPacker);
+        Assert.False(life.FrontendDisplayFlag);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendWidgetDrawFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendWidgetFactoryFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendWidgetQueueFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
     }
 

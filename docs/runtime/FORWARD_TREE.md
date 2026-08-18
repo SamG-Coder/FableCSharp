@@ -202,8 +202,13 @@ Retail vtbl `01230CA0`: slot 1 start `0042F75E`, slot 2 pump `0042EC7C`.
     ├── 0042FA30  zero 112-byte record
     ├── 0042DBFA  fill
     ├── 0042DF9E  009D8CF0 / 009BEF20 / 00595582 / 00595222
-    │              [ui+84] vtbl+8 / 009D9C80 / 009DA9F0(1)
-    │              00404A80 / 00404C00 / 009D9C80 / 009DA9F0(1)
+    │              [ui+84] vtbl+8 = 0041AFA0 (0122F5D4)
+    │              0041B800 [+372]=2 [+376]=0 [+380]=0
+    │              0041BEB0 type 0x22 (not sibling 0041BF60)
+    │              [edx+92] dest this+0x15C size 0xC0
+    │              009D9C80 / 009DA9F0(1)
+    │              00404A80 → 00404C00 [0x13B7CD8+8]==0 skip
+    │              009D9C80 / 009DA9F0(1)
     │              009BEF50 / 009BEEB0
     └── exit
         ├── [esi+42] != 0   LOAD
