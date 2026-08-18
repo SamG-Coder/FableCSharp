@@ -43,8 +43,73 @@ public static class QuestFactoryTable
     public const uint GameflowFactory = 0x00CEF950;
     public const uint GameflowVtbl = 0x012C3FA4;
     public const uint GameflowMain = 0x00CE75B0;
+    public const uint GameflowSeed = 0x00CE6CF0;
     public const int GameflowSize = 100;
     public const string GameflowScript = "S_GF";
+    public const uint GameflowConstructHook = 0x00CB7900;
+    public const uint GameflowWatcherCtor = 0x00CDD450;
+    public const uint GameflowWatcherAttach = 0x00CB7E50;
+    public const uint SharedRunReuse = 0x004AFA10;
+    public const uint ScriptStateLookup = 0x008A9DB0;
+    public const uint ScriptStateInsert = 0x008AE660;
+    public const uint ScriptStateMapVa = 0x013BAE44;
+    public static readonly string[] GameflowStateNames =
+    [
+        "OV_INTRO",
+        "GUILD_TRAINING",
+        "WASP_BOSS",
+        "DOING_WASP_BOSS",
+        "VISIT_MAZE_1_GLOBAL",
+        "VISIT_MAZE_1_BSSLUMS",
+        "PRE_ORCH_FARM",
+        "DOING_ORCH_FARM",
+        "TRADER_ESCORT_GLOBAL",
+        "TRADER_ESCORT_BSSLUMS",
+        "VISIT_MAZE_2_GLOBAL",
+        "VISIT_MAZE_2_BSSLUMS",
+        "DOING_BANDIT_CAMP_GLOBAL",
+        "DOING_BANDIT_CAMP_BANDITCAMP",
+        "VISIT_MAZE_3_GLOBAL",
+        "VISIT_MAZE_3_GUILD",
+        "FIND_ARCHAEOLOGIST",
+        "PRE_WHITE_BALV_GLOBAL",
+        "PRE_WHITE_BALV_WITCHWOOD",
+        "DOING_WHITE_BALV_GLOBAL",
+        "DOING_WHITE_BALV_KHG",
+        "PRE_ARENA_GLOBAL",
+        "PRE_ARENA_KHG",
+        "WHISPERS_FATE",
+        "PRE_MCC_GLOBAL",
+        "PRE_MCC_BSTONES",
+        "DOING_MCC_GLOBAL",
+        "DOING_GRAVEYARD_GLOBAL",
+        "DOING_GRAVEYARD_GRAVEYARD",
+        "HOOK_COAST_GATEWAY_GLOBAL",
+        "HOOK_COAST_GATEWAY_DARKWOOD",
+        "IN_HOOK_COAST_POST_DRAGON_PRE_BATTLE_GLOBAL",
+        "IN_HOOK_COAST_POST_DRAGON_PRE_BATTLE_HOOKCOAST",
+        "AFTER_WIZARD_BATTLE_GLOBAL",
+        "DOING_FOCAL_SITES_GLOBAL",
+        "DOING_FOCAL_SITES_GUILD",
+        "FINAL_BATTLE_GLOBAL",
+        "FINAL_BATTLE_GUILD",
+        "AFTER_FINAL_BATTLE_GLOBAL",
+        "AFTER_FINAL_BATTLE_KILLED_SISTER_GLOBAL",
+        "AFTER_FINAL_BATTLE_SPARED_SISTER_GLOBAL",
+        "AFTER_FINAL_BATTLE_GOT_SWORD_GLOBAL",
+        "AFTER_FINAL_BATTLE_DIDNT_GET_SWORD_GLOBAL",
+        "LOOKOUT_POINT_DEMON_DOOR_READY",
+        "SUMMON_THE_SHIP",
+        "NORTHERN_WASTES_OPEN",
+        "SCARY_NECROPOLIS",
+        "NECROPOLIS_FINISHED",
+        "THUNDER_KILLED",
+        "BRIAR_ROSE_KILLED",
+        "GUILDMASTER_KILLED",
+        "NONE_KILLED",
+        "DRAGON_GATE_OPEN",
+        "SNOWSPIRE_ARRIVAL",
+    ];
     public const string MasterLike = "_LIKE";
     public const string MasterHate = "_HATE";
     public const uint MasterLikeVa = 0x0143E938;
@@ -96,8 +161,9 @@ public static class QuestFactoryTable
             GameflowVtbl, GameflowSize, false,
             BindingKind.ProvenGeneric,
             "00CD52D0 Gameflow / S_GF; factory 00CEF950 " +
-            "size 100 vtbl 012C3FA4; vtbl+4 00CE75B0; " +
-            "user.ini 00892E80 → 004B4A10 → 00CB5AD0"),
+            "size 100 vtbl 012C3FA4; flag 0 → 004AFA10 " +
+            "reuse 00CDBD20; 00CB7900 vtbl+12 00CE6CF0 " +
+            "then vtbl+4 00CE75B0 Main 00CDD450/00CB7E50"),
     ];
 
     public static QuestNameFactory? Find(string questName)

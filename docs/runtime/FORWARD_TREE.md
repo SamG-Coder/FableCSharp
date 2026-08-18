@@ -350,6 +350,12 @@ Slots 10+ overlap a string (`HERO_ABILITY`) — not a vtbl continuation.
 │           vtbl+1104 00892E80  PROVEN
 │           00892E80 [0x13B89FC] 004B4A10(name,1,1)
 │           004B4A10 → 004B4260 → 00CB5AD0 "Gameflow"
+│           [0x1375454]=1 .data → 004B3CE0 construct  PROVEN
+│           flag 0 → 004AFA10 reuse 00CDBD20
+│           00CEF950 → 00CB7900
+│             vtbl+12 00CE6CF0 008A9DB0/008AE660
+│             vtbl+4 00CE75B0 Main 00CDD450  PROVEN
+│           S_GF CCutsceneDef not this site  DISPROVEN
 │       009ED190 registers BindKey/RunScript before user.ini
 └── seed 009A4EC0 [engine+240]=004167DA [+244]=game
     [+90544]=0  009E1BC0 → [+90548]  [+90592]=1
@@ -834,14 +840,14 @@ Fiber +41 setter 00CB78D0  PROVEN
 
 004A5A40 type-1 tick  PROVEN (316)
 ├── 004B4490  [0x13B89FC]  PROVEN
-│   ├── 004B3CE0 stub  PROVEN
-│   │   [0x1375454] no writer → 0
-│   │   [quest+8]=0
-│   ├── 00CB8220 skipped  PROVEN
-│   │   ([eax+8]==0). 00CB7C40/00CB7950
-│   │   / vtbl+4 00CDDBF0 / 00F013C0
-│   │   not first-seen. Host per-name
-│   │   00CB7950 + Runtime.Update leftover.
+│   ├── 004B3CE0 construct  PROVEN
+│   │   [0x1375454]=1 .data (0x01010101)
+│   │   BSS-0 stub DISPROVEN
+│   │   ran at 004B4260 (Init Quests /
+│   │   user.ini Gameflow)
+│   ├── 00CB8220 type-1  UNREAD
+│   │   +8 set by construct. Dummy
+│   │   004189C2 does not reach here.
 │   └── 00449970 / 00487DC0  PROVEN miss
 │       0044BC10 00A01B10 +48=0
 │       00A01B50 0 → skip 004AFCA0
@@ -935,7 +941,8 @@ Walk these **from their parent above**, not by string.
 | `00B40000` | `00BDC4F0` / `00BDDD50` | patch destroy |
 | `006C2170` | unload of previous ContainsMaps | region change |
 | `004B4260` | each initial-quest factory run | not Oakvale intro |
-| `00892E80` | `00CB5AD0` Gameflow factory body | user.ini after WLD list; factory UNREAD |
+| `00892E80` | `00CE75B0` / `00CE6CF0` after Gameflow construct | PROVEN Main watcher + state map; `00501450` not reached |
+| `004184BD` seed | first `004189C2` dummy | PROVEN; `00501450` E8/imm still 0 |
 | `004A5A40` | after `00640320` skip: `006BB990` then `006B3FF0` | already seed-proven; next unread callee on this slice |
 
 After every successful walk: add the node here, then implement

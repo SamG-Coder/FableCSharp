@@ -343,9 +343,9 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
             if (bind.Init == QuestFactoryTable.SunnyvaleInit)
                 Persist.Install(PersistTable.Sunnyvale);
             quest.StartFactory(bind.Factory, bind.Run, bind.Init, bind.ScriptName);
-            if (bind.ScriptName is { Length: > 0 } script &&
-                Bank?.Find(script) is not null)
-                StartCutscene(script);
+            // 00CB7900 calls factory vtbl+12 then vtbl+4
+            // (00CE75B0 / 00CE1A30 Main watcher via
+            // 00CDD450). Not CCutsceneDef StartCutscene.
         }
 
         return quest;

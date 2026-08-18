@@ -1070,11 +1070,14 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>004A5A40</c> at <c>004A5D88</c>
     /// when <c>[world+260]==0</c>:
     /// <c>004B4490</c>. First-seen
-    /// <c>[0x1375454]==0</c> (no writer)
-    /// so <c>004B3CE0</c> stubs
-    /// <c>[quest+8]=0</c> and
-    /// <c>00CB8220</c> is skipped.
-    /// Host walk of <c>00CB7950</c> /
+    /// <c>[0x1375454]==1</c>
+    /// (<c>.data</c> <c>0x01</c>;
+    /// one <c>.text</c> cmp).
+    /// <c>004B3CE0</c> constructed
+    /// at <c>004B4260</c>.
+    /// <c>00CB8220</c> type-1
+    /// body UNREAD. Host walk of
+    /// <c>00CB7950</c> /
     /// <c>Runtime.Update</c> is leftover.
     /// </summary>
     public const uint QuestManagerPumpFn = 0x004B4490;
@@ -1086,13 +1089,15 @@ public sealed class EngineLifecycle : IDisposable
     /// <summary>
     /// <c>004B3CE0</c>
     /// <c>cmp [0x1375454]</c>.
-    /// No <c>.text</c> writer
-    /// (one <c>cmp</c>) so
-    /// first-seen takes the stub
-    /// with <c>[+8]=0</c>.
+    /// One <c>.text</c> imm (the cmp).
+    /// <c>.data</c> at that VA is
+    /// <c>0x01</c> (dword
+    /// <c>0x01010101</c>) so
+    /// first-seen constructs.
+    /// BSS-0 stub is DISPROVEN.
     /// </summary>
     public const uint QuestFactoryGateVa = 0x01375454;
-    public const int QuestFactoryGateFirstSeen = 0;
+    public const int QuestFactoryGateFirstSeen = 1;
     public const uint QuestFiberUpdateVtbl = 24;
     public const int QuestFiberUpdateFlagOffset = 41;
     /// <summary>
@@ -2113,6 +2118,12 @@ public sealed class EngineLifecycle : IDisposable
     public ScriptRuntime? Runtime { get; private set; }
     public IReadOnlyList<string> ActivatedQuests => _activatedQuests;
     /// <summary>
+    /// <c>00CE6CF0</c> names inserted at
+    /// <c>0x13BAE44</c> via
+    /// <c>008A9DB0</c> / <c>008AE660</c>.
+    /// </summary>
+    public IReadOnlyList<string> GameflowStateSlots => _gameflowStates;
+    /// <summary>
     /// Persist <c>PlayerRegionName</c>. Empty on
     /// no-save New Game. Non-empty takes
     /// <c>00487C20</c> instead of <c>00501450</c>.
@@ -2203,6 +2214,7 @@ public sealed class EngineLifecycle : IDisposable
         new(StringComparer.OrdinalIgnoreCase);
     private readonly List<InsertedThing> _inserted = [];
     private readonly List<string> _activatedQuests = [];
+    private readonly List<string> _gameflowStates = [];
     private readonly List<uint> _submittedLayers = [];
     private GameBin? _defs;
     private LevelLibrary? _levels;
@@ -4552,12 +4564,14 @@ public sealed class EngineLifecycle : IDisposable
 
     /// <summary>
     /// <c>004B4490</c> first-seen:
-    /// <c>[0x1375454]==0</c> so
-    /// <c>004B3CE0</c> stubs
-    /// <c>[quest+8]=0</c>.
-    /// <c>cmp [eax+8]</c> skips
-    /// <c>00CB8220</c>. Then
-    /// <c>00449970</c>/<c>00487DC0</c>
+    /// <c>[0x1375454]==1</c>
+    /// (<c>.data</c>) so
+    /// <c>004B3CE0</c> already
+    /// constructed at
+    /// <c>004B4260</c>.
+    /// <c>00CB8220</c> on this
+    /// type-1 tick is UNREAD.
+    /// Then <c>00449970</c>/<c>00487DC0</c>
     /// miss (<c>00A01B50</c> 0).
     /// </summary>
     public void PumpQuests()
@@ -4565,11 +4579,11 @@ public sealed class EngineLifecycle : IDisposable
         Note(QuestManagerPumpFn, "GamePump", "Quest",
             $"004B4490 [0x{QuestManagerVa:X}]");
         Note(QuestFactoryGateVa, "GamePump", "Quest",
-            $"01375454={QuestFactoryGateFirstSeen} no writer");
+            $"01375454={QuestFactoryGateFirstSeen} .data");
         Note(QuestFactoryStartFn, "GamePump", "Quest",
-            "004B3CE0 stub [quest+8]=0");
+            "004B3CE0 construct already at 004B4260");
         Note(QuestListPumpFn, "GamePump", "Quest",
-            "00CB8220 skip [quest+8]=0");
+            "00CB8220 first-seen type-1 UNREAD");
         Note(PlayerCreatureBindFn, "GamePump", "Player",
             "00449970 [game+28]+28");
         Note(PlayerSlotWalkFn, "GamePump", "Player", "004498C0");
@@ -5575,23 +5589,72 @@ public sealed class EngineLifecycle : IDisposable
             Runtime.Bank is null)
             Runtime.Load(ScriptBank.Load(Install), Install);
         Note(ActivateQuestFn, phase, "Quest", "00CB5AD0 " + name);
+        Note(QuestFactoryCollectFn, phase, "Quest", "004BB720");
+        Note(QuestFactoryGateVa, phase, "Quest",
+            $"01375454={QuestFactoryGateFirstSeen} .data");
         var factory = QuestFactoryTable.Find(name);
         if (factory is { } bind)
         {
             Note(QuestRegisterFn, phase, "Quest",
                 "00CD52D0 " + name +
                 (bind.ScriptName is { } script ? " → " + script : " native"));
+            Note(QuestFactoryStartFn, phase, "Quest",
+                "004B3CE0 construct");
             Note(bind.Factory, phase, "Quest",
                 $"factory 0x{bind.Factory:X} run 0x{bind.Run:X}");
             if (bind.Init == QuestFactoryTable.SunnyvaleInit)
+            {
+                Note(QuestFactoryTable.SharedRun, phase, "Quest",
+                    "00CDBD20 alloc 0x144 vtbl 012C2748");
+                Note(QuestFactoryTable.SunnyvaleInit, phase, "Quest",
+                    "00CDBA10 zeros + _LIKE/_HATE");
                 Note(SunnyvalePersistFn, phase, "Quest",
                     "00CDC070 persist bind vtbl+4");
+            }
+            else
+                Note(QuestFactoryTable.SharedRunReuse, phase, "Quest",
+                    "004AFA10 reuse 00CDBD20");
+            Note(QuestFactoryTable.GameflowConstructHook, phase, "Quest",
+                "00CB7900 vtbl+12 then vtbl+4");
+            if (bind.Init == QuestFactoryTable.GameflowMain)
+                SeedGameflowStates(phase);
         }
 
         var persistent = Quests?.Quests.Any(q =>
             q.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && q.Persistent) == true;
         Runtime.ActivateQuest(name, persistent);
         _activatedQuests.Add(name);
+    }
+
+    /// <summary>
+    /// <c>00CB7900</c> <c>jmp [vtbl+4]</c>
+    /// after <c>vtbl+12</c> <c>00CE6CF0</c>.
+    /// <c>00CE75B0</c> attaches
+    /// <c>Main</c> via <c>00CDD450</c>
+    /// / <c>00CB7E50</c>. Not
+    /// <c>S_GF</c> <c>CCutsceneDef</c>.
+    /// </summary>
+    private void SeedGameflowStates(string phase)
+    {
+        Note(QuestFactoryTable.GameflowSeed, phase, "Quest",
+            "00CE6CF0 [+68]+4=0 [+72]=0");
+        Note(QuestFactoryTable.ScriptStateLookup, phase, "Quest",
+            "008A9DB0 → 008AE660 [0x13BAE44]");
+        foreach (var slot in QuestFactoryTable.GameflowStateNames)
+        {
+            if (_gameflowStates.Contains(slot))
+                continue;
+            _gameflowStates.Add(slot);
+            Note(QuestFactoryTable.ScriptStateInsert, phase, "Quest",
+                "008AE660 " + slot);
+        }
+
+        Note(QuestFactoryTable.GameflowMain, phase, "Quest",
+            "00CE75B0 Main 00CDD450 / 00CB7E50");
+        Note(QuestFactoryTable.GameflowWatcherCtor, phase, "Quest",
+            "00CDD450 Main 0.1f");
+        Note(QuestFactoryTable.GameflowWatcherAttach, phase, "Quest",
+            "00CB7E50 attach");
     }
 
     public IReadOnlyList<ThingInstance> ThingsForMap(string mapName) =>

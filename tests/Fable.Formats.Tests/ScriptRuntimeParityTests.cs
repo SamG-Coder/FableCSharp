@@ -78,6 +78,11 @@ public sealed class ScriptRuntimeParityTests
         Assert.Equal("S_HB", QuestFactoryTable.Find("HeroBoasts")!.Value.ScriptName);
         Assert.Equal("S_GF", QuestFactoryTable.Find("Gameflow")!.Value.ScriptName);
         Assert.Equal(0x00CEF950u, QuestFactoryTable.GameflowFactory);
+        Assert.Equal(0x00CE75B0u, QuestFactoryTable.GameflowMain);
+        Assert.Equal(0x00CE6CF0u, QuestFactoryTable.GameflowSeed);
+        Assert.Equal("OV_INTRO", QuestFactoryTable.GameflowStateNames[0]);
+        Assert.Equal("SNOWSPIRE_ARRIVAL", QuestFactoryTable.GameflowStateNames[^1]);
+        Assert.Equal(54, QuestFactoryTable.GameflowStateNames.Length);
         Assert.Equal(PersistKind.Bool, PersistTable.Recovered[0].Kind);
         Assert.False(PersistTable.AttackOverWriterKnown);
     }
