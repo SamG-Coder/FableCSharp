@@ -188,6 +188,20 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "reset");
         }
 
+        if (Eq(v, "SetHomePosThing"))
+        {
+            // 00CC7D3C: arg0 required; HERO vtbl+280 else 288;
+            // 004AB130; 004AA9A0; vtbl+1892. NOT a HomePos write.
+            var name = line.Arg(0);
+            if (name.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            if (!ctx.World.TryHomeDest(name, ctx.FindThing(name), out var pos))
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ctx.World.ResetPos(name, pos);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                $"{name}@{pos.X:0.##},{pos.Y:0.##}");
+        }
+
         if (Eq(v, "DrawThing"))
         {
             var name = line.Arg(0);

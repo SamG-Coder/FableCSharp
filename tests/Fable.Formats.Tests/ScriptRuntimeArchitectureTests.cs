@@ -2333,7 +2333,104 @@ public sealed class ScriptRuntimeArchitectureTests
               null handle → [0x143E8E0] default
               vtbl+1892(actor,pos,0,0,0); jmp 00CC707C
               not Teleport marker 004AA980
-            SetHomePosThing body UNREAD (Runtime PARTIAL)
+            SetHomePosThing is global ResetPos, not a HomePos write
+            """);
+    }
+
+    [Fact]
+    public void SetHomePosThing_is_global_ResetPos_not_a_home_write()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "CREATURE_HERO",
+                ScriptName = "HERO",
+                PositionX = 10,
+                PositionY = 20,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], null);
+        runtime.World.Teleport("HERO", "MK_AWAY", new System.Numerics.Vector3(100, 100, 0));
+        Assert.Equal(100f, runtime.World.Positions["HERO"].X);
+        var interp = new ScriptInterpreter("shp", ["SetHomePosThing HERO"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(10f, runtime.World.Positions["HERO"].X);
+        Assert.Equal(20f, runtime.World.Positions["HERO"].Y);
+        Assert.False(runtime.World.HomePos.ContainsKey("HERO"));
+        Assert.Equal(0x00CC7D3Cu, ScriptCommandMap.Find("SetHomePosThing")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("ResetPos")!.Value.ApplySite,
+            ScriptCommandMap.Find("SetHomePosThing")!.Value.ApplySite);
+        var empty = new ScriptInterpreter("shp0", ["SetHomePosThing"]);
+        empty.RunUntilYield(runtime);
+        Assert.True(empty.Finished);
+        Assert.Equal(10f, runtime.World.Positions["HERO"].X);
+    }
+
+    [Fact]
+    public void SetHomePosThing_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("SetHomePosThing ", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "SetHomePosThing HERO";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("SetHomePosThing", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var name = parsed.Arg(0);
+        runtime.World.HomePos[name] = new System.Numerics.Vector3(4, 5, 0);
+        runtime.World.Positions[name] = new System.Numerics.Vector3(99, 99, 0);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-home", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("SetHomePosThing ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal(4f, runtime.World.Positions[name].X);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-home.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-sethomepos.txt"),
+            """
+            SetHomePosThing 00CC7CE9 / apply 00CC7D3C
+              arg0 00403A00 empty skip 00CC8464
+              HERO 004A93C0 → vtbl+280 else vtbl+288
+              004AB130 miss skip; 004AA9A0 dest
+              vtbl+1892(thing,pos,0,0,0); jmp 00CC8231
+              DISPROVES HomePos writer — no store, no pos args
+              global sibling of ResetPos 00CC4AC3
+            Handle vtbl+28 body UNREAD (Runtime PARTIAL)
             """);
     }
 

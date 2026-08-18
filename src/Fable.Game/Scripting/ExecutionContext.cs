@@ -1561,10 +1561,26 @@ public sealed class WorldRuntime
     }
 
     /// <summary>
-    /// <c>00CC4AC3</c>: <c>004AB130</c> then
-    /// <c>004AA9A0</c> (<c>[handle+4].vtbl+28</c>)
-    /// then <c>vtbl+1892(actor,pos,0,0,0)</c>.
-    /// Not marker <c>004AA980</c>.
+    /// <c>004AA9A0</c>: HomePos if set, else thing
+    /// handle <c>vtbl+28</c> (TNG spawn).
+    /// </summary>
+    public bool TryHomeDest(string actor, ThingInstance? thing, out Vector3 dest)
+    {
+        if (HomePos.TryGetValue(actor, out dest))
+            return true;
+        if (thing is { PositionX: not null })
+        {
+            dest = RegionTravel.PositionOf(thing);
+            return true;
+        }
+
+        dest = default;
+        return false;
+    }
+
+    /// <summary>
+    /// <c>00CC4AC3</c> / <c>00CC7D3C</c>:
+    /// <c>004AA9A0</c> then <c>vtbl+1892</c>.
     /// </summary>
     public bool ResetPos(string actor, Vector3 dest)
     {

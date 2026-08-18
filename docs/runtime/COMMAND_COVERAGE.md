@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 127
-RECOVERED RETURN: 127
-RECOVERED APPLY: 63
+RECOVERED DISPATCH: 128
+RECOVERED RETURN: 128
+RECOVERED APPLY: 64
 IMPLEMENTED RUNTIME: 13
-UNREAD: 58
+UNREAD: 57
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -100,7 +100,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | LiftRock | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | SetThingConscious | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | TeleportThing | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| SetHomePosThing | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| SetHomePosThing | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | SetGravityOnThing | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | PauseThing | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | CameraPreload | Global | Unread | Unread | Unread | Unread | Unread | Unread |

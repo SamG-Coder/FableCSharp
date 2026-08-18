@@ -54,17 +54,7 @@ public static class EntityDispatcher
         {
             // 00CC4AC3: 004AB130; 004AA9A0 handle vtbl+28; vtbl+1892.
             var actor = line.Target ?? "";
-            System.Numerics.Vector3? dest = null;
-            if (ctx.World.HomePos.TryGetValue(actor, out var home))
-                dest = home;
-            else
-            {
-                var thing = ctx.FindThing(actor);
-                if (thing is { PositionX: not null })
-                    dest = RegionTravel.PositionOf(thing);
-            }
-
-            if (dest is not { } pos)
+            if (!ctx.World.TryHomeDest(actor, ctx.FindThing(actor), out var pos))
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
             ctx.World.ResetPos(actor, pos);
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity,
