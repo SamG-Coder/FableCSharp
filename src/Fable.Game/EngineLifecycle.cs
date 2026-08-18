@@ -992,7 +992,20 @@ public sealed class EngineLifecycle : IDisposable
     public const uint PostLoadInitialiseFn = 0x004FD020;
     public const uint PostLoadInitialiseApply = 0x00821850;
     public const uint ThingManagerActivateAfterFn = 0x0051E2F0;
+    /// <summary>
+    /// <c>006C2170</c> passes 3–4. Gated on
+    /// job record <c>+12</c>. First-seen
+    /// <c>00500540(1,0,0)</c> zeros
+    /// <c>+12</c> (third arg 0 skips the
+    /// fill) so both are skipped.
+    /// </summary>
+    public const uint JobNavPassFn = 0x00500230;
+    public const uint JobNavCommitFn = 0x0050AF10;
+    public const int LoadJobNavOffset = 12;
     public const uint SetRegionAsLoadedFn = 0x004FC8A0;
+    public const uint MiniMapFromUiFn = 0x00437CE0;
+    public const int MiniMapUiOffset = 352;
+    public const uint QuestRegionNotifyFn = 0x004AFC00;
     public const uint ActivateTopologyFn = 0x004FCBB0;
     public const uint SetMapLoadingFlagFn = 0x004FCFE0;
     public const int WorldMapSetLoadedVtbl = 88;
@@ -3368,7 +3381,10 @@ public sealed class EngineLifecycle : IDisposable
 
     /// <summary>
     /// <c>004FC8A0</c> writes
-    /// <c>WorldMap+156</c> then Initialise MiniMap.
+    /// <c>WorldMap+156</c>,
+    /// <c>00437CE0([0x13B8790])</c>,
+    /// <c>0082BA00</c>. Not
+    /// <c>005064C0</c> / <c>00B428E0</c>.
     /// </summary>
     public void SetRegionAsLoaded(int index)
     {
@@ -3379,11 +3395,12 @@ public sealed class EngineLifecycle : IDisposable
         BindAuthoredEnvironmentTheme();
         var name = CurrentRegion?.RegionName ?? (index == 0 ? "dummy" : "?");
         Note(SetRegionAsLoadedFn, "LevelLoader", "Region",
-            $"index={index} {name}");
-        Note(InitMiniMapFn, "LevelLoader", "Region", "0082BA00 Initialise MiniMap");
-        Note(PostRegionLoadVillages, "LevelLoader", "Region",
-            "005064C0 Post Region Load Villages");
-        OpenStaticMapsForCurrentRegion();
+            $"+156={index} {name}");
+        Note(MiniMapFromUiFn, "LevelLoader", "Region",
+            $"00437CE0 [0x13B8790]+{MiniMapUiOffset}+40");
+        Note(InitMiniMapFn, "LevelLoader", "Region", "0082BA00");
+        Note(SetRegionAsLoadedFn, "LevelLoader", "Region",
+            "SetRegionAsLoaded: Initialise MiniMap End");
     }
 
     /// <summary>
@@ -3681,6 +3698,10 @@ public sealed class EngineLifecycle : IDisposable
                 }
 
                 Note(ThingManagerActivateAfterFn, "LevelLoader", "Thing", "0051E2F0");
+                Note(JobNavPassFn, "LevelLoader", "Region",
+                    $"00500230 +{LoadJobNavOffset}=0 skip");
+                Note(JobNavCommitFn, "LevelLoader", "Region",
+                    $"0050AF10 +{LoadJobNavOffset}=0 skip");
                 foreach (var map in region.ContainsMaps)
                     Note(PostLoadInitialiseFn, "LevelLoader", "Region",
                         "Region Level Files: Post Load Initialise 004FD020 " + map);
@@ -3703,9 +3724,16 @@ public sealed class EngineLifecycle : IDisposable
         }
 
         if (index > 0)
-            Note(SetRegionAsLoadedFn, "LevelLoader", "Region",
-                $"vtbl+{WorldMapSetLoadedVtbl} +28={index}");
-        SetRegionAsLoaded(index);
+        {
+            Note(PostRegionLoadVillages, "LevelLoader", "Region",
+                $"005064C0 vtbl+{WorldMapSetLoadedVtbl} before 004FC8A0");
+            SetRegionAsLoaded(index);
+            Note(QuestRegionNotifyFn, "LevelLoader", "Quest",
+                "004AFC00 [0x13B89FC] record+24");
+            OpenStaticMapsForCurrentRegion();
+        }
+        else
+            SetRegionAsLoaded(index);
     }
 
     /// <summary>

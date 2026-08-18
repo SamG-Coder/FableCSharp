@@ -441,17 +441,24 @@ enqueue (host second 004189C2 after dummy; E8 caller UNREAD)
 ├── pass 2 [rec+20]: "Loading objects"
 │   └── 00522720 / 00521AE0  .tng
 │       └── 0051FD80  Load Single Thing
-├── 00500230 / 0050AF10  if [rec+12]  PARTIAL
+├── 00500230 / 0050AF10  if [rec+12]
+│   first-seen 00500540(1,0,0) +12=0 → skip  PROVEN
 ├── 0051E2F0
 ├── pass: "Region Level Files: Post Load Initialise"  004FD020
 ├── pass: "Region Level Files: Activate Topology"
 │   ├── 004FCBB0  if [rec+4]
 │   └── 004FCFE0(map, 0)
-└── if job+28>0: map vtbl+88 then 004FC8A0  SetRegionAsLoaded
-    ├── WorldMap+156 = index
-    ├── 0082BA00  Initialise MiniMap
-    ├── 005064C0  Post Region Load Villages
-    └── 00B428E0  SetStaticMapFileForUse  PROVEN
+└── if job+28>0:
+    ├── map vtbl+88  005064C0  before 004FC8A0  PROVEN
+    └── 004FC8A0  PROVEN
+        ├── [map+156]=index
+        ├── 00437CE0([0x13B8790]) → [ui+352]+40
+        └── 0082BA00  MiniMap
+        005064C0 / 00B428E0 are NOT children.
+
+00500540 after apply: 004AFC00([0x13B89FC], record+24)  PROVEN
+00B428E0 caller UNREAD (not 004FC8A0)
+    └── 00B428E0  SetStaticMapFileForUse  (caller UNREAD)
         ├── "CloseStaticMapFile" → 00B40000  PROVEN
         │   ├── if [+424]==0  return
         │   ├── for i=1 .. list-1: 00B3EF40  CloseStaticMap

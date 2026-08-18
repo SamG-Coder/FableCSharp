@@ -1597,7 +1597,7 @@ public sealed class EngineLifecycleTests
         var activate = events.FindIndex(e => e.Va == EngineLifecycle.ActivateTopologyFn);
         var loaded = events.FindIndex(e =>
             e.Va == EngineLifecycle.SetRegionAsLoadedFn &&
-            e.Action.Contains("index=1", StringComparison.Ordinal));
+            e.Action.Contains("+156=1", StringComparison.Ordinal));
         var end = events.FindIndex(e =>
             e.Va == EngineLifecycle.LevelLoaderUpdate &&
             e.Action.Contains("end", StringComparison.Ordinal));
@@ -1609,6 +1609,57 @@ public sealed class EngineLifecycleTests
         Assert.True(loaded > activate, "004FC8A0 after 004FCBB0");
         Assert.True(end > loaded, "Level loader update end after apply");
         Assert.Contains(life.ActivatedMaps, m => m == "LookoutPoint");
+        Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void SetRegionAsLoaded_004FC8A0_is_minimap_after_005064C0()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.Equal(1, life.CurrentRegionIndex);
+        var events = life.Trace.Events;
+        var skipNav = events.FindIndex(e =>
+            e.Va == EngineLifecycle.JobNavPassFn &&
+            e.Action.Contains("skip", StringComparison.Ordinal));
+        var skipCommit = events.FindIndex(e =>
+            e.Va == EngineLifecycle.JobNavCommitFn &&
+            e.Action.Contains("skip", StringComparison.Ordinal));
+        var villages = events.FindIndex(e =>
+            e.Va == EngineLifecycle.PostRegionLoadVillages &&
+            e.Action.Contains("before 004FC8A0", StringComparison.Ordinal));
+        var plus156 = events.FindIndex(e =>
+            e.Va == EngineLifecycle.SetRegionAsLoadedFn &&
+            e.Action.Contains("+156=1", StringComparison.Ordinal));
+        var ui = events.FindIndex(e => e.Va == EngineLifecycle.MiniMapFromUiFn);
+        var mini = events.FindIndex(e => e.Va == EngineLifecycle.InitMiniMapFn);
+        var miniEnd = events.FindIndex(e =>
+            e.Va == EngineLifecycle.SetRegionAsLoadedFn &&
+            e.Action.Contains("MiniMap End", StringComparison.Ordinal));
+        var notify = events.FindIndex(e => e.Va == EngineLifecycle.QuestRegionNotifyFn);
+        var staticMap = events.FindIndex(e =>
+            e.Va == EngineLifecycle.SetStaticMapFileForUseFn);
+        Assert.True(skipNav >= 0 && skipCommit > skipNav, "00500230/0050AF10 +12 skip");
+        Assert.True(villages > skipCommit && plus156 > villages,
+            "005064C0 before 004FC8A0");
+        Assert.True(ui > plus156 && mini > ui && miniEnd > mini,
+            "00437CE0 then 0082BA00");
+        Assert.True(notify > miniEnd, "004AFC00 after 004FC8A0");
+        Assert.True(staticMap > notify,
+            "00B428E0 after 004FC8A0, not a child");
+        Assert.Equal(0x00437CE0u, EngineLifecycle.MiniMapFromUiFn);
+        Assert.Equal(0x00500230u, EngineLifecycle.JobNavPassFn);
+        Assert.Equal(0x0050AF10u, EngineLifecycle.JobNavCommitFn);
+        Assert.Equal(12, EngineLifecycle.LoadJobNavOffset);
+        Assert.Equal(0x004AFC00u, EngineLifecycle.QuestRegionNotifyFn);
         Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
     }
 
