@@ -201,6 +201,14 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.LoadWldFile && e.Action.StartsWith("maps=", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LoadGtng);
+        Assert.NotNull(life.Regions);
+        Assert.Equal(0x00506D40u, EngineLifecycle.LoadRegionGraphFn);
+        Assert.Equal(0x00828710u, EngineLifecycle.InitRegionGraphFn);
+        Assert.True(life.Regions.Neighbors.Count >= 80);
+        Assert.Contains("PicnicArea", life.Regions.NeighborsOf("LookoutPoint"));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.LoadRegionGraphFn &&
+            e.Action.StartsWith("nodes=", StringComparison.Ordinal));
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         var dest = Path.Combine(
             @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
@@ -217,8 +225,10 @@ public sealed class EngineLifecycleTests
             00507C30 vtbl+12 is "Load .wld file": token switch
             NewMap/EndMap/NewRegion/ContainsMap/SeesMap/...
             Same vocabulary as WorldFile.Load(FinalAlbion.wld).
-            Then UNREAD: Load GTNG 0050959F, Load global things
-            00509859, Load region graph 00509982.
+            Then UNREAD: Load GTNG 0050959F, Load global things 00509859.
+            Load region graph 00509982 → 00506D40(PLAYER_GUI_PC+0xA94)
+            → 00828710 Initialise Region Graph.
+            TLC file Misc\FinalAlbion_StartingRegionGraph.txt.
             Not 00DBDE40 / StartOakVale setup.
             """);
         File.WriteAllText(

@@ -122,6 +122,10 @@ public sealed class EngineLifecycle
     public const uint LoadGtng = 0x0050959F;
     public const uint LoadGlobalThings = 0x00509859;
     public const uint LoadRegionGraph = 0x00509982;
+    public const uint LoadRegionGraphFn = 0x00506D40;
+    public const uint InitRegionGraphFn = 0x00828710;
+    public const uint PlayerGuiSingleton = 0x013B878C;
+    public const int PlayerGuiGraphPathOffset = 0xA94;
     public const int WorldMapObjectSize = 0xD8;
     public const int WorldMapCellShift = 5;
     public const int WorldMapBound = 0x2000;
@@ -170,6 +174,7 @@ public sealed class EngineLifecycle
     public int CreateDeviceFlags { get; private set; }
     public string? WorldFileName { get; private set; }
     public WorldFile? World { get; private set; }
+    public RegionGraph? Regions { get; private set; }
     public IReadOnlyList<string> CompletedStages => _completed;
     public IReadOnlyList<string> RegisteredBanks => _banks;
     public GameInstall? Install { get; private set; }
@@ -354,7 +359,33 @@ public sealed class EngineLifecycle
             $"maps={World.Maps.Count} regions={World.Regions.Count} quests={World.InitialQuests.Count}");
         Note(LoadGtng, "Load GTNG", "WLD", "UNREAD");
         Note(LoadGlobalThings, "Load global things", "WLD", "UNREAD");
-        Note(LoadRegionGraph, "Load region graph", "WLD", "UNREAD");
+        LoadRegionGraphFile();
+    }
+
+    /// <summary>
+    /// <c>00509982</c> → <c>00506D40</c> with the
+    /// path at <c>PLAYER_GUI_PC+0xA94</c>.
+    /// <c>00828710</c> is Initialise Region Graph.
+    /// TLC file is
+    /// <c>Misc\FinalAlbion_StartingRegionGraph.txt</c>.
+    /// </summary>
+    public void LoadRegionGraphFile()
+    {
+        Note(LoadRegionGraph, "Load region graph", "WLD",
+            "00506D40 path PLAYER_GUI_PC+0xA94");
+        Note(InitRegionGraphFn, "Initialise Region Graph", "WLD", "00828710");
+        if (Install is null)
+            return;
+        var path = Install.StartingRegionGraphPath;
+        if (!File.Exists(path))
+        {
+            Note(LoadRegionGraphFn, "Load region graph", "WLD", "missing");
+            return;
+        }
+
+        Regions = RegionGraph.Load(path);
+        Note(LoadRegionGraphFn, "Load region graph", "WLD",
+            $"nodes={Regions.Neighbors.Count} {Path.GetFileName(path)}");
     }
 
     public void ShutdownEngine()
