@@ -1111,6 +1111,13 @@ public sealed class WorldRuntime
     public readonly Dictionary<string, bool> Drunk =
         new(StringComparer.OrdinalIgnoreCase);
     /// <summary>
+    /// <c>00CC4AC3</c> <c>004AA9A0</c> handle
+    /// <c>vtbl+28</c> then <c>vtbl+1892</c>.
+    /// SetHomePosThing body UNREAD.
+    /// </summary>
+    public readonly Dictionary<string, Vector3> HomePos =
+        new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
     /// <c>00CC11FD</c> <c>vtbl+1976(actor,!IsFalse)</c>.
     /// Arg0 required. Not SetScared 1984.
     /// </summary>
@@ -1551,6 +1558,20 @@ public sealed class WorldRuntime
         Teleports.Add(new ScriptTeleport(actor, marker, position));
         if (actor is { Length: > 0 } && position is { } pos)
             Positions[actor] = pos;
+    }
+
+    /// <summary>
+    /// <c>00CC4AC3</c>: <c>004AB130</c> then
+    /// <c>004AA9A0</c> (<c>[handle+4].vtbl+28</c>)
+    /// then <c>vtbl+1892(actor,pos,0,0,0)</c>.
+    /// Not marker <c>004AA980</c>.
+    /// </summary>
+    public bool ResetPos(string actor, Vector3 dest)
+    {
+        if (actor.Length == 0)
+            return false;
+        Teleport(actor, "ResetPos", dest);
+        return true;
     }
 
     public IReadOnlyList<ThingInstance> CollectByName(IEnumerable<ThingInstance> things, string source)

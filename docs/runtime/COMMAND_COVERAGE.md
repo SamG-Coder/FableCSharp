@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 126
-RECOVERED RETURN: 126
-RECOVERED APPLY: 62
+RECOVERED DISPATCH: 127
+RECOVERED RETURN: 127
+RECOVERED APPLY: 63
 IMPLEMENTED RUNTIME: 13
-UNREAD: 59
+UNREAD: 58
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -148,7 +148,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | AddScriptedMode | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
 | FadeIn | Entity | Proven | Proven | Proven | Proven | Proven | Proven |
 | SetAppearanceSeed | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
-| ResetPos | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
+| ResetPos | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
 | TeleportInFrontOf | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
 | Teleport | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
 | Release | Entity | Unread | Unread | Unread | Unread | Unread | Unread |

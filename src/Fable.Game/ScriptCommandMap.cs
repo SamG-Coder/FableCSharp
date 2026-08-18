@@ -667,6 +667,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "arg0+arg1 required; dest=pos+atof*(vtbl+288+12); vtbl+1892; vtbl+1900; leftover +28; not WalkUpToThing"),
+        Spec("ResetPos", 0x00CC4A71, 0x00CC4AC3, "",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "004AB130; 004AA9A0 [handle+4].vtbl+28; vtbl+1892(actor,pos,0,0,0); jmp 00CC707C; not Teleport 004AA980"),
         Spec("WalkUpToThing", 0x00CC2331, 0x00CC2538, "thing,distance[,…]",
             ScriptReturn.YieldAfterOrWait, CommandParity.ScriptLayer,
             "dest=pos+atof(arg1)*(vtbl+288+12); actor vtbl+16 speed 1; leftover vtbl+104"),

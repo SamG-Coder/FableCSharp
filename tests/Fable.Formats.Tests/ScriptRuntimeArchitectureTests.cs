@@ -2232,6 +2232,112 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void ResetPos_uses_handle_vtbl28_not_marker_004AA980()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "CREATURE_HERO",
+                ScriptName = "HERO",
+                PositionX = 10,
+                PositionY = 20,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], null);
+        runtime.World.Teleport("HERO", "MK_AWAY", new System.Numerics.Vector3(100, 100, 0));
+        Assert.Equal(100f, runtime.World.Positions["HERO"].X);
+        var interp = new ScriptInterpreter("rp", ["HERO.ResetPos"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(10f, runtime.World.Positions["HERO"].X);
+        Assert.Equal(20f, runtime.World.Positions["HERO"].Y);
+        Assert.Equal(0x00CC4AC3u, ScriptCommandMap.Find("ResetPos")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("Teleport")!.Value.ApplySite,
+            ScriptCommandMap.Find("ResetPos")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void ResetPos_home_overrides_thing_spawn()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.World.HomePos["HERO"] = new System.Numerics.Vector3(7, 8, 1);
+        runtime.World.Positions["HERO"] = new System.Numerics.Vector3(1, 2, 3);
+        var interp = new ScriptInterpreter("rph", ["HERO.ResetPos"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(7f, runtime.World.Positions["HERO"].X);
+        Assert.Equal(8f, runtime.World.Positions["HERO"].Y);
+        Assert.Equal(1f, runtime.World.Positions["HERO"].Z);
+    }
+
+    [Fact]
+    public void ResetPos_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".ResetPos", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "HERO.ResetPos";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("ResetPos", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var actor = parsed.Target ?? "HERO";
+        runtime.World.HomePos[actor] = new System.Numerics.Vector3(4, 5, 0);
+        runtime.World.Positions[actor] = new System.Numerics.Vector3(99, 99, 0);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-reset", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".ResetPos", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal(4f, runtime.World.Positions[actor].X);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-reset.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-resetpos.txt"),
+            """
+            ResetPos 00CC4A71 / apply 00CC4AC3
+              ebx required else 00CC7081
+              actor vtbl+48; 004AB130 miss skip vtbl
+              004AA9A0 [handle+4].vtbl+28 dest
+              null handle → [0x143E8E0] default
+              vtbl+1892(actor,pos,0,0,0); jmp 00CC707C
+              not Teleport marker 004AA980
+            SetHomePosThing body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void AskQuestion_polls_vtbl_156_until_answer()
     {
         var runtime = ScriptRuntime.Detached();
