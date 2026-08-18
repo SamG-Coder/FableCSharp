@@ -50,6 +50,16 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x0122D70Eu, EngineLifecycle.EmptyQuestNameVa);
         Assert.Equal(0x004BBC00u, EngineLifecycle.AfterLoadWorldFn);
         Assert.Equal(0x013B8674u, EngineLifecycle.AfterLoadWorldArgVa);
+        Assert.Equal(0x0049BA70u, EngineLifecycle.PostLoadWorldReserveFn);
+        Assert.Equal(60, EngineLifecycle.PostLoadWorldReserveCount);
+        Assert.Equal(0.1, EngineLifecycle.PostLoadWorldReserveRate);
+        Assert.Equal(0x00416392u, EngineLifecycle.WorldThingCountFn);
+        Assert.Equal(0x0049E200u, EngineLifecycle.WorldThingCountApply);
+        Assert.Equal(0x004AE9D0u, EngineLifecycle.PlayerBindAfterWorldFn);
+        Assert.Equal("default_user.ini", EngineLifecycle.DefaultUserIniName);
+        Assert.Equal("user.ini", EngineLifecycle.UserIniName);
+        Assert.Equal(0x009EC890u, EngineLifecycle.IniApplyFn);
+        Assert.Equal(0x004167DAu, EngineLifecycle.EngineReadyCallback);
         Assert.Equal(0x0049F180u, EngineLifecycle.InitCharactersFn);
         Assert.Equal(0x004B4A10u, EngineLifecycle.ActivateInitialQuestsFn);
         Assert.Equal(0x00BDF010u, EngineLifecycle.AttachPatchFn);
@@ -1383,6 +1393,52 @@ public sealed class EngineLifecycleTests
         Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.NamedStartFn);
         Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.LoadRegionFn);
+    }
+
+    [Fact]
+    public void InitGame_004184BD_after_00416953_reserves_then_user_ini()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.Null(life.CurrentRegion);
+        Assert.False(life.FirstRealRegionLoadDone);
+        var events = life.Trace.Events;
+        var afterWorld = events.FindIndex(e => e.Va == EngineLifecycle.AfterLoadWorldFn);
+        var reserve = events.FindIndex(e => e.Va == EngineLifecycle.PostLoadWorldReserveFn);
+        var count = events.FindIndex(e => e.Va == EngineLifecycle.WorldThingCountFn);
+        var bind = events.FindIndex(e => e.Va == EngineLifecycle.PlayerBindAfterWorldFn);
+        var defaultMiss = events.FindIndex(e =>
+            e.Va == EngineLifecycle.FileExistsFn &&
+            e.Action.Contains("default_user.ini", StringComparison.Ordinal));
+        var userIni = events.FindIndex(e =>
+            e.Va == EngineLifecycle.UserIniVa &&
+            e.Action.Contains("user.ini", StringComparison.Ordinal));
+        var callback = events.FindIndex(e => e.Va == EngineLifecycle.EngineReadyCallback);
+        var seed = events.FindIndex(e =>
+            e.Va == EngineLifecycle.GameStart &&
+            e.Action.Contains("90592", StringComparison.Ordinal));
+        Assert.True(afterWorld >= 0 && reserve > afterWorld,
+            "0049BA70 after 004BBC00");
+        Assert.True(count > reserve, "00416392 after 0049BA70");
+        Assert.True(bind > count, "004AE9D0 after 00416392");
+        Assert.True(defaultMiss > bind, "default_user.ini miss after bind");
+        Assert.True(userIni > defaultMiss, "user.ini after default miss");
+        Assert.True(callback > userIni, "004167DA store after ini");
+        Assert.True(seed > callback, "+90592 seed last");
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.PostLoadWorldReserveFn &&
+            e.Action.Contains("count=60", StringComparison.Ordinal));
+        Assert.DoesNotContain(events, e =>
+            e.Va == EngineLifecycle.IniApplyFn &&
+            e.Action.Contains("default_user.ini", StringComparison.Ordinal));
+        Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.LoadRegionFn);
+        Assert.False(life.GamePumpFirstDone);
     }
 
     [Fact]

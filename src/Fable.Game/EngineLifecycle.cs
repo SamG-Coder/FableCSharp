@@ -575,6 +575,47 @@ public sealed class EngineLifecycle : IDisposable
     public const uint EmptyQuestNameVa = 0x0122D70E;
     public const uint AfterLoadWorldFn = 0x004BBC00;
     public const uint AfterLoadWorldArgVa = 0x013B8674;
+    /// <summary>
+    /// After vtbl+32, no-save
+    /// <c>[0x13B8648]==0</c>:
+    /// <c>0049BA70(game+90488, 60, 0)</c>
+    /// (<c>0099A350</c> always 1,
+    /// <c>+20=60</c>, <c>+40</c> from
+    /// <c>0x1238B48</c> = 0.1),
+    /// <c>00416392</c> (<c>+90394==0</c>
+    /// → <c>0049E200</c> /
+    /// <c>0051E530</c>+WorldFrame),
+    /// <c>004AE9D0</c> writes
+    /// <c>+9836/+9840/+9844</c> when
+    /// <c>+9826</c>, then
+    /// <c>default_user.ini</c>
+    /// <c>00999230</c> and <c>user.ini</c>
+    /// <c>009EC890</c>. Then QPC seed.
+    /// </summary>
+    public const uint PostLoadWorldReserveFn = 0x0049BA70;
+    public const uint PostLoadWorldReserveSite = 0x00418901;
+    public const int GamePlus90488Offset = 90488;
+    public const int PostLoadWorldReserveCount = 60;
+    public const uint PostLoadWorldReserveRateVa = 0x01238B48;
+    public const double PostLoadWorldReserveRate = 0.1;
+    public const uint WorldThingCountFn = 0x00416392;
+    public const int GamePlus90394Offset = 90394;
+    public const uint WorldThingCountApply = 0x0049E200;
+    public const uint WorldThingCountWalk = 0x0051E530;
+    public const uint PlayerBindAfterWorldFn = 0x004AE9D0;
+    public const uint PlayerBindAfterWorldSite = 0x0041891D;
+    public const int PlayerBindSlot0Offset = 9836;
+    public const int PlayerBindSlot1Offset = 9840;
+    public const int PlayerBindSlot2Offset = 9844;
+    public const uint DefaultUserIniVa = 0x0122F030;
+    public const uint UserIniVa = 0x0122F01C;
+    public const string DefaultUserIniName = "default_user.ini";
+    public const string UserIniName = "user.ini";
+    public const uint FileExistsFn = 0x00999230;
+    public const uint IniApplyFn = 0x009EC890;
+    public const uint EngineReadyCallback = 0x004167DA;
+    public const int EngineReadyCallbackOffset = 240;
+    public const int EngineGamePtrOffset = 244;
     public const uint StartupWadSite = 0x004A19EB;
     public const uint SetStaticMapForEngineSite = 0x004A1B7D;
     public const uint AttachPatchFn = 0x00BDF010;
@@ -2171,6 +2212,7 @@ public sealed class EngineLifecycle : IDisposable
         GameRenderEnabled = true;
         Note(GameLoadWorldFn, "InitGame", "GameStart",
             "004188E9 [game].vtbl+32 00416953");
+        FinishInitGameAfterWorld();
         Note(GameStart, "InitGame", "GameStart",
             $"[game+{GameReadyOffset}]=1 90544/90548 QPC");
         Note(GameModeCtorRenderEnable, "InitGame", "GameMode",
@@ -2179,6 +2221,45 @@ public sealed class EngineLifecycle : IDisposable
         Mode = EngineMode.Game;
         Stage = EngineStage.Game;
         WorldFileName = FinalAlbionWld;
+    }
+
+    /// <summary>
+    /// <c>004184BD</c> after vtbl+32.
+    /// No-save <c>[0x13B8648]==0</c> only.
+    /// Not a region load and not the
+    /// first <c>004189C2</c> pump.
+    /// </summary>
+    public void FinishInitGameAfterWorld()
+    {
+        Note(SkipParticlesVa, "InitGame", "GameStart",
+            $"013B8648={SkipParticlesFirstSeen} after 00416953");
+        Note(PostLoadWorldReserveFn, "InitGame", "GameStart",
+            $"0049BA70 +{GamePlus90488Offset} count={PostLoadWorldReserveCount} rate={PostLoadWorldReserveRate}");
+        Note(WorldThingCountFn, "InitGame", "GameStart",
+            $"00416392 +{GamePlus90394Offset}=0 → 0049E200");
+        Note(WorldThingCountApply, "InitGame", "GameStart",
+            "0049E200 0051E530+[0x13B89BC]");
+        if (PlayerActionReady)
+            Note(PlayerBindAfterWorldFn, "InitGame", "Player",
+                $"004AE9D0 +{PlayerActionFlagOffset} +{PlayerBindSlot0Offset}/+{PlayerBindSlot1Offset}/+{PlayerBindSlot2Offset}");
+        var defaultIni = Install is null
+            ? DefaultUserIniName
+            : Path.Combine(Install.Root, DefaultUserIniName);
+        if (File.Exists(defaultIni))
+            Note(IniApplyFn, "InitGame", "Ini",
+                "009EC890 " + DefaultUserIniName);
+        else
+            Note(FileExistsFn, "InitGame", "Ini",
+                "00999230 " + DefaultUserIniName + " miss");
+        Note(UserIniVa, "InitGame", "Ini", "009EC890 " + UserIniName);
+        var userIni = Install is null
+            ? null
+            : Path.Combine(Install.Root, UserIniName);
+        if (userIni is not null && File.Exists(userIni))
+            Note(IniApplyFn, "InitGame", "Ini",
+                "009EC890 " + UserIniName + " exists");
+        Note(EngineReadyCallback, "InitGame", "GameStart",
+            $"009A4EC0 [engine+{EngineReadyCallbackOffset}]=004167DA +{EngineGamePtrOffset}=game");
     }
 
     /// <summary>

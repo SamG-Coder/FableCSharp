@@ -299,8 +299,16 @@ Slots 10+ overlap a string (`HERO_ABILITY`) — not a vtbl continuation.
 ├── "Create Players"                  004166A8
 ├── "Init Sound"                      00417A58
 ├── "Load Particles"                  004174F1   if [0x13B8648]==0
-├── [game].vtbl+32                    00416953
-└── seed [+90544]/[+90548]/[+90592]=1
+├── [game].vtbl+32                    00416953   ↓ §10
+├── [0x13B8648]==0  after world       PROVEN
+│   ├── 0049BA70(game+90488, 60, 0)   0099A350 always 1; +20=60; +40=0.1
+│   ├── 00416392                      +90394==0 → 0049E200
+│   │   └── 0051E530([world+80]) + [0x13B89BC]
+│   ├── 004AE9D0(game+80568)          if +9826: +9836/+9840/+9844
+│   ├── 0x122F030 default_user.ini    00999230; TLC miss → skip 009EC890
+│   └── 0x122F01C user.ini            009EC890 (exists check inside)
+└── seed 009A4EC0 [engine+240]=004167DA [+244]=game
+    [+90544]=0  009E1BC0 → [+90548]  [+90592]=1
 ```
 
 ---
