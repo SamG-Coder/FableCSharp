@@ -357,6 +357,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "vtbl+52(text,mode,0,1); leftover vtbl+104; random=1 norepeat=2 sequence=3"),
+        Spec("DataSpeak", 0x00CC293A, 0x00CC2991, "a,b[,DATA|prefix][,mode]",
+            ScriptReturn.YieldAfter, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0+arg1 required; concat key; DATA 004AA900 name; mode random1 norepeat2 sequence3; vtbl+52 leftover 104; not Speak listener"),
         Spec("InteractiveSpeakGroup", 0x00CC2C76, 0x00CC2CCD, "listener,prefix,count",
             ScriptReturn.YieldAfterOrWait, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

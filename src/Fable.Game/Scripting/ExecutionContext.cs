@@ -646,6 +646,11 @@ public sealed class DialogueRuntime
     public readonly List<ScriptDialogSpeech> Dialogs = [];
     public readonly List<ScriptDialogAdSpeech> DialogAds = [];
     /// <summary>
+    /// <c>00CC2C06</c> <c>vtbl+52</c> with a
+    /// concatenated data key. Not Speak listener+text.
+    /// </summary>
+    public readonly List<(string Actor, string Key, int Mode)> DataSpeaks = [];
+    /// <summary>
     /// <c>00CC2D42</c> group lines
     /// <c>prefix_10</c>, <c>prefix_20</c>, …
     /// via <c>vtbl+1464</c>.
@@ -755,6 +760,18 @@ public sealed class DialogueRuntime
     {
         Dialogs.Add(new ScriptDialogSpeech(actor, listener, text));
         Open(actor, listener, text, 0, "DialogSpeak", handle: true, hold: false, body);
+    }
+
+    /// <summary>
+    /// <c>00CC2991</c>: concat key then
+    /// <c>vtbl+52(handle,key,mode,0,1,0)</c>
+    /// leftover poll <c>vtbl+104</c>.
+    /// Voice table UNREAD.
+    /// </summary>
+    public void DataSpeak(string? actor, string key, int mode, string? body = null)
+    {
+        DataSpeaks.Add((actor ?? "", key, mode));
+        Open(actor, "", key, mode, "DataSpeak", handle: false, hold: false, body);
     }
 
     public void DialogAdSpeak(string? actor, string target, string text, int mode)

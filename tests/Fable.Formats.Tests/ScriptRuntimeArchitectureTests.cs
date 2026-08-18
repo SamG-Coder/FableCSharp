@@ -4228,6 +4228,90 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void DataSpeak_concatenates_key_not_Speak_listener_text()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var first = new ScriptInterpreter("ds1", ["HERO.DataSpeak FOO,BAR"]);
+        first.RunUntilYield(runtime);
+        Assert.True(first.Yielded);
+        Assert.Equal(("HERO", "FOOBAR", 0), runtime.Dialogue.DataSpeaks[0]);
+        var second = new ScriptInterpreter("ds2",
+        [
+            "GUARD.DataSpeak _A,_B,PREFIX,sequence",
+            "HERO.DataSpeak",
+        ]);
+        second.RunUntilYield(runtime);
+        Assert.True(second.Yielded);
+        Assert.Equal(2, runtime.Dialogue.DataSpeaks.Count);
+        Assert.Equal(("GUARD", "PREFIX_A_B", 3), runtime.Dialogue.DataSpeaks[1]);
+        Assert.Equal("DataSpeak", runtime.Dialogue.Session?.Verb);
+        Assert.Equal(0x00CC2991u, ScriptCommandMap.Find("DataSpeak")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("Speak")!.Value.ApplySite,
+            ScriptCommandMap.Find("DataSpeak")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void DataSpeak_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".DataSpeak", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "HERO.DataSpeak FOO,BAR,DATA,norepeat";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("DataSpeak", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-ds", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".DataSpeak", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Yielded);
+        Assert.Single(runtime.Dialogue.DataSpeaks);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-ds.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-dataspeak.txt"),
+            """
+            DataSpeak 00CC293A / apply 00CC2991
+              ebx actor; arg0+arg1 required
+              empty arg2: concat arg0+arg1
+              DATA: 004AA900 name + arg0 + arg1
+              else: arg2 + arg0 + arg1
+              arg3 00BFEBA8 random=1 norepeat=2 sequence=3
+              00CD3187; vtbl+52(handle,key,mode,0,1,0)
+              leftover poll vtbl+104; jmp 00CC7081
+              not Speak listener+text
+            Voice table UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();

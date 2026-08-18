@@ -314,6 +314,20 @@ public static class EntityDispatcher
                 "WalkUpToThing vtbl+16 then vtbl+104", "arrival leftover", op.Id, target);
         }
 
+        if (Eq(v, "DataSpeak"))
+        {
+            // 00CC2991: arg0+arg1 required; concat key;
+            // DATA uses 004AA900 name; mode arg3;
+            // vtbl+52; leftover vtbl+104.
+            if (line.Arg(0).Length == 0 || line.Arg(1).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            var key = BuildDataSpeakKey(line, ctx);
+            var mode = SpeakMode(line.Arg(3));
+            ctx.Dialogue.DataSpeak(line.Target, key, mode, ctx.Runtime.LookupText(key));
+            return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Entity,
+                "DataSpeak vtbl+52 leftover vtbl+104", key);
+        }
+
         if (Eq(v, "Speak"))
         {
             var target = line.Arg(0);
@@ -669,6 +683,28 @@ public static class EntityDispatcher
             line.Args.Count <= 4 || !ScriptLine.IsFalse(line.Arg(4)),
             ScriptLine.IsTrue(line.Arg(7)),
             count);
+    }
+
+    /// <summary>
+    /// <c>00CC29D2</c>: empty arg2 → arg0+arg1;
+    /// DATA → 004AA900 name+arg0+arg1;
+    /// else arg2+arg0+arg1.
+    /// </summary>
+    private static string BuildDataSpeakKey(ScriptLine line, ScriptExecutionContext ctx)
+    {
+        var a = line.Arg(0);
+        var b = line.Arg(1);
+        var tag = line.Arg(2);
+        if (tag.Length == 0)
+            return a + b;
+        if (ScriptLine.TokenMatches(tag, "DATA"))
+        {
+            var thing = ctx.FindThing(line.Target ?? "");
+            var name = thing?.ScriptName is { Length: > 0 } s ? s : line.Target ?? "";
+            return name + a + b;
+        }
+
+        return tag + a + b;
     }
 
     private static int SpeakMode(string token)
