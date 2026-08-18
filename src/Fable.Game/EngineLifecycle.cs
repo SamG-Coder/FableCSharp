@@ -1,5 +1,6 @@
 using Fable.Core;
 using Fable.Formats.Banks;
+using Fable.Formats.Wld;
 
 namespace Fable.Game;
 
@@ -96,8 +97,9 @@ public sealed class EngineLifecycle
 
     /// <summary>
     /// <c>004A6E30</c> world object vtbl+36
-    /// ("Init World Init"). Map file is
-    /// <c>005066E0</c> (body UNREAD).
+    /// ("Init World Init"). Map object is
+    /// <c>005066E0</c>; file parse is
+    /// <c>00507C30</c>.
     /// </summary>
     public static readonly (string Stage, uint Apply)[] InitWorldInitStages =
     [
@@ -115,6 +117,27 @@ public sealed class EngineLifecycle
 
     public const uint InitWorldInitFn = 0x004A6E30;
     public const uint InitWorldMapFn = 0x005066E0;
+    public const uint WorldMapVtbl = 0x01244AEC;
+    public const uint LoadWldFile = 0x00507C30;
+    public const uint LoadGtng = 0x0050959F;
+    public const uint LoadGlobalThings = 0x00509859;
+    public const uint LoadRegionGraph = 0x00509982;
+    public const int WorldMapObjectSize = 0xD8;
+    public const int WorldMapCellShift = 5;
+    public const int WorldMapBound = 0x2000;
+
+    /// <summary>
+    /// <c>00507C30</c> token switch. Same
+    /// vocabulary as <see cref="WorldFile"/>.
+    /// </summary>
+    public static readonly string[] LoadWldTokens =
+    [
+        "MapUIDCount", "ThingManagerUIDCount", "LevelScriptName",
+        "NewMap", "EndMap", "MapUID", "MapX", "MapY", "IsSea",
+        "LoadedOnPlayerProximity", "LevelName", "NewRegion", "EndRegion",
+        "RegionDef", "EnvironmentDef", "DisplayName", "RegionName",
+        "NewDisplayName", "ContainsMap", "SeesMap", "AppearOnWorldMap",
+    ];
 
     public static readonly (string Logical, string Pc)[] RetailBanks =
     [
@@ -146,6 +169,7 @@ public sealed class EngineLifecycle
     public bool GraphicsCreated { get; private set; }
     public int CreateDeviceFlags { get; private set; }
     public string? WorldFileName { get; private set; }
+    public WorldFile? World { get; private set; }
     public IReadOnlyList<string> CompletedStages => _completed;
     public IReadOnlyList<string> RegisteredBanks => _banks;
     public GameInstall? Install { get; private set; }
@@ -296,11 +320,41 @@ public sealed class EngineLifecycle
         Note(InitWorldInitFn, "Init World Init", "World", "004A6E30 vtbl+36");
         foreach (var (name, apply) in InitWorldInitStages)
             Note(apply, name, "World", name);
-        Note(InitWorldMapFn, "Init World Map", "WLD", "005066E0 body UNREAD");
+        LoadWorldMap();
         Note(CreatePlayersFn, "Create Players", "Player", "0044A530/004AE940 UNREAD");
         Mode = EngineMode.Game;
         Stage = EngineStage.Game;
         WorldFileName = FinalAlbionWld;
+    }
+
+    /// <summary>
+    /// <c>005066E0</c> constructs the 0xD8 map
+    /// object (shift 5, bound 0x2000).
+    /// <c>00507C30</c> vtbl+12 is
+    /// <c>Load .wld file</c>: token-switch parse
+    /// of <c>FinalAlbion.wld</c>. GTNG / global
+    /// things / region graph stay UNREAD.
+    /// </summary>
+    public void LoadWorldMap()
+    {
+        Note(InitWorldMapFn, "Init World Map", "WLD",
+            "005066E0 ctor size 0xD8 shift 5 bound 0x2000 vtbl 01244AEC");
+        Note(LoadWldFile, "Load .wld file", "WLD", "00507C30 vtbl+12");
+        WorldFileName = FinalAlbionWld;
+        if (Install is null)
+            return;
+        if (!File.Exists(Install.WorldPath))
+        {
+            Note(LoadWldFile, "Load .wld file", "WLD", "missing " + FinalAlbionWld);
+            return;
+        }
+
+        World = WorldFile.Load(Install.WorldPath);
+        Note(LoadWldFile, "Load .wld file", "WLD",
+            $"maps={World.Maps.Count} regions={World.Regions.Count} quests={World.InitialQuests.Count}");
+        Note(LoadGtng, "Load GTNG", "WLD", "UNREAD");
+        Note(LoadGlobalThings, "Load global things", "WLD", "UNREAD");
+        Note(LoadRegionGraph, "Load region graph", "WLD", "UNREAD");
     }
 
     public void ShutdownEngine()

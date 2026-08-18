@@ -146,6 +146,18 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x01230CA0u, EngineLifecycle.RetailModeVtbl);
         Assert.Equal(0x0042F75Eu, EngineLifecycle.RetailStart);
         Assert.Equal(0x0042EC7Cu, EngineLifecycle.RetailPump);
+        Assert.Null(life.World);
+    }
+
+    [Fact]
+    public void Load_wld_is_00507C30_not_00DBDE40()
+    {
+        Assert.Equal(0x00507C30u, EngineLifecycle.LoadWldFile);
+        Assert.Equal(0x005066E0u, EngineLifecycle.InitWorldMapFn);
+        Assert.NotEqual(RegionTravel.StartOakValeSetup, EngineLifecycle.LoadWldFile);
+        Assert.Contains("NewMap", EngineLifecycle.LoadWldTokens);
+        Assert.Contains("SeesMap", EngineLifecycle.LoadWldTokens);
+        Assert.Contains("ThingManagerUIDCount", EngineLifecycle.LoadWldTokens);
     }
 
     [Fact]
@@ -167,11 +179,48 @@ public sealed class EngineLifecycleTests
 
         Assert.True(File.Exists(install.WorldPath));
         Assert.Equal("FinalAlbion.wld", Path.GetFileName(install.WorldPath));
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        life.EnterGame();
+        Assert.NotNull(life.World);
+        Assert.Equal(EngineLifecycle.LoadWldFile, 0x00507C30u);
+        Assert.Equal(0xD8, EngineLifecycle.WorldMapObjectSize);
+        Assert.Equal(5, EngineLifecycle.WorldMapCellShift);
+        Assert.Equal(0x2000, EngineLifecycle.WorldMapBound);
+        Assert.Equal(0x01244AECu, EngineLifecycle.WorldMapVtbl);
+        Assert.Contains("NewRegion", EngineLifecycle.LoadWldTokens);
+        Assert.Contains("ContainsMap", EngineLifecycle.LoadWldTokens);
+        Assert.True(life.World.Maps.Count >= 70);
+        var oak = life.World.FindRegionContaining("StartOakValeWest");
+        Assert.NotNull(oak);
+        Assert.Equal("StartOakVale", oak.RegionName);
+        Assert.Contains("StartOakValeWest", oak.ContainsMaps);
+        Assert.Contains("StartOakValeEast", oak.ContainsMaps);
+        Assert.Contains("StartOakvaleMemorialGarden", oak.ContainsMaps);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.LoadWldFile && e.Action.StartsWith("maps=", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LoadGtng);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         var dest = Path.Combine(
             @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
             "traces");
         Directory.CreateDirectory(dest);
         life.Trace.Write(Path.Combine(dest, "winmain-forward.txt"));
+        life.Trace.Write(Path.Combine(dest, "init-world-map.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-init-world-map.txt"),
+            """
+            Init World Map 005066E0 is the 0xD8 ctor (vtbl 01244AEC,
+            shift 5, bound 0x2000). Not the WLD parser.
+            00507C30 vtbl+12 is "Load .wld file": token switch
+            NewMap/EndMap/NewRegion/ContainsMap/SeesMap/...
+            Same vocabulary as WorldFile.Load(FinalAlbion.wld).
+            Then UNREAD: Load GTNG 0050959F, Load global things
+            00509859, Load region graph 00509982.
+            Not 00DBDE40 / StartOakVale setup.
+            """);
         File.WriteAllText(
             Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
                 "recover-main-forward.txt"),
