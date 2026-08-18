@@ -1109,6 +1109,12 @@ public sealed class WorldRuntime
     }
 
     /// <summary>
+    /// <c>00CC92ED</c> <c>vtbl+756</c>. No args.
+    /// Clothes only — hair/tattoo stay.
+    /// </summary>
+    public void RemoveHeroClothes() => HeroClothes.Clear();
+
+    /// <summary>
     /// <c>00CC63E5</c>: give <c>count - already</c>
     /// via <c>vtbl+484</c>. Requested ≤ owned skips.
     /// </summary>

@@ -532,6 +532,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "arg0 required; vtbl+760(name); jmp 00CD17FD; not HeroHair 764"),
+        Spec("RemoveHeroClothes", 0x00CC929B, 0x00CC92ED, "",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "no args; vtbl+756(); jmp 00CD17FD; does not clear hair/tattoo"),
         Spec("UseTheme", 0x00CCFA38, 0x00CCFA8B, "name[,param][,flag]",
             ScriptReturn.CompleteNow, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

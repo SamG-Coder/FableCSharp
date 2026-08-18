@@ -89,6 +89,7 @@
 | HeroHair | `00CC9130` | `00CC9182` | name | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; vtbl+764(name); jmp 00CD17FD; hair+beard accumulate |
 | HeroTattoo | `00CC91A9` | `00CC91FB` | name | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; vtbl+576(name); jmp 00CD17FD; not HeroHair 764 |
 | HeroWear | `00CC9222` | `00CC9274` | name | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; vtbl+760(name); jmp 00CD17FD; not HeroHair 764 |
+| RemoveHeroClothes | `00CC929B` | `00CC92ED` |  | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | no args; vtbl+756(); jmp 00CD17FD; does not clear hair/tattoo |
 | UseTheme | `00CCFA38` | `00CCFA8B` | name[,param][,flag] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | RESET vtbl+2628(param); else vtbl+2624(name,param); jmp 00CD17FD |
 | SetDoorOpen | `00CC8A8D` | `00CC8BEB` | name,IsFalse? | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | IsFalse(arg1)->vtbl+1704 close else vtbl+1700 open; jmp 00CD17F8 |
 | SetChestOpen | `00CC8C14` | `00CC8D73` | name,IsFalse? | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | IsFalse(arg1)->vtbl+1744 close else vtbl+1740(thing,0) open; jmp 00CD17F8 |

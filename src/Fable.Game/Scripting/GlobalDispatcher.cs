@@ -753,6 +753,12 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name);
         }
 
+        if (Eq(v, "RemoveHeroClothes"))
+        {
+            ctx.World.RemoveHeroClothes();
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "vtbl+756");
+        }
+
         if (Eq(v, "GiveHeroHealth"))
         {
             var token = line.Arg(0);

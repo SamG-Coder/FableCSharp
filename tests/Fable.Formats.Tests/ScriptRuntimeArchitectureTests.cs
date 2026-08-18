@@ -1368,6 +1368,79 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void RemoveHeroClothes_clears_wear_not_hair()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("rhc",
+        [
+            "HeroWear OBJECT_HERO_NO_HAT",
+            "HeroHair OBJECT_HERO_HAIR_YOUNG_01",
+            "RemoveHeroClothes",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Empty(runtime.World.HeroClothes);
+        Assert.Equal(["OBJECT_HERO_HAIR_YOUNG_01"], runtime.World.HeroHairs);
+        Assert.Equal(0x00CC92EDu, ScriptCommandMap.Find("RemoveHeroClothes")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("HeroWear")!.Value.ApplySite,
+            ScriptCommandMap.Find("RemoveHeroClothes")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void RemoveHeroClothes_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Equals("RemoveHeroClothes", StringComparison.OrdinalIgnoreCase) ||
+                    raw.StartsWith("RemoveHeroClothes ", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "RemoveHeroClothes";
+        hit ??= bank.Entries[0];
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        runtime.World.ApplyHeroWear("OBJECT_HERO_NO_HAT");
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-clothes", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("RemoveHeroClothes", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Empty(runtime.World.HeroClothes);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-clothes.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-removeheroclothes.txt"),
+            """
+            RemoveHeroClothes 00CC929B / apply 00CC92ED
+              no args; vtbl+756(); jmp 00CD17FD
+              does not take a name; not HeroWear vtbl+760
+            Clothes mesh unread (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void WalkTo_writes_destination_and_entity_task()
     {
         var runtime = ScriptRuntime.Detached();
