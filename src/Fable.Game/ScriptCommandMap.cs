@@ -687,6 +687,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "arg0+arg1 required; IsFalse(arg2)->0 else 1; 004AA980+004AAA40; vtbl+1892; not SetHomePosThing 004AA9A0"),
+        Spec("PauseThing", 0x00CC7AD5, 0x00CC7B24, "thing,IsFalse?",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0+arg1 required; 00CBF9DE; 004AB130; IsFalse(arg1)->2 else 1; vtbl+2048; jmp 00CC82E9; not 0/1"),
         Spec("SetThingConscious", 0x00CC8041, 0x00CC8094, "thing[,IsTrue][,extra]",
             ScriptReturn.CompleteNow, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

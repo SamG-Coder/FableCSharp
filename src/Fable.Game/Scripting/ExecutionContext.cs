@@ -1222,6 +1222,14 @@ public sealed class WorldRuntime
         new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, string> ConsciousExtra =
         new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// <c>00CC7B24</c> <c>vtbl+2048(thing,mode)</c>.
+    /// TRUE → 1, FALSE → 2. Not a 0/1 boolean.
+    /// </summary>
+    public readonly Dictionary<string, int> PauseModes =
+        new(StringComparer.OrdinalIgnoreCase);
+    public readonly Dictionary<string, int> PauseVtbl =
+        new(StringComparer.OrdinalIgnoreCase);
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
     public float TimeOfDayHours { get; set; }
@@ -1486,6 +1494,20 @@ public sealed class WorldRuntime
         Conscious[key] = conscious;
         ConsciousVtbl[key] = 2324;
         ConsciousExtra[key] = extra ?? "";
+    }
+
+    /// <summary>
+    /// <c>00CC7B24</c>: arg0+arg1 required;
+    /// <c>00CBF9DE</c>+<c>004AB130</c>;
+    /// IsFalse(arg1) → mode 2 else mode 1;
+    /// <c>vtbl+2048(thing,mode)</c>.
+    /// Pause/sim body UNREAD.
+    /// </summary>
+    public void PauseThing(string actor, int mode)
+    {
+        var key = actor ?? "";
+        PauseModes[key] = mode;
+        PauseVtbl[key] = 2048;
     }
 
     /// <summary>

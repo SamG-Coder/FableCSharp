@@ -2680,6 +2680,119 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void PauseThing_TRUE_is_vtbl_2048_mode_1_FALSE_is_2()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("pause",
+        [
+            "PauseThing SPECTATORCS0,TRUE",
+            "PauseThing HauntedHouseClock,FALSE",
+            "PauseThing GUARD1,false",
+            "PauseThing",
+            "PauseThing ONLYNAME",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(1, runtime.World.PauseModes["SPECTATORCS0"]);
+        Assert.Equal(2, runtime.World.PauseModes["HauntedHouseClock"]);
+        Assert.Equal(2, runtime.World.PauseModes["GUARD1"]);
+        Assert.Equal(2048, runtime.World.PauseVtbl["SPECTATORCS0"]);
+        Assert.False(runtime.World.PauseModes.ContainsKey("ONLYNAME"));
+        Assert.Equal(0x00CC7B24u, ScriptCommandMap.Find("PauseThing")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("SetThingConscious")!.Value.ApplySite,
+            ScriptCommandMap.Find("PauseThing")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void PauseThing_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var name in new[]
+                 {
+                     "CS_CHICKING_INTRO",
+                     "CS_HANGINGTREE_EVIL_ESCAPE",
+                     "CS_JACK_DEATH",
+                     "CS_HAUNTED_DOORCLOSES",
+                 })
+        {
+            hit = bank.Entries.FirstOrDefault(e =>
+                e.InstanceName.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (hit is null)
+                continue;
+            foreach (var raw in hit.Commands.Count > 0
+                         ? hit.Commands
+                         : ScriptBank.ExtractCommands(hit.Raw))
+            {
+                if (raw.StartsWith("PauseThing ", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        if (line is null)
+        {
+            foreach (var entry in bank.Entries)
+            {
+                foreach (var raw in entry.Commands.Count > 0
+                             ? entry.Commands
+                             : ScriptBank.ExtractCommands(entry.Raw))
+                {
+                    if (raw.StartsWith("PauseThing ", StringComparison.OrdinalIgnoreCase) &&
+                        !raw.Contains('$', StringComparison.Ordinal))
+                    {
+                        line = raw;
+                        hit = entry;
+                        break;
+                    }
+                }
+
+                if (line is not null)
+                    break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        Assert.NotNull(hit);
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("PauseThing", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-pause", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("PauseThing ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        var mode = ScriptLine.IsFalse(parsed.Arg(1)) ? 2 : 1;
+        Assert.Equal(mode, runtime.World.PauseModes[parsed.Arg(0)]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-pause.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-pausething.txt"),
+            """
+            PauseThing 00CC7AD5 / apply 00CC7B24
+              arg0+arg1 00403A00 empty skip 00CC8464
+              00CBF9DE(arg0); 004AB130
+              00CBEE0C IsFalse(arg1) → push 2 else push 1
+              vtbl+2048(thing,mode); jmp 00CC82E9
+              not 0/1 boolean; not SetGravityOnThing 2128
+            Pause/sim body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();

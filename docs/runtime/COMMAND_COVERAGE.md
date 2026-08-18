@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 133
-RECOVERED RETURN: 133
-RECOVERED APPLY: 69
+RECOVERED DISPATCH: 134
+RECOVERED RETURN: 134
+RECOVERED APPLY: 70
 IMPLEMENTED RUNTIME: 13
-UNREAD: 52
+UNREAD: 51
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -102,7 +102,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | TeleportThing | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | SetHomePosThing | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | SetGravityOnThing | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| PauseThing | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| PauseThing | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | CameraPreload | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | FadeThingIn | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | FadeThingOut | Global | Unread | Unread | Unread | Unread | Unread | Unread |
