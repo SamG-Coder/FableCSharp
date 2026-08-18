@@ -264,6 +264,17 @@ public sealed class EngineLifecycle
     public const uint RegionContainsMapFn = 0x006BBFA0;
     public const uint LoadRegionAtMapFn = 0x00502500;
     public const uint WorldUpdateFn = 0x004A3740;
+    /// <summary>
+    /// <c>00B428E0</c> then <c>00B42750</c>
+    /// with mode 1. Mode 2 is the neighbour
+    /// pointer list.
+    /// </summary>
+    public const uint SetStaticMapFileForUseFn = 0x00B428E0;
+    public const uint OpenStaticMapsFn = 0x00B42750;
+    public const uint OpenStaticMapFn = 0x00B42530;
+    public const int OpenStaticMapsModeOffset = 424;
+    public const int OpenStaticMapsUseMode = 1;
+    public const int OpenStaticMapsListMode = 2;
 
     /// <summary>
     /// <c>00507C30</c> token switch. Same
@@ -345,6 +356,8 @@ public sealed class EngineLifecycle
     public string? PlayerRegionName { get; set; }
     public IReadOnlyList<int> PendingLoadIndices => _loadQueue;
     public IReadOnlyList<string> ActivatedMaps => _activatedMaps;
+    public int OpenStaticMapsMode { get; private set; }
+    public IReadOnlyList<string> OpenedStaticMaps => _openedStaticMaps;
     /// <summary>
     /// <c>0x13B85F6</c> / <c>0x13B85F5</c>.
     /// Default false matches BSS 0.
@@ -358,6 +371,7 @@ public sealed class EngineLifecycle
     private readonly List<string> _banks = [];
     private readonly List<int> _loadQueue = [];
     private readonly List<string> _activatedMaps = [];
+    private readonly List<string> _openedStaticMaps = [];
 
     public static int CreateDeviceBehaviorFlags(bool hardwareTnl) =>
         hardwareTnl ? CreateDeviceHardwareFlags : CreateDeviceSoftwareFlags;
@@ -867,6 +881,42 @@ public sealed class EngineLifecycle
         Note(InitMiniMapFn, "LevelLoader", "Region", "0082BA00 Initialise MiniMap");
         Note(PostRegionLoadVillages, "LevelLoader", "Region",
             "005064C0 Post Region Load Villages");
+        OpenStaticMapsForCurrentRegion();
+    }
+
+    /// <summary>
+    /// <c>00B428E0</c> <c>SetStaticMapFileForUse</c>
+    /// then <c>00B42750</c> mode 1. Map set is
+    /// existing <see cref="WorldGeometry.StaticMapsAround"/>.
+    /// </summary>
+    public void OpenStaticMapsForCurrentRegion()
+    {
+        Note(SetStaticMapFileForUseFn, "StaticMap", "WLD",
+            "SetStaticMapFileForUse: CloseStaticMapFile");
+        Note(SetStaticMapFileForUseFn, "StaticMap", "WLD",
+            "SetStaticMapFileForUse: EnablePoolAllocation");
+        Note(SetStaticMapFileForUseFn, "StaticMap", "WLD",
+            "SetStaticMapFileForUse: OpenStaticMaps");
+        OpenStaticMapsMode = OpenStaticMapsUseMode;
+        Note(OpenStaticMapsFn, "StaticMap", "WLD",
+            $"00B42750 mode={OpenStaticMapsMode} [+424]");
+        _openedStaticMaps.Clear();
+        if (Install is null || World is null || CurrentRegion is null)
+            return;
+
+        var primary = CurrentRegion.ContainsMaps.FirstOrDefault(m =>
+                          m.Equals(CurrentRegion.RegionName, StringComparison.OrdinalIgnoreCase))
+                      ?? CurrentRegion.ContainsMaps.FirstOrDefault()
+                      ?? CurrentRegion.RegionName;
+        foreach (var map in WorldGeometry.StaticMapsAround(World, Install, primary))
+        {
+            _openedStaticMaps.Add(map.ScriptName);
+            Note(OpenStaticMapFn, "StaticMap", "WLD",
+                "SetStaticMapFileForUse: OpenStaticMap " + map.ScriptName);
+        }
+
+        Note(OpenStaticMapsFn, "StaticMap", "WLD",
+            $"opened={_openedStaticMaps.Count} primary={primary}");
     }
 
     private void EnsureLevelLoader()

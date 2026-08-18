@@ -191,6 +191,11 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x00487C20u, EngineLifecycle.LoadRegionByNameFn);
         Assert.Equal(0x00449E60u, EngineLifecycle.LoadRegionByNamePersist);
         Assert.Equal(0x00501450u, EngineLifecycle.LoadFromFirstRealRegionFn);
+        Assert.Equal(0x00B42750u, EngineLifecycle.OpenStaticMapsFn);
+        Assert.Equal(0x00B428E0u, EngineLifecycle.SetStaticMapFileForUseFn);
+        Assert.Equal(1, EngineLifecycle.OpenStaticMapsUseMode);
+        Assert.Equal(2, EngineLifecycle.OpenStaticMapsListMode);
+        Assert.Equal(424, EngineLifecycle.OpenStaticMapsModeOffset);
         Assert.NotEqual(0x00DBDE40u, EngineLifecycle.GamePump);
         Assert.NotEqual(RegionTravel.StartOakValeSetup, EngineLifecycle.GetRegionRecordFn);
         Assert.NotEqual(RegionTravel.StartOakValeSetup, EngineLifecycle.SetRegionAsLoadedFn);
@@ -365,6 +370,10 @@ public sealed class EngineLifecycleTests
             e.Action.Contains("LookoutPoint", StringComparison.Ordinal));
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.NotEqual("StartOakVale", life.CurrentRegion.RegionName);
+        Assert.Equal(1, life.OpenStaticMapsMode);
+        Assert.Contains("LookoutPoint", life.OpenedStaticMaps);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.OpenStaticMapsFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.SetStaticMapFileForUseFn);
         var dest = Path.Combine(
             @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
             "traces");
