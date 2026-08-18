@@ -1203,10 +1203,11 @@ public sealed class EngineLifecycleTests
         Assert.False(life.RenderBodyRan);
         Assert.Equal(0, life.GamePresentCount);
         life.WorldFrame = 2;
-        life.DisplayTime = 1.0;
-        Assert.True(life.Pump());
+        life.QueueInput(EngineInput.TypeKey, EngineInput.KeyMove3);
+        Assert.True(life.Pump(0.1f));
         Assert.True(life.RenderBodyRan);
         Assert.True(life.GamePresentCount >= 1);
+        Assert.True(life.Player.PumpCalls >= 1);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.BeginSceneFn && e.Stage == "GamePump");
         Assert.Contains(life.Trace.Events, e =>
@@ -2047,6 +2048,68 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x00446A30u, EngineLifecycle.PlayerInputPumpFn);
         Assert.Equal(0x00446330u, EngineLifecycle.PlayerInputPollFn);
         Assert.Equal(0x00446220u, EngineLifecycle.PlayerInputFallbackFn);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
+        Assert.Null(life.CurrentRegion);
+    }
+
+    [Fact]
+    public void After_WorldFrame_gt_1_00417001_is_0041707E_then_004AEA70_skip()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.True(life.Pump(0.25f));
+        Assert.Equal(1, life.WorldFrame);
+        Assert.False(life.RenderBodyRan);
+        Assert.False(life.CameraInterpolationRan);
+        Assert.Equal(0, life.GamePresentCount);
+        Assert.True(life.WorldCamera.Seeded);
+        Assert.True(life.Pump(0.25f));
+        Assert.Equal(2, life.WorldFrame);
+        Assert.True(life.RenderBodyRan);
+        Assert.True(life.CameraInterpolationRan);
+        Assert.False(life.CameraInterpolationUnread);
+        Assert.Equal(1f, life.CameraInterpolationT);
+        Assert.True(life.DisplayPresentSkipped);
+        Assert.False(life.GamePlus90594);
+        Assert.Equal(1, life.GamePlus90596);
+        Assert.Equal(0, life.GamePresentCount);
+        Assert.True(life.PlayerActionReady);
+        Assert.Equal(2, life.PlayerBindSlot0);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.CameraInterpolationFn &&
+            e.Action.Contains("0041707E", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.WorldCameraApplyFn &&
+            e.Action.Contains("0049E080", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.CameraManagerBlendFn &&
+            e.Action.Contains("006B42F0", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PlayerReadyQueryFn &&
+            e.Action.Contains("004AEA70 0041674A", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DisplayApplyThunk &&
+            e.Action.Contains("skip 00435F70", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.CameraBodyFn);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PresentFn &&
+            e.Stage == "GamePump");
+        Assert.Equal(0x0041707Eu, EngineLifecycle.CameraInterpolationFn);
+        Assert.Equal(0x0049E080u, EngineLifecycle.WorldCameraApplyFn);
+        Assert.Equal(0x006B42F0u, EngineLifecycle.CameraManagerBlendFn);
+        Assert.Equal(0x004AEA70u, EngineLifecycle.PlayerReadyQueryFn);
+        Assert.Equal(0x00435F70u, EngineLifecycle.DisplayApplyThunk);
+        Assert.Equal(0x013B8688u, EngineLifecycle.PlayerCatchupForceVa);
+        Assert.Equal(0, EngineLifecycle.PlayerCatchupForceFirstSeen);
         Assert.DoesNotContain(life.Trace.Events, e =>
             e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
         Assert.Null(life.CurrentRegion);

@@ -511,6 +511,10 @@ then inner loop until [game+8]  PROVEN
 │       ├── 00415A60 zero 52
 │       ├── world vtbl+12 0049E1B0 → 004C74F0 [0x13B8A1C]
 │       ├── WorldFrame<=1 skip camera / 00435530
+│       ├── first WorldFrame>1  PROVEN
+│       │   [0x13B8630]=0 → 0041707E
+│       │   0049E080 / 006B42F0
+│       │   004AEA70=0 [0x13B8688]=0 skip 00435F70
 │       └── always [0x13B7D6C]=[display+104]  PROVEN
 │           004350D0 first-seen +104=0
 ├── 00416202  PROVEN
@@ -937,7 +941,16 @@ Fiber +41 setter 00CB78D0  PROVEN
 
 00417001  render
 ├── WorldFrame<=1  skip camera
-├── [0x13B8630]==0 → 0041707E interpolation
+├── [0x13B8630]==0 → 0041707E interpolation  PROVEN first-seen
+│   ├── world+164==0
+│   ├── 004166E2 / 0041919C clamp t
+│   ├── 0049E080 → 006B42F0 (+68 already 1)
+│   ├── 004AEA70  PROVEN
+│   │   +9826=1 → !0041674A(post-update +9836)
+│   │   first-seen catchup-hit → 0
+│   ├── [0x13B8688]=0 no writer
+│   └── 004AEA70=0 skip 00435F70 / [+90594]  PROVEN
+│       inc [game+90596]
 └── else           → 004164E0 catchup
     └── 00435530
         009BEF20 BeginScene
@@ -979,7 +992,7 @@ Walk these **from their parent above**, not by string.
 | `00CB8220` parked trio | next type-1 resume / `0049D870` | `0049D870` after `006E7410` vtbl+8 returns |
 | `004167DA` | first call of `[engine+240]` | store-only; 0 `calldisp +240` on engine |
 | `00CE7670` parked | who activates `Q_NewOakValeIntro` | not this yield |
-| `00416E78` after `00446A30` al=0 | same-frame `00417001` WorldFrame>1 camera / next type-1 | `00501450` still 0 E8/imm |
+| `0041707E` after `004AEA70=0` | later frame `004AEA70=1` → `00435F70` / next type-1 | `00501450` still 0 E8/imm |
 
 After every successful walk: add the node here, then implement
 only that node's semantic equivalent on `EngineLifecycle`.

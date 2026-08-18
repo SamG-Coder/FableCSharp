@@ -1980,6 +1980,18 @@ public sealed class EngineLifecycle : IDisposable
     public int GamePlus104 { get; private set; }
     public int GamePlus90424 { get; private set; }
     public bool GamePlus90594 { get; private set; }
+    /// <summary>
+    /// <c>004171F4</c> <c>[game+90596]</c>
+    /// when first <c>004AEA70</c> is 0.
+    /// </summary>
+    public int GamePlus90596 { get; private set; }
+    /// <summary>
+    /// First-seen <c>0041707E</c> skipped
+    /// <c>00435F70</c> because
+    /// <c>004AEA70</c> is 0 and
+    /// <c>[0x13B8688]</c> is 0.
+    /// </summary>
+    public bool DisplayPresentSkipped { get; private set; }
     public float GamePlus112 { get; private set; }
     public float GamePlus116 { get; private set; }
     public float GamePlus120 { get; private set; }
@@ -4305,7 +4317,9 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>world+164==0</c> builds one
     /// 52-byte record, clamps t to
     /// <c>[0,1]</c>, then
-    /// <c>0049E080</c> / <c>00435F70</c>.
+    /// <c>0049E080</c>. <c>00435F70</c>
+    /// only if <c>004AEA70</c> or
+    /// <c>[0x13B8688]</c>.
     /// <c>0041714D</c> is UNREAD.
     /// </summary>
     public void ApplyCameraInterpolation()
@@ -4339,16 +4353,75 @@ public sealed class EngineLifecycle : IDisposable
         LastCameraTime = CameraInterpolationT;
         LastCameraBlend = 0f;
         ApplyWorldCamera(CameraInterpolationT);
+        CameraInterpolationRan = true;
+        if (FinishInterpolationDisplay())
+        {
+            CameraBodySteps++;
+            Note(CameraInterpolationFn, "GamePump", "Render",
+                $"[game+90594]=1 t={CameraInterpolationT}");
+        }
+    }
+
+    /// <summary>
+    /// <c>004AEA70</c>: <c>+9826==0</c>
+    /// returns 1. Else
+    /// <c>!0041674A([player+9848], +9836)</c>
+    /// with the post-update slot.
+    /// </summary>
+    public bool EvaluateDisplayReady()
+    {
         Note(PlayerReadyQueryFn, "GamePump", "Player",
             $"004AEA70 +{PlayerActionFlagOffset}={PlayerActionReady}");
-        ApplyDisplayCamera();
-        GamePlus90424++;
-        GamePlus104 = 0;
-        GamePlus90594 = true;
-        CameraInterpolationRan = true;
-        CameraBodySteps++;
-        Note(CameraInterpolationFn, "GamePump", "Render",
-            $"[game+90594]=1 t={CameraInterpolationT}");
+        if (!PlayerActionReady)
+        {
+            Note(PlayerReadyQueryFn, "GamePump", "Player",
+                "004AEA70 +9826=0 → 1");
+            return true;
+        }
+
+        var scaled = DisplayTime * CameraCatchupMin - PlayerBindSlot0;
+        var catchup = PlayerCatchupForceFirstSeen != 0 ||
+            scaled > CameraInvArgOne;
+        Note(PlayerReadyQueryFn, "GamePump", "Player",
+            catchup
+                ? $"004AEA70 0041674A {scaled}>1 → 0"
+                : $"004AEA70 0041674A {scaled}<=1 → 1");
+        return !catchup;
+    }
+
+    /// <summary>
+    /// <c>004171EB</c>…<c>0041725D</c>.
+    /// First-seen <c>[0x13B8688]=0</c>
+    /// and <c>004AEA70=0</c> skip
+    /// <c>00435F70</c> / <c>[+90594]</c>.
+    /// </summary>
+    public bool FinishInterpolationDisplay()
+    {
+        var ready = EvaluateDisplayReady();
+        if (!ready)
+        {
+            GamePlus90596++;
+            Note(PlayerReadyQueryFn, "GamePump", "Player",
+                $"004171F4 [game+90596]={GamePlus90596}");
+        }
+
+        Note(PlayerCatchupForceVa, "GamePump", "Render",
+            $"013B8688={PlayerCatchupForceFirstSeen} no writer");
+        if (ready || PlayerCatchupForceFirstSeen != 0)
+        {
+            DisplayPresentSkipped = false;
+            Note(CameraTimeFn, "GamePump", "Time", "00416231");
+            ApplyDisplayCamera();
+            GamePlus90424++;
+            GamePlus104 = 0;
+            GamePlus90594 = true;
+            return true;
+        }
+
+        DisplayPresentSkipped = true;
+        Note(DisplayApplyThunk, "GamePump", "Display",
+            "004AEA70=0 [0x13B8688]=0 skip 00435F70");
+        return false;
     }
 
     /// <summary>
