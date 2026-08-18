@@ -357,6 +357,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "vtbl+52(text,mode,0,1); leftover vtbl+104; random=1 norepeat=2 sequence=3"),
+        Spec("InteractiveSpeakGroup", 0x00CC2C76, 0x00CC2CCD, "listener,prefix,count",
+            ScriptReturn.YieldAfterOrWait, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0+1+2 required; vtbl+1456(1,1); 1460; atoi; prefix_10*i via 1464; leftover x count; not InteractiveSpeak"),
         Spec("InteractiveSpeak", 0x00CC2EAA, 0x00CC2F50, "listener,prompt[,wait]",
             ScriptReturn.YieldAfterUnlessWait, CommandParity.ScriptLayer,
             "vtbl+1456 handle; TRUE leftover 1472; FALSE one vtbl+28"),

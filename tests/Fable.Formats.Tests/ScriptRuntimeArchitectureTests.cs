@@ -4144,6 +4144,90 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void InteractiveSpeakGroup_builds_prefix_10_20_not_InteractiveSpeak()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("isg",
+        [
+            "ScriptFrame FALSE",
+            "HERO.InteractiveSpeakGroup FATHER,TEXT_QST_FOO,3",
+            "HERO.InteractiveSpeakGroup",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(
+            new[] { "TEXT_QST_FOO_10", "TEXT_QST_FOO_20", "TEXT_QST_FOO_30" },
+            runtime.Dialogue.GroupLines);
+        Assert.Equal(1464, runtime.Dialogue.GroupSpeakVtbl);
+        Assert.Equal("InteractiveSpeakGroup", runtime.Dialogue.Session?.Verb);
+        Assert.Equal(0x00CC2CCDu, ScriptCommandMap.Find("InteractiveSpeakGroup")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("InteractiveSpeak")!.Value.ApplySite,
+            ScriptCommandMap.Find("InteractiveSpeakGroup")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void InteractiveSpeakGroup_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".InteractiveSpeakGroup", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "HERO.InteractiveSpeakGroup FATHER,TEXT_QST_FOO,2";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("InteractiveSpeakGroup", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-isg",
+            ["ScriptFrame FALSE", line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".InteractiveSpeakGroup", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.NotEmpty(runtime.Dialogue.GroupLines);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-isg.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-interactivespeakgroup.txt"),
+            """
+            InteractiveSpeakGroup 00CC2C76 / apply 00CC2CCD
+              ebx actor; arg0+1+2 required
+              vtbl+48; resolve arg0 280/288
+              vtbl+1456(handle,1,1) session
+              vtbl+1460(session,listener)
+              009E1960 atoi arg2 count
+              each: prefix + "_" + 10*(i) via 1464
+              leftover x count; jmp 00CC707C
+              not InteractiveSpeak
+            Voice/group body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();

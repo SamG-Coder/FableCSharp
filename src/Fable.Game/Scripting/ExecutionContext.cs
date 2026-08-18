@@ -645,6 +645,13 @@ public sealed class DialogueRuntime
     public readonly List<ScriptInteractiveSpeech> Interactive = [];
     public readonly List<ScriptDialogSpeech> Dialogs = [];
     public readonly List<ScriptDialogAdSpeech> DialogAds = [];
+    /// <summary>
+    /// <c>00CC2D42</c> group lines
+    /// <c>prefix_10</c>, <c>prefix_20</c>, …
+    /// via <c>vtbl+1464</c>.
+    /// </summary>
+    public readonly List<string> GroupLines = [];
+    public int GroupSpeakVtbl { get; private set; }
     public DialogueSession? Session { get; private set; }
     public int ActiveCount { get; private set; }
     public bool HasActive => ActiveCount > 0 || Session is { Active: true };
@@ -667,6 +674,27 @@ public sealed class DialogueRuntime
         var op = new PendingOperation($"ispeak-{++_waitSerial}", "InteractiveSpeak", actor, prompt);
         if (wait)
             WaitOp = op;
+        return op;
+    }
+
+    /// <summary>
+    /// <c>00CC2CCD</c>: arg0+1+2 required;
+    /// vtbl+1456(handle,1,1); 1460; atoi count;
+    /// each i: prefix + "_" + 10*(i+1) via 1464.
+    /// Session handle like InteractiveSpeak.
+    /// Voice/group body UNREAD.
+    /// </summary>
+    public PendingOperation InteractiveSpeakGroup(
+        string? actor, string listener, string prefix, int count, string? body = null)
+    {
+        GroupLines.Clear();
+        GroupSpeakVtbl = 1464;
+        for (var i = 1; i <= count; i++)
+            GroupLines.Add($"{prefix}_{i * 10}");
+        var first = count > 0 ? GroupLines[0] : prefix;
+        Open(actor, listener, first, 0, "InteractiveSpeakGroup", handle: true, hold: false, body);
+        var op = new PendingOperation($"isg-{++_waitSerial}", "InteractiveSpeakGroup", actor, prefix);
+        WaitOp = op;
         return op;
     }
 

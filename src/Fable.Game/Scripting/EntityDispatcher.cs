@@ -328,6 +328,31 @@ public static class EntityDispatcher
                 "Speak vtbl+52 leftover vtbl+104", text);
         }
 
+        if (Eq(v, "InteractiveSpeakGroup"))
+        {
+            // 00CC2CCD: arg0+1+2 required; vtbl+1456(1,1);
+            // 1460; atoi count; prefix_10/20… vtbl+1464;
+            // leftover each line.
+            var listener = line.Arg(0);
+            var prefix = line.Arg(1);
+            if (listener.Length == 0 || prefix.Length == 0 || line.Arg(2).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            ScriptLine.TryInt(line.Arg(2), out var count);
+            if (count < 0)
+                count = 0;
+            var op = ctx.Dialogue.InteractiveSpeakGroup(
+                line.Target, listener, prefix, count, ctx.Runtime.LookupText(prefix));
+            if (count <= 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, prefix);
+            if (!ctx.Cutscene.YieldEnable)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, prefix);
+            ctx.Cutscene.ScriptFrameRemaining = count;
+            return CommandResult.Wait(
+                ExecutionKind.WaitFrames, CommandStatus.Proven, CommandFamily.Entity,
+                "InteractiveSpeakGroup leftover x count", "frame", op.Id, prefix,
+                advanceWhenDone: true);
+        }
+
         if (Eq(v, "InteractiveSpeak"))
         {
             var listener = line.Arg(0);
