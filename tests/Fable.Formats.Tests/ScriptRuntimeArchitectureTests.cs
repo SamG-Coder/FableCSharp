@@ -4018,6 +4018,132 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void AToSkip_writes_skip_global_KeepEntityMap_always_on()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("skip",
+        [
+            "AToSkip",
+            "HERO.WaitForAnimationEvent FOOTSTEP",
+            "KeepEntityMap FALSE",
+            "HideBodies FALSE",
+            "HideBodies TRUE",
+            "EnableBlackScreenSubtitles",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Contains(interp.Executed, l =>
+            l.Contains(".WaitForAnimationEvent", StringComparison.OrdinalIgnoreCase));
+        Assert.True(runtime.World.HideBodies);
+        Assert.Equal(1604, runtime.World.HideBodiesVtbl);
+        Assert.Equal(0x00CC5E2Eu, ScriptCommandMap.Find("AToSkip")!.Value.ApplySite);
+        Assert.Equal(0x00CC5E97u, ScriptCommandMap.Find("KeepEntityMap")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("AToSkip")!.Value.ApplySite,
+            ScriptCommandMap.Find("KeepEntityMap")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void AToSkip_FALSE_does_not_skip_WaitForAnimationEvent()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("skip0",
+        [
+            "AToSkip FALSE",
+            "HERO.WaitForAnimationEvent FOOTSTEP",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Yielded);
+        Assert.False(interp.Finished);
+        Assert.Equal("FOOTSTEP", runtime.Animation.EventWaits["HERO"]);
+    }
+
+    [Fact]
+    public void KeepEntityMap_and_AToSkip_real_script_bank_lines()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? keepLine = null;
+        ScriptDef? keepHit = null;
+        string? skipLine = null;
+        ScriptDef? skipHit = null;
+        string? hideLine = null;
+        ScriptDef? hideHit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (keepLine is null &&
+                    raw.StartsWith("KeepEntityMap", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    keepLine = raw;
+                    keepHit = entry;
+                }
+
+                if (skipLine is null &&
+                    raw.StartsWith("AToSkip", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    skipLine = raw;
+                    skipHit = entry;
+                }
+
+                if (hideLine is null &&
+                    raw.StartsWith("HideBodies ", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    hideLine = raw;
+                    hideHit = entry;
+                }
+            }
+
+            if (keepLine is not null && skipLine is not null && hideLine is not null)
+                break;
+        }
+
+        keepLine ??= "KeepEntityMap TRUE";
+        keepHit ??= bank.Entries[0];
+        skipLine ??= "AToSkip";
+        skipHit ??= bank.Entries[0];
+        hideLine ??= "HideBodies FALSE";
+        hideHit ??= bank.Entries[0];
+        Assert.Equal("KeepEntityMap", ScriptLine.Parse(keepLine).Verb);
+        Assert.Equal("AToSkip", ScriptLine.Parse(skipLine).Verb);
+        Assert.Equal("HideBodies", ScriptLine.Parse(hideLine).Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter("map-skip-hide", [keepLine, skipLine, hideLine]);
+        isolated.RunUntilYield(runtime);
+        Assert.True(isolated.Finished);
+        var hide = ScriptLine.Parse(hideLine);
+        var expectHide = hide.Arg(0).Length == 0 || ScriptLine.IsTrue(hide.Arg(0));
+        Assert.Equal(expectHide, runtime.World.HideBodies);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, "atoskip-keepentitymap.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-atoskip.txt"),
+            """
+            AToSkip 00CC5DDE / apply 00CC5E2E
+              00CBEE0C IsFalse; !IsFalse → [0x143E8F4]
+              empty enables skip; 00CBEB7E reads it
+            KeepEntityMap 00CC5E47 / apply 00CC5E97
+              always [ebp-59]=1; args ignored
+            EnableBlackScreenSubtitles 00CC5EA1 / apply 00CC5EF1
+              always [ebp-564]=1
+            HideBodies 00CC5EFE / apply 00CC5F4E
+              empty/IsTrue vtbl+1604(1); else 1604(0)
+            Body mesh / map retain UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();

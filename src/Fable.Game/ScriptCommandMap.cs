@@ -762,6 +762,26 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "ebx actor; no args; 00CD2770=007E70E0(actor+8)+zero; jmp 00CC7081; not SetFree 1980"),
+        Spec("AToSkip", 0x00CC5DDE, 0x00CC5E2E, "[IsFalse]",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "!IsFalse -> [0x143E8F4]; empty enables; 00CBEB7E reads it; jmp 00CC7081"),
+        Spec("KeepEntityMap", 0x00CC5E47, 0x00CC5E97, "[ignored]",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "always [ebp-59]=1; args ignored; jmp 00CC7081; not AToSkip 143E8F4"),
+        Spec("EnableBlackScreenSubtitles", 0x00CC5EA1, 0x00CC5EF1, "[ignored]",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "always [ebp-564]=1; args ignored; jmp 00CC7081"),
+        Spec("HideBodies", 0x00CC5EFE, 0x00CC5F4E, "[IsTrue]",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "empty/IsTrue vtbl+1604(1); else 1604(0); jmp 00CC7081; body mesh UNREAD"),
         Spec("PreloadAnim", 0x00CC13B8, 0x00CC140E, "[basic|name]",
             ScriptReturn.CompleteNow, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

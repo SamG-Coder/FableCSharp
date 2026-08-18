@@ -139,6 +139,10 @@
 | AILevel | `00CC44A9` | `00CC4501` | HIGH|MEDIUM|other | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | ebx actor; arg0 required; default 4; HIGH=3 MEDIUM=2; vtbl+48; vtbl+32; 00CD2770+008ABD10; jmp 00CC707C; no LOW |
 | WaitForAnimationEvent | `00CC41FC` | `00CC4252` | event | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; 00CBEB7E skip; vtbl+48; leftover poll 004AAF60->vtbl+236; jmp 00CC707C; not WaitPlayAnimation |
 | Release | `00CC4610` | `00CC4663` |  | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | ebx actor; no args; 00CD2770=007E70E0(actor+8)+zero; jmp 00CC7081; not SetFree 1980 |
+| AToSkip | `00CC5DDE` | `00CC5E2E` | [IsFalse] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | !IsFalse -> [0x143E8F4]; empty enables; 00CBEB7E reads it; jmp 00CC7081 |
+| KeepEntityMap | `00CC5E47` | `00CC5E97` | [ignored] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | always [ebp-59]=1; args ignored; jmp 00CC7081; not AToSkip 143E8F4 |
+| EnableBlackScreenSubtitles | `00CC5EA1` | `00CC5EF1` | [ignored] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | always [ebp-564]=1; args ignored; jmp 00CC7081 |
+| HideBodies | `00CC5EFE` | `00CC5F4E` | [IsTrue] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | empty/IsTrue vtbl+1604(1); else 1604(0); jmp 00CC7081; body mesh UNREAD |
 | PreloadAnim | `00CC13B8` | `00CC140E` | [basic|name] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | ebx actor; empty or BASIC vtbl+2148; else 2144(handle,name); jmp 00CC707C; not PlayAnimation 72 |
 | WaitForUnderRadius | `00CC4045` | `00CC409B` | thing,radius | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | arg0+arg1 required; atof r; 00CBE2FF both vtbl+300+24; dist^2<r^2 continue; skip 00CBEB7E; leftover 00CC40CE |
 | ReturnFollowers | `00CC689A` | `00CC68ED` | IsTrue | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; IsTrue vtbl+924+HeroFollower0+008ADF90; FALSE [ebp-40]=0; not TeleportFollowers 956 |

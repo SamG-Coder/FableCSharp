@@ -76,6 +76,15 @@ public sealed class CutsceneState
     /// makes WaitForAnimationEvent continue.
     /// </summary>
     public bool Skip { get; set; }
+    /// <summary>
+    /// <c>00CC5E97</c> always <c>[ebp-59]=1</c>.
+    /// Arg ignored.
+    /// </summary>
+    public bool KeepEntityMap { get; set; }
+    /// <summary>
+    /// <c>00CC5EF1</c> always <c>[ebp-564]=1</c>.
+    /// </summary>
+    public bool BlackScreenSubtitles { get; set; }
     public bool YieldEnable { get; set; } = true;
     public bool StayFadedOut { get; set; }
     public bool NoDialogCam { get; set; }
@@ -1348,6 +1357,12 @@ public sealed class WorldRuntime
     /// <c>00CC4663</c> <c>00CD2770</c> drops
     /// <c>actor+8</c> then zeros it. Not SetFree.
     /// </summary>
+    /// <summary>
+    /// <c>00CC5F4E</c> <c>vtbl+1604(1)</c> unless
+    /// arg0 present and not IsTrue (then 0).
+    /// </summary>
+    public bool HideBodies { get; private set; }
+    public int HideBodiesVtbl { get; private set; }
     public readonly HashSet<string> Released =
         new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, uint> ReleaseFn =
@@ -1688,6 +1703,16 @@ public sealed class WorldRuntime
     /// AILevel bind slot. Not SetFree 1980.
     /// Slot object dtor UNREAD.
     /// </summary>
+    /// <summary>
+    /// <c>00CC5F4E</c>: empty/IsTrue → 1604(1);
+    /// else 1604(0). Body mesh UNREAD.
+    /// </summary>
+    public void SetHideBodies(bool hide)
+    {
+        HideBodies = hide;
+        HideBodiesVtbl = 1604;
+    }
+
     public void Release(string actor)
     {
         var key = actor ?? "";

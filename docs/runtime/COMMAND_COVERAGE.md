@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 149
-RECOVERED RETURN: 149
-RECOVERED APPLY: 86
+RECOVERED DISPATCH: 153
+RECOVERED RETURN: 153
+RECOVERED APPLY: 90
 IMPLEMENTED RUNTIME: 13
-UNREAD: 36
+UNREAD: 32
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -130,10 +130,10 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | GiveHeroMorality | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | GiveHeroExpression | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | AskQuestion | Global | Proven | Proven | Proven | Proven | Partial | Partial |
-| HideBodies | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| EnableBlackScreenSubtitles | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| KeepEntityMap | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| AToSkip | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| HideBodies | Global | Proven | Proven | Proven | Proven | Partial | Partial |
+| EnableBlackScreenSubtitles | Global | Proven | Proven | Proven | Proven | Partial | Partial |
+| KeepEntityMap | Global | Proven | Proven | Proven | Proven | Partial | Partial |
+| AToSkip | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | Collide | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | SlideTeleport | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | SlideTeleport | Entity | Proven | Proven | Proven | Proven | Partial | Partial |

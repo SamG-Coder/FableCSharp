@@ -133,6 +133,39 @@ public static class GlobalDispatcher
                 ctx.Cutscene.AnimationPauseEnabled ? "TRUE" : "FALSE");
         }
 
+        if (Eq(v, "AToSkip"))
+        {
+            // 00CC5E2E: !IsFalse(arg0) → [0x143E8F4];
+            // empty enables skip. 00CBEB7E reads it.
+            ctx.Cutscene.Skip = !ScriptLine.IsFalse(line.Arg(0));
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                ctx.Cutscene.Skip ? "1" : "0");
+        }
+
+        if (Eq(v, "KeepEntityMap"))
+        {
+            // 00CC5E97: always [ebp-59]=1; args ignored.
+            ctx.Cutscene.KeepEntityMap = true;
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "1");
+        }
+
+        if (Eq(v, "EnableBlackScreenSubtitles"))
+        {
+            // 00CC5EF1: always [ebp-564]=1; args ignored.
+            ctx.Cutscene.BlackScreenSubtitles = true;
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "1");
+        }
+
+        if (Eq(v, "HideBodies"))
+        {
+            // 00CC5F4E: empty/IsTrue → vtbl+1604(1);
+            // else 1604(0).
+            var hide = line.Arg(0).Length == 0 || ScriptLine.IsTrue(line.Arg(0));
+            ctx.World.SetHideBodies(hide);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                hide ? "1" : "0");
+        }
+
         if (Eq(v, "CameraRotateThing"))
             return ApplyCameraRotateThing(line, ctx);
 
