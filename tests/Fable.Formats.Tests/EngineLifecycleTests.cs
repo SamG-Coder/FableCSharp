@@ -2,6 +2,7 @@ using System.Numerics;
 using Fable.Core;
 using Fable.Formats;
 using Fable.Formats.Defs;
+using Fable.Formats.Fonts;
 using Fable.Formats.Levels;
 using Fable.Formats.Scene;
 using Fable.Game;
@@ -58,6 +59,16 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x004AE9D0u, EngineLifecycle.PlayerBindAfterWorldFn);
         Assert.Equal("default_user.ini", EngineLifecycle.DefaultUserIniName);
         Assert.Equal("user.ini", EngineLifecycle.UserIniName);
+        Assert.Equal("userst.ini", EngineLifecycle.UserstIniName);
+        Assert.Equal("default_userst.ini", EngineLifecycle.DefaultUserstIniName);
+        Assert.Equal(0x00413C50u, EngineLifecycle.UserstRegisterFn);
+        Assert.Equal(0x00414C66u, EngineLifecycle.UserstApplyFn);
+        Assert.Equal(0x0122E674u, EngineLifecycle.UserstIniVa);
+        Assert.Equal(0x0137544Au, EngineLifecycle.DisplayWindowFlagVa);
+        Assert.Equal((byte)1, EngineLifecycle.DisplayWindowFlagFirstSeen);
+        Assert.Equal(0x009A64B0u, EngineLifecycle.CreateWindowFn);
+        Assert.Equal(0x00CA0000, EngineLifecycle.CreateWindowExStyle);
+        Assert.Equal(572, EngineLifecycle.PresentParametersWindowedOffset);
         Assert.Equal(0x009EC890u, EngineLifecycle.IniApplyFn);
         Assert.Equal(0x009ECB70u, EngineLifecycle.IniRunScriptFn);
         Assert.Equal(0x009EB260u, EngineLifecycle.IniUnknownFn);
@@ -805,10 +816,19 @@ public sealed class EngineLifecycleTests
             e.Action.Contains("005339B0", StringComparison.Ordinal));
         var drawn = life.FrontendWidgets.First(w => w.Name == "UI_PRESS_START_TEXT");
         Assert.True(drawn.DestX1 > drawn.DestX0, $"text dest {drawn.DestX0},{drawn.DestY0},{drawn.DestX1},{drawn.DestY1}");
+        Assert.False(string.IsNullOrEmpty(drawn.Text));
+        Assert.Equal(0x0054F5C0u, EngineLifecycle.FrontendTextCtorFn);
+        Assert.Equal(0x0054EF00u, EngineLifecycle.FrontendTextDrawFn);
+        Assert.Equal(FontFile.UiFace, EngineLifecycle.FrontendUiFontFace);
         Assert.True(life.FrontendEnqueueRan);
         Assert.True(life.Frontend2dDipIssued);
         Assert.NotNull(life.FrontendPresentRgba);
         Assert.Equal(EngineLifecycle.DisplayDefaultWidth, life.FrontendPresentWidth);
+        Assert.Contains(life.FrontendPresentRgba, b => b == 255);
+        ExportDir.WriteRgbaBmp(
+            ExportDir.PathFor("frontend", "press-start.bmp"),
+            life.FrontendPresentWidth, life.FrontendPresentHeight,
+            life.FrontendPresentRgba);
         var frame = life.BuildFrame();
         Assert.NotNull(frame.FrontendRgba);
         Assert.True(frame.FrontendWidth > 0);
@@ -1122,6 +1142,9 @@ public sealed class EngineLifecycleTests
         Assert.Equal(1024, life.BackBufferWidth);
         Assert.Equal(768, life.BackBufferHeight);
         Assert.Equal(16, life.BackBufferBpp);
+        Assert.False(life.DeviceWindowed);
+        Assert.Equal(1, life.DisplayWindowFlag);
+        Assert.Equal(0x00CA0000, life.CreateWindowStyle);
         Assert.Equal("Fable - The Lost Chapters", life.WindowTitle);
         Assert.Equal(0, life.ViewportX);
         Assert.Equal(0, life.ViewportY);
@@ -1144,7 +1167,13 @@ public sealed class EngineLifecycleTests
             00403079 Setup library:
               [0x137545C]=1024 [0x1375460]=768
               [0x137546C]=2048 [0x1375470]=16
-              009A6610 → 009C0E50 clamp min 32
+              [0x1375468]=32 Z depth
+              [0x137544A]=1 exclusive (no userst)
+              009A6610 bit 0x04 → 009A64B0
+                CreateWindowExW style 0xCA0000
+              009C0E50 → 009BF7E0 [ebx+28]
+                sete [ebp+572] Windowed=!flag
+              009BEEB0 Present of 009BEF80 viewport
             004023F0 TEXT_GUI_WINDOW_TITLE
               PE 0x122D83C UTF-16
               "Fable - The Lost Chapters"
@@ -1154,8 +1183,40 @@ public sealed class EngineLifecycleTests
               frontend New Game is msg 15
             Present remains 009BEEB0 via Vulkan Draw.
             Not 1600x900. Not WASD as game input.
+            Not a d3d9 ForceWindowedMode wrapper.
             Not 00DBDE40.
             """);
+    }
+
+    [Fact]
+    public void Userst_00413C50_SetFullscreen_false_is_009BF7E0_windowed()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var userst = Path.Combine(install.Root, EngineLifecycle.UserstIniName);
+        Assert.True(File.Exists(userst));
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        Assert.Contains(EngineLifecycle.IniSetFullscreenName, life.UserstIniCommands);
+        Assert.Contains(EngineLifecycle.IniSetResolutionName, life.UserstIniCommands);
+        Assert.True(life.DeviceWindowed);
+        Assert.Equal(0, life.DisplayWindowFlag);
+        Assert.Equal(1024, life.BackBufferWidth);
+        Assert.Equal(768, life.BackBufferHeight);
+        Assert.Equal(16, life.BackBufferBpp);
+        Assert.Equal(0x00CA0000, life.CreateWindowStyle);
+        var dest = EngineLifecycle.PresentDestFromViewport(
+            life.ViewportX, life.ViewportY,
+            life.ViewportWidth, life.ViewportHeight,
+            life.BackBufferWidth, life.BackBufferHeight);
+        Assert.Equal(0, dest.X0);
+        Assert.Equal(0, dest.Y0);
+        Assert.Equal(1, dest.X1);
+        Assert.Equal(1, dest.Y1);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.UserstApplyFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayWindowFlagVa);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CreateWindowFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
     }
 
     [Fact]

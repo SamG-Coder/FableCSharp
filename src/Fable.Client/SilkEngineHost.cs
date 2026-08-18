@@ -84,17 +84,31 @@ public sealed class SilkEngineHost : IEngineHost
                     frame.AviSerial);
                 VulkanLineRenderer.NoteReceived(frame.AviSerial);
                 renderer.SetPlayAviPump(true);
+                renderer.SetFrontendBatch(null);
+            }
+            else if (frame.FrontendBatch is { IsEmpty: false } batch)
+            {
+                _aviWidth = 0;
+                _aviHeight = 0;
+                renderer.ClearVideoFrame();
+                renderer.SetPlayAviPump(false);
+                renderer.VideoClearColor =
+                    Dx9VulkanColor.FromD3dArgb(0xFF000000);
+                renderer.SetFrontendBatch(batch);
             }
             else if (frame.FrontendRgba is { Length: > 0 } ui &&
                      frame.FrontendWidth > 0 && frame.FrontendHeight > 0)
             {
                 _aviWidth = frame.FrontendWidth;
                 _aviHeight = frame.FrontendHeight;
+                renderer.SetFrontendBatch(null);
                 renderer.VideoClearColor =
                     Dx9VulkanColor.FromD3dArgb(0xFF000000);
                 renderer.SetVideoFrame(
                     frame.FrontendWidth, frame.FrontendHeight, ui,
-                    new Vector4(0, 0, 1, 1),
+                    new Vector4(
+                        frame.PresentX0, frame.PresentY0,
+                        frame.PresentX1, frame.PresentY1),
                     frame.AviSerial);
                 renderer.SetPlayAviPump(false);
             }
@@ -104,6 +118,7 @@ public sealed class SilkEngineHost : IEngineHost
                 _aviHeight = 0;
                 renderer.ClearVideoFrame();
                 renderer.SetPlayAviPump(false);
+                renderer.SetFrontendBatch(null);
             }
 
             renderer.FadeOverlayAlpha = frame.FadeAlpha;

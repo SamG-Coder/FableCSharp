@@ -3,24 +3,62 @@ using System.Text;
 namespace Fable.Formats.Defs;
 
 /// <summary>
-/// frontend.bin <c>UI</c> persist. Field CRCs are
-/// Lionhead names: <c>Type</c> <c>0x0DA8270B</c>,
-/// <c>Children</c> <c>0x3DC30C85</c>,
-/// <c>Width</c> <c>0x8BF99D36</c>,
-/// <c>PositionX</c> <c>0x1EDB8A31</c>,
-/// <c>PositionY</c> <c>0x69DCBAA7</c>.
-/// Text tag after <c>0xE215EF13</c> is UTF-16
-/// (PRESS_START_TEXT → <c>TEXT_GUI_MENU_PRESS_BUTTON</c>).
+/// frontend.bin <c>UI</c> persist. Sequential CRC+typed
+/// fields after the 3-byte GameBin header and a u16 0 pad.
+/// Persist helpers <c>00431102</c> / <c>00431061</c> /
+/// <c>0043314A</c> skip the field CRC then read the value.
+/// Field CRCs are Lionhead names hashed with
+/// <see cref="FableCrc"/>. Height is
+/// <c>0x4323419A</c>, not the mistyped <c>0x4341A19A</c>.
 /// </summary>
 public sealed class FrontendUiDef
 {
     public const uint TypeCrc = 0x0DA8270B;
     public const uint ChildrenCrc = 0x3DC30C85;
     public const uint WidthCrc = 0x8BF99D36;
-    public const uint HeightCrc = 0x4341A19A;
+    public const uint HeightCrc = 0x4323419A;
     public const uint PositionXCrc = 0x1EDB8A31;
     public const uint PositionYCrc = 0x69DCBAA7;
+    /// <summary>
+    /// UTF-16 localised id. Name is not
+    /// <c>TextTag</c> (<c>FableCrc("TextTag")</c>
+    /// is <c>0x66D9E7F9</c>). String UNREAD.
+    /// </summary>
     public const uint TextTagCrc = 0xE215EF13;
+    public const uint FontCrc = 0x51E278F0;
+    public const uint LayerCrc = 0xE338F903;
+    public const uint AngleCrc = 0x07629D10;
+    public const uint Unknown0961Crc = 0x0961B216;
+    public const uint Unknown38BBCrc = 0x38BB7ED4;
+    public const uint SpritesCrc = 0x5E5D8A25;
+    public const uint Unknown6B10Crc = 0x6B1015E4;
+    public const uint UnknownF81FCrc = 0xF81F10A8;
+    public const uint StatesCrc = 0x87ACD3D8;
+    public const uint UnknownE78ECrc = 0xE78E700E;
+    public const uint Unknown9089Crc = 0x90894098;
+    public const uint ColourRCrc = 0x79902E65;
+    public const uint ColourGCrc = 0x144DCA8E;
+    public const uint ColourBCrc = 0x64273E01;
+    public const uint ColourACrc = 0xFD2E6FBB;
+    public const uint UnknownF97DCrc = 0xF97D3844;
+    public const uint UnknownA5F8Crc = 0xA5F8D969;
+    /// <summary>
+    /// Nested persist after the first style
+    /// prefix. Reader stops. PARTIAL.
+    /// </summary>
+    public const uint UnreadNestedCrc = 0x56A59976;
+    /// <summary>
+    /// <c>FableCrc("GraphicIndex")</c>. Persist i32 is
+    /// <c>GBANK_FRONT_END_PC</c> <c>BankEntry.Id</c>.
+    /// </summary>
+    public const uint GraphicIndexCrc = 0x38E36902;
+    public const int HeaderBytes = 3;
+    public const int StyleRecordBytes = 124;
+    public const int StyleGraphicOffset = 60;
+    public const uint PersistDwordFn = 0x00431102;
+    public const uint PersistFloatFn = 0x00431061;
+    public const uint PersistU8Fn = 0x0043314A;
+    public const uint PersistStringFn = 0x004310A7;
 
     public required string InstanceName { get; init; }
     public int Type { get; init; }
@@ -30,70 +68,85 @@ public sealed class FrontendUiDef
     public float PositionX { get; init; }
     public float PositionY { get; init; }
     public string? TextTag { get; init; }
+    public int Font { get; init; }
+    public int Layer { get; init; }
+    public float Angle { get; init; }
+    public int GraphicId { get; init; }
+    public int GraphicBankId { get; init; }
+    public int Sprites { get; init; }
+    public int States { get; init; }
+    public float ColourR { get; init; }
+    public float ColourG { get; init; }
+    public float ColourB { get; init; }
+    public float ColourA { get; init; }
+    public IReadOnlyList<uint> UnreadCrcs { get; init; } = [];
+    public int UnreadOffset { get; init; }
+    public bool Partial { get; init; }
 
     public static FrontendUiDef? TryParse(GameBinEntry entry)
     {
         if (entry.TypeName != "UI" || entry.Raw.Length < 8)
             return null;
         var raw = entry.Raw;
+        var cursor = entry.BodyOffset > 0 ? entry.BodyOffset : HeaderBytes;
+        if (cursor + 6 <= raw.Length &&
+            BitConverter.ToUInt16(raw, cursor) == 0 &&
+            BitConverter.ToUInt32(raw, cursor + 2) == TypeCrc)
+            cursor += 2;
+
         var type = 0;
         var children = new List<int>();
         var width = 0f;
         var height = 0f;
         var px = 0f;
         var py = 0f;
+        var havePx = false;
+        var havePy = false;
         string? text = null;
-        for (var cursor = 0; cursor + 8 <= raw.Length; cursor++)
+        var font = 0;
+        var layer = 0;
+        var angle = 0f;
+        var graphic = 0;
+        var haveGraphic = false;
+        var sprites = 0;
+        var states = 0;
+        var colourR = 0f;
+        var colourG = 0f;
+        var colourB = 0f;
+        var colourA = 0f;
+        var unread = new List<uint>();
+        var unreadOffset = raw.Length;
+        var partial = false;
+
+        while (cursor + 4 <= raw.Length)
         {
             var crc = BitConverter.ToUInt32(raw, cursor);
             var payload = cursor + 4;
-            if (crc == TypeCrc)
+            if (crc == TypeCrc && payload + 4 <= raw.Length)
             {
                 type = BitConverter.ToInt32(raw, payload);
+                cursor = payload + 4;
                 continue;
             }
 
-            if (crc == ChildrenCrc)
+            if (crc == ChildrenCrc && payload + 4 <= raw.Length)
             {
                 var n = BitConverter.ToInt32(raw, payload);
-                if (n is < 0 or > 64)
-                    continue;
                 children.Clear();
-                var p = payload + 4;
-                for (var i = 0; i < n && p + 4 <= raw.Length; i++, p += 4)
-                    children.Add(BitConverter.ToInt32(raw, p));
-                continue;
-            }
+                cursor = payload + 4;
+                if (n is >= 0 and <= 256)
+                {
+                    for (var i = 0; i < n && cursor + 4 <= raw.Length; i++, cursor += 4)
+                        children.Add(BitConverter.ToInt32(raw, cursor));
+                }
+                else
+                {
+                    unread.Add(crc);
+                    partial = true;
+                    unreadOffset = payload - 4;
+                    break;
+                }
 
-            if (crc == WidthCrc)
-            {
-                var value = BitConverter.ToSingle(raw, payload);
-                if (IsSize(value))
-                    width = value;
-                continue;
-            }
-
-            if (crc == HeightCrc)
-            {
-                var value = BitConverter.ToSingle(raw, payload);
-                if (IsSize(value))
-                    height = value;
-                continue;
-            }
-
-            if (crc == PositionXCrc)
-            {
-                var value = BitConverter.ToSingle(raw, payload);
-                if (IsPos(value))
-                    px = value;
-                continue;
-            }
-
-            if (crc == PositionYCrc)
-            {
-                var value = BitConverter.ToSingle(raw, payload);
-                if (IsPos(value))
-                    py = value;
                 continue;
             }
 
@@ -101,7 +154,200 @@ public sealed class FrontendUiDef
             {
                 var t = payload;
                 text = ReadUtf16(raw, ref t);
+                cursor = t;
+                continue;
             }
+
+            if (crc == FontCrc && payload + 4 <= raw.Length)
+            {
+                font = BitConverter.ToInt32(raw, payload);
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == HeightCrc && payload + 4 <= raw.Length)
+            {
+                var value = BitConverter.ToSingle(raw, payload);
+                if (float.IsFinite(value))
+                    height = value;
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == WidthCrc && payload + 4 <= raw.Length)
+            {
+                var value = BitConverter.ToSingle(raw, payload);
+                if (float.IsFinite(value))
+                    width = value;
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == PositionXCrc && payload + 4 <= raw.Length)
+            {
+                var value = BitConverter.ToSingle(raw, payload);
+                if (float.IsFinite(value) && !havePx)
+                {
+                    px = value;
+                    havePx = true;
+                }
+
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == PositionYCrc && payload + 4 <= raw.Length)
+            {
+                var value = BitConverter.ToSingle(raw, payload);
+                if (float.IsFinite(value) && !havePy)
+                {
+                    py = value;
+                    havePy = true;
+                }
+
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == LayerCrc && payload + 4 <= raw.Length)
+            {
+                layer = BitConverter.ToInt32(raw, payload);
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == AngleCrc && payload + 4 <= raw.Length)
+            {
+                var value = BitConverter.ToSingle(raw, payload);
+                if (float.IsFinite(value))
+                    angle = value;
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == GraphicIndexCrc && payload + 4 <= raw.Length)
+            {
+                var id = BitConverter.ToInt32(raw, payload);
+                if (!haveGraphic)
+                {
+                    graphic = id;
+                    haveGraphic = true;
+                }
+
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == Unknown0961Crc && payload + 4 <= raw.Length)
+            {
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == Unknown38BBCrc && payload + 4 <= raw.Length)
+            {
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == SpritesCrc && payload + 4 <= raw.Length)
+            {
+                sprites = BitConverter.ToInt32(raw, payload);
+                cursor = payload + 4;
+                if (sprites != 0)
+                {
+                    unread.Add(crc);
+                    partial = true;
+                    unreadOffset = cursor;
+                    break;
+                }
+
+                continue;
+            }
+
+            if (crc == Unknown6B10Crc && payload + 4 <= raw.Length)
+            {
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == UnknownF81FCrc && payload + 4 <= raw.Length)
+            {
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == StatesCrc && payload + 4 <= raw.Length)
+            {
+                states = BitConverter.ToInt32(raw, payload);
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == UnknownE78ECrc && payload + 4 <= raw.Length)
+            {
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == Unknown9089Crc && payload + 4 <= raw.Length)
+            {
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == ColourRCrc && payload + 4 <= raw.Length)
+            {
+                var value = BitConverter.ToSingle(raw, payload);
+                if (float.IsFinite(value))
+                    colourR = value;
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == ColourGCrc && payload + 4 <= raw.Length)
+            {
+                var value = BitConverter.ToSingle(raw, payload);
+                if (float.IsFinite(value))
+                    colourG = value;
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == ColourBCrc && payload + 4 <= raw.Length)
+            {
+                var value = BitConverter.ToSingle(raw, payload);
+                if (float.IsFinite(value))
+                    colourB = value;
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == ColourACrc && payload + 4 <= raw.Length)
+            {
+                var value = BitConverter.ToSingle(raw, payload);
+                if (float.IsFinite(value))
+                    colourA = value;
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == UnknownF97DCrc && payload + 4 <= raw.Length)
+            {
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == UnknownA5F8Crc && payload + 4 <= raw.Length)
+            {
+                cursor = payload + 4;
+                continue;
+            }
+
+            unread.Add(crc);
+            unreadOffset = cursor;
+            partial = true;
+            break;
         }
 
         return new FrontendUiDef
@@ -114,14 +360,22 @@ public sealed class FrontendUiDef
             PositionX = px,
             PositionY = py,
             TextTag = text,
+            Font = font,
+            Layer = layer,
+            Angle = angle,
+            GraphicId = graphic,
+            GraphicBankId = graphic,
+            Sprites = sprites,
+            States = states,
+            ColourR = colourR,
+            ColourG = colourG,
+            ColourB = colourB,
+            ColourA = colourA,
+            UnreadCrcs = unread,
+            UnreadOffset = unreadOffset,
+            Partial = partial,
         };
     }
-
-    private static bool IsSize(float value) =>
-        float.IsFinite(value) && value is > 0f and <= 4096f;
-
-    private static bool IsPos(float value) =>
-        float.IsFinite(value) && value is >= -2048f and <= 4096f;
 
     private static string? ReadUtf16(byte[] raw, ref int cursor)
     {
@@ -135,7 +389,7 @@ public sealed class FrontendUiDef
         }
 
         var bytes = cursor - start;
-        if (bytes < 4)
+        if (bytes < 2)
             return null;
         var text = Encoding.Unicode.GetString(raw, start, bytes);
         var nul = text.IndexOf('\0');

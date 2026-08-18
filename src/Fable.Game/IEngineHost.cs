@@ -48,7 +48,12 @@ public readonly record struct EngineFrame(
     uint AviClearArgb = 0xFF000000,
     byte[]? FrontendRgba = null,
     int FrontendWidth = 0,
-    int FrontendHeight = 0);
+    int FrontendHeight = 0,
+    float PresentX0 = 0,
+    float PresentY0 = 0,
+    float PresentX1 = 1,
+    float PresentY1 = 1,
+    Fable.Render.FrontendSubmitBatch? FrontendBatch = null);
 
 public readonly record struct FrontendWidget(
     string Name,
@@ -60,4 +65,9 @@ public readonly record struct FrontendWidget(
     string? TextTag,
     string? Text,
     string? ParentName = null,
-    string? TextureName = null);
+    string? TextureName = null,
+    int GraphicId = 0,
+    float PersistWidth = 0,
+    float PersistHeight = 0,
+    float PersistX = 0,
+    float PersistY = 0);

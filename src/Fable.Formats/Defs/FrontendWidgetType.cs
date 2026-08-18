@@ -1,0 +1,139 @@
+namespace Fable.Formats.Defs;
+
+/// <summary>
+/// <c>0041D21B</c> <c>cmp eax, 43</c> then
+/// <c>jmp [0x41D7F8+type*4]</c>. Size is the
+/// <c>push imm</c> before <c>00BFEA1A</c>.
+/// Ctor is the <c>call</c> in that case.
+/// Vtbl is the first <c>mov [esi], imm</c>
+/// after the base ctor. Type 29 is the
+/// default arm (no alloc).
+/// </summary>
+public static class FrontendWidgetType
+{
+    public const uint ConstructFn = 0x0041D21B;
+    public const uint FactoryFn = 0x0041DB1D;
+    public const uint ResolveFn = 0x0042AEDA;
+    public const uint JumpTableVa = 0x0041D7F8;
+    public const uint DefLookupFn = 0x009AD410;
+    public const uint ChildAttachFn = 0x005331A0;
+    public const int TypeOffset = 60;
+    public const int MaxType = 43;
+
+    public const int Button = 0;
+    public const int TableType = 2;
+    public const int Base = 4;
+    public const int Group = 5;
+    public const int Text = 6;
+    public const int Menu = 10;
+    public const int List = 12;
+    public const int Swap = 18;
+    public const int Unused = 29;
+    public const int Mouse = 32;
+    public const int EditBox = 37;
+    public const int AcceptButton = 38;
+
+    public const uint ButtonCtor = 0x0041B800;
+    public const uint TableCtor = 0x005517E0;
+    public const uint BaseCtor = 0x005334A0;
+    public const uint GroupCtor = 0x0052CC50;
+    public const uint TextCtor = 0x0054F5C0;
+    public const uint MenuCtor = 0x0054E3D0;
+    public const uint ListCtor = 0x0054C3A0;
+    public const uint SwapCtor = 0x00547600;
+    public const uint MouseCtor = 0x0055C650;
+    public const uint EditBoxCtor = 0x005407B0;
+    public const uint AcceptCtor = 0x00558B90;
+
+    public const uint ButtonVtbl = 0x0122F5D4;
+    public const uint BaseVtbl = 0x0124608C;
+    public const uint GroupVtbl = 0x01245DE4;
+    public const uint TextVtbl = 0x01249CCC;
+    public const uint MenuVtbl = 0x012497E4;
+    public const uint MouseVtbl = 0x0124C22C;
+    public const uint EditBoxVtbl = 0x01246B8C;
+    public const uint AcceptVtbl = 0x0124B04C;
+
+    public const int ButtonSize = 0x184;
+    public const int GroupSize = 0x15C;
+    public const int TextSize = 0x18C;
+    public const int MenuSize = 0x16C;
+    public const int MouseSize = 0x184;
+    public const int EditBoxSize = 0x18C;
+    public const int AcceptSize = 0x194;
+    public const int BaseSize = 0x134;
+
+    public static FrontendWidgetTypeInfo Info(int type)
+    {
+        if ((uint)type > MaxType)
+            return default;
+        return Table[type];
+    }
+
+    public static uint Ctor(int type) => Info(type).Ctor;
+
+    public static uint Vtbl(int type) => Info(type).Vtbl;
+
+    public static int Size(int type) => Info(type).Size;
+
+    public static bool IsContainer(int type) =>
+        type is Group or Menu or List or Swap or TableType;
+
+    public static bool TryConstruct(int type) =>
+        type != Unused && Info(type).Ctor != 0;
+
+    public static readonly FrontendWidgetTypeInfo[] Table =
+    [
+        new(0, 0x0041B800, 0x184, 0x0122F5D4, "Button"),
+        new(1, 0x005545D0, 0x19C, 0, null),
+        new(2, 0x005517E0, 0x170, 0, "Table"),
+        new(3, 0x00550190, 0x1A4, 0, null),
+        new(4, 0x005334A0, 0x134, 0x0124608C, "Base"),
+        new(5, 0x0052CC50, 0x15C, 0x01245DE4, "Group"),
+        new(6, 0x0054F5C0, 0x18C, 0x01249CCC, "Text"),
+        new(7, 0x0053DFE0, 0x1BC, 0, null),
+        new(8, 0x0053B63E, 0x1FC, 0, null),
+        new(9, 0x0054EA00, 0x174, 0, null),
+        new(10, 0x0054E3D0, 0x16C, 0x012497E4, "Menu"),
+        new(11, 0x0054E0B0, 0x1B4, 0, null),
+        new(12, 0x0054C3A0, 0x1FC, 0, "List"),
+        new(13, 0x0053F120, 0x19C, 0, null),
+        new(14, 0x0054C1D0, 0x190, 0, null),
+        new(15, 0x0054C050, 0x1EC, 0, null),
+        new(16, 0x00549F60, 0x1A0, 0, null),
+        new(17, 0x005482D0, 0x198, 0, null),
+        new(18, 0x00547600, 0x170, 0, "Swap"),
+        new(19, 0x00546F40, 0x15C, 0, null),
+        new(20, 0x00546D30, 0x16C, 0, null),
+        new(21, 0x00546B00, 0x184, 0, null),
+        new(22, 0x005460C0, 0x15C, 0, null),
+        new(23, 0x00545720, 0x17C, 0, null),
+        new(24, 0x00544B70, 0x1A8, 0, null),
+        new(25, 0x0041CADC, 0x164, 0, null),
+        new(26, 0x0041CB70, 0x160, 0, null),
+        new(27, 0x00544010, 0x164, 0, null),
+        new(28, 0x0041CBE4, 0x160, 0, null),
+        new(29, 0, 0, 0, null),
+        new(30, 0x00542330, 0x1B4, 0, null),
+        new(31, 0x005415F0, 0x180, 0, null),
+        new(32, 0x0055C650, 0x184, 0x0124C22C, "Mouse"),
+        new(33, 0x0055BA20, 0x16C, 0, null),
+        new(34, 0x0055B460, 0x194, 0, null),
+        new(35, 0x0055A9C0, 0x1AC, 0, null),
+        new(36, 0x00558EC0, 0x170, 0, null),
+        new(37, 0x005407B0, 0x18C, 0x01246B8C, "EditBox"),
+        new(38, 0x00558B90, 0x194, 0x0124B04C, "AcceptButton"),
+        new(39, 0x00558540, 0x1C0, 0, null),
+        new(40, 0x00556350, 0x190, 0, null),
+        new(41, 0x00559830, 0x1DC, 0, null),
+        new(42, 0x00559360, 0x1A0, 0, null),
+        new(43, 0x00555180, 0x17C, 0, null),
+    ];
+}
+
+public readonly record struct FrontendWidgetTypeInfo(
+    int Type,
+    uint Ctor,
+    int Size,
+    uint Vtbl,
+    string? Role);

@@ -2,6 +2,7 @@ using System.Numerics;
 using Fable.Core;
 using Fable.Formats.Banks;
 using Fable.Formats.Defs;
+using Fable.Formats.Fonts;
 using Fable.Formats.Levels;
 using Fable.Formats.Text;
 using Fable.Formats.Qst;
@@ -12,6 +13,7 @@ using Fable.Formats.Meshes;
 using Fable.Formats.Wld;
 using Fable.Game.Scripting;
 using Fable.Render;
+using Fable.Render.Parity.Dx9Vulkan;
 
 namespace Fable.Game;
 
@@ -53,6 +55,42 @@ public sealed class EngineLifecycle : IDisposable
     public const int DisplayMaxDimension = 2048;
     public const int DisplayDefaultBpp = 16;
     public const int GraphicsMinDimension = 32;
+    /// <summary>
+    /// <c>00403079</c> <c>[opt+16]=[0x137544A]</c>.
+    /// <c>009A667C</c> copies that into
+    /// <c>[engine+142]</c>; <c>009C0E50</c>
+    /// passes it as <c>009BF7E0</c>
+    /// <c>[ebx+28]</c>. <c>sete [ebp+572]</c>
+    /// is D3D <c>Windowed = !flag</c>.
+    /// PE default is 1 (exclusive).
+    /// <c>00413C42</c> writes 0 on the
+    /// command-line skip-frontend path.
+    /// </summary>
+    public const uint DisplayWindowFlagVa = 0x0137544A;
+    public const byte DisplayWindowFlagFirstSeen = 1;
+    /// <summary>
+    /// <c>00403079</c> <c>mov dl,[0x1375468]</c>
+    /// → <c>[opt+116]</c>. PE default 32
+    /// matches <c>userst.ini</c>
+    /// <c>SetZBufferDepth(32)</c>, not the
+    /// windowed flag.
+    /// </summary>
+    public const uint DisplayZDepthVa = 0x01375468;
+    public const int DisplayZDepthFirstSeen = 32;
+    /// <summary>
+    /// <c>009A6610</c> bit 0x04 →
+    /// <c>009A64B0</c> <c>CreateWindowExW</c>
+    /// style <c>WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX</c>.
+    /// Centered with <c>GetSystemMetrics</c>
+    /// 0/1/4/5/6 chrome. Always a caption
+    /// HWND; exclusive vs windowed is the
+    /// D3D <c>[ebp+572]</c> flag, not a
+    /// third-party wrapper.
+    /// </summary>
+    public const uint CreateWindowFn = 0x009A64B0;
+    public const int CreateWindowExStyle = 0x00CA0000;
+    public const int PresentParametersWindowedOffset = 572;
+    public const uint GraphicsOptionsPackFn = 0x009A6A00;
     /// <summary>
     /// <c>004023F0</c> looks up
     /// <c>TEXT_GUI_WINDOW_TITLE</c>; PE
@@ -231,6 +269,18 @@ public sealed class EngineLifecycle : IDisposable
     public const float FrontendScaleOne = 1f;
     public const string FrontendPressStartText = "UI_PRESS_START_TEXT";
     public const string FrontendPressStartTextTag = "TEXT_GUI_MENU_PRESS_BUTTON";
+    /// <summary>
+    /// Type-6 ctor <c>0054F5C0</c> →
+    /// <c>0054ED90</c> looks up a face
+    /// via <c>009E2C80</c>. Nearby
+    /// helper <c>0054F4B0</c> names
+    /// <c>ENG_ARIAL_16</c>.
+    /// </summary>
+    public const uint FrontendTextCtorFn = 0x0054F5C0;
+    public const uint FrontendTextDrawFn = 0x0054EF00;
+    public const uint FrontendTextVtbl = 0x01249CCC;
+    public const uint FrontendUiFontFn = 0x0054F4B0;
+    public const string FrontendUiFontFace = FontFile.UiFace;
     public const string FrontendTitleWidget = "UI_TITLE";
     public const string FrontendForestBackground = "UI_BLENDING_BACKGROUNDS_FORREST";
     /// <summary>
@@ -926,6 +976,30 @@ public sealed class EngineLifecycle : IDisposable
     public const uint UserIniVa = 0x0122F01C;
     public const string DefaultUserIniName = "default_user.ini";
     public const string UserIniName = "user.ini";
+    /// <summary>
+    /// <c>00413C50</c> (when
+    /// <c>[0x137548F]!=0</c>, PE 1):
+    /// register commands, then
+    /// <c>00414C10</c> <c>default_userst.ini</c>
+    /// if present, then <c>00414C66</c>
+    /// <c>userst.ini</c> when
+    /// <c>[0x1375444]!=0</c> (PE 1).
+    /// Same <c>009EC890</c> walker as
+    /// <c>user.ini</c>. Runs before
+    /// <c>00403079</c>.
+    /// </summary>
+    public const uint UserstRegisterFn = 0x00413C50;
+    public const uint UserstApplyFn = 0x00414C66;
+    public const uint UserstIniVa = 0x0122E674;
+    public const uint DefaultUserstIniVa = 0x0122E68C;
+    public const uint UserstApplyFlagVa = 0x01375444;
+    public const byte UserstApplyFlagFirstSeen = 1;
+    public const uint UserstGateVa = 0x0137548F;
+    public const byte UserstGateFirstSeen = 1;
+    public const string UserstIniName = "userst.ini";
+    public const string DefaultUserstIniName = "default_userst.ini";
+    public const string IniSetFullscreenName = "SetFullscreen";
+    public const string IniSetResolutionName = "SetResolution";
     public const uint FileExistsFn = 0x00999230;
     public const uint IniApplyFn = 0x009EC890;
     public const uint IniTokenizeFn = 0x009EC710;
@@ -1876,6 +1950,17 @@ public sealed class EngineLifecycle : IDisposable
     public int BackBufferWidth { get; private set; }
     public int BackBufferHeight { get; private set; }
     public int BackBufferBpp { get; private set; }
+    /// <summary>
+    /// <c>[0x137544A]</c> after
+    /// <c>00413C50</c> / <c>userst.ini</c>.
+    /// </summary>
+    public byte DisplayWindowFlag { get; private set; } = DisplayWindowFlagFirstSeen;
+    /// <summary>
+    /// <c>009BF7E0</c> <c>[ebp+572] = ![ebx+28]</c>.
+    /// </summary>
+    public bool DeviceWindowed { get; private set; }
+    public int DisplayZDepth { get; private set; } = DisplayZDepthFirstSeen;
+    public int CreateWindowStyle { get; private set; } = CreateWindowExStyle;
     public string WindowTitle { get; private set; } = WindowTitleDefault;
     /// <summary>
     /// <c>009BEF80</c> after CreateDevice.
@@ -1940,6 +2025,7 @@ public sealed class EngineLifecycle : IDisposable
     public int DisplayEngineFadeKind { get; private set; }
     public float DisplayEngineFadeTime { get; private set; }
     public IReadOnlyList<string> UserIniCommands { get; private set; } = [];
+    public IReadOnlyList<string> UserstIniCommands { get; private set; } = [];
     public int GamePumpFrames { get; private set; }
     /// <summary>
     /// <c>009A57B0</c> last result. After
@@ -2177,9 +2263,11 @@ public sealed class EngineLifecycle : IDisposable
     public byte[]? FrontendPresentRgba { get; private set; }
     public int FrontendPresentWidth { get; private set; }
     public int FrontendPresentHeight { get; private set; }
+    public FrontendSubmitBatch? FrontendBatch { get; private set; }
     public IReadOnlyList<FrontendWidget> FrontendWidgets => _frontendWidgets;
     private readonly List<FrontendWidget> _frontendWidgets = [];
     private FrontendSpriteBank? _frontendSprites;
+    private FontBank? _frontendFonts;
     /// <summary>
     /// First-seen <c>005955AB</c> is
     /// empty (same enumerator
@@ -2424,6 +2512,8 @@ public sealed class EngineLifecycle : IDisposable
                 _ => Stage,
             };
             Note(va, name, "Bootstrap", name);
+            if (name == "Parse Command Line")
+                ApplyUserstIni();
             if (name == "Setup basic retail banks")
                 RegisterRetailBankTable(install);
             if (name == "Setup library")
@@ -2771,6 +2861,9 @@ public sealed class EngineLifecycle : IDisposable
         var playing = avi is { Rgba: not null } ||
                       runtime is { AviPlaying: true, AviRgba: not null };
         var fade = runtime?.FadeColor ?? default;
+        var present = PresentDestFromViewport(
+            ViewportX, ViewportY, ViewportWidth, ViewportHeight,
+            BackBufferWidth, BackBufferHeight);
         return new EngineFrame(
             Camera,
             SubmittedWorld,
@@ -2790,7 +2883,30 @@ public sealed class EngineLifecycle : IDisposable
             PlayAviClearArgb,
             FrontendPresentRgba,
             FrontendPresentWidth,
-            FrontendPresentHeight);
+            FrontendPresentHeight,
+            present.X0,
+            present.Y0,
+            present.X1,
+            present.Y1,
+            FrontendBatch);
+    }
+
+    /// <summary>
+    /// <c>009BEEB0</c> Present of the
+    /// <c>009BEF80</c> viewport over the
+    /// <c>00403079</c> backbuffer. Not a
+    /// host dest constant.
+    /// </summary>
+    public static (float X0, float Y0, float X1, float Y1) PresentDestFromViewport(
+        int x, int y, int width, int height, int backBufferWidth, int backBufferHeight)
+    {
+        if (backBufferWidth <= 0 || backBufferHeight <= 0)
+            return (0, 0, 1, 1);
+        return (
+            x / (float)backBufferWidth,
+            y / (float)backBufferHeight,
+            (x + width) / (float)backBufferWidth,
+            (y + height) / (float)backBufferHeight);
     }
 
     /// <summary>
@@ -3301,6 +3417,7 @@ public sealed class EngineLifecycle : IDisposable
         Note(FrontendUiBuildMenu, "Frontend", "UI", "00595B24");
         FrontendMenuRoot = name;
         ResolveFrontendDef(name);
+        AttachFrontendTree(name);
     }
 
     /// <summary>
@@ -3337,6 +3454,7 @@ public sealed class EngineLifecycle : IDisposable
         FrontendEditBoxBound = true;
         FrontendEditBoxName = FrontendProfileDefaultFallback;
         ResolveFrontendDef(FrontendNewProfileMenu);
+        AttachFrontendTree(FrontendNewProfileMenu);
     }
 
     /// <summary>
@@ -3391,6 +3509,7 @@ public sealed class EngineLifecycle : IDisposable
         FrontendUi96Present = false;
         FrontendUi96Armed = false;
         ResolveFrontendDef(FrontendMainMenuNoContinue);
+        AttachFrontendTree(FrontendMainMenuNoContinue);
     }
 
     /// <summary>
@@ -3439,6 +3558,8 @@ public sealed class EngineLifecycle : IDisposable
         Note(LeaveFrontendClearFn, "LeaveFrontend", "D3D9", "009BE420 clear");
         Note(PresentFn, "LeaveFrontend", "D3D9", "009BEEB0 Present");
         Stage = EngineStage.LeaveFrontend;
+        FrontendBatch = null;
+        FrontendPresentRgba = null;
         Timing.Add("frontend NG", ng.Elapsed.TotalMilliseconds, FinalAlbionWld);
     }
 
@@ -3567,7 +3688,7 @@ public sealed class EngineLifecycle : IDisposable
                 "009EC890 " + UserIniName + " exists");
             Note(IniTokenizeFn, "InitGame", "Ini", "009EC710");
             Note(IniDispatchFn, "InitGame", "Ini", "009EB430 [ini+64] vtbl+4");
-            ApplyUserIniCommands(userIni);
+            ApplyUserIniCommands(userIni, "InitGame");
         }
 
         Note(EngineReadyCallback, "InitGame", "GameStart",
@@ -3593,13 +3714,14 @@ public sealed class EngineLifecycle : IDisposable
     /// is UNREAD — do not start a
     /// quest here.
     /// </summary>
-    private void ApplyUserIniCommands(string path)
+    private void ApplyUserIniCommands(string path, string stage)
     {
         var names = new List<string>();
         foreach (var raw in File.ReadAllLines(path))
         {
             var line = raw.Trim().TrimEnd(';');
-            if (line.Length == 0 || line.StartsWith(';') || line.StartsWith('#'))
+            if (line.Length == 0 || line.StartsWith(';') || line.StartsWith('/') ||
+                line.StartsWith('#'))
                 continue;
             var paren = line.IndexOf('(');
             var space = line.IndexOfAny([' ', '\t']);
@@ -3621,32 +3743,67 @@ public sealed class EngineLifecycle : IDisposable
             if (name.Length == 0)
                 continue;
             names.Add(name);
-            Note(IniDispatchFn, "InitGame", "Ini", "009EB430 " + name);
-            DispatchUserIniCommand(name, arg);
+            Note(IniDispatchFn, stage, "Ini", "009EB430 " + name);
+            DispatchUserIniCommand(name, arg, stage);
         }
 
-        UserIniCommands = names;
+        if (stage == "InitGame")
+            UserIniCommands = names;
+        else
+            UserstIniCommands = names;
     }
 
-    private void DispatchUserIniCommand(string name, string arg)
+    private void DispatchUserIniCommand(string name, string arg, string stage)
     {
+        if (name == IniSetFullscreenName)
+        {
+            DisplayWindowFlag = ParseIniFalse(arg)
+                ? (byte)0
+                : (byte)1;
+            DeviceWindowed = DisplayWindowFlag == 0;
+            Note(DisplayWindowFlagVa, stage, "Window",
+                $"009EB430 {IniSetFullscreenName} 0137544A={DisplayWindowFlag} " +
+                $"009BF7E0 +{PresentParametersWindowedOffset} Windowed={DeviceWindowed}");
+            return;
+        }
+
+        if (name == IniSetResolutionName)
+        {
+            var parts = arg.Split(',');
+            if (parts.Length >= 2 &&
+                int.TryParse(parts[0].Trim(), out var width) &&
+                int.TryParse(parts[1].Trim(), out var height))
+            {
+                if (width >= GraphicsMinDimension)
+                    BackBufferWidth = width;
+                if (height >= GraphicsMinDimension)
+                    BackBufferHeight = height;
+                if (parts.Length >= 3 && int.TryParse(parts[2].Trim(), out var bpp) && bpp > 0)
+                    BackBufferBpp = bpp;
+                Note(DisplayWidthVa, stage, "Window",
+                    $"009EB430 {IniSetResolutionName} {BackBufferWidth}x{BackBufferHeight}x{BackBufferBpp}");
+            }
+
+            return;
+        }
+
         if (name == IniRunScriptName)
         {
             var file = arg.EndsWith(IniRunScriptSuffix, StringComparison.OrdinalIgnoreCase)
                 ? arg
                 : arg + IniRunScriptSuffix;
-            Note(IniRunScriptFn, "InitGame", "Ini",
+            Note(IniRunScriptFn, stage, "Ini",
                 "009ECB70 " + file);
             var path = Install is null
                 ? file
                 : Path.Combine(Install.Root, file);
             if (File.Exists(path))
             {
-                Note(IniApplyFn, "InitGame", "Ini", "009EC890 " + file);
-                ApplyUserIniCommands(path);
+                Note(IniApplyFn, stage, "Ini", "009EC890 " + file);
+                ApplyUserIniCommands(path, stage);
             }
             else
-                Note(FileExistsFn, "InitGame", "Ini",
+                Note(FileExistsFn, stage, "Ini",
                     "00999230 " + file + " miss");
             return;
         }
@@ -3668,8 +3825,59 @@ public sealed class EngineLifecycle : IDisposable
             return;
         }
 
-        Note(IniUnknownFn, "InitGame", "Ini",
+        Note(IniUnknownFn, stage, "Ini",
             "009EB260 unknown input - " + name);
+    }
+
+    /// <summary>
+    /// <c>00413C50</c> before Setup
+    /// library: <c>default_userst.ini</c>
+    /// then <c>userst.ini</c> via
+    /// <c>009EC890</c>.
+    /// </summary>
+    private void ApplyUserstIni()
+    {
+        Note(UserstGateVa, "Parse Command Line", "Ini",
+            $"0137548F={UserstGateFirstSeen} 00413C50");
+        if (UserstGateFirstSeen == 0)
+            return;
+        Note(UserstRegisterFn, "Parse Command Line", "Ini",
+            "00413C50 009ED190 then 009EC5E0");
+        if (Install is null)
+            return;
+        var defaults = Path.Combine(Install.Root, DefaultUserstIniName);
+        if (File.Exists(defaults))
+        {
+            Note(DefaultUserstIniVa, "Parse Command Line", "Ini",
+                "009EC890 " + DefaultUserstIniName);
+            ApplyUserIniCommands(defaults, "Parse Command Line");
+        }
+        else
+            Note(FileExistsFn, "Parse Command Line", "Ini",
+                "00999230 " + DefaultUserstIniName + " miss");
+        Note(UserstApplyFlagVa, "Parse Command Line", "Ini",
+            $"01375444={UserstApplyFlagFirstSeen}");
+        if (UserstApplyFlagFirstSeen == 0)
+            return;
+        var path = Path.Combine(Install.Root, UserstIniName);
+        if (!File.Exists(path))
+        {
+            Note(FileExistsFn, "Parse Command Line", "Ini",
+                "00999230 " + UserstIniName + " miss");
+            return;
+        }
+
+        Note(UserstApplyFn, "Parse Command Line", "Ini",
+            "00414C66 009EC890 " + UserstIniName);
+        ApplyUserIniCommands(path, "Parse Command Line");
+    }
+
+    private static bool ParseIniFalse(string arg)
+    {
+        var value = arg.Trim();
+        return value.Equals("false", StringComparison.OrdinalIgnoreCase) ||
+               value.Equals("bfalse", StringComparison.OrdinalIgnoreCase) ||
+               value == "0";
     }
 
     /// <summary>
@@ -6521,71 +6729,44 @@ public sealed class EngineLifecycle : IDisposable
         FrontendDefTypeName = hit.TypeName;
     }
 
-    private void AttachPressStartWidgets()
+    private void AttachPressStartWidgets() =>
+        AttachFrontendTree(FrontendPressStartMenu);
+
+    private void AttachFrontendTree(string rootName)
     {
+        if (Install is not null && _frontendSprites is null)
+            _frontendSprites = new FrontendSpriteBank(Install);
+        if (Install is not null && _frontendFonts is null)
+            _frontendFonts = new FontBank(Install);
         _frontendWidgets.Clear();
         FrontendChildCount = 0;
         FrontendRootType = 0;
         FrontendPressStartLabel = null;
-        if (Install is not null && _frontendSprites is null)
-            _frontendSprites = new FrontendSpriteBank(Install);
-        var root = FrontendDefs?.FindEntry(FrontendPressStartMenu);
-        var parsed = root is null ? null : FrontendUiDef.TryParse(root);
-        FrontendRootType = parsed?.Type ?? 0;
-        AddFrontendWidget(parsed, FrontendPressStartMenu, parent: null);
-        if (parsed is null || FrontendDefs is null)
-            return;
-        foreach (var index in parsed.ChildIndices)
-        {
-            if ((uint)index >= (uint)FrontendDefs.Entries.Count)
-                continue;
-            var child = FrontendUiDef.TryParse(FrontendDefs.Entries[index]);
-            if (child is null)
-                continue;
-            AttachFrontendChild(child, FrontendPressStartMenu);
-        }
-    }
-
-    private void AttachFrontendChild(FrontendUiDef def, string parent)
-    {
-        AddFrontendWidget(def, def.InstanceName, parent);
-        FrontendChildCount++;
-        Note(FrontendPressStartCtorFn, "Frontend", "UI",
-            $"005331A0 child {def.InstanceName} type {def.Type}");
         if (FrontendDefs is null)
-            return;
-        foreach (var index in def.ChildIndices)
         {
-            if ((uint)index >= (uint)FrontendDefs.Entries.Count)
-                continue;
-            var nested = FrontendUiDef.TryParse(FrontendDefs.Entries[index]);
-            if (nested is null)
-                continue;
-            AttachFrontendChild(nested, def.InstanceName);
-        }
-    }
-
-    private void AddFrontendWidget(FrontendUiDef? def, string name, string? parent)
-    {
-        var text = def?.TextTag;
-        string? body = null;
-        if (!string.IsNullOrEmpty(text))
-        {
-            body = LookupFrontendText(text);
-            if (name == FrontendPressStartText ||
-                text == FrontendPressStartTextTag)
-                FrontendPressStartLabel = body ?? text;
+            ResolveFrontendDef(rootName);
+            if (FrontendDefs is null)
+                return;
         }
 
-        var texture = FrontendSpriteBank.BankNameForWidget(name);
-        _frontendWidgets.Add(new FrontendWidget(
-            name,
-            def?.Type ?? 0,
-            0, 0, 0, 0,
-            text,
-            body,
-            parent,
-            texture));
+        var built = FrontendWidgetFactory.Build(
+            FrontendDefs, rootName, _frontendSprites, LookupFrontendText);
+        _frontendWidgets.AddRange(built);
+        if (_frontendWidgets.Count > 0)
+            FrontendRootType = _frontendWidgets[0].Type;
+        FrontendChildCount = Math.Max(0, _frontendWidgets.Count - 1);
+        var text = _frontendWidgets.Find(w =>
+            w.Name == FrontendPressStartText ||
+            w.TextTag == FrontendPressStartTextTag);
+        if (text.Name is not null)
+            FrontendPressStartLabel = text.Text ?? text.TextTag;
+        foreach (var widget in _frontendWidgets)
+        {
+            if (widget.Name == rootName)
+                continue;
+            Note(FrontendPressStartCtorFn, "Frontend", "UI",
+                $"005331A0 child {widget.Name} type {widget.Type}");
+        }
     }
 
     private void ApplyFrontendScaleInit()
@@ -6601,43 +6782,48 @@ public sealed class EngineLifecycle : IDisposable
 
     private void LayoutFrontendWidgets()
     {
+        var width = BackBufferWidth > 0 ? BackBufferWidth : DisplayDefaultWidth;
+        var height = BackBufferHeight > 0 ? BackBufferHeight : DisplayDefaultHeight;
+        var viewport = FrontendLayout.FirstSeenFrontend(width, height);
+        var dests = new Dictionary<string, FrontendDest>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < _frontendWidgets.Count; i++)
         {
             var widget = _frontendWidgets[i];
-            var def = FrontendDefs?.FindEntry(widget.Name);
-            var parsed = def is null ? null : FrontendUiDef.TryParse(def);
-            var originX = parsed?.PositionX ?? 0;
-            var originY = parsed?.PositionY ?? 0;
-            var sizeW = parsed is { Width: > 0 } ? (int)parsed.Width : 0;
-            var sizeH = parsed is { Height: > 0 } ? (int)parsed.Height : 0;
+            var persistW = widget.PersistWidth > 0 ? (int)widget.PersistWidth : 0;
+            var persistH = widget.PersistHeight > 0 ? (int)widget.PersistHeight : 0;
+            var leftoverW = 0f;
+            var leftoverH = 0f;
             var tex = widget.TextureName is null
                 ? null
                 : _frontendSprites?.TryLoad(widget.TextureName);
             if (tex is not null)
             {
-                if (sizeW == 0)
-                    sizeW = tex.Width;
-                if (sizeH == 0)
-                    sizeH = tex.Height;
+                leftoverW = tex.Width;
+                leftoverH = tex.Height;
             }
 
             var label = widget.Text ?? widget.TextTag;
-            if (sizeW == 0 && !string.IsNullOrEmpty(label))
-                sizeW = label.Length * 8;
-            if (sizeH == 0 && !string.IsNullOrEmpty(label))
-                sizeH = 16;
-            if (widget.ParentName is { } parentName)
-            {
-                var parent = _frontendWidgets.Find(w => w.Name == parentName);
-                originX += parent.DestX0;
-                originY += parent.DestY0;
-            }
-
-            var dest = FrontendWidgetDest(
-                sizeW, sizeH, 0, 0,
-                originX, originY,
-                FrontendScaleX, FrontendScaleY,
-                center: false);
+            var face = widget.Type == FrontendWidgetType.Text
+                ? _frontendFonts?.TryLoad(FrontendUiFontFace)
+                : null;
+            if (leftoverW == 0 && !string.IsNullOrEmpty(label) && face is not null)
+                leftoverW = face.MeasureWidth(label);
+            if (leftoverH == 0 && !string.IsNullOrEmpty(label) && face is not null)
+                leftoverH = face.LineHeight;
+            FrontendDest? parentDest = null;
+            if (widget.ParentName is { } parentName &&
+                dests.TryGetValue(parentName, out var parent))
+                parentDest = parent;
+            var layout = new FrontendWidgetLayout(
+                widget.PersistX,
+                widget.PersistY,
+                PersistWidth: persistW,
+                PersistHeight: persistH,
+                LeftoverW: leftoverW,
+                LeftoverH: leftoverH,
+                Center: false);
+            var dest = FrontendLayout.Compute(layout, parentDest, viewport);
+            dests[widget.Name] = dest;
             _frontendWidgets[i] = widget with
             {
                 DestX0 = dest.X0,
@@ -6645,12 +6831,14 @@ public sealed class EngineLifecycle : IDisposable
                 DestX1 = dest.X1,
                 DestY1 = dest.Y1,
             };
-            if (widget.Name == FrontendPressStartMenu)
+            if (i == 0)
             {
                 FrontendWidgetDestX0 = dest.X0;
                 FrontendWidgetDestY0 = dest.Y0;
                 FrontendWidgetDestX1 = dest.X1;
                 FrontendWidgetDestY1 = dest.Y1;
+                FrontendScaleX = dest.ScaleX;
+                FrontendScaleY = dest.ScaleY;
             }
         }
     }
@@ -6676,29 +6864,118 @@ public sealed class EngineLifecycle : IDisposable
 
     private void CompositeFrontendPresent()
     {
-        var width = DisplayDefaultWidth;
-        var height = DisplayDefaultHeight;
-        var rgba = new byte[width * height * 4];
+        var width = BackBufferWidth > 0 ? BackBufferWidth : DisplayDefaultWidth;
+        var height = BackBufferHeight > 0 ? BackBufferHeight : DisplayDefaultHeight;
+        var records = new List<FrontendDx9DrawRecord>();
+        var textures = new List<GpuTexture>();
+        var textureIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         foreach (var widget in _frontendWidgets)
         {
-            var x0 = (int)MathF.Round(widget.DestX0);
-            var y0 = (int)MathF.Round(widget.DestY0);
-            var x1 = (int)MathF.Round(widget.DestX1);
-            var y1 = (int)MathF.Round(widget.DestY1);
-            if (x1 <= x0 || y1 <= y0)
+            if (widget.DestX1 <= widget.DestX0 || widget.DestY1 <= widget.DestY0)
                 continue;
-            if (widget.TextureName is null)
+            if (widget.TextureName is { } texName &&
+                _frontendSprites?.TryLoad(texName) is { } tex)
+            {
+                if (!textureIndex.TryGetValue(texName, out var id))
+                {
+                    id = textures.Count;
+                    textureIndex[texName] = id;
+                    textures.Add(new GpuTexture(id, tex.Width, tex.Height, tex.Rgba));
+                }
+
+                records.Add(new FrontendDx9DrawRecord(
+                    widget.DestX0, widget.DestY0, widget.DestX1, widget.DestY1,
+                    0f, 0f, 1f, 1f, 0xFFFFFFFFu, id,
+                    Dx9VulkanFrontend.WidgetBlendDefault));
+            }
+
+            if (widget.Type == FrontendWidgetType.Text &&
+                !string.IsNullOrEmpty(widget.Text))
+            {
+                var face = _frontendFonts?.TryLoad(FrontendUiFontFace);
+                if (face is null)
+                    continue;
+                const string atlasKey = FontFile.UiFace;
+                if (!textureIndex.TryGetValue(atlasKey, out var atlasId))
+                {
+                    atlasId = textures.Count;
+                    textureIndex[atlasKey] = atlasId;
+                    textures.Add(new GpuTexture(atlasId, face.UvWidth, face.UvHeight, face.Atlas));
+                }
+
+                foreach (var glyph in FrontendTextDraw.Layout(
+                    face, widget.Text, widget.DestX0, widget.DestY0))
+                {
+                    records.Add(new FrontendDx9DrawRecord(
+                        glyph.DestX0, glyph.DestY0, glyph.DestX1, glyph.DestY1,
+                        glyph.U0, glyph.V0, glyph.U1, glyph.V1,
+                        glyph.Color, atlasId,
+                        Dx9VulkanFrontend.WidgetBlendDefault));
+                }
+            }
+        }
+
+        FrontendBatch = Dx9VulkanFrontend.BuildBatch(records, textures, 0, 0, width, height);
+        var rgba = new byte[width * height * 4];
+        foreach (var rec in records)
+        {
+            if ((uint)rec.TextureId >= (uint)textures.Count)
                 continue;
-            if (widget.TextureName.StartsWith("FORREST_", StringComparison.Ordinal) &&
-                !widget.TextureName.Contains("_1_", StringComparison.Ordinal))
-                continue;
-            if (_frontendSprites?.TryLoad(widget.TextureName) is { } tex)
-                BlitFrontendTexture(rgba, width, height, x0, y0, tex);
+            var tex = textures[rec.TextureId];
+            BlitFrontendQuad(rgba, width, height, rec, tex);
         }
 
         FrontendPresentRgba = rgba;
         FrontendPresentWidth = width;
         FrontendPresentHeight = height;
+    }
+
+    private static void BlitFrontendQuad(
+        byte[] rgba, int width, int height, FrontendDx9DrawRecord rec, GpuTexture tex)
+    {
+        var x0 = (int)MathF.Round(rec.DestX0);
+        var y0 = (int)MathF.Round(rec.DestY0);
+        var x1 = (int)MathF.Round(rec.DestX1);
+        var y1 = (int)MathF.Round(rec.DestY1);
+        var dw = Math.Max(1, x1 - x0);
+        var dh = Math.Max(1, y1 - y0);
+        for (var y = 0; y < dh; y++)
+        {
+            var dy = y0 + y;
+            if ((uint)dy >= (uint)height)
+                continue;
+            var v = rec.V0 + (rec.V1 - rec.V0) * ((y + 0.5f) / dh);
+            var sy = Math.Clamp((int)(v * tex.Height), 0, Math.Max(0, tex.Height - 1));
+            var row = dy * width * 4;
+            var srcRow = sy * tex.Width * 4;
+            for (var x = 0; x < dw; x++)
+            {
+                var dx = x0 + x;
+                if ((uint)dx >= (uint)width)
+                    continue;
+                var u = rec.U0 + (rec.U1 - rec.U0) * ((x + 0.5f) / dw);
+                var sx = Math.Clamp((int)(u * tex.Width), 0, Math.Max(0, tex.Width - 1));
+                var s = srcRow + sx * 4;
+                var a = tex.Rgba[s + 3];
+                if (a == 0)
+                    continue;
+                var d = row + dx * 4;
+                if (a == 255)
+                {
+                    rgba[d] = tex.Rgba[s];
+                    rgba[d + 1] = tex.Rgba[s + 1];
+                    rgba[d + 2] = tex.Rgba[s + 2];
+                    rgba[d + 3] = 255;
+                    continue;
+                }
+
+                var ia = 255 - a;
+                rgba[d] = (byte)((tex.Rgba[s] * a + rgba[d] * ia) / 255);
+                rgba[d + 1] = (byte)((tex.Rgba[s + 1] * a + rgba[d + 1] * ia) / 255);
+                rgba[d + 2] = (byte)((tex.Rgba[s + 2] * a + rgba[d + 2] * ia) / 255);
+                rgba[d + 3] = 255;
+            }
+        }
     }
 
     private static void BlitFrontendTexture(
@@ -6797,6 +7074,8 @@ public sealed class EngineLifecycle : IDisposable
         Textures = null;
         _frontendSprites?.Dispose();
         _frontendSprites = null;
+        _frontendFonts?.Dispose();
+        _frontendFonts = null;
         Meshes.Dispose();
     }
 
@@ -6836,7 +7115,11 @@ public sealed class EngineLifecycle : IDisposable
             "009BF7E0 CreateDevice vtbl+64");
         ApplyDisplayDefaults();
         Note(DisplayWidthVa, "Setup library", "Window",
-            $"00403079 [{DisplayDefaultWidth}x{DisplayDefaultHeight}]");
+            $"00403079 [{BackBufferWidth}x{BackBufferHeight}]");
+        Note(DisplayWindowFlagVa, "Setup library", "Window",
+            $"00403079 [0x137544A]={DisplayWindowFlag} 009BF7E0 +{PresentParametersWindowedOffset} Windowed={DeviceWindowed}");
+        Note(DisplayZDepthVa, "Setup library", "Window",
+            $"00403079 [0x1375468]={DisplayZDepth}");
         Note(WindowTitleFn, "Setup library", "Window",
             "004023F0 " + WindowTitleId);
         Note(InputDeviceVa, "Setup library", "Input",
@@ -6848,6 +7131,8 @@ public sealed class EngineLifecycle : IDisposable
         EnginePlus88 = true;
         EnginePlus124 = false;
         EnginePlus9 = EnginePlus9AfterSetup;
+        Note(CreateWindowFn, "Setup library", "Window",
+            $"009A64B0 CreateWindowExW style 0x{CreateWindowStyle:X} [engine+148]");
         Note(CreateWindowExIat, "Setup library", "Window",
             "CreateWindowExW [engine+148]");
         EngineWindowCreated = true;
@@ -6885,23 +7170,29 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
-    /// <c>00403079</c> copies PE
+    /// <c>00403079</c> copies PE /
+    /// <c>userst.ini</c>
     /// <c>[0x137545C]</c>/<c>[0x1375460]</c>
     /// then <c>009C0E50</c> clamps min 32.
     /// Title is <c>004023F0</c>
     /// <c>TEXT_GUI_WINDOW_TITLE</c>.
+    /// Windowed is <c>009BF7E0</c>
+    /// <c>![0x137544A]</c>.
     /// </summary>
     private void ApplyDisplayDefaults()
     {
-        var width = DisplayDefaultWidth;
-        var height = DisplayDefaultHeight;
+        var width = BackBufferWidth > 0 ? BackBufferWidth : DisplayDefaultWidth;
+        var height = BackBufferHeight > 0 ? BackBufferHeight : DisplayDefaultHeight;
+        var bpp = BackBufferBpp > 0 ? BackBufferBpp : DisplayDefaultBpp;
         if (width < GraphicsMinDimension)
             width = GraphicsMinDimension;
         if (height < GraphicsMinDimension)
             height = GraphicsMinDimension;
         BackBufferWidth = width;
         BackBufferHeight = height;
-        BackBufferBpp = DisplayDefaultBpp;
+        BackBufferBpp = bpp;
+        DeviceWindowed = DisplayWindowFlag == 0;
+        CreateWindowStyle = CreateWindowExStyle;
         WindowTitle = WindowTitleDefault;
         ViewportX = 0;
         ViewportY = 0;

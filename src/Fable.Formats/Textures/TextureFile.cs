@@ -50,16 +50,34 @@ public sealed class TextureFile
     public const bool FirstSeenTextureStoresRawLowerMips = true;
     public const int FirstSeenLowerMipStop = 4;
 
+    /// <summary>
+    /// 34-byte bank <c>info</c>. Native
+    /// <c>00BAD8A0</c> dest adjust reads
+    /// frame size at <c>+6/+8</c> when
+    /// rec+56 is set. CreateTexture uses
+    /// wrapper <c>+92/+96</c>, not these
+    /// offsets. UV origin / flip in the
+    /// leftover bytes are UNREAD.
+    /// </summary>
+    public const int HeaderBytes = 34;
+    public const int HeaderWidthOffset = 0;
+    public const int HeaderHeightOffset = 2;
+    public const int HeaderFrameWidthOffset = 6;
+    public const int HeaderFrameHeightOffset = 8;
+    public const int HeaderFormatCodeOffset = 12;
+    public const int HeaderUnused4Offset = 4;
+    public const int HeaderLevelsOffset = 10;
+
     public static TextureHeader ReadHeader(ReadOnlySpan<byte> info)
     {
         if (info.Length < 14)
             throw new InvalidDataException("Texture info header is 34 bytes; got " + info.Length);
         return new TextureHeader(
-            BitConverter.ToUInt16(info),
-            BitConverter.ToUInt16(info.Slice(2)),
-            BitConverter.ToUInt16(info.Slice(6)),
-            BitConverter.ToUInt16(info.Slice(8)),
-            BitConverter.ToUInt16(info.Slice(12)));
+            BitConverter.ToUInt16(info.Slice(HeaderWidthOffset)),
+            BitConverter.ToUInt16(info.Slice(HeaderHeightOffset)),
+            BitConverter.ToUInt16(info.Slice(HeaderFrameWidthOffset)),
+            BitConverter.ToUInt16(info.Slice(HeaderFrameHeightOffset)),
+            BitConverter.ToUInt16(info.Slice(HeaderFormatCodeOffset)));
     }
 
     public static TextureFile Parse(uint id, string name, uint type, IReadOnlyList<byte> info, byte[] data)

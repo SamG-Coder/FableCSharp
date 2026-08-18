@@ -88,6 +88,43 @@ internal static class LineShaders
         }
         """;
 
+    /// <summary>
+    /// <c>VSHADER_2D_SPRITE</c>:
+    /// <c>mov oPos, v0</c> / <c>mov oD0, v1</c>
+    /// / <c>mov oT0, v2</c>. CPU maps dest
+    /// pixels through
+    /// <c>Dx9VulkanFrontend.DestPixelToVulkanNdc</c>.
+    /// </summary>
+    public const string FrontendVertex = """
+        #version 450
+        layout(location = 0) in vec4 inPos;
+        layout(location = 1) in vec4 inColor;
+        layout(location = 2) in vec2 inUv;
+        layout(location = 0) out vec4 fragColor;
+        layout(location = 1) out vec2 fragUv;
+        void main() {
+            gl_Position = inPos;
+            fragColor = inColor;
+            fragUv = inUv;
+        }
+        """;
+
+    /// <summary>
+    /// <c>PSHADER_2D_TEXTURE_DIFFUSE</c>
+    /// sample * diffuse. UV v=0 at dest top
+    /// (<c>Dx9VulkanFrontend.UvVZeroAtDestTop</c>).
+    /// </summary>
+    public const string FrontendFragment = """
+        #version 450
+        layout(location = 0) in vec4 fragColor;
+        layout(location = 1) in vec2 fragUv;
+        layout(location = 0) out vec4 outColor;
+        layout(set = 0, binding = 0) uniform sampler2D sprite;
+        void main() {
+            outColor = texture(sprite, fragUv) * fragColor;
+        }
+        """;
+
     public const string MeshVertex = """
         #version 450
         layout(location = 0) in vec3 inPosition;

@@ -550,6 +550,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             _vk.DestroyPipeline(_device, _videoPipeline, null);
         if (_videoLayout.Handle != 0)
             _vk.DestroyPipelineLayout(_device, _videoLayout, null);
+        DestroyFrontendPipeline();
         DestroyVideoTexture();
         _vk.DestroyPipelineLayout(_device, _pipelineLayout, null);
         if (_meshPipelineLayout.Handle != 0)
@@ -1106,6 +1107,8 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         Check(_vk.CreateGraphicsPipelines(_device, default, 1, in pipelineInfo, null, out _videoPipeline));
         _vk.DestroyShaderModule(_device, vidVert, null);
         _vk.DestroyShaderModule(_device, vidFrag, null);
+        raster.CullMode = CullModeFlags.None;
+        CreateFrontendPipeline(stages, raster, multi, dynamic, viewportState);
         SilkMarshal.Free((nint)entry);
     }
 
@@ -1302,6 +1305,8 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
                 commandBuffer, _overlayLayout, ShaderStageFlags.FragmentBit, 0, 16, &color);
             _vk.CmdDraw(commandBuffer, 3, 1, 0, 0);
         }
+
+        DrawFrontend(commandBuffer);
 
         if (_videoReady && _videoPipeline.Handle != 0 && _videoTexture.Set.Handle != 0)
         {
