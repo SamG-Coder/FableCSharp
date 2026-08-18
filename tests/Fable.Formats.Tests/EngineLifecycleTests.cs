@@ -482,6 +482,9 @@ public sealed class EngineLifecycleTests
         Assert.Equal(6, life.Runtime.Quests.Count);
         Assert.Equal(6, life.Runtime.Scheduler.Fibers.Count);
         Assert.All(life.Runtime.Quests, q => Assert.NotNull(q.Fiber));
+        Assert.All(life.Runtime.Quests, q => Assert.True(q.Started));
+        Assert.Equal(QuestFactoryTable.SunnyvaleFactory,
+            life.Runtime.Quests.Single(q => q.Name == "Q_SunnyvaleMaster").Factory);
         Assert.DoesNotContain(life.ActivatedQuests, q => q == RegionTravel.IntroScriptName);
         Assert.DoesNotContain(life.ActivatedQuests, q => q == RegionTravel.IntroQuest);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
@@ -511,6 +514,124 @@ public sealed class EngineLifecycleTests
               004B4260([world+172])
               00CB5AD0 lookup / 00A447D0 fiber
             00416BCF empty +90584 → 004B4A10
+            Not S_QNOVI / 00DBDE40.
+            """);
+    }
+
+    [Fact]
+    public void Window_00403079_defaults_1024x768_and_title()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        Assert.Equal(1024, life.BackBufferWidth);
+        Assert.Equal(768, life.BackBufferHeight);
+        Assert.Equal(16, life.BackBufferBpp);
+        Assert.Equal("Fable - The Lost Chapters", life.WindowTitle);
+        Assert.Equal(EngineLifecycle.WindowTitleId, "TEXT_GUI_WINDOW_TITLE");
+        Assert.True(life.BackBufferWidth >= EngineLifecycle.GraphicsMinDimension);
+        Assert.True(life.BackBufferHeight >= EngineLifecycle.GraphicsMinDimension);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayWidthVa);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WindowTitleFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InputDeviceVa);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-window-input.txt"),
+            """
+            00403079 Setup library:
+              [0x137545C]=1024 [0x1375460]=768
+              [0x137546C]=2048 [0x1375470]=16
+              009A6610 → 009C0E50 clamp min 32
+            004023F0 TEXT_GUI_WINDOW_TITLE
+              PE 0x122D83C UTF-16
+              "Fable - The Lost Chapters"
+            0042E3EE input walk [0x13B8388]
+              ProbeGraphics stores engine+88
+              poll 009F4ED0; events 00A03B40
+              frontend New Game is msg 15
+            Present remains 009BEEB0 via Vulkan Draw.
+            Not 1600x900. Not WASD as game input.
+            Not 00DBDE40.
+            """);
+    }
+
+    [Fact]
+    public void Activate_quests_00CB5AD0_starts_factory_scripts()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        life.EnterGame();
+        Assert.True(life.QuestsInitDone);
+        Assert.NotNull(life.Runtime);
+        var master = life.Runtime.Quests.Single(q => q.Name == "Q_SunnyvaleMaster");
+        Assert.True(master.Started);
+        Assert.Equal(QuestFactoryTable.SunnyvaleFactory, master.Factory);
+        Assert.Equal(QuestFactoryTable.SharedRun, master.Run);
+        Assert.Equal(QuestFactoryTable.SunnyvaleInit, master.Init);
+        Assert.Null(master.ScriptName);
+        Assert.Null(master.ChildCutscene);
+        var boasts = life.Runtime.Quests.Single(q => q.Name == "HeroBoasts");
+        Assert.True(boasts.Started);
+        Assert.Equal(QuestFactoryTable.HeroBoastsFactory, boasts.Factory);
+        Assert.Equal("S_HB", boasts.ScriptName);
+        var personal = life.Runtime.Quests.Single(q => q.Name == "PersonalScriptMain");
+        Assert.True(personal.Started);
+        Assert.Equal("S_PSM", personal.ScriptName);
+        var global = life.Runtime.Quests.Single(q => q.Name == "PersonalScript_GlobalThings");
+        Assert.True(global.Started);
+        Assert.Equal("S_PSGT", global.ScriptName);
+        var dolls = life.Runtime.Quests.Single(q => q.Name == "V_HeroDolls");
+        Assert.True(dolls.Started);
+        Assert.Equal("S_VHDS", dolls.ScriptName);
+        var play = life.Runtime.Quests.Single(q => q.Name == "CS_PlayCutscene");
+        Assert.True(play.Started);
+        Assert.Equal(QuestFactoryTable.PlayCutsceneFactory, play.Factory);
+        Assert.Null(play.ScriptName);
+        Assert.All(life.Runtime.Quests, q => Assert.True(q.Started));
+        Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == RegionTravel.IntroScriptName);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ActivateQuestFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.QuestRegisterFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == QuestFactoryTable.SunnyvaleFactory);
+        Assert.Contains(life.Trace.Events, e => e.Va == QuestFactoryTable.HeroBoastsFactory);
+        if (life.Runtime.Bank?.Find("S_HB") is not null)
+            Assert.True(life.Runtime.HasStarted("S_HB"));
+        if (life.Runtime.Bank?.Find("S_PSM") is not null)
+            Assert.True(life.Runtime.HasStarted("S_PSM"));
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+            "traces");
+        Directory.CreateDirectory(dest);
+        life.Trace.Write(Path.Combine(dest, "activate-quest-00CB5AD0.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-00CB5AD0.txt"),
+            """
+            00CD52D0 Registering Master Script
+              Q_SunnyvaleMaster 00CB5C90
+              factory 00CDD550 run 00CDBD20 persist 1
+            00CD52D0 Registering Important Scripts
+              HeroBoasts/S_HB 00CE6C40
+              PersonalScriptMain/S_PSM 00CDE2F0
+              PersonalScript_GlobalThings/S_PSGT 00CE19A0
+              V_HeroDolls/S_VHDS 00E98640
+              CS_PlayCutscene 00F01760
+            004B4260 Activate Quest
+              004B00C0 predicate
+              00CB5AD0 lookup [manager+120]
+              004BB720 enqueue 12-byte
+              004B3CE0:
+                run 00CDBD20 size 0x144 vtbl 012C2748
+                vtbl+8 00CDBA10 zeros + _LIKE/_HATE
+                factory ctor then 00CB8690 START_SCRIPT_DATA
+                fiber 00A447D0
+            Q_SunnyvaleMaster has no CCutsceneDef.
+            S_HB/S_PSM/S_PSGT/S_VHDS start when bank has them.
             Not S_QNOVI / 00DBDE40.
             """);
     }
@@ -979,6 +1100,22 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x00595A03u, EngineLifecycle.FrontendMenuMissFn);
         Assert.Equal("UI_TEXT_NEW_GAME", EngineLifecycle.FrontendMenuItems[0].Label);
         Assert.Equal(0x0042E3EEu, EngineLifecycle.FrontendInputFn);
+        Assert.Equal(0x013B8388u, EngineLifecycle.InputDeviceVa);
+        Assert.Equal(0x009F4ED0u, EngineLifecycle.InputPollFn);
+        Assert.Equal(0x00A03B40u, EngineLifecycle.InputEventFn);
+        Assert.Equal(0x004023F0u, EngineLifecycle.WindowTitleFn);
+        Assert.Equal(0x0122D83Cu, EngineLifecycle.WindowTitleVa);
+        Assert.Equal("TEXT_GUI_WINDOW_TITLE", EngineLifecycle.WindowTitleId);
+        Assert.Equal("Fable - The Lost Chapters", EngineLifecycle.WindowTitleDefault);
+        Assert.Equal(1024, EngineLifecycle.DisplayDefaultWidth);
+        Assert.Equal(768, EngineLifecycle.DisplayDefaultHeight);
+        Assert.Equal(32, EngineLifecycle.GraphicsMinDimension);
+        Assert.Equal(16, EngineLifecycle.DisplayDefaultBpp);
+        Assert.Equal(0x0137545Cu, EngineLifecycle.DisplayWidthVa);
+        Assert.Equal(0x01375460u, EngineLifecycle.DisplayHeightVa);
+        Assert.Equal(0x00CD52D0u, EngineLifecycle.QuestRegisterFn);
+        Assert.Equal(0x004BB720u, EngineLifecycle.QuestFactoryCollectFn);
+        Assert.Equal(0x004B3CE0u, EngineLifecycle.QuestFactoryStartFn);
         Assert.Equal(0x0042DC94u, EngineLifecycle.FrontendUpdateFn);
         Assert.Equal(0x0042FA30u, EngineLifecycle.FrontendRecordZeroFn);
         Assert.Equal(0x0042DBFAu, EngineLifecycle.FrontendRecordFillFn);

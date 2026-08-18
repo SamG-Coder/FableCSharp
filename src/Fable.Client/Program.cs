@@ -40,8 +40,8 @@ var debugFly = false;
 
 var options = WindowOptions.DefaultVulkan with
 {
-    Title = Title(),
-    Size = new Vector2D<int>(1600, 900),
+    Title = life.WindowTitle,
+    Size = new Vector2D<int>(life.BackBufferWidth, life.BackBufferHeight),
     VSync = true,
 };
 
@@ -71,6 +71,9 @@ window.Load += () =>
 
     Console.WriteLine($"{install.Edition}: {install.Root}");
     Console.WriteLine($"lifecycle {life.Stage} mode {life.Mode} pe=0x{EngineLifecycle.PeEntry:X8}");
+    Console.WriteLine(
+        $"window {life.WindowTitle} {life.BackBufferWidth}x{life.BackBufferHeight} " +
+        $"input 0x{EngineLifecycle.FrontendInputFn:X} [0x{EngineLifecycle.InputDeviceVa:X}]");
     Console.WriteLine($"banks {string.Join(", ", EngineLifecycle.RetailBanks.Select(b => b.Pc))}");
     if (life.CurrentStartupVideo is { } first)
         Console.WriteLine($"startup 0x{EngineLifecycle.PlayAviPlayer:X} {first.RelativePath} {first.Width}x{first.Height}");
@@ -112,6 +115,7 @@ window.Update += dt =>
 
     if (life.Stage == EngineStage.Frontend)
     {
+        // 0059A238 msg 15. Not WASD.
         var nDown = keyboard.IsKeyPressed(Key.N) || keyboard.IsKeyPressed(Key.Enter);
         if (nDown && !nWasDown)
         {
@@ -170,6 +174,7 @@ window.Update += dt =>
         renderer.ShowGizmos = !renderer.ShowGizmos;
     gWasDown = gDown;
 
+    // WASD is F2 host fly only. Native input is 0042E3EE.
     if (debugFly)
     {
         var move = Vector3.Zero;
@@ -270,19 +275,7 @@ window.Closing += () =>
 window.Run();
 return 0;
 
-string Title()
-{
-    var mapLabel = map is null
-        ? (life.CurrentRegion is { } current
-            ? current.RegionName
-            : life.Stage == EngineStage.Game ? life.WorldFileName ?? "game" : life.Stage.ToString())
-        : $"{map.ScriptName}  ({map.MapX},{map.MapY})";
-    var pos = debugFly ? debugCam.Position : gameCam.Position;
-    var camLabel = debugFly ? "debug" : (gameCam.ActiveName.Length == 0 ? "script" : gameCam.ActiveName);
-    var aviLabel = intro?.Runtime.AviPlaying == true || startupAvi is not null ? " AVI" : "";
-    var meshes = world?.MeshInstances ?? 0;
-    return $"FableCSharp — {mapLabel} — {meshes} meshes / {scene.ThingCount} things — {camLabel} {pos.X:0.0}, {pos.Y:0.0}, {pos.Z:0.0}{aviLabel}";
-}
+string Title() => life.WindowTitle;
 
 void OnMouseMove(Vector2 point)
 {

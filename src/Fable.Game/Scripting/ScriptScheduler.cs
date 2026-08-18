@@ -72,6 +72,10 @@ public sealed class QuestInstance
     public FiberState? Fiber { get; set; }
     public string? ChildCutscene { get; private set; }
     public bool Started { get; private set; }
+    public uint Factory { get; private set; }
+    public uint Run { get; private set; }
+    public uint Init { get; private set; }
+    public string? ScriptName { get; private set; }
 
     public QuestInstance(int id, string name, string? persistField)
     {
@@ -89,6 +93,20 @@ public sealed class QuestInstance
     public void StartChildCutscene(string cutsceneName)
     {
         ChildCutscene = cutsceneName;
+        Started = true;
+    }
+
+    /// <summary>
+    /// <c>004B3CE0</c> factory construct +
+    /// run.vtbl+8. Native-only quests have
+    /// no <c>CCutsceneDef</c>.
+    /// </summary>
+    public void StartFactory(uint factory, uint run, uint init, string? scriptName)
+    {
+        Factory = factory;
+        Run = run;
+        Init = init;
+        ScriptName = scriptName;
         Started = true;
     }
 }

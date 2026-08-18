@@ -31,6 +31,44 @@ public sealed class EngineLifecycle
     public const int Direct3DSdkVersion = 32;
     public const uint GraphicsCtor = 0x009C0880;
     public const uint GraphicsInit = 0x009C0E50;
+    /// <summary>
+    /// <c>00403079</c> copies
+    /// <c>[0x137545C]</c> / <c>[0x1375460]</c>
+    /// into the options record then
+    /// <c>009A6610</c> → <c>009C0E50</c>.
+    /// PE defaults are 1024×768. Init
+    /// clamps each axis to min 32.
+    /// </summary>
+    public const uint DisplayWidthVa = 0x0137545C;
+    public const uint DisplayHeightVa = 0x01375460;
+    public const uint DisplayMaxVa = 0x0137546C;
+    public const uint DisplayBppVa = 0x01375470;
+    public const int DisplayDefaultWidth = 1024;
+    public const int DisplayDefaultHeight = 768;
+    public const int DisplayMaxDimension = 2048;
+    public const int DisplayDefaultBpp = 16;
+    public const int GraphicsMinDimension = 32;
+    /// <summary>
+    /// <c>004023F0</c> looks up
+    /// <c>TEXT_GUI_WINDOW_TITLE</c>; PE
+    /// UTF-16 fallback at <c>0x122D83C</c>
+    /// is "Fable - The Lost Chapters".
+    /// </summary>
+    public const uint WindowTitleFn = 0x004023F0;
+    public const uint WindowTitleVa = 0x0122D83C;
+    public const string WindowTitleId = "TEXT_GUI_WINDOW_TITLE";
+    public const string WindowTitleDefault = "Fable - The Lost Chapters";
+    /// <summary>
+    /// <c>0042E3EE</c> walks
+    /// <c>[0x13B8388]</c> (engine+88 from
+    /// ProbeGraphics). Poll <c>009F4ED0</c>.
+    /// Event classify <c>00A03B40</c>.
+    /// Frontend New Game is message 15,
+    /// not WASD.
+    /// </summary>
+    public const uint InputDeviceVa = 0x013B8388;
+    public const uint InputPollFn = 0x009F4ED0;
+    public const uint InputEventFn = 0x00A03B40;
     public const uint CreateDeviceFn = 0x009BF7E0;
     public const int GraphicsObjectSize = 0x2C8;
     public const int IDirect3D9GetDeviceCapsVtbl = 56;
@@ -427,6 +465,10 @@ public sealed class EngineLifecycle
     public const uint InitGuiFn = 0x0043A380;
     public const uint InitQuestsFn = 0x004B4260;
     public const uint ActivateQuestFn = 0x00CB5AD0;
+    public const uint QuestRegisterFn = QuestFactoryTable.Register;
+    public const uint QuestFactoryBindFn = QuestFactoryTable.Bind;
+    public const uint QuestFactoryCollectFn = QuestFactoryTable.Collect;
+    public const uint QuestFactoryStartFn = QuestFactoryTable.StartWalk;
     public const uint QuestManagerActivate = 0x004B2890;
     /// <summary>
     /// <c>004A1840</c> "Load Quests" during
@@ -582,6 +624,14 @@ public sealed class EngineLifecycle
     public bool PlayStartupVideos { get; private set; } = true;
     public bool GraphicsCreated { get; private set; }
     public int CreateDeviceFlags { get; private set; }
+    /// <summary>
+    /// <c>[0x137545C]</c> after
+    /// <c>009C0E50</c> min-32 clamp.
+    /// </summary>
+    public int BackBufferWidth { get; private set; }
+    public int BackBufferHeight { get; private set; }
+    public int BackBufferBpp { get; private set; }
+    public string WindowTitle { get; private set; } = WindowTitleDefault;
     public string? WorldFileName { get; private set; }
     public WorldFile? World { get; private set; }
     public RegionGraph? Regions { get; private set; }
@@ -906,7 +956,10 @@ public sealed class EngineLifecycle
     /// </summary>
     public void PumpFrontendFrame()
     {
-        Note(FrontendInputFn, "Frontend", "Input", "0042E3EE");
+        Note(FrontendInputFn, "Frontend", "Input",
+            "0042E3EE walk [0x13B8388]");
+        Note(InputDeviceVa, "Frontend", "Input", "engine+88 DINPUT8");
+        Note(InputPollFn, "Frontend", "Input", "009F4ED0");
         Note(FrontendUpdateFn, "Frontend", "UI", "0042DC94");
         Note(FrontendUiTickFn, "Frontend", "UI", "00599E3F");
         Note(FrontendRecordZeroFn, "Frontend", "Render",
@@ -2094,6 +2147,16 @@ public sealed class EngineLifecycle
             if (name.Length == 0)
                 continue;
             Note(ActivateQuestFn, "Init Quests", "Quest", "00CB5AD0 " + name);
+            var factory = QuestFactoryTable.Find(name);
+            if (factory is { } bind)
+            {
+                Note(QuestRegisterFn, "Init Quests", "Quest",
+                    "00CD52D0 " + name +
+                    (bind.ScriptName is { } script ? " → " + script : " native"));
+                Note(bind.Factory, "Init Quests", "Quest",
+                    $"factory 0x{bind.Factory:X} run 0x{bind.Run:X}");
+            }
+
             var persistent = Quests?.Quests.Any(q =>
                 q.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && q.Persistent) == true;
             Runtime.ActivateQuest(name, persistent);
@@ -2311,8 +2374,36 @@ public sealed class EngineLifecycle
             "009C0E50 GetDeviceCaps vtbl+56");
         Note(CreateDeviceFn, "Setup library", "D3D9",
             "009BF7E0 CreateDevice vtbl+64");
+        ApplyDisplayDefaults();
+        Note(DisplayWidthVa, "Setup library", "Window",
+            $"00403079 [{DisplayDefaultWidth}x{DisplayDefaultHeight}]");
+        Note(WindowTitleFn, "Setup library", "Window",
+            "004023F0 " + WindowTitleId);
+        Note(InputDeviceVa, "Setup library", "Input",
+            "0042E3EE [0x13B8388]");
         CreateDeviceFlags = CreateDeviceSoftwareFlags;
         GraphicsCreated = true;
+    }
+
+    /// <summary>
+    /// <c>00403079</c> copies PE
+    /// <c>[0x137545C]</c>/<c>[0x1375460]</c>
+    /// then <c>009C0E50</c> clamps min 32.
+    /// Title is <c>004023F0</c>
+    /// <c>TEXT_GUI_WINDOW_TITLE</c>.
+    /// </summary>
+    private void ApplyDisplayDefaults()
+    {
+        var width = DisplayDefaultWidth;
+        var height = DisplayDefaultHeight;
+        if (width < GraphicsMinDimension)
+            width = GraphicsMinDimension;
+        if (height < GraphicsMinDimension)
+            height = GraphicsMinDimension;
+        BackBufferWidth = width;
+        BackBufferHeight = height;
+        BackBufferBpp = DisplayDefaultBpp;
+        WindowTitle = WindowTitleDefault;
     }
 
     private void Note(uint va, string stage, string subsystem, string action) =>
