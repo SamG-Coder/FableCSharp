@@ -1220,11 +1220,8 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayPlayerOverlayFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayFlush2dFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayFlushLayersFn);
-        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.RenderFrameFn);
-        Assert.True(life.LayerFlushCount >= 1);
-        Assert.Equal(
-            new uint[] { 0x4, 0x40, 0x20, 0x100, 0x2000, 0x80, 0x200 },
-            life.SubmittedLayerBits);
+        Assert.Equal(0, life.LayerFlushCount);
+        Assert.Empty(life.SubmittedLayerBits);
         Assert.True(Fable.Formats.Scene.ScenePasses.Rank(0x4) <
                     Fable.Formats.Scene.ScenePasses.Rank(0x20));
         Assert.True(life.Input.Present);
@@ -1252,11 +1249,14 @@ public sealed class EngineLifecycleTests
                 009BEEB0 Present
             00417001 does not Present; it calls
             00435F70 → 00435530 after WorldFrame>1.
-              00435000 → 00639E40 player overlay
-              00435070 player interface
-              009D9C80 flush DIP vtbl+332
-              009DA9F0(1) layer flush
-              00B25950 bits 0x4,0x40,0x20,0x2000
+              +232 ctor 0x1E so 00434CD0
+                +216=0 01375CDC=0 skip dest fade
+                009D8250 ret dest empty
+              00435000 00487DD0 miss skip 00639E40
+              00435070 00487DC0 miss skip 0057B43F
+              009D9C80 dirty-list
+              009DA9F0(1) +16020==+16024 empty
+              00435530 does not call 00B25950
             Client Draw is that Present, not a
             second swapchain.
             00416E78 [game+32].vtbl+4 00446A30
@@ -2156,7 +2156,16 @@ public sealed class EngineLifecycleTests
             e.Action.Contains("00435F70 jmp 00435530", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.DisplayApplyBodyFn &&
-            e.Action.Contains("00435530 +232=0 skip 00434CD0", StringComparison.Ordinal));
+            e.Action.Contains("00434CD0", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DisplayFadeDestStub &&
+            e.Action.Contains("009D8250 ret dest empty", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DisplayPlayerOverlayFn &&
+            e.Action.Contains("skip 00639E40", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DisplayPlayerInterfaceFn &&
+            e.Action.Contains("skip 0057B43F", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.BeginSceneFn && e.Stage == "GamePump");
         Assert.Contains(life.Trace.Events, e =>
@@ -2165,7 +2174,11 @@ public sealed class EngineLifecycleTests
             e.Va == EngineLifecycle.DisplayFlush2dFn);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.DisplayFlushLayersFn &&
-            e.Action.Contains("009DA9F0(1)", StringComparison.Ordinal));
+            e.Action.Contains("empty dest", StringComparison.Ordinal));
+        Assert.Empty(life.SubmittedLayerBits);
+        Assert.Equal(0, life.LayerFlushCount);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.RenderFrameFn && e.Stage == "GamePump");
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.EndSceneFn && e.Stage == "GamePump");
         Assert.Contains(life.Trace.Events, e =>
@@ -2177,6 +2190,11 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x00435F70u, EngineLifecycle.DisplayApplyThunk);
         Assert.Equal(0x00435530u, EngineLifecycle.DisplayApplyBodyFn);
         Assert.Equal(0x009BEEB0u, EngineLifecycle.PresentFn);
+        Assert.Equal(0x00434E10u, EngineLifecycle.DisplayCtorFn);
+        Assert.Equal(0x00434CD0u, EngineLifecycle.DisplayFadeDestFn);
+        Assert.Equal(0x009D8250u, EngineLifecycle.DisplayFadeDestStub);
+        Assert.Equal(0x1E, EngineLifecycle.DisplayPlus232Ctor);
+        Assert.Equal(0x1E - 7, life.DisplayPlus232);
         Assert.DoesNotContain(life.Trace.Events, e =>
             e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
         Assert.Null(life.CurrentRegion);

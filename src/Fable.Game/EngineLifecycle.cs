@@ -1169,7 +1169,21 @@ public sealed class EngineLifecycle : IDisposable
     public const int WorldTickSlot1Plus48FirstSeen = 0;
     public const uint DisplayTickTailFn = 0x00434F60;
     public const int DisplayPlus232Offset = 232;
-    public const int DisplayPlus232FirstSeen = 0;
+    /// <summary>
+    /// Display ctor <c>00434E10</c>
+    /// writes <c>+232=0x1E</c>. Host
+    /// first-seen 0 skip is leftover.
+    /// </summary>
+    public const int DisplayPlus232Ctor = 0x1E;
+    public const uint DisplayCtorFn = 0x00434E10;
+    public const uint DisplayVtbl = 0x01231574;
+    public const uint DisplayFadeDestFn = 0x00434CD0;
+    public const uint DisplayFadeDestStub = 0x009D8250;
+    public const uint DisplayFadeDestFlagVa = 0x01375CDC;
+    public const int DisplayFadeDestFlagFirstSeen = 0;
+    public const uint DisplayPlayerOverlayLookup = 0x00449960;
+    public const uint DisplayPlayerOverlayThing = 0x00487DD0;
+    public const uint DisplayPlayerInterfaceApply = 0x0057B43F;
     /// <summary>
     /// <c>004A5A40</c> <c>004A5DF3</c>
     /// <c>006B3FF0</c> before
@@ -1930,6 +1944,12 @@ public sealed class EngineLifecycle : IDisposable
     public bool EngineForeground { get; set; }
     public int DisplayPlus104 { get; private set; }
     public int DisplayPlus104Copy { get; private set; }
+    /// <summary>
+    /// Display <c>+232</c>. Ctor
+    /// <c>0x1E</c>; <c>00434F60</c>
+    /// decrements while &gt;0.
+    /// </summary>
+    public int DisplayPlus232 { get; set; }
     public int FrameListCount { get; private set; }
     /// <summary>
     /// <c>004AE9D0</c> <c>+9836</c> =
@@ -3361,6 +3381,12 @@ public sealed class EngineLifecycle : IDisposable
             Note(apply, name, "InitGame", name);
             if (name == "Init Graphics")
                 OpenTextureBank();
+            if (name == "Init Display Engine")
+            {
+                DisplayPlus232 = DisplayPlus232Ctor;
+                Note(DisplayCtorFn, "InitGame", "Display",
+                    $"00434E10 vtbl 0x{DisplayVtbl:X} +{DisplayPlus232Offset}={DisplayPlus232Ctor}");
+            }
             if (name == "Init Player Interface")
             {
                 Player.Construct();
@@ -4519,20 +4545,44 @@ public sealed class EngineLifecycle : IDisposable
         Note(DisplayApplyThunk, "GamePump", "Display",
             "00435F70 jmp 00435530 push 1 +90552=1");
         Note(DisplayApplyBodyFn, "GamePump", "Display",
-            "00435530 +232=0 skip 00434CD0");
+            DisplayPlus232 > 0
+                ? $"00435530 +232={DisplayPlus232} 00434CD0"
+                : "00435530 +232=0 skip 00434CD0");
+        if (DisplayPlus232 > 0)
+        {
+            Note(DisplayFadeDestFn, "GamePump", "Display",
+                "00434CD0 +216=0");
+            Note(DisplayFadeDestFlagVa, "GamePump", "Display",
+                $"01375CDC={DisplayFadeDestFlagFirstSeen} skip dest fade");
+            Note(DisplayFadeDestStub, "GamePump", "Display",
+                "009D8250 ret dest empty");
+        }
+
         Note(BeginSceneFn, "GamePump", "D3D9", "009BEF20 BeginScene");
         Note(ClearColorFn, "GamePump", "D3D9", "009D8CF0 clear");
+        Note(DisplayPlayerOverlayLookup, "GamePump", "Display",
+            "00435000 00449960");
+        Note(DisplayPlayerOverlayThing, "GamePump", "Display",
+            "00487DD0 +44 jmp 00A01B50 miss");
         Note(DisplayPlayerOverlayFn, "GamePump", "Display",
-            "00435000 → 00639E40");
-        Note(DisplayPlayerOverlayApply, "GamePump", "Display", "00639E40");
-        Note(DisplayPlayerInterfaceFn, "GamePump", "Display", "00435070");
+            "00435000 skip 00639E40");
+        Note(PlayerCreatureThingFn, "GamePump", "Display",
+            "00435070 00487DC0 miss");
+        Note(DisplayPlayerInterfaceFn, "GamePump", "Display",
+            "00435070 skip 0057B43F");
         Note(DisplayFlush2dFn, "GamePump", "D3D9",
-            "009D9C80 flush DIP vtbl+332");
+            "009D9C80 dirty-list no type 0x22");
+        var shouldDip = DisplayFlushShouldDip(0, 0);
         Note(DisplayFlushLayersFn, "GamePump", "D3D9",
-            "009DA9F0(1) layer flush");
-        Note(RenderFrameFn, "GamePump", "Display",
-            "00B25950 layers +348…+352");
-        FlushSubmittedLayers();
+            shouldDip
+                ? $"009DA9F0({DisplayFlushLayersArg}) [+{DisplayQueueBeginOffset}] DIP vtbl+{DrawIndexedPrimitiveVtbl}"
+                : $"009DA9F0({DisplayFlushLayersArg}) [+{DisplayQueueBeginOffset}] empty dest");
+        Note(DisplayFlushLayersFn, "GamePump", "D3D9",
+            shouldDip
+                ? $"00A058C0 then vtbl+{DrawIndexedPrimitiveVtbl}"
+                : "009DA9F0 skip DIP 009DB6E6");
+        if (shouldDip)
+            FlushSubmittedLayers();
         Note(EndSceneFn, "GamePump", "D3D9", "009BEF50 EndScene");
         Note(GamePresentSite, "GamePump", "D3D9", "00435F50");
         Note(PresentFn, "GamePump", "D3D9", "009BEEB0 Present");
@@ -4669,8 +4719,15 @@ public sealed class EngineLifecycle : IDisposable
         PlayerBindSlot1 = WorldFrame;
         Note(PlayerBindAfterWorldFn, "GamePump", "Player",
             $"004AE9D0 +{PlayerBindSlot0Offset}={PlayerBindSlot0} +{PlayerBindSlot1Offset}={PlayerBindSlot1}");
-        Note(DisplayTickTailFn, "GamePump", "Display",
-            $"00434F60 +{DisplayPlus232Offset}={DisplayPlus232FirstSeen} skip");
+        if (DisplayPlus232 > 0)
+        {
+            DisplayPlus232--;
+            Note(DisplayTickTailFn, "GamePump", "Display",
+                $"00434F60 +{DisplayPlus232Offset}={DisplayPlus232}");
+        }
+        else
+            Note(DisplayTickTailFn, "GamePump", "Display",
+                $"00434F60 +{DisplayPlus232Offset}=0 skip");
     }
 
     /// <summary>
