@@ -1594,6 +1594,39 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Pump_004166E2_is_009E1BC0_minus_game_plus96()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.Equal(0.0, life.GamePlus96);
+        Assert.Equal(0.0, life.FrameDtNow);
+        Assert.Equal(0.0, life.DisplayTime);
+        Assert.False(life.PlayerCatchupHit);
+        Assert.True(life.Pump(0.1f));
+        Assert.Equal(0.0, life.GamePlus96);
+        Assert.Equal(0.1f, (float)life.FrameDtNow);
+        Assert.Equal(0.1f, (float)life.DisplayTime);
+        Assert.True(life.PlayerCatchupHit);
+        Assert.True(life.GameVtbl24Ran);
+        Assert.Equal(0, life.WorldFrame);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PlayerCatchupTimeFn &&
+            e.Action.Contains("009E1BC0-[game+96]", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PlayerCatchupFn &&
+            e.Action.Contains("> 1", StringComparison.Ordinal));
+        Assert.Equal(0x0143FE00u, EngineLifecycle.FrameDtQpcIat);
+        Assert.Equal(0x0143FE04u, EngineLifecycle.FrameDtQpfIat);
+        Assert.Equal(0x013B86A4u, EngineLifecycle.DisplayClockForceQpcVa);
+        Assert.Equal(0, EngineLifecycle.DisplayClockForceQpcFirstSeen);
+    }
+
+    [Fact]
     public void First_pump_00416202_is_0049B9E0_then_00415E85_skip()
     {
         var life = new EngineLifecycle();

@@ -513,7 +513,16 @@ public sealed class EngineLifecycle : IDisposable
     public const uint GamePumpFadeFlagVa = 0x013B8628;
     public const byte DefaultGamePumpFadeFlag = 0;
     public const uint GamePumpPlayerFn = 0x004AE9C0;
+    /// <summary>
+    /// <c>009E1BC0</c>. IAT
+    /// <c>0x143FE00</c> is
+    /// <c>KERNEL32!QueryPerformanceCounter</c>;
+    /// <c>0x143FE04</c> is
+    /// <c>QueryPerformanceFrequency</c>.
+    /// </summary>
     public const uint FrameDtFn = 0x009E1BC0;
+    public const uint FrameDtQpcIat = 0x0143FE00;
+    public const uint FrameDtQpfIat = 0x0143FE04;
     public const uint GamePumpUpdate = 0x004162B5;
     public const uint GamePumpMemlog = 0x00415E85;
     /// <summary>
@@ -785,7 +794,10 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>0x13B8688</c> has no <c>.text</c>
     /// writer (two <c>cmp</c> only) so
     /// first-seen takes the dt path:
-    /// <c>004166E2*15 − +9836</c>
+    /// <c>004166E2</c> is
+    /// <c>009E1BC0-[game+96]</c>
+    /// (first inner 0); then
+    /// <c>*15 − +9836</c>
     /// <c>fcomp 1.0</c>; <c>&lt;=</c> → 0.
     /// <c>004162B5</c> does not call
     /// vtbl+24; <c>00416E78</c> runs only
@@ -793,6 +805,16 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public const uint PlayerCatchupFn = 0x0041674A;
     public const uint PlayerCatchupTimeFn = 0x004166E2;
+    /// <summary>
+    /// <c>004166E2</c>
+    /// <c>cmp [0x13B86A4]</c>.
+    /// No <c>.text</c> writer
+    /// (one <c>cmp</c>) so
+    /// first-seen keeps the
+    /// <c>009E1BC0</c> clamp.
+    /// </summary>
+    public const uint DisplayClockForceQpcVa = 0x013B86A4;
+    public const int DisplayClockForceQpcFirstSeen = 0;
     public const int GamePlus9Offset = 9;
     public const int GamePlus9FirstSeen = 1;
     public const uint PlayerCatchupForceVa = 0x013B8688;
@@ -865,6 +887,9 @@ public sealed class EngineLifecycle : IDisposable
     /// <summary>
     /// Unique increment: <c>004A5E10 inc [0x13B89BC]</c>
     /// at the end of world tick <c>004A5A40</c>.
+    /// <c>imm 0x13B89BC</c> is 10 sites;
+    /// the others are reads or the
+    /// <c>"WorldFrame"</c> string.
     /// Thunk <c>00629270</c> is table slot 1
     /// (<c>0x13B92C8</c>). <c>0049DFB0</c>
     /// first walk skips type 1; second walk
@@ -1565,8 +1590,26 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public int WorldPlus164 { get; set; }
     /// <summary>
-    /// <c>004166E2</c> display time minus
-    /// <c>[game+96]</c>. Startup 0.
+    /// <c>009E1BC0</c> seconds. Host
+    /// <see cref="Pump(float)"/> adds
+    /// <c>dt</c> after the first
+    /// <c>004189C2</c> snapshot.
+    /// </summary>
+    public double FrameDtNow { get; set; }
+    /// <summary>
+    /// <c>[game+96]</c> from
+    /// <c>004189DC</c> <c>fstp</c>
+    /// of <c>009E1BC0</c> at
+    /// <c>004189C2</c> entry.
+    /// </summary>
+    public double GamePlus96 { get; private set; }
+    /// <summary>
+    /// <c>004166E2</c>: first-seen
+    /// slot clock is 0 (<c>0x122ED70</c>),
+    /// so the <c>fcomp</c> clamp takes
+    /// <c>009E1BC0</c>, then
+    /// <c>fsub [game+96]</c>. Host
+    /// sticky 0 is leftover.
     /// </summary>
     public double DisplayTime { get; set; }
     /// <summary>
@@ -1850,6 +1893,8 @@ public sealed class EngineLifecycle : IDisposable
 
         if (Stage == EngineStage.Game)
         {
+            if (GamePumpFirstDone)
+                FrameDtNow += dt;
             PumpGame();
             if (WorldSubmitted && WorldCamera.Seeded)
                 PresentToHost();
@@ -2885,7 +2930,10 @@ public sealed class EngineLifecycle : IDisposable
 
         Note(GamePump, "GamePump", "Game", "004189C2 vtbl+8");
         Note(GamePumpPlayerFn, "GamePump", "Player", "004AE9C0 game+80568");
+        GamePlus96 = FrameDtNow;
         Note(FrameDtFn, "GamePump", "Time", "009E1BC0 [game+96]");
+        Note(FrameDtQpcIat, "GamePump", "Time",
+            "QueryPerformanceCounter IAT 0x143FE00");
         Note(PlayerCatchupFn, "GamePump", "Time",
             $"[game+{GamePlus9Offset}]={GamePlus9FirstSeen}");
         if (UseNamedStart)
@@ -3166,9 +3214,13 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>0041674A</c>. First-seen
     /// <c>[game+9]==1</c>,
     /// <c>0x13B8688==0</c> (no writer),
-    /// <c>004166E2</c> startup 0,
-    /// <c>+9836=[game+72]</c> ctor 0 →
-    /// <c>0 &lt;= 1.0</c> so al=0.
+    /// <c>004166E2</c> is
+    /// <c>009E1BC0-[game+96]</c>
+    /// (slot clock 0, <c>0x13B86A4</c>
+    /// no writer). First inner is 0;
+    /// later inners grow with
+    /// <see cref="FrameDtNow"/>.
+    /// <c>+9836=[game+72]</c> ctor 0.
     /// </summary>
     public bool EvaluatePlayerCatchup()
     {
@@ -3183,7 +3235,14 @@ public sealed class EngineLifecycle : IDisposable
             $"013B860C={PlayerCatchupMenuFirstSeen}");
         Note(PlayerCatchupForceVa, "GamePump", "Time",
             $"013B8688={PlayerCatchupForceFirstSeen} no writer");
+        Note(DisplayClockForceQpcVa, "GamePump", "Time",
+            $"013B86A4={DisplayClockForceQpcFirstSeen} no writer");
         Note(PlayerCatchupTimeFn, "GamePump", "Time", "004166E2");
+        var fromClock = FrameDtNow - GamePlus96;
+        if (fromClock > DisplayTime)
+            DisplayTime = fromClock;
+        Note(PlayerCatchupTimeFn, "GamePump", "Time",
+            $"004166E2 009E1BC0-[game+96]={DisplayTime}");
         var scaled = DisplayTime * CameraCatchupMin - PlayerBindSlot0;
         var hit = scaled > CameraInvArgOne;
         Note(PlayerCatchupFn, "GamePump", "Time",

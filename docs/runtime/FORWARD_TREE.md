@@ -409,6 +409,14 @@ then inner loop until [game+8]  PROVEN
 │   ├── [game].vtbl+20  00418289  update
 │   │   └── 004AEBA0 → 004AEAA0 → 0041674A
 │   │       first-seen 0 → skip vtbl+24 / 0041726D  PROVEN
+│   │       004166E2  PROVEN
+│   │         009F7050 slot 0x13CB4B0+[0x13CB4F4]*24
+│   │         first-seen 0 (0x122ED70)
+│   │         clamp vs 009E1BC0 (QPC IAT 0x143FE00)
+│   │         0x13B86A4 no writer → keep clamp
+│   │         fsub [game+96]  (004189DC snapshot)
+│   │         first inner 0; later = 009E1BC0-[game+96]
+│   │         host sticky DisplayTime=0 DISPROVEN
 │   │       1 → [game].vtbl+24  00416E78
 │   │           ├── [world+52].vtbl+4 + 00BFEA70
 │   │           ├── 00416392 → 0049E200
@@ -435,9 +443,17 @@ then inner loop until [game+8]  PROVEN
 `SetRegionAsLoaded` and does **not** `E8` `00501450`.
 `004189C2` writes `[game+96]=009E1BC0` and `[game+9]=1`.
 `0041674A` first-seen takes the dt path (`0x13B8688` has no
-writer) with `004166E2` startup 0 and `+9836=[game+72]=0`
+writer). `004166E2` is `009F7050` then clamp vs `009E1BC0`
+(`KERNEL32!QueryPerformanceCounter` IAT `0x143FE00`) then
+`fsub [game+96]`. Slot clock first-seen 0 (`0x122ED70`);
+`0x13B86A4` has no writer. First inner is 0;
+later inners grow as `009E1BC0-[game+96]`. Host sticky
+`DisplayTime=0` is DISPROVEN. First inner `+9836=[game+72]=0`
 → al=0. `004AEAA0` misses; `00418289` skips `00416E78`
 and `0041726D`. Host “always run vtbl+24” is DISPROVEN.
+`imm 0x13B89BC` is 10 sites; unique increment remains
+`004A5E10`. `009F16F0` record still UNREAD so a
+clock-grown `0041674A=1` still leaves WorldFrame 0.
 `004162B5` does **not** call vtbl+24 (only vtbl+20 then
 vtbl+28). After it: `00416202` pushes the inner dt onto
 the `0049BA70` ring; `00415E85` first-seen skips
@@ -667,7 +683,8 @@ constructs that quest object.
 │           ├── [game+9]==0 → 0
 │           ├── 0x13B8688!=0 → 1 (no writer; first-seen 0)
 │           └── else 004166E2*15 − +9836  fcomp 1.0
-│               first-seen 0 → 004AEAA0 miss 004AEB8A
+│               004166E2 = 009E1BC0-[game+96]  PROVEN
+│               first inner 0 → 004AEAA0 miss 004AEB8A
 ├── 004AEBA0==1 → world 0049D9E0  (ret)
 ├── 004AEBA0==1 → game vtbl+24  00416E78
 └── 004AEBA0==1 → 0041726D  WorldFrame  PROVEN (87)
