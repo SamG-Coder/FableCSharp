@@ -300,8 +300,13 @@ public sealed class EngineLifecycleTests
             t.ScriptName == EngineLifecycle.GuildArrivalHsp);
         Assert.True(life.HeroSpawned);
         Assert.NotNull(life.Hero);
-        Assert.Equal(EngineLifecycle.PlayerCreatureName, life.Hero.DefinitionType);
+        Assert.Equal(EngineLifecycle.CreatureHeroDefName, life.Hero.DefinitionType);
+        Assert.Equal(RegionTravel.AdultCreature, life.HeroDefinition);
         Assert.Equal(EngineLifecycle.HeroScriptName, life.Hero.ScriptName);
+        Assert.Equal(4299, life.HeroMeshId);
+        Assert.Contains(life.InsertedThings, t =>
+            ReferenceEquals(t.Thing, life.Hero) && t.Drawable && t.MeshId == 4299);
+        Assert.Contains(life.InsertedThings, t => t.Drawable && !ReferenceEquals(t.Thing, life.Hero));
         var start = life.RegionThings.First(t =>
             t.DefinitionType == RegionTravel.PlayerStartType &&
             t.ScriptName == EngineLifecycle.GuildArrivalHsp);
@@ -317,6 +322,11 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CreateCharacterFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ActivateAfterLoadingFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerCreatureFactoryFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ParentConstructFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ThingConstructFromDefFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InitCharactersFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InitHeroDefFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ConstructFromParamsFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.DoesNotContain(life.RegionThings, t =>
             t.DefinitionType == RegionTravel.KidCreature);
@@ -350,9 +360,12 @@ public sealed class EngineLifecycleTests
               walk [manager+24]; 004C8CF0 / 004AFA60
             LookoutPoint TNG has no PlayerCreature.
             Start marker HOLY_SITE_PLAYER_START
-            GuildArrivalHSP. Hero via 00489D40 /
-            006AC910 at that pose. Not 00DBDE40 /
-            CREATURE_HERO_CHILD / StartOakVale.
+            GuildArrivalHSP. Hero via 0049F180 Init
+            Characters → 00449D90 PLAYER_HERO miss →
+            CREATURE_HERO → 0048A070 / 006AC910 /
+            006A9DD0 → 00662880 → 008388D0 →
+            006A5950 → 004CA010 / 0042AF3C mesh 4299.
+            Not 00DBDE40 / CREATURE_HERO_CHILD.
             """);
         Assert.True(life.PlayerActionReady);
         Assert.True(life.WorldUpdateRan);
@@ -367,6 +380,27 @@ public sealed class EngineLifecycleTests
         Assert.True((life.Camera.Position - new System.Numerics.Vector3(
             start.PositionX!.Value, start.PositionY!.Value, start.PositionZ ?? 0f)).Length() < 20f);
         Assert.DoesNotContain("StartOakVale", life.FirstSceneMapName);
+        var defs = WorldGeometry.TryLoadDefs(install);
+        var submit = WorldGeometry.ResolveSubmit(defs, null, life.Hero);
+        Assert.True(submit.Submitted);
+        Assert.Contains(4299, submit.MeshIds);
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-00662880.txt"),
+            """
+            006A9DD0 → 00662880 ret 28
+              008388D0 arg0>0 → 006A5950
+              [0x13B8A1C]+40 vtbl+64 lookup
+              004CA010 bind def [thing+140/+112]
+              0042AF3C / 009AD9E0 appearance
+              004C7990 then 00513160
+            0049F180 Init Characters
+              00449D90: 009AD410 PLAYER_HERO
+              miss → push CREATURE_HERO
+              0048A070 InitCharacterAs → 00489D40
+              006AC910 Create mesh 4299
+            Not CREATURE_HERO_CHILD / 00DBDE40.
+            """);
         File.WriteAllText(
             Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
                 "recover-first-scene.txt"),

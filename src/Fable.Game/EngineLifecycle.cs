@@ -2,6 +2,7 @@ using System.Numerics;
 using System.Text;
 using Fable.Core;
 using Fable.Formats.Banks;
+using Fable.Formats.Defs;
 using Fable.Formats.Levels;
 using Fable.Formats.Tng;
 using Fable.Formats.Wld;
@@ -420,8 +421,20 @@ public sealed class EngineLifecycle
     public const uint PlayerCreatureFactoryFn = 0x0052B880;
     public const uint HolySiteFactoryFn = 0x0052AC90;
     public const uint CreateCharacterFn = 0x00489D40;
+    public const uint InitCharactersFn = 0x0049F180;
+    public const uint InitHeroDefFn = 0x00449D90;
+    public const uint InitCharacterAsFn = 0x0048A070;
+    public const uint ConstructFromParamsFn = 0x006A9DD0;
+    public const uint ParentConstructFn = 0x00662880;
+    public const uint CreatureConstructThunk = 0x008388D0;
+    public const uint CreatureConstructFn = 0x006A5950;
+    public const uint ThingConstructFromDefFn = 0x004CA010;
+    public const uint DefAttachFn = 0x0042AF3C;
+    public const uint DefLookupFn = 0x009AD410;
     public const uint ThingTypeRegistrarFn = 0x00522A20;
     public const string PlayerCreatureName = "PlayerCreature";
+    public const string PlayerHeroDefName = "PLAYER_HERO";
+    public const string CreatureHeroDefName = RegionTravel.AdultCreature;
     public const string HeroScriptName = "Hero";
     public const string GuildArrivalHsp = "GuildArrivalHSP";
     public const uint BuildLoadJobFn = 0x006C27A0;
@@ -682,6 +695,9 @@ public sealed class EngineLifecycle
     /// on no-save, not StartOakVale.
     /// </summary>
     public string? FirstSceneMapName { get; private set; }
+    public string? HeroDefinition { get; private set; }
+    public int HeroMeshId { get; private set; }
+    public IReadOnlyList<InsertedThing> InsertedThings => _inserted;
     /// <summary>
     /// Persist <c>PlayerRegionName</c>. Empty on
     /// no-save New Game. Non-empty takes
@@ -714,6 +730,8 @@ public sealed class EngineLifecycle
     private readonly List<ThingInstance> _regionThings = [];
     private readonly Dictionary<string, List<ThingInstance>> _thingsByMap =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<InsertedThing> _inserted = [];
+    private GameBin? _defs;
 
     public static int CreateDeviceBehaviorFlags(bool hardwareTnl) =>
         hardwareTnl ? CreateDeviceHardwareFlags : CreateDeviceSoftwareFlags;
@@ -1934,6 +1952,7 @@ public sealed class EngineLifecycle
                     "0052AC90 HOLY_SITE " + (thing.ScriptName ?? ""));
             Note(LoadSingleThingFn, "LevelLoader", "Thing",
                 "Load Single Thing: Construct Thing");
+            InsertThing(thing);
             Note(LoadSingleThingFn, "LevelLoader", "Thing",
                 "Load Single Thing: Initial Activate vtbl+32");
         }
@@ -1988,6 +2007,9 @@ public sealed class EngineLifecycle
             return;
         }
 
+        Note(InitCharactersFn, "LevelLoader", "Player", "0049F180 Init Characters");
+        Note(InitHeroDefFn, "LevelLoader", "Player",
+            "00449D90 PLAYER_HERO then CREATURE_HERO");
         Note(CreateCharacterFn, "LevelLoader", "Player",
             "00489D40 " + (start.ScriptName ?? ""));
         foreach (var (mapName, list) in _thingsByMap)
@@ -2015,21 +2037,26 @@ public sealed class EngineLifecycle
             bindExisting
                 ? "006AC910 bind " + (source.ScriptName ?? PlayerCreatureName)
                 : "006AC910 Create " + (source.ScriptName ?? GuildArrivalHsp));
+        Note(ConstructFromParamsFn, "LevelLoader", "Player",
+            "006A9DD0 ConstructFromParams");
+        HeroDefinition = ResolveHeroDefinition();
         Hero = new ThingInstance
         {
             Kind = "NewThing",
             Section = source.Section,
-            DefinitionType = PlayerCreatureName,
+            DefinitionType = HeroDefinition,
             ScriptName = HeroScriptName,
             PositionX = source.PositionX,
             PositionY = source.PositionY,
             PositionZ = source.PositionZ,
             Properties = new Dictionary<string, string>
             {
-                ["DefinitionType"] = PlayerCreatureName,
+                ["DefinitionType"] = HeroDefinition,
                 ["ScriptName"] = HeroScriptName,
             },
         };
+        var inserted = InsertThing(Hero);
+        HeroMeshId = inserted.MeshId ?? 0;
         _regionThings.Add(Hero);
         if (FirstSceneMapName is { } mapName &&
             _thingsByMap.TryGetValue(mapName, out var mapThings))
@@ -2045,6 +2072,67 @@ public sealed class EngineLifecycle
             Note(WorldCameraSeedFn, "LevelLoader", "Camera",
                 "006B3FF0 seed hero " + (FirstSceneMapName ?? ""));
         }
+    }
+
+    private InsertedThing InsertThing(ThingInstance thing)
+    {
+        Note(ThingConstructFromDefFn, "LevelLoader", "Thing",
+            "004CA010 " + (thing.DefinitionType ?? "NULL"));
+        Note(ParentConstructFn, "LevelLoader", "Thing", "00662880");
+        Note(CreatureConstructThunk, "LevelLoader", "Thing", "008388D0");
+        Note(CreatureConstructFn, "LevelLoader", "Thing", "006A5950");
+        Note(DefAttachFn, "LevelLoader", "Thing", "0042AF3C [thing+112]");
+        var defs = EnsureDefs();
+        var submit = WorldGeometry.ResolveSubmit(defs, null, thing);
+        var meshId = submit.MeshIds.Count > 0 ? submit.MeshIds[0] : (int?)null;
+        if (meshId is > 0)
+            Note(DefLookupFn, "LevelLoader", "Thing",
+                $"009AD410 mesh={meshId} {thing.DefinitionType}");
+        var inserted = new InsertedThing
+        {
+            Thing = thing,
+            MeshId = meshId,
+            TypeName = submit.TypeName,
+            Drawable = submit.Submitted,
+        };
+        _inserted.Add(inserted);
+        return inserted;
+    }
+
+    /// <summary>
+    /// <c>00449D90</c>: <c>009AD410("PLAYER_HERO")</c>
+    /// then <c>0044BA90</c>. Miss falls back to
+    /// <c>CREATURE_HERO</c> and
+    /// <c>0048A070</c> InitCharacterAs.
+    /// Not <c>CREATURE_HERO_CHILD</c>.
+    /// </summary>
+    private string ResolveHeroDefinition()
+    {
+        Note(DefLookupFn, "LevelLoader", "Player", "009AD410 PLAYER_HERO");
+        var defs = EnsureDefs();
+        if (defs?.FindEntry(PlayerHeroDefName) is not null &&
+            defs.FindMeshId(PlayerHeroDefName) is > 0)
+        {
+            Note(InitCharacterAsFn, "LevelLoader", "Player",
+                "0048A070 " + PlayerHeroDefName);
+            return PlayerHeroDefName;
+        }
+
+        Note(InitHeroDefFn, "LevelLoader", "Player",
+            "00449E0D CREATURE_HERO fallback");
+        Note(InitCharacterAsFn, "LevelLoader", "Player",
+            "0048A070 " + CreatureHeroDefName);
+        return CreatureHeroDefName;
+    }
+
+    private GameBin? EnsureDefs()
+    {
+        if (_defs is not null)
+            return _defs;
+        if (Install is null)
+            return null;
+        _defs = WorldGeometry.TryLoadDefs(Install);
+        return _defs;
     }
 
     private ThingFile? TryLoadMapTng(WorldMap map, BbbArchive? wad)
@@ -2194,3 +2282,14 @@ public readonly record struct OpenedStaticMapBody(
     int HeightSamples,
     int HeaderVersion,
     uint HeaderConstant);
+
+/// <summary>
+/// <c>004CA010</c> / <c>00662880</c> insert:
+/// GameBin definition bound, mesh id from
+/// <c>009AD410</c> / <c>0042AF3C</c>.
+/// </summary>
+public readonly record struct InsertedThing(
+    ThingInstance Thing,
+    int? MeshId,
+    string? TypeName,
+    bool Drawable);

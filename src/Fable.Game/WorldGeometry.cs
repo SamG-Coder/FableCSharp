@@ -93,7 +93,21 @@ public sealed class WorldGeometry
 
         var playerMeshId = 0;
         var playerHeight = 0f;
-        if (IsPrimaryStart(region) &&
+        var existingHero = primaryThings.FirstOrDefault(t =>
+            t.DefinitionType is RegionTravel.AdultCreature
+                or RegionTravel.TweenCreature
+                or RegionTravel.KidCreature);
+        if (existingHero is not null)
+        {
+            playerMeshId = defs?.FindMeshId(existingHero.DefinitionType!)
+                           ?? enums?.FindMeshId(existingHero.DefinitionType!)
+                           ?? 0;
+            if (playerMeshId != 0 &&
+                cache.TryGetValue((uint)playerMeshId, out var heroMesh) &&
+                heroMesh is not null)
+                playerHeight = (heroMesh.BoundsMax.Z - heroMesh.BoundsMin.Z) * MeshToWorld;
+        }
+        else if (IsPrimaryStart(region) &&
             RegionTravel.FindPlayerStart(primaryThings) is { } start)
         {
             playerMeshId = defs?.FindMeshId(RegionTravel.KidCreature)
