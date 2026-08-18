@@ -160,6 +160,20 @@ public static class WorldShading
             DotCol(world.M41, world.M42, world.M43, world.M44, inverseBind.M14, inverseBind.M24, inverseBind.M34, inverseBind.M44));
     }
 
+    /// <summary>
+    /// <c>0070D580</c> starts playback.
+    /// Clip keyframes unread, so
+    /// <c>00BD2F91</c> dest=S*C3D is still
+    /// bind pose for any named clip.
+    /// </summary>
+    public static Matrix4x4[] PaletteForPose(
+        IReadOnlyList<MeshBone> bones, string? clip, float time)
+    {
+        _ = clip;
+        _ = time;
+        return FirstSeenPalettes(bones);
+    }
+
     public static Matrix4x4[] FirstSeenPalettes(IReadOnlyList<MeshBone> bones)
     {
         var palettes = new Matrix4x4[bones.Count];

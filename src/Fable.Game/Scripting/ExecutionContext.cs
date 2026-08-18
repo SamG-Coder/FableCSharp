@@ -845,7 +845,107 @@ public sealed class AnimationRuntime
     public readonly Dictionary<string, AnimationState> States =
         new(StringComparer.OrdinalIgnoreCase);
     public EntityTaskQueue Tasks { get; } = new();
+    /// <summary>
+    /// <c>005DC340</c> 20-byte name table at
+    /// appearance+52. Miss falls through to
+    /// <c>DEFAULT</c> (<c>00662A00</c>).
+    /// </summary>
+    public readonly Dictionary<string, AnimationClipRecord> Clips =
+        new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// Thing <c>+68</c> component list walked
+    /// by <c>004C7470</c>. Slot is 8 bytes.
+    /// Type 90 is <c>CTCAnimationComplex</c>.
+    /// </summary>
+    public readonly Dictionary<string, List<AnimationComponent>> Components =
+        new(StringComparer.OrdinalIgnoreCase);
     private int _next;
+
+    public const int AnimationComplexTypeId = 90;
+    public const uint ThingPlayVtbl72 = 0x004C7470;
+    public const uint ComponentPlus68 = 0x00686920;
+    public const uint LookupFn = 0x00662A00;
+    public const uint RequestFn = 0x0070C050;
+    public const uint InnerPlayFn = 0x0070D580;
+    public const uint InnerGetter = 0x0070B460;
+    public const int DefaultRequestMode = 6;
+    public const string DefaultClipName = "DEFAULT";
+
+    /// <summary>
+    /// <c>004C7470</c> requires a type-90
+    /// slot. <c>+8==0</c> so <c>+68</c> runs.
+    /// </summary>
+    public AnimationComponent EnsureComplex(string actor)
+    {
+        if (!Components.TryGetValue(actor, out var list))
+        {
+            list = [];
+            Components[actor] = list;
+        }
+
+        var hit = list.Find(c => c.TypeId == AnimationComplexTypeId);
+        if (hit is not null)
+            return hit;
+        hit = new AnimationComponent(AnimationComplexTypeId, 0, true);
+        list.Add(hit);
+        return hit;
+    }
+
+    /// <summary>
+    /// <c>004C7470</c>: walk <c>[this+68..+72)</c>.
+    /// Skip <c>[comp+8]!=0</c>. Else
+    /// <c>vtbl+68(name)</c>. First-seen
+    /// <c>00686920</c> is <c>al=1; ret 4</c>.
+    /// Empty list returns 1.
+    /// </summary>
+    public bool WalkPlay(string actor, string name)
+    {
+        if (!Components.TryGetValue(actor, out var list) || list.Count == 0)
+            return true;
+        foreach (var comp in list)
+        {
+            if (comp.Disabled)
+                continue;
+            if (!comp.AcceptName(name))
+                return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// <c>00662A00</c>: <c>005DC2E0</c> contains
+    /// name at appearance+52; else <c>DEFAULT</c>.
+    /// </summary>
+    public AnimationClipRecord LookupClip(string name)
+    {
+        if (name.Length > 0 && Clips.TryGetValue(name, out var hit))
+            return hit;
+        if (Clips.TryGetValue(DefaultClipName, out var fallback))
+            return fallback;
+        return new AnimationClipRecord(DefaultClipName, 1f);
+    }
+
+    /// <summary>
+    /// <c>0070C050</c> request then
+    /// <c>0070D580</c> on the type-90 inner
+    /// (<c>0070B460</c> <c>[comp+12]</c>).
+    /// Mode &lt;=0 skips the time walk
+    /// (<c>jle 0070D71D</c>); channel
+    /// duration is <c>[clip+44]/max(mode,1)</c>.
+    /// </summary>
+    public void ApplyInner(AnimationState state, AnimationClipRecord clip, int mode)
+    {
+        var playMode = mode <= 0 ? 1 : mode;
+        state.ClipKey = clip.Name;
+        state.RequestMode = playMode;
+        state.Playing = true;
+        state.InnerApplied = true;
+        state.ChannelArmed = true;
+        state.PlayTime = 0f;
+        state.Duration = clip.Duration / playMode;
+        state.Step = 1f / playMode;
+    }
 
     /// <summary>
     /// <c>00CC140E</c>: empty or BASIC → 2148;
@@ -864,8 +964,17 @@ public sealed class AnimationRuntime
         Plays.Add(new ScriptAnimation(actor, name, f1, f2, f3, f4, f5));
         if (actor is { Length: > 0 })
         {
-            var state = new AnimationState(actor, name, false, f1, f2, f3, f4, f5);
-            BeginInnerPlay(state, name, 0);
+            EnsureComplex(actor);
+            var accepted = WalkPlay(actor, name);
+            var state = new AnimationState(actor, name, false, f1, f2, f3, f4, f5)
+            {
+                Walked = true,
+                Plus68Accepted = accepted,
+            };
+            var clip = LookupClip(name);
+            ApplyInner(state, clip, clip.Name.Equals(DefaultClipName, StringComparison.OrdinalIgnoreCase)
+                ? DefaultRequestMode
+                : 1);
             States[actor] = state;
         }
         var kind = EntityTaskKind.Animate;
@@ -976,18 +1085,60 @@ public sealed class AnimationRuntime
 
     /// <summary>
     /// <c>0070C050</c> request then <c>0070D580</c>.
-    /// Script PlayAnimation does not reach this via
-    /// thing <c>vtbl+72</c> (CTC +68 is <c>00686920</c>
-    /// stub). Appearance DEFAULT <c>005B37F7</c> does.
-    /// Mode 6 is that DEFAULT path. Pose packer unread.
+    /// Appearance DEFAULT <c>0070B4D0</c> /
+    /// <c>005B37F7</c> uses mode 6. Script
+    /// <c>vtbl+72</c> is <c>004C7470</c>; the
+    /// type-90 inner is the same
+    /// <c>0070B460</c> object.
     /// </summary>
     public void BeginInnerPlay(AnimationState state, string clip, int mode)
     {
-        state.ClipKey = clip;
-        state.RequestMode = mode;
-        state.Playing = true;
-        state.PlayTime = 0f;
-        state.Duration = 1f;
+        if (!Clips.ContainsKey(clip) &&
+            !clip.Equals(DefaultClipName, StringComparison.OrdinalIgnoreCase))
+            Clips[clip] = new AnimationClipRecord(clip, 1f);
+        ApplyInner(state, LookupClip(clip), mode);
+    }
+
+    /// <summary>
+    /// <c>0070D580</c> <c>[esi+140]=1/mode</c>
+    /// then <c>[channel+64]+=step</c>.
+    /// Duration from <c>[clip+44]/mode</c>.
+    /// Clip keyframes unread — PALSKIN stays
+    /// bind pose until sampled.
+    /// </summary>
+    public void Tick(float dt, WorldRuntime world)
+    {
+        Tasks.Tick(dt, world);
+        foreach (var state in States.Values)
+        {
+            if (!state.Playing)
+                continue;
+            var step = state.Step > 0f ? state.Step : Math.Max(dt, 0f);
+            state.PlayTime += step;
+            if (state.Looping)
+                continue;
+            if (state.Duration > 0f && state.PlayTime + 1e-6f >= state.Duration)
+            {
+                state.Playing = false;
+                Tasks.Current(state.Actor)?.MarkComplete();
+                if (ByActor.TryGetValue(state.Actor, out var op))
+                    op.Complete = true;
+            }
+        }
+    }
+
+    public IReadOnlyDictionary<string, string> PoseNames()
+    {
+        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (actor, state) in States)
+        {
+            if (state.ClipKey.Length > 0)
+                map[actor] = state.ClipKey;
+            else if (state.Name.Length > 0)
+                map[actor] = state.Name;
+        }
+
+        return map;
     }
 
     /// <summary>
@@ -1020,6 +1171,11 @@ public sealed class AnimationState
     public bool Playing { get; set; }
     public float PlayTime { get; set; }
     public float Duration { get; set; }
+    public float Step { get; set; }
+    public bool Walked { get; set; }
+    public bool Plus68Accepted { get; set; }
+    public bool InnerApplied { get; set; }
+    public bool ChannelArmed { get; set; }
 
     public AnimationState(
         string actor, string name, bool looping,
@@ -1033,6 +1189,49 @@ public sealed class AnimationState
         F3 = f3;
         F4 = f4;
         F5 = f5;
+    }
+}
+
+/// <summary>
+/// <c>004C7470</c> 8-byte slot.
+/// Type 90 = <c>0070B3C0</c>.
+/// <c>+68</c> first-seen is
+/// <c>00686920</c> accept.
+/// </summary>
+public sealed class AnimationComponent
+{
+    public int TypeId { get; }
+    public bool Disabled { get; }
+    public bool Plus68Returns { get; }
+
+    public AnimationComponent(int typeId, int plus8, bool plus68Returns)
+    {
+        TypeId = typeId;
+        Disabled = plus8 != 0;
+        Plus68Returns = plus68Returns;
+    }
+
+    /// <summary>
+    /// <c>00686920</c> <c>mov al,1; ret 4</c>.
+    /// Name is ignored.
+    /// </summary>
+    public bool AcceptName(string name) => Plus68Returns;
+}
+
+/// <summary>
+/// <c>005DC340</c> 20-byte table entry.
+/// Duration is <c>[clip+44]</c> in
+/// <c>0070D580</c>. Unread clips use 1.
+/// </summary>
+public sealed class AnimationClipRecord
+{
+    public string Name { get; }
+    public float Duration { get; }
+
+    public AnimationClipRecord(string name, float duration)
+    {
+        Name = name;
+        Duration = duration > 0f ? duration : 1f;
     }
 }
 

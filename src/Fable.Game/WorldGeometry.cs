@@ -22,6 +22,13 @@ public sealed class WorldGeometry
     public IReadOnlyList<string> MissingMeshDefs { get; init; } = [];
     public int PlayerMeshId { get; init; }
     public float PlayerHeight { get; init; }
+    /// <summary>
+    /// Clip names from <c>0070D580</c> inner
+    /// play. PALSKIN still bind-pose until
+    /// the clip stream is sampled.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> ActorPoses { get; init; } =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
     public static WorldGeometry Build(
         GameInstall install,
@@ -29,7 +36,8 @@ public sealed class WorldGeometry
         IEnumerable<ThingInstance> things,
         bool adjacentStaticMaps = true,
         LandscapeFrustum.Plane[]? landscapePlanes = null,
-        IReadOnlyDictionary<string, Vector3>? actorPositions = null)
+        IReadOnlyDictionary<string, Vector3>? actorPositions = null,
+        IReadOnlyDictionary<string, string>? actorPoses = null)
     {
         var headerPath = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "meshdata.h");
         var graphicsPath = Path.Combine(install.DataRoot, "graphics", "graphics.big");
@@ -138,6 +146,9 @@ public sealed class WorldGeometry
             MissingMeshDefs = missingDefs,
             PlayerMeshId = playerMeshId,
             PlayerHeight = playerHeight,
+            ActorPoses = actorPoses is null
+                ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+                : new Dictionary<string, string>(actorPoses, StringComparer.OrdinalIgnoreCase),
         };
     }
 

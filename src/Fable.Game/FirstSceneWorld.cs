@@ -65,7 +65,8 @@ public sealed class FirstSceneWorld
         var geometry = WorldGeometry.Build(
             install, Region, things,
             landscapePlanes: planes,
-            actorPositions: runtime.ActorPositions);
+            actorPositions: runtime.ActorPositions,
+            actorPoses: runtime.Animation.PoseNames());
 
         var map = levels.World.FindMap(Region)
                   ?? throw new InvalidOperationException(Region);

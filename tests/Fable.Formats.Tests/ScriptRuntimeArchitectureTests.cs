@@ -7381,6 +7381,30 @@ public sealed class ScriptRuntimeArchitectureTests
         Assert.True(runtime.Animation.States["HERO"].F3);
         Assert.False(runtime.Animation.States["HERO"].F4);
         Assert.Equal(0x00CC15DAu, ScriptCommandMap.Find("PlayAnimation")!.Value.ApplySite);
+        Assert.True(runtime.Animation.States["HERO"].Walked);
+        Assert.True(runtime.Animation.States["HERO"].Plus68Accepted);
+        Assert.True(runtime.Animation.States["HERO"].InnerApplied);
+        Assert.True(runtime.Animation.States["HERO"].Playing);
+        Assert.Equal(AnimationRuntime.DefaultClipName, runtime.Animation.States["HERO"].ClipKey);
+        Assert.Equal(AnimationRuntime.DefaultRequestMode, runtime.Animation.States["HERO"].RequestMode);
+        Assert.Equal(0x004C7470u, AnimationRuntime.ThingPlayVtbl72);
+        Assert.Equal(0x00686920u, AnimationRuntime.ComponentPlus68);
+        Assert.Equal(0x0070D580u, AnimationRuntime.InnerPlayFn);
+        Assert.Contains("HERO", runtime.Animation.PoseNames().Keys);
+        runtime.Animation.Clips["CS_TIRED"] = new AnimationClipRecord("CS_TIRED", 2f);
+        var named = ScriptRuntime.Detached();
+        named.Animation.Clips["CS_TIRED"] = new AnimationClipRecord("CS_TIRED", 2f);
+        var namedInterp = new ScriptInterpreter("animn",
+            ["HERO.PlayAnimation CS_TIRED,FALSE,FALSE,TRUE,FALSE"]);
+        namedInterp.RunUntilYield(named);
+        Assert.Equal("CS_TIRED", named.Animation.States["HERO"].ClipKey);
+        Assert.Equal(1, named.Animation.States["HERO"].RequestMode);
+        Assert.Equal(2f, named.Animation.States["HERO"].Duration);
+        named.Update(1f);
+        Assert.True(named.Animation.States["HERO"].PlayTime > 0f);
+        named.Update(2f);
+        Assert.False(named.Animation.States["HERO"].Playing);
+        Assert.True(named.Animation.Tasks.Current("HERO")!.Complete);
 
         var paused = ScriptRuntime.Detached();
         var noYield = new ScriptInterpreter("animp",
@@ -7446,7 +7470,12 @@ public sealed class ScriptRuntimeArchitectureTests
         Assert.Contains(isolated.Executed, l =>
             l.Contains("PlayAnimation", StringComparison.OrdinalIgnoreCase));
         if (parsed.Target.Length > 0)
+        {
             Assert.Equal(parsed.Arg(0), runtime.Animation.States[parsed.Target].Name);
+            Assert.True(runtime.Animation.States[parsed.Target].Walked);
+            Assert.True(runtime.Animation.States[parsed.Target].InnerApplied);
+            Assert.True(runtime.Animation.PoseNames().ContainsKey(parsed.Target));
+        }
         var dest = Path.Combine(
             @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
         Directory.CreateDirectory(dest);
@@ -7460,13 +7489,23 @@ public sealed class ScriptRuntimeArchitectureTests
               flags: IsTrue arg1/2/3, IsFalse arg4 (default 1), IsTrue arg5
               actor.vtbl+72(name,f0,f1,f2,f3,byte_1375748,0,f4)
               004C7470 walks [this+68..+72] components; +68 accept
+                CTC type 90 +68 is 00686920 al=1 ret 4
+              type-90 inner 0070B460 [comp+12]
+              00662A00 appearance+52 20-byte table
+                005DC2E0 contains; miss -> DEFAULT
+              0070C050 request then 0070D580
+                [clip+44]/max(mode,1) duration
+                mode 6 DEFAULT (0070B4D0); mode 1 named
+                [esi+140]=1/mode; or [channel+81],2
               [ebp-22] default 1 (00CBFD57 / AnimationPause)
                 0 -> 00CC7081 continue
                 1 -> 00CC5691 yield if [ebp+103]
             PlayLoopingAnim 00CC1731 / apply 00CC186C
               arg0 + arg1 required; arg1 atoi 0099E7F0
               actor.vtbl+80 — not vtbl+72
-            Clip pose / PALSKIN unread
+            Clip keyframes unread; PALSKIN stays bind pose
+            FirstSeenPlayAnimationAppliesPose=false
+            FirstSeenPlayAnimationCallsInnerPlay=false
             """);
     }
 

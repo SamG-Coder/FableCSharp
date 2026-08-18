@@ -335,8 +335,10 @@ public static class ScriptCommandMap
             ScriptReturn.CompleteNow, CommandParity.ScriptLayer,
             "vtbl+300(source); rand 00BFEB16%2 picks typeA/typeB; vtbl+364 each"),
         Spec("PlayAnimation", 0x00CC14B8, 0x00CC15DA, "name[,IsTrue]x3[,IsFalse][,IsTrue]",
-            ScriptReturn.YieldAfter, CommandParity.ScriptLayer,
-            "vtbl+72; CTC+68 00686920 stub — 0070D580 is 005B37F7 DEFAULT not this path"),
+            ScriptReturn.YieldAfter, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "vtbl+72 004C7470 walk; +68 00686920 accept; 00662A00 table; 0070C050+0070D580 inner; clip sample unread"),
         Spec("PlayLoopingAnim", 0x00CC1731, 0x00CC186C, "name,loops[,flags]",
             ScriptReturn.YieldAfter, CommandParity.ScriptLayer,
             "vtbl+80(name,atoi arg1,f0-4); not PlayAnimation; same [ebp-22] yield"),

@@ -3,7 +3,7 @@ GLOBAL: 124
 ENTITY: 61
 RECOVERED DISPATCH: 156
 RECOVERED RETURN: 156
-RECOVERED APPLY: 93
+RECOVERED APPLY: 94
 IMPLEMENTED RUNTIME: 13
 UNREAD: 29
 # Native command coverage
@@ -182,7 +182,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | WaitPlayAnimation | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
 | PlayLoopingAnim | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
 | PlayCombatAnim | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
-| PlayAnimation | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
+| PlayAnimation | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
 | PreloadAnim | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
 | SetDrunk | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
 | SetScared | Entity | Proven | Proven | Proven | Proven | Partial | Partial |

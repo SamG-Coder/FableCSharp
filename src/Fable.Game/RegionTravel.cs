@@ -710,6 +710,10 @@ public static class RegionTravel
     public const uint AnimationComplexInnerGetter = 0x0070B460;
     public const uint AnimationPlayInner = 0x0070D580;
     public const uint AnimationPlayRequest = 0x0070C050;
+    public const uint AnimationNameLookup = 0x00662A00;
+    public const uint AnimationTableWalk = 0x005DC340;
+    public const uint AnimationTableContains = 0x005DC2E0;
+    public const int AnimationTableStride = 20;
     public const uint AnimationComplexPostAttach = 0x0070B600;
     public const bool FirstSeenPlayAnimationYields = true;
     public const bool FirstSeenPlayAnimationAppliesPose = false;

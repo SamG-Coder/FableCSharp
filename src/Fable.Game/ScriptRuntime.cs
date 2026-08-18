@@ -464,7 +464,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
         TickFade(dt);
         TickAvi(dt);
         Movement.Tick(dt, World);
-        Animation.Tasks.Tick(dt, World);
+        Animation.Tick(dt, World);
         if (_fibers.Count == 0 && _interpreters.Count == 0)
             return;
         if (Scheduler.Fibers.Count == 0)
