@@ -625,8 +625,8 @@ It is **not** the same load as `Fable.exe`:
 | `009A8150` names only | `RegisterRetailBankTable` names only | MATCH |
 | `0049E620` MESH directory | `MeshBank.Open` directory | MATCH |
 | `004A1840` child list | `LoadWorldMap` then quests immediately | DIVERGE |
-| `00B3EFA0` LEV/STB header | `OpenStaticMapBody` full LEV+STB parse | DIVERGE |
-| `009AD410` handle, draw later | `PresentWorld` → `MeshFile.TryParse` + triangle copy | DIVERGE |
+| `00B3EFA0` LEV/STB header | `PeekMapHeader` 48-byte LEV + STB size | MATCH |
+| `009AD410` handle, draw later | `PresentWorld` instances, `expandGeometry: false` | MATCH |
 
 **B. Why load is slow**
 

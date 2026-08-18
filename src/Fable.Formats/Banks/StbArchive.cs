@@ -102,5 +102,18 @@ public sealed class StbArchive : IDisposable
         return buffer;
     }
 
+    public byte[] ReadPrefix(BankEntry entry, int bytes)
+    {
+        if (entry.Size == 0 || bytes <= 0)
+            return [];
+        var n = (int)Math.Min((uint)bytes, entry.Size);
+        _stream.Seek(entry.Offset, SeekOrigin.Begin);
+        var buffer = new byte[n];
+        var read = _stream.Read(buffer, 0, n);
+        if (read != n)
+            throw new EndOfStreamException(entry.Name);
+        return buffer;
+    }
+
     public void Dispose() => _stream.Dispose();
 }

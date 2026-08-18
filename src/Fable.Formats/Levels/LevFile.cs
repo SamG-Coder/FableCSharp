@@ -25,22 +25,41 @@ public sealed class LevFile
 
     public int CellCount => GridWidth * GridHeight;
 
+    /// <summary>
+    /// <c>00B3EFA0</c> header only: version,
+    /// constant, grid. Not the material table.
+    /// </summary>
+    public const int NativeHeaderBytes = 48;
+
+    public static LevHeader ReadHeader(ReadOnlySpan<byte> data)
+    {
+        if (data.Length < NativeHeaderBytes)
+            throw new InvalidDataException("LEV header shorter than 48.");
+        var version = BitConverter.ToInt32(data);
+        var constant = BitConverter.ToUInt32(data[4..]);
+        var width = (int)(BitConverter.ToUInt32(data[36..]) >> 16);
+        var height = (int)(BitConverter.ToUInt32(data[40..]) >> 16);
+        var cell = BitConverter.ToUInt32(data[44..]) / 65536f;
+        return new LevHeader(version, constant, width, height, cell, data.Length);
+    }
+
     public static LevFile Parse(byte[] data)
     {
         if (data.Length < MaterialTableEnd + 8)
             throw new InvalidDataException("LEV too small.");
 
-        var version = BitConverter.ToInt32(data, 0);
+        var header = ReadHeader(data);
+        var version = header.Version;
         if (version != Version)
             throw new InvalidDataException($"Unexpected LEV version {version}.");
 
-        var constant = BitConverter.ToUInt32(data, 4);
+        var constant = header.Constant;
         if (constant != FormatConstant)
             throw new InvalidDataException($"Unexpected LEV constant 0x{constant:X}.");
 
-        var width = (int)(BitConverter.ToUInt32(data, 36) >> 16);
-        var height = (int)(BitConverter.ToUInt32(data, 40) >> 16);
-        var cell = BitConverter.ToUInt32(data, 44) / 65536f;
+        var width = header.GridWidth;
+        var height = header.GridHeight;
+        var cell = header.CellSize;
         if (width is <= 0 or > 1024 || height is <= 0 or > 1024)
             throw new InvalidDataException($"Implausible grid {width}x{height}.");
 
@@ -96,3 +115,14 @@ public sealed class LevFile
 }
 
 public readonly record struct LevMaterial(int Slot, string Name, uint Id);
+
+/// <summary>
+/// <c>00B3EFA0</c> fields at 0 / 4 / 36 / 40 / 44.
+/// </summary>
+public readonly record struct LevHeader(
+    int Version,
+    uint Constant,
+    int GridWidth,
+    int GridHeight,
+    float CellSize,
+    int SourceBytes);

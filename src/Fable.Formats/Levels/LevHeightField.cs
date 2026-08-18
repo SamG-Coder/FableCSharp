@@ -16,6 +16,17 @@ public sealed class LevHeightField
     public const float SampleSpacing = 16f;
     public const int RecordSize = 36;
 
+    /// <summary>
+    /// Vertex-stream count from STB size.
+    /// Does not tessellate or stamp tiles.
+    /// </summary>
+    public static int CountSamplesFromSize(int stbBytes)
+    {
+        if (stbBytes <= VertexStreamOffset)
+            return 0;
+        return (stbBytes - VertexStreamOffset) / RecordSize * 2;
+    }
+
     public required int CellsX { get; init; }
     public required int CellsY { get; init; }
     public required float OriginX { get; init; }

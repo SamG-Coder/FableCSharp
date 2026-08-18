@@ -30,6 +30,11 @@ public sealed class MeshBank : IDisposable
 
     public bool Opened { get; private set; }
     public int EntryCount { get; private set; }
+    /// <summary>
+    /// C3Ds actually parsed by <see cref="Get"/>.
+    /// Directory open does not increment this.
+    /// </summary>
+    public int ParsedCount => _parsed.Count;
 
     private BigArchive? _big;
     private Dictionary<uint, BankEntry>? _byId;

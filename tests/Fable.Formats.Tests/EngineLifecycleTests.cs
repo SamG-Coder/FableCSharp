@@ -1670,11 +1670,8 @@ public sealed class EngineLifecycleTests
         Assert.True(body.StbSize > 0, $"stb={body.StbSize}");
         Assert.True(body.GridWidth >= 64, $"w={body.GridWidth}");
         Assert.True(body.HeightSamples > 0, $"samples={body.HeightSamples}");
-        Assert.NotNull(life.CurrentCompiledLev);
-        Assert.Equal(body.GridWidth, life.CurrentCompiledLev.GridWidth);
-        Assert.Equal(body.GridHeight, life.CurrentCompiledLev.GridHeight);
-        Assert.NotNull(life.CurrentHeightField);
-        Assert.True(life.CurrentHeightField.SampleCount > 0);
+        Assert.Null(life.CurrentCompiledLev);
+        Assert.Null(life.CurrentHeightField);
         Assert.True(life.Meshes.Opened);
         Assert.True(life.Meshes.EntryCount > 100, $"entries={life.Meshes.EntryCount}");
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InitMeshBankFn);
@@ -1700,6 +1697,11 @@ public sealed class EngineLifecycleTests
         var presented = life.PresentWorld();
         Assert.NotNull(presented);
         Assert.Equal("LookoutPoint", presented.Region);
+        Assert.False(presented.Expanded);
+        Assert.Empty(presented.Triangles);
+        Assert.True(presented.MeshInstances > 0, $"instances={presented.MeshInstances}");
+        Assert.True(presented.Instances.Count > 0);
+        Assert.Equal(0, life.Meshes.ParsedCount);
         foreach (var opened in life.OpenedStaticMaps)
             Assert.Contains(opened, presented.Regions);
         life.CloseStaticMapFile();

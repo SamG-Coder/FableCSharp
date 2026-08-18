@@ -313,7 +313,7 @@ void BindLifecycleFirstRegion()
 {
     if (life.Hero is null)
         return;
-    var presented = life.PresentWorld();
+    var presented = life.ExpandPresentedWorld(life.PresentWorld());
     if (presented is null)
         return;
     var mapName = life.FirstSceneMapName ?? presented.Region;

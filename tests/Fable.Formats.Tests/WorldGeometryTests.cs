@@ -145,6 +145,32 @@ public sealed class WorldGeometryTests
     }
 
     [Fact]
+    public void Open_records_instances_without_c3d_or_tiles()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        using var meshes = new MeshBank();
+        meshes.Open(install);
+        var things = levels.LoadThings("LookoutPoint");
+        var opened = WorldGeometry.Build(
+            install, "LookoutPoint", things.Things,
+            adjacentStaticMaps: false,
+            levels: levels,
+            meshes: meshes,
+            expandGeometry: false);
+        Assert.False(opened.Expanded);
+        Assert.Empty(opened.Triangles);
+        Assert.True(opened.MeshInstances > 150, $"instances={opened.MeshInstances}");
+        Assert.Equal(opened.MeshInstances, opened.Instances.Count);
+        Assert.Equal(0, meshes.ParsedCount);
+        var drawn = opened.Expand(install, levels, meshes);
+        Assert.True(drawn.Expanded);
+        Assert.True(drawn.Triangles.Count > 128);
+        Assert.True(meshes.ParsedCount > 0);
+    }
+
+    [Fact]
     public void Lookout_scene_opens_aabb_adjacent_static_maps()
     {
         var install = GameInstall.TryLocate();

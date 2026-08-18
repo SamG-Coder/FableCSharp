@@ -534,6 +534,23 @@ public sealed class LevFormatTests
     }
 
     [Fact]
+    public void PeekMapHeader_is_00b3efa0_not_full_parse()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        var header = levels.PeekMapHeader("LookoutPoint");
+        Assert.NotNull(header);
+        Assert.Equal(LevFile.Version, header.Value.Version);
+        Assert.Equal(LevFile.FormatConstant, header.Value.Constant);
+        Assert.True(header.Value.GridWidth >= 64, $"w={header.Value.GridWidth}");
+        Assert.True(header.Value.CompiledSize > 1000, $"lev={header.Value.CompiledSize}");
+        Assert.True(header.Value.StbSize > 0, $"stb={header.Value.StbSize}");
+        Assert.True(header.Value.HeightSamples > 0);
+        Assert.Equal(48, LevFile.NativeHeaderBytes);
+    }
+
+    [Fact]
     public void LevelLibrary_reuses_lev_and_height_parses()
     {
         var install = GameInstall.TryLocate();

@@ -2159,7 +2159,25 @@ public sealed class EngineLifecycle : IDisposable
             levels: _levels,
             onlyMaps: OpenedStaticMaps.Count > 0 ? OpenedStaticMaps : null,
             thingsByMap: byMap,
-            meshes: Meshes);
+            meshes: Meshes,
+            expandGeometry: false);
+    }
+
+    public LevelLibrary? Levels => _levels;
+
+    /// <summary>
+    /// Draw-time tessellate / C3D parse.
+    /// Not <see cref="PresentWorld"/> / open.
+    /// </summary>
+    public WorldGeometry? ExpandPresentedWorld(WorldGeometry? opened)
+    {
+        if (opened is null || Install is null)
+            return opened;
+        if (opened.Expanded)
+            return opened;
+        EnsureLevels();
+        OpenMeshBank();
+        return opened.Expand(Install, _levels!, Meshes);
     }
 
     /// <summary>
@@ -2259,15 +2277,14 @@ public sealed class EngineLifecycle : IDisposable
             return;
 
         EnsureLevels();
-        var compiled = _levels?.LoadCompiledLev(name);
-        var height = _levels?.LoadHeightField(name);
+        var header = _levels?.PeekMapHeader(name);
         Note(ParseMapHeaderFn, "StaticMap", "WLD",
-            height is null
+            header is null || header.Value.StbSize == 0
                 ? "009CCDC0 miss " + name
-                : $"009CCDC0 stb samples={height.SampleCount} {name}");
+                : $"009CCDC0 stb samples={header.Value.HeightSamples} {name}");
 
-        var version = compiled is null ? 0 : LevFile.Version;
-        var constant = compiled is null ? 0u : LevFile.FormatConstant;
+        var version = header?.Version ?? 0;
+        var constant = header?.Constant ?? 0;
         Note(ParseMapHeaderFn, "StaticMap", "WLD",
             $"00B3EFA0 version={version} constant=0x{constant:X}");
 
@@ -2281,19 +2298,19 @@ public sealed class EngineLifecycle : IDisposable
             b.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
         var body = new OpenedStaticMapBody(
             name,
-            height?.SampleCount ?? 0,
-            compiled?.Raw.Length ?? 0,
-            compiled?.GridWidth ?? height?.FineWidth ?? 0,
-            compiled?.GridHeight ?? height?.FineHeight ?? 0,
-            height?.SampleCount ?? 0,
-            compiled is null ? version : LevFile.Version,
+            header?.StbSize ?? 0,
+            header?.CompiledSize ?? 0,
+            header?.GridWidth ?? 0,
+            header?.GridHeight ?? 0,
+            header?.HeightSamples ?? 0,
+            version,
             constant,
             neighbour);
         _openedBodies.Add(body);
         if (!neighbour)
         {
-            CurrentCompiledLev = compiled;
-            CurrentHeightField = height;
+            CurrentCompiledLev = null;
+            CurrentHeightField = null;
         }
 
         Note(ParseMapHeaderFn, "StaticMap", "WLD",

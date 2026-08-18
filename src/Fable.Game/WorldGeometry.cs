@@ -20,6 +20,8 @@ public sealed class WorldGeometry
     public required int MeshInstances { get; init; }
     public required int MissingMeshes { get; init; }
     public IReadOnlyList<string> MissingMeshDefs { get; init; } = [];
+    public IReadOnlyList<WorldMeshInstance> Instances { get; init; } = [];
+    public bool Expanded { get; init; } = true;
     public int PlayerMeshId { get; init; }
     public float PlayerHeight { get; init; }
     /// <summary>
@@ -41,10 +43,10 @@ public sealed class WorldGeometry
         LevelLibrary? levels = null,
         IReadOnlyList<string>? onlyMaps = null,
         IReadOnlyDictionary<string, IReadOnlyList<ThingInstance>>? thingsByMap = null,
-        MeshBank? meshes = null)
+        MeshBank? meshes = null,
+        bool expandGeometry = true)
     {
         var headerPath = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "meshdata.h");
-        var graphicsPath = Path.Combine(install.DataRoot, "graphics", "graphics.big");
         var enums = File.Exists(headerPath) ? HeaderEnums.Load(headerPath) : null;
         GameBin? defs = null;
         var namesPath = install.FindCompiledDef("names.bin");
@@ -55,8 +57,9 @@ public sealed class WorldGeometry
         meshes ??= new MeshBank();
         if (!meshes.Opened)
             meshes.Open(install);
-        var triangles = new List<MeshTriangle>(200_000);
+        var triangles = expandGeometry ? new List<MeshTriangle>(200_000) : [];
         var loaded = new List<string>();
+        var instanceList = new List<WorldMeshInstance>();
         var instances = 0;
         var missing = 0;
         var missingDefs = new List<string>();
@@ -80,7 +83,8 @@ public sealed class WorldGeometry
                 : WorldSpaces.NeighbourRegionOffset(map.MapX, map.MapY, primary.MapX, primary.MapY);
             var dx = neighbour.X;
             var dy = neighbour.Y;
-            AddTerrain(levels, map.ScriptName, dx, dy, triangles, landscapeEnums, landscapePlanes);
+            if (expandGeometry)
+                AddTerrain(levels, map.ScriptName, dx, dy, triangles, landscapeEnums, landscapePlanes);
 
             IReadOnlyList<ThingInstance> mapThings;
             if (IsPrimary(map, region))
@@ -89,7 +93,9 @@ public sealed class WorldGeometry
                 mapThings = thingsByMap.TryGetValue(map.ScriptName, out var listed) ? listed : [];
             else
                 mapThings = levels.TryLoadThings(map.ScriptName)?.Things.ToList() ?? [];
-            AddInstances(mapThings, dx, dy, defs, enums, meshes, triangles, ref instances, ref missing, missingDefs);
+            AddInstances(
+                mapThings, map.ScriptName, dx, dy, defs, enums, meshes, triangles, instanceList,
+                ref instances, ref missing, missingDefs, expandGeometry);
 
             // OpenStaticMaps still opens Sees/Contains maps when they emit
             // no landscape tris (sea/water cells are not landscape FG).
@@ -98,8 +104,11 @@ public sealed class WorldGeometry
 
         if (loaded.Count == 0)
         {
-            AddTerrain(levels, region, 0, 0, triangles, landscapeEnums, landscapePlanes);
-            AddInstances(primaryThings, 0, 0, defs, enums, meshes, triangles, ref instances, ref missing, missingDefs);
+            if (expandGeometry)
+                AddTerrain(levels, region, 0, 0, triangles, landscapeEnums, landscapePlanes);
+            AddInstances(
+                primaryThings, region, 0, 0, defs, enums, meshes, triangles, instanceList,
+                ref instances, ref missing, missingDefs, expandGeometry);
             loaded.Add(region);
         }
 
@@ -114,7 +123,7 @@ public sealed class WorldGeometry
             playerMeshId = defs?.FindMeshId(existingHero.DefinitionType!)
                            ?? enums?.FindMeshId(existingHero.DefinitionType!)
                            ?? 0;
-            if (playerMeshId != 0 &&
+            if (expandGeometry && playerMeshId != 0 &&
                 meshes.Get((uint)playerMeshId) is { } heroMesh)
                 playerHeight = (heroMesh.BoundsMax.Z - heroMesh.BoundsMin.Z) * MeshToWorld;
         }
@@ -131,13 +140,16 @@ public sealed class WorldGeometry
                     actorPositions.TryGetValue(RegionTravel.IntroHeroActor, out var teleported))
                     heroPos = teleported;
                 var hero = CloneAs(start, RegionTravel.KidCreature, heroPos);
-                AddInstances([hero], 0, 0, defs, enums, meshes, triangles, ref instances, ref missing, missingDefs);
-                if (meshes.Get((uint)playerMeshId) is { } kid)
+                AddInstances(
+                    [hero], region, 0, 0, defs, enums, meshes, triangles, instanceList,
+                    ref instances, ref missing, missingDefs, expandGeometry);
+                if (expandGeometry && meshes.Get((uint)playerMeshId) is { } kid)
                     playerHeight = (kid.BoundsMax.Z - kid.BoundsMin.Z) * MeshToWorld;
             }
         }
 
-        triangles.AddRange(SkyGeometry.Build(install));
+        if (expandGeometry)
+            triangles.AddRange(SkyGeometry.Build(install));
 
         return new WorldGeometry
         {
@@ -147,6 +159,8 @@ public sealed class WorldGeometry
             MeshInstances = instances,
             MissingMeshes = missing,
             MissingMeshDefs = missingDefs,
+            Instances = instanceList,
+            Expanded = expandGeometry,
             PlayerMeshId = playerMeshId,
             PlayerHeight = playerHeight,
             ActorPoses = actorPoses is null
@@ -356,15 +370,18 @@ public sealed class WorldGeometry
 
     private static void AddInstances(
         IEnumerable<ThingInstance> things,
+        string map,
         float dx,
         float dy,
         GameBin? defs,
         HeaderEnums? enums,
         MeshBank meshes,
         List<MeshTriangle> triangles,
+        List<WorldMeshInstance> instanceList,
         ref int instances,
         ref int missing,
-        List<string> missingDefs)
+        List<string> missingDefs,
+        bool expandGeometry)
     {
         var shift = dx == 0 && dy == 0
             ? Matrix4x4.Identity
@@ -390,8 +407,16 @@ public sealed class WorldGeometry
             {
                 if (!meshes.TryGetEntry((uint)meshId, out _))
                     continue;
-                var mesh = meshes.Get((uint)meshId);
+                instanceList.Add(new WorldMeshInstance(
+                    (uint)meshId, transform, thing.ScriptName, thing.DefinitionType, map));
+                if (!expandGeometry)
+                {
+                    any = true;
+                    instances++;
+                    continue;
+                }
 
+                var mesh = meshes.Get((uint)meshId);
                 if (mesh is null)
                     continue;
 
@@ -425,6 +450,81 @@ public sealed class WorldGeometry
                 missingDefs.Add(thing.DefinitionType ?? thing.Kind);
             }
         }
+    }
+
+    /// <summary>
+    /// Draw-time expand. Open keeps
+    /// <c>009AD410</c> handles only.
+    /// </summary>
+    public WorldGeometry Expand(
+        GameInstall install,
+        LevelLibrary levels,
+        MeshBank meshes,
+        LandscapeFrustum.Plane[]? landscapePlanes = null)
+    {
+        if (Expanded)
+            return this;
+        var triangles = new List<MeshTriangle>(200_000);
+        var textureHeader = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h");
+        var landscapeEnums = File.Exists(textureHeader) ? HeaderEnums.Load(textureHeader) : null;
+        var primary = levels.World.FindMap(Region);
+        foreach (var name in Regions)
+        {
+            var map = levels.World.FindMap(name);
+            var dx = 0f;
+            var dy = 0f;
+            if (map is not null && primary is not null)
+            {
+                var neighbour = WorldSpaces.NeighbourRegionOffset(
+                    map.MapX, map.MapY, primary.MapX, primary.MapY);
+                dx = neighbour.X;
+                dy = neighbour.Y;
+            }
+
+            AddTerrain(levels, name, dx, dy, triangles, landscapeEnums, landscapePlanes);
+        }
+
+        foreach (var inst in Instances)
+        {
+            var mesh = meshes.Get(inst.MeshId);
+            if (mesh is null)
+                continue;
+            var transform = inst.Transform;
+            foreach (var tri in mesh.Triangles)
+            {
+                var a = Vector3.Transform(tri.A, transform);
+                var b = Vector3.Transform(tri.B, transform);
+                var c = Vector3.Transform(tri.C, transform);
+                var n = Vector3.TransformNormal(tri.Normal, transform);
+                if (n.LengthSquared() < 1e-8f)
+                    n = Vector3.UnitZ;
+                else
+                    n = Vector3.Normalize(n);
+                triangles.Add(tri with
+                {
+                    A = a, B = b, C = c, Normal = n,
+                    NormalA = TransformUnitNormal(tri.NormalA, transform),
+                    NormalB = TransformUnitNormal(tri.NormalB, transform),
+                    NormalC = TransformUnitNormal(tri.NormalC, transform),
+                });
+            }
+        }
+
+        triangles.AddRange(SkyGeometry.Build(install));
+        return new WorldGeometry
+        {
+            Region = Region,
+            Regions = Regions,
+            Triangles = triangles,
+            MeshInstances = MeshInstances,
+            MissingMeshes = MissingMeshes,
+            MissingMeshDefs = MissingMeshDefs,
+            Instances = Instances,
+            Expanded = true,
+            PlayerMeshId = PlayerMeshId,
+            PlayerHeight = PlayerHeight,
+            ActorPoses = ActorPoses,
+        };
     }
 
     /// <summary>
@@ -533,3 +633,14 @@ public readonly record struct ThingSubmit(
     IReadOnlyList<int> MeshIds,
     bool AsC3d,
     bool Submitted);
+
+/// <summary>
+/// <c>009AD410</c> handle + world transform.
+/// C3D bytes stay in the bank until draw.
+/// </summary>
+public readonly record struct WorldMeshInstance(
+    uint MeshId,
+    Matrix4x4 Transform,
+    string? ScriptName,
+    string? Definition,
+    string Map);

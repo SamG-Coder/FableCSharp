@@ -73,6 +73,39 @@ public sealed class LevelLibrary : IDisposable
 
     public IReadOnlyList<BankEntry> WadEntries => _wad?.Entries ?? [];
 
+    /// <summary>
+    /// <c>00B3EFA0</c> / STB directory size.
+    /// Does not parse materials, tiles, or
+    /// the fine height grid.
+    /// </summary>
+    public StaticMapHeader? PeekMapHeader(string region)
+    {
+        var map = World.FindMap(region);
+        var stem = map?.FileStem ?? region;
+        BankEntry? lev = _wad?.Find(stem + ".lev")
+                         ?? _wad?.Find(region + ".lev")
+                         ?? (map is null ? null : _wad?.Find(map.LevelName));
+        LevHeader? header = null;
+        if (lev is not null && _wad is not null)
+        {
+            var prefix = _wad.ReadPrefix(lev, LevFile.NativeHeaderBytes);
+            var parsed = LevFile.ReadHeader(prefix);
+            header = parsed with { SourceBytes = (int)lev.Size };
+        }
+
+        var stb = _stb?.FindLev(region) ?? _stb?.FindLev(stem);
+        var stbSize = stb is null ? 0 : (int)stb.Size;
+        return new StaticMapHeader(
+            region,
+            header?.Version ?? 0,
+            header?.Constant ?? 0,
+            header?.GridWidth ?? 0,
+            header?.GridHeight ?? 0,
+            header?.SourceBytes ?? 0,
+            stbSize,
+            LevHeightField.CountSamplesFromSize(stbSize));
+    }
+
     public LevFile? LoadCompiledLev(string region)
     {
         if (_levs.TryGetValue(region, out var cached))
@@ -122,3 +155,17 @@ public sealed class LevelLibrary : IDisposable
         _stb?.Dispose();
     }
 }
+
+/// <summary>
+/// <c>00B3EFA0</c> + STB directory size.
+/// Not a parsed LEV or height field.
+/// </summary>
+public readonly record struct StaticMapHeader(
+    string Name,
+    int Version,
+    uint Constant,
+    int GridWidth,
+    int GridHeight,
+    int CompiledSize,
+    int StbSize,
+    int HeightSamples);

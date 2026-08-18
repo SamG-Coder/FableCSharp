@@ -135,6 +135,19 @@ public sealed class BbbArchive : IDisposable
         return buffer;
     }
 
+    public byte[] ReadPrefix(BankEntry entry, int bytes)
+    {
+        if (entry.Size == 0 || bytes <= 0)
+            return [];
+        var n = (int)Math.Min((uint)bytes, entry.Size);
+        _stream.Seek(entry.Offset, SeekOrigin.Begin);
+        var buffer = new byte[n];
+        var read = _stream.Read(buffer, 0, n);
+        if (read != n)
+            throw new EndOfStreamException($"Expected {n} header bytes for '{entry.Name}', got {read}.");
+        return buffer;
+    }
+
     public void Dispose()
     {
         if (_ownsStream)
