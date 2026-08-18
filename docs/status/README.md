@@ -14,17 +14,26 @@ or in tests/code, treat it as **UNREAD**.
 `CAM_OVIF_SHOT2`) so `CS_OAKVALE_INTRO_FATHER` can run on a real
 world clock.
 
-Snapshot: **2026-08-18**, previous snapshot runtime HEAD
-`306e83c` via PR #33 merge `4e8ec58`,
-runtime HEAD `98c4acc` (*PlayAVI: native 00628B79 dest and
-clear leftover frames.*).
-Just locked on this path: `4429113`, `f4a1efc`, `ff808b1`,
-`8bfbf39`, `27cb7ee`, `d7615a6`, `35f3d20`, `98c4acc`.
-Do not include any later runtime if master moves. Freeze at
-`98c4acc`. Ignore merges `e0d97cd` and `e2fca3d`. Ignore docs
-commits `d5ed2e9` / `4e8ec58`. Docs PR #29
+Snapshot: **2026-08-19**, previous snapshot runtime HEAD
+`98c4acc` via PR #34 merge `dac317ba`,
+runtime HEAD `8cd110a` (*Press Start draws frontend.big
+title and FORREST tiles.*).
+Just locked: 53 runtime commits since `98c4acc`. Headline
+locks: leave frontend → Init Game → user.ini Gameflow
+(`b510f613`, `4ba053c`, `aa957b0`, `26ecd624`, `154b4d10`);
+type-1 Main/Core/Barrow yield on inactive Q_NewOakValeIntro
+(`0aab79b`, `9ed7a4f`, `0d80a7a`, `4eba1e1`); no-save does
+not activate Oakvale; 00501450 loops all i, collectors not
+release (`736de8a`, `7627e25`); first Present dest empty
+then later 009BEEB0 (`20a44f1`, `d49ef02`); PRESS_START
+type 10 + frontend.big FRONTEND_TITLE / FORREST tiles
+(`e99fcae`, `8cd110a`). Ignore merge `50d131bb`. Ignore
+docs `dac317ba` / snapshot stubs. Ignore `3429bc55`
+investigations. Ignore `296567a6` ExeIndex. Docs PR #29
 `bedcf919` is iOS Settings chrome only — CSS unchanged.
-Master is still proving **boot / world clock**, not animation.
+Freeze at `8cd110a`. Do not include any later runtime if
+master moves. Master is still proving **boot / world
+clock**, not animation.
 README’s long-term priority list still starts with animation;
 that list is not the current phase.
 
@@ -118,17 +127,14 @@ when a ledger or test already records them.
 
 ### Phase 1 in progress — boot / world clock (current master)
 
-Recent commits (`9c625bc` … `98c4acc`) lock engine submit / host
-Present / frontend flush / camera seed / helper camera /
-landscape cells / instance W, not `00DBDE40`. Previous snapshot
-`306e83c` via PR #33 `4e8ec58`.
-Just locked: REGION.EnvironmentTheme name (`4429113`), PALSKIN
-`0x80`/`0x200` after sky (`f4a1efc`), GuildArrivalHSP RHSet
-axes (`ff808b1`), skip unused 1 m height grid (`8bfbf39`),
-adult Hero Thing bind (`27cb7ee`), INNER_SKY no oFog
-(`d7615a6`), INDEX16 strip DrawIndexed (`35f3d20`), PlayAVI
-`00628B79` dest (`98c4acc`). Docs PR #29 `bedcf919` is iOS
-Settings chrome only — CSS unchanged.
+Recent commits (`9c625bc` … `8cd110a`) lock engine submit / host
+Present / frontend flush / Gameflow / type-1 yield / Press Start
+sprites, not `00DBDE40`. Previous snapshot `98c4acc` via PR #34
+`dac317ba`. Just locked this batch: leave-frontend Init Game,
+user.ini Gameflow Main watcher, type-1 yield on
+Q_NewOakValeIntro, no-save does not activate it, 00501450 full
+loop, first Present dest empty / later 009BEEB0, PRESS_START
+type 10 + frontend.big tiles. CSS unchanged.
 
 | Item | Status | Evidence |
 |---|---|---|
