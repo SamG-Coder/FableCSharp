@@ -684,6 +684,15 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, item);
         }
 
+        if (Eq(v, "TakeObjectFromHero"))
+        {
+            var item = line.Arg(0);
+            if (item.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ctx.World.TakeObjectFromHero(item);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, item);
+        }
+
         if (Eq(v, "PutInHeroHands"))
         {
             var arg0 = line.Arg(0);

@@ -1015,6 +1015,7 @@ public sealed class WorldRuntime
     public readonly List<string> Modes = [];
     public readonly List<(string Item, int Count)> HeroGifts = [];
     public readonly List<HeroInventoryItem> Inventory = [];
+    public readonly List<string> TakenObjects = [];
     public readonly List<(bool Hide, string Mode)> ExtraOps = [];
     public readonly List<(string Verb, string Arg)> RemoveFamily = [];
     public readonly List<ScriptCreate> Effects = [];
@@ -1161,6 +1162,31 @@ public sealed class WorldRuntime
         }
 
         Expressions.Add(new HeroExpression(name, param, flag));
+    }
+
+    /// <summary>
+    /// <c>00CC8898</c> <c>vtbl+500(name)</c>.
+    /// Takes one object instance. Distinct from
+    /// <c>TakeFromHero</c> <c>vtbl+556</c> (whole slot).
+    /// </summary>
+    public int TakeObjectFromHero(string item)
+    {
+        if (item.Length == 0)
+            return 0;
+        TakenObjects.Add(item);
+        if (HeroHands.Equals(item, StringComparison.OrdinalIgnoreCase))
+            HeroHands = "";
+        for (var i = 0; i < Inventory.Count; i++)
+        {
+            if (!Inventory[i].Name.Equals(item, StringComparison.OrdinalIgnoreCase))
+                continue;
+            Inventory[i].Count--;
+            if (Inventory[i].Count <= 0)
+                Inventory.RemoveAt(i);
+            return 1;
+        }
+
+        return 0;
     }
 
     /// <summary>

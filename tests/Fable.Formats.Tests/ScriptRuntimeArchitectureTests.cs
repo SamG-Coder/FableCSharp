@@ -1031,6 +1031,92 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void TakeObjectFromHero_takes_one_not_the_slot()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var first = new ScriptInterpreter("tofh",
+        [
+            "GiveHero OBJECT_MANA_POTION,2",
+            "TakeObjectFromHero OBJECT_MANA_POTION",
+        ]);
+        first.RunUntilYield(runtime);
+        Assert.True(first.Finished);
+        Assert.Single(runtime.World.Inventory);
+        Assert.Equal(1, runtime.World.Inventory[0].Count);
+        runtime.World.HeroHands = "OBJECT_MANA_POTION";
+        var second = new ScriptInterpreter("tofh2",
+            ["TakeObjectFromHero OBJECT_MANA_POTION"]);
+        second.RunUntilYield(runtime);
+        Assert.Empty(runtime.World.Inventory);
+        Assert.Equal("", runtime.World.HeroHands);
+        Assert.Equal(2, runtime.World.TakenObjects.Count);
+        Assert.Equal(0x00CC8898u, ScriptCommandMap.Find("TakeObjectFromHero")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("TakeFromHero")!.Value.ApplySite,
+            ScriptCommandMap.Find("TakeObjectFromHero")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void TakeObjectFromHero_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("TakeObjectFromHero ", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "TakeObjectFromHero OBJECT_PRISON_CELL_KEY";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("TakeObjectFromHero", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        runtime.World.GiveHero(parsed.Arg(0), 1);
+        runtime.World.HeroHands = parsed.Arg(0);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-tofh", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("TakeObjectFromHero ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Empty(runtime.World.Inventory);
+        Assert.Equal("", runtime.World.HeroHands);
+        Assert.Equal(parsed.Arg(0), runtime.World.TakenObjects[0]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-tofh.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-takeobjectfromhero.txt"),
+            """
+            TakeObjectFromHero 00CC8846 / apply 00CC8898
+              arg0 required else 00CD17FD
+              vtbl+500(name); jmp 00CD17FD no yield
+              not TakeFromHero vtbl+556 (whole slot)
+            Object-def / drop body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void UseTheme_real_script_bank_line()
     {
         var install = GameInstall.TryLocate();

@@ -83,6 +83,7 @@
 | GiveHeroMorality | `00CC6222` | `00CC6281` | amount | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | atof arg0; vtbl+624(amount); jmp 00CC7081; scale unread |
 | GiveHeroExpression | `00CC6132` | `00CC6185` | name[,flag][,param] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | 007ADB30 lookup; miss skip; vtbl+900(name,esi,flag); jmp 00CC2C6B |
 | TakeFromHero | `00CCFB51` | `00CCFBA3` | item | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | vtbl+556(name); jmp 00CD17FD; not TakeObjectFromHero |
+| TakeObjectFromHero | `00CC8846` | `00CC8898` | item | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; vtbl+500(name); jmp 00CD17FD; not TakeFromHero 556 |
 | PutInHeroHands | `00CCFBCA` | `00CCFC20` | item[,NAME] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | NULL vtbl+572 empty; NAME vtbl+572(name); else thing vtbl+568(1,1) |
 | SetHeroWeapon | `00CCFD57` | `00CCFDA9` | item | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; vtbl+488(name); jmp 00CD17FD; not PutInHeroHands 572 |
 | RemoveHeroWeapons | `00CC90B4` | `00CC9106` | IsFalse? | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | IsFalse(arg0) vtbl+560 else vtbl+552; jmp 00CD17FD; bag body unread |

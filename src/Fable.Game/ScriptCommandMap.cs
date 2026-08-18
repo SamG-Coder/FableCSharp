@@ -502,6 +502,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "vtbl+556(name); jmp 00CD17FD; not TakeObjectFromHero"),
+        Spec("TakeObjectFromHero", 0x00CC8846, 0x00CC8898, "item",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0 required; vtbl+500(name); jmp 00CD17FD; not TakeFromHero 556"),
         Spec("PutInHeroHands", 0x00CCFBCA, 0x00CCFC20, "item[,NAME]",
             ScriptReturn.CompleteNow, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

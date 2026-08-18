@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 110
-RECOVERED RETURN: 110
-RECOVERED APPLY: 45
+RECOVERED DISPATCH: 111
+RECOVERED RETURN: 111
+RECOVERED APPLY: 46
 IMPLEMENTED RUNTIME: 13
-UNREAD: 75
+UNREAD: 74
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -91,7 +91,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | SetChestOpen | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | SetDoorOpen | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | GamePause | Global | Proven | Proven | Proven | Proven | Proven | Proven |
-| TakeObjectFromHero | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| TakeObjectFromHero | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | StopProgressSpinner | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | StartProgressSpinner | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | DoCharacterPreload | Global | Unread | Unread | Unread | Unread | Unread | Unread |
