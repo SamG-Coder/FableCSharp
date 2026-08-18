@@ -528,8 +528,17 @@ START_INITIAL_QUESTS factories (fn --exact):
 
 006B3FF0  camera seed  PROVEN (208)
 ├── 006B63C0  bank copy 6×0x1F4  PROVEN (91)
-├── 006B8640 / 008889C0 / 006B2CA0  pose  UNREAD (dumped; not wired)
-Host SeedAt(1.6m) is a DIVERGE. FOV 72 is SHOT2 leftover.
+├── 008889C0  follow list → 008884D0 / 00888260
+├── 006B2CA0  pose  PROVEN (262)
+│   ├── +61 skip (ctor 0)
+│   ├── +3084/+424…+444/+412 first-seen 0 (008864A0 / 006B4900)
+│   ├── [0x122DEDC]=0 → dirs (1,0,0)
+│   ├── 00A14440 normalize
+│   └── +412=0 → V4=(-1,0,0)
+├── 006B3030  V0 spring  UNREAD (dumped)
+└── 006B3B80  tick  UNREAD (dumped)
+Host no longer invents SeedAt(1.6m). V0/V1 stay ctor (1,0,0)
+until 008884D0 subject fill. FOV 72 is SHOT2 leftover.
 
 0041726D → 0049DFB0 type-1 → 00629270 / 004A5A40
 └── 004A5E10  inc WorldFrame [0x13B89BC]

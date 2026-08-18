@@ -317,6 +317,13 @@ public sealed class EngineLifecycleTests
         Assert.Equal(1, life.FrontendWidgetsDrawn);
         Assert.Equal(1, life.Frontend2dRecordsQueued);
         Assert.Equal(0x0041BEB0u, life.Frontend2dLastPacker);
+        Assert.Equal(0, life.FrontendWidgetFont);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendWidgetPostCtorFn &&
+            e.Action.Contains("skip dest", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DisplayFlush2dFn &&
+            e.Action.Contains("0x13BC800", StringComparison.Ordinal));
         Assert.False(life.FrontendDisplayFlag);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendWidgetDrawFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendWidgetFactoryFn);
@@ -525,7 +532,7 @@ public sealed class EngineLifecycleTests
             After 0051FD80 + 004AE940:
               FirstSceneMap LookoutPoint
               ThingsForMap includes GuildArrivalHSP + Hero
-              006B3FF0 SeedAt hero eye, both slots
+              006B3FF0 +68 → 006B2CA0 pose (not 1.6m eye)
               006B42F0 lerp t=0 stays on hero
               Client BindLifecycleFirstRegion builds
               WorldGeometry from those things.
@@ -1347,6 +1354,13 @@ public sealed class EngineLifecycleTests
         Assert.Equal(new System.Numerics.Vector3(1f, 0f, 0f), at1.V0);
         var mid = cam.Blend(0.5f);
         Assert.Equal(0.5f, mid.V0.X);
+        cam.ComputePose();
+        Assert.True(cam.PoseComputed);
+        Assert.Equal(new System.Numerics.Vector3(1f, 0f, 0f), cam.SlotA.V2);
+        Assert.Equal(new System.Numerics.Vector3(1f, 0f, 0f), cam.SlotA.V3);
+        Assert.Equal(new System.Numerics.Vector3(-1f, 0f, 0f), cam.SlotA.V4);
+        Assert.Equal(0x006B2CA0u, WorldCamera.PoseFn);
+        Assert.Equal(0x00A14440u, WorldCamera.NormalizeFn);
         cam.SeedAt(
             new System.Numerics.Vector3(4f, 5f, 6f),
             new System.Numerics.Vector3(7f, 8f, 9f),
@@ -1928,7 +1942,16 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayApplyBodyFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraCtor);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraSeedFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraPoseFn);
         Assert.True(life.WorldCamera.Seeded);
+        Assert.True(life.WorldCamera.PoseComputed);
+        Assert.Equal(new System.Numerics.Vector3(1f, 0f, 0f), life.WorldCamera.SlotA.V2);
+        Assert.Equal(new System.Numerics.Vector3(-1f, 0f, 0f), life.WorldCamera.SlotA.V4);
+        Assert.NotEqual(
+            System.Numerics.Vector3.UnitZ * 1.6f,
+            life.Camera.Position - (life.Hero is { } hero
+                ? RegionTravel.PositionOf(hero)
+                : System.Numerics.Vector3.Zero));
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         var dest = Path.Combine(
             @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",

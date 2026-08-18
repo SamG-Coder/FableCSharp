@@ -510,6 +510,7 @@ public sealed class EngineLifecycle : IDisposable
     public const uint WorldCameraCtor = WorldCamera.Ctor;
     public const uint WorldCameraVtbl = WorldCamera.Vtbl;
     public const uint WorldCameraSeedFn = WorldCamera.SeedFn;
+    public const uint WorldCameraPoseFn = WorldCamera.PoseFn;
     public const int WorldCameraObjectSize = WorldCamera.ObjectSize;
     public const int WorldCameraOffset = WorldCamera.WorldOffset;
     public const uint GameCameraCtor = GameCamera.Ctor;
@@ -1470,10 +1471,15 @@ public sealed class EngineLifecycle : IDisposable
             "0041D21B [def+60] type0 0041B800");
         Note(FrontendWidgetType0Ctor, "Frontend", "UI",
             $"0041B800 vtbl 0x{FrontendWidgetVtbl:X} +{FrontendWidgetBlendOffset}={FrontendWidgetBlendDefault}");
-        Note(FrontendWidgetPostCtorFn, "Frontend", "UI", "0041AC20");
+        Note(FrontendWidgetPostCtorFn, "Frontend", "UI",
+            "0041AC20 vtbl+432 font list");
         FrontendWidgetBlend = FrontendWidgetBlendDefault;
+        // Empty [obj+64..+68] → [+376]=0 → jbe 0041AF6F.
+        // +204/+208 dest size skipped. Dest UNREAD.
         FrontendWidgetFont = 0;
         FrontendWidgetTexture = 0;
+        Note(FrontendWidgetPostCtorFn, "Frontend", "UI",
+            "0041AC20 [+376]=0 skip dest");
         FrontendMenuRoot = FrontendMainMenuNoContinue;
         FrontendMenuConstructed = true;
         Note(FrontendUiBuildMenu, "Frontend", "UI", "00595B24");
@@ -1607,7 +1613,10 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     private void FlushFrontendDisplay()
     {
-        Note(DisplayFlush2dFn, "Frontend", "D3D9", "009D9C80 flush DIP");
+        Note(DisplayFlush2dFn, "Frontend", "D3D9",
+            "009D9C80 [0x13BC800] device flags");
+        Note(DisplayFlush2dFn, "Frontend", "D3D9",
+            "009D9C80 [0x13CB508]+10248 bump");
         Note(DisplayFlushLayersFn, "Frontend", "D3D9",
             $"009DA9F0({DisplayFlushLayersArg})");
         FrontendFlushCount++;
@@ -3118,13 +3127,22 @@ public sealed class EngineLifecycle : IDisposable
         HeroSpawned = true;
         if (source.PositionX is not null && source.PositionY is not null)
         {
-            var feet = RegionTravel.PositionOf(source);
-            var forward = RegionTravel.ForwardOf(source);
-            var eye = feet + Vector3.UnitZ * 1.6f;
-            WorldCamera.SeedAt(eye, eye + forward * 8f, Vector3.UnitZ);
-            ApplyWorldCamera(1f);
+            if (!WorldCameraPresent)
+                WorldCamera.Construct();
             Note(WorldCameraSeedFn, "LevelLoader", "Camera",
-                "006B3FF0 seed hero " + (FirstSceneMapName ?? ""));
+                "006B3FF0 +68 " + (FirstSceneMapName ?? ""));
+            Note(WorldCamera.FollowSlotFn, "LevelLoader", "Camera",
+                "008889C0 [this+72]");
+            WorldCamera.SeedHero();
+            Note(WorldCamera.PoseFn, "LevelLoader", "Camera",
+                "006B2CA0 +61=0 +3084=0 +412=0");
+            Note(WorldCamera.NormalizeFn, "LevelLoader", "Camera",
+                "00A14440 normalize");
+            Note(WorldCamera.PoseFollowFn, "LevelLoader", "Camera",
+                "006B3030 UNREAD");
+            Note(WorldCamera.PoseTickFn, "LevelLoader", "Camera",
+                "006B3B80 UNREAD");
+            ApplyWorldCamera(1f);
         }
     }
 

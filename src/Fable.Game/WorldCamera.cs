@@ -13,6 +13,25 @@ public sealed class WorldCamera
     public const uint Ctor = 0x006B4900;
     public const uint Vtbl = 0x0125D53C;
     public const uint SeedFn = 0x006B3FF0;
+    /// <summary>
+    /// <c>006B3FF0</c> after the
+    /// <c>008889C0</c> loop:
+    /// <c>006B2CA0</c> then
+    /// <c>006B3030</c> /
+    /// <c>006B3B80</c>.
+    /// </summary>
+    public const uint PoseFn = 0x006B2CA0;
+    public const uint PoseFollowFn = 0x006B3030;
+    public const uint PoseTickFn = 0x006B3B80;
+    public const uint NormalizeFn = 0x00A14440;
+    public const uint FollowSlotFn = 0x008889C0;
+    public const uint ZeroFloatVa = 0x0122DEDC;
+    public const uint OneFloatVa = 0x0122DED8;
+    public const int SkipFlagOffset = 61;
+    public const int YawOffset = 3084;
+    public const int PitchOffset = 424;
+    public const int BlendOffset = 412;
+    public const int OutDirOffset = 3120;
     public const uint BlendFn = 0x006B42F0;
     public const uint SlotCtor = 0x008864A0;
     public const int ObjectSize = 0x1970;
@@ -31,6 +50,13 @@ public sealed class WorldCamera
 
     public uint VtblValue { get; private set; } = Vtbl;
     public bool Seeded { get; private set; }
+    /// <summary>
+    /// <c>[+61]</c>. Ctor
+    /// <c>006B4900</c> writes 0 so
+    /// <c>006B2CA0</c> runs.
+    /// </summary>
+    public bool PoseSkipFlag { get; private set; }
+    public bool PoseComputed { get; private set; }
     public CameraSlot SlotA { get; private set; } = CameraSlot.CtorDefault();
     public CameraSlot SlotB { get; private set; } = CameraSlot.Zero();
     public CameraSlot Output { get; private set; } = CameraSlot.Zero();
@@ -46,10 +72,59 @@ public sealed class WorldCamera
     {
         VtblValue = Vtbl;
         Seeded = false;
+        PoseSkipFlag = false;
+        PoseComputed = false;
         SlotA = CameraSlot.CtorDefault();
         SlotB = CameraSlot.Zero();
         Output = CameraSlot.Zero();
         LastBlend = 0f;
+    }
+
+    /// <summary>
+    /// <c>006B3FF0</c> when <c>+68==0</c>.
+    /// Follow-slot fill <c>008889C0</c>
+    /// is a list helper; first-seen
+    /// <c>008864A0</c> zeros
+    /// <c>+412/+424…+444</c> and
+    /// <c>+3084=0</c>. Then
+    /// <c>006B2CA0</c>. Does not invent
+    /// a 1.6 m eye.
+    /// </summary>
+    public void SeedHero()
+    {
+        ComputePose();
+        SlotB = SlotA;
+        Seeded = true;
+    }
+
+    /// <summary>
+    /// <c>006B2CA0</c>. First-seen ctor
+    /// angles are 0 and
+    /// <c>[0x122DEDC]=0</c> so the two
+    /// normalised dirs are
+    /// <c>(1,0,0)</c>; blend
+    /// <c>+412=0</c> writes
+    /// <c>V4=(-1,0,0)</c>.
+    /// <c>00A14440</c> is in-place
+    /// normalize. <c>006B3030</c> /
+    /// <c>006B3B80</c> stay UNREAD.
+    /// </summary>
+    public void ComputePose()
+    {
+        if (PoseSkipFlag)
+            return;
+        var first = Normalize(new Vector3(1f, 0f, 0f));
+        var second = Normalize(new Vector3(1f, 0f, 0f));
+        var k = 0f;
+        var blended = Normalize(-first * (1f - k) - second * k);
+        SlotA = SlotA with { V2 = first, V3 = second, V4 = blended };
+        PoseComputed = true;
+    }
+
+    private static Vector3 Normalize(Vector3 v)
+    {
+        var len = v.Length();
+        return len > 1e-8f ? v / len : Vector3.Zero;
     }
 
     /// <summary>
