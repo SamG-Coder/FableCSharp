@@ -1390,6 +1390,14 @@ public sealed class EngineLifecycle : IDisposable
     public const uint ScriptManagerPumpFn = 0x006E75C0;
     public const uint ScriptManagerCtor = 0x006E7740;
     public const uint ScriptManagerVtbl = 0x01260F0C;
+    public const uint ScriptManagerVa = 0x0143E8F0;
+    /// <summary>
+    /// <c>00419CE0</c> <c>[world+56]</c>
+    /// vtbl+1104. Not
+    /// <c>00CB5AD0</c> directly.
+    /// </summary>
+    public const uint ScriptManagerActivateQuestFn = 0x00892E80;
+    public const int ScriptManagerActivateQuestVtbl = 1104;
     public const uint InitScriptsParentFn = 0x004A6550;
     public const uint ScriptPausedGateFn = 0x0088E9E0;
     public const uint ScriptGuiGateFn = 0x00892270;
@@ -3433,7 +3441,13 @@ public sealed class EngineLifecycle : IDisposable
             Note(IniActivateQuestGate, "InitGame", "Ini",
                 "004197B0 xor al,al");
             Note(IniActivateQuestThunk, "InitGame", "Ini",
-                "00419CE0 [world+56] vtbl+1104 UNREAD " + arg);
+                $"00419CE0 [world+{WorldScriptManagerOffset}] " +
+                $"vtbl+{ScriptManagerActivateQuestVtbl} 00892E80");
+            Note(ScriptManagerActivateQuestFn, "InitGame", "Ini",
+                "00892E80 [0x13B89FC] 004B4A10(1,1) " + arg);
+            Note(ActivateInitialQuestsFn, "InitGame", "Ini",
+                "004B4A10 → 004B4260 " + arg);
+            ActivateNamedQuest(arg, "InitGame");
             return;
         }
 
@@ -5536,28 +5550,7 @@ public sealed class EngineLifecycle : IDisposable
             Runtime.Load(ScriptBank.Load(Install), Install);
 
         foreach (var name in names)
-        {
-            if (name.Length == 0)
-                continue;
-            Note(ActivateQuestFn, "Init Quests", "Quest", "00CB5AD0 " + name);
-            var factory = QuestFactoryTable.Find(name);
-            if (factory is { } bind)
-            {
-                Note(QuestRegisterFn, "Init Quests", "Quest",
-                    "00CD52D0 " + name +
-                    (bind.ScriptName is { } script ? " → " + script : " native"));
-                Note(bind.Factory, "Init Quests", "Quest",
-                    $"factory 0x{bind.Factory:X} run 0x{bind.Run:X}");
-                if (bind.Init == QuestFactoryTable.SunnyvaleInit)
-                    Note(SunnyvalePersistFn, "Init Quests", "Quest",
-                        "00CDC070 persist bind vtbl+4");
-            }
-
-            var persistent = Quests?.Quests.Any(q =>
-                q.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && q.Persistent) == true;
-            Runtime.ActivateQuest(name, persistent);
-            _activatedQuests.Add(name);
-        }
+            ActivateNamedQuest(name, "Init Quests");
 
         Note(QuestManagerActivate, "Init Quests", "Quest", "004B2890");
         Note(ActivateInitialQuestsSite, "Activate Initial Quests", "Quest",
@@ -5565,6 +5558,40 @@ public sealed class EngineLifecycle : IDisposable
         Note(ActivateInitialQuestsFn, "Activate Initial Quests", "Quest",
             "004B4A10 [0x13B89FC] → 004B4260");
         QuestsInitDone = true;
+    }
+
+    /// <summary>
+    /// <c>004B4260</c> after
+    /// <c>004B00C0</c>:
+    /// <c>00CB5AD0</c> on
+    /// <c>[quest+120]</c>.
+    /// </summary>
+    private void ActivateNamedQuest(string name, string phase)
+    {
+        if (name.Length == 0)
+            return;
+        Runtime ??= ScriptRuntime.Detached();
+        if (Install?.FindCompiledDef("script.bin") is not null &&
+            Runtime.Bank is null)
+            Runtime.Load(ScriptBank.Load(Install), Install);
+        Note(ActivateQuestFn, phase, "Quest", "00CB5AD0 " + name);
+        var factory = QuestFactoryTable.Find(name);
+        if (factory is { } bind)
+        {
+            Note(QuestRegisterFn, phase, "Quest",
+                "00CD52D0 " + name +
+                (bind.ScriptName is { } script ? " → " + script : " native"));
+            Note(bind.Factory, phase, "Quest",
+                $"factory 0x{bind.Factory:X} run 0x{bind.Run:X}");
+            if (bind.Init == QuestFactoryTable.SunnyvaleInit)
+                Note(SunnyvalePersistFn, phase, "Quest",
+                    "00CDC070 persist bind vtbl+4");
+        }
+
+        var persistent = Quests?.Quests.Any(q =>
+            q.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && q.Persistent) == true;
+        Runtime.ActivateQuest(name, persistent);
+        _activatedQuests.Add(name);
     }
 
     public IReadOnlyList<ThingInstance> ThingsForMap(string mapName) =>

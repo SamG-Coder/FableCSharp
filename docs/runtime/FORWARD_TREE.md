@@ -344,9 +344,12 @@ Slots 10+ overlap a string (`HERO_ABILITY`) — not a vtbl continuation.
 │       009EC710 tokens → 009EB430 [ini+64] vtbl+4
 │       SetMaxAnisotropy — no .text name → 009EB260 unknown  PROVEN
 │       RunScript("joystick.ini") 009ECB70 → 009EC890 / 00999230 miss  PROVEN
-│       ActivateQuest 00419D90 / 00419CE0
+│       ActivateQuest 00419D90 / 00419CE0  PROVEN
 │         004197B0 xor al,al (never skip)
-│         [world+56] vtbl+1104 UNREAD
+│         [world+56] Init Scripts 006E7740 vtbl 01260F0C
+│           vtbl+1104 00892E80  PROVEN
+│           00892E80 [0x13B89FC] 004B4A10(name,1,1)
+│           004B4A10 → 004B4260 → 00CB5AD0 "Gameflow"
 │       009ED190 registers BindKey/RunScript before user.ini
 └── seed 009A4EC0 [engine+240]=004167DA [+244]=game
     [+90544]=0  009E1BC0 → [+90548]  [+90592]=1
@@ -932,6 +935,7 @@ Walk these **from their parent above**, not by string.
 | `00B40000` | `00BDC4F0` / `00BDDD50` | patch destroy |
 | `006C2170` | unload of previous ContainsMaps | region change |
 | `004B4260` | each initial-quest factory run | not Oakvale intro |
+| `00892E80` | `00CB5AD0` Gameflow factory body | user.ini after WLD list; factory UNREAD |
 | `004A5A40` | after `00640320` skip: `006BB990` then `006B3FF0` | already seed-proven; next unread callee on this slice |
 
 After every successful walk: add the node here, then implement
