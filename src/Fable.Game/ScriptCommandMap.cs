@@ -479,6 +479,16 @@ public static class ScriptCommandMap
         Spec("CrowdClearActions", 0, 0, "crowd",
             ScriptReturn.CompleteNow, CommandParity.ScriptLayer,
             "clear member entity tasks"),
+        Spec("GiveGold", 0x00CC82F5, 0x00CC8348, "amount",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "atoi; Gold lookup 00515700; vtbl+504(requested-have); fall to next token"),
+        Spec("Sheathe", 0x00CC37A2, 0x00CC37F8, "melee|ranged|false|none|TRUE",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "melee 2032 ranged 2036 false 2028 none 2024; TRUE no extra vtbl; not PutUpYourSwords"),
         Spec("GiveHero", 0x00CC6392, 0x00CC63E5, "item[,n][,extra][,silent][,yield]",
             ScriptReturn.YieldAfterUnlessFalse, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

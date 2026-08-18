@@ -1178,6 +1178,143 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void GiveGold_ensures_at_least_requested()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var first = new ScriptInterpreter("gg1", ["GiveGold 100"]);
+        first.RunUntilYield(runtime);
+        Assert.Equal(100, runtime.World.HeroGold);
+        var again = new ScriptInterpreter("gg2", ["GiveGold 50"]);
+        again.RunUntilYield(runtime);
+        Assert.Equal(100, runtime.World.HeroGold);
+        var more = new ScriptInterpreter("gg3", ["GiveGold 250"]);
+        more.RunUntilYield(runtime);
+        Assert.Equal(250, runtime.World.HeroGold);
+        Assert.Equal(0x00CC8348u, ScriptCommandMap.Find("GiveGold")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void Sheathe_melee_is_vtbl_2032_not_PutUpYourSwords()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("sh",
+        [
+            "HERO.Sheathe MELEE",
+            "SCYTHE.Sheathe none",
+            "WHISPER.Sheathe TRUE",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal("MELEE", runtime.World.Sheathed["HERO"]);
+        Assert.Equal(2032, runtime.World.SheatheVtbl["HERO"]);
+        Assert.Equal("none", runtime.World.Sheathed["SCYTHE"]);
+        Assert.Equal(2024, runtime.World.SheatheVtbl["SCYTHE"]);
+        Assert.Equal("TRUE", runtime.World.Sheathed["WHISPER"]);
+        Assert.Equal(0, runtime.World.SheatheVtbl["WHISPER"]);
+        Assert.Equal(0x00CC37F8u, ScriptCommandMap.Find("Sheathe")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("PutUpYourSwords")!.Value.ApplySite,
+            ScriptCommandMap.Find("Sheathe")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void Sheathe_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_BANDITKING_THERESA") ?? bank.Find("CS_JACK_DEATH");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.Contains(".Sheathe ", StringComparison.OrdinalIgnoreCase))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("Sheathe", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-sheathe", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".Sheathe ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal(parsed.Arg(0), runtime.World.Sheathed[parsed.Target ?? ""]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-sheathe.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-givegold-sheathe.txt"),
+            """
+            GiveGold 00CC82F5 / apply 00CC8348
+              arg0 atoi; empty skip
+              00515700 lookup "Gold"; if have, edi -= count
+              edi<=0 skip; else vtbl+504(edi)
+            Sheathe 00CC37A2 / apply 00CC37F8
+              melee vtbl+2032; ranged 2036; false 2028; none 2024
+              TRUE/other no extra vtbl; jmp 00CC2C6B
+              not PutUpYourSwords vtbl+520
+            Gold/sheathe mesh UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
+    public void GiveGold_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("GiveGold ", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "GiveGold 100";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("GiveGold", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-gold", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("GiveGold ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        ScriptLine.TryInt(parsed.Arg(0), out var amount);
+        Assert.True(runtime.World.HeroGold >= amount);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-gold.txt"));
+    }
+
+    [Fact]
     public void UseTheme_real_script_bank_line()
     {
         var install = GameInstall.TryLocate();

@@ -298,7 +298,14 @@ public static class EntityDispatcher
                 alpha.ToString("0.###"));
         }
 
-        if (Eq(v, "Sheathe") || Eq(v, "SetScared") || Eq(v, "SetBound") ||
+        if (Eq(v, "Sheathe"))
+        {
+            var mode = line.Arg(0);
+            ctx.World.Sheathe(line.Target ?? "", mode);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, mode);
+        }
+
+        if (Eq(v, "SetScared") || Eq(v, "SetBound") ||
             Eq(v, "SetPushable") || Eq(v, "SetDamageable") || Eq(v, "SetAttackable") ||
             Eq(v, "SetFree") || Eq(v, "Killable") || Eq(v, "HoldInHand") ||
             Eq(v, "SetAppearanceSeed"))

@@ -1033,6 +1033,16 @@ public sealed class WorldRuntime
     /// </summary>
     public string SwordClass { get; set; } = "";
     public bool SwordClassifyRequested { get; set; }
+    /// <summary>
+    /// <c>00CC83F1</c> <c>vtbl+504(delta)</c>.
+    /// GiveGold ensures gold is at least the requested
+    /// amount (requested − already-have).
+    /// </summary>
+    public int HeroGold { get; set; }
+    public readonly Dictionary<string, string> Sheathed =
+        new(StringComparer.OrdinalIgnoreCase);
+    public readonly Dictionary<string, int> SheatheVtbl =
+        new(StringComparer.OrdinalIgnoreCase);
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
     public float TimeOfDayHours { get; set; }
@@ -1123,6 +1133,42 @@ public sealed class WorldRuntime
     /// Clothes only — hair/tattoo stay.
     /// </summary>
     public void RemoveHeroClothes() => HeroClothes.Clear();
+
+    /// <summary>
+    /// <c>00CC8348</c>: atoi, subtract already-have
+    /// Gold, <c>vtbl+504(delta)</c>.
+    /// </summary>
+    public int GiveGold(int amount)
+    {
+        if (amount <= 0)
+            return 0;
+        var delta = amount - HeroGold;
+        if (delta <= 0)
+            return 0;
+        HeroGold += delta;
+        return delta;
+    }
+
+    /// <summary>
+    /// <c>00CC37F8</c>: melee 2032, ranged 2036,
+    /// false 2028, none 2024. TRUE/other is no extra
+    /// vtbl. Join <c>00CC2C6B</c>.
+    /// </summary>
+    public void Sheathe(string actor, string mode)
+    {
+        var key = actor ?? "";
+        var vtbl = 0;
+        if (mode.Equals("melee", StringComparison.OrdinalIgnoreCase))
+            vtbl = 2032;
+        else if (mode.Equals("ranged", StringComparison.OrdinalIgnoreCase))
+            vtbl = 2036;
+        else if (mode.Equals("false", StringComparison.OrdinalIgnoreCase))
+            vtbl = 2028;
+        else if (mode.Equals("none", StringComparison.OrdinalIgnoreCase))
+            vtbl = 2024;
+        Sheathed[key] = mode;
+        SheatheVtbl[key] = vtbl;
+    }
 
     /// <summary>
     /// <c>00CC63E5</c>: give <c>count - already</c>

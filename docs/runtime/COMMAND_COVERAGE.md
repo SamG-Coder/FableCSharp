@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 111
-RECOVERED RETURN: 111
-RECOVERED APPLY: 47
+RECOVERED DISPATCH: 113
+RECOVERED RETURN: 113
+RECOVERED APPLY: 49
 IMPLEMENTED RUNTIME: 13
-UNREAD: 74
+UNREAD: 72
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -96,7 +96,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | StartProgressSpinner | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | DoCharacterPreload | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | WaitBossFight | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| GiveGold | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| GiveGold | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | LiftRock | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | SetThingConscious | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | TeleportThing | Global | Unread | Unread | Unread | Unread | Unread | Unread |
@@ -162,7 +162,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | LookToCamera | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
 | LookToThing | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
 | Collide | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
-| Sheathe | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
+| Sheathe | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
 | EntitySetMaxRunningSpeed | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
 | EntitySetMaxWalkingSpeed | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
 | DialogadSpeak | Entity | Proven | Proven | Proven | Partial | Partial | Partial |

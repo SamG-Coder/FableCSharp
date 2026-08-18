@@ -656,6 +656,17 @@ public static class GlobalDispatcher
                 $"{crowd},{anim}");
         }
 
+        if (Eq(v, "GiveGold"))
+        {
+            var token = line.Arg(0);
+            if (token.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ScriptLine.TryInt(token, out var amount);
+            ctx.World.GiveGold(amount);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                ctx.World.HeroGold.ToString());
+        }
+
         if (Eq(v, "GiveHero"))
         {
             var item = line.Arg(0);
