@@ -896,6 +896,7 @@ public sealed class EngineLifecycle : IDisposable
     ];
 
     public ForwardLifecycleTrace Trace { get; } = new();
+    public LoadTiming Timing { get; } = new();
     public EngineStage Stage { get; private set; } = EngineStage.ProcessEntry;
     public EngineMode Mode { get; private set; } = EngineMode.None;
     public int StartupVideoIndex { get; private set; }
@@ -1202,6 +1203,7 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public void Bootstrap(GameInstall? install)
     {
+        var boot = System.Diagnostics.Stopwatch.StartNew();
         Install = install;
         Note(PeEntry, "ProcessEntry", "CRT", "WinMainCRTStartup");
         Stage = EngineStage.CrtStartup;
@@ -1239,6 +1241,7 @@ public sealed class EngineLifecycle : IDisposable
             Note(RetailPump, "StartupVideos", "PlayAVI", StartupVideos[0].RelativePath);
         else
             Note(FrontendIntern, "Frontend", "FRONT_END", "skip videos");
+        Timing.Add("bootstrap", boot.Elapsed.TotalMilliseconds, Stage.ToString());
     }
 
     /// <summary>
@@ -1403,17 +1406,25 @@ public sealed class EngineLifecycle : IDisposable
         var objects = timing.Measure("BuildMeshes",
             () => MeshBatches.BuildMeshes(props),
             m => $"verts={m.Vertices.Length}");
+        var sky = timing.Measure("Sky",
+            () => MeshBatches.Build(SkyGeometry.Build(Install)),
+            m => $"verts={m.Vertices.Length}");
         SubmittedLandscape = land;
-        SubmittedObjects = objects;
+        SubmittedObjects = MeshBatches.Concat(objects, sky);
         SubmittedLandscapeCells = cells.Count;
         SubmittedMesh = MeshBatches.Concat(land, objects);
-        BindSubmittedTextures();
+        timing.Measure("Textures", () => { BindSubmittedTextures(); return _submittedTextures.Count; },
+            n => $"n={n}");
         WorldSubmitted = SubmittedMesh.Vertices.Length > 0;
         SubmitC3dParsed = Meshes.ParsedCount - parsedBefore;
         SubmitElapsedMs = clock.Elapsed.TotalMilliseconds;
-        timing.Add("Textures", 0, $"n={_submittedTextures.Count}");
         LastLoadTiming = timing;
-        Console.WriteLine(timing.Format());
+        foreach (var row in timing.Rows)
+            Timing.Add("submit/" + row.Name, row.Ms, row.Extra);
+        Timing.Add("submit", SubmitElapsedMs,
+            WorldSubmitted
+                ? $"verts={SubmittedMesh.Vertices.Length} c3d={SubmitC3dParsed}"
+                : "miss");
         Note(OpenStaticMapsFn, "Submit", "World",
             WorldSubmitted
                 ? $"primary {opened.Region} cells={cells.Count} meshes={seen.Count} palskin={_submittedPalskin.Count} hero={HeroMeshId} terrain={_submittedTerrain.Count} verts={SubmittedMesh.Vertices.Length} {SubmitElapsedMs:0}ms c3d={SubmitC3dParsed}"
@@ -1810,10 +1821,12 @@ public sealed class EngineLifecycle : IDisposable
     {
         if (Stage != EngineStage.Frontend)
             return;
+        var ng = System.Diagnostics.Stopwatch.StartNew();
         Note(LeaveFrontendSite, "LeaveFrontend", "Frontend", "Leave frontend");
         Stage = EngineStage.LeaveFrontend;
         WorldFileName = FinalAlbionWld;
         Note(0x0042F44D, "LeaveFrontend", "World", FinalAlbionWld);
+        Timing.Add("frontend NG", ng.Elapsed.TotalMilliseconds, FinalAlbionWld);
     }
 
     /// <summary>
@@ -1913,13 +1926,17 @@ public sealed class EngineLifecycle : IDisposable
             return;
         }
 
-        World = WorldFile.Load(Install.WorldPath);
+        World = Timing.Measure("WLD", () => WorldFile.Load(Install.WorldPath),
+            w => $"maps={w.Maps.Count} regions={w.Regions.Count}");
         Note(LoadWldFile, "Load .wld file", "WLD",
             $"maps={World.Maps.Count} regions={World.Regions.Count} quests={World.InitialQuests.Count}");
         LoadGtngFile();
-        LoadGlobalThingsFile();
-        LoadRegionGraphFile();
-        LoadQuestsAndActivate();
+        Timing.Measure("TNG global", () => { LoadGlobalThingsFile(); return GlobalThingMapsLoaded; },
+            n => $"maps={n} things={GlobalThings?.Things.Count() ?? 0}");
+        Timing.Measure("region graph", () => { LoadRegionGraphFile(); return Regions?.Neighbors.Count ?? 0; },
+            n => $"nodes={n}");
+        Timing.Measure("quests", () => { LoadQuestsAndActivate(); return _activatedQuests.Count; },
+            n => $"activated={n}");
     }
 
     /// <summary>
@@ -2884,7 +2901,8 @@ public sealed class EngineLifecycle : IDisposable
             "009D56C0 vtbl+4 Open Bank File Async");
         Note(MeshBank.OpenBankFileAsync, "Init Mesh Bank", "Bank",
             "009A7F80 [0x13CA79C]");
-        Meshes.Open(Install);
+        Timing.Measure("mesh bank", () => { Meshes.Open(Install); return Meshes.EntryCount; },
+            n => $"entries={n} parsed={Meshes.ParsedCount}");
         Note(MeshBankSetGlobalFn, "Init Mesh Bank", "Bank",
             $"004BBFD0 [0x13B8A04] entries={Meshes.EntryCount}");
     }
@@ -2904,7 +2922,8 @@ public sealed class EngineLifecycle : IDisposable
             "Opening Main Graphic Bank GBANK_MAIN_PC");
         Note(Fable.Formats.Textures.TextureFile.CreateTextureDxt1Named,
             "Init Graphics", "Bank", "009BE830");
-        Textures = new TextureLibrary(Install);
+        Textures = Timing.Measure("textures.big", () => new TextureLibrary(Install),
+            _ => "GBANK_MAIN_PC");
     }
 
     /// <summary>
@@ -2932,23 +2951,27 @@ public sealed class EngineLifecycle : IDisposable
                           m.Equals(CurrentRegion.RegionName, StringComparison.OrdinalIgnoreCase))
                       ?? CurrentRegion.ContainsMaps.FirstOrDefault()
                       ?? CurrentRegion.RegionName;
-        foreach (var map in WorldGeometry.StaticMapsAround(World, Install, primary))
-            _openedStaticMaps.Add(map.ScriptName);
+        Timing.Measure("STB/LEV open", () =>
+        {
+            foreach (var map in WorldGeometry.StaticMapsAround(World, Install, primary))
+                _openedStaticMaps.Add(map.ScriptName);
+            CurrentStaticMapName = primary;
+            foreach (var name in _openedStaticMaps)
+            {
+                var neighbour = !name.Equals(primary, StringComparison.OrdinalIgnoreCase);
+                if (neighbour)
+                    _neighbourStaticMaps.Add(name);
+                AttachStaticMap(name, neighbour);
+            }
+            return _openedStaticMaps.Count;
+        }, n => $"opened={n} primary={primary}");
 
         Note(OpenStaticMapsFn, "StaticMap", "WLD",
             $"opened={_openedStaticMaps.Count} primary={primary}");
-        CurrentStaticMapName = primary;
         Note(OpenStaticMapsMode1Current, "StaticMap", "WLD",
             "00B3E820 current " + primary);
         Note(OpenStaticMapsNameTable, "StaticMap", "WLD",
             "00B420F0 name table");
-        foreach (var name in _openedStaticMaps)
-        {
-            var neighbour = !name.Equals(primary, StringComparison.OrdinalIgnoreCase);
-            if (neighbour)
-                _neighbourStaticMaps.Add(name);
-            AttachStaticMap(name, neighbour);
-        }
     }
 
     /// <summary>
@@ -3043,29 +3066,34 @@ public sealed class EngineLifecycle : IDisposable
             $"006C2170 index={index} {region?.RegionName ?? (index == 0 ? "dummy" : "?")}");
         if (region is not null)
         {
-            BbbArchive? wad = null;
-            if (Install is not null && File.Exists(Install.WadPath))
-                wad = BbbArchive.Open(Install.WadPath);
-            try
+            Timing.Measure("region TNG", () =>
             {
-                foreach (var map in region.ContainsMaps)
+                BbbArchive? wad = null;
+                if (Install is not null && File.Exists(Install.WadPath))
+                    wad = BbbArchive.Open(Install.WadPath);
+                try
                 {
-                    Note(LevelLoaderApply, "LevelLoader", "Region", "Loading topology " + map);
-                    if (!_activatedMaps.Exists(m =>
-                            m.Equals(map, StringComparison.OrdinalIgnoreCase)))
-                        _activatedMaps.Add(map);
-                    Note(ActivateTopologyFn, "LevelLoader", "Region",
-                        $"004FCBB0 {map} +38=1");
-                    Note(SetMapLoadingFlagFn, "LevelLoader", "Region",
-                        $"004FCFE0 {map} +39");
-                    Note(LevelLoaderApply, "LevelLoader", "Region", "Loading objects " + map);
-                    LoadRegionMapThings(map, wad);
+                    foreach (var map in region.ContainsMaps)
+                    {
+                        Note(LevelLoaderApply, "LevelLoader", "Region", "Loading topology " + map);
+                        if (!_activatedMaps.Exists(m =>
+                                m.Equals(map, StringComparison.OrdinalIgnoreCase)))
+                            _activatedMaps.Add(map);
+                        Note(ActivateTopologyFn, "LevelLoader", "Region",
+                            $"004FCBB0 {map} +38=1");
+                        Note(SetMapLoadingFlagFn, "LevelLoader", "Region",
+                            $"004FCFE0 {map} +39");
+                        Note(LevelLoaderApply, "LevelLoader", "Region", "Loading objects " + map);
+                        LoadRegionMapThings(map, wad);
+                    }
                 }
-            }
-            finally
-            {
-                wad?.Dispose();
-            }
+                finally
+                {
+                    wad?.Dispose();
+                }
+
+                return RegionThingMapsLoaded;
+            }, n => $"maps={n} things={_regionThings.Count}");
 
             Note(LevelLoaderApply, "LevelLoader", "Region",
                 "Region Level Files: Activate Topology");
