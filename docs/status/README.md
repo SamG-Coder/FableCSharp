@@ -15,25 +15,24 @@ or in tests/code, treat it as **UNREAD**.
 world clock.
 
 Snapshot: **2026-08-19**, previous snapshot runtime HEAD
-`98c4acc` via PR #34 merge `dac317ba`,
-runtime HEAD `8cd110a` (*Press Start draws frontend.big
-title and FORREST tiles.*).
-Just locked: 53 runtime commits since `98c4acc`. Headline
-locks: leave frontend → Init Game → user.ini Gameflow
-(`b510f613`, `4ba053c`, `aa957b0`, `26ecd624`, `154b4d10`);
-type-1 Main/Core/Barrow yield on inactive Q_NewOakValeIntro
-(`0aab79b`, `9ed7a4f`, `0d80a7a`, `4eba1e1`); no-save does
-not activate Oakvale; 00501450 loops all i, collectors not
-release (`736de8a`, `7627e25`); first Present dest empty
-then later 009BEEB0 (`20a44f1`, `d49ef02`); PRESS_START
-type 10 + frontend.big FRONTEND_TITLE / FORREST tiles
-(`e99fcae`, `8cd110a`). Ignore merge `50d131bb`. Ignore
-docs `dac317ba` / snapshot stubs. Ignore `3429bc55`
-investigations. Ignore `296567a6` ExeIndex. Docs PR #29
-`bedcf919` is iOS Settings chrome only — CSS unchanged.
-Freeze at `8cd110a`. Do not include any later runtime if
-master moves. Master is still proving **boot / world
-clock**, not animation.
+`8cd110a` via PR #35 merge `313e573`,
+runtime HEAD `c180b8c` (*frontend.bin widget tree, dest
+inherit, type-4 0xE5, stored MessageId 0x126/15.*).
+Just locked: 5 runtime commits since `8cd110a`. Headline
+locks: frontend.bin widget tree + DX9-to-Vulkan submit
+(`0d77c2c`); dest inherit type-10 remap; leftover size
+only GraphicIndex; type-6 dest zero-size (`1a08cc0`);
+type-4 Press Start 0xE5; Return is not accept (`db36334`);
+stored MessageId 0x126/15; type-4 action 26 posts them;
+no lifecycle inject (`c180b8c`). `e79f7b4` is unused-usings
+cleanup of `0d77c2c`. Ignore merge `f2aebf57`. Ignore docs
+`fb46116` / snapshot `313e573` / `09684a0`. Ignore
+gitignore `d1a9f91`. Ignore tools/_frontend `fa5c1a2`.
+Ignore proofs-only adds. Docs PR #29 `bedcf919` is iOS
+Settings chrome only — CSS unchanged. Freeze at
+`c180b8c`. Do not include any later runtime if master
+moves. Master is still proving **boot / world clock**,
+not animation.
 README’s long-term priority list still starts with animation;
 that list is not the current phase.
 
@@ -127,14 +126,12 @@ when a ledger or test already records them.
 
 ### Phase 1 in progress — boot / world clock (current master)
 
-Recent commits (`9c625bc` … `8cd110a`) lock engine submit / host
-Present / frontend flush / Gameflow / type-1 yield / Press Start
-sprites, not `00DBDE40`. Previous snapshot `98c4acc` via PR #34
-`dac317ba`. Just locked this batch: leave-frontend Init Game,
-user.ini Gameflow Main watcher, type-1 yield on
-Q_NewOakValeIntro, no-save does not activate it, 00501450 full
-loop, first Present dest empty / later 009BEEB0, PRESS_START
-type 10 + frontend.big tiles. CSS unchanged.
+Recent commits (`0d77c2c` … `c180b8c`) lock frontend.bin widget
+tree / dest inherit / type-4 Press Start / stored MessageId, not
+`00DBDE40`. Previous snapshot `8cd110a` via PR #35 `313e573`.
+Just locked this batch: frontend.bin widget tree + DX9-to-Vulkan
+submit, dest inherit type-10 remap, type-4 0xE5, stored
+MessageId 0x126/15 via action 26. CSS unchanged.
 
 | Item | Status | Evidence |
 |---|---|---|
@@ -166,25 +163,25 @@ type 10 + frontend.big tiles. CSS unchanged.
 | Camera body `004164E0` steps `arg/15` when `[0x13B8630]>0` | PROVEN | `6d7545a` |
 | `0041707E` interpolates when catchup ticks are 0 (default New Game) | PROVEN | `c3be891` |
 | `006B4900` world+24 slots; `006B42F0` lerps `+6296/+6312/+6328` into `ScriptedCamera` | PROVEN | `6e1ff8e` / `World_camera_006B4900_slots_lerp_into_ScriptedCamera` |
-| Leave Press Start: `0059A238` msg `0xE5` → `00599D5C` empty `005955AB` → `00595845` → `00596917` slot `0x17` `NEW_PROFILE` | PROVEN | `Frontend_0059A238_msg_E5_empty_005955AB_is_00595845_then_00596917`. Native key UNREAD. Return→msg 15 from Press Start DISPROVEN. |
-| New Profile accept: `00851770` seeds `0x122DE80` "Default"; msg `0x126` → `00851920` → `0059697A` `MAIN_MENU_NO_CONTINUE` | PROVEN | `Frontend_00851770_seeds_Default_then_0x126_is_0059697A_main_menu`. Native 0xE5/0x126 poster UNREAD. |
-| Frontend New Game click: `0059A238` msg 15 → `[retail+41]=1` → Leave `0042F2A2` | PROVEN | `64a2e14` / `Frontend_00595582_new_game_message_leaves_without_RequestNewGame` |
+| Leave Press Start: `0059A238` msg `0xE5` → `00599D5C` empty `005955AB` → `00595845` → `00596917` slot `0x17` `NEW_PROFILE` | PROVEN | `Frontend_0059A238_msg_E5_empty_005955AB_is_00595845_then_00596917`. Type-4 posts `0xE5` on Press Start (`db36334`). Host Return quarantined as accept. Return→msg 15 from Press Start DISPROVEN. Native `0xE5` is attach `00598EE6` → widget+352, not persist +224 — leftover #37. |
+| New Profile accept: `00851770` seeds `0x122DE80` "Default"; msg `0x126` → `00851920` → `0059697A` `MAIN_MENU_NO_CONTINUE` | PROVEN | `Frontend_00851770_seeds_Default_then_0x126_is_0059697A_main_menu`. Persist CRC `0x53C644E4` as MessageId (def+224 via `0055B040`): type-38 `UI_ACCEPT_NEW_PROFILE` stores `0x126` (`c180b8c`). Action 26 posts the stored id. |
+| Frontend New Game click: `0059A238` msg 15 → `[retail+41]=1` → Leave `0042F2A2` | PROVEN | `64a2e14` / `Frontend_00595582_new_game_message_leaves_without_RequestNewGame`. Type-11 `UI_FRONTEND_BUTTON_NEW_GAME` stores 15 (`c180b8c`). Action 26 posts it. |
 | Menu built at `00595B24` (`UI_TEXT_NEW_GAME` id=0); not `00DBDE40` | PROVEN | same |
 | Frontend frame `0042EC7C`: input `0042E3EE` → fill → draw `0042DF9E` (BeginScene / UI vtbl+8 / EndScene / Present) | PROVEN | `0d8f5e5` / `Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present` |
 | Same Present as PlayAVI (`009BEEB0`); extra `.wmv` after draw skipped (`00595A03` always 0) | PROVEN | same |
 | `006C2170` Loading objects → `00522720` / `00521AE0` current-map `.tng` (LookoutPoint on no-save) | PROVEN | `1ebece6` / `Loading_objects_00521AE0_loads_LookoutPoint_tng` |
-| `0051FD80` Load Single Thing: no-save LookoutPoint TNG has no PlayerCreature; `HOLY_SITE_PLAYER_START` `GuildArrivalHSP` → `00489D40` / `006AC910` inserts PlayerCreature at that pose. RHSet axes later (`ff808b1`); closed #18 | PROVEN | `8f89aad` / `Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint` (refined by `e0e0511`) |
+| `0051FD80` Load Single Thing: no-save LookoutPoint TNG has no PlayerCreature; `HOLY_SITE_PLAYER_START` `GuildArrivalHSP` → `00489D40` / `006AC910` inserts PlayerCreature at that pose. RHSet axes later (`ff808b1`); #18 done | PROVEN | `8f89aad` / `Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint` (refined by `e0e0511`) |
 | No-save hero is `00DBDE40` / `CREATURE_HERO_CHILD` / StartOakVale | DISPROVEN | same |
 | `004AE940` Create Players writes `[player+9826]=1` because `0099A350` always returns 1 (`al=1`) | PROVEN | `ea479d2` / `CreatePlayers_004AE940_sets_plus9826_via_0099A350` |
 | `+9826` stays 0 after Create Players (first `004162B5` skips world) | DISPROVEN | same; first pump takes player/world/vtbl+24; `WorldFrame` increments |
 | No-save first *rendered* scene is LookoutPoint `RegionThings` + hero camera `006B3FF0`; client `BindLifecycleFirstRegion` skips if map name contains StartOakVale | PROVEN | `fe6a11e` / same LookoutPoint test + client early return |
 | `00662880` / `004CA010` insert binds `CREATURE_HERO` mesh 4299 after the `PLAYER_HERO` miss chain | PROVEN | `e0e0511` / `Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint` (`HeroMeshId=4299`) |
 | `0049F180` after characters: Init GUI `0043A380` `PLAYER_GUI_PC` | PROVEN | `21491ac` / same test (`PlayerGuiReady`); bind still #17 / PARTIAL (Note-only) |
-| `00403079` / `009C0E50` display defaults 1024×768, title `TEXT_GUI_WINDOW_TITLE` | PROVEN | `48a879ac` / `Window_00403079_defaults_1024x768_and_title`. Client Size = `BackBufferWidth`/`Height`. `DefaultVulkan` 1600×900 DISPROVEN (issue #8 closed). |
+| `00403079` / `009C0E50` display defaults 1024×768, title `TEXT_GUI_WINDOW_TITLE` | PROVEN | `48a879ac` / `Window_00403079_defaults_1024x768_and_title`. Client Size = `BackBufferWidth`/`Height`. `DefaultVulkan` 1600×900 DISPROVEN (issue #8 done). |
 | `00413C50` `userst.ini` `SetFullscreen` / `009A64B0` style `0xCA0000` / `009BF7E0` `Windowed=![0x137544A]` | PROVEN (name→byte PARTIAL) | `Userst_00413C50_SetFullscreen_false_is_009BF7E0_windowed`. d3d9 `ForceWindowedMode` wrapper is not authority. |
 | `004B4260` activates WLD `START_INITIAL_QUESTS` (world+172 from `00507C30`) | PROVEN | `efa0e541` / `Init_quests_004B4260_activates_wld_initial_list` (`QuestsInitDone=true`) |
 | `00CB5AD0` starts `QuestFactoryTable` factory scripts (not `S_QNOVI`) | PROVEN | `48a879ac` / `Activate_quests_00CB5AD0_starts_factory_scripts` |
-| `0042E3EE` type/key events dispatch `0041E5F2` actions 0–5 / 20–21 (not WASD) | PROVEN | `e7b3c76` / `Input_0042E3EE_dispatches_0041E5F2_actions`. `0055CB10` records actions; no recovered player-move listener. Not WASD. New Game is still keyboard N/Enter (does not close #14). |
+| `0042E3EE` type/key events dispatch `0041E5F2` actions 0–5 / 20–21 (not WASD) | PROVEN | `e7b3c76` / `Input_0042E3EE_dispatches_0041E5F2_actions`. `0055CB10` records actions; no recovered player-move listener. Not WASD. New Game is still keyboard N/Enter (leave #14 open). |
 | `009BEF80` SetViewport vtbl+188 full backbuffer 1024×768 MinZ 0 MaxZ 1 | PROVEN | `12e0d75` / `Window_00403079_defaults_1024x768_and_title` + `Game_00435530_Presents_009BEEB0_and_pumps_input` |
 | Game `00435530` / `00435F50` Present is the same `009BEEB0` as frontend and PlayAVI | PROVEN | `12e0d75` / `Game_00435530_Presents_009BEEB0_and_pumps_input`. `00417001` does not Present; it calls `00435F70` → `00435530` after WorldFrame>1. Client Draw is that Present, not a second swapchain. |
 | `00435530` flushes ScenePasses via `009DA9F0(1)` DIP vtbl+332 (bits `0x4` → `0x40` → `0x20` → `0x100` → `0x2000`) | PROVEN | `be8545e` / `676bf63` / same `Game_00435530` test (`SubmittedLayerBits`). Order BeginScene, Clear, PlayerOverlay `00435000`→`00639E40`, PlayerInterface `00435070`, Flush2D `009D9C80`, FlushLayers `009DA9F0(1)`, EndScene, Present. Overlay/interface still Note. |
@@ -203,19 +200,23 @@ type 10 + frontend.big tiles. CSS unchanged.
 | Init Graphics opens `GBANK_MAIN_PC`; submitted ids go on `EngineFrame.Textures`. Game Present waits for seed+submit | PROVEN | `991bab2` / `Install_banks` `SubmittedTextures`. Program no longer constructs `TextureLibrary`. |
 | First-seen Lookout green is leftover `c3=(0,0.125,0)` × `mul_x2` × `oT1=(0,0)`, not a missing sampler | PROVEN | `Dx9VulkanShaderConstants.UnlitRgbIsC3Leftover`. Do not invent world UV. |
 | `Q_NewOakValeIntro` / SHOT2 is not first no-save Present. First playable is Lookout `006B3FF0` | PROVEN | `004162B5` dump: +20 then +28. Frontend widgets `00595222` UNREAD (black). |
-| `0042DF9E` walks `[ui+84]` vtbl+8, then `009D9C80`/`009DA9F0(1)` twice. `00404A80` is getter `0x13B7CD8` | PROVEN | `5657176` / `6607c1e` / `Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present` (`FrontendFlushCount=2`, `FrontendDisplayHelperFn`, `FrontendDisplaySingletonVa`). New Game still keyboard N/Enter (does not close #14). |
+| `0042DF9E` walks `[ui+84]` vtbl+8, then `009D9C80`/`009DA9F0(1)` twice. `00404A80` is getter `0x13B7CD8` | PROVEN | `5657176` / `6607c1e` / `Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present` (`FrontendFlushCount=2`, `FrontendDisplayHelperFn`, `FrontendDisplaySingletonVa`). New Game still keyboard N/Enter (leave #14 open). |
 | PRESS_START is type 10 `0054E3D0` vtbl `012497E4`; draw `00530260` +176; `005339B0` +272=1; `UI_PRESS_START_TEXT` `TEXT_GUI_MENU_PRESS_BUTTON` | PROVEN | `Frontend_PRESS_START_is_type_10_with_text_child`. Type-0 `0041B800` / dest-always-0 / `0041AFA0` as the menu draw is DISPROVEN. |
 | Press Start sprites are `frontend.big` `FRONTEND_TITLE_01/02_SPRITE` + `FORREST_1_*` + mouse | PROVEN | decoded via `TextureFile` (Rgba8 framed LZO); title 256×128 gold logo; forest DXT1 oak grove |
+| `frontend.bin` drives widget tree, dest, sprites and DX9-to-Vulkan submit | PROVEN | `0d77c2c`. `e79f7b4` drops unused usings from `FrontendWidgetFactory` (cleanup of `0d77c2c`). Present `0042DF9E` / `00595222` still Note-only. Host never queues Type4. leave #14 and #20 open. |
+| Press Start dest inherits type-10 remap scale. Leftover `+204/+208` only when `GraphicIndex != 0`. Type-6 dest is zero-size at remapped origin. Nonempty dest is `00BAE2D0` not `009DB700`. Host still Notes `009DA9F0` DIP | PROVEN / leftover #36 | `1a08cc0`. Calculator tests still feed 16×16. leave #36 open. |
+| Type-4 posts `0xE5` on Press Start. Host Return quarantined as accept. `0x126`/15 were still injected at this SHA. CUIDef persist `00631C60` +189/+190 u8s consumed so Absolute stays aligned. Type-6 Font 26051 is a names.bin offset that resolves to `ENG_ARIAL_24`, not the `0054F4B0` `ENG_ARIAL_16` helper | PROVEN | `db36334` |
+| Persist CRC `0x53C644E4` as MessageId (def+224 via `0055B040`). Type-38 `UI_ACCEPT_NEW_PROFILE` stores `0x126`; type-11 `UI_FRONTEND_BUTTON_NEW_GAME` stores 15. Type 4 is `00A03C80` (+40=4), not a DIK. Action 26 posts stored id. Lifecycle no longer injects `0x126`/15 | PROVEN | `c180b8c` / `Type4_drives_lifecycle_0xE5_then_0x126_then_15` |
 | `[node+20]` is `0041DB1D`/`0041D21B` type0 `0041B800` vtbl `0122F5D4`; draw `0041AFA0` not `0052D900` | DISPROVEN | PRESS_START Type=10. Type 0 is `UI_FRONTEND_BUTTON`. |
 | `00A09F20` miss: `[bank].vtbl+4` is `009D56C0` Open Bank File Async then `009A7F80` on `[0x13CA79C]` | PROVEN | `bbee903` / `Pe_entry_is_crt_not_new_game` / `Install_banks_and_startup_videos_exist` (`MeshBank.OpenVtbl4`) |
-| `00404C00` first-seen `[0x13B7CD8+8]==0` skip; `0041AFA0` packs `0041BEB0` type `0x22` (not sibling `0041BF60`) dest `[edx+92]` `this+0x15C` size `0xC0` | PROVEN | `c612ad5` / same frontend test (`Frontend2dLastPacker=0041BEB0`, `FrontendDisplayFlag=false`). Dest rect `0041AC20` UNREAD. Does not close #14. |
+| `00404C00` first-seen `[0x13B7CD8+8]==0` skip; `0041AFA0` packs `0041BEB0` type `0x22` (not sibling `0041BF60`) dest `[edx+92]` `this+0x15C` size `0xC0` | PROVEN | `c612ad5` / same frontend test (`Frontend2dLastPacker=0041BEB0`, `FrontendDisplayFlag=false`). Dest leftover `+204/+208` only when `GraphicIndex != 0` (`1a08cc0`). leave #14 open. |
 | `00418289` dump: `00416296`/`00490A22` frontend+GUI gate; `009E1BC0` → `[game+90544]`; fade/player `004AEBA0`; world `0049D9E0`; vtbl+24 `00416E78`; `0041726D` WorldFrame. START_INITIAL_QUESTS factories `00CDE2F0`/`00F01760`/`00CDBD20`/`00CB8690` (vtbls `012C3000`/`012F72D0`). `006B3FF0` seed PROVEN (208); `006B63C0` bank copy 6×`0x1F4` PROVEN (91). Pose leftover `006B8640`/`008889C0` stay UNREAD; `006B2CA0` later PROVEN (`204a214`). Host `SeedAt(1.6m)` later DISPROVEN as live New Game (`204a214`). FOV 72 is SHOT2 leftover; Lookout helper FOV later 70 (`be3339e`). Do not StartCutscene(S_PSM) from the factory ctor. | PROVEN | `18ef09b` / [FORWARD_TREE.md](../runtime/FORWARD_TREE.md) §11 |
-| `006B3FF0` +68 → `006B2CA0` pose (not invented `SeedAt` 1.6 m eye). First-seen V2/V3 `(1,0,0)`, V4 `(-1,0,0)`. `00A14440` normalize. Host `SeedAt(1.6m)` is not the New Game path | PROVEN | `204a214` / `World_camera_006B4900_slots_lerp_into_ScriptedCamera` / `Camera_004164E0_runs_on_install_after_WorldFrame` / `Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint` (`PoseComputed`, `WorldCamera.PoseFn`). Does not close #6 |
+| `006B3FF0` +68 → `006B2CA0` pose (not invented `SeedAt` 1.6 m eye). First-seen V2/V3 `(1,0,0)`, V4 `(-1,0,0)`. `00A14440` normalize. Host `SeedAt(1.6m)` is not the New Game path | PROVEN | `204a214` / `World_camera_006B4900_slots_lerp_into_ScriptedCamera` / `Camera_004164E0_runs_on_install_after_WorldFrame` / `Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint` (`PoseComputed`, `WorldCamera.PoseFn`). Do not reopen #6 |
 | `004A5A40` type-1 tick pumps `004B4490` `[0x13B89FC]` → `00CB8220` / `00CB7C40` / `00CB8170`. First-seen `QuestVtbl24Calls=0` (`+41==0` takes vtbl+4 start). `006B3030` V0 spring: Weight0 stays ctor 0.2; V0 stays `(1,0,0)` (no invented V0). `004978A0` LCG seed UNREAD; `00A14260` yaw/pitch not applied first-seen | PROVEN | `52e26bc` / `Camera_004164E0_runs_on_install_after_WorldFrame` (`QuestPumpRan`, `QuestPumpWalked>=6`, `FollowSpringRan`, `SubjectFillNoted`). FORWARD_TREE §11 |
 | First-seen `006B3B80` skip (`+460=0`, qword +24 = −1.0 from `[0x1236700]`, fcomp `[0x122ED70]=0` → ret). No V0 write. Fiber +41 setter `00CB78D0` (`mov al,[esp+4]; mov [ecx+41],al; ret 4`). `00CB7950` clears +41 after update; first-seen stays 0. Not in factory vtbls `012C3000` / `012F72D0` / `012C3688` / `0129B938` / `012C1648` / `012C2748` | PROVEN | `fab17be` / `World_camera_006B4900_slots_lerp_into_ScriptedCamera` (`CameraTickSkipped`, `CameraTickTimer=-1.0`, `PoseTickFn`) / `Camera_004164E0_runs_on_install_after_WorldFrame` (`FiberUpdateFlagSetter`) |
-| `009DA9F0(1)` first-seen empty → `009DB6E6` skip DIP. Nonempty would be `00A058C0` then `[device+88].vtbl+332`. No `cmp …,0x22`. Type-0x22 DIP is vtbl+332, not a 0x22 switch. `009D9C80` first 250: dirty-list only. Queue begin +16020. `Frontend2dDipIssued=false` | PROVEN | `6493c77` / `Frontend_present_runs_on_install_after_videos` (`DisplayQueueBeginOffset=16020`, `DrawIndexedPrimitiveVtbl=332`, `DisplayPrimitiveFn=00A058C0`). Does not close #14 |
-| `0042E204` Init Engine: `00B26340` alloc `0x178` ctor `00B260B0` vtbl `012A0F3C` at retail+88. `0041AFA0` `[012A0F3C+92]` = `00B23BC0` → `00B324A0([0x1436E80], widget+0x15C, rec, 0xC0, 0)`. Type `[rec]=0x22` → `[0x1436E84]+16+0x22*4`. dest+4=0 first-seen. Handler vtbl+20 UNREAD (not memcpy +16020) | PROVEN | `d6821b8` / `Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present` (`FrontendSubmitFn=00B23BC0`, `FrontendSubmitDispatchFn=00B324A0`, `FrontendEngineVtbl=012A0F3C`, `FrontendEngineObjectSize=0x178`). Does not close #14 |
-| First-seen WorldCamera +6296 is the ctor axis, not the eye (`IsCtorAxis`). `00B314E0` consumes helper from the hero (look `006B2CA0` V4, up `(0,0,1)` `FirstSeenCameraUp`, FOV 70 from `00A0C130` / `0x3E471B48` turns). Letterbox 1024×768 (`00B30B50` camera +176/+180). AABB-cull neighbour STB before height parse (`00BDC2D0` / `00BF6F80`). `textures.h` resolve cached (`LevelLibrary.LandscapeEnums`). Skip `SetMesh`/`SetTextures` when payload unchanged | PROVEN | `be3339e` / `Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint` / `Install_banks_and_startup_videos_exist` (`RendererHelperBound`, `GameCamera.FirstSeenFovDegrees`) / `CameraProjectionTests` (`ApplyRendererHelper`, `LandscapeFrustum.CameraUpdate=00B314E0`) / `World_submit_is_stable_between_frames` / `BuildFrame_reuses_texture_array` / `Texture_decode_is_cached` / `Lookout_tile_origin_is_region_local` / `MeshBank_does_not_reparse_c3d` / `Native_draw_order_is_begin_layers_end_present`. Does not close #6 or #13 |
+| `009DA9F0(1)` first-seen empty → `009DB6E6` skip DIP. Nonempty would be `00A058C0` then `[device+88].vtbl+332`. No `cmp …,0x22`. Type-0x22 DIP is vtbl+332, not a 0x22 switch. `009D9C80` first 250: dirty-list only. Queue begin +16020. `Frontend2dDipIssued=false` | PROVEN | `6493c77` / `Frontend_present_runs_on_install_after_videos` (`DisplayQueueBeginOffset=16020`, `DrawIndexedPrimitiveVtbl=332`, `DisplayPrimitiveFn=00A058C0`). leave #14 open |
+| `0042E204` Init Engine: `00B26340` alloc `0x178` ctor `00B260B0` vtbl `012A0F3C` at retail+88. `0041AFA0` `[012A0F3C+92]` = `00B23BC0` → `00B324A0([0x1436E80], widget+0x15C, rec, 0xC0, 0)`. Type `[rec]=0x22` → `[0x1436E84]+16+0x22*4`. dest+4=0 first-seen. Handler vtbl+20 UNREAD (not memcpy +16020) | PROVEN | `d6821b8` / `Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present` (`FrontendSubmitFn=00B23BC0`, `FrontendSubmitDispatchFn=00B324A0`, `FrontendEngineVtbl=012A0F3C`, `FrontendEngineObjectSize=0x178`). leave #14 open |
+| First-seen WorldCamera +6296 is the ctor axis, not the eye (`IsCtorAxis`). `00B314E0` consumes helper from the hero (look `006B2CA0` V4, up `(0,0,1)` `FirstSeenCameraUp`, FOV 70 from `00A0C130` / `0x3E471B48` turns). Letterbox 1024×768 (`00B30B50` camera +176/+180). AABB-cull neighbour STB before height parse (`00BDC2D0` / `00BF6F80`). `textures.h` resolve cached (`LevelLibrary.LandscapeEnums`). Skip `SetMesh`/`SetTextures` when payload unchanged | PROVEN | `be3339e` / `Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint` / `Install_banks_and_startup_videos_exist` (`RendererHelperBound`, `GameCamera.FirstSeenFovDegrees`) / `CameraProjectionTests` (`ApplyRendererHelper`, `LandscapeFrustum.CameraUpdate=00B314E0`) / `World_submit_is_stable_between_frames` / `BuildFrame_reuses_texture_array` / `Texture_decode_is_cached` / `Lookout_tile_origin_is_region_local` / `MeshBank_does_not_reparse_c3d` / `Native_draw_order_is_begin_layers_end_present`. Do not reopen #6 / #13 |
 | Landscape `00BF4570` cells as persistent draws. Each STB 16 m tile is one LandscapeCell (cached on LevelLibrary). Submit builds per-cell MeshDraws; landscape and C3D on separate VBs. Concat stays a test rollup. Print LoadTiming on first New Game submit | PROVEN | `3dba4a1` / `Lookout_cells_match_stb_tiles` / `World_submit_is_stable_between_frames` (`SubmittedLandscapeCells`, `LastLoadTiming`). First commit submitted bits `0x4`/`0x40`; cell DIP later `0x40` only (`40037b1`) |
 | Static C3D: preserve native instance transform. C3D verts stay file-local. `MeshDraw.World` is the ObjectTransform 3x4 (`009881F0` wrapper+496). Draw multiplies W*VP. No per-triangle bake | PROVEN | `5e57e64` / `Instance_world_is_009881f0_not_baked_verts` |
 | Sky: submit `0x2000` midday dome on New Game. CEngineSkyRenderer `GRAPHIC_ATMOSPHERIC_SKY_MIDDAY` after static C3D (layer order `0x4`/`0x40`/`0x20`/`0x2000` at this commit). Uses `SkyViewProjection` | PROVEN | `63336fd` / `Install_banks_and_startup_videos_exist` (`PassBit == 0x2000`) / `Native_draw_order_is_begin_layers_end_present` / `ScenePassTests.Registration_is_34_layers_and_walks_landscape_before_sky`. PALSKIN `0x100` later (`676bf63`) |
@@ -223,17 +224,17 @@ type 10 + frontend.big tiles. CSS unchanged.
 | Resources: unload region patches; one WAD for TNG. `00B40000` / `00B3EF40` release map-slot LEV/STB/cells. Banks and WAD handle stay process-lifetime | PROVEN | `7c93828` / `LevelLibrary_unload_map_drops_region_not_wad` / `Install_banks_and_startup_videos_exist` (`HasCachedCells`, sky `0x2000`) |
 | Landscape: `00BF4570` cell DIP is layer `0x40` only. Bit `0x4` is `00BF71D0` tessellator background, not the stored cell mesh | PROVEN | `40037b1` / `Lookout_cells_match_stb_tiles` (`LayerForeground`; no `LayerBackground`) |
 | Resources: cache `game.bin` and `meshdata.h` at process lifetime. `009AD410`-style: one def table, not a per-map GameBin open | PROVEN | `cf0ee50` / `Install_banks_and_startup_videos_exist` / `LevelLibrary_reuses_lev_and_height_parses`. `LevelLibrary.Defs` / `MeshEnums` |
-| Camera: lock `00A0C130` ctor helper and `00988A50` WVP numbers. `00A0C130` is a packer. GameCamera ctor look is +Z, up `(1,1,1)`. `006B42F0` tail `008857E0` is bank lerp; vtbl+244 is colour-filter. Does not change the consumed first-Present helper (still UNREAD) | PROVEN | `a6f939a` / `CameraMatrixParityTests.GameCamera_ctor_look_default_is_plus_z` / `WorldCamera_tail_is_colour_filter_not_helper` / `GameCamera_ctor_helper_wvp_at_1024x768` / `Projection_numbers_match_009883F0`. Does not close #6 or #13 |
+| Camera: lock `00A0C130` ctor helper and `00988A50` WVP numbers. `00A0C130` is a packer. GameCamera ctor look is +Z, up `(1,1,1)`. `006B42F0` tail `008857E0` is bank lerp; vtbl+244 is colour-filter. Does not change the consumed first-Present helper (still UNREAD) | PROVEN | `a6f939a` / `CameraMatrixParityTests.GameCamera_ctor_look_default_is_plus_z` / `WorldCamera_tail_is_colour_filter_not_helper` / `GameCamera_ctor_helper_wvp_at_1024x768` / `Projection_numbers_match_009883F0`. Do not reopen #6 / #13 |
 | PALSKIN: submit file dest triangles, print load timing. `MeshFile.Triangles` already apply `00A9E1E0` × IBM. First-seen does not re-skin on the CPU. Hero 4299 stays on layer `0x100` | PROVEN | `cb22533` / `Palskin_submit_uses_file_triangles_not_repose` / `Install_banks_and_startup_videos_exist` (`SubmittedPalskinMeshIds` 4299) / `World_submit_is_stable_between_frames` (`LastLoadTiming`) |
 | Static C3D: one file-local VB per mesh, instance W on the draw. `00BB2540` copies locals once (shl idx,4, no matrix). `009881F0` owns the 3x4 per instance. Repeated Lookout lamps no longer duplicate the C3D soup | PROVEN | `306e83c` / `Instance_world_is_009881f0_not_baked_verts` (shared verts, distinct Worlds) |
 | Environment: bind `REGION.EnvironmentTheme` name, not lighting. Lookout RegionDef is `ENVIRONMENT_THEME1` #2346 (same as Oakvale intro), not `ENVIRONMENT_OAKVALE`. Live first-seen lights stay `00B482A0` record 0 (c19/c20/c35, fog 1000/2000, packed count 0). Seven Lookout streetlamps are C3D 4978, not 2LIGHTS | PROVEN | `4429113` / `Install_banks_and_startup_videos_exist` / `GameBinFormatTests` (`AuthoredEnvironmentTheme`, `FirstSeenPackedLightCount`) |
 | Scene: drain PALSKIN `0x80`/`0x200` after sky. `00B33010` walks slots 8+10 on bit `0x100`, then sky `0x2000`, then slot 14 on `0x80` and Flag1 slot 9 on `0x200`. Static `0x18` stays slot 0 on `0x20`. PALSKIN geometry still submits on `0x100` until type1/Flag1 routing is wired (leftover research, not a new issue) | PROVEN | `f4a1efc` / `Dx9VulkanParityTests` / `EngineLifecycleTests` / `ScenePassTests` / `WorldPipelineTests` |
-| Hero: copy GuildArrivalHSP RHSet axes on `006AC910` spawn. Lookout start marker faces +X / +Z. Closed #18. Exist set 465/465; primary C3Ds 193/193 | PROVEN | `ff808b1` / `Install_banks_and_startup_videos_exist` (hero ObjectTransform forward +X) |
+| Hero: copy GuildArrivalHSP RHSet axes on `006AC910` spawn. Lookout start marker faces +X / +Z. #18 done. Exist set 465/465; primary C3Ds 193/193 | PROVEN | `ff808b1` / `Install_banks_and_startup_videos_exist` (hero ObjectTransform forward +X) |
 | Resources: skip unused 1 m height grid on `00BF4570` cell load. Native draw is stored STB tiles, not bilinear FineHeights. LevelLibrary reuses WLD already parsed at Init World. Open/Present records primary Graphic handles only | PROVEN | `8bfbf39` |
-| PALSKIN: bind adult Hero as the script/move/draw Thing. BindScene no longer only accepts `CREATURE_HERO_CHILD`. `006AC910` spawn binds HERO/Hero and seeds `World.Positions`. PlayLoopingAnim `00CC186C` now ApplyInner so ClipKey is set. Thing XYZ writable so WalkTo writes back. c38 dest upload is later GPU path (do not file). Does not close #19 | PROVEN | `27cb7ee` / `Install_banks_and_startup_videos_exist` (Resolve HERO/Hero same as life.Hero) / `PlayLoopingAnim_is_vtbl80_not_PlayAnimation` (`ClipKey`, `InnerApplied`) |
+| PALSKIN: bind adult Hero as the script/move/draw Thing. BindScene no longer only accepts `CREATURE_HERO_CHILD`. `006AC910` spawn binds HERO/Hero and seeds `World.Positions`. PlayLoopingAnim `00CC186C` now ApplyInner so ClipKey is set. Thing XYZ writable so WalkTo writes back. c38 dest upload is later GPU path (do not file). leave #19 open | PROVEN | `27cb7ee` / `Install_banks_and_startup_videos_exist` (Resolve HERO/Hero same as life.Hero) / `PlayLoopingAnim_is_vtbl80_not_PlayAnimation` (`ClipKey`, `InnerApplied`) |
 | Render: INNER_SKY does not write oFog. `VSHADER_INNER_SKY` is dp4 oPos + mov oD0, v1. D3D default oFog is 1. Applying 1000/2000 land plane to the 6500 dome made native brightness path black. Land leftover c3 unchanged. No invented ambient or extra x2 | PROVEN | `d7615a6` / `GpuTextureTests` / `ShaderFormatTests` / `WorldGeometryTests` |
 | Landscape: INDEX16 strip on the `00BFE050` mesh, DrawIndexed. `00BF4570` DIPs mesh+52/+56 (vtbl+328, type 5, prims+2), not the 72-byte cell. Bit `0x4` is still `00BF71D0`, not this IB. Host unwinds strip to a list; verts unique per cell. W = I on region-local STB | PROVEN | `35f3d20` / `WorldGeometryTests` |
-| PlayAVI: native `00628B79` dest and clear leftover frames. Scale to viewport width, center leftover height. Recreate video image when height changes so 640×400/480/360 do not share leftover rows. Clear one frame between startup videos. Closed #11. Does not close #20 | PROVEN | `98c4acc` / `PlayAVI_00628B79_resizes_to_viewport_width_and_centers` / `PlayAvi_rewrites_xmv_to_installed_wmv_and_blocks` |
+| PlayAVI: native `00628B79` dest and clear leftover frames. Scale to viewport width, center leftover height. Recreate video image when height changes so 640×400/480/360 do not share leftover rows. Clear one frame between startup videos. #11 done. leave #20 open | PROVEN | `98c4acc` / `PlayAVI_00628B79_resizes_to_viewport_width_and_centers` / `PlayAvi_rewrites_xmv_to_installed_wmv_and_blocks` |
 | `WaitPlayAnimation` `00CC18E0` plays via vtbl+72 (or vtbl+76 if IsTrue arg3) then leftover vtbl+104 | PROVEN | `1eec3bc` / `WaitPlayAnimation_plays_then_polls_vtbl104` |
 | FORWARD_TREE PE→WinMain→no-save New Game. Mesh bank `MBANK_ALLMESHES` at `0049E620` / `00A09F20` / `00A27030` / `004BBFD0`. Engine owns map open/close `00B40000` / `00B42750`. Client must not open a second graphics.big dump | PROVEN | `f0fb184` / `Pe_entry_is_crt_not_new_game` / `Install_banks_and_startup_videos_exist` |
 | Game vtbl+32 `00416953` is Loading world (no-save `[+90588]` empty skips `004A3200` Loading save). Then `004A1840` WLD/quests. `00B3E820` current handle LookoutPoint; `00B41E50` neighbours (PicnicArea); `00B420F0` name table; `00BDF010` neighbour patch. `00B42530` is STB-miss fallback only | PROVEN | `fc8b261` / same install test + `Pe_entry` constants |
@@ -286,11 +287,12 @@ the no-save path.
 | `0041714D` when `world+164 != 0` | UNREAD | Default New Game is `world+164==0` |
 | Slot fields beyond `+6296/+6312/+6328` (weights / `+6340/+6352`) | UNREAD | Lerp into `ScriptedCamera` is PROVEN; first-seen Weight0 ctor 0.2 is locked (`52e26bc`). Leftover slot bodies are not |
 | `00435530` overlay `00435000` / interface `00435070` bodies | PARTIAL | Present + `009DA9F0` layer bits PROVEN; overlay/interface still Note |
-| Frontend `00595222` widget DIP body | DISPROVEN as DIP | Walk only (`[ui+84]` → `0041AFA0`). First-seen dest `0,0,0,0`. DIP remains `009DA9F0` empty skip |
-| `00B324A0` type-0x22 handler vtbl+20 | PARTIAL | dest+4=0 only while dest is 0. Child dest from PositionX/Y is nonempty → `00BAD8A0` `009DB700`. Type-6 text uses `FONT_ENGLISH_MAIN` `ENG_ARIAL_16` A8 atlas (`0054F4B0` / `0054EF00`). `009FE620` is GPU cache wrap, not the file parse. |
-| `0041AC20` dest rect from +204/+248 | PROVEN first-seen 0,0,0,0 | Empty `+376` skips `+204/+208`. `0041AFA0` uses `+248/+264` ctor 0 |
-| New Game keyboard N/Enter (host stand-in) | PARTIAL | `DispatchFrontendMessage(15)` is `0059A238` vtbl+32. Enter still queues that message. Click widget id=0 UNREAD |
-| `006B8640` / `008889C0` leftover (do not write V0 first-seen) | UNREAD | `006B2CA0` pose is PROVEN (`204a214`). Host `SeedAt(1.6m)` is DISPROVEN as live New Game. Lookout helper FOV 70 from `00A0C130` (`be3339e`). `00A0C130` is a packer (`a6f939a`); ctor look +Z, up `(1,1,1)`. SHOT2 FOV 72 is intro-view leftover — do not collapse into Lookout. Do not close #6 / #13 |
+| Frontend `00595222` widget DIP body | DISPROVEN as DIP | Walk only (`[ui+84]` → `0041AFA0`). Present `0042DF9E` / `00595222` still Note-only. Host still Notes `009DA9F0` DIP. leave #14 open. |
+| `00B324A0` type-0x22 handler vtbl+20 | PARTIAL | dest+4=0 only while dest is 0. Nonempty dest is `00BAE2D0` not `009DB700` (`1a08cc0`). Host still Notes `009DA9F0` DIP. Type-6 Font 26051 is a names.bin offset that resolves to `ENG_ARIAL_24`, not the `0054F4B0` `ENG_ARIAL_16` helper (`db36334`). leave #36 open. |
+| `0041AC20` dest rect from +204/+248 | PROVEN first-seen 0,0,0,0 | Leftover `+204/+208` only when `GraphicIndex != 0` (`1a08cc0`). Type-6 dest is zero-size at remapped origin. Calculator tests still feed 16×16. leave #36 open. |
+| New Game keyboard N/Enter (host stand-in) | PARTIAL | Host Return quarantined as accept (`db36334`). Host never queues Type4. `DispatchFrontendMessage(15)` is `0059A238` vtbl+32. Enter still queues that message. leave #14 open. |
+| Press Start `0xE5` host fill / action-26 poster | PARTIAL | Host fills `0xE5` when persist MessageId is 0. Action 26 posts first-visible type-10/11/38, not the action-target widget. Native `0xE5` is `00598EE6` → widget+352, not persist +224 (`0055B040`). issue #37. Stored 0x126/15 on type-38/11 is recovered. |
+| `006B8640` / `008889C0` leftover (do not write V0 first-seen) | UNREAD | `006B2CA0` pose is PROVEN (`204a214`). Host `SeedAt(1.6m)` is DISPROVEN as live New Game. Lookout helper FOV 70 from `00A0C130` (`be3339e`). `00A0C130` is a packer (`a6f939a`); ctor look +Z, up `(1,1,1)`. SHOT2 FOV 72 is intro-view leftover — do not collapse into Lookout. Do not reopen #6 / #13 |
 | Consumed first-Present helper | UNREAD | `a6f939a` locks ctor packer / `00988A50` WVP / bank lerp `008857E0` / vtbl+244 colour-filter. Does not change the consumed first-Present helper. Do not reopen #6 / #13 |
 | `004978A0` LCG seed for `006B3030` | UNREAD | Spring ran; Weight0/V0 first-seen locked (`52e26bc`). Seed unread |
 | `0055CB10` frontend player-move listener | UNREAD | Actions 0–5 / 20–21 recorded; no recovered listener |
@@ -334,8 +336,8 @@ opcode.” Last persist-vector-0 command:
 | `WmvPlayer` never QIs `IBasicAudio` (native `00A3B9D0` does) | PARTIAL | issue #9 |
 
 `DoScriptFrame` / `PlayAVI` / cameras / fades are **PROVEN** at the
-script layer. PlayAVI dest vs 1600×900 (#8) is closed. Native
-`00628B79` dest + recreate-on-height (#11) is closed (`98c4acc`).
+script layer. PlayAVI dest vs 1600×900 (#8) is done. Native
+`00628B79` dest + recreate-on-height (#11) is done (`98c4acc`).
 Unload `00A3B380`/`00A3BC20` before the next slot is now recovered
 (`0ace433`); leftover #20 is still 3D Draw during startup PlayAVI.
 `IBasicAudio` (#9) stays a **PARTIAL** leftover. Do not invent
@@ -361,8 +363,8 @@ From [FIRST_SCENE_AUDIT.md](../render/FIRST_SCENE_AUDIT.md)
 
 TEMPORARY stand-ins (LINEAR/REPEAT, MaxLod=1, Z test+write on) stay
 classified. PlayAVI *script* apply is PROVEN; dest vs
-`Silk.WindowOptions.DefaultVulkan` 1600×900 (#8) is closed.
-Native `00628B79` dest + recreate-on-height (#11) is closed
+`Silk.WindowOptions.DefaultVulkan` 1600×900 (#8) is done.
+Native `00628B79` dest + recreate-on-height (#11) is done
 (`98c4acc`). Unload-before-next-slot is recovered; leftover #20 is
 3D Draw during startup PlayAVI. `IBasicAudio` (#9) stays a PARTIAL
 leftover. Steam timing is PARITY Open item 0, not a first-scene
@@ -419,12 +421,16 @@ The boot-first sequence holds. Corrections from the repo:
    (`a6f939a`). Consumed first-Present helper stays UNREAD — do
    not reopen #6 / #13. SHOT2 FOV 72 stays intro-view leftover.
    `006B8640`/`008889C0` leftover UNREAD. Frontend leftover is
-   still `00595222` Note and New Game keyboard N/Enter (#14).
-   `0041AC20` dest rect and `00B324A0` handler vtbl+20 stay
-   UNREAD. New Game submit now walks `0x4`/`0x40`/`0x20`/`0x100`/
+   still `00595222` Note-only and New Game keyboard N/Enter
+   (#14). Host never queues Type4. Dest leftover GraphicIndex
+   path + calculator tests still feed 16×16; host still Notes
+   `009DA9F0` DIP (#36). Press Start `0xE5` is a host fill when
+   persist MessageId is 0; action 26 posts first-visible
+   type-10/11/38 (#37). PlayAVI still 3D Draw (#20). leave #14
+   and #20 open. New Game submit now walks `0x4`/`0x40`/`0x20`/`0x100`/
    `0x2000` (`676bf63`); cell DIP is `0x40` only (`40037b1`).
-   #11 closed (`98c4acc` recreate-on-height + `00628B79` dest).
-   #18 closed (`ff808b1` RHSet +X). Lookout EnvironmentTheme is
+   #11 done (`98c4acc` recreate-on-height + `00628B79` dest).
+   #18 done (`ff808b1` RHSet +X). Lookout EnvironmentTheme is
    `ENVIRONMENT_THEME1` #2346, not `ENVIRONMENT_OAKVALE`. Do not
    collapse Oakvale intro view into Lookout.
 2. **GTNG is not an unread file on TLC** — missing skip is PROVEN.

@@ -29,7 +29,7 @@
         <button type="button" class="chip DISPROVEN" data-filter="DISPROVEN" aria-pressed="false">DISPROVEN</button>
         <button type="button" class="chip TEMPORARY" data-filter="TEMPORARY" aria-pressed="false">TEMPORARY</button>
       </div>
-      <p class="hits" id="hits">196 shown</p>
+      <p class="hits" id="hits">201 shown</p>
     </div>
     <header class="doc-intro">
       <p class="kicker">FableCSharp · human overview</p>
@@ -75,27 +75,25 @@
 
     <p>
       Snapshot: <strong>2026-08-19</strong>, previous snapshot runtime HEAD
-      <code>98c4acc</code> via PR #34 merge <code>dac317ba</code>,
-      runtime HEAD <code>8cd110a</code>
-      (<em>Press Start draws frontend.big title and
-      FORREST tiles.</em>).
-      Just locked: 53 runtime commits since <code>98c4acc</code>.
-      Headline locks: leave frontend → Init Game → user.ini Gameflow
-      (<code>b510f613</code>, <code>4ba053c</code>, <code>aa957b0</code>,
-      <code>26ecd624</code>, <code>154b4d10</code>); type-1
-      Main/Core/Barrow yield on inactive Q_NewOakValeIntro
-      (<code>0aab79b</code>, <code>9ed7a4f</code>, <code>0d80a7a</code>,
-      <code>4eba1e1</code>); no-save does not activate Oakvale;
-      00501450 loops all i, collectors not release
-      (<code>736de8a</code>, <code>7627e25</code>); first Present dest
-      empty then later 009BEEB0 (<code>20a44f1</code>,
-      <code>d49ef02</code>); PRESS_START type 10 + frontend.big
-      FRONTEND_TITLE / FORREST tiles (<code>e99fcae</code>,
-      <code>8cd110a</code>). Ignore merge <code>50d131bb</code>.
-      Ignore docs <code>dac317ba</code> / snapshot stubs. Ignore
-      <code>3429bc55</code> investigations. Ignore <code>296567a6</code>
-      ExeIndex. Docs PR #29 <code>bedcf919</code> is iOS Settings chrome
-      only — CSS unchanged. Freeze at <code>8cd110a</code>.
+      <code>8cd110a</code> via PR #35 merge <code>313e573</code>,
+      runtime HEAD <code>c180b8c</code>
+      (<em>frontend.bin widget tree, dest inherit, type-4 0xE5,
+      stored MessageId 0x126/15.</em>).
+      Just locked: 5 runtime commits since <code>8cd110a</code>.
+      Headline locks: frontend.bin widget tree + DX9-to-Vulkan submit
+      (<code>0d77c2c</code>); dest inherit type-10 remap; leftover
+      size only GraphicIndex; type-6 dest zero-size
+      (<code>1a08cc0</code>); type-4 Press Start 0xE5; Return is
+      not accept (<code>db36334</code>); stored MessageId 0x126/15;
+      type-4 action 26 posts them; no lifecycle inject
+      (<code>c180b8c</code>). <code>e79f7b4</code> is unused-usings
+      cleanup of <code>0d77c2c</code>. Ignore merge
+      <code>f2aebf57</code>. Ignore docs <code>fb46116</code> /
+      snapshot <code>313e573</code> / <code>09684a0</code>. Ignore
+      gitignore <code>d1a9f91</code>. Ignore tools/_frontend
+      <code>fa5c1a2</code>. Ignore proofs-only adds. Docs PR #29
+      <code>bedcf919</code> is iOS Settings chrome only — CSS
+      unchanged. Freeze at <code>c180b8c</code>.
       Do not include any later runtime if master moves. Master is still
       proving <strong>boot / world clock</strong>, not animation.
       README’s long-term priority list still starts with animation; that
@@ -282,14 +280,13 @@
 
     <h3>Phase 1 in progress — boot / world clock (current master)</h3>
     <p>
-      Recent commits (<code>9c625bc</code> … <code>8cd110a</code>) lock engine
-      submit / host Present / frontend flush / Gameflow / type-1 yield /
-      Press Start sprites, not <code>00DBDE40</code>. Previous snapshot
-      <code>98c4acc</code> via PR #34 <code>dac317ba</code>.
-      Just locked this batch: leave-frontend Init Game, user.ini Gameflow
-      Main watcher, type-1 yield on Q_NewOakValeIntro, no-save does not
-      activate it, 00501450 full loop, first Present dest empty / later
-      009BEEB0, PRESS_START type 10 + frontend.big tiles. CSS unchanged.
+      Recent commits (<code>0d77c2c</code> … <code>c180b8c</code>) lock
+      frontend.bin widget tree / dest inherit / type-4 Press Start /
+      stored MessageId, not <code>00DBDE40</code>. Previous snapshot
+      <code>8cd110a</code> via PR #35 <code>313e573</code>.
+      Just locked this batch: frontend.bin widget tree + DX9-to-Vulkan
+      submit, dest inherit type-10 remap, type-4 0xE5, stored
+      MessageId 0x126/15 via action 26. CSS unchanged.
     </p>
     <div class="table-scroll">
     <table>
@@ -438,17 +435,17 @@
         <tr>
           <td>Leave Press Start: <code>0059A238</code> msg <code>0xE5</code> → <code>00599D5C</code> empty <code>005955AB</code> → <code>00595845</code> → <code>00596917</code> slot <code>0x17</code> <code>NEW_PROFILE</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>Frontend_0059A238_msg_E5_empty_005955AB_is_00595845_then_00596917</code>. Native key UNREAD. Return→msg 15 from Press Start DISPROVEN.</td>
+          <td><code>Frontend_0059A238_msg_E5_empty_005955AB_is_00595845_then_00596917</code>. Type-4 posts <code>0xE5</code> on Press Start (<code>db36334</code>). Host Return quarantined as accept. Return→msg 15 from Press Start DISPROVEN. Native <code>0xE5</code> is attach <code>00598EE6</code> → widget+352, not persist +224 — leftover #37.</td>
         </tr>
         <tr>
           <td>New Profile accept: <code>00851770</code> seeds <code>0x122DE80</code> "Default"; msg <code>0x126</code> → <code>00851920</code> → <code>0059697A</code> <code>MAIN_MENU_NO_CONTINUE</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>Frontend_00851770_seeds_Default_then_0x126_is_0059697A_main_menu</code>. Native 0xE5/0x126 poster UNREAD.</td>
+          <td><code>Frontend_00851770_seeds_Default_then_0x126_is_0059697A_main_menu</code>. Persist CRC <code>0x53C644E4</code> as MessageId (def+224 via <code>0055B040</code>): type-38 <code>UI_ACCEPT_NEW_PROFILE</code> stores <code>0x126</code> (<code>c180b8c</code>). Action 26 posts the stored id.</td>
         </tr>
         <tr>
           <td>Frontend New Game click: <code>0059A238</code> msg 15 → <code>[retail+41]=1</code> → Leave <code>0042F2A2</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>64a2e14</code> / <code>Frontend_00595582_new_game_message_leaves_without_RequestNewGame</code></td>
+          <td><code>64a2e14</code> / <code>Frontend_00595582_new_game_message_leaves_without_RequestNewGame</code>. Type-11 <code>UI_FRONTEND_BUTTON_NEW_GAME</code> stores 15 (<code>c180b8c</code>). Action 26 posts it.</td>
         </tr>
         <tr>
           <td>Menu built at <code>00595B24</code> (<code>UI_TEXT_NEW_GAME</code> id=0); not <code>00DBDE40</code></td>
@@ -471,7 +468,7 @@
           <td><code>1ebece6</code> / <code>Loading_objects_00521AE0_loads_LookoutPoint_tng</code></td>
         </tr>
         <tr>
-          <td><code>0051FD80</code> Load Single Thing: no-save LookoutPoint TNG has no PlayerCreature; <code>HOLY_SITE_PLAYER_START</code> <code>GuildArrivalHSP</code> → <code>00489D40</code> / <code>006AC910</code> inserts PlayerCreature at that pose. RHSet axes later (<code>ff808b1</code>); closed #18</td>
+          <td><code>0051FD80</code> Load Single Thing: no-save LookoutPoint TNG has no PlayerCreature; <code>HOLY_SITE_PLAYER_START</code> <code>GuildArrivalHSP</code> → <code>00489D40</code> / <code>006AC910</code> inserts PlayerCreature at that pose. RHSet axes later (<code>ff808b1</code>); #18 done</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
           <td><code>8f89aad</code> / <code>Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint</code> (refined by <code>e0e0511</code>)</td>
         </tr>
@@ -508,7 +505,7 @@
         <tr>
           <td><code>00403079</code> / <code>009C0E50</code> display defaults 1024×768, title <code>TEXT_GUI_WINDOW_TITLE</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>48a879ac</code> / <code>Window_00403079_defaults_1024x768_and_title</code>. Client Size = <code>BackBufferWidth</code>/<code>Height</code>. <code>DefaultVulkan</code> 1600×900 DISPROVEN (issue #8 closed).</td>
+          <td><code>48a879ac</code> / <code>Window_00403079_defaults_1024x768_and_title</code>. Client Size = <code>BackBufferWidth</code>/<code>Height</code>. <code>DefaultVulkan</code> 1600×900 DISPROVEN (issue #8 done).</td>
         </tr>
         <tr>
           <td><code>004B4260</code> activates WLD <code>START_INITIAL_QUESTS</code> (world+172 from <code>00507C30</code>)</td>
@@ -523,7 +520,7 @@
         <tr>
           <td><code>0042E3EE</code> type/key events dispatch <code>0041E5F2</code> actions 0–5 / 20–21 (not WASD)</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>e7b3c76</code> / <code>Input_0042E3EE_dispatches_0041E5F2_actions</code>. <code>0055CB10</code> records actions; no recovered player-move listener. Not WASD. New Game is still keyboard N/Enter (does not close #14).</td>
+          <td><code>e7b3c76</code> / <code>Input_0042E3EE_dispatches_0041E5F2_actions</code>. <code>0055CB10</code> records actions; no recovered player-move listener. Not WASD. New Game is still keyboard N/Enter (leave #14 open).</td>
         </tr>
         <tr>
           <td><code>009BEF80</code> SetViewport vtbl+188 full backbuffer 1024×768 MinZ 0 MaxZ 1</td>
@@ -618,7 +615,7 @@
         <tr>
           <td><code>0042DF9E</code> walks <code>[ui+84]</code> vtbl+8, then <code>009D9C80</code>/<code>009DA9F0(1)</code> twice. <code>00404A80</code> is getter <code>0x13B7CD8</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>5657176</code> / <code>6607c1e</code> / <code>Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present</code> (<code>FrontendFlushCount=2</code>, <code>FrontendDisplayHelperFn</code>, <code>FrontendDisplaySingletonVa</code>). New Game still keyboard N/Enter (does not close #14).</td>
+          <td><code>5657176</code> / <code>6607c1e</code> / <code>Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present</code> (<code>FrontendFlushCount=2</code>, <code>FrontendDisplayHelperFn</code>, <code>FrontendDisplaySingletonVa</code>). New Game still keyboard N/Enter (leave #14 open).</td>
         </tr>
         <tr>
           <td>PRESS_START is type 10 <code>0054E3D0</code> vtbl <code>012497E4</code>; draw <code>00530260</code> +176; <code>005339B0</code> +272=1; <code>UI_PRESS_START_TEXT</code> <code>TEXT_GUI_MENU_PRESS_BUTTON</code></td>
@@ -629,6 +626,26 @@
           <td>Press Start sprites are <code>frontend.big</code> <code>FRONTEND_TITLE_01/02_SPRITE</code> + <code>FORREST_1_*</code> + mouse</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
           <td>decoded via <code>TextureFile</code> (Rgba8 framed LZO); title 256×128 gold logo; forest DXT1 oak grove</td>
+        </tr>
+        <tr>
+          <td><code>frontend.bin</code> drives widget tree, dest, sprites and DX9-to-Vulkan submit</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>0d77c2c</code>. <code>e79f7b4</code> drops unused usings from <code>FrontendWidgetFactory</code> (cleanup of <code>0d77c2c</code>). Present <code>0042DF9E</code> / <code>00595222</code> still Note-only. Host never queues Type4. leave #14 and #20 open.</td>
+        </tr>
+        <tr>
+          <td>Press Start dest inherits type-10 remap scale. Leftover <code>+204/+208</code> only when <code>GraphicIndex != 0</code>. Type-6 dest is zero-size at remapped origin. Nonempty dest is <code>00BAE2D0</code> not <code>009DB700</code>. Host still Notes <code>009DA9F0</code> DIP</td>
+          <td><span class="badge PROVEN">PROVEN</span> / leftover #36</td>
+          <td><code>1a08cc0</code>. Calculator tests still feed 16×16. leave #36 open.</td>
+        </tr>
+        <tr>
+          <td>Type-4 posts <code>0xE5</code> on Press Start. Host Return quarantined as accept. <code>0x126</code>/15 were still injected at this SHA. CUIDef persist <code>00631C60</code> +189/+190 u8s consumed so Absolute stays aligned. Type-6 Font 26051 is a names.bin offset that resolves to <code>ENG_ARIAL_24</code>, not the <code>0054F4B0</code> <code>ENG_ARIAL_16</code> helper</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>db36334</code></td>
+        </tr>
+        <tr>
+          <td>Persist CRC <code>0x53C644E4</code> as MessageId (def+224 via <code>0055B040</code>). Type-38 <code>UI_ACCEPT_NEW_PROFILE</code> stores <code>0x126</code>; type-11 <code>UI_FRONTEND_BUTTON_NEW_GAME</code> stores 15. Type 4 is <code>00A03C80</code> (+40=4), not a DIK. Action 26 posts stored id. Lifecycle no longer injects <code>0x126</code>/15</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>c180b8c</code> / <code>Type4_drives_lifecycle_0xE5_then_0x126_then_15</code></td>
         </tr>
         <tr>
           <td><code>[node+20]</code> is <code>0041DB1D</code>/<code>0041D21B</code> type0 <code>0041B800</code> vtbl <code>0122F5D4</code>; draw <code>0041AFA0</code> not <code>0052D900</code></td>
@@ -643,7 +660,7 @@
         <tr>
           <td><code>00404C00</code> first-seen <code>[0x13B7CD8+8]==0</code> skip; <code>0041AFA0</code> packs <code>0041BEB0</code> type <code>0x22</code> (not sibling <code>0041BF60</code>) dest <code>[edx+92]</code> <code>this+0x15C</code> size <code>0xC0</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>c612ad5</code> / same frontend test (<code>Frontend2dLastPacker=0041BEB0</code>, <code>FrontendDisplayFlag=false</code>). Dest rect <code>0041AC20</code> UNREAD. Does not close #14.</td>
+          <td><code>c612ad5</code> / same frontend test (<code>Frontend2dLastPacker=0041BEB0</code>, <code>FrontendDisplayFlag=false</code>). Dest leftover <code>+204/+208</code> only when <code>GraphicIndex != 0</code> (<code>1a08cc0</code>). leave #14 open.</td>
         </tr>
         <tr>
           <td><code>00418289</code> dump: <code>00416296</code>/<code>00490A22</code> frontend+GUI gate; <code>009E1BC0</code> → <code>[game+90544]</code>; fade/player <code>004AEBA0</code>; world <code>0049D9E0</code>; vtbl+24 <code>00416E78</code>; <code>0041726D</code> WorldFrame. START_INITIAL_QUESTS factories <code>00CDE2F0</code>/<code>00F01760</code>/<code>00CDBD20</code>/<code>00CB8690</code> (vtbls <code>012C3000</code>/<code>012F72D0</code>). <code>006B3FF0</code> seed PROVEN (208); <code>006B63C0</code> bank copy 6×<code>0x1F4</code> PROVEN (91). Pose leftover <code>006B8640</code>/<code>008889C0</code> stay UNREAD; <code>006B2CA0</code> later PROVEN (<code>204a214</code>). Host <code>SeedAt(1.6m)</code> later DISPROVEN as live New Game (<code>204a214</code>). FOV 72 is SHOT2 leftover; Lookout helper FOV later 70 (<code>be3339e</code>). Do not StartCutscene(S_PSM) from the factory ctor.</td>
@@ -653,7 +670,7 @@
         <tr>
           <td><code>006B3FF0</code> +68 → <code>006B2CA0</code> pose (not invented <code>SeedAt</code> 1.6&nbsp;m eye). First-seen V2/V3 <code>(1,0,0)</code>, V4 <code>(-1,0,0)</code>. <code>00A14440</code> normalize. Host <code>SeedAt(1.6m)</code> is not the New Game path</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>204a214</code> / <code>World_camera_006B4900_slots_lerp_into_ScriptedCamera</code> / <code>Camera_004164E0_runs_on_install_after_WorldFrame</code> / <code>Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint</code> (<code>PoseComputed</code>, <code>WorldCamera.PoseFn</code>). Does not close #6</td>
+          <td><code>204a214</code> / <code>World_camera_006B4900_slots_lerp_into_ScriptedCamera</code> / <code>Camera_004164E0_runs_on_install_after_WorldFrame</code> / <code>Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint</code> (<code>PoseComputed</code>, <code>WorldCamera.PoseFn</code>). Do not reopen #6</td>
         </tr>
         <tr>
           <td><code>004A5A40</code> type-1 tick pumps <code>004B4490</code> <code>[0x13B89FC]</code> → <code>00CB8220</code> / <code>00CB7C40</code> / <code>00CB8170</code>. First-seen <code>QuestVtbl24Calls=0</code> (<code>+41==0</code> takes vtbl+4 start). <code>006B3030</code> V0 spring: Weight0 stays ctor 0.2; V0 stays <code>(1,0,0)</code> (no invented V0). <code>004978A0</code> LCG seed UNREAD; <code>00A14260</code> yaw/pitch not applied first-seen</td>
@@ -668,17 +685,17 @@
         <tr>
           <td><code>009DA9F0(1)</code> first-seen empty → <code>009DB6E6</code> skip DIP. Nonempty would be <code>00A058C0</code> then <code>[device+88].vtbl+332</code>. No <code>cmp …,0x22</code>. Type-0x22 DIP is vtbl+332, not a 0x22 switch. <code>009D9C80</code> first 250: dirty-list only. Queue begin +16020. <code>Frontend2dDipIssued=false</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>6493c77</code> / <code>Frontend_present_runs_on_install_after_videos</code> (<code>DisplayQueueBeginOffset=16020</code>, <code>DrawIndexedPrimitiveVtbl=332</code>, <code>DisplayPrimitiveFn=00A058C0</code>). Does not close #14</td>
+          <td><code>6493c77</code> / <code>Frontend_present_runs_on_install_after_videos</code> (<code>DisplayQueueBeginOffset=16020</code>, <code>DrawIndexedPrimitiveVtbl=332</code>, <code>DisplayPrimitiveFn=00A058C0</code>). leave #14 open</td>
         </tr>
         <tr>
           <td><code>0042E204</code> Init Engine: <code>00B26340</code> alloc <code>0x178</code> ctor <code>00B260B0</code> vtbl <code>012A0F3C</code> at retail+88. <code>0041AFA0</code> <code>[012A0F3C+92]</code> = <code>00B23BC0</code> → <code>00B324A0([0x1436E80], widget+0x15C, rec, 0xC0, 0)</code>. Type <code>[rec]=0x22</code> → <code>[0x1436E84]+16+0x22*4</code>. dest+4=0 first-seen. Handler vtbl+20 UNREAD (not memcpy +16020)</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>d6821b8</code> / <code>Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present</code> (<code>FrontendSubmitFn=00B23BC0</code>, <code>FrontendSubmitDispatchFn=00B324A0</code>, <code>FrontendEngineVtbl=012A0F3C</code>, <code>FrontendEngineObjectSize=0x178</code>). Does not close #14</td>
+          <td><code>d6821b8</code> / <code>Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present</code> (<code>FrontendSubmitFn=00B23BC0</code>, <code>FrontendSubmitDispatchFn=00B324A0</code>, <code>FrontendEngineVtbl=012A0F3C</code>, <code>FrontendEngineObjectSize=0x178</code>). leave #14 open</td>
         </tr>
         <tr>
           <td>First-seen WorldCamera +6296 is the ctor axis, not the eye (<code>IsCtorAxis</code>). <code>00B314E0</code> consumes helper from the hero (look <code>006B2CA0</code> V4, up <code>(0,0,1)</code> <code>FirstSeenCameraUp</code>, FOV 70 from <code>00A0C130</code> / <code>0x3E471B48</code> turns). Letterbox 1024×768 (<code>00B30B50</code> camera +176/+180). AABB-cull neighbour STB before height parse (<code>00BDC2D0</code> / <code>00BF6F80</code>). <code>textures.h</code> resolve cached (<code>LevelLibrary.LandscapeEnums</code>). Skip <code>SetMesh</code>/<code>SetTextures</code> when payload unchanged</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>be3339e</code> / <code>Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint</code> / <code>Install_banks_and_startup_videos_exist</code> (<code>RendererHelperBound</code>, <code>GameCamera.FirstSeenFovDegrees</code>) / <code>CameraProjectionTests</code> (<code>ApplyRendererHelper</code>, <code>LandscapeFrustum.CameraUpdate=00B314E0</code>) / <code>World_submit_is_stable_between_frames</code> / <code>BuildFrame_reuses_texture_array</code> / <code>Texture_decode_is_cached</code> / <code>Lookout_tile_origin_is_region_local</code> / <code>MeshBank_does_not_reparse_c3d</code> / <code>Native_draw_order_is_begin_layers_end_present</code>. Does not close #6 or #13</td>
+          <td><code>be3339e</code> / <code>Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint</code> / <code>Install_banks_and_startup_videos_exist</code> (<code>RendererHelperBound</code>, <code>GameCamera.FirstSeenFovDegrees</code>) / <code>CameraProjectionTests</code> (<code>ApplyRendererHelper</code>, <code>LandscapeFrustum.CameraUpdate=00B314E0</code>) / <code>World_submit_is_stable_between_frames</code> / <code>BuildFrame_reuses_texture_array</code> / <code>Texture_decode_is_cached</code> / <code>Lookout_tile_origin_is_region_local</code> / <code>MeshBank_does_not_reparse_c3d</code> / <code>Native_draw_order_is_begin_layers_end_present</code>. Do not reopen #6 / #13</td>
         </tr>
         <tr>
           <td>Landscape <code>00BF4570</code> cells as persistent draws. Each STB 16&nbsp;m tile is one LandscapeCell (cached on LevelLibrary). Submit builds per-cell MeshDraws; landscape and C3D on separate VBs. Concat stays a test rollup. Print LoadTiming on first New Game submit</td>
@@ -718,7 +735,7 @@
         <tr>
           <td>Camera: lock <code>00A0C130</code> ctor helper and <code>00988A50</code> WVP numbers. <code>00A0C130</code> is a packer. GameCamera ctor look is +Z, up <code>(1,1,1)</code>. <code>006B42F0</code> tail <code>008857E0</code> is bank lerp; vtbl+244 is colour-filter. Does not change the consumed first-Present helper (still UNREAD)</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>a6f939a</code> / <code>CameraMatrixParityTests.GameCamera_ctor_look_default_is_plus_z</code> / <code>WorldCamera_tail_is_colour_filter_not_helper</code> / <code>GameCamera_ctor_helper_wvp_at_1024x768</code> / <code>Projection_numbers_match_009883F0</code>. Does not close #6 or #13</td>
+          <td><code>a6f939a</code> / <code>CameraMatrixParityTests.GameCamera_ctor_look_default_is_plus_z</code> / <code>WorldCamera_tail_is_colour_filter_not_helper</code> / <code>GameCamera_ctor_helper_wvp_at_1024x768</code> / <code>Projection_numbers_match_009883F0</code>. Do not reopen #6 / #13</td>
         </tr>
         <tr>
           <td>PALSKIN: submit file dest triangles, print load timing. <code>MeshFile.Triangles</code> already apply <code>00A9E1E0</code> × IBM. First-seen does not re-skin on the CPU. Hero 4299 stays on layer <code>0x100</code></td>
@@ -741,7 +758,7 @@
           <td><code>f4a1efc</code> / <code>Dx9VulkanParityTests</code> / <code>EngineLifecycleTests</code> / <code>ScenePassTests</code> / <code>WorldPipelineTests</code></td>
         </tr>
         <tr>
-          <td>Hero: copy GuildArrivalHSP RHSet axes on <code>006AC910</code> spawn. Lookout start marker faces +X / +Z. Closed #18. Exist set 465/465; primary C3Ds 193/193</td>
+          <td>Hero: copy GuildArrivalHSP RHSet axes on <code>006AC910</code> spawn. Lookout start marker faces +X / +Z. #18 done. Exist set 465/465; primary C3Ds 193/193</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
           <td><code>ff808b1</code> / <code>Install_banks_and_startup_videos_exist</code> (hero ObjectTransform forward +X)</td>
         </tr>
@@ -751,7 +768,7 @@
           <td><code>8bfbf39</code></td>
         </tr>
         <tr>
-          <td>PALSKIN: bind adult Hero as the script/move/draw Thing. BindScene no longer only accepts <code>CREATURE_HERO_CHILD</code>. <code>006AC910</code> spawn binds HERO/Hero and seeds <code>World.Positions</code>. PlayLoopingAnim <code>00CC186C</code> now ApplyInner so ClipKey is set. Thing XYZ writable so WalkTo writes back. c38 dest upload is later GPU path (do not file). Does not close #19</td>
+          <td>PALSKIN: bind adult Hero as the script/move/draw Thing. BindScene no longer only accepts <code>CREATURE_HERO_CHILD</code>. <code>006AC910</code> spawn binds HERO/Hero and seeds <code>World.Positions</code>. PlayLoopingAnim <code>00CC186C</code> now ApplyInner so ClipKey is set. Thing XYZ writable so WalkTo writes back. c38 dest upload is later GPU path (do not file). leave #19 open</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
           <td><code>27cb7ee</code> / <code>Install_banks_and_startup_videos_exist</code> (Resolve HERO/Hero same as life.Hero) / <code>PlayLoopingAnim_is_vtbl80_not_PlayAnimation</code> (<code>ClipKey</code>, <code>InnerApplied</code>)</td>
         </tr>
@@ -766,7 +783,7 @@
           <td><code>35f3d20</code> / <code>WorldGeometryTests</code></td>
         </tr>
         <tr>
-          <td>PlayAVI: native <code>00628B79</code> dest and clear leftover frames. Scale to viewport width, center leftover height. Recreate video image when height changes so 640×400/480/360 do not share leftover rows. Clear one frame between startup videos. Closed #11. Does not close #20</td>
+          <td>PlayAVI: native <code>00628B79</code> dest and clear leftover frames. Scale to viewport width, center leftover height. Recreate video image when height changes so 640×400/480/360 do not share leftover rows. Clear one frame between startup videos. #11 done. leave #20 open</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
           <td><code>98c4acc</code> / <code>PlayAVI_00628B79_resizes_to_viewport_width_and_centers</code> / <code>PlayAvi_rewrites_xmv_to_installed_wmv_and_blocks</code></td>
         </tr>
@@ -940,27 +957,32 @@
         <tr>
           <td>Frontend <code>00595222</code> widget DIP body</td>
           <td><span class="badge DISPROVEN">DISPROVEN</span> as DIP</td>
-          <td>Walk only (<code>[ui+84]</code> → <code>0041AFA0</code>). First-seen dest <code>0,0,0,0</code>. DIP remains <code>009DA9F0</code> empty skip</td>
+          <td>Walk only (<code>[ui+84]</code> → <code>0041AFA0</code>). Present <code>0042DF9E</code> / <code>00595222</code> still Note-only. Host still Notes <code>009DA9F0</code> DIP. leave #14 open.</td>
         </tr>
         <tr>
           <td><code>00B324A0</code> type-0x22 handler vtbl+20</td>
           <td><span class="badge PARTIAL">PARTIAL</span></td>
-          <td>dest+4=0 only while dest is 0. Child dest from PositionX/Y is nonempty → <code>00BAD8A0</code> <code>009DB700</code>. Glyph raster for <code>TEXT_GUI_MENU_PRESS_BUTTON</code> is a host stand-in (font <code>009FE620</code> UNREAD).</td>
+          <td>dest+4=0 only while dest is 0. Nonempty dest is <code>00BAE2D0</code> not <code>009DB700</code> (<code>1a08cc0</code>). Host still Notes <code>009DA9F0</code> DIP. Type-6 Font 26051 is a names.bin offset that resolves to <code>ENG_ARIAL_24</code>, not the <code>0054F4B0</code> <code>ENG_ARIAL_16</code> helper (<code>db36334</code>). leave #36 open.</td>
         </tr>
         <tr>
           <td><code>0041AC20</code> dest rect from +204/+248</td>
           <td><span class="badge PROVEN">PROVEN</span> first-seen 0,0,0,0</td>
-          <td>Empty <code>+376</code> skips <code>+204/+208</code>. <code>0041AFA0</code> uses <code>+248/+264</code> ctor 0</td>
+          <td>Leftover <code>+204/+208</code> only when <code>GraphicIndex != 0</code> (<code>1a08cc0</code>). Type-6 dest is zero-size at remapped origin. Calculator tests still feed 16×16. leave #36 open.</td>
         </tr>
         <tr>
           <td>New Game keyboard N/Enter (host stand-in)</td>
           <td><span class="badge PARTIAL">PARTIAL</span></td>
-          <td><code>DispatchFrontendMessage(15)</code> is <code>0059A238</code> vtbl+32. Enter still queues that message. Click widget id=0 UNREAD</td>
+          <td>Host Return quarantined as accept (<code>db36334</code>). Host never queues Type4. <code>DispatchFrontendMessage(15)</code> is <code>0059A238</code> vtbl+32. Enter still queues that message. leave #14 open.</td>
+        </tr>
+        <tr>
+          <td>Press Start <code>0xE5</code> host fill / action-26 poster</td>
+          <td><span class="badge PARTIAL">PARTIAL</span></td>
+          <td>Host fills <code>0xE5</code> when persist MessageId is 0. Action 26 posts first-visible type-10/11/38, not the action-target widget. Native <code>0xE5</code> is <code>00598EE6</code> → widget+352, not persist +224 (<code>0055B040</code>). issue #37. Stored 0x126/15 on type-38/11 is recovered.</td>
         </tr>
         <tr>
           <td><code>006B8640</code> / <code>008889C0</code> leftover (do not write V0 first-seen)</td>
           <td><span class="badge UNREAD">UNREAD</span></td>
-          <td><code>006B2CA0</code> pose is PROVEN (<code>204a214</code>). Host <code>SeedAt(1.6m)</code> is DISPROVEN as live New Game. Lookout helper FOV 70 from <code>00A0C130</code> (<code>be3339e</code>). <code>00A0C130</code> is a packer (<code>a6f939a</code>); ctor look +Z, up <code>(1,1,1)</code>. SHOT2 FOV 72 is intro-view leftover — do not collapse into Lookout. Do not close #6 / #13</td>
+          <td><code>006B2CA0</code> pose is PROVEN (<code>204a214</code>). Host <code>SeedAt(1.6m)</code> is DISPROVEN as live New Game. Lookout helper FOV 70 from <code>00A0C130</code> (<code>be3339e</code>). <code>00A0C130</code> is a packer (<code>a6f939a</code>); ctor look +Z, up <code>(1,1,1)</code>. SHOT2 FOV 72 is intro-view leftover — do not collapse into Lookout. Do not reopen #6 / #13</td>
         </tr>
         <tr>
           <td>Consumed first-Present helper</td>
@@ -1116,8 +1138,8 @@
     <p>
       <code>DoScriptFrame</code> / <code>PlayAVI</code> / cameras / fades are
       <span class="badge PROVEN">PROVEN</span> at the script layer.
-      PlayAVI dest vs 1600×900 (#8) is closed. Native
-      <code>00628B79</code> dest + recreate-on-height (#11) is closed
+      PlayAVI dest vs 1600×900 (#8) is done. Native
+      <code>00628B79</code> dest + recreate-on-height (#11) is done
       (<code>98c4acc</code>). Unload
       <code>00A3B380</code>/<code>00A3BC20</code> before the next slot is now
       recovered (<code>0ace433</code>); leftover #20 is still 3D Draw during
@@ -1148,8 +1170,8 @@
       <span class="badge TEMPORARY">TEMPORARY</span> stand-ins
       (LINEAR/REPEAT, MaxLod=1, Z test+write on) stay classified.
       PlayAVI <em>script</em> apply is PROVEN; dest vs
-      <code>Silk.WindowOptions.DefaultVulkan</code> 1600×900 (#8) is closed.
-      Native <code>00628B79</code> dest + recreate-on-height (#11) is closed
+      <code>Silk.WindowOptions.DefaultVulkan</code> 1600×900 (#8) is done.
+      Native <code>00628B79</code> dest + recreate-on-height (#11) is done
       (<code>98c4acc</code>). Unload-before-next-slot is recovered; leftover #20 is
       3D Draw during startup PlayAVI. <code>IBasicAudio</code> (#9) stays a PARTIAL leftover.
       Steam timing is PARITY Open item 0, not a first-scene 3D invent.
@@ -1228,15 +1250,19 @@
         Consumed first-Present helper stays UNREAD — do not reopen
         #6 / #13. SHOT2 FOV 72 stays intro-view leftover.
         <code>006B8640</code>/<code>008889C0</code> leftover UNREAD.
-        Frontend leftover is still <code>00595222</code> Note and New Game
-        keyboard N/Enter (#14). <code>0041AC20</code> dest rect and
-        <code>00B324A0</code> handler vtbl+20 stay UNREAD.
+        Frontend leftover is still <code>00595222</code> Note-only and
+        New Game keyboard N/Enter (#14). Host never queues Type4.
+        Dest leftover GraphicIndex path + calculator tests still
+        feed 16×16; host still Notes <code>009DA9F0</code> DIP (#36).
+        Press Start <code>0xE5</code> is a host fill when persist
+        MessageId is 0; action 26 posts first-visible type-10/11/38
+        (#37). PlayAVI still 3D Draw (#20). leave #14 and #20 open.
         New Game submit now walks
         <code>0x4</code>/<code>0x40</code>/<code>0x20</code>/<code>0x100</code>/<code>0x2000</code>
         (<code>676bf63</code>); cell DIP is <code>0x40</code> only
         (<code>40037b1</code>).
-        #11 closed (<code>98c4acc</code> recreate-on-height +
-        <code>00628B79</code> dest). #18 closed
+        #11 done (<code>98c4acc</code> recreate-on-height +
+        <code>00628B79</code> dest). #18 done
         (<code>ff808b1</code> RHSet +X). Lookout EnvironmentTheme is
         <code>ENVIRONMENT_THEME1</code> #2346, not
         <code>ENVIRONMENT_OAKVALE</code>. Do not collapse Oakvale intro
