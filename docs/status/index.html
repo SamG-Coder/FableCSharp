@@ -13,6 +13,23 @@
 <body>
   <div class="book">
     <div class="wrap">
+    <div class="app-bar" role="search">
+      <p class="app-kicker">FableCSharp</p>
+      <p class="app-title">Done / left</p>
+      <label class="app-search" for="q">
+        <span class="visually-hidden">Search the quest log</span>
+        <input id="q" type="search" placeholder="Search addresses, tests, verbs…" autocomplete="off" enterkeyhint="search" spellcheck="false">
+      </label>
+      <div class="chips" role="toolbar" aria-label="Status filter">
+        <button type="button" class="chip is-on" data-filter="ALL" aria-pressed="true">All</button>
+        <button type="button" class="chip PROVEN" data-filter="PROVEN" aria-pressed="false">PROVEN</button>
+        <button type="button" class="chip PARTIAL" data-filter="PARTIAL" aria-pressed="false">PARTIAL</button>
+        <button type="button" class="chip UNREAD" data-filter="UNREAD" aria-pressed="false">UNREAD</button>
+        <button type="button" class="chip DISPROVEN" data-filter="DISPROVEN" aria-pressed="false">DISPROVEN</button>
+        <button type="button" class="chip TEMPORARY" data-filter="TEMPORARY" aria-pressed="false">TEMPORARY</button>
+      </div>
+      <p class="hits" id="hits">120 shown</p>
+    </div>
     <header>
       <p class="kicker">FableCSharp · human overview</p>
       <h1>What’s done / what’s left</h1>
@@ -825,5 +842,77 @@
     </footer>
     </div>
   </div>
+
+  <script>
+  (function () {
+    var q = document.getElementById("q");
+    var hits = document.getElementById("hits");
+    var chips = Array.prototype.slice.call(document.querySelectorAll("[data-filter]"));
+    var filter = "ALL";
+    var timer = null;
+
+    function rows() {
+      return document.querySelectorAll(".table-scroll table tbody tr");
+    }
+
+    function apply() {
+      var query = (q && q.value ? q.value : "").trim().toLowerCase();
+      var shown = 0;
+      rows().forEach(function (tr) {
+        var text = (tr.textContent || "").toLowerCase();
+        var matchFilter = filter === "ALL" || !!tr.querySelector(".badge." + filter);
+        var matchSearch = !query || text.indexOf(query) !== -1;
+        var ok = matchFilter && matchSearch;
+        if (ok) {
+          tr.removeAttribute("hidden");
+          tr.classList.remove("is-hidden");
+          shown += 1;
+        } else {
+          tr.setAttribute("hidden", "");
+          tr.classList.add("is-hidden");
+        }
+      });
+
+      document.querySelectorAll(".table-scroll").forEach(function (wrap) {
+        var any = wrap.querySelector("tbody tr:not([hidden])");
+        if (any) {
+          wrap.removeAttribute("hidden");
+          wrap.classList.remove("is-hidden");
+        } else {
+          wrap.setAttribute("hidden", "");
+          wrap.classList.add("is-hidden");
+        }
+        var prev = wrap.previousElementSibling;
+        if (prev && prev.tagName === "H3") {
+          if (any) prev.removeAttribute("hidden");
+          else prev.setAttribute("hidden", "");
+        }
+      });
+
+      if (hits) hits.textContent = shown ? shown + " shown" : "No matches";
+    }
+
+    chips.forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        filter = btn.getAttribute("data-filter") || "ALL";
+        chips.forEach(function (c) {
+          var on = c === btn;
+          c.classList.toggle("is-on", on);
+          c.setAttribute("aria-pressed", on ? "true" : "false");
+        });
+        apply();
+      });
+    });
+
+    if (q) {
+      q.addEventListener("input", function () {
+        clearTimeout(timer);
+        timer = setTimeout(apply, 80);
+      });
+    }
+
+    apply();
+  })();
+  </script>
 </body>
 </html>

@@ -1,6 +1,6 @@
-/* FableCSharp status — Heroes' Guild journal restyle.
-   TLC / Anniversary quest-book: leather surround, parchment leaf,
-   gold filigree. No status facts live here. */
+/* FableCSharp status — mobile-first TLC / Anniversary quest log.
+   Phone is the default. Leather book chrome only at min-width: 720px.
+   No status facts live here. */
 
 :root {
   --ink: #2a1c10;
@@ -34,84 +34,7 @@ body {
   margin: 0;
   overflow-x: hidden;
   min-height: 100vh;
-  color: var(--ink);
-  background-color: var(--oak-0);
-  background-image:
-    radial-gradient(ellipse 90% 55% at 50% -10%, #2a1810 0%, transparent 58%),
-    radial-gradient(ellipse 50% 40% at 0% 100%, rgba(42, 24, 16, 0.7), transparent 55%),
-    radial-gradient(ellipse 40% 30% at 100% 80%, rgba(20, 10, 6, 0.65), transparent 50%),
-    repeating-linear-gradient(
-      92deg,
-      rgba(0, 0, 0, 0.14) 0 1px,
-      transparent 1px 8px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      rgba(58, 36, 24, 0.12) 0 1px,
-      transparent 1px 11px
-    ),
-    linear-gradient(180deg, #1e120c 0%, #140c08 42%, #0e0806 100%);
-  font-family: "Cormorant Garamond", "Palatino Linotype", Palatino, Georgia, serif;
-  font-size: 1.125rem;
-  font-weight: 400;
-  line-height: 1.6;
-}
-
-/* Leather binding around the leaf */
-.book {
-  position: relative;
-  max-width: min(58rem, 100%);
-  margin: clamp(0.55rem, 2.4vw, 1.75rem) auto;
-  padding: clamp(0.4rem, 1.6vw, 0.95rem);
-  background:
-    radial-gradient(ellipse at 30% 20%, rgba(90, 56, 32, 0.28), transparent 45%),
-    radial-gradient(ellipse at 80% 90%, rgba(0, 0, 0, 0.28), transparent 40%),
-    linear-gradient(165deg, #2a1810 0%, #1a1008 50%, #140c08 100%);
-  border: 1px solid #3d2a18;
-  box-shadow:
-    0 0 0 1px #0a0604,
-    0 16px 48px rgba(0, 0, 0, 0.55),
-    inset 0 0 36px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(232, 212, 139, 0.12);
-}
-
-/* Filigree corners — leather (outer) */
-.book::before,
-.book::after {
-  content: "";
-  position: absolute;
-  width: 22px;
-  height: 22px;
-  pointer-events: none;
-  z-index: 3;
-}
-
-.book::before {
-  top: 7px;
-  left: 7px;
-  border-top: 2px solid var(--gold-hi);
-  border-left: 2px solid var(--gold-hi);
-  box-shadow:
-    3px 3px 0 0 var(--gold),
-    inset 6px 6px 0 -4px var(--gold);
-}
-
-.book::after {
-  top: 7px;
-  right: 7px;
-  border-top: 2px solid var(--gold-hi);
-  border-right: 2px solid var(--gold-hi);
-  box-shadow:
-    -3px 3px 0 0 var(--gold),
-    inset -6px 6px 0 -4px var(--gold);
-}
-
-/* Parchment leaf */
-.wrap {
-  position: relative;
-  max-width: 52rem;
-  margin: 0 auto;
-  padding: clamp(1.25rem, 4vw, 2.55rem) clamp(1rem, 4vw, 2.1rem) clamp(2rem, 6vw, 4rem);
+  min-height: 100dvh;
   color: var(--ink);
   background-color: var(--paper);
   background-image:
@@ -129,113 +52,226 @@ body {
       rgba(139, 90, 43, 0.022) 3px,
       rgba(139, 90, 43, 0.022) 4px
     ),
-    repeating-linear-gradient(
-      135deg,
-      transparent 0 7px,
-      rgba(42, 28, 16, 0.015) 7px 8px
-    ),
     radial-gradient(ellipse 80% 40% at 10% 0%, rgba(232, 212, 139, 0.35), transparent 50%),
     radial-gradient(ellipse 60% 30% at 95% 100%, rgba(180, 140, 70, 0.12), transparent 50%),
     linear-gradient(180deg, var(--paper-hi) 0%, var(--paper) 48%, #ead9aa 100%);
-  border: 2px solid var(--gold);
-  box-shadow:
-    inset 0 0 0 1px var(--gold-hi),
-    inset 0 0 0 4px rgba(243, 230, 196, 0.9),
-    inset 0 0 0 5px var(--gold),
-    inset 0 0 48px rgba(42, 28, 16, 0.06);
+  font-family: "Cormorant Garamond", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.6;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  overscroll-behavior-x: none;
 }
 
-/* Filigree corners — parchment (inner) */
-.wrap::before,
-.wrap::after {
-  content: "";
+.visually-hidden {
   position: absolute;
-  width: 18px;
-  height: 18px;
-  pointer-events: none;
-  z-index: 3;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-.wrap::before {
-  bottom: 8px;
-  left: 8px;
-  border-bottom: 2px solid var(--gold);
-  border-left: 2px solid var(--gold);
-  box-shadow:
-    3px -3px 0 0 var(--gold-hi),
-    inset 5px -5px 0 -3px var(--gold-hi);
-}
+[hidden],
+.is-hidden { display: none !important; }
 
-.wrap::after {
-  bottom: 8px;
-  right: 8px;
-  border-bottom: 2px solid var(--gold);
-  border-right: 2px solid var(--gold);
-  box-shadow:
-    -3px -3px 0 0 var(--gold-hi),
-    inset -5px -5px 0 -3px var(--gold-hi);
-}
-
-/* Title plate */
-header {
+/* Phone: full-bleed parchment. No leather frame, no filigree, no diamonds. */
+.book {
   position: relative;
-  text-align: center;
-  padding: 1.35rem 1rem 1.3rem;
-  margin-bottom: 1.75rem;
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+.wrap {
+  position: relative;
+  max-width: none;
+  margin: 0;
+  padding: 0 1rem calc(2.75rem + env(safe-area-inset-bottom, 0px));
+  color: var(--ink);
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+/* Sticky quest-log app bar */
+.app-bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin: 0 -1rem 1rem;
+  padding: 0.7rem 1rem calc(0.65rem + env(safe-area-inset-top, 0px));
+  padding-top: calc(0.7rem + env(safe-area-inset-top, 0px));
+  color: var(--gold-hi);
   background:
-    linear-gradient(180deg, #f8f0d8 0%, #f0e2b8 100%);
-  border: 1px solid var(--gold);
+    radial-gradient(ellipse 80% 80% at 20% 0%, rgba(90, 56, 32, 0.35), transparent 50%),
+    linear-gradient(180deg, #2a1810 0%, var(--oak-1) 55%, var(--oak-0) 100%);
+  border-bottom: 1px solid var(--gold);
   box-shadow:
-    inset 0 0 0 3px var(--paper-hi),
-    inset 0 0 0 4px var(--gold-hi);
+    0 1px 0 var(--gold-lo),
+    0 8px 18px rgba(0, 0, 0, 0.28);
 }
 
-header::before,
-header::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  width: 10px;
-  height: 10px;
-  margin-top: -5px;
-  background: var(--gold);
-  transform: rotate(45deg);
-  box-shadow: 0 0 0 2px var(--gold-hi);
-  pointer-events: none;
-}
-
-header::before { left: 0.7rem; }
-header::after { right: 0.7rem; }
-
-p.kicker {
-  margin: 0 0 0.4rem;
+.app-kicker {
+  margin: 0;
   font-family: Cinzel, "Times New Roman", serif;
-  font-size: 0.72rem;
+  font-size: 0.62rem;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.3;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--gold-lo);
+  color: var(--gold-hi);
+}
+
+.app-title {
+  margin: 0.12rem 0 0.55rem;
+  padding: 0;
+  border: none;
+  font-family: Cinzel, "Times New Roman", serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  color: var(--paper);
+}
+
+.app-title::after { display: none; }
+
+.app-search { display: block; }
+
+.app-bar input[type="search"] {
+  display: block;
+  width: 100%;
+  min-height: 44px;
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  font-family: "Cormorant Garamond", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 16px;
+  line-height: 1.35;
+  color: var(--ink);
+  background: var(--card);
+  border: 1px solid var(--gold);
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--gold-hi);
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.app-bar input[type="search"]::placeholder {
+  color: var(--muted);
+  opacity: 1;
+}
+
+.app-bar input[type="search"]::-webkit-search-decoration,
+.app-bar input[type="search"]::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+}
+
+.app-bar input[type="search"]:focus {
+  outline: 2px solid var(--gold-hi);
+  outline-offset: 2px;
+}
+
+.chips {
+  display: flex;
+  gap: 0.4rem;
+  margin: 0.55rem 0 0;
+  padding: 0.1rem 0 0.15rem;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+}
+
+.chips::-webkit-scrollbar { display: none; }
+
+.chip {
+  flex: 0 0 auto;
+  min-height: 36px;
+  padding: 0.35rem 0.75rem;
+  font-family: Cinzel, "Times New Roman", serif;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: var(--gold-hi);
+  background: var(--oak-3);
+  border: 1px solid var(--gold-lo);
+  border-radius: 999px;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+    0 1px 0 rgba(0, 0, 0, 0.25);
+  cursor: pointer;
+}
+
+.chip.PROVEN,
+.chip.PARTIAL,
+.chip.UNREAD,
+.chip.DISPROVEN,
+.chip.TEMPORARY {
+  opacity: 0.88;
+}
+
+.chip.is-on {
+  opacity: 1;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.28),
+    0 0 0 2px var(--gold-hi),
+    0 1px 0 rgba(0, 0, 0, 0.25);
+}
+
+.chip:focus-visible {
+  outline: 2px solid var(--gold-hi);
+  outline-offset: 2px;
+}
+
+.hits {
+  margin: 0.4rem 0 0;
+  font-family: Cinzel, "Times New Roman", serif;
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--gold-hi);
+}
+
+/* Slim masthead on phone — keep the words, drop the plate */
+header {
+  position: relative;
+  text-align: left;
+  padding: 0 0 0.85rem;
+  margin: 0 0 1rem;
+  background: none;
+  border: none;
+  box-shadow: none;
+}
+
+header .kicker {
+  display: none;
 }
 
 h1 {
-  margin: 0 0 0.7rem;
+  margin: 0 0 0.55rem;
   font-family: Cinzel, "Times New Roman", serif;
-  font-size: clamp(1.5rem, 5vw, 2.25rem);
+  font-size: 1.35rem;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.25;
   color: var(--ink);
 }
 
-h1 + p {
-  margin-top: 0.15rem;
-}
-
 h2 {
-  margin: 2.2rem 0 0.7rem;
-  padding-top: 1.25rem;
+  margin: 1.75rem 0 0.65rem;
+  padding-top: 1rem;
   font-family: Cinzel, "Times New Roman", serif;
-  font-size: clamp(1.15rem, 3.5vw, 1.45rem);
+  font-size: 1.2rem;
   font-weight: 600;
   line-height: 1.3;
   color: var(--ink);
@@ -247,14 +283,14 @@ h2::after {
   display: block;
   width: 4.5rem;
   height: 2px;
-  margin-top: 0.45rem;
+  margin-top: 0.4rem;
   background: linear-gradient(90deg, var(--gold), var(--gold-hi) 55%, transparent);
 }
 
 h3 {
-  margin: 1.6rem 0 0.55rem;
+  margin: 1.4rem 0 0.5rem;
   font-family: Cinzel, "Times New Roman", serif;
-  font-size: clamp(1rem, 2.8vw, 1.12rem);
+  font-size: 1.02rem;
   font-weight: 600;
   color: var(--ink);
 }
@@ -268,6 +304,7 @@ a {
   color: var(--gold-lo);
   text-decoration-thickness: 1px;
   text-underline-offset: 0.15em;
+  overflow-wrap: anywhere;
 }
 
 a:hover { color: var(--gold); }
@@ -284,102 +321,129 @@ code,
   background: rgba(42, 28, 16, 0.06);
   padding: 0.05em 0.28em;
   border-radius: 2px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
-/* TOC — parchment card, gold rule */
+p, li, td, th {
+  overflow-wrap: anywhere;
+}
+
+/* TOC — full-width 44px taps */
 nav.toc {
   background: var(--card);
   border: 1px solid var(--gold);
   box-shadow:
     inset 0 0 0 3px var(--paper-hi),
     inset 0 0 0 4px var(--gold-hi);
-  padding: 0.95rem 1.15rem 0.7rem;
-  margin: 1.15rem 0 1.55rem;
+  padding: 0.85rem 0.9rem 0.55rem;
+  margin: 1rem 0 1.35rem;
 }
 
 nav.toc strong {
   display: block;
   font-family: Cinzel, "Times New Roman", serif;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--gold-lo);
-  padding-bottom: 0.5rem;
-  margin-bottom: 0.15rem;
+  padding-bottom: 0.45rem;
+  margin-bottom: 0.1rem;
   border-bottom: 1px solid var(--gold);
 }
 
 nav.toc ol {
-  margin: 0.4rem 0 0;
-  padding-left: 1.25rem;
+  list-style: none;
+  margin: 0.25rem 0 0;
+  padding: 0;
 }
 
-nav.toc li { margin: 0.05rem 0; }
+nav.toc li { margin: 0; }
 
 nav.toc a {
-  display: inline-block;
-  padding: 0.2rem 0.1rem;
-  line-height: 1.35;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0.65rem 0.15rem;
+  line-height: 1.3;
 }
 
-/* Tables sit in a scrollport so 3-col evidence never stacks into mush */
+/* Phone tables → stacked quest cards. No sideways swipe. */
 .table-scroll {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
+  overflow: visible;
   max-width: 100%;
   margin: 0.7rem 0 1.1rem;
 }
 
-table {
+.table-scroll table,
+.table-scroll thead,
+.table-scroll tbody,
+.table-scroll tfoot,
+.table-scroll tr,
+.table-scroll th,
+.table-scroll td {
+  display: block;
   width: 100%;
-  table-layout: fixed;
-  border-collapse: collapse;
-  font-size: 0.95rem;
-  margin: 0;
-  background: var(--card);
 }
 
-th,
-td {
-  border: 1px solid #d4bc7a;
-  padding: 0.45rem 0.58rem;
+.table-scroll thead { display: none; }
+
+.table-scroll table {
+  margin: 0;
+  background: transparent;
+  border-collapse: collapse;
+}
+
+.table-scroll tr {
+  margin: 0 0 0.75rem;
+  padding: 0.85rem 0.9rem;
+  background: var(--card);
+  border: 1px solid var(--gold);
+  box-shadow:
+    inset 0 0 0 1px var(--gold-hi),
+    0 1px 0 rgba(42, 28, 16, 0.06);
+}
+
+.table-scroll tr:last-child { margin-bottom: 0; }
+
+.table-scroll th,
+.table-scroll td {
+  border: none;
+  background: transparent;
+  padding: 0.18rem 0;
   text-align: left;
   vertical-align: top;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
-td code,
-th code,
-code {
-  white-space: normal;
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
-
-/* Status column stays a stamp, not a squeezed paragraph */
-table th:nth-child(2),
-table td:nth-child(2) {
-  width: 7.25rem;
-}
-
-th {
+.table-scroll td:first-child {
   font-family: Cinzel, "Times New Roman", serif;
-  font-size: 0.72rem;
+  font-size: 1.02rem;
   font-weight: 600;
   line-height: 1.35;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  padding-bottom: 0.4rem;
+}
+
+.table-scroll td:first-child:has(.badge) {
+  font-family: "Cormorant Garamond", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.table-scroll td:has(.badge) {
+  padding-top: 0.1rem;
+  padding-bottom: 0.4rem;
+}
+
+.table-scroll td:last-child:not(:first-child) {
   color: var(--ink);
-  background: linear-gradient(180deg, #e8d48b 0%, #d4b84a 100%);
 }
 
-td {
-  background: rgba(246, 237, 212, 0.72);
-}
-
-/* Wax seals / guild stamps */
+/* Wax seals */
 .badge {
   display: inline-block;
   font-family: Cinzel, "Times New Roman", serif;
@@ -448,90 +512,302 @@ ul.plain li { margin: 0.25rem 0; }
 ol li { margin: 0.4rem 0; }
 
 footer {
-  margin-top: 2.5rem;
+  margin-top: 2.25rem;
   padding-top: 1rem;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
   border-top: 2px solid var(--gold);
   box-shadow: 0 -1px 0 var(--gold-hi);
   color: var(--muted);
-  font-size: 0.98rem;
+  font-size: 1rem;
 }
 
-/* Narrow: readable, no sideways blowout, hide overflow-prone ornaments */
-@media (max-width: 640px) {
-  body { font-size: 16px; }
+/* Desktop: leather surround + gold parchment book, real tables */
+@media (min-width: 720px) {
+  body {
+    font-size: 1.125rem;
+    background-color: var(--oak-0);
+    background-image:
+      radial-gradient(ellipse 90% 55% at 50% -10%, #2a1810 0%, transparent 58%),
+      radial-gradient(ellipse 50% 40% at 0% 100%, rgba(42, 24, 16, 0.7), transparent 55%),
+      radial-gradient(ellipse 40% 30% at 100% 80%, rgba(20, 10, 6, 0.65), transparent 50%),
+      repeating-linear-gradient(
+        92deg,
+        rgba(0, 0, 0, 0.14) 0 1px,
+        transparent 1px 8px
+      ),
+      repeating-linear-gradient(
+        0deg,
+        rgba(58, 36, 24, 0.12) 0 1px,
+        transparent 1px 11px
+      ),
+      linear-gradient(180deg, #1e120c 0%, #140c08 42%, #0e0806 100%);
+  }
 
   .book {
-    margin: 0.4rem auto;
-    padding: 0.35rem;
+    max-width: min(58rem, 100%);
+    margin: clamp(0.55rem, 2.4vw, 1.75rem) auto;
+    padding: clamp(0.4rem, 1.6vw, 0.95rem);
+    background:
+      radial-gradient(ellipse at 30% 20%, rgba(90, 56, 32, 0.28), transparent 45%),
+      radial-gradient(ellipse at 80% 90%, rgba(0, 0, 0, 0.28), transparent 40%),
+      linear-gradient(165deg, #2a1810 0%, #1a1008 50%, #140c08 100%);
+    border: 1px solid #3d2a18;
+    box-shadow:
+      0 0 0 1px #0a0604,
+      0 16px 48px rgba(0, 0, 0, 0.55),
+      inset 0 0 36px rgba(0, 0, 0, 0.28),
+      inset 0 1px 0 rgba(232, 212, 139, 0.12);
+  }
+
+  .book::before,
+  .book::after {
+    content: "";
+    position: absolute;
+    width: 22px;
+    height: 22px;
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  .book::before {
+    top: 7px;
+    left: 7px;
+    border-top: 2px solid var(--gold-hi);
+    border-left: 2px solid var(--gold-hi);
+    box-shadow:
+      3px 3px 0 0 var(--gold),
+      inset 6px 6px 0 -4px var(--gold);
+  }
+
+  .book::after {
+    top: 7px;
+    right: 7px;
+    border-top: 2px solid var(--gold-hi);
+    border-right: 2px solid var(--gold-hi);
+    box-shadow:
+      -3px 3px 0 0 var(--gold),
+      inset -6px 6px 0 -4px var(--gold);
   }
 
   .wrap {
-    padding: 1rem 0.75rem 2rem;
+    max-width: 52rem;
+    margin: 0 auto;
+    padding: 0 clamp(1rem, 4vw, 2.1rem) clamp(2rem, 6vw, 4rem);
+    background-color: var(--paper);
+    background-image:
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(42, 28, 16, 0.028) 2px,
+        rgba(42, 28, 16, 0.028) 3px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 3px,
+        rgba(139, 90, 43, 0.022) 3px,
+        rgba(139, 90, 43, 0.022) 4px
+      ),
+      repeating-linear-gradient(
+        135deg,
+        transparent 0 7px,
+        rgba(42, 28, 16, 0.015) 7px 8px
+      ),
+      radial-gradient(ellipse 80% 40% at 10% 0%, rgba(232, 212, 139, 0.35), transparent 50%),
+      radial-gradient(ellipse 60% 30% at 95% 100%, rgba(180, 140, 70, 0.12), transparent 50%),
+      linear-gradient(180deg, var(--paper-hi) 0%, var(--paper) 48%, #ead9aa 100%);
+    border: 2px solid var(--gold);
+    box-shadow:
+      inset 0 0 0 1px var(--gold-hi),
+      inset 0 0 0 4px rgba(243, 230, 196, 0.9),
+      inset 0 0 0 5px var(--gold),
+      inset 0 0 48px rgba(42, 28, 16, 0.06);
+  }
+
+  .wrap::before,
+  .wrap::after {
+    content: "";
+    position: absolute;
+    width: 18px;
+    height: 18px;
+    pointer-events: none;
+    z-index: 3;
+  }
+
+  .wrap::before {
+    bottom: 8px;
+    left: 8px;
+    border-bottom: 2px solid var(--gold);
+    border-left: 2px solid var(--gold);
+    box-shadow:
+      3px -3px 0 0 var(--gold-hi),
+      inset 5px -5px 0 -3px var(--gold-hi);
+  }
+
+  .wrap::after {
+    bottom: 8px;
+    right: 8px;
+    border-bottom: 2px solid var(--gold);
+    border-right: 2px solid var(--gold);
+    box-shadow:
+      -3px -3px 0 0 var(--gold-hi),
+      inset -5px -5px 0 -3px var(--gold-hi);
+  }
+
+  .app-bar {
+    margin-left: calc(-1 * clamp(1rem, 4vw, 2.1rem));
+    margin-right: calc(-1 * clamp(1rem, 4vw, 2.1rem));
+    margin-bottom: 1.35rem;
+    padding-left: clamp(1rem, 4vw, 2.1rem);
+    padding-right: clamp(1rem, 4vw, 2.1rem);
   }
 
   header {
-    padding: 1rem 0.75rem 1.05rem;
+    text-align: center;
+    padding: 1.35rem 1rem 1.3rem;
+    margin-bottom: 1.75rem;
+    background: linear-gradient(180deg, #f8f0d8 0%, #f0e2b8 100%);
+    border: 1px solid var(--gold);
+    box-shadow:
+      inset 0 0 0 3px var(--paper-hi),
+      inset 0 0 0 4px var(--gold-hi);
   }
+
+  header .kicker { display: block; }
 
   header::before,
-  header::after,
-  .book::before,
-  .book::after,
-  .wrap::before,
-  .wrap::after {
-    display: none;
+  header::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 10px;
+    height: 10px;
+    margin-top: -5px;
+    background: var(--gold);
+    transform: rotate(45deg);
+    box-shadow: 0 0 0 2px var(--gold-hi);
+    pointer-events: none;
   }
 
-  code,
-  td {
+  header::before { left: 0.7rem; }
+  header::after { right: 0.7rem; }
+
+  p.kicker {
+    margin: 0 0 0.4rem;
+    font-family: Cinzel, "Times New Roman", serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--gold-lo);
+  }
+
+  h1 {
+    font-size: clamp(1.5rem, 5vw, 2.25rem);
+  }
+
+  h2 {
+    margin: 2.2rem 0 0.7rem;
+    padding-top: 1.25rem;
+    font-size: clamp(1.15rem, 3.5vw, 1.45rem);
+  }
+
+  h3 {
+    margin: 1.6rem 0 0.55rem;
+    font-size: clamp(1rem, 2.8vw, 1.12rem);
+  }
+
+  nav.toc {
+    padding: 0.95rem 1.15rem 0.7rem;
+    margin: 1.15rem 0 1.55rem;
+  }
+
+  nav.toc ol {
+    list-style: decimal;
+    padding-left: 1.25rem;
+  }
+
+  nav.toc a {
+    display: inline-block;
+    width: auto;
+    min-height: 0;
+    padding: 0.2rem 0.1rem;
+  }
+
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .table-scroll table {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+    margin: 0;
+    background: var(--card);
+  }
+
+  .table-scroll thead { display: table-header-group; }
+  .table-scroll tbody { display: table-row-group; }
+
+  .table-scroll tr {
+    display: table-row;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+    border: none;
+    box-shadow: none;
+  }
+
+  .table-scroll th,
+  .table-scroll td {
+    display: table-cell;
+    width: auto;
+    border: 1px solid #d4bc7a;
+    padding: 0.45rem 0.58rem;
+    text-align: left;
+    vertical-align: top;
     overflow-wrap: anywhere;
     word-break: break-word;
   }
 
-  .badge { white-space: normal; }
-
-  .table-scroll table {
-    width: 100%;
-    table-layout: fixed;
+  .table-scroll td:first-child,
+  .table-scroll td:first-child:has(.badge),
+  .table-scroll td:has(.badge),
+  .table-scroll td:last-child:not(:first-child) {
+    font-family: inherit;
+    font-size: inherit;
+    font-weight: inherit;
+    padding: 0.45rem 0.58rem;
+    color: inherit;
   }
 
-  table th:nth-child(2),
-  table td:nth-child(2) {
-    width: 5.6rem;
+  .table-scroll table th:nth-child(2),
+  .table-scroll table td:nth-child(2) {
+    width: 7.25rem;
   }
 
-  nav.toc a {
-    display: block;
-    min-height: 2.75rem;
-    padding: 0.65rem 0.15rem;
+  th {
+    font-family: Cinzel, "Times New Roman", serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--ink);
+    background: linear-gradient(180deg, #e8d48b 0%, #d4b84a 100%);
   }
 
-  th, td { padding: 0.4rem 0.48rem; }
-}
+  td { background: rgba(246, 237, 212, 0.72); }
 
-/* Very narrow — still a usable journal page */
-@media (max-width: 400px) {
-  body { font-size: 16px; }
-
-  .book {
-    margin: 0;
-    padding: 0.22rem;
-    border-radius: 0;
+  footer {
+    margin-top: 2.5rem;
+    font-size: 0.98rem;
   }
-
-  .wrap {
-    padding: 0.8rem 0.58rem 1.7rem;
-    border-width: 1px;
-    box-shadow:
-      inset 0 0 0 1px var(--gold-hi),
-      inset 0 0 0 3px var(--gold);
-  }
-
-  header { padding: 0.85rem 0.55rem 0.9rem; }
-
-  th, td { padding: 0.34rem 0.4rem; }
-
-  nav.toc { padding: 0.75rem 0.7rem 0.5rem; }
 }
 
 @media (prefers-reduced-motion: reduce) {
