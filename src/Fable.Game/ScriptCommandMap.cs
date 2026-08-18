@@ -482,6 +482,16 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "vtbl+484 x (count-have); already-have skip; leftover if arg4&&!arg3"),
+        Spec("GiveHeroHealth", 0x00CC62A0, 0x00CC62F5, "amount|MAX",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "MAX: vtbl+1032-vtbl+1028; else atof; vtbl+1052(amt,1,0); jmp 00CC7081"),
+        Spec("GiveHeroMorality", 0x00CC6222, 0x00CC6281, "amount",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "atof arg0; vtbl+624(amount); jmp 00CC7081; scale unread"),
         Spec("SetDoorOpen", 0x00CC8A8D, 0x00CC8BEB, "name,IsFalse?",
             ScriptReturn.CompleteNow, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

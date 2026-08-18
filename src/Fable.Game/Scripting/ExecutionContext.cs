@@ -996,11 +996,48 @@ public sealed class WorldRuntime
     public string ExtraMode { get; private set; } = "";
     public float TimeOfDayHours { get; set; }
     public float TimeOfDayFraction { get; set; }
+    /// <summary>
+    /// Hero current health. <c>vtbl+1028</c>.
+    /// </summary>
+    public float HeroHealth { get; set; }
+    /// <summary>
+    /// Hero max health. <c>vtbl+1032</c>.
+    /// </summary>
+    public float HeroMaxHealth { get; set; }
+    /// <summary>
+    /// Hero morality. <c>vtbl+624</c>.
+    /// </summary>
+    public float HeroMorality { get; set; }
 
     /// <summary>
     /// <c>00CC63E5</c>: give <c>count - already</c>
     /// via <c>vtbl+484</c>. Requested ≤ owned skips.
     /// </summary>
+    /// <summary>
+    /// <c>00CC6375</c> <c>vtbl+1052(amount,1,0)</c>.
+    /// MAX uses <c>max-current</c>.
+    /// </summary>
+    public float GiveHeroHealth(float amount)
+    {
+        HeroHealth += amount;
+        if (HeroMaxHealth > 0f && HeroHealth > HeroMaxHealth)
+            HeroHealth = HeroMaxHealth;
+        if (HeroHealth < 0f)
+            HeroHealth = 0f;
+        return amount;
+    }
+
+    public float GiveHeroHealthMax()
+    {
+        var missing = HeroMaxHealth > HeroHealth ? HeroMaxHealth - HeroHealth : 0f;
+        return GiveHeroHealth(missing);
+    }
+
+    /// <summary>
+    /// <c>00CC6281</c> <c>vtbl+624(amount)</c>.
+    /// </summary>
+    public void GiveHeroMorality(float amount) => HeroMorality += amount;
+
     public int GiveHero(string item, int count, int extra = -1, bool silent = false)
     {
         if (item.Length == 0 || count <= 0)

@@ -660,6 +660,35 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, item);
         }
 
+        if (Eq(v, "GiveHeroHealth"))
+        {
+            var token = line.Arg(0);
+            if (token.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            float amount;
+            if (token.Equals("MAX", StringComparison.OrdinalIgnoreCase))
+                amount = ctx.World.GiveHeroHealthMax();
+            else
+            {
+                ScriptLine.TryFloat(token, out amount);
+                ctx.World.GiveHeroHealth(amount);
+            }
+
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                token.Equals("MAX", StringComparison.OrdinalIgnoreCase) ? "MAX" : amount.ToString("0.##"));
+        }
+
+        if (Eq(v, "GiveHeroMorality"))
+        {
+            var token = line.Arg(0);
+            if (token.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ScriptLine.TryFloat(token, out var amount);
+            ctx.World.GiveHeroMorality(amount);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                amount.ToString("0.##"));
+        }
+
         if (Eq(v, "SetFlag"))
             return ApplySetFlag(line, ctx);
 

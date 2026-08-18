@@ -840,6 +840,88 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void GiveHeroHealth_adds_and_MAX_fills_to_max()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.World.HeroMaxHealth = 100f;
+        runtime.World.HeroHealth = 10f;
+        var interp = new ScriptInterpreter("ghh",
+        [
+            "GiveHeroHealth 25",
+            "GiveHeroHealth MAX",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(100f, runtime.World.HeroHealth);
+        Assert.Equal(0x00CC62F5u, ScriptCommandMap.Find("GiveHeroHealth")!.Value.ApplySite);
+        Assert.Equal(0x00CC6281u, ScriptCommandMap.Find("GiveHeroMorality")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void GiveHeroMorality_adds_amount()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("ghm", ["GiveHeroMorality -50", "GiveHeroMorality 20"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(-30f, runtime.World.HeroMorality);
+    }
+
+    [Fact]
+    public void GiveHeroHealth_real_script_bank_MAX()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_BORDELLO_PAYINGFORSEX");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.StartsWith("GiveHeroHealth ", StringComparison.OrdinalIgnoreCase))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("GiveHeroHealth", parsed.Verb);
+        Assert.Equal("MAX", parsed.Arg(0), StringComparer.OrdinalIgnoreCase);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        runtime.World.HeroMaxHealth = 80f;
+        runtime.World.HeroHealth = 12f;
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-health", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("GiveHeroHealth ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal(80f, runtime.World.HeroHealth);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-health.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-giveherohealth.txt"),
+            """
+            GiveHeroHealth 00CC62A0 / apply 00CC62F5
+              arg0 required else 00CC7081
+              00BFEBA8 vs "MAX" at 0x012C2130
+              MAX: vtbl+1032 max, vtbl+1028 cur, fsubr = max-cur
+              else 0099E690 atof
+              vtbl+1052(amount, 1, 0); jmp 00CC7081 no yield
+            GiveHeroMorality 00CC6222 / apply 00CC6281
+              atof; vtbl+624(amount); jmp 00CC7081
+            Hero stat object body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void WalkTo_writes_destination_and_entity_task()
     {
         var runtime = ScriptRuntime.Detached();

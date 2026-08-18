@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 98
-RECOVERED RETURN: 98
-RECOVERED APPLY: 33
+RECOVERED DISPATCH: 100
+RECOVERED RETURN: 100
+RECOVERED APPLY: 35
 IMPLEMENTED RUNTIME: 13
-UNREAD: 87
+UNREAD: 85
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -126,8 +126,8 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | RegisterActor | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | WaitActiveDialog | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | GiveHero | Global | Proven | Proven | Proven | Proven | Partial | Partial |
-| GiveHeroHealth | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| GiveHeroMorality | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| GiveHeroHealth | Global | Proven | Proven | Proven | Proven | Partial | Partial |
+| GiveHeroMorality | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | GiveHeroExpression | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | AskQuestion | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | HideBodies | Global | Unread | Unread | Unread | Unread | Unread | Unread |
