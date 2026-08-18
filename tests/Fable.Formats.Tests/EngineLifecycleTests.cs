@@ -1704,6 +1704,15 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0, life.Meshes.ParsedCount);
         foreach (var opened in life.OpenedStaticMaps)
             Assert.Contains(opened, presented.Regions);
+        var drawn = life.ExpandPresentedWorld(presented);
+        Assert.NotNull(drawn);
+        Assert.True(drawn.Expanded);
+        Assert.True(drawn.Triangles.Count > 128);
+        Assert.All(drawn.Regions, name =>
+            Assert.Equal("LookoutPoint", name));
+        Assert.True(life.Meshes.ParsedCount > 0);
+        Assert.Equal(
+            life.Camera.Position.X, life.WorldCamera.SlotA.V0.X, 3);
         life.CloseStaticMapFile();
         Assert.Empty(life.OpenedMapBodies);
         Assert.Equal(0, life.OpenStaticMapsMode);

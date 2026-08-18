@@ -18,7 +18,8 @@ if (install is null)
 
 var life = new EngineLifecycle();
 life.Bootstrap(install);
-using var levels = new LevelLibrary(install);
+LevelLibrary? levels = null;
+TextureLibrary? textures = null;
 var region = args.FirstOrDefault(arg => !arg.StartsWith('-')) ?? "";
 ThingFile? things = null;
 GizmoScene scene = GizmoScene.FromMarkers("FRONT_END", []);
@@ -28,9 +29,9 @@ IReadOnlyList<RegionExit> exits = [];
 Vector3 startPosition = new(64f, -40f, 95f);
 Vector3 startLook = new(64f, 64f, 36f);
 var startFov = RegionTravel.IntroCameraFovDegrees;
-using var textures = new TextureLibrary(install);
 NewGameScript? intro = null;
 WmvPlayer? startupAvi = null;
+VulkanLineRenderer? renderer = null;
 var gameCam = new ScriptedCamera();
 OpenStartupVideo();
 
@@ -46,7 +47,6 @@ var options = WindowOptions.DefaultVulkan with
 };
 
 using var window = Window.Create(options);
-VulkanLineRenderer? renderer = null;
 IInputContext? input = null;
 IMouse? mouse = null;
 Vector2 lastMouse = Vector2.Zero;
@@ -136,7 +136,7 @@ window.Update += dt =>
         if (bDown && !bWasDown)
             life.QueueInput(EngineInput.TypeKey, EngineInput.KeyDikB);
         bWasDown = bDown;
-        renderer?.ClearVideoFrame();
+        UnloadStartupAvi();
         // 0042DF9E BeginScene/UI/EndScene/009BEEB0.
         // window.Render Draw is that Present.
         life.Pump();
@@ -269,9 +269,7 @@ window.Render += _ =>
     }
     else
     {
-        var cam = life.Stage == EngineStage.Game && life.HeroSpawned
-            ? life.Camera
-            : gameCam;
+        var cam = ActiveCamera();
         var fogPlane = Fable.Formats.WorldShading.LinearFogPlane(
             cam.Position, cam.Forward);
         renderer.Draw(
@@ -285,6 +283,12 @@ window.Closing += () =>
 {
     if (wasAvi || PlayAviTimeline.Snapshot().Count > 0)
         PlayAviTimeline.Write(name: "csharp");
+    UnloadStartupAvi();
+    textures?.Dispose();
+    textures = null;
+    if (levels is not null && !ReferenceEquals(levels, life.Levels))
+        levels.Dispose();
+    levels = null;
     renderer?.Dispose();
     renderer = null;
     input?.Dispose();
@@ -304,16 +308,32 @@ void OnMouseMove(Vector2 point)
 
 void CopyGameToDebug()
 {
-    debugCam.Position = gameCam.Position;
-    debugCam.FovDegrees = gameCam.FovDegrees;
-    debugCam.LookAt(gameCam.LookAt);
+    var cam = ActiveCamera();
+    debugCam.Position = cam.Position;
+    debugCam.FovDegrees = cam.FovDegrees;
+    debugCam.LookAt(cam.LookAt);
+}
+
+ScriptedCamera ActiveCamera() =>
+    life.Stage == EngineStage.Game && life.HeroSpawned ? life.Camera : gameCam;
+
+LevelLibrary DrawLevels()
+{
+    if (life.Levels is not null)
+        return life.Levels;
+    levels ??= new LevelLibrary(install);
+    return levels;
 }
 
 void BindLifecycleFirstRegion()
 {
     if (life.Hero is null)
         return;
-    var presented = life.ExpandPresentedWorld(life.PresentWorld());
+    UnloadStartupAvi();
+    var opened = life.PresentWorld();
+    if (opened is null)
+        return;
+    var presented = life.ExpandPresentedWorld(opened);
     if (presented is null)
         return;
     var mapName = life.FirstSceneMapName ?? presented.Region;
@@ -339,19 +359,23 @@ void BindLifecycleFirstRegion()
         life.Camera.Position, life.Camera.LookAt, life.Camera.Up,
         life.Camera.FovDegrees);
     world = presented;
-    map = levels.World.FindMap(mapName);
+    map = DrawLevels().World.FindMap(mapName);
     exits = RegionTravel.ActiveExits(mapThings);
     BindWorldToRenderer();
     Console.WriteLine(
         $"first scene {mapName} hero " +
         $"{life.Hero.PositionX:0.0},{life.Hero.PositionY:0.0},{life.Hero.PositionZ:0.0} " +
-        $"things={mapThings.Count} meshes={world.MeshInstances} opened={life.OpenedStaticMaps.Count} not 00DBDE40");
+        $"eye {life.Camera.Position.X:0.0},{life.Camera.Position.Y:0.0},{life.Camera.Position.Z:0.0} " +
+        $"fov={life.Camera.FovDegrees:0} " +
+        $"things={mapThings.Count} inst={opened.MeshInstances} tris={world.Triangles.Count} " +
+        $"parsed={life.Meshes.ParsedCount} opened={life.OpenedStaticMaps.Count} not 00DBDE40");
 }
 
 void EnterRegion(string next, RegionExit? arrivedFromExit)
 {
     region = next;
-    things = levels.LoadThings(region);
+    var lib = DrawLevels();
+    things = lib.LoadThings(region);
     scene = GizmoScene.FromMarkers(region, things.Things
         .Where(t => t.PositionX is not null)
         .Select(t => new SceneMarker(
@@ -362,7 +386,12 @@ void EnterRegion(string next, RegionExit? arrivedFromExit)
     if (arrivedFromExit is { } hit)
         spawn = RegionTravel.FindEntrance(things.Things, hit.Link);
     spawn ??= RegionTravel.FindPlayerStart(things.Things);
-    if (spawn is not null &&
+    if (life.Stage == EngineStage.Game && life.HeroSpawned)
+    {
+        planes = null;
+        intro = null;
+    }
+    else if (spawn is not null &&
         gameCam.UseCamera(things.Things, RegionTravel.IntroFirstSeenCamera))
     {
         startPosition = gameCam.Position;
@@ -373,46 +402,20 @@ void EnterRegion(string next, RegionExit? arrivedFromExit)
         planes = LandscapeFrustum.ExtractSidePlanes(
             gameCam.Position, gameCam.Forward, gameCam.Up, cotH, cotV);
     }
-    else if (spawn is not null &&
-             RegionTravel.TryIntroCamera(things.Things, out var introPos, out var introLook, out var introFov))
-    {
-        gameCam.Bind(RegionTravel.IntroFirstSeenCamera, introPos, introLook, Vector3.UnitZ, introFov);
-        startPosition = introPos;
-        startLook = introLook;
-        startFov = introFov;
-        LandscapeFrustum.LetterboxCots(
-            float.DegreesToRadians(introFov), 4f, 3f, out var cotH, out var cotV);
-        planes = LandscapeFrustum.ExtractSidePlanes(
-            introPos, introLook - introPos, Vector3.UnitZ, cotH, cotV);
-    }
 
     Console.WriteLine($"Building {region}...");
-    if (region.Equals(RegionTravel.NewGameRegion, StringComparison.OrdinalIgnoreCase) &&
-        gameCam.ActiveName.Length > 0)
-        Console.WriteLine($"first-seen region {region} camera {gameCam.ActiveName}");
-    IReadOnlyDictionary<string, Vector3>? actorPositions = null;
-    if (region == RegionTravel.NewGameRegion)
-    {
-        var runtime = ScriptRuntime.StartNewGame(install, things.Things, gameCam);
-        intro = new NewGameScript(runtime);
-        actorPositions = runtime.ActorPositions;
-        var ip = runtime.ActiveInterpreter?.InstructionPointer ?? 0;
-        Console.WriteLine(
-            $"Intro {RegionTravel.IntroQuest}/{RegionTravel.IntroScriptName} " +
-            $"run 0x{RegionTravel.IntroQuestRun:X} -> 0x{RegionTravel.StartOakValeSetup:X}; " +
-            $"VM list 0x{NewGameScript.ListWalk:X} rec {NewGameScript.ListRecordBytes}; " +
-            $"{runtime.ActiveCutscene} ip={ip} music={intro.PlayMusicRan} fade={intro.FadeOutReached}; " +
-            $"+{RegionTravel.PreAttackGateOffset} unread; {gameCam.ActiveName}; kid bind-pose");
-    }
-    else
-        intro = null;
-
     world = WorldGeometry.Build(
-        install, region, things.Things, landscapePlanes: planes, actorPositions: actorPositions);
-    map = levels.World.FindMap(region);
+        install, region, things.Things,
+        adjacentStaticMaps: false,
+        landscapePlanes: planes,
+        levels: lib,
+        meshes: life.Meshes.Opened ? life.Meshes : null);
+    map = lib.World.FindMap(region);
     exits = RegionTravel.ActiveExits(things.Things);
     Console.WriteLine($"Instanced {world.MeshInstances} meshes ({world.Triangles.Count} tris), missing {world.MissingMeshes}");
 
+    if (life.Stage == EngineStage.Game && life.HeroSpawned)
+        return;
     if (planes is null && spawn is not null)
     {
         var feet = RegionTravel.PositionOf(spawn);
@@ -421,38 +424,43 @@ void EnterRegion(string next, RegionExit? arrivedFromExit)
         startLook = feet + RegionTravel.ForwardOf(spawn) * 8f + Vector3.UnitZ * eye;
         gameCam.Bind(spawn.ScriptName ?? "spawn", startPosition, startLook, Vector3.UnitZ, startFov);
     }
-    else if (planes is null)
-    {
-        startPosition = new Vector3(64f, -40f, 95f);
-        startLook = new Vector3(64f, 64f, 36f);
-        gameCam.Bind("overview", startPosition, startLook, Vector3.UnitZ, startFov);
-    }
 }
 
 void TryWalk()
 {
     if (renderer is null || world is null || things is null)
         return;
-    var hit = RegionTravel.HitExit(exits, gameCam.Position);
+    var hit = RegionTravel.HitExit(exits, ActiveCamera().Position);
     if (hit is not { } crossed)
         return;
-    var dest = levels.World.Maps.FirstOrDefault(item => item.MapUid == crossed.Link.MapUid);
+    var dest = DrawLevels().World.Maps.FirstOrDefault(item => item.MapUid == crossed.Link.MapUid);
     if (dest is null)
         return;
 
     Console.WriteLine($"walk {region} -> {dest.ScriptName}  radius={crossed.Radius}");
     EnterRegion(dest.ScriptName, crossed);
     CopyGameToDebug();
-    renderer.SetLines(CollectionsMarshalAsSpan(scene.Lines));
-    var mesh = MeshBatches.Build(world.Triangles);
-    renderer.SetTextures(LoadGpuTextures(mesh, textures));
-    renderer.SetMesh(mesh.Vertices, mesh.Draws);
+    BindWorldToRenderer();
+}
+
+void UnloadStartupAvi()
+{
+    if (startupAvi is null)
+    {
+        renderer?.ClearVideoFrame();
+        renderer?.SetPlayAviPump(false);
+        return;
+    }
+
+    startupAvi.Dispose();
+    startupAvi = null;
+    renderer?.ClearVideoFrame();
+    renderer?.SetPlayAviPump(false);
 }
 
 void OpenStartupVideo()
 {
-    startupAvi?.Dispose();
-    startupAvi = null;
+    UnloadStartupAvi();
     if (life.CurrentStartupVideo is not { } video)
         return;
     var file = RegionTravel.ResolvePlayAviFile(install, video.RelativePath);
@@ -477,8 +485,7 @@ void OpenStartupVideo()
 
 void SkipStartupVideo()
 {
-    startupAvi?.Dispose();
-    startupAvi = null;
+    UnloadStartupAvi();
     life.FinishStartupVideo();
     OpenStartupVideo();
 }
@@ -499,6 +506,7 @@ void BindWorldToRenderer()
     renderer.SetLines(CollectionsMarshalAsSpan(scene.Lines));
     if (world is null)
         return;
+    textures ??= new TextureLibrary(install);
     var mesh = MeshBatches.Build(world.Triangles);
     renderer.SetTextures(LoadGpuTextures(mesh, textures));
     renderer.SetMesh(mesh.Vertices, mesh.Draws);

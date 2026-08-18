@@ -164,10 +164,12 @@ public sealed class WorldGeometryTests
         Assert.True(opened.MeshInstances > 150, $"instances={opened.MeshInstances}");
         Assert.Equal(opened.MeshInstances, opened.Instances.Count);
         Assert.Equal(0, meshes.ParsedCount);
-        var drawn = opened.Expand(install, levels, meshes);
+        var drawn = opened.Expand(install, levels, meshes, primaryOnly: true);
         Assert.True(drawn.Expanded);
         Assert.True(drawn.Triangles.Count > 128);
         Assert.True(meshes.ParsedCount > 0);
+        Assert.All(drawn.Regions, name =>
+            Assert.Equal("LookoutPoint", name));
     }
 
     [Fact]

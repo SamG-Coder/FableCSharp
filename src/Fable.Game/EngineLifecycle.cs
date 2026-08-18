@@ -2166,18 +2166,17 @@ public sealed class EngineLifecycle : IDisposable
     public LevelLibrary? Levels => _levels;
 
     /// <summary>
-    /// Draw-time tessellate / C3D parse.
-    /// Not <see cref="PresentWorld"/> / open.
+    /// Draw-time tessellate / C3D parse of the
+    /// current region only. Neighbour maps stay
+    /// <c>00B3EFA0</c> headers. Not open.
     /// </summary>
     public WorldGeometry? ExpandPresentedWorld(WorldGeometry? opened)
     {
         if (opened is null || Install is null)
             return opened;
-        if (opened.Expanded)
-            return opened;
         EnsureLevels();
         OpenMeshBank();
-        return opened.Expand(Install, _levels!, Meshes);
+        return opened.Expand(Install, _levels!, Meshes, primaryOnly: true);
     }
 
     /// <summary>

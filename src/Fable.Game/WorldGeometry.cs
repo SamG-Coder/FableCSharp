@@ -460,16 +460,20 @@ public sealed class WorldGeometry
         GameInstall install,
         LevelLibrary levels,
         MeshBank meshes,
-        LandscapeFrustum.Plane[]? landscapePlanes = null)
+        LandscapeFrustum.Plane[]? landscapePlanes = null,
+        bool primaryOnly = false)
     {
-        if (Expanded)
+        if (Expanded && !primaryOnly)
             return this;
-        var triangles = new List<MeshTriangle>(200_000);
+        var triangles = new List<MeshTriangle>(primaryOnly ? 64_000 : 200_000);
         var textureHeader = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h");
         var landscapeEnums = File.Exists(textureHeader) ? HeaderEnums.Load(textureHeader) : null;
         var primary = levels.World.FindMap(Region);
         foreach (var name in Regions)
         {
+            if (primaryOnly &&
+                !name.Equals(Region, StringComparison.OrdinalIgnoreCase))
+                continue;
             var map = levels.World.FindMap(name);
             var dx = 0f;
             var dy = 0f;
@@ -486,6 +490,9 @@ public sealed class WorldGeometry
 
         foreach (var inst in Instances)
         {
+            if (primaryOnly &&
+                !inst.Map.Equals(Region, StringComparison.OrdinalIgnoreCase))
+                continue;
             var mesh = meshes.Get(inst.MeshId);
             if (mesh is null)
                 continue;
@@ -511,10 +518,13 @@ public sealed class WorldGeometry
         }
 
         triangles.AddRange(SkyGeometry.Build(install));
+        IReadOnlyList<string> drawn = primaryOnly
+            ? [Region]
+            : Regions;
         return new WorldGeometry
         {
             Region = Region,
-            Regions = Regions,
+            Regions = drawn,
             Triangles = triangles,
             MeshInstances = MeshInstances,
             MissingMeshes = MissingMeshes,

@@ -316,7 +316,11 @@ public sealed class WmvPlayer : IDisposable
             !_thread.Join(TimeSpan.FromSeconds(2)))
             LastError ??= "sta-join";
         _thread = null;
-        _frameEvent.Dispose();
+        Rgba = null;
+        Width = 0;
+        Height = 0;
+        Ended = true;
+        try { _frameEvent.Dispose(); } catch { /* already */ }
     }
 
     private string? BuildGraph(string path)

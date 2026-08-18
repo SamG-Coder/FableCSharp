@@ -627,6 +627,7 @@ It is **not** the same load as `Fable.exe`:
 | `004A1840` child list | `LoadWorldMap` then quests immediately | DIVERGE |
 | `00B3EFA0` LEV/STB header | `PeekMapHeader` 48-byte LEV + STB size | MATCH |
 | `009AD410` handle, draw later | `PresentWorld` instances, `expandGeometry: false` | MATCH |
+| Draw | `ExpandPresentedWorld` **primary map only** (Lookout). Neighbour headers stay closed. Client binds `life.Camera` `006B3FF0`. | MATCH (draw subset) |
 
 **B. Why load is slow**
 
