@@ -315,6 +315,17 @@ public static class EntityDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, item);
         }
 
+        if (Eq(v, "ModifyHealth"))
+        {
+            var token = line.Arg(0);
+            if (token.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            ScriptLine.TryFloat(token, out var amount);
+            var now = ctx.World.ModifyHealth(line.Target ?? "", amount);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity,
+                now.ToString("0.###"));
+        }
+
         if (Eq(v, "SetScared") || Eq(v, "SetBound") ||
             Eq(v, "SetPushable") || Eq(v, "SetDamageable") || Eq(v, "SetAttackable") ||
             Eq(v, "SetFree") || Eq(v, "Killable") ||

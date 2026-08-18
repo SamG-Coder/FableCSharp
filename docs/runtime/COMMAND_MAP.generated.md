@@ -81,6 +81,7 @@
 | GiveGold | `00CC82F5` | `00CC8348` | amount | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | atoi; Gold lookup 00515700; vtbl+504(requested-have); fall to next token |
 | Sheathe | `00CC37A2` | `00CC37F8` | melee|ranged|false|none|TRUE | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | melee 2032 ranged 2036 false 2028 none 2024; TRUE no extra vtbl; not PutUpYourSwords |
 | HoldInHand | `00CC2175` | `00CC21CB` | item[,IsTrue] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; IsTrue(arg1); actor vtbl+48; vtbl+892(actor,item,flag); leftover +28; jmp 00CC707C; not PutInHeroHands |
+| ModifyHealth | `00CC2258` | `00CC22AE` | amount | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | atof arg0; actor vtbl+48; vtbl+1060(actor,amt,0); leftover +28; jmp 00CC707C; not GiveHeroHealth 1052 |
 | GiveHero | `00CC6392` | `00CC63E5` | item[,n][,extra][,silent][,yield] | YieldAfterUnlessFalse | Proven | Proven | Proven | Proven | Partial | Partial | vtbl+484 x (count-have); already-have skip; leftover if arg4&&!arg3 |
 | GiveHeroHealth | `00CC62A0` | `00CC62F5` | amount|MAX | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | MAX: vtbl+1032-vtbl+1028; else atof; vtbl+1052(amt,1,0); jmp 00CC7081 |
 | GiveHeroMorality | `00CC6222` | `00CC6281` | amount | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | atof arg0; vtbl+624(amount); jmp 00CC7081; scale unread |

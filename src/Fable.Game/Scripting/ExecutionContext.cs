@@ -1051,6 +1051,12 @@ public sealed class WorldRuntime
         new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, bool> HeldInHandFlag =
         new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// <c>00CC22AE</c> <c>vtbl+1060(actor,atof,0)</c>.
+    /// Distinct from <c>GiveHeroHealth</c> 1052.
+    /// </summary>
+    public readonly Dictionary<string, float> Health =
+        new(StringComparer.OrdinalIgnoreCase);
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
     public float TimeOfDayHours { get; set; }
@@ -1190,6 +1196,20 @@ public sealed class WorldRuntime
             return;
         HeldInHand[key] = item;
         HeldInHandFlag[key] = flag;
+    }
+
+    /// <summary>
+    /// <c>00CC22AE</c>: atof(arg0); actor
+    /// <c>vtbl+48</c> then <c>vtbl+1060(name,amt,0)</c>.
+    /// No MAX token. Clamp unread.
+    /// </summary>
+    public float ModifyHealth(string actor, float amount)
+    {
+        var key = actor ?? "";
+        Health.TryGetValue(key, out var current);
+        current += amount;
+        Health[key] = current;
+        return current;
     }
 
     /// <summary>

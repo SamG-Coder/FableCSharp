@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 114
-RECOVERED RETURN: 114
-RECOVERED APPLY: 50
+RECOVERED DISPATCH: 115
+RECOVERED RETURN: 115
+RECOVERED APPLY: 51
 IMPLEMENTED RUNTIME: 13
-UNREAD: 71
+UNREAD: 70
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -172,7 +172,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | DataSpeak | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
 | Speak | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
 | WalkUpToThing | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
-| ModifyHealth | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
+| ModifyHealth | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
 | HoldInHand | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
 | FightStop | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
 | FightWith | Entity | Unread | Unread | Unread | Unread | Unread | Unread |

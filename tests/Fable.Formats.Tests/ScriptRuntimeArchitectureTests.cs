@@ -1351,6 +1351,92 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void ModifyHealth_is_vtbl_1060_not_GiveHeroHealth()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.World.HeroHealth = 50;
+        runtime.World.HeroMaxHealth = 100;
+        var interp = new ScriptInterpreter("mh",
+        [
+            "GUARD.ModifyHealth -25",
+            "GUARD.ModifyHealth 10",
+            "HERO.ModifyHealth 5",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(-15f, runtime.World.Health["GUARD"]);
+        Assert.Equal(5f, runtime.World.Health["HERO"]);
+        Assert.Equal(50f, runtime.World.HeroHealth);
+        Assert.Equal(0x00CC22AEu, ScriptCommandMap.Find("ModifyHealth")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("GiveHeroHealth")!.Value.ApplySite,
+            ScriptCommandMap.Find("ModifyHealth")!.Value.ApplySite);
+        var empty = new ScriptInterpreter("mh0", ["GUARD.ModifyHealth"]);
+        empty.RunUntilYield(runtime);
+        Assert.True(empty.Finished);
+        Assert.Equal(-15f, runtime.World.Health["GUARD"]);
+    }
+
+    [Fact]
+    public void ModifyHealth_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".ModifyHealth ", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "BANDIT.ModifyHealth -50";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("ModifyHealth", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-hp", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".ModifyHealth ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        ScriptLine.TryFloat(parsed.Arg(0), out var amount);
+        Assert.Equal(amount, runtime.World.Health[parsed.Target ?? ""]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-hp.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-modifyhealth.txt"),
+            """
+            ModifyHealth 00CC2258 / apply 00CC22AE
+              ebx required else 00CC7081
+              arg0 00403A00 empty skip; 0099E690 atof
+              actor vtbl+48 name
+              CGameScriptInterface vtbl+1060(actor,amt,0)
+              leftover +28; 00CBF7FE; jmp 00CC707C
+              not GiveHeroHealth vtbl+1052 / MAX
+            Health mesh / clamp UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void GiveGold_real_script_bank_or_isolated()
     {
         var install = GameInstall.TryLocate();

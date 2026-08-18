@@ -494,6 +494,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "arg0 required; IsTrue(arg1); actor vtbl+48; vtbl+892(actor,item,flag); leftover +28; jmp 00CC707C; not PutInHeroHands"),
+        Spec("ModifyHealth", 0x00CC2258, 0x00CC22AE, "amount",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "atof arg0; actor vtbl+48; vtbl+1060(actor,amt,0); leftover +28; jmp 00CC707C; not GiveHeroHealth 1052"),
         Spec("GiveHero", 0x00CC6392, 0x00CC63E5, "item[,n][,extra][,silent][,yield]",
             ScriptReturn.YieldAfterUnlessFalse, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
