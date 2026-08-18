@@ -926,12 +926,13 @@ public sealed class EngineLifecycle : IDisposable
     /// <summary>
     /// <c>004A5A40</c> at <c>004A5D88</c>
     /// when <c>[world+260]==0</c>:
-    /// <c>004B4490</c> → <c>00CB8220</c>
-    /// → <c>00CB7C40</c>+<c>00CB8170</c>
-    /// → <c>00CB7950</c>. First-seen
-    /// fiber <c>+41==0</c> takes
-    /// <c>vtbl+4</c>, not
-    /// <c>00A44880</c>.
+    /// <c>004B4490</c>. First-seen
+    /// <c>[0x1375454]==0</c> (no writer)
+    /// so <c>004B3CE0</c> stubs
+    /// <c>[quest+8]=0</c> and
+    /// <c>00CB8220</c> is skipped.
+    /// Host walk of <c>00CB7950</c> /
+    /// <c>Runtime.Update</c> is leftover.
     /// </summary>
     public const uint QuestManagerPumpFn = 0x004B4490;
     public const uint QuestManagerVa = 0x013B89FC;
@@ -939,6 +940,16 @@ public sealed class EngineLifecycle : IDisposable
     public const uint QuestListWalkAFn = 0x00CB7C40;
     public const uint QuestListWalkBFn = 0x00CB8170;
     public const uint QuestFiberAttachFn = 0x00CB7950;
+    /// <summary>
+    /// <c>004B3CE0</c>
+    /// <c>cmp [0x1375454]</c>.
+    /// No <c>.text</c> writer
+    /// (one <c>cmp</c>) so
+    /// first-seen takes the stub
+    /// with <c>[+8]=0</c>.
+    /// </summary>
+    public const uint QuestFactoryGateVa = 0x01375454;
+    public const int QuestFactoryGateFirstSeen = 0;
     public const uint QuestFiberUpdateVtbl = 24;
     public const int QuestFiberUpdateFlagOffset = 41;
     /// <summary>
@@ -3852,34 +3863,25 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
-    /// <c>004A5D88</c> <c>004B4490</c>
-    /// when world+260 is 0. Walks
-    /// <c>00CB8220</c>. First-seen
-    /// <c>[fiber+41]==0</c> so
-    /// <c>00CB7950</c> takes
-    /// <c>vtbl+4</c>, not
-    /// <c>00A44880</c>.
+    /// <c>004B4490</c> first-seen:
+    /// <c>[0x1375454]==0</c> so
+    /// <c>004B3CE0</c> stubs
+    /// <c>[quest+8]=0</c>.
+    /// <c>cmp [eax+8]</c> skips
+    /// <c>00CB8220</c>.
     /// </summary>
     public void PumpQuests()
     {
         Note(QuestManagerPumpFn, "GamePump", "Quest",
             $"004B4490 [0x{QuestManagerVa:X}]");
-        Note(QuestListPumpFn, "GamePump", "Quest", "00CB8220");
-        Note(QuestListWalkAFn, "GamePump", "Quest", "00CB7C40");
-        Note(QuestListWalkBFn, "GamePump", "Quest", "00CB8170");
-        Note(FiberUpdateFlagSetter, "GamePump", "Quest",
-            "00CB78D0 setter 0 E8 not in 012C3000/012F72D0/0129B938");
+        Note(QuestFactoryGateVa, "GamePump", "Quest",
+            $"01375454={QuestFactoryGateFirstSeen} no writer");
+        Note(QuestFactoryStartFn, "GamePump", "Quest",
+            "004B3CE0 stub [quest+8]=0");
+        Note(QuestListPumpFn, "GamePump", "Quest",
+            "00CB8220 skip [quest+8]=0");
         QuestPumpWalked = 0;
         QuestVtbl24Calls = 0;
-        foreach (var name in _activatedQuests)
-        {
-            Note(QuestFiberAttachFn, "GamePump", "Quest",
-                $"00CB7950 +{QuestFiberUpdateFlagOffset}=0 {name}");
-            QuestPumpWalked++;
-        }
-
-        Runtime?.Update(1f / 30f);
-        WriteHeroFromRuntime();
         QuestPumpRan = true;
     }
 

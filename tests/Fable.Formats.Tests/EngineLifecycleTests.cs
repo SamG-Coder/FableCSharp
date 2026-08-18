@@ -1638,7 +1638,15 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldTickCameraSeedSite);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldFrameIncSite);
         Assert.True(life.WorldCamera.Seeded);
+        Assert.True(life.QuestPumpRan);
+        Assert.Equal(0, life.QuestPumpWalked);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.QuestListPumpFn &&
+            e.Action.Contains("skip", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.QuestFiberAttachFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
+        Assert.Equal(0x01375454u, EngineLifecycle.QuestFactoryGateVa);
+        Assert.Equal(0, EngineLifecycle.QuestFactoryGateFirstSeen);
         Assert.Equal(0x00416670u, EngineLifecycle.WalkTickBeforeDispatchFn);
         Assert.Equal(0x00415FE0u, EngineLifecycle.ApplyTickTypeFn);
         Assert.Equal(0x00434A60u, EngineLifecycle.WalkTickAfterDispatchFn);

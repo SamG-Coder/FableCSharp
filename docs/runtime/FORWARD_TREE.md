@@ -786,11 +786,15 @@ Fiber +41 setter 00CB78D0  PROVEN
 
 004A5A40 type-1 tick  PROVEN (316)
 ├── 004B4490  [0x13B89FC]  PROVEN
-│   └── 00CB8220 → 00CB7C40 + 00CB8170
-│       └── 00CB7950 [fiber+41]
-│           ├── +41!=0  [vtbl+24] 00A44880
-│           └── +41==0  [vtbl+4] start  FIRST-SEEN
-└── 004A5E10 inc WorldFrame
+│   ├── 004B3CE0 stub  PROVEN
+│   │   [0x1375454] no writer → 0
+│   │   [quest+8]=0
+│   └── 00CB8220 skipped  PROVEN
+│       ([eax+8]==0). 00CB7C40/00CB7950
+│       / vtbl+4 00CDDBF0 / 00F013C0
+│       not first-seen. Host per-name
+│       00CB7950 + Runtime.Update leftover.
+└── 004A5DF3 006B3FF0 then 004A5E10
 009D9C80 first 250: dirty-list only. No type 0x22.
 
 0041726D → 0049DFB0 type-1 → 00629270 / 004A5A40
