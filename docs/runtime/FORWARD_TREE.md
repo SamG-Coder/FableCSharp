@@ -198,7 +198,8 @@ Retail vtbl `01230CA0`: slot 1 start `0042F75E`, slot 2 pump `0042EC7C`.
 │       0041AFA0 → engine vtbl+92 00B23BC0 → 00B324A0 type 0x22
 │         handler 00BAD040 (after Init Engine)
 │         dest+4=0 → 00BACFD0 012A54BC + factory 00BAE2D0
-│         00BAE2D0 shader bind, not 009DB700  PROVEN
+│         later dest+4 set → 00BAD8A0; [rec+32]=0 [rec+64]=0 ret
+│         neither calls 009DB700  PROVEN
 ├── "Init Engine"   0042E204
 │   └── 00B26340 → 00B4AC10 → 00BAD040 VSHADER_2D_SPRITE
 │       00B4ABB0 → 00B8FAD0 types 0x22/0x23  PROVEN
@@ -212,6 +213,9 @@ Retail vtbl `01230CA0`: slot 1 start `0042F75E`, slot 2 pump `0042EC7C`.
 └── frame loop until 009A6460==2 or [esi+8]
     ├── 0042E3EE  input  [0x13B8388] / 009F4ED0
     ├── 0042DC94  update
+    │   └── 00599E3F  [ui+84] vtbl+4 0052C7E0 → 00531EC0
+    │       0052F5C0 +264 then 0052FFD0 +248  PROVEN
+    │       first-seen fields ctor 0 → dest 0,0,0,0
     ├── 0042FA30  zero 112-byte record
     ├── 0042DBFA  fill
     ├── 0042DF9E  009D8CF0 / 009BEF20 / 00595582 / 00595222

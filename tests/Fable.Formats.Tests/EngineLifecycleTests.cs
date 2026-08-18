@@ -420,6 +420,18 @@ public sealed class EngineLifecycleTests
             e.Action.Contains("00BAE2D0", StringComparison.Ordinal));
         Assert.Equal(0x00BAD040u, EngineLifecycle.FrontendSpriteHandlerCtorFn);
         Assert.Equal(0x00BAE2D0u, EngineLifecycle.FrontendSpriteSubmitFn);
+        Assert.True(life.FrontendWidgetTickRan);
+        Assert.True(life.FrontendDestLayoutRan);
+        Assert.False(life.FrontendInstanceSubmitRan);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendWidgetTickFn &&
+            e.Action.Contains("0052C7E0", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendDestLayoutFn &&
+            e.Action.Contains("00531EC0", StringComparison.Ordinal));
+        Assert.Equal(0x0052C7E0u, EngineLifecycle.FrontendWidgetTickFn);
+        Assert.Equal(0x00531EC0u, EngineLifecycle.FrontendDestLayoutFn);
+        Assert.Equal(0x00BAD8A0u, EngineLifecycle.FrontendSpriteInstanceSubmitFn);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.FrontendWidgetMessageNoopFn &&
             e.Action.Contains("ret 4", StringComparison.Ordinal));
@@ -446,6 +458,12 @@ public sealed class EngineLifecycleTests
         Assert.True(begin >= 0 && begin < ui && ui < flush && flush < end && end < present);
         Assert.Equal(RegionTravel.PlayAviPresent, EngineLifecycle.PresentFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.True(life.Pump());
+        Assert.True(life.FrontendInstanceSubmitRan);
+        Assert.False(life.FrontendEnqueueRan);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendSpriteInstanceSubmitFn &&
+            e.Action.Contains("00BADB36", StringComparison.Ordinal));
         var dest = Path.Combine(
             @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
             "traces");
@@ -458,6 +476,8 @@ public sealed class EngineLifecycleTests
             0042EC7C inner frontend loop (0042F041):
               0042E3EE input walk [0x13B8388]
               0042DC94 update dt + 00599E3F
+                [ui+84] vtbl+4 0052C7E0 → 00531EC0
+                0052F5C0 +264 / 0052FFD0 +248 ctor 0
               0042FA30 zero 112-byte record
               0042DBFA fill record (zeros + retail+204)
               0042DF9E draw:
@@ -502,6 +522,8 @@ public sealed class EngineLifecycleTests
         Assert.Equal(248, EngineLifecycle.FrontendWidgetOriginXOffset);
         Assert.Equal(264, EngineLifecycle.FrontendWidgetScaleXOffset);
         Assert.Equal(1, life.FrontendWidgetsDrawn);
+        Assert.True(life.FrontendWidgetTickRan);
+        Assert.True(life.FrontendDestLayoutRan);
         Assert.False(life.Frontend2dDipIssued);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.FrontendUiDrawFn &&
@@ -542,6 +564,8 @@ public sealed class EngineLifecycleTests
         Assert.True(life.FrontendDefFound);
         Assert.Equal("UI", life.FrontendDefTypeName);
         Assert.True(life.FrontendType22HandlerRegistered);
+        Assert.True(life.FrontendWidgetTickRan);
+        Assert.True(life.FrontendDestLayoutRan);
         Assert.False(life.FrontendEnqueueRan);
         Assert.False(life.Frontend2dDipIssued);
         Assert.Contains(life.Trace.Events, e =>

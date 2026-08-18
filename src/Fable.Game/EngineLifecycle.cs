@@ -228,6 +228,26 @@ public sealed class EngineLifecycle : IDisposable
     /// First-seen dest is still 0 after
     /// scale <c>+264/+268</c> ctor 0.
     /// </summary>
+    /// <summary>
+    /// <c>00599E3F</c> walks
+    /// <c>[ui+84]</c> and
+    /// <c>[node+20].vtbl+4</c>
+    /// <c>0052C7E0</c> → <c>00531EC0</c>
+    /// which calls vtbl+148
+    /// <c>0052F5C0</c> (+264) then
+    /// vtbl+136 <c>0052FFD0</c> (+248)
+    /// before <c>0042DF9E</c> draw.
+    /// First-seen fields are ctor 0 so
+    /// dest stays 0,0,0,0.
+    /// </summary>
+    public const uint FrontendWidgetTickFn = 0x0052C7E0;
+    public const int FrontendWidgetTickVtbl = 4;
+    public const uint FrontendDestLayoutFn = 0x00531EC0;
+    public const uint FrontendDestScaleFn = 0x0052F5C0;
+    public const int FrontendDestScaleVtbl = 148;
+    public const uint FrontendDestOriginFn = 0x0052FFD0;
+    public const int FrontendDestOriginVtbl = 136;
+    public const uint FrontendSpriteInstanceSubmitFn = 0x00BAD8A0;
     public const uint FrontendWidgetCenterFn = 0x0052F1E0;
     public const int FrontendWidgetCenterVtbl = 424;
     public const uint Frontend2dRecordType = RegionTravel.FadeOverlayRecordType;
@@ -250,11 +270,11 @@ public sealed class EngineLifecycle : IDisposable
     /// Slot +92 is <c>00B23BC0</c> →
     /// <c>00B324A0([0x1436E80])</c>.
     /// Type <c>[rec]=0x22</c> indexes
-    /// <c>[0x1436E84]+16</c>. Dest
-    /// <c>widget+0x15C</c> <c>[+4]=0</c>
-    /// first-seen. Handler
-    /// <c>vtbl+20</c> UNREAD — not a
-    /// memcpy into display +16020.
+    /// <c>[0x1436E84]+16</c>. First
+    /// <c>00B324A0</c> constructs
+    /// <c>00BACFD0</c>/<c>00BAE2D0</c>.
+    /// Later frames <c>dest+4</c> set
+    /// call instance <c>00BAD8A0</c>.
     /// </summary>
     public const uint FrontendEngineInitFn = 0x0042E204;
     public const uint FrontendEngineEmbedFn = 0x0042FD04;
@@ -1918,6 +1938,9 @@ public sealed class EngineLifecycle : IDisposable
     public string? FrontendDefTypeName { get; private set; }
     public bool FrontendType22HandlerRegistered { get; private set; }
     public bool FrontendEnqueueRan { get; private set; }
+    public bool FrontendWidgetTickRan { get; private set; }
+    public bool FrontendDestLayoutRan { get; private set; }
+    public bool FrontendInstanceSubmitRan { get; private set; }
     public IReadOnlyList<string> FrontendMenuLabels =>
         FrontendMenuItems.Select(i => i.Label).ToList();
     public IReadOnlyList<int> GameTickTypes => _tickTypes;
@@ -2644,6 +2667,7 @@ public sealed class EngineLifecycle : IDisposable
         Note(ClearColorFn, "Frontend", "D3D9", "009D8CF0 clear");
         Note(BeginSceneFn, "Frontend", "D3D9", "009BEF20 BeginScene");
         Note(FrontendUiGet, "Frontend", "UI", "00595582");
+        TickFrontendWidgets();
         DrawFrontendWidgets();
         Note(InputActionGetter, "Frontend", "Input", "0041E5F2");
         FlushFrontendDisplay();
@@ -2655,6 +2679,43 @@ public sealed class EngineLifecycle : IDisposable
         Note(PresentFn, "Frontend", "D3D9", "009BEEB0 Present");
         FrontendFrameCount++;
         FrontendPresentCount++;
+    }
+
+    /// <summary>
+    /// <c>00599E3F</c> after the
+    /// <c>ui+96</c> skip: walk
+    /// <c>[ui+84]</c>,
+    /// <c>[node+20].vtbl+4</c>
+    /// <c>0052C7E0</c>(dt) →
+    /// <c>00531EC0</c> dest layout.
+    /// </summary>
+    private void TickFrontendWidgets()
+    {
+        Note(FrontendUiTickFn, "Frontend", "UI",
+            $"00599E3F [ui+{FrontendWidgetListOffset}] vtbl+{FrontendWidgetTickVtbl}");
+        if (!FrontendMenuConstructed)
+            return;
+        Note(FrontendWidgetTickFn, "Frontend", "UI",
+            $"0052C7E0 vtbl+{FrontendWidgetTickVtbl} 0122F5D4");
+        Note(FrontendDestLayoutFn, "Frontend", "UI",
+            $"00531EC0 vtbl+{FrontendDestScaleVtbl} 0052F5C0 then vtbl+{FrontendDestOriginVtbl} 0052FFD0");
+        Note(FrontendDestScaleFn, "Frontend", "UI",
+            "0052F5C0 +264 from ctor-zero +92/+272");
+        Note(FrontendDestOriginFn, "Frontend", "UI",
+            "0052FFD0 +248 from ctor-zero +52/+60");
+        var dest = FrontendWidgetDest(
+            sizeW: 0, sizeH: 0,
+            leftoverW: 0, leftoverH: 0,
+            originX: 0, originY: 0,
+            scaleX: 0, scaleY: 0,
+            center: false);
+        FrontendWidgetDestX0 = dest.X0;
+        FrontendWidgetDestY0 = dest.Y0;
+        FrontendWidgetDestX1 = dest.X1;
+        FrontendWidgetDestY1 = dest.Y1;
+        FrontendWidgetTickRan = true;
+        FrontendDestLayoutRan = true;
+        Note(FrontendWidgetNextFn, "Frontend", "UI", "004292C0");
     }
 
     /// <summary>
@@ -2714,12 +2775,25 @@ public sealed class EngineLifecycle : IDisposable
         // dest+4=0 → 00BACFD0(0x22) 012A54BC, then factory +20 00BAE2D0.
         // 00BAE2D0 is shader bind, not 009DB700.
         FrontendEnqueueRan = false;
-        Note(FrontendSpriteFactoryFn, "Frontend", "UI",
-            $"00BACFD0 type 0x{FrontendSpriteType:X} vtbl 0x{FrontendSpriteInstanceVtbl:X}");
-        Note(FrontendSpriteSubmitFn, "Frontend", "UI",
-            "00BAE2D0 VSHADER_2D_SPRITE 00987FE0 no 009DB700");
-        Note(FrontendSubmitDispatchFn, "Frontend", "UI",
-            $"00B324A0 type 0x{Frontend2dRecordType:X} dest+4=0 00BACFD0+00BAE2D0");
+        if (FrontendFrameCount == 0)
+        {
+            Note(FrontendSpriteFactoryFn, "Frontend", "UI",
+                $"00BACFD0 type 0x{FrontendSpriteType:X} vtbl 0x{FrontendSpriteInstanceVtbl:X}");
+            Note(FrontendSpriteSubmitFn, "Frontend", "UI",
+                "00BAE2D0 VSHADER_2D_SPRITE 00987FE0 no 009DB700");
+            Note(FrontendSubmitDispatchFn, "Frontend", "UI",
+                $"00B324A0 type 0x{Frontend2dRecordType:X} dest+4=0 00BACFD0+00BAE2D0");
+        }
+        else
+        {
+            // dest+4 set. 00BAD8A0 copies record.
+            // First-seen [rec+32]==0 and [rec+64]==0 → 00BADB36 ret 8.
+            FrontendInstanceSubmitRan = true;
+            Note(FrontendSpriteInstanceSubmitFn, "Frontend", "UI",
+                "00BAD8A0 [rec+32]=0 [rec+64]=0 00BADB36 ret 8 no 009DB700");
+            Note(FrontendSubmitDispatchFn, "Frontend", "UI",
+                $"00B324A0 dest+4 set 00BAD8A0 vtbl+20 0x{FrontendSpriteInstanceVtbl:X}");
+        }
         Frontend2dLastType = Frontend2dRecordType;
         Frontend2dLastPacker = packer;
         Frontend2dLastSubmitVtbl = Frontend2dSubmitVtbl;
