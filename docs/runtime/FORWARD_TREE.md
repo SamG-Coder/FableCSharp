@@ -424,19 +424,30 @@ enqueue (host second 004189C2 after dummy; E8 caller UNREAD)
 └── 006C2120  enqueue
     └── sync → 006C2710 until 006C20A0 empty
 
-006C2170  apply  "Loading objects"  PROVEN
-├── for each ContainsMap of that region
-│   ├── 004FCBB0  Activate Topology  [record+38]=1
-│   ├── 004FCFE0  loading flag +39
-│   ├── 00522720  Load things for map
-│   └── 00521AE0  Thing Manager Load From File  (.tng)
+006C27A0  build job  PROVEN
+├── 006C2D40  copy map vector (stride 28) into job+16
+├── 006B9E00  copy tree
+└── job+28 = index
+
+006C2120  enqueue onto [WorldMap+188]+20  PROVEN
+006C20A0  nonempty iff [head]!=sentinel  PROVEN
+006C2710  "Level loader update"  PROVEN
+├── 006C2170  apply
+└── 006C2BA0  pop  ; "Level loader update end"
+
+006C2170  apply  PROVEN (not 004FCBB0-first)
+├── pass 1 [rec+4]: "Loading topology"
+│   └── 004FF080 vtbl+24 / 00638310 / "Post load topology" 004FF440
+├── pass 2 [rec+20]: "Loading objects"
+│   └── 00522720 / 00521AE0  .tng
 │       └── 0051FD80  Load Single Thing
-│           ├── PlayerCreature → 00449970 / 006AC910
-│           └── else 0051E5A0 Activate After Loading
-├── no-save Lookout TNG has no PlayerCreature
-│   └── 006AC910 at HOLY_SITE_PLAYER_START GuildArrivalHSP
-│       └── 006B3FF0  seed world camera
-└── 004FC8A0  SetRegionAsLoaded
+├── 00500230 / 0050AF10  if [rec+12]  PARTIAL
+├── 0051E2F0
+├── pass: "Region Level Files: Post Load Initialise"  004FD020
+├── pass: "Region Level Files: Activate Topology"
+│   ├── 004FCBB0  if [rec+4]
+│   └── 004FCFE0(map, 0)
+└── if job+28>0: map vtbl+88 then 004FC8A0  SetRegionAsLoaded
     ├── WorldMap+156 = index
     ├── 0082BA00  Initialise MiniMap
     ├── 005064C0  Post Region Load Villages

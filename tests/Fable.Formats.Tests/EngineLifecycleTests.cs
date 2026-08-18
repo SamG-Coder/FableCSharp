@@ -77,6 +77,17 @@ public sealed class EngineLifecycleTests
         Assert.Equal(1, EngineLifecycle.GamePumpQuitFirstSeen);
         Assert.Equal(0x004FEEC0u, EngineLifecycle.UnloadCurrentRegionFn);
         Assert.Equal(0x00500540u, EngineLifecycle.LoadRegionFn);
+        Assert.Equal(0x006C27A0u, EngineLifecycle.BuildLoadJobFn);
+        Assert.Equal(0x006C2D40u, EngineLifecycle.BuildLoadJobCopyMapsFn);
+        Assert.Equal(0x006B9E00u, EngineLifecycle.BuildLoadJobCopyTreeFn);
+        Assert.Equal(28, EngineLifecycle.LoadJobRecordSize);
+        Assert.Equal(0x006C2BA0u, EngineLifecycle.LevelLoaderPopFn);
+        Assert.Equal(0x004FF080u, EngineLifecycle.LoadTopologyFn);
+        Assert.Equal(0x00638310u, EngineLifecycle.LoadTopologyHelperFn);
+        Assert.Equal(0x004FF440u, EngineLifecycle.PostLoadTopologyFn);
+        Assert.Equal(0x004FD020u, EngineLifecycle.PostLoadInitialiseFn);
+        Assert.Equal(0x0051E2F0u, EngineLifecycle.ThingManagerActivateAfterFn);
+        Assert.Equal(88, EngineLifecycle.WorldMapSetLoadedVtbl);
         Assert.Equal(0x004167DAu, EngineLifecycle.EngineReadyCallback);
         Assert.Equal(0x0049F180u, EngineLifecycle.InitCharactersFn);
         Assert.Equal(0x004B4A10u, EngineLifecycle.ActivateInitialQuestsFn);
@@ -1552,6 +1563,53 @@ public sealed class EngineLifecycleTests
         Assert.True(restore > first, "00500540(0,0,1) after first load");
         Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.NamedStartFn);
+    }
+
+    [Fact]
+    public void Apply_006C2170_is_topology_then_objects_then_004FCBB0()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.Equal("LookoutPoint", life.CurrentRegion!.RegionName);
+        var events = life.Trace.Events;
+        var job = events.FindIndex(e => e.Va == EngineLifecycle.BuildLoadJobFn);
+        var copy = events.FindIndex(e => e.Va == EngineLifecycle.BuildLoadJobCopyMapsFn);
+        var enqueue = events.FindIndex(e => e.Va == EngineLifecycle.EnqueueLoadJobFn);
+        var update = events.FindIndex(e =>
+            e.Va == EngineLifecycle.LevelLoaderUpdate &&
+            e.Action.Contains("006C2710", StringComparison.Ordinal));
+        var apply = events.FindIndex(e =>
+            e.Va == EngineLifecycle.LevelLoaderApply &&
+            e.Action.Contains("006C2170", StringComparison.Ordinal));
+        var topo = events.FindIndex(e => e.Va == EngineLifecycle.LoadTopologyFn);
+        var objects = events.FindIndex(e =>
+            e.Va == EngineLifecycle.LevelLoaderApply &&
+            e.Action.Contains("Loading objects", StringComparison.Ordinal));
+        var postInit = events.FindIndex(e => e.Va == EngineLifecycle.PostLoadInitialiseFn);
+        var activate = events.FindIndex(e => e.Va == EngineLifecycle.ActivateTopologyFn);
+        var loaded = events.FindIndex(e =>
+            e.Va == EngineLifecycle.SetRegionAsLoadedFn &&
+            e.Action.Contains("index=1", StringComparison.Ordinal));
+        var end = events.FindIndex(e =>
+            e.Va == EngineLifecycle.LevelLoaderUpdate &&
+            e.Action.Contains("end", StringComparison.Ordinal));
+        Assert.True(job >= 0 && copy > job && enqueue > copy, "006C27A0 then 006C2120");
+        Assert.True(update > enqueue && apply > update, "006C2710 then 006C2170");
+        Assert.True(topo > apply && objects > topo, "Loading topology before objects");
+        Assert.True(postInit > objects && activate > postInit,
+            "004FD020 then 004FCBB0 after objects");
+        Assert.True(loaded > activate, "004FC8A0 after 004FCBB0");
+        Assert.True(end > loaded, "Level loader update end after apply");
+        Assert.Contains(life.ActivatedMaps, m => m == "LookoutPoint");
+        Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
     }
 
     [Fact]

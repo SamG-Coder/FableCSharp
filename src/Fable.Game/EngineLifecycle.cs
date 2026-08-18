@@ -977,13 +977,25 @@ public sealed class EngineLifecycle : IDisposable
     public const string HeroScriptName = "Hero";
     public const string GuildArrivalHsp = "GuildArrivalHSP";
     public const uint BuildLoadJobFn = 0x006C27A0;
+    public const uint BuildLoadJobCopyMapsFn = 0x006C2D40;
+    public const uint BuildLoadJobCopyTreeFn = 0x006B9E00;
+    public const int LoadJobIndexOffset = 28;
+    public const int LoadJobRecordSize = 28;
     public const uint EnqueueLoadJobFn = 0x006C2120;
     public const uint LevelLoaderUpdate = 0x006C2710;
+    public const uint LevelLoaderPopFn = 0x006C2BA0;
     public const uint LevelLoaderApply = 0x006C2170;
     public const uint LevelLoaderHasWork = 0x006C20A0;
+    public const uint LoadTopologyFn = 0x004FF080;
+    public const uint LoadTopologyHelperFn = 0x00638310;
+    public const uint PostLoadTopologyFn = 0x004FF440;
+    public const uint PostLoadInitialiseFn = 0x004FD020;
+    public const uint PostLoadInitialiseApply = 0x00821850;
+    public const uint ThingManagerActivateAfterFn = 0x0051E2F0;
     public const uint SetRegionAsLoadedFn = 0x004FC8A0;
     public const uint ActivateTopologyFn = 0x004FCBB0;
     public const uint SetMapLoadingFlagFn = 0x004FCFE0;
+    public const int WorldMapSetLoadedVtbl = 88;
     public const uint PostRegionLoadVillages = 0x005064C0;
     public const uint InitMiniMapFn = 0x0082BA00;
     public const int WorldMapLevelLoaderOffset = 188;
@@ -3325,7 +3337,10 @@ public sealed class EngineLifecycle : IDisposable
         }
 
         Note(BuildLoadJobFn, "LevelLoader", "Region",
-            $"006C27A0 maps={region?.ContainsMaps.Count ?? 0} +28={index}");
+            $"006C27A0 maps={region?.ContainsMaps.Count ?? 0} +{LoadJobIndexOffset}={index}");
+        Note(BuildLoadJobCopyMapsFn, "LevelLoader", "Region",
+            $"006C2D40 stride={LoadJobRecordSize}");
+        Note(BuildLoadJobCopyTreeFn, "LevelLoader", "Region", "006B9E00");
         _loadQueue.Add(index);
         Note(EnqueueLoadJobFn, "LevelLoader", "Region",
             $"006C2120 queue={_loadQueue.Count}");
@@ -3334,16 +3349,20 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
-    /// <c>006C2710</c> "Level loader update".
+    /// <c>00500540</c> sync: while
+    /// <c>006C20A0</c>, <c>[loader].vtbl+4</c>
+    /// <c>006C2710</c> applies one job.
     /// </summary>
     public void PumpLevelLoader()
     {
-        Note(LevelLoaderUpdate, "LevelLoader", "Region", "006C2710 Level loader update");
         while (_loadQueue.Count > 0)
         {
             Note(LevelLoaderHasWork, "LevelLoader", "Region", "006C20A0 nonempty");
+            Note(LevelLoaderUpdate, "LevelLoader", "Region", "006C2710 Level loader update");
             ApplyLoadJob(_loadQueue[0]);
             _loadQueue.RemoveAt(0);
+            Note(LevelLoaderUpdate, "LevelLoader", "Region", "Level loader update end");
+            Note(LevelLoaderPopFn, "LevelLoader", "Region", "006C2BA0");
         }
     }
 
@@ -3645,26 +3664,47 @@ public sealed class EngineLifecycle : IDisposable
                 foreach (var map in region.ContainsMaps)
                 {
                     Note(LevelLoaderApply, "LevelLoader", "Region", "Loading topology " + map);
+                    Note(LoadTopologyFn, "LevelLoader", "Region",
+                        "004FF080 vtbl+24 " + map);
+                    Note(LoadTopologyHelperFn, "LevelLoader", "Region", "00638310");
+                    Note(PostLoadTopologyFn, "LevelLoader", "Region",
+                        "Post load topology 004FF440");
                     if (!_activatedMaps.Exists(m =>
                             m.Equals(map, StringComparison.OrdinalIgnoreCase)))
                         _activatedMaps.Add(map);
+                }
+
+                foreach (var map in region.ContainsMaps)
+                {
+                    Note(LevelLoaderApply, "LevelLoader", "Region", "Loading objects " + map);
+                    LoadRegionMapThings(map);
+                }
+
+                Note(ThingManagerActivateAfterFn, "LevelLoader", "Thing", "0051E2F0");
+                foreach (var map in region.ContainsMaps)
+                    Note(PostLoadInitialiseFn, "LevelLoader", "Region",
+                        "Region Level Files: Post Load Initialise 004FD020 " + map);
+
+                foreach (var map in region.ContainsMaps)
+                {
+                    Note(LevelLoaderApply, "LevelLoader", "Region",
+                        "Region Level Files: Activate Topology " + map);
                     Note(ActivateTopologyFn, "LevelLoader", "Region",
                         $"004FCBB0 {map} +38=1");
                     Note(SetMapLoadingFlagFn, "LevelLoader", "Region",
                         $"004FCFE0 {map} +39");
-                    Note(LevelLoaderApply, "LevelLoader", "Region", "Loading objects " + map);
-                    LoadRegionMapThings(map);
                 }
 
                 return RegionThingMapsLoaded;
             }, n => $"maps={n} things={_regionThings.Count}");
 
-            Note(LevelLoaderApply, "LevelLoader", "Region",
-                "Region Level Files: Activate Topology");
             if (!HeroSpawned)
                 SpawnHeroFromPlayerStart(_regionThings);
         }
 
+        if (index > 0)
+            Note(SetRegionAsLoadedFn, "LevelLoader", "Region",
+                $"vtbl+{WorldMapSetLoadedVtbl} +28={index}");
         SetRegionAsLoaded(index);
     }
 
