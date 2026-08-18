@@ -45,6 +45,25 @@ public sealed class WorldCamera
     public const int BlendOffset = 412;
     public const int OutDirOffset = 3120;
     public const uint BlendFn = 0x006B42F0;
+    /// <summary>
+    /// <c>006B42F0</c> tail on
+    /// <c>[this+6496]</c>: 80-byte bank
+    /// lerp, not the render helper.
+    /// </summary>
+    public const uint BankLerpFn = 0x008857E0;
+    public const uint BankWeightFn = 0x00885900;
+    public const uint BankPacketFn = 0x008859F0;
+    /// <summary>
+    /// Engine <c>012A0F3C+244</c> =
+    /// <c>00B23EC0</c>. Copies the
+    /// 8-float packet into colour
+    /// filter <c>[0x1436E40]+16</c>.
+    /// </summary>
+    public const uint EngineApplyVtblFn = 0x00B23EC0;
+    public const int EngineApplyVtblOffset = 244;
+    public const uint ColourFilterObject = 0x01436E40;
+    public const int ColourFilterPacketOffset = 16;
+    public const int ColourFilterSkipOffset = 12;
     public const uint SlotCtor = 0x008864A0;
     public const int ObjectSize = 0x1970;
     public const int WorldOffset = 24;
@@ -309,6 +328,20 @@ public sealed class GameCamera
     public const float Plus152 = 10f;
     public const float Plus192 = 0.1f;
     /// <summary>
+    /// <c>00A0C130</c> on <c>this+4</c>.
+    /// </summary>
+    public const uint HelperPackFn = 0x00A0C130;
+    public const int HelperOffset = 4;
+    /// <summary>
+    /// <c>006FD8C0</c> stack into
+    /// <c>00A0C130</c>: pos <c>(0,0,0)</c>,
+    /// look <c>(0,0,1)</c>, up
+    /// <c>(1,1,1)</c>, extra 0 → flags 1.
+    /// </summary>
+    public static readonly Vector3 CtorPos = Vector3.Zero;
+    public static readonly Vector3 CtorLook = Vector3.UnitZ;
+    public static readonly Vector3 CtorUp = new(1f, 1f, 1f);
+    /// <summary>
     /// <c>00A0C130</c> helper+44.
     /// <c>0x3E471B48</c> ≈ 70/360 turns.
     /// </summary>
@@ -337,6 +370,17 @@ public sealed class GameCameraManager
 {
     public const uint Ctor = 0x0069AE80;
     public const uint Vtbl = 0x0125C754;
+    public const uint HelperPackFn = 0x00A0C130;
+    /// <summary>
+    /// <c>0069AE80</c> stack into
+    /// <c>00A0C130</c>: pos <c>(0,0,0)</c>,
+    /// look <c>(0,0,1)</c>, up
+    /// <c>(1,0,0)</c>, FOV
+    /// <c>0x3E471B48</c>.
+    /// </summary>
+    public static readonly Vector3 CtorPos = Vector3.Zero;
+    public static readonly Vector3 CtorLook = Vector3.UnitZ;
+    public static readonly Vector3 CtorUp = Vector3.UnitX;
     public const int ObjectSize = 0x160;
     public const int WorldOffset = 48;
     public const int WorldCopyOffset = 52;
