@@ -194,8 +194,37 @@ public sealed class LevTileMesh
 
             var tex0 = faces[0].TextureId;
             var tex1 = faces[0].TextureId1;
+            ushort[] strip = [];
+            var prims = 0;
+            var packed = Array.Empty<LandscapePoint>();
+            if (!useGrid && tile.Indices.Count >= 3)
+            {
+                packed = new LandscapePoint[tile.Vertices.Count];
+                for (var i = 0; i < tile.Vertices.Count; i++)
+                    packed[i] = new LandscapePoint(points[i], tile.Vertices[i].Normal, tile.Vertices[i].ExtraRgb);
+                strip = new ushort[tile.Indices.Count];
+                var ok = true;
+                for (var i = 0; i < tile.Indices.Count; i++)
+                {
+                    var idx = tile.Indices[i];
+                    if ((uint)idx > 65535)
+                    {
+                        ok = false;
+                        break;
+                    }
+
+                    strip[i] = (ushort)idx;
+                }
+
+                if (ok)
+                    prims = Math.Max(0, strip.Length - 2);
+                else
+                    strip = [];
+            }
+
             list.Add(new LandscapeCell(
-                map, tile.CellX, tile.CellY, min, max, faces, tex0, tex1));
+                map, tile.CellX, tile.CellY, min, max, faces, tex0, tex1,
+                packed, strip, prims));
         }
 
         return list;

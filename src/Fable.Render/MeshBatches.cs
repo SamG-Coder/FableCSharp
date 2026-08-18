@@ -1,6 +1,8 @@
 using System.Numerics;
+using Fable.Formats.Levels;
 using Fable.Formats.Meshes;
 using Fable.Formats.Scene;
+using Fable.Formats.World;
 
 namespace Fable.Render;
 
@@ -13,6 +15,7 @@ public sealed class TexturedMesh
 {
     public required MeshVertex[] Vertices { get; init; }
     public required MeshDraw[] Draws { get; init; }
+    public ushort[] Indices { get; init; } = [];
 }
 
 public static class MeshBatches
@@ -67,37 +70,75 @@ public static class MeshBatches
     /// regroup across cells.
     /// </summary>
     public static TexturedMesh BuildCells(
-        IReadOnlyList<Fable.Formats.Levels.LandscapeCell> cells)
+        IReadOnlyList<LandscapeCell> cells)
     {
         var count = 0;
+        var indexCount = 0;
         foreach (var cell in cells)
-            count += cell.Faces.Count * 3;
+        {
+            if (cell.PrimitiveCount > 0 && cell.Points is { Count: > 0 })
+            {
+                count += cell.Points.Count;
+                indexCount += cell.PrimitiveCount * 3;
+            }
+            else
+                count += cell.Faces.Count * 3;
+        }
+
         var vertices = new MeshVertex[count];
-        var draws = new List<MeshDraw>(cells.Count * 2);
+        var indices = indexCount > 0 ? new ushort[indexCount] : [];
+        var draws = new List<MeshDraw>(cells.Count);
         var cursor = 0;
+        var icursor = 0;
         foreach (var cell in cells)
         {
             var first = cursor;
-            foreach (var tri in cell.Faces)
+            uint firstIndex = 0;
+            uint nIndex = 0;
+            if (cell.PrimitiveCount > 0 &&
+                cell.Points is { Count: > 0 } points &&
+                cell.StripIndices is { Length: >= 3 } strip)
             {
-                vertices[cursor++] = Vert(tri.A, tri.NormalA, tri.Normal, tri.UvA, tri.ColorA, tri.ExtraA, tri.ColorAlphaA);
-                vertices[cursor++] = Vert(tri.B, tri.NormalB, tri.Normal, tri.UvB, tri.ColorB, tri.ExtraB, tri.ColorAlphaB);
-                vertices[cursor++] = Vert(tri.C, tri.NormalC, tri.Normal, tri.UvC, tri.ColorC, tri.ExtraC, tri.ColorAlphaC);
+                foreach (var p in points)
+                    vertices[cursor++] = Vert(p.P, p.N, p.N, default, Vector3.One, p.Extra, 1f);
+                firstIndex = (uint)icursor;
+                for (var t = 0; t + 2 < strip.Length; t++)
+                {
+                    var (ia, ib, ic) = LandscapeStrip.Unwind(t, strip[t], strip[t + 1], strip[t + 2]);
+                    if ((uint)ia >= (uint)points.Count ||
+                        (uint)ib >= (uint)points.Count ||
+                        (uint)ic >= (uint)points.Count)
+                        continue;
+                    indices[icursor++] = (ushort)ia;
+                    indices[icursor++] = (ushort)ib;
+                    indices[icursor++] = (ushort)ic;
+                }
+
+                nIndex = (uint)(icursor - (int)firstIndex);
+            }
+            else
+            {
+                foreach (var tri in cell.Faces)
+                {
+                    vertices[cursor++] = Vert(tri.A, tri.NormalA, tri.Normal, tri.UvA, tri.ColorA, tri.ExtraA, tri.ColorAlphaA);
+                    vertices[cursor++] = Vert(tri.B, tri.NormalB, tri.Normal, tri.UvB, tri.ColorB, tri.ExtraB, tri.ColorAlphaB);
+                    vertices[cursor++] = Vert(tri.C, tri.NormalC, tri.Normal, tri.UvC, tri.ColorC, tri.ExtraC, tri.ColorAlphaC);
+                }
             }
 
             var n = (uint)(cursor - first);
             if (n == 0)
                 continue;
-            // 00BF4570 is bit 0x40 only. Bit 0x4
-            // is 00BF71D0 tessellator BG, not
-            // this stored cell mesh.
             draws.Add(new MeshDraw(
                 cell.TextureId, (uint)first, n,
                 cell.TextureId1 == 0 ? cell.TextureId : cell.TextureId1,
-                Fable.Formats.Levels.LandscapeCells.LayerForeground, 1f, false));
+                LandscapeCells.LayerForeground, 1f, false,
+                IndexCount: nIndex, FirstIndex: firstIndex));
         }
 
-        return new TexturedMesh { Vertices = vertices, Draws = [.. draws] };
+        if (icursor < indices.Length)
+            Array.Resize(ref indices, icursor);
+        return new TexturedMesh { Vertices = vertices, Draws = [.. draws], Indices = indices };
     }
 
     /// <summary>
@@ -188,7 +229,25 @@ public static class MeshBatches
             draws[a.Draws.Length + i] = d with { FirstVertex = d.FirstVertex + off };
         }
 
-        return new TexturedMesh { Vertices = vertices, Draws = SortByPass(draws) };
+        var aIdx = a.Indices;
+        var bIdx = b.Indices;
+        ushort[] indices = [];
+        if (aIdx.Length + bIdx.Length > 0)
+        {
+            indices = new ushort[aIdx.Length + bIdx.Length];
+            aIdx.CopyTo(indices, 0);
+            bIdx.CopyTo(indices, aIdx.Length);
+        }
+
+        var indexOff = (uint)aIdx.Length;
+        for (var i = 0; i < b.Draws.Length; i++)
+        {
+            var d = draws[a.Draws.Length + i];
+            if (d.IndexCount > 0)
+                draws[a.Draws.Length + i] = d with { FirstIndex = d.FirstIndex + indexOff };
+        }
+
+        return new TexturedMesh { Vertices = vertices, Draws = SortByPass(draws), Indices = indices };
     }
 
     public static MeshDraw[] SortByPass(IReadOnlyList<MeshDraw> draws)

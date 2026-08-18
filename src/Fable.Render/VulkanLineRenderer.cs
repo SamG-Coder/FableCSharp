@@ -201,6 +201,10 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     private DeviceMemory _meshMemory;
     private uint _meshCapacity;
     private uint _meshCount;
+    private Buffer _indexBuffer;
+    private DeviceMemory _indexMemory;
+    private uint _indexCapacity;
+    private uint _indexCount;
     private Buffer _objectBuffer;
     private DeviceMemory _objectMemory;
     private uint _objectCapacity;
@@ -260,10 +264,14 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         _vk.UnmapMemory(_device, _vertexMemory);
     }
 
-    public void SetMesh(ReadOnlySpan<MeshVertex> vertices, ReadOnlySpan<MeshDraw> draws = default)
+    public void SetMesh(
+        ReadOnlySpan<MeshVertex> vertices,
+        ReadOnlySpan<MeshDraw> draws = default,
+        ReadOnlySpan<ushort> indices = default)
     {
         _draws = draws.Length == 0 ? [] : draws.ToArray();
         _meshCount = (uint)vertices.Length;
+        UploadIndices(indices);
         if (_meshCount == 0)
             return;
 
@@ -288,6 +296,34 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         Check(_vk.MapMemory(_device, _meshMemory, 0, bytes, 0, &mapped));
         vertices.CopyTo(new Span<MeshVertex>(mapped, vertices.Length));
         _vk.UnmapMemory(_device, _meshMemory);
+    }
+
+    private void UploadIndices(ReadOnlySpan<ushort> indices)
+    {
+        _indexCount = (uint)indices.Length;
+        if (_indexCount == 0)
+            return;
+        var bytes = (ulong)(indices.Length * sizeof(ushort));
+        if (_indexCapacity < _indexCount)
+        {
+            if (_indexBuffer.Handle != 0)
+            {
+                _vk.DestroyBuffer(_device, _indexBuffer, null);
+                _vk.FreeMemory(_device, _indexMemory, null);
+            }
+
+            CreateBuffer(bytes,
+                BufferUsageFlags.IndexBufferBit,
+                MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
+                out _indexBuffer,
+                out _indexMemory);
+            _indexCapacity = _indexCount;
+        }
+
+        void* mapped;
+        Check(_vk.MapMemory(_device, _indexMemory, 0, bytes, 0, &mapped));
+        indices.CopyTo(new Span<ushort>(mapped, indices.Length));
+        _vk.UnmapMemory(_device, _indexMemory);
     }
 
     /// <summary>
@@ -470,6 +506,11 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         {
             _vk.DestroyBuffer(_device, _meshBuffer, null);
             _vk.FreeMemory(_device, _meshMemory, null);
+        }
+        if (_indexBuffer.Handle != 0)
+        {
+            _vk.DestroyBuffer(_device, _indexBuffer, null);
+            _vk.FreeMemory(_device, _indexMemory, null);
         }
         if (_objectBuffer.Handle != 0)
         {

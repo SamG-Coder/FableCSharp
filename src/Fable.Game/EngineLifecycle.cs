@@ -1574,7 +1574,8 @@ public sealed class EngineLifecycle : IDisposable
             SubmittedLandscape?.Draws,
             _submittedTextureArray,
             SubmittedObjects?.Vertices,
-            SubmittedObjects?.Draws);
+            SubmittedObjects?.Draws,
+            SubmittedLandscape?.Indices);
     }
 
     /// <summary>

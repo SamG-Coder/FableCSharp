@@ -699,7 +699,17 @@ public sealed class WorldGeometryTests
         var visible = opened.CollectVisibleCells(levels);
         Assert.Equal(cells.Count, visible.Count);
         var mesh = MeshBatches.BuildCells(visible);
-        Assert.Equal(visible.Sum(c => c.Faces.Count * 3), mesh.Vertices.Length);
+        Assert.Equal(328, LandscapeCells.DrawIndexedPrimitiveVtbl);
+        Assert.Equal(5, LandscapeCells.PrimitiveTypeStrip);
+        Assert.Equal(101, LandscapeCells.IndexFormat);
+        var stripped = visible.Count(c => c.PrimitiveCount > 0);
+        Assert.True(stripped > 0, "Lookout stores 00BFE050 strips");
+        Assert.All(visible.Where(c => c.PrimitiveCount > 0), c =>
+            Assert.Equal(c.PrimitiveCount + 2, c.StripIndices!.Length));
+        Assert.True(mesh.Vertices.Length < visible.Sum(c => c.Faces.Count * 3),
+            $"indexed verts={mesh.Vertices.Length} soup={visible.Sum(c => c.Faces.Count * 3)}");
+        Assert.True(mesh.Indices.Length > 0);
+        Assert.Contains(mesh.Draws, d => d.Indexed);
         Assert.Equal(visible.Count, mesh.Draws.Length);
         Assert.Contains(mesh.Draws, d => d.PassBit == LandscapeCells.LayerForeground);
         Assert.DoesNotContain(mesh.Draws, d => d.PassBit == LandscapeCells.LayerBackground);

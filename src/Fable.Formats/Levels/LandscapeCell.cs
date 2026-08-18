@@ -10,6 +10,8 @@ namespace Fable.Formats.Levels;
 /// backend translation of the stored strip, not
 /// <c>TessellatePrimary</c>.
 /// </summary>
+public readonly record struct LandscapePoint(Vector3 P, Vector3 N, Vector3 Extra);
+
 public readonly record struct LandscapeCell(
     string Map,
     int CellX,
@@ -18,7 +20,10 @@ public readonly record struct LandscapeCell(
     Vector3 Max,
     IReadOnlyList<MeshTriangle> Faces,
     int TextureId,
-    int TextureId1);
+    int TextureId1,
+    IReadOnlyList<LandscapePoint>? Points = null,
+    ushort[]? StripIndices = null,
+    int PrimitiveCount = 0);
 
 public static class LandscapeCells
 {
@@ -29,4 +34,13 @@ public static class LandscapeCells
     public const uint LayerForeground = 0x40;
     public const uint SubmitFn = 0x00BF4570;
     public const uint PatchAabbFn = 0x00BDC2D0;
+    /// <summary>
+    /// <c>00A0AD40</c> → device vtbl+328
+    /// <c>DrawIndexedPrimitive</c>. Not +332.
+    /// </summary>
+    public const int DrawIndexedPrimitiveVtbl = 328;
+    /// <summary>IB+12. <c>D3DPT_TRIANGLESTRIP</c>.</summary>
+    public const int PrimitiveTypeStrip = 5;
+    /// <summary><c>D3DFMT_INDEX16</c>.</summary>
+    public const int IndexFormat = 101;
 }

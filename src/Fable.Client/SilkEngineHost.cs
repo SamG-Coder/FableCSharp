@@ -106,7 +106,7 @@ public sealed class SilkEngineHost : IEngineHost
 
             if (!sameMesh)
             {
-                renderer?.SetMesh(verts, draws);
+                renderer?.SetMesh(verts, draws, frame.Indices ?? []);
                 renderer?.SetObjects(objects, objectDraws);
                 _uploadedVertices = frame.Vertices;
                 _uploadedObjects = frame.ObjectVertices;

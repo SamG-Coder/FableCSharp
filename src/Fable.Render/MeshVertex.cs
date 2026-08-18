@@ -26,7 +26,9 @@ public readonly record struct MeshDraw(
     uint PassBit = 0,
     float ShaderMode = 1f,
     bool SrcAlphaBlend = false,
-    Matrix4x4 World = default)
+    Matrix4x4 World = default,
+    uint FirstIndex = 0,
+    uint IndexCount = 0)
 {
     /// <summary>
     /// Native wrapper+496. Zero matrix means
@@ -36,6 +38,8 @@ public readonly record struct MeshDraw(
         World.M44 == 0 && World.M11 == 0 && World.M22 == 0
             ? Matrix4x4.Identity
             : World;
+
+    public bool Indexed => IndexCount > 0;
 }
 
 public readonly record struct GpuTexture(int Id, int Width, int Height, byte[] Rgba)

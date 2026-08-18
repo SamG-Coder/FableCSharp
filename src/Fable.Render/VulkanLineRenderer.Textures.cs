@@ -114,7 +114,15 @@ public sealed unsafe partial class VulkanLineRenderer
             var mask = draw.TextureId1 == 0 ? draw.TextureId : draw.TextureId1;
             BindTexture(commandBuffer, fg ? mask : albedo, 0);
             BindTexture(commandBuffer, fg ? albedo : mask, 1);
-            _vk.CmdDraw(commandBuffer, draw.VertexCount, 1, draw.FirstVertex, 0);
+            if (draw.Indexed && _indexBuffer.Handle != 0)
+            {
+                _vk.CmdBindIndexBuffer(commandBuffer, _indexBuffer, 0, IndexType.Uint16);
+                _vk.CmdDrawIndexed(
+                    commandBuffer, draw.IndexCount, 1, draw.FirstIndex,
+                    (int)draw.FirstVertex, 0);
+            }
+            else
+                _vk.CmdDraw(commandBuffer, draw.VertexCount, 1, draw.FirstVertex, 0);
         }
     }
 
