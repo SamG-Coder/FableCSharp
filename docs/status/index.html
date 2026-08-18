@@ -2,12 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#1a1008">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Status">
   <title>FableCSharp status — done vs left</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -15,10 +16,10 @@
     <div class="wrap">
     <div class="app-bar" role="search">
       <p class="app-kicker">FableCSharp</p>
-      <p class="app-title">Done / left</p>
+      <p class="app-title">Status</p>
       <label class="app-search" for="q">
         <span class="visually-hidden">Search the quest log</span>
-        <input id="q" type="search" placeholder="Search addresses, tests, verbs…" autocomplete="off" enterkeyhint="search" spellcheck="false">
+        <input id="q" type="search" placeholder="Search" autocomplete="off" enterkeyhint="search" spellcheck="false">
       </label>
       <div class="chips" role="toolbar" aria-label="Status filter">
         <button type="button" class="chip is-on" data-filter="ALL" aria-pressed="true">All</button>
@@ -30,7 +31,7 @@
       </div>
       <p class="hits" id="hits">120 shown</p>
     </div>
-    <header>
+    <header class="doc-intro">
       <p class="kicker">FableCSharp · human overview</p>
       <h1>What’s done / what’s left</h1>
       <p>
