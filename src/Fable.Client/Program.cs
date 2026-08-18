@@ -453,6 +453,17 @@ void UnloadStartupAvi()
     }
 
     startupAvi.Dispose();
+    if (!startupAvi.GraphReleased)
+    {
+        Console.WriteLine("PlayAVI 00A3B380 blocked; skip remaining slots");
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        startupAvi = null;
+        renderer?.ClearVideoFrame();
+        renderer?.SetPlayAviPump(false);
+        return;
+    }
+
     startupAvi = null;
     renderer?.ClearVideoFrame();
     renderer?.SetPlayAviPump(false);
@@ -461,6 +472,8 @@ void UnloadStartupAvi()
 void OpenStartupVideo()
 {
     UnloadStartupAvi();
+    if (life.Stage != EngineStage.StartupVideos)
+        return;
     if (life.CurrentStartupVideo is not { } video)
         return;
     var file = RegionTravel.ResolvePlayAviFile(install, video.RelativePath);

@@ -307,19 +307,38 @@ public sealed class WmvPlayer : IDisposable
         return Rgba is not null;
     }
 
+    /// <summary>
+    /// <c>00A3B380</c> graph gone. False if
+    /// the STA is still inside TearDown.
+    /// Next <c>006286F0</c> must not start.
+    /// </summary>
+    public bool GraphReleased { get; private set; }
+
+    public const uint ReleaseGraphFn = 0x00A3B380;
+    public const uint PlayerDtorFn = 0x00A3BC20;
+
     public void Dispose()
     {
+        if (GraphReleased && _thread is null)
+            return;
         _stop = true;
         _renderer?.Stop();
-        _frameEvent.Set();
-        if (_thread is { IsAlive: true } &&
-            !_thread.Join(TimeSpan.FromSeconds(2)))
-            LastError ??= "sta-join";
+        try { _frameEvent.Set(); } catch { /* STA already gone */ }
+        var thread = _thread;
+        var joined = thread is not { IsAlive: true } ||
+                     thread.Join(TimeSpan.FromSeconds(10));
+        if (!joined)
+        {
+            LastError = "sta-join";
+            return;
+        }
+
         _thread = null;
         Rgba = null;
         Width = 0;
         Height = 0;
         Ended = true;
+        GraphReleased = _graph is null;
         try { _frameEvent.Dispose(); } catch { /* already */ }
     }
 
@@ -589,23 +608,28 @@ public sealed class WmvPlayer : IDisposable
         }
     }
 
+    /// <summary>
+    /// STA-only. <c>00A3B380</c> then
+    /// <c>00A3BC20</c>: Stop, drop QIs,
+    /// FinalRelease FilterGraph, drop
+    /// renderer. Closes the WMV handle.
+    /// </summary>
     private void TearDown()
     {
+        try { _control?.Stop(); } catch { /* already stopped */ }
         _events = null;
         _position = null;
-        if (_control is not null)
-        {
-            try { _control.Stop(); } catch { /* already stopped */ }
-            _control = null;
-        }
-
+        _control = null;
         if (_graph is not null)
         {
-            Marshal.ReleaseComObject(_graph);
+            try { Marshal.FinalReleaseComObject(_graph); }
+            catch { try { Marshal.ReleaseComObject(_graph); } catch { /* already */ } }
             _graph = null;
         }
 
         _renderer = null;
+        Rgba = null;
+        GraphReleased = true;
     }
 
     private static class Ole32

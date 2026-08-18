@@ -2044,6 +2044,11 @@ public sealed class WorldSceneTests
         Assert.Equal(0.5f, RegionTravel.PlayAviLetterboxHalf);
         Assert.Equal(0x0122F59Cu, RegionTravel.PlayAviLetterboxHalfVa);
         Assert.Equal(0x009DC870u, RegionTravel.PlayAviBlit);
+        Assert.Equal(0x00A3B380u, WmvPlayer.ReleaseGraphFn);
+        Assert.Equal(0x00A3BC20u, WmvPlayer.PlayerDtorFn);
+        player.Dispose();
+        Assert.True(player.GraphReleased, WmvPlayer.LastError ?? "00A3B380 graph still live");
+        Assert.Null(player.Rgba);
 
         using var levels = new LevelLibrary(install);
         var things = levels.LoadThings("StartOakValeWest").Things.ToList();
