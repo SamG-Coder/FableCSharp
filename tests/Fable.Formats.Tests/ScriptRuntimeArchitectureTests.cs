@@ -3579,6 +3579,85 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void WaitForAnimationEvent_polls_vtbl_236_not_WaitPlayAnimation()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var empty = new ScriptInterpreter("wfae0", ["HERO.WaitForAnimationEvent"]);
+        empty.RunUntilYield(runtime);
+        Assert.True(empty.Finished);
+        Assert.False(runtime.Animation.EventWaits.ContainsKey("HERO"));
+
+        var wait = new ScriptInterpreter("wfae", ["HERO.WaitForAnimationEvent FOOTSTEP"]);
+        wait.RunUntilYield(runtime);
+        Assert.True(wait.Yielded);
+        Assert.False(wait.Finished);
+        Assert.Equal("FOOTSTEP", runtime.Animation.EventWaits["HERO"]);
+        Assert.Equal(236, runtime.Animation.EventWaitVtbl["HERO"]);
+        Assert.Equal(0x00CC4252u, ScriptCommandMap.Find("WaitForAnimationEvent")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("WaitPlayAnimation")!.Value.ApplySite,
+            ScriptCommandMap.Find("WaitForAnimationEvent")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void WaitForAnimationEvent_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".WaitForAnimationEvent", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "HERO.WaitForAnimationEvent FOOTSTEP";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("WaitForAnimationEvent", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-wfae", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".WaitForAnimationEvent", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(parsed.Arg(0), runtime.Animation.EventWaits[parsed.Target ?? ""]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-wfae.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-waitforanimationevent.txt"),
+            """
+            WaitForAnimationEvent 00CC41FC / apply 00CC4252
+              ebx actor else 00CC7081
+              arg0 00403A00 empty skip
+              00CBEB7E skip-true → 00CC7081
+              actor vtbl+48; 004AB130
+              leftover poll 004AAF60 → [handle+4].vtbl+236
+              [0x13D2838]+5 breaks; jmp 00CC707C
+              not WaitPlayAnimation
+            Event table / vtbl+236 body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();

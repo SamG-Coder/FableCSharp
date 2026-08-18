@@ -143,6 +143,22 @@ public static class EntityDispatcher
                 "WaitPlayAnimation", "anim-complete", op?.Id, line.Arg(0));
         }
 
+        if (Eq(v, "WaitForAnimationEvent"))
+        {
+            // 00CC4252: arg0 required; 00CBEB7E skip;
+            // actor vtbl+48; leftover poll 004AAF60
+            // → inner vtbl+236; jmp 00CC707C.
+            var ev = line.Arg(0);
+            if (ev.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            if (ctx.Cutscene.Skip)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "skip");
+            var op = ctx.Animation.WaitEvent(line.Target, ev);
+            return CommandResult.Wait(
+                ExecutionKind.WaitOperation, CommandStatus.Proven, CommandFamily.Entity,
+                "WaitForAnimationEvent vtbl+236", ev, op.Id, ev);
+        }
+
         if (Eq(v, "PlayCombatAnimation") || Eq(v, "PlayCombatAnim"))
         {
             var name = line.Arg(0);

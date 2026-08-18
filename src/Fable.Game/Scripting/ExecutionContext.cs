@@ -71,6 +71,11 @@ public sealed class CutsceneState
     public bool SkipListApplied { get; set; }
     public bool CameraPauseEnabled { get; set; } = true;
     public bool AnimationPauseEnabled { get; set; } = true;
+    /// <summary>
+    /// <c>00CBEB7E</c> cutscene skip. True
+    /// makes WaitForAnimationEvent continue.
+    /// </summary>
+    public bool Skip { get; set; }
     public bool YieldEnable { get; set; } = true;
     public bool StayFadedOut { get; set; }
     public bool NoDialogCam { get; set; }
@@ -871,6 +876,33 @@ public sealed class AnimationRuntime
 
     public PendingOperation? Current(string? actor) =>
         actor is { Length: > 0 } && ByActor.TryGetValue(actor, out var op) ? op : null;
+
+    /// <summary>
+    /// <c>00CC4252</c> leftover poll
+    /// <c>004AAF60</c> → inner <c>vtbl+236</c>.
+    /// Event table UNREAD.
+    /// </summary>
+    public readonly Dictionary<string, string> EventWaits =
+        new(StringComparer.OrdinalIgnoreCase);
+    public readonly Dictionary<string, int> EventWaitVtbl =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    public PendingOperation WaitEvent(string? actor, string ev)
+    {
+        var key = actor ?? "";
+        if (key.Length > 0)
+        {
+            EventWaits[key] = ev;
+            EventWaitVtbl[key] = 236;
+        }
+
+        if (Current(actor) is { } playing)
+            return playing;
+        var op = new PendingOperation($"ev-{++_next}", "WaitForAnimationEvent", actor, ev);
+        if (key.Length > 0)
+            ByActor[key] = op;
+        return op;
+    }
 
     /// <summary>
     /// <c>0070C050</c> request then <c>0070D580</c>.

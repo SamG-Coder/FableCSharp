@@ -137,6 +137,7 @@
 | WalkUpToThing | `00CC2331` | `00CC2538` | thing,distance[,…] | YieldAfterOrWait | Proven | Proven | Proven | Partial | Partial | Partial | dest=pos+atof(arg1)*(vtbl+288+12); actor vtbl+16 speed 1; leftover vtbl+104 |
 | FollowNavRoute | `00CC42FA` | `00CC4350` | route[,run|sneak][,IsTrue] | YieldAfter | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; ebx actor; 00BFEBA8 run=1 sneak=2 else 0; IsTrue(arg2); vtbl+24; leftover 00CC5691; not WalkTo 16 |
 | AILevel | `00CC44A9` | `00CC4501` | HIGH|MEDIUM|other | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | ebx actor; arg0 required; default 4; HIGH=3 MEDIUM=2; vtbl+48; vtbl+32; 00CD2770+008ABD10; jmp 00CC707C; no LOW |
+| WaitForAnimationEvent | `00CC41FC` | `00CC4252` | event | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; 00CBEB7E skip; vtbl+48; leftover poll 004AAF60->vtbl+236; jmp 00CC707C; not WaitPlayAnimation |
 | FollowThing | `00CC19F2` | `00CC1AE9` | target[,speed] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | default speed 1.0; actor vtbl+28; yield 00CC0E96 if [ebp+103] |
 | StopFollowingThing | `00CC1B2F` | `00CC1BF4` | [target] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | actor vtbl+32; jmp 00CC568C leftover |
 | SetFlag | `00CCA475` | `00CCA4C8` | name,IsFalse?[,IsTrue skip] | YieldAfter | Proven | Proven | Proven | Proven | Proven | Proven | 008ADF10 write 0/1; [ebp-39] latch; jmp 00CC907D |
