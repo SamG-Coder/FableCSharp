@@ -338,7 +338,7 @@ public static class ScriptCommandMap
             ScriptReturn.YieldAfter, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
-            "vtbl+72 004C7470 walk; +68 00686920 accept; 00662A00 table; 0070C050+0070D580 inner; clip sample unread"),
+            "vtbl+72 004C7470 walk; +68 00686920 accept; 00662A00 table; 0070C050+0070D580 inner; XSEQ first-key sample 00A999B0/00A4C5E0; time interp UNREAD"),
         Spec("PlayLoopingAnim", 0x00CC1731, 0x00CC186C, "name,loops[,flags]",
             ScriptReturn.YieldAfter, CommandParity.ScriptLayer,
             "vtbl+80(name,atoi arg1,f0-4); not PlayAnimation; same [ebp-22] yield"),

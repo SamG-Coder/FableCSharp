@@ -1,4 +1,5 @@
 using Fable.Core;
+using Fable.Formats.Anims;
 using Fable.Formats.Banks;
 using Fable.Formats.Meshes;
 
@@ -33,6 +34,7 @@ public sealed class MeshBank : IDisposable
     private BigArchive? _big;
     private Dictionary<uint, BankEntry>? _byId;
     private readonly Dictionary<uint, MeshFile?> _parsed = [];
+    private readonly Dictionary<uint, XSeqFile?> _anims = [];
 
     public void Open(GameInstall install)
     {
@@ -84,12 +86,49 @@ public sealed class MeshBank : IDisposable
         return mesh;
     }
 
+    /// <summary>
+    /// Type-6 <c>3DAF</c>/<c>XSEQ</c> via
+    /// <c>00A999B0</c> / <c>00AA4680</c>.
+    /// Same bank as C3D; not parsed at open.
+    /// </summary>
+    public XSeqFile? GetAnim(uint id)
+    {
+        if (_anims.TryGetValue(id, out var hit))
+            return hit;
+        if (_big is null || _byId is null || !_byId.TryGetValue(id, out var entry))
+        {
+            _anims[id] = null;
+            return null;
+        }
+
+        var clip = XSeqFile.TryParse(_big.Read(entry), entry.Name);
+        _anims[id] = clip;
+        return clip;
+    }
+
+    public XSeqFile? FindAnim(string name)
+    {
+        if (_big is null || _byId is null)
+            return null;
+        foreach (var (id, entry) in _byId)
+        {
+            if (entry.Type != 6)
+                continue;
+            if (entry.Name.Equals(name, StringComparison.OrdinalIgnoreCase) ||
+                entry.Name.EndsWith(name, StringComparison.OrdinalIgnoreCase))
+                return GetAnim(id);
+        }
+
+        return null;
+    }
+
     public void Dispose()
     {
         _big?.Dispose();
         _big = null;
         _byId = null;
         _parsed.Clear();
+        _anims.Clear();
         Opened = false;
         EntryCount = 0;
     }

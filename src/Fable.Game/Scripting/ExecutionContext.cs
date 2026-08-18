@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Numerics;
+using Fable.Formats.Anims;
 using Fable.Formats.Tng;
 
 namespace Fable.Game.Scripting;
@@ -1227,11 +1228,13 @@ public sealed class AnimationClipRecord
 {
     public string Name { get; }
     public float Duration { get; }
+    public XSeqFile? Sequence { get; }
 
-    public AnimationClipRecord(string name, float duration)
+    public AnimationClipRecord(string name, float duration, XSeqFile? sequence = null)
     {
         Name = name;
         Duration = duration > 0f ? duration : 1f;
+        Sequence = sequence;
     }
 }
 

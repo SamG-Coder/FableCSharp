@@ -1,4 +1,5 @@
 using System.Numerics;
+using Fable.Formats.Anims;
 using Fable.Formats.Meshes;
 
 namespace Fable.Formats;
@@ -162,16 +163,30 @@ public static class WorldShading
 
     /// <summary>
     /// <c>0070D580</c> starts playback.
-    /// Clip keyframes unread, so
-    /// <c>00BD2F91</c> dest=S*C3D is still
-    /// bind pose for any named clip.
+    /// Type-6 XSEQ first stored local replaces the
+    /// 48-byte mesh TRS; hierarchy + IBM stay
+    /// <see cref="FirstSeenPalettes"/>. Time
+    /// interpolation (<c>00AA0090</c>) is UNREAD —
+    /// this samples the first stored key.
+    /// First-seen New Game still does not play a
+    /// clip (<see cref="FirstSeenPlaysAnim"/>).
     /// </summary>
     public static Matrix4x4[] PaletteForPose(
-        IReadOnlyList<MeshBone> bones, string? clip, float time)
+        IReadOnlyList<MeshBone> bones, string? clip, float time) =>
+        PaletteForPose(bones, clip, time, null);
+
+    public static Matrix4x4[] PaletteForPose(
+        IReadOnlyList<MeshBone> bones, XSeqFile sequence, float time) =>
+        PaletteForPose(bones, sequence.Name, time, sequence);
+
+    public static Matrix4x4[] PaletteForPose(
+        IReadOnlyList<MeshBone> bones, string? clip, float time, XSeqFile? sequence)
     {
         _ = clip;
         _ = time;
-        return FirstSeenPalettes(bones);
+        if (sequence is null || sequence.Tracks.Count == 0)
+            return FirstSeenPalettes(bones);
+        return FirstSeenPalettes(sequence.ApplyFirstLocals(bones));
     }
 
     public static Matrix4x4[] FirstSeenPalettes(IReadOnlyList<MeshBone> bones)

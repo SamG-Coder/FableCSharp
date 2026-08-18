@@ -7522,7 +7522,8 @@ public sealed class ScriptRuntimeArchitectureTests
             PlayLoopingAnim 00CC1731 / apply 00CC186C
               arg0 + arg1 required; arg1 atoi 0099E7F0
               actor.vtbl+80 — not vtbl+72
-            Clip keyframes unread; PALSKIN stays bind pose
+            XSEQ first-key sample 00A999B0/00AA4680/00A4C5E0
+            48-byte local into PaletteForPose; time interp UNREAD
             FirstSeenPlayAnimationAppliesPose=false
             FirstSeenPlayAnimationCallsInnerPlay=false
             """);

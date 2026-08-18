@@ -607,6 +607,59 @@ on-demand parse cache) opened at `0049E620`.
 
 ---
 
+## 15. Load / render audit (A / B / C)
+
+Verified against this tree, not against `00DBDE40`.
+
+**A. Does host load match the engine?**
+
+The no-save **spine** matches: PE → WinMain → retail pump →
+Leave frontend → `00416953` → dummy index 0 → `00501450`
+Lookout → `006C2170` ContainsMap TNG → `00B428E0` mode-1 STB
+hit (`00B41E50`, not `00B42530`).
+
+It is **not** the same load as `Fable.exe`:
+
+| Native | Host | Verdict |
+|---|---|---|
+| `009A8150` names only | also opens `graphics.big` / `textures.big` | DIVERGE |
+| `0049E620` MESH directory | `MeshBank.Open` directory | MATCH |
+| `004A1840` child list | `LoadWorldMap` then quests immediately | DIVERGE |
+| `00B3EFA0` LEV/STB header | `OpenStaticMapBody` full LEV+STB parse | DIVERGE |
+| `009AD410` handle, draw later | `PresentWorld` → `MeshFile.TryParse` + triangle copy | DIVERGE |
+
+**B. Why load is slow**
+
+Native open is names + directory + STB/LEV **headers** + TNG
+text. Host `PresentWorld` / `WorldGeometry.Build` still:
+
+1. Fully parse every opened map's LEV + STB and tessellate
+   tiles into a host triangle list.
+2. `MeshFile.TryParse` every Graphic on those maps and
+   transform-copy every face.
+3. Reload `game.bin` / headers on each `Build`.
+
+That is why Fable.exe is in-world while the host is still in
+`PresentWorld`. `MeshBank.Open` itself is not the cost.
+
+**C. Does rendering match?**
+
+Live New Game Present is **LookoutPoint** + adult hero 4299 +
+`006B3FF0` seed camera. Layer bits `0x4`/`0x40`/`0x20`/`0x2000`
+and `009BEEB0` match. It is **not** Oakvale / SHOT2 / kid 4300.
+
+Still DIVERGE: whole-map AABB then dump-all tiles (not per-patch
+`00BDC2D0`); dump-all Graphic (no object frustum); leftover FOV
+72°. PALSKIN dest is bind pose until a clip is sampled
+(`FirstSeenPlaysAnim=false`). Type-6 first-key sample exists
+for `PaletteForPose`; first-seen New Game still does not play
+one.
+
+Do not add Vulkan hacks. Fix world/entity/camera state on this
+tree.
+
+---
+
 **Future (not this tree):** the client window / PE display
 header (`004023F0` title, `[0x137545C]`/`[0x1375460]` size,
 `009BEF80` viewport) should be an interface the program

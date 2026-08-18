@@ -78,8 +78,9 @@ The 13 **PROVEN** overall runtimes are `FadeOut` / `FadeIn` (global and
 entity), `SetTime`, `WaitFlag`, `SetFlag`, `PlayAVI`, `GamePause`,
 `DoOneFrame`, `CameraPause`, `ScriptFrame`, `DoScriptFrame`.
 `PlayAnimation` apply is now **PROVEN**; runtime still **PARTIAL**.
-`FirstSeenPlayAnimationAppliesPose=false`. Clip keyframes unread;
-PALSKIN stays bind pose.
+`FirstSeenPlayAnimationAppliesPose=false`. Type-6 XSEQ first-key
+sample drives `PaletteForPose` 48-byte locals (`00A999B0` /
+`00AA4680` / `00A4C5E0`). Time interpolation `00AA0090` unread.
 `WaitPlayAnimation` apply is now **PROVEN**; leftover is vtbl+104.
 
 Do not grind the 29 UNREAD tokens (Crowd\*, debug, `LadyGreyIntro`,
@@ -164,7 +165,7 @@ viewport (`12e0d75`), ScenePasses flush (`be8545e`), Sunnyvale persist
 | `0123758C` ActionInputListener: accept `00687DB0`, apply `00687FD0`; factory `00488D20`. `RecordingInputListener` is gone | PROVEN | `6b02b3b` / `Player_interface_00446A30_pumps_listeners_after_WorldFrame` |
 | After `00446A30` hit: `0041649C` unless paused; action==2 queues `009F1650`. Default KeyMove3 `DeliveredCount=0` until owner ResultSelect (recovered) | PROVEN | `6b02b3b` / `Player_apply_0041649C_queues_009F1650_on_action_2` |
 | `WorldGeometry.ApplyActorPositions` consumes `006A9960` dest via `World.Positions`. Father still `NOVI_LiveFather` via `00DB86B0`. Not a renderer hack | PROVEN | `666df8f` / `WalkTo_writes_destination_and_entity_task` |
-| `PlayAnimation` apply `004C7470` / `0070D580` (vtbl+72 walk; +68 `00686920` accept; `00662A00` table; `0070C050`+`0070D580` inner) | PROVEN | `f778853` / `PlayAnimation_sets_clip_and_yields_unless_animation_pause` / `PlayAnimation_real_script_bank_line`. Runtime still PARTIAL. Clip sample unread. `FirstSeenPlayAnimationAppliesPose=false`. |
+| `PlayAnimation` apply `004C7470` / `0070D580` (vtbl+72 walk; +68 `00686920` accept; `00662A00` table; `0070C050`+`0070D580` inner) | PROVEN | apply `f778853`. XSEQ first-key `PaletteForPose` (`00A999B0`/`00AA4680`/`00A4C5E0`) / `XSeqFormatTests`. Runtime still PARTIAL. Time interp `00AA0090` unread. `FirstSeenPlayAnimationAppliesPose=false`. |
 | `WaitPlayAnimation` `00CC18E0` plays via vtbl+72 (or vtbl+76 if IsTrue arg3) then leftover vtbl+104 | PROVEN | `1eec3bc` / `WaitPlayAnimation_plays_then_polls_vtbl104` |
 | Game pump / first region is `00DBDE40` / StartOakVale setup | DISPROVEN | tests above |
 | No-save writes `[record+36]` | DISPROVEN | `recover-record36` text in `Camera_004164E0_runs_on_install_after_WorldFrame`; null still loads |
@@ -223,7 +224,7 @@ opcode.” Last persist-vector-0 command:
 
 | Leftover on this fiber | Status | Where |
 |---|---|---|
-| `PlayAnimation` runtime / clip sample (`vtbl+72` `004C7470` walk; +68 `00686920` accept; `00662A00` table; `0070C050`+`0070D580` inner). Apply is **PROVEN**; leftover is clip sample. `FirstSeenPlayAnimationAppliesPose=false` | PARTIAL | COMMAND_MAP, PARITY 0b; `f778853` |
+| `PlayAnimation` runtime / clip sample (`vtbl+72` `004C7470` walk; +68 `00686920` accept; `00662A00` table; `0070C050`+`0070D580` inner). Apply is **PROVEN**; first-key XSEQ sample is in `PaletteForPose`. Leftover is time interp `00AA0090`. `FirstSeenPlayAnimationAppliesPose=false` | PARTIAL | COMMAND_MAP, PARITY 0b; `XSeqFormatTests` |
 | `WaitPlayAnimation` leftover vtbl+104 poll (apply `00CC18E0` is **PROVEN**; not unread apply) | PARTIAL | `1eec3bc` / COMMAND_MAP |
 | `Create` `008A9100` / `Remove` `004C9B80` mesh | UNREAD | PARITY 0b “next unread” |
 | Skip-key bodies / vector 1 | UNREAD | first-seen skip does not fire |
