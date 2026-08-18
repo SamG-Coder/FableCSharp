@@ -1613,17 +1613,34 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0.1f, (float)life.DisplayTime);
         Assert.True(life.PlayerCatchupHit);
         Assert.True(life.GameVtbl24Ran);
-        Assert.Equal(0, life.WorldFrame);
+        Assert.Equal(1, life.TickListCount);
+        Assert.Equal(new[] { EngineLifecycle.WorldTickType }, life.GameTickTypes);
+        Assert.Equal(1, life.TickRecordWatermark);
+        Assert.Equal(1, life.WorldFrame);
+        Assert.Equal(1, life.PlayerBindSlot0);
+        Assert.Equal(1, life.GamePlus72);
+        Assert.Equal(1, life.GamePlus76);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.PlayerCatchupTimeFn &&
             e.Action.Contains("009E1BC0-[game+96]", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.PlayerCatchupFn &&
             e.Action.Contains("> 1", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerBindIncSite);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.TickListClearFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldFrameIncSite);
         Assert.Equal(0x0143FE00u, EngineLifecycle.FrameDtQpcIat);
         Assert.Equal(0x0143FE04u, EngineLifecycle.FrameDtQpfIat);
         Assert.Equal(0x013B86A4u, EngineLifecycle.DisplayClockForceQpcVa);
         Assert.Equal(0, EngineLifecycle.DisplayClockForceQpcFirstSeen);
+        Assert.Equal(0x648, EngineLifecycle.TickListStride);
+        Assert.Equal(0x192, EngineLifecycle.TickListCopyDwords);
+        Assert.Equal(8208, EngineLifecycle.PlayerTickBuilderOffset);
+        Assert.Equal(0x009F16C0u, EngineLifecycle.TickBuilderResetFn);
+        Assert.Equal(0x009F1750u, EngineLifecycle.TickListCountFn);
+        Assert.True(life.Pump(0.1f));
+        Assert.Equal(2, life.WorldFrame);
+        Assert.Equal(2, life.PlayerBindSlot0);
     }
 
     [Fact]

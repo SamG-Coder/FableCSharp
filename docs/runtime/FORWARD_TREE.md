@@ -417,6 +417,22 @@ then inner loop until [game+8]  PROVEN
 │   │         fsub [game+96]  (004189DC snapshot)
 │   │         first inner 0; later = 009E1BC0-[game+96]
 │   │         host sticky DisplayTime=0 DISPROVEN
+│   │       1 → 004AEAA0  PROVEN
+│   │           inc [esi+9836]
+│   │           009F1720 [game+164]=0
+│   │           009F16F0 player+8208 0x192 dwords count=1
+│   │           record+0 = +9836 after inc
+│   │           sub[+0]=1 ([esp+20]=1)
+│   │           009F16C0 builder+4=0
+│   │           0049D9E0 / vtbl+24 00416E78
+│   │           0041726D  PROVEN
+│   │             009F1750 / 009F1730
+│   │             [+0] > [game+76] (0)
+│   │             flag [+76]==[+72] first-seen 1
+│   │             0049DFB0 first walk skip type 1
+│   │             flag walk 00629270 → 004A5A40
+│   │             004A5E10 inc WorldFrame
+│   │             +76=+0  +72=max  004AE9D0 +9836=+72
 │   │       1 → [game].vtbl+24  00416E78
 │   │           ├── [world+52].vtbl+4 + 00BFEA70
 │   │           ├── 00416392 → 0049E200
@@ -452,8 +468,12 @@ later inners grow as `009E1BC0-[game+96]`. Host sticky
 → al=0. `004AEAA0` misses; `00418289` skips `00416E78`
 and `0041726D`. Host “always run vtbl+24” is DISPROVEN.
 `imm 0x13B89BC` is 10 sites; unique increment remains
-`004A5E10`. `009F16F0` record still UNREAD so a
-clock-grown `0041674A=1` still leaves WorldFrame 0.
+`004A5E10`. `004AEAA0` on hit: `inc +9836`,
+`009F1720` zeros `[game+164]`, `009F16F0` appends one
+`0x648` record (sub[+0]=1, +0=+9836). Same
+`00418289` then `0041726D` → `0049DFB0` flag 1 →
+`00629270` → `004A5E10`. Host note-only `009F16F0`
+is DISPROVEN.
 `004162B5` does **not** call vtbl+24 (only vtbl+20 then
 vtbl+28). After it: `00416202` pushes the inner dt onto
 the `0049BA70` ring; `00415E85` first-seen skips
@@ -685,6 +705,7 @@ constructs that quest object.
 │           └── else 004166E2*15 − +9836  fcomp 1.0
 │               004166E2 = 009E1BC0-[game+96]  PROVEN
 │               first inner 0 → 004AEAA0 miss 004AEB8A
+│               later >1 → 004AEAA0 009F16F0 type 1 → 0041726D 004A5E10
 ├── 004AEBA0==1 → world 0049D9E0  (ret)
 ├── 004AEBA0==1 → game vtbl+24  00416E78
 └── 004AEBA0==1 → 0041726D  WorldFrame  PROVEN (87)

@@ -823,8 +823,31 @@ public sealed class EngineLifecycle : IDisposable
     public const int PlayerCatchupMenuFirstSeen = 0;
     public const uint PlayerCatchupCutsceneVa = 0x013B8629;
     public const int PlayerCatchupCutsceneFirstSeen = 0;
+    /// <summary>
+    /// <c>004AEAA0</c> on hit:
+    /// <c>inc [esi+9836]</c>,
+    /// <c>009F1720</c> zeros
+    /// <c>[game+164]</c>,
+    /// <c>009F16F0</c> copies
+    /// <c>0x192</c> dwords from
+    /// player+8208, count=1.
+    /// Record+0 is +9836 after inc.
+    /// Sub[+0]=1 from
+    /// <c>[esp+20]=1</c>.
+    /// <c>009F16C0</c> clears builder+4.
+    /// </summary>
     public const uint TickListAppendFn = 0x009F16F0;
     public const uint TickListClearFn = 0x009F1720;
+    public const uint TickBuilderResetFn = 0x009F16C0;
+    public const uint TickListCountFn = 0x009F1750;
+    public const uint TickListAtFn = 0x009F1730;
+    public const uint TickSubCountFn = 0x009F16E0;
+    public const uint TickSubAtFn = 0x009F16D0;
+    public const uint PlayerBindIncSite = 0x004AEB3D;
+    public const int TickListStride = 0x648;
+    public const int TickListCopyDwords = 0x192;
+    public const int PlayerTickBuilderOffset = 8208;
+    public const int TickSubRecordSize = 40;
     public const uint GameVtbl24Fn = 0x00416E78;
     public const int GameVtbl24 = 24;
     /// <summary>
@@ -1668,6 +1691,16 @@ public sealed class EngineLifecycle : IDisposable
     public IReadOnlyList<string> FrontendMenuLabels =>
         FrontendMenuItems.Select(i => i.Label).ToList();
     public IReadOnlyList<int> GameTickTypes => _tickTypes;
+    /// <summary>
+    /// <c>[game+164]</c> count after
+    /// <c>009F1720</c>+<c>009F16F0</c>.
+    /// </summary>
+    public int TickListCount { get; private set; }
+    /// <summary>
+    /// Appended record+0
+    /// (<c>+9836</c> after inc).
+    /// </summary>
+    public int TickRecordWatermark { get; private set; }
     public bool LevelLoaderReady { get; private set; }
     public bool FirstRealRegionLoadDone { get; private set; }
     public int RegionThingMapsLoaded { get; private set; }
@@ -3190,9 +3223,7 @@ public sealed class EngineLifecycle : IDisposable
                         : "004AEAA0 0041674A=0 004AEB8A");
                 if (PlayerCatchupHit)
                 {
-                    Note(TickListAppendFn, "GamePump", "Player",
-                        "009F16F0 game+164 0x648 UNREAD");
-                    Note(TickListClearFn, "GamePump", "Player", "009F1720");
+                    AppendPlayerCatchupTick();
                     Note(GameUpdateWorldFn, "GamePump", "World", "0049D9E0 ret");
                     WorldUpdateRan = true;
                     Note(GameVtbl24Fn, "GamePump", "Update", "vtbl+24 00416E78");
@@ -3662,32 +3693,89 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
-    /// <c>0041726D</c>: walk game+164. If
-    /// <c>[+76]==[+72]</c> (ctor 0), flag 1
-    /// and <c>0049DFB0</c> second walk calls
-    /// slot 1.
+    /// <c>004AEAA0</c> after
+    /// <c>0041674A=1</c>:
+    /// <c>inc [+9836]</c>,
+    /// <c>009F1720</c> count=0,
+    /// <c>009F16F0</c> one
+    /// <c>0x648</c> record,
+    /// sub[+0]=1,
+    /// <c>009F16C0</c> builder+4=0.
+    /// </summary>
+    private void AppendPlayerCatchupTick()
+    {
+        PlayerBindSlot0++;
+        Note(PlayerBindIncSite, "GamePump", "Player",
+            $"004AEB3D inc +{PlayerBindSlot0Offset}={PlayerBindSlot0}");
+        _tickTypes.Clear();
+        TickListCount = 0;
+        Note(TickListClearFn, "GamePump", "Player",
+            "009F1720 [game+164]=0");
+        TickRecordWatermark = PlayerBindSlot0;
+        _tickTypes.Add(WorldTickType);
+        TickListCount = 1;
+        Note(TickListAppendFn, "GamePump", "Player",
+            $"009F16F0 +{PlayerTickBuilderOffset} stride=0x{TickListStride:X} count=1 type={WorldTickType} +0={TickRecordWatermark}");
+        Note(TickBuilderResetFn, "GamePump", "Player",
+            $"009F16C0 +{PlayerTickBuilderOffset}+4=0");
+    }
+
+    /// <summary>
+    /// <c>0041726D</c>:
+    /// <c>009F1750</c> then
+    /// <c>009F1730</c>.
+    /// <c>[record+0] &gt; [game+76]</c>
+    /// takes <c>0049DFB0</c>.
+    /// First-seen +76=+72=0,
+    /// record+0=1, flag 1.
+    /// First walk skips type 1;
+    /// flag walk calls
+    /// <c>00629270</c>.
+    /// Then +76=record+0,
+    /// +72=max(+72, record+0),
+    /// <c>004AE9D0</c> +9836=+72.
     /// </summary>
     public void AdvanceGameTicks()
     {
         Note(AdvanceGameTicksFn, "GamePump", "World", "0041726D");
-        if (_tickTypes.Count == 0)
+        Note(TickListCountFn, "GamePump", "World",
+            $"009F1750 count={TickListCount}");
+        if (TickListCount == 0)
         {
             Note(AdvanceGameTicksFn, "GamePump", "World", "009F1750 empty");
+            return;
+        }
+
+        if (TickRecordWatermark <= GamePlus76)
+        {
+            Note(AdvanceGameTicksFn, "GamePump", "World",
+                $"[+0]={TickRecordWatermark}<=[game+76]={GamePlus76}");
             return;
         }
 
         var flag = GamePlus76 == GamePlus72;
         Note(DispatchWorldCallbacksFn, "GamePump", "World",
             $"0049DFB0 flag={(flag ? 1 : 0)} types={_tickTypes.Count}");
-        if (!flag)
-            return;
-        foreach (var type in _tickTypes)
+        if (flag)
         {
-            if (type != WorldTickType)
-                continue;
-            Note(WorldTickThunk, "GamePump", "World", "00629270 slot 1");
-            TickWorld();
+            foreach (var type in _tickTypes)
+            {
+                if (type != WorldTickType)
+                    continue;
+                Note(TickSubAtFn, "GamePump", "World",
+                    $"009F16D0 [sub+0]={type}");
+                Note(WorldTickThunk, "GamePump", "World", "00629270 slot 1");
+                TickWorld();
+            }
         }
+
+        GamePlus76 = TickRecordWatermark;
+        if (TickRecordWatermark >= GamePlus72)
+            GamePlus72 = TickRecordWatermark;
+        PlayerBindSlot0 = GamePlus72;
+        PlayerBindSlot1 = WorldFrame;
+        Note(PlayerBindAfterWorldFn, "GamePump", "Player",
+            $"004AE9D0 +{PlayerBindSlot0Offset}={PlayerBindSlot0} +{PlayerBindSlot1Offset}={PlayerBindSlot1}");
     }
 
     /// <summary>
