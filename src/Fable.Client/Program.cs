@@ -16,11 +16,13 @@ if (install is null)
     return 2;
 }
 
+var life = new EngineLifecycle();
+life.Bootstrap(install);
 using var levels = new LevelLibrary(install);
-var region = args.FirstOrDefault(arg => !arg.StartsWith('-')) ?? RegionTravel.StartingRegion(levels.World);
-ThingFile things = null!;
-GizmoScene scene = null!;
-WorldGeometry world = null!;
+var region = args.FirstOrDefault(arg => !arg.StartsWith('-')) ?? "";
+ThingFile? things = null;
+GizmoScene scene = GizmoScene.FromMarkers("FRONT_END", []);
+WorldGeometry? world = null;
 WorldMap? map = null;
 IReadOnlyList<RegionExit> exits = [];
 Vector3 startPosition = new(64f, -40f, 95f);
@@ -28,8 +30,9 @@ Vector3 startLook = new(64f, 64f, 36f);
 var startFov = RegionTravel.IntroCameraFovDegrees;
 using var textures = new TextureLibrary(install);
 NewGameScript? intro = null;
+WmvPlayer? startupAvi = null;
 var gameCam = new ScriptedCamera();
-EnterRegion(region, arrivedFromExit: null);
+OpenStartupVideo();
 
 var debugCam = new FlyCamera { Position = gameCam.Position, FovDegrees = gameCam.FovDegrees };
 debugCam.LookAt(gameCam.LookAt);
@@ -51,6 +54,7 @@ var looking = false;
 var f1WasDown = false;
 var f2WasDown = false;
 var gWasDown = false;
+var nWasDown = false;
 var wasAvi = false;
 
 window.Load += () =>
@@ -59,20 +63,18 @@ window.Load += () =>
         throw new NotSupportedException("This window backend cannot create a Vulkan surface.");
 
     renderer = new VulkanLineRenderer(window);
-    renderer.SetLines(CollectionsMarshalAsSpan(scene.Lines));
-    var mesh = MeshBatches.Build(world.Triangles);
-    renderer.SetTextures(LoadGpuTextures(mesh, textures));
-    renderer.SetMesh(mesh.Vertices, mesh.Draws);
+    BindWorldToRenderer();
     input = window.CreateInput();
     mouse = input.Mice.Count > 0 ? input.Mice[0] : null;
     if (mouse is not null)
         mouse.MouseMove += (_, point) => OnMouseMove(new Vector2(point.X, point.Y));
 
     Console.WriteLine($"{install.Edition}: {install.Root}");
-    Console.WriteLine($"{region}: {scene.ThingCount} things, {scene.Lines.Count} line verts");
-    Console.WriteLine($"camera {gameCam.ActiveName} {gameCam.Position} -> {gameCam.LookAt}  meshVerts={mesh.Vertices.Length} textures={mesh.Draws.Length}");
-    Console.WriteLine("F2 debug fly  WASD/RMB only in debug  Home reset debug  G gizmos  F1 dump  Esc quit");
-    Console.WriteLine($"start {region} at {startPosition.X:0.0},{startPosition.Y:0.0},{startPosition.Z:0.0}  exits={exits.Count}");
+    Console.WriteLine($"lifecycle {life.Stage} mode {life.Mode} pe=0x{EngineLifecycle.PeEntry:X8}");
+    Console.WriteLine($"banks {string.Join(", ", EngineLifecycle.RetailBanks.Select(b => b.Pc))}");
+    if (life.CurrentStartupVideo is { } first)
+        Console.WriteLine($"startup 0x{EngineLifecycle.PlayAviPlayer:X} {first.RelativePath} {first.Width}x{first.Height}");
+    Console.WriteLine("Esc skip video / quit  Enter New Game after frontend  F2 debug fly");
 };
 
 window.Update += dt =>
@@ -86,19 +88,44 @@ window.Update += dt =>
 
     if (keyboard.IsKeyPressed(Key.Escape))
     {
-        if (intro?.Runtime.AviPlaying == true)
+        if (startupAvi is not null)
+            SkipStartupVideo();
+        else if (intro?.Runtime.AviPlaying == true)
             intro.Runtime.SkipAvi();
         else
             window.Close();
         return;
     }
 
-    if (intro?.Runtime.AviPlaying == true)
+    if (life.Stage == EngineStage.StartupVideos)
     {
         if (keyboard.IsKeyPressed(Key.Space) ||
             keyboard.IsKeyPressed(Key.Enter) ||
             keyboard.IsKeyPressed(Key.F4))
-            intro.Runtime.SkipAvi();
+            SkipStartupVideo();
+        PumpStartupVideo((float)dt);
+        PresentAvi(renderer, startupAvi, window.FramebufferSize.X, window.FramebufferSize.Y);
+        life.Pump();
+        window.Title = Title();
+        return;
+    }
+
+    if (life.Stage == EngineStage.Frontend)
+    {
+        var nDown = keyboard.IsKeyPressed(Key.N) || keyboard.IsKeyPressed(Key.Enter);
+        if (nDown && !nWasDown)
+        {
+            life.RequestNewGame();
+            life.Pump();
+            Console.WriteLine(
+                $"Leave frontend {life.WorldFileName} → Init Game 0x{EngineLifecycle.GameModeCtor:X} unread");
+        }
+
+        nWasDown = nDown;
+        renderer?.ClearVideoFrame();
+        life.Pump();
+        window.Title = Title();
+        return;
     }
 
     var f2Down = keyboard.IsKeyPressed(Key.F2);
@@ -136,14 +163,15 @@ window.Update += dt =>
             debugCam.Move(Vector3.Normalize(move), (float)dt, keyboard.IsKeyPressed(Key.ShiftLeft));
     }
 
-    var avi = intro?.Runtime.AviPlaying == true;
+    var avi = intro?.Runtime.AviPlaying == true || startupAvi is not null;
     if (avi && !wasAvi)
     {
         PlayAviTimeline.Reset("csharp");
-        var rt = intro!.Runtime;
+        var rt = intro?.Runtime;
         Console.WriteLine(
-            $"PlayAVI {rt.AviRelativePath} {rt.AviWidth}x{rt.AviHeight} " +
-            $"frames={rt.AviFrameSerial} err={WmvPlayer.LastError ?? "ok"}");
+            $"PlayAVI {rt?.AviRelativePath ?? life.CurrentStartupVideo?.RelativePath} " +
+            $"{rt?.AviWidth ?? startupAvi?.Width}x{rt?.AviHeight ?? startupAvi?.Height} " +
+            $"frames={rt?.AviFrameSerial ?? startupAvi?.FrameSerial} err={WmvPlayer.LastError ?? "ok"}");
     }
     if (!avi && wasAvi)
         PlayAviTimeline.Write(name: "csharp");
@@ -221,11 +249,14 @@ return 0;
 
 string Title()
 {
-    var mapLabel = map is null ? region : $"{map.ScriptName}  ({map.MapX},{map.MapY})";
+    var mapLabel = map is null
+        ? (life.Stage == EngineStage.Game ? life.WorldFileName ?? "game" : life.Stage.ToString())
+        : $"{map.ScriptName}  ({map.MapX},{map.MapY})";
     var pos = debugFly ? debugCam.Position : gameCam.Position;
     var camLabel = debugFly ? "debug" : (gameCam.ActiveName.Length == 0 ? "script" : gameCam.ActiveName);
-    var aviLabel = intro?.Runtime.AviPlaying == true ? " AVI" : "";
-    return $"FableCSharp — {mapLabel} — {world.MeshInstances} meshes / {scene.ThingCount} things — {camLabel} {pos.X:0.0}, {pos.Y:0.0}, {pos.Z:0.0}{aviLabel}";
+    var aviLabel = intro?.Runtime.AviPlaying == true || startupAvi is not null ? " AVI" : "";
+    var meshes = world?.MeshInstances ?? 0;
+    return $"FableCSharp — {mapLabel} — {meshes} meshes / {scene.ThingCount} things — {camLabel} {pos.X:0.0}, {pos.Y:0.0}, {pos.Z:0.0}{aviLabel}";
 }
 
 void OnMouseMove(Vector2 point)
@@ -325,7 +356,7 @@ void EnterRegion(string next, RegionExit? arrivedFromExit)
 
 void TryWalk()
 {
-    if (renderer is null)
+    if (renderer is null || world is null || things is null)
         return;
     var hit = RegionTravel.HitExit(exits, gameCam.Position);
     if (hit is not { } crossed)
@@ -343,8 +374,89 @@ void TryWalk()
     renderer.SetMesh(mesh.Vertices, mesh.Draws);
 }
 
+void OpenStartupVideo()
+{
+    startupAvi?.Dispose();
+    startupAvi = null;
+    if (life.CurrentStartupVideo is not { } video)
+        return;
+    var file = RegionTravel.ResolvePlayAviFile(install, video.RelativePath);
+    if (file is null)
+    {
+        Console.WriteLine($"startup miss {video.RelativePath}");
+        life.FinishStartupVideo();
+        OpenStartupVideo();
+        return;
+    }
+
+    startupAvi = WmvPlayer.TryOpen(file);
+    Console.WriteLine(
+        $"PlayAVI {video.RelativePath} {video.Width}x{video.Height} " +
+        $"player=0x{EngineLifecycle.PlayAviPlayer:X} err={WmvPlayer.LastError ?? "ok"}");
+    if (startupAvi is null)
+    {
+        life.FinishStartupVideo();
+        OpenStartupVideo();
+    }
+}
+
+void SkipStartupVideo()
+{
+    startupAvi?.Dispose();
+    startupAvi = null;
+    life.FinishStartupVideo();
+    OpenStartupVideo();
+}
+
+void PumpStartupVideo(float dt)
+{
+    if (startupAvi is null)
+        return;
+    startupAvi.TryAdvance(dt);
+    if (startupAvi.Ended)
+        SkipStartupVideo();
+}
+
+void BindWorldToRenderer()
+{
+    if (renderer is null)
+        return;
+    renderer.SetLines(CollectionsMarshalAsSpan(scene.Lines));
+    if (world is null)
+        return;
+    var mesh = MeshBatches.Build(world.Triangles);
+    renderer.SetTextures(LoadGpuTextures(mesh, textures));
+    renderer.SetMesh(mesh.Vertices, mesh.Draws);
+}
+
+static void PresentAvi(VulkanLineRenderer? renderer, WmvPlayer? player, int fbW, int fbH)
+{
+    if (renderer is null)
+        return;
+    if (player is { Rgba: not null, Width: > 0, Height: > 0 })
+    {
+        var dest = RegionTravel.PlayAviLetterbox(player.Width, player.Height, fbW, fbH);
+        renderer.SetVideoFrame(
+            player.Width, player.Height, player.Rgba,
+            new Vector4(dest.X0, dest.Y0, dest.X1, dest.Y1),
+            player.FrameSerial);
+        VulkanLineRenderer.NoteReceived(player.FrameSerial);
+        renderer.SetPlayAviPump(true);
+        return;
+    }
+
+    renderer.ClearVideoFrame();
+    renderer.SetPlayAviPump(false);
+}
+
 void DumpThings()
 {
+    if (things is null)
+    {
+        Console.WriteLine($"--- {life.Stage} no things ---");
+        return;
+    }
+
     Console.WriteLine($"--- {region} {scene.ThingCount} things ---");
     foreach (var thing in things.Things.Take(40))
     {

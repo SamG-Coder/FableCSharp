@@ -1,0 +1,340 @@
+using Fable.Core;
+using Fable.Formats.Banks;
+
+namespace Fable.Game;
+
+/// <summary>
+/// Recovered Fable.exe process entry → WinMain →
+/// named bootstrap → library/D3D9 → mode loop.
+/// Do not start at <c>00DBDE40</c> / New Game.
+/// </summary>
+public sealed class EngineLifecycle
+{
+    public const uint ImageBase = 0x00400000;
+    public const uint PeEntry = 0x00401067;
+    public const uint WinMain = 0x00403480;
+    public const uint BootstrapFn = 0x00402510;
+    public const uint SetupLibrary = 0x009A6610;
+    public const uint EngineSingletonVa = 0x013CA618;
+    public const uint EngineSingletonGetter = 0x009A4EC0;
+    public const uint BankManagerVa = 0x013CA79C;
+    public const uint RegisterRetailBank = 0x009A8150;
+    public const uint Direct3DCreate9Thunk = 0x00BFEFB0;
+    public const int Direct3DSdkVersion = 32;
+    public const uint GraphicsCtor = 0x009C0880;
+    public const uint GraphicsInit = 0x009C0E50;
+    public const uint CreateDeviceFn = 0x009BF7E0;
+    public const int GraphicsObjectSize = 0x2C8;
+    public const int IDirect3D9GetDeviceCapsVtbl = 56;
+    public const int IDirect3D9CreateDeviceVtbl = 64;
+    /// <summary>
+    /// <c>D3DCREATE_FPU_PRESERVE|MULTITHREADED|SOFTWARE_VERTEXPROCESSING</c>
+    /// when caps lack <c>D3DDEVCAPS_HWTRANSFORMANDLIGHT</c>.
+    /// </summary>
+    public const int CreateDeviceSoftwareFlags = 0x26;
+    /// <summary>
+    /// <c>FPU_PRESERVE|MULTITHREADED|PUREDEVICE|HARDWARE_VERTEXPROCESSING</c>
+    /// when <c>DevCaps &amp; 0x100000</c>.
+    /// </summary>
+    public const int CreateDeviceHardwareFlags = 0x56;
+    public const uint DevCapsHwTnl = 0x100000;
+    public const uint ProbeGraphics = 0x004022B0;
+    public const uint RunModes = 0x00412F90;
+    public const uint Shutdown = 0x00401B80;
+    public const uint RetailModeCtor = 0x0042EA8F;
+    public const uint RetailModeVtbl = 0x01230CA0;
+    public const uint RetailStart = 0x0042F75E;
+    public const uint RetailPump = 0x0042EC7C;
+    public const int RetailModeSize = 0x148;
+    public const uint GameModeCtor = 0x00418DCA;
+    public const int GameModeSize = 0x161E8;
+    public const uint PlayAviPlayer = 0x006286F0;
+    public const uint FrontendIntern = 0x0042F722;
+    public const uint LeaveFrontendSite = 0x0042F2A2;
+    public const uint InitGameSite = 0x0042F491;
+    public const string FinalAlbionWld = "FinalAlbion.wld";
+    public const uint VideoPlayFlagVa = 0x01375448;
+    public const uint VideoPlayFlag2Va = 0x0137544A;
+    public const byte DefaultVideoPlayFlag = 1;
+    public const byte DefaultVideoPlayFlag2 = 1;
+
+    public static readonly (string Stage, uint Va)[] NamedBootstrapStages =
+    [
+        ("Parse Command Line", 0x00402521),
+        ("Setup Basic install files", 0x004025B3),
+        ("Setup Language", 0x0040266F),
+        ("Setup basic retail banks", 0x00402845),
+        ("Setup library", 0x00403079),
+        ("End basic init", 0x00403354),
+    ];
+
+    public static readonly (string Logical, string Pc)[] RetailBanks =
+    [
+        ("GBANK_MAIN", "GBANK_MAIN_PC"),
+        ("GBANK_GUI", "GBANK_GUI_PC"),
+        ("GBANK_FRONT_END", "GBANK_FRONT_END_PC"),
+        ("PARTICLE_MAIN", "PARTICLE_MAIN_PC"),
+        ("PARTICLE_FRONTEND", "PARTICLE_FRONTEND_PC"),
+    ];
+
+    /// <summary>
+    /// 32-byte records built at <c>0042ECC5</c>.
+    /// Played by <c>006286F0</c> when both
+    /// <c>0x1375448</c> and <c>0x137544A</c> are set
+    /// (PE defaults are 1, 1).
+    /// </summary>
+    public static readonly StartupVideo[] StartupVideos =
+    [
+        new("Data\\Video\\lionhead_logo.xmv", 640, 400, 0xFFFFFFFFu, 0x0042E3CE),
+        new("Data\\Video\\Microsoft_Logo.xmv", 640, 480, 0xFF000000u, 0x0042E3CE),
+        new("Data\\Video\\intro_comp.xmv", 640, 360, 0x00000000u, 0x0042E3CE),
+    ];
+
+    public ForwardLifecycleTrace Trace { get; } = new();
+    public EngineStage Stage { get; private set; } = EngineStage.ProcessEntry;
+    public EngineMode Mode { get; private set; } = EngineMode.None;
+    public int StartupVideoIndex { get; private set; }
+    public bool PlayStartupVideos { get; private set; } = true;
+    public bool GraphicsCreated { get; private set; }
+    public int CreateDeviceFlags { get; private set; }
+    public string? WorldFileName { get; private set; }
+    public IReadOnlyList<string> CompletedStages => _completed;
+    public IReadOnlyList<string> RegisteredBanks => _banks;
+    public GameInstall? Install { get; private set; }
+
+    private readonly List<string> _completed = [];
+    private readonly List<string> _banks = [];
+
+    public static int CreateDeviceBehaviorFlags(bool hardwareTnl) =>
+        hardwareTnl ? CreateDeviceHardwareFlags : CreateDeviceSoftwareFlags;
+
+    /// <summary>
+    /// CRT <c>00401067</c> → WinMain <c>00403480</c>
+    /// → named stages in <c>00402510</c> through
+    /// <c>End basic init</c>. Does not enter
+    /// <c>00DBDE40</c>.
+    /// </summary>
+    public void Bootstrap(GameInstall? install)
+    {
+        Install = install;
+        Note(PeEntry, "ProcessEntry", "CRT", "WinMainCRTStartup");
+        Stage = EngineStage.CrtStartup;
+        Note(WinMain, "WinMain", "App", "CreateMutex then 00402510");
+        Stage = EngineStage.WinMain;
+
+        foreach (var (name, va) in NamedBootstrapStages)
+        {
+            Stage = name switch
+            {
+                "Parse Command Line" => EngineStage.ParseCommandLine,
+                "Setup Basic install files" => EngineStage.SetupInstallFiles,
+                "Setup Language" => EngineStage.SetupLanguage,
+                "Setup basic retail banks" => EngineStage.SetupRetailBanks,
+                "Setup library" => EngineStage.SetupLibrary,
+                "End basic init" => EngineStage.EndBasicInit,
+                _ => Stage,
+            };
+            Note(va, name, "Bootstrap", name);
+            if (name == "Setup basic retail banks")
+                RegisterRetailBankTable(install);
+            if (name == "Setup library")
+                ConstructLibrary();
+            _completed.Add(name);
+        }
+
+        Note(ProbeGraphics, "ProbeGraphics", "D3D9", "004022B0 bpp 16/24/32");
+        Note(RunModes, "RunModes", "ModeLoop", "00412F90 retail 0042EA8F");
+        Mode = EngineMode.RetailFrontend;
+        Stage = PlayStartupVideos
+            ? EngineStage.StartupVideos
+            : EngineStage.Frontend;
+        StartupVideoIndex = 0;
+        if (Stage == EngineStage.StartupVideos)
+            Note(RetailPump, "StartupVideos", "PlayAVI", StartupVideos[0].RelativePath);
+        else
+            Note(FrontendIntern, "Frontend", "FRONT_END", "skip videos");
+    }
+
+    /// <summary>
+    /// One <c>00412F90</c> / <c>0042EC7C</c> step.
+    /// Returns false when the mode loop exits.
+    /// </summary>
+    public bool Pump()
+    {
+        if (Stage == EngineStage.StartupVideos)
+            return true;
+        if (Stage == EngineStage.Frontend)
+            return true;
+        if (Stage == EngineStage.LeaveFrontend)
+        {
+            EnterGame();
+            return true;
+        }
+
+        if (Stage == EngineStage.Game)
+            return true;
+        if (Stage == EngineStage.Shutdown)
+            return false;
+        return Stage != EngineStage.Exited;
+    }
+
+    public StartupVideo? CurrentStartupVideo =>
+        Stage == EngineStage.StartupVideos &&
+        StartupVideoIndex >= 0 &&
+        StartupVideoIndex < StartupVideos.Length
+            ? StartupVideos[StartupVideoIndex]
+            : null;
+
+    /// <summary>
+    /// <c>006286F0</c> returned for one table slot.
+    /// After the third video: Init Engine / Init
+    /// frontend (<c>0042EF40</c> / <c>0042EF6F</c>).
+    /// </summary>
+    public void FinishStartupVideo()
+    {
+        if (Stage != EngineStage.StartupVideos)
+            return;
+        var done = CurrentStartupVideo;
+        if (done is { } finished)
+            Note(PlayAviPlayer, "StartupVideos", "PlayAVI", "complete " + finished.RelativePath);
+        StartupVideoIndex++;
+        if (StartupVideoIndex < StartupVideos.Length)
+        {
+            Note(RetailPump, "StartupVideos", "PlayAVI", StartupVideos[StartupVideoIndex].RelativePath);
+            return;
+        }
+
+        Note(0x0042EF40, "InitEngine", "Engine", "Init Engine");
+        Note(0x0042EF6F, "InitFrontend", "Frontend", "Init frontend");
+        Note(FrontendIntern, "Frontend", "FRONT_END", "0042F722");
+        Stage = EngineStage.Frontend;
+    }
+
+    /// <summary>
+    /// Frontend New Game (no-save). Native sets
+    /// <c>[esi+41]</c> then <c>Leave frontend</c>
+    /// at <c>0042F2A2</c>. Save enumerate unread —
+    /// do not implement it here.
+    /// </summary>
+    public void RequestNewGame()
+    {
+        if (Stage != EngineStage.Frontend)
+            return;
+        Note(LeaveFrontendSite, "LeaveFrontend", "Frontend", "Leave frontend");
+        Stage = EngineStage.LeaveFrontend;
+        WorldFileName = FinalAlbionWld;
+        Note(0x0042F44D, "LeaveFrontend", "World", FinalAlbionWld);
+    }
+
+    /// <summary>
+    /// <c>Init Game</c> <c>0042F491</c> then
+    /// <c>00418DCA</c> (size <c>0x161E8</c>).
+    /// Quest/script start is that object's
+    /// vtbl+4 — not a host jump to
+    /// <c>00DBDE40</c>.
+    /// </summary>
+    public void EnterGame()
+    {
+        if (Stage is not (EngineStage.LeaveFrontend or EngineStage.Frontend))
+            return;
+        if (Stage == EngineStage.Frontend)
+            RequestNewGame();
+        Note(InitGameSite, "InitGame", "Game", "Init Game");
+        Note(GameModeCtor, "InitGame", "GameMode", "00418DCA size 0x161E8");
+        Mode = EngineMode.Game;
+        Stage = EngineStage.Game;
+        WorldFileName = FinalAlbionWld;
+    }
+
+    public void ShutdownEngine()
+    {
+        Note(Shutdown, "Shutdown", "App", "00401B80");
+        Stage = EngineStage.Shutdown;
+        Mode = EngineMode.None;
+    }
+
+    private void RegisterRetailBankTable(GameInstall? install)
+    {
+        foreach (var (logical, pc) in RetailBanks)
+        {
+            _banks.Add(logical);
+            _banks.Add(pc);
+            Note(RegisterRetailBank, "Setup basic retail banks", "Bank",
+                logical + " / " + pc);
+        }
+
+        if (install is null)
+            return;
+        foreach (var archive in new[]
+                 {
+                     Path.Combine(install.DataRoot, "graphics", "pc", "textures.big"),
+                     Path.Combine(install.DataRoot, "graphics", "graphics.big"),
+                 })
+        {
+            if (!File.Exists(archive))
+                continue;
+            using var big = BigArchive.Open(archive);
+            foreach (var (logical, pc) in RetailBanks)
+            {
+                var found = big.SubBanks.Any(b =>
+                    b.Name.Equals(pc, StringComparison.OrdinalIgnoreCase) ||
+                    b.Name.Equals(logical, StringComparison.OrdinalIgnoreCase));
+                if (found)
+                    Note(RegisterRetailBank, "Setup basic retail banks", "Bank",
+                        "present " + pc + " in " + Path.GetFileName(archive));
+            }
+        }
+    }
+
+    private void ConstructLibrary()
+    {
+        Note(EngineSingletonGetter, "Setup library", "Engine",
+            "009A4EC0 → 0x13CA618");
+        Note(GraphicsCtor, "Setup library", "D3D9",
+            "009C0880 size 0x2C8 at engine+96");
+        Note(Direct3DCreate9Thunk, "Setup library", "D3D9",
+            "00BFEFB0 Direct3DCreate9(32)");
+        Note(GraphicsInit, "Setup library", "D3D9",
+            "009C0E50 GetDeviceCaps vtbl+56");
+        Note(CreateDeviceFn, "Setup library", "D3D9",
+            "009BF7E0 CreateDevice vtbl+64");
+        CreateDeviceFlags = CreateDeviceSoftwareFlags;
+        GraphicsCreated = true;
+    }
+
+    private void Note(uint va, string stage, string subsystem, string action) =>
+        Trace.Add(va, stage, subsystem, action);
+}
+
+public enum EngineStage
+{
+    ProcessEntry,
+    CrtStartup,
+    WinMain,
+    ParseCommandLine,
+    SetupInstallFiles,
+    SetupLanguage,
+    SetupRetailBanks,
+    SetupLibrary,
+    EndBasicInit,
+    StartupVideos,
+    Frontend,
+    LeaveFrontend,
+    Game,
+    Shutdown,
+    Exited,
+}
+
+public enum EngineMode
+{
+    None,
+    RetailFrontend,
+    Game,
+}
+
+public readonly record struct StartupVideo(
+    string RelativePath,
+    int Width,
+    int Height,
+    uint Rgba,
+    uint Callback);
