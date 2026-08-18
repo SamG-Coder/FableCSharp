@@ -77,6 +77,21 @@ public static class EntityDispatcher
                 "LookToThing vtbl+28", line.Arg(0));
         }
 
+        if (Eq(v, "LookToCamera"))
+        {
+            // 00CC3D36: default 1; IsFalse(arg0)->0; 00CBF9DE;
+            // vtbl+1996(handle,flag); jmp 00CC707C.
+            var flag = !ScriptLine.IsFalse(line.Arg(0));
+            var actor = line.Target ?? "";
+            var cam = line.Arg(0);
+            if (cam.Length == 0 || ScriptLine.IsTrue(cam) || ScriptLine.IsFalse(cam))
+                cam = "CAMERA";
+            ctx.World.LookToCamera[actor] = flag;
+            ctx.World.LookTargets[actor] = flag ? cam : "";
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity,
+                flag ? "1" : "0");
+        }
+
         if (Eq(v, "LookInDirection"))
         {
             if (line.Arg(0).Length == 0)

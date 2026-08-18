@@ -244,6 +244,11 @@ public static class ScriptCommandMap
         Spec("LookToThing", 0x00CC3B3F, 0, "target[,mode][,IsFalse]",
             ScriptReturn.YieldAfterUnlessFalse, CommandParity.ScriptLayer,
             "vtbl+1992; FOREVER wait; body UNREAD — record + yield"),
+        Spec("LookToCamera", 0x00CC3CE4, 0x00CC3D36, "[IsFalse]",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "default 1; IsFalse(arg0)->0; 00CBF9DE; vtbl+1996(handle,flag); jmp 00CC707C; not LookToThing 1992"),
         Spec("DoScriptFrame", 0x00CC7085, 0, "[count]",
             ScriptReturn.WaitFrames, CommandParity.Complete,
             "atoi; each count one vtbl+28"),

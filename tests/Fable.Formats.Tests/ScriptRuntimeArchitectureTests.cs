@@ -2598,6 +2598,88 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void LookToCamera_is_vtbl_1996_not_LookToThing()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("ltc",
+        [
+            "HERO.LookToCamera TRUE",
+            "FATHER.LookToCamera FALSE",
+            "WHISPER.LookToCamera",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.True(runtime.World.LookToCamera["HERO"]);
+        Assert.Equal("CAMERA", runtime.World.LookTargets["HERO"]);
+        Assert.False(runtime.World.LookToCamera["FATHER"]);
+        Assert.Equal("", runtime.World.LookTargets["FATHER"]);
+        Assert.True(runtime.World.LookToCamera["WHISPER"]);
+        Assert.Equal("CAMERA", runtime.World.LookTargets["WHISPER"]);
+        Assert.Equal(0x00CC3D36u, ScriptCommandMap.Find("LookToCamera")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("LookToThing")!.Value.ApplySite,
+            ScriptCommandMap.Find("LookToCamera")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void LookToCamera_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".LookToCamera", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "HERO.LookToCamera TRUE";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("LookToCamera", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-ltc", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".LookToCamera", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        var flag = !ScriptLine.IsFalse(parsed.Arg(0));
+        Assert.Equal(flag, runtime.World.LookToCamera[parsed.Target ?? ""]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-ltc.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-looktocamera.txt"),
+            """
+            LookToCamera 00CC3CE4 / apply 00CC3D36
+              ebx required else 00CC7081
+              default flag=1; 00CBEE0C IsFalse(arg0) → 0
+              00CBF9DE(arg0); vtbl+1996(handle,flag)
+              jmp 00CC707C
+              not LookToThing vtbl+1992
+            Camera look IK UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();

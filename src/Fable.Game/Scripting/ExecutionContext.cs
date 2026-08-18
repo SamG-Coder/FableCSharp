@@ -1084,6 +1084,12 @@ public sealed class WorldRuntime
     public readonly List<ScriptLookToThing> LookToThings = [];
     public readonly List<ScriptLookInDirection> Looks = [];
     public readonly Dictionary<string, string> LookTargets = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// <c>00CC3D36</c> <c>vtbl+1996(handle,!IsFalse)</c>.
+    /// Default 1. Not LookToThing 1992.
+    /// </summary>
+    public readonly Dictionary<string, bool> LookToCamera =
+        new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, Vector3> Positions = new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, bool> Doors = new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, bool> Chests = new(StringComparer.OrdinalIgnoreCase);
