@@ -147,6 +147,10 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x0042F75Eu, EngineLifecycle.RetailStart);
         Assert.Equal(0x0042EC7Cu, EngineLifecycle.RetailPump);
         Assert.Null(life.World);
+        Assert.Null(life.Gtng);
+        Assert.Equal(5, life.PlayerSlotsCreated);
+        Assert.Equal(4, life.PlayerActiveCount);
+        Assert.True(life.PlayerObjectReady);
     }
 
     [Fact]
@@ -158,6 +162,34 @@ public sealed class EngineLifecycleTests
         Assert.Contains("NewMap", EngineLifecycle.LoadWldTokens);
         Assert.Contains("SeesMap", EngineLifecycle.LoadWldTokens);
         Assert.Contains("ThingManagerUIDCount", EngineLifecycle.LoadWldTokens);
+    }
+
+    [Fact]
+    public void CreatePlayers_is_five_0x22C_slots_not_hero_swap()
+    {
+        Assert.Equal(0x004166A8u, EngineLifecycle.CreatePlayersFn);
+        Assert.Equal(0x0044A530u, EngineLifecycle.PlayerManagerApply);
+        Assert.Equal(0x0044A1A0u, EngineLifecycle.CreatePlayerSlotFn);
+        Assert.Equal(0x0044BC10u, EngineLifecycle.CreatePlayerSlotCtor);
+        Assert.Equal(0x22C, EngineLifecycle.CreatePlayerSlotSize);
+        Assert.Equal(5, EngineLifecycle.CreatePlayerSlotCount);
+        Assert.Equal(4, EngineLifecycle.CreatePlayerActiveCount);
+        Assert.Equal(0x004AE940u, EngineLifecycle.PlayerObjectInit);
+        Assert.Equal(0x0044C6B0u, EngineLifecycle.PlayerManagerGetter);
+        Assert.NotEqual(0x0044A3B0u, EngineLifecycle.CreatePlayersFn);
+    }
+
+    [Fact]
+    public void Gtng_is_stem_gtng_gtg_is_004FE2A0_single_file()
+    {
+        Assert.Equal(".gtng", EngineLifecycle.GtngExtension);
+        Assert.Equal(".gtg", EngineLifecycle.GtgExtension);
+        Assert.Equal(0x01244BB4u, EngineLifecycle.GtngExtVa);
+        Assert.Equal(0x01244BDCu, EngineLifecycle.GtgExtVa);
+        Assert.Equal(0x004FE2A0u, EngineLifecycle.LoadGlobalThingsSingle);
+        Assert.Equal(0x004FDBC0u, EngineLifecycle.LoadGlobalThingsPerMap);
+        Assert.Equal(0, EngineLifecycle.DefaultSingleGlobalThingsFlag);
+        Assert.False(new EngineLifecycle().SingleGlobalThingsFile);
     }
 
     [Fact]
@@ -201,6 +233,14 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.LoadWldFile && e.Action.StartsWith("maps=", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LoadGtng);
+        Assert.Null(life.Gtng);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.LoadGtng && e.Action.StartsWith("missing", StringComparison.Ordinal));
+        Assert.Equal(5, life.PlayerSlotsCreated);
+        Assert.Equal(4, life.PlayerActiveCount);
+        Assert.True(life.PlayerObjectReady);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.CreatePlayersFn && e.Action.StartsWith("slots=5", StringComparison.Ordinal));
         Assert.NotNull(life.Regions);
         Assert.Equal(0x00506D40u, EngineLifecycle.LoadRegionGraphFn);
         Assert.Equal(0x00828710u, EngineLifecycle.InitRegionGraphFn);
@@ -225,10 +265,14 @@ public sealed class EngineLifecycleTests
             00507C30 vtbl+12 is "Load .wld file": token switch
             NewMap/EndMap/NewRegion/ContainsMap/SeesMap/...
             Same vocabulary as WorldFile.Load(FinalAlbion.wld).
-            Then UNREAD: Load GTNG 0050959F, Load global things 00509859.
-            Load region graph 00509982 → 00506D40(PLAYER_GUI_PC+0xA94)
-            → 00828710 Initialise Region Graph.
-            TLC file Misc\FinalAlbion_StartingRegionGraph.txt.
+            Load GTNG 0050959F stem+.gtng (0x1244BB4); TLC missing skips.
+            Load global things 00509859: [0x13B8609] default 0 →
+            004FDBC0 per-map .tng (004FBF60/004FAFF0). Nonzero →
+            004FE2A0 .gtg NEWMAP LoadAllLoadableGlobalThingsFromSingleFile.
+            Create Players 004166A8: 0044C6B0 [0x13B879C], 0044A530
+            slots 0-4 size 0x22C, [+24]=4, 004AE940. Not 0044A3B0
+            hero_swap_*.tng.
+            Load region graph 00509982 → 00506D40 / 00828710.
             Not 00DBDE40 / StartOakVale setup.
             """);
         File.WriteAllText(
@@ -253,5 +297,29 @@ public sealed class EngineLifecycleTests
             Leave frontend → FinalAlbion.wld → Init Game 00418DCA
             NOT 00DBDE40
             """);
+    }
+
+    [Fact]
+    public void Single_file_global_things_loads_gtg_newmap()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle { SingleGlobalThingsFile = true };
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        life.EnterGame();
+        Assert.NotNull(life.GlobalThings);
+        Assert.Equal(2, life.GlobalThings.Version);
+        Assert.True(life.GlobalThings.Things.Count() > 100);
+        Assert.Contains(life.GlobalThings.Things, t => t.DefinitionType == "HOLY_SITE_PLAYER_START");
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.LoadGlobalThingsSingle &&
+            e.Action.StartsWith("things=", StringComparison.Ordinal));
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        life.Trace.Write(Path.Combine(dest, "load-gtg.txt"));
     }
 }

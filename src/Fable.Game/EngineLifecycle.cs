@@ -1,5 +1,7 @@
+using System.Text;
 using Fable.Core;
 using Fable.Formats.Banks;
+using Fable.Formats.Tng;
 using Fable.Formats.Wld;
 
 namespace Fable.Game;
@@ -121,6 +123,26 @@ public sealed class EngineLifecycle
     public const uint LoadWldFile = 0x00507C30;
     public const uint LoadGtng = 0x0050959F;
     public const uint LoadGlobalThings = 0x00509859;
+    public const uint LoadGlobalThingsSingle = 0x004FE2A0;
+    public const uint LoadGlobalThingsPerMap = 0x004FDBC0;
+    public const uint LoadGlobalThingsMapFile = 0x004FBF60;
+    public const uint SingleGlobalThingsFlagVa = 0x013B8609;
+    public const byte DefaultSingleGlobalThingsFlag = 0;
+    public const uint GtngExtVa = 0x01244BB4;
+    public const uint GtgExtVa = 0x01244BDC;
+    public const uint TngExtVa = 0x012442C4;
+    public const string GtngExtension = ".gtng";
+    public const string GtgExtension = ".gtg";
+    public const string TngExtension = ".tng";
+    public const uint PlayerManagerGetter = 0x0044C6B0;
+    public const uint PlayerManagerVa = 0x013B879C;
+    public const uint PlayerManagerApply = 0x0044A530;
+    public const uint CreatePlayerSlotFn = 0x0044A1A0;
+    public const uint CreatePlayerSlotCtor = 0x0044BC10;
+    public const int CreatePlayerSlotSize = 0x22C;
+    public const int CreatePlayerSlotCount = 5;
+    public const int CreatePlayerActiveCount = 4;
+    public const uint PlayerObjectInit = 0x004AE940;
     public const uint LoadRegionGraph = 0x00509982;
     public const uint LoadRegionGraphFn = 0x00506D40;
     public const uint InitRegionGraphFn = 0x00828710;
@@ -175,6 +197,18 @@ public sealed class EngineLifecycle
     public string? WorldFileName { get; private set; }
     public WorldFile? World { get; private set; }
     public RegionGraph? Regions { get; private set; }
+    public ThingFile? Gtng { get; private set; }
+    public ThingFile? GlobalThings { get; private set; }
+    public int GlobalThingMapsLoaded { get; private set; }
+    /// <summary>
+    /// <c>0x13B8609</c>. BSS default 0 →
+    /// <c>004FDBC0</c> per-map. Nonzero →
+    /// <c>004FE2A0</c> <c>.gtg</c> NEWMAP file.
+    /// </summary>
+    public bool SingleGlobalThingsFile { get; set; }
+    public int PlayerSlotsCreated { get; private set; }
+    public int PlayerActiveCount { get; private set; }
+    public bool PlayerObjectReady { get; private set; }
     public IReadOnlyList<string> CompletedStages => _completed;
     public IReadOnlyList<string> RegisteredBanks => _banks;
     public GameInstall? Install { get; private set; }
@@ -326,7 +360,7 @@ public sealed class EngineLifecycle
         foreach (var (name, apply) in InitWorldInitStages)
             Note(apply, name, "World", name);
         LoadWorldMap();
-        Note(CreatePlayersFn, "Create Players", "Player", "0044A530/004AE940 UNREAD");
+        CreatePlayers();
         Mode = EngineMode.Game;
         Stage = EngineStage.Game;
         WorldFileName = FinalAlbionWld;
@@ -337,8 +371,8 @@ public sealed class EngineLifecycle
     /// object (shift 5, bound 0x2000).
     /// <c>00507C30</c> vtbl+12 is
     /// <c>Load .wld file</c>: token-switch parse
-    /// of <c>FinalAlbion.wld</c>. GTNG / global
-    /// things / region graph stay UNREAD.
+    /// of <c>FinalAlbion.wld</c>. Then GTNG,
+    /// global things, region graph.
     /// </summary>
     public void LoadWorldMap()
     {
@@ -357,9 +391,134 @@ public sealed class EngineLifecycle
         World = WorldFile.Load(Install.WorldPath);
         Note(LoadWldFile, "Load .wld file", "WLD",
             $"maps={World.Maps.Count} regions={World.Regions.Count} quests={World.InitialQuests.Count}");
-        Note(LoadGtng, "Load GTNG", "WLD", "UNREAD");
-        Note(LoadGlobalThings, "Load global things", "WLD", "UNREAD");
+        LoadGtngFile();
+        LoadGlobalThingsFile();
         LoadRegionGraphFile();
+    }
+
+    /// <summary>
+    /// <c>0050959F</c>: WLD stem + <c>.gtng</c>
+    /// (<c>0x1244BB4</c>). Missing file
+    /// <c>00999230</c> skips to global things.
+    /// TLC has no <c>.gtng</c>.
+    /// </summary>
+    public void LoadGtngFile()
+    {
+        Note(LoadGtng, "Load GTNG", "WLD", "0050959F stem+.gtng");
+        if (Install is null)
+            return;
+        var path = Path.ChangeExtension(Install.WorldPath, GtngExtension);
+        if (!File.Exists(path))
+        {
+            Note(LoadGtng, "Load GTNG", "WLD", "missing " + Path.GetFileName(path));
+            return;
+        }
+
+        Gtng = ThingFile.Load(path);
+        Note(LoadGtng, "Load GTNG", "WLD",
+            $"things={Gtng.Things.Count()} {Path.GetFileName(path)}");
+    }
+
+    /// <summary>
+    /// <c>00509859</c>: <c>[0x13B8609]</c> default 0
+    /// → <c>004FDBC0</c> per-map <c>.tng</c>
+    /// (<c>004FBF60</c> / <c>004FAFF0</c>).
+    /// Nonzero → <c>004FE2A0</c> <c>.gtg</c>
+    /// NEWMAP/ENDMAP
+    /// LoadAllLoadableGlobalThingsFromSingleFile.
+    /// </summary>
+    public void LoadGlobalThingsFile()
+    {
+        Note(LoadGlobalThings, "Load global things", "WLD",
+            SingleGlobalThingsFile ? "004FE2A0 .gtg" : "004FDBC0 per-map .tng");
+        if (Install is null)
+            return;
+        if (SingleGlobalThingsFile)
+        {
+            var path = Path.ChangeExtension(Install.WorldPath, GtgExtension);
+            if (!File.Exists(path))
+            {
+                Note(LoadGlobalThingsSingle, "Load global things", "WLD", "missing .gtg");
+                return;
+            }
+
+            GlobalThings = ThingFile.Load(path);
+            Note(LoadGlobalThingsSingle, "LoadAllLoadableGlobalThingsFromSingleFile", "WLD",
+                $"things={GlobalThings.Things.Count()} {Path.GetFileName(path)}");
+            return;
+        }
+
+        Note(LoadGlobalThingsPerMap, "Loading global things", "WLD", "004FDBC0");
+        if (World is null)
+            return;
+        BbbArchive? wad = null;
+        if (File.Exists(Install.WadPath))
+            wad = BbbArchive.Open(Install.WadPath);
+        try
+        {
+            var loaded = new List<ThingInstance>();
+            foreach (var map in World.Maps)
+            {
+                if (!map.LoadedOnPlayerProximity)
+                    continue;
+                var tng = TryLoadMapTng(map, wad);
+                if (tng is null)
+                    continue;
+                loaded.AddRange(tng.Things);
+                GlobalThingMapsLoaded++;
+            }
+
+            if (loaded.Count == 0)
+            {
+                Note(LoadGlobalThingsMapFile, "Load global things", "WLD", "no proximity tng");
+                return;
+            }
+
+            GlobalThings = new ThingFile { Version = 2, Sections = [new ThingSection { Name = "GLOBAL", Things = loaded }] };
+            Note(LoadGlobalThingsMapFile, "Load global things", "WLD",
+                $"maps={GlobalThingMapsLoaded} things={loaded.Count}");
+        }
+        finally
+        {
+            wad?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// <c>004166A8</c>: <c>0044C6B0</c> singleton
+    /// <c>0x13B879C</c>, <c>0044A530</c> creates
+    /// slots 0–4 (<c>0044A1A0</c> / <c>0x22C</c>),
+    /// <c>[+24]=4</c>, then <c>004AE940</c> at
+    /// game+80568. Not hero_swap_*.tng (0044A3B0).
+    /// </summary>
+    public void CreatePlayers()
+    {
+        Note(PlayerManagerGetter, "Create Players", "Player", "0044C6B0 [0x13B879C]");
+        Note(PlayerManagerApply, "Create Players", "Player", "0044A530 slots 0-4");
+        for (var i = 0; i < CreatePlayerSlotCount; i++)
+            Note(CreatePlayerSlotFn, "Create Players", "Player",
+                $"slot {i} ctor 0044BC10 size 0x22C");
+        PlayerSlotsCreated = CreatePlayerSlotCount;
+        PlayerActiveCount = CreatePlayerActiveCount;
+        Note(PlayerObjectInit, "Create Players", "Player", "004AE940 game+80568");
+        PlayerObjectReady = true;
+        Note(CreatePlayersFn, "Create Players", "Player",
+            $"slots={PlayerSlotsCreated} active={PlayerActiveCount}");
+    }
+
+    private ThingFile? TryLoadMapTng(WorldMap map, BbbArchive? wad)
+    {
+        if (Install is null)
+            return null;
+        var stem = map.FileStem;
+        var loose = Path.Combine(Install.LooseLevelsDirectory, stem + TngExtension);
+        if (File.Exists(loose))
+            return ThingFile.Load(loose);
+        if (wad is null)
+            return null;
+        var entry = wad.Find(stem + TngExtension)
+                    ?? wad.Find(map.LevelName.Replace(".lev", TngExtension, StringComparison.OrdinalIgnoreCase));
+        return entry is null ? null : ThingFile.Parse(Encoding.ASCII.GetString(wad.Read(entry)));
     }
 
     /// <summary>
