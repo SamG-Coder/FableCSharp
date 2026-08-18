@@ -1293,6 +1293,21 @@ public sealed class WorldRuntime
     public int FadeThingVtbl { get; private set; }
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
+    /// <summary>
+    /// <c>00CC6B79</c> <c>00BFEBA8 "limbo"</c>
+    /// → <c>[ebp+127]=1</c>. Draw via 1812.
+    /// </summary>
+    public bool ExtraLimbo { get; private set; }
+    /// <summary>
+    /// <c>00CC6BC4</c> <c>00BFEBA8 "return"</c>
+    /// → <c>[ebp+19]=1</c>. Show path
+    /// <c>vtbl+1892</c> at <c>00CC6F74</c>.
+    /// Not an interpreter stop.
+    /// </summary>
+    public bool ExtraReturn { get; private set; }
+    public int ExtraDrawVtbl { get; private set; }
+    public int ExtraReturnVtbl { get; private set; }
+    public string ExtraParkMarker { get; private set; } = "";
     public float TimeOfDayHours { get; set; }
     public float TimeOfDayFraction { get; set; }
     /// <summary>
@@ -1732,12 +1747,33 @@ public sealed class WorldRuntime
         return add;
     }
 
-    public void RemoveExtras(bool hide, string mode)
+    /// <summary>
+    /// <c>00CC6B21</c>: hide = !IsFalse(arg0);
+    /// arg1 00BFEBA8 limbo → 1812; return →
+    /// [ebp+19] and show-path vtbl+1892;
+    /// else marker 008AB980 + park 1892.
+    /// Extras list body UNREAD.
+    /// </summary>
+    public void RemoveExtras(bool hide, string mode, bool limbo, bool ret)
     {
-        ExtraOps.Add((hide, mode));
-        ExtraMode = mode;
+        ExtraOps.Add((hide, mode ?? ""));
+        ExtraMode = mode ?? "";
         ExtrasHidden = hide;
+        ExtraLimbo = limbo;
+        ExtraReturn = ret;
+        ExtraDrawVtbl = limbo ? 1812 : 2044;
+        ExtraReturnVtbl = ret && !hide ? 1892 : 0;
+        ExtraParkMarker = !limbo && !ret && hide && ExtraMode.Length > 0
+            ? ExtraMode
+            : "";
     }
+
+    public void RemoveExtras(bool hide, string mode) =>
+        RemoveExtras(
+            hide,
+            mode,
+            ScriptLine.TokenMatches(mode ?? "", "limbo"),
+            ScriptLine.TokenMatches(mode ?? "", "return"));
 
     public void Teleport(string? actor, string marker, Vector3? position)
     {

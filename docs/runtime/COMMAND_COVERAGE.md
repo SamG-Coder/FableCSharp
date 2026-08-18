@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 140
-RECOVERED RETURN: 140
-RECOVERED APPLY: 76
+RECOVERED DISPATCH: 141
+RECOVERED RETURN: 141
+RECOVERED APPLY: 78
 IMPLEMENTED RUNTIME: 13
-UNREAD: 45
+UNREAD: 44
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -116,8 +116,8 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | AnimationPause | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | ScriptFrame | Global | Proven | Proven | Proven | Proven | Proven | Proven |
 | DoScriptFrame | Global | Proven | Proven | Proven | Proven | Proven | Proven |
-| return | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| RemoveExtras | Global | Proven | Proven | Proven | Partial | Partial | Partial |
+| return | Global | Proven | Proven | Proven | Proven | Partial | Partial |
+| RemoveExtras | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | TeleportFollowers | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | ReturnFollowers | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | RemoveAll | Global | Proven | Proven | Proven | Partial | Partial | Partial |

@@ -644,11 +644,22 @@ public static class GlobalDispatcher
 
         if (Eq(v, "RemoveExtras"))
         {
-            var hide = ScriptLine.IsTrue(line.Arg(0));
+            // 00CC6B21: hide=!IsFalse(arg0); 00BFEBA8
+            // limbo->[ebp+127]; return->[ebp+19];
+            // show+return vtbl+1892 at 00CC6F74.
+            var hide = !ScriptLine.IsFalse(line.Arg(0));
             var mode = line.Arg(1);
-            ctx.World.RemoveExtras(hide, mode);
-            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
-                hide ? $"hide {mode}" : $"show {mode}");
+            var limbo = ScriptLine.TokenMatches(mode, "limbo");
+            var ret = ScriptLine.TokenMatches(mode, "return");
+            ctx.World.RemoveExtras(hide, mode, limbo, ret);
+            var side = hide ? "hide" : "show";
+            if (limbo)
+                side += " limbo1812";
+            else if (ret)
+                side += hide ? " return" : " return1892";
+            else if (mode.Length > 0)
+                side += $" {mode}";
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, side);
         }
 
         if (Eq(v, "Get"))

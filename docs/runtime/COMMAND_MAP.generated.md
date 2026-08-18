@@ -62,7 +62,8 @@
 | Get | `—` | `—` | source,alias | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | script.bin Get NAME,ALIAS binds acquired alias; continue |
 | FallbackAcquire | `00CCD344` | `00CCD397` | alias,type[,type…] | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+320 candidates; first matching type; jmp 00CD17FD |
 | CrowdAnimate | `00CCE4EC` | `00CCE53F` | crowd,anim,_,_,_,flags… | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | 00515700 crowd; per-member 007E73F0; empty skip; jmp 00CD17FD |
-| RemoveExtras | `00CC6ACE` | `00CC6B21` | IsTrue,limbo|return | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | limbo/return flags; hide extras; jmp continue |
+| RemoveExtras | `00CC6ACE` | `00CC6B21` | [IsFalse],limbo|return|marker | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | hide=!IsFalse; 00BFEBA8 limbo->[ebp+127] vtbl+1812; return->[ebp+19] show vtbl+1892; marker 008AB980; jmp 00CC7076 |
+| return | `00CC6B82` | `00CC6BC4` | RemoveExtras named-arg | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | 00BFEBA8 vs arg1 NOT 00BFEAF8 verb; [ebp+19]=1; skip 008AB980; show+return vtbl+1892 00CC6F74; DISPROVES interpreter stop |
 | StopMusic | `—` | `—` |  | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | clears last track; continue |
 | StayFadedOut | `—` | `—` |  | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | runner local stay-faded |
 | EnableSounds | `—` | `—` |  | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | unmute; continue |

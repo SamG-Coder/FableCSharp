@@ -293,7 +293,136 @@ public sealed class ScriptRuntimeArchitectureTests
         interp.RunUntilYield(runtime);
         Assert.True(runtime.World.ExtrasHidden);
         Assert.Equal("LIMBO", runtime.World.ExtraMode);
+        Assert.True(runtime.World.ExtraLimbo);
+        Assert.False(runtime.World.ExtraReturn);
+        Assert.Equal(1812, runtime.World.ExtraDrawVtbl);
         Assert.True(interp.Finished);
+    }
+
+    [Fact]
+    public void Return_token_is_RemoveExtras_named_arg_not_verb()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var verb = new ScriptInterpreter("retverb", ["return", "FadeOut 0.5,0"]);
+        verb.RunUntilYield(runtime);
+        Assert.True(verb.Blocked);
+        Assert.Equal("UNKNOWN", verb.BlockReason);
+        Assert.Equal(0x00CC6BC4u, ScriptCommandMap.Find("return")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("RemoveExtras")!.Value.ApplySite,
+            ScriptCommandMap.Find("return")!.Value.ApplySite);
+
+        var show = new ScriptInterpreter("retshow",
+        [
+            "RemoveExtras TRUE,LIMBO",
+            "RemoveExtras FALSE,RETURN",
+        ]);
+        show.RunUntilYield(runtime);
+        Assert.True(show.Finished);
+        Assert.False(runtime.World.ExtrasHidden);
+        Assert.True(runtime.World.ExtraReturn);
+        Assert.False(runtime.World.ExtraLimbo);
+        Assert.Equal(2044, runtime.World.ExtraDrawVtbl);
+        Assert.Equal(1892, runtime.World.ExtraReturnVtbl);
+        var empty = new ScriptInterpreter("retempty", ["RemoveExtras"]);
+        empty.RunUntilYield(runtime);
+        Assert.True(empty.Finished);
+        Assert.True(runtime.World.ExtrasHidden);
+    }
+
+    [Fact]
+    public void RemoveExtras_FALSE_RETURN_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var name in new[]
+                 {
+                     "CS_OAKVALE_INTRO_THERESA",
+                     "CS_OAKVALE_INTRO_THERESA_MEET",
+                 })
+        {
+            hit = bank.Entries.FirstOrDefault(e =>
+                e.InstanceName.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (hit is null)
+                continue;
+            foreach (var raw in hit.Commands.Count > 0
+                         ? hit.Commands
+                         : ScriptBank.ExtractCommands(hit.Raw))
+            {
+                if (raw.StartsWith("RemoveExtras ", StringComparison.OrdinalIgnoreCase) &&
+                    raw.Contains("RETURN", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        if (line is null)
+        {
+            foreach (var entry in bank.Entries)
+            {
+                foreach (var raw in entry.Commands.Count > 0
+                             ? entry.Commands
+                             : ScriptBank.ExtractCommands(entry.Raw))
+                {
+                    if (raw.StartsWith("RemoveExtras ", StringComparison.OrdinalIgnoreCase) &&
+                        raw.Contains("RETURN", StringComparison.OrdinalIgnoreCase) &&
+                        !raw.Contains('$', StringComparison.Ordinal))
+                    {
+                        line = raw;
+                        hit = entry;
+                        break;
+                    }
+                }
+
+                if (line is not null)
+                    break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        Assert.NotNull(hit);
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("RemoveExtras", parsed.Verb);
+        Assert.True(ScriptLine.TokenMatches(parsed.Arg(1), "return"));
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-rex", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("RemoveExtras ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal(!ScriptLine.IsFalse(parsed.Arg(0)), runtime.World.ExtrasHidden);
+        Assert.True(runtime.World.ExtraReturn);
+        Assert.Equal(1892, runtime.World.ExtraReturnVtbl);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-rex.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-return.txt"),
+            """
+            return 00CC6B82 / apply 00CC6BC4  (NOT a verb)
+              00BFEBA8 named-arg vs RemoveExtras arg1
+              match → [ebp+19]=1; skip 008AB980
+              consumer 00CC6F74: show+return vtbl+1892
+              DISPROVES interpreter-stop
+            RemoveExtras 00CC6ACE / apply 00CC6B21
+              hide=!IsFalse(arg0); empty hides
+              00BFEBA8 limbo → [ebp+127] vtbl+1812
+              00BFEBA8 return → [ebp+19] show 1892
+              else marker 00CBF9DE+008AB980 park 1892
+              not-limbo draw vtbl+2044
+            Extras list body UNREAD (Runtime PARTIAL)
+            """);
     }
 
     [Fact]
