@@ -1,146 +1,547 @@
+/* FableCSharp status — Heroes' Guild journal restyle.
+   TLC / Anniversary quest-book: leather surround, parchment leaf,
+   gold filigree. No status facts live here. */
+
 :root {
-  --ink: #1c1914;
-  --muted: #5c564c;
-  --paper: #f6f1e6;
-  --card: #fffdf8;
-  --rule: #d4cbb8;
-  --accent: #2f4a3c;
-  --proven: #1f6b45;
-  --partial: #8a5a12;
-  --unread: #5a5852;
-  --disproven: #8b2e2e;
-  --temporary: #3d5a7a;
+  --ink: #2a1c10;
+  --muted: #6a5640;
+  --paper: #f3e6c4;
+  --paper-hi: #f6edd4;
+  --paper-lo: #ead8a8;
+  --card: #f8efd6;
+  --gold: #c9a227;
+  --gold-hi: #e8d48b;
+  --gold-lo: #8a6a14;
+  --oak-0: #140c08;
+  --oak-1: #1a1008;
+  --oak-2: #2a1810;
+  --oak-3: #3a2418;
+  --leather: #1e120c;
+  --rule: #c9a227;
+  --accent: #c9a227;
 }
 
-* { box-sizing: border-box; }
+*,
+*::before,
+*::after { box-sizing: border-box; }
 
-html { scroll-behavior: smooth; }
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+}
 
 body {
   margin: 0;
+  overflow-x: hidden;
+  min-height: 100vh;
   color: var(--ink);
-  background: var(--paper);
-  font: 16px/1.55 "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  background-color: var(--oak-0);
+  background-image:
+    radial-gradient(ellipse 90% 55% at 50% -10%, #2a1810 0%, transparent 58%),
+    radial-gradient(ellipse 50% 40% at 0% 100%, rgba(42, 24, 16, 0.7), transparent 55%),
+    radial-gradient(ellipse 40% 30% at 100% 80%, rgba(20, 10, 6, 0.65), transparent 50%),
+    repeating-linear-gradient(
+      92deg,
+      rgba(0, 0, 0, 0.14) 0 1px,
+      transparent 1px 8px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      rgba(58, 36, 24, 0.12) 0 1px,
+      transparent 1px 11px
+    ),
+    linear-gradient(180deg, #1e120c 0%, #140c08 42%, #0e0806 100%);
+  font-family: "Cormorant Garamond", "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 1.125rem;
+  font-weight: 400;
+  line-height: 1.6;
 }
 
+/* Leather binding around the leaf */
+.book {
+  position: relative;
+  max-width: min(58rem, 100%);
+  margin: clamp(0.55rem, 2.4vw, 1.75rem) auto;
+  padding: clamp(0.4rem, 1.6vw, 0.95rem);
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(90, 56, 32, 0.28), transparent 45%),
+    radial-gradient(ellipse at 80% 90%, rgba(0, 0, 0, 0.28), transparent 40%),
+    linear-gradient(165deg, #2a1810 0%, #1a1008 50%, #140c08 100%);
+  border: 1px solid #3d2a18;
+  box-shadow:
+    0 0 0 1px #0a0604,
+    0 16px 48px rgba(0, 0, 0, 0.55),
+    inset 0 0 36px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(232, 212, 139, 0.12);
+}
+
+/* Filigree corners — leather (outer) */
+.book::before,
+.book::after {
+  content: "";
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.book::before {
+  top: 7px;
+  left: 7px;
+  border-top: 2px solid var(--gold-hi);
+  border-left: 2px solid var(--gold-hi);
+  box-shadow:
+    3px 3px 0 0 var(--gold),
+    inset 6px 6px 0 -4px var(--gold);
+}
+
+.book::after {
+  top: 7px;
+  right: 7px;
+  border-top: 2px solid var(--gold-hi);
+  border-right: 2px solid var(--gold-hi);
+  box-shadow:
+    -3px 3px 0 0 var(--gold),
+    inset -6px 6px 0 -4px var(--gold);
+}
+
+/* Parchment leaf */
 .wrap {
+  position: relative;
   max-width: 52rem;
   margin: 0 auto;
-  padding: 2.25rem 1.4rem 4rem;
+  padding: clamp(1.25rem, 4vw, 2.55rem) clamp(1rem, 4vw, 2.1rem) clamp(2rem, 6vw, 4rem);
+  color: var(--ink);
+  background-color: var(--paper);
+  background-image:
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(42, 28, 16, 0.028) 2px,
+      rgba(42, 28, 16, 0.028) 3px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 3px,
+      rgba(139, 90, 43, 0.022) 3px,
+      rgba(139, 90, 43, 0.022) 4px
+    ),
+    repeating-linear-gradient(
+      135deg,
+      transparent 0 7px,
+      rgba(42, 28, 16, 0.015) 7px 8px
+    ),
+    radial-gradient(ellipse 80% 40% at 10% 0%, rgba(232, 212, 139, 0.35), transparent 50%),
+    radial-gradient(ellipse 60% 30% at 95% 100%, rgba(180, 140, 70, 0.12), transparent 50%),
+    linear-gradient(180deg, var(--paper-hi) 0%, var(--paper) 48%, #ead9aa 100%);
+  border: 2px solid var(--gold);
+  box-shadow:
+    inset 0 0 0 1px var(--gold-hi),
+    inset 0 0 0 4px rgba(243, 230, 196, 0.9),
+    inset 0 0 0 5px var(--gold),
+    inset 0 0 48px rgba(42, 28, 16, 0.06);
 }
 
-header {
-  border-bottom: 1px solid var(--rule);
-  padding-bottom: 1.25rem;
-  margin-bottom: 1.75rem;
+/* Filigree corners — parchment (inner) */
+.wrap::before,
+.wrap::after {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  pointer-events: none;
+  z-index: 3;
 }
+
+.wrap::before {
+  bottom: 8px;
+  left: 8px;
+  border-bottom: 2px solid var(--gold);
+  border-left: 2px solid var(--gold);
+  box-shadow:
+    3px -3px 0 0 var(--gold-hi),
+    inset 5px -5px 0 -3px var(--gold-hi);
+}
+
+.wrap::after {
+  bottom: 8px;
+  right: 8px;
+  border-bottom: 2px solid var(--gold);
+  border-right: 2px solid var(--gold);
+  box-shadow:
+    -3px -3px 0 0 var(--gold-hi),
+    inset -5px -5px 0 -3px var(--gold-hi);
+}
+
+/* Title plate */
+header {
+  position: relative;
+  text-align: center;
+  padding: 1.35rem 1rem 1.3rem;
+  margin-bottom: 1.75rem;
+  background:
+    linear-gradient(180deg, #f8f0d8 0%, #f0e2b8 100%);
+  border: 1px solid var(--gold);
+  box-shadow:
+    inset 0 0 0 3px var(--paper-hi),
+    inset 0 0 0 4px var(--gold-hi);
+}
+
+header::before,
+header::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 10px;
+  height: 10px;
+  margin-top: -5px;
+  background: var(--gold);
+  transform: rotate(45deg);
+  box-shadow: 0 0 0 2px var(--gold-hi);
+  pointer-events: none;
+}
+
+header::before { left: 0.7rem; }
+header::after { right: 0.7rem; }
 
 p.kicker {
-  margin: 0 0 0.35rem;
-  font: 0.78rem/1.3 ui-sans-serif, "Segoe UI", system-ui, sans-serif;
-  letter-spacing: 0.08em;
+  margin: 0 0 0.4rem;
+  font-family: Cinzel, "Times New Roman", serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--accent);
+  color: var(--gold-lo);
 }
 
 h1 {
-  margin: 0 0 0.6rem;
-  font-size: 2rem;
+  margin: 0 0 0.7rem;
+  font-family: Cinzel, "Times New Roman", serif;
+  font-size: clamp(1.5rem, 5vw, 2.25rem);
+  font-weight: 700;
   line-height: 1.2;
-  font-weight: 650;
+  color: var(--ink);
+}
+
+h1 + p {
+  margin-top: 0.15rem;
 }
 
 h2 {
   margin: 2.2rem 0 0.7rem;
-  font-size: 1.35rem;
-  border-top: 1px solid var(--rule);
-  padding-top: 1.4rem;
+  padding-top: 1.25rem;
+  font-family: Cinzel, "Times New Roman", serif;
+  font-size: clamp(1.15rem, 3.5vw, 1.45rem);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--ink);
+  border-top: 1px solid var(--gold);
+}
+
+h2::after {
+  content: "";
+  display: block;
+  width: 4.5rem;
+  height: 2px;
+  margin-top: 0.45rem;
+  background: linear-gradient(90deg, var(--gold), var(--gold-hi) 55%, transparent);
 }
 
 h3 {
   margin: 1.6rem 0 0.55rem;
-  font-size: 1.08rem;
+  font-family: Cinzel, "Times New Roman", serif;
+  font-size: clamp(1rem, 2.8vw, 1.12rem);
+  font-weight: 600;
+  color: var(--ink);
 }
 
 p, li { color: var(--ink); }
-.muted, .note { color: var(--muted); }
 
-a { color: var(--accent); }
-a:hover { color: #1a2e24; }
+.muted,
+.note { color: var(--muted); }
 
-code, .mono {
-  font-family: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
-  font-size: 0.88em;
+a {
+  color: var(--gold-lo);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.15em;
 }
 
+a:hover { color: var(--gold); }
+
+a:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+code,
+.mono {
+  font-family: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.86em;
+  background: rgba(42, 28, 16, 0.06);
+  padding: 0.05em 0.28em;
+  border-radius: 2px;
+}
+
+/* TOC — parchment card, gold rule */
 nav.toc {
   background: var(--card);
-  border: 1px solid var(--rule);
-  border-radius: 6px;
-  padding: 0.85rem 1.1rem;
-  margin: 1.1rem 0 1.5rem;
+  border: 1px solid var(--gold);
+  box-shadow:
+    inset 0 0 0 3px var(--paper-hi),
+    inset 0 0 0 4px var(--gold-hi);
+  padding: 0.95rem 1.15rem 0.7rem;
+  margin: 1.15rem 0 1.55rem;
+}
+
+nav.toc strong {
+  display: block;
+  font-family: Cinzel, "Times New Roman", serif;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-lo);
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.15rem;
+  border-bottom: 1px solid var(--gold);
 }
 
 nav.toc ol {
-  margin: 0.35rem 0 0;
-  padding-left: 1.2rem;
+  margin: 0.4rem 0 0;
+  padding-left: 1.25rem;
 }
 
-nav.toc li { margin: 0.15rem 0; }
+nav.toc li { margin: 0.05rem 0; }
+
+nav.toc a {
+  display: inline-block;
+  padding: 0.2rem 0.1rem;
+  line-height: 1.35;
+}
+
+/* Tables sit in a scrollport so 3-col evidence never stacks into mush */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
+  margin: 0.7rem 0 1.1rem;
+}
 
 table {
   width: 100%;
+  table-layout: fixed;
   border-collapse: collapse;
-  font-size: 0.92rem;
-  margin: 0.7rem 0 1.1rem;
+  font-size: 0.95rem;
+  margin: 0;
   background: var(--card);
 }
 
-th, td {
-  border: 1px solid var(--rule);
-  padding: 0.42rem 0.55rem;
+th,
+td {
+  border: 1px solid #d4bc7a;
+  padding: 0.45rem 0.58rem;
   text-align: left;
   vertical-align: top;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+td code,
+th code,
+code {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* Status column stays a stamp, not a squeezed paragraph */
+table th:nth-child(2),
+table td:nth-child(2) {
+  width: 7.25rem;
 }
 
 th {
-  font: 0.75rem/1.3 ui-sans-serif, "Segoe UI", system-ui, sans-serif;
-  letter-spacing: 0.04em;
+  font-family: Cinzel, "Times New Roman", serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  background: #efe8d8;
+  color: var(--ink);
+  background: linear-gradient(180deg, #e8d48b 0%, #d4b84a 100%);
 }
 
+td {
+  background: rgba(246, 237, 212, 0.72);
+}
+
+/* Wax seals / guild stamps */
 .badge {
   display: inline-block;
-  font: 0.7rem/1.2 ui-sans-serif, "Segoe UI", system-ui, sans-serif;
-  letter-spacing: 0.04em;
+  font-family: Cinzel, "Times New Roman", serif;
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
-  padding: 0.12rem 0.4rem;
-  border-radius: 3px;
+  padding: 0.18rem 0.48rem;
+  border-radius: 999px;
   white-space: nowrap;
+  border: 1px solid transparent;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.22),
+    0 1px 0 rgba(0, 0, 0, 0.18);
 }
 
-.PROVEN { color: #0d3d26; background: #cfe8d8; }
-.PARTIAL { color: #4a2f05; background: #f3dfb3; }
-.UNREAD { color: #333; background: #e4e1d8; }
-.DISPROVEN { color: #4a1212; background: #f0cfcf; }
-.TEMPORARY { color: #1c3148; background: #d5e3f0; }
-.N-A { color: #333; background: #e4e1d8; }
+.PROVEN {
+  color: #e8f3dc;
+  background: #2d5a38;
+  border-color: #1a3d24;
+}
+
+.PARTIAL {
+  color: #2a1c10;
+  background: #c9a227;
+  border-color: #8a6a14;
+}
+
+.UNREAD {
+  color: #2e2a24;
+  background: #c4bba8;
+  border-color: #8a8374;
+}
+
+.DISPROVEN {
+  color: #f6e4d8;
+  background: #7a1c1c;
+  border-color: #4a0e0e;
+}
+
+.TEMPORARY {
+  color: #e6eef6;
+  background: #3d5a7a;
+  border-color: #243a52;
+}
+
+.N-A {
+  color: #2e2a24;
+  background: #b8b0a0;
+  border-color: #7a7366;
+}
 
 .callout {
   background: var(--card);
-  border-left: 3px solid var(--accent);
-  padding: 0.7rem 0.95rem;
+  border: 1px solid var(--gold);
+  border-left: 4px solid var(--gold);
+  box-shadow: inset 0 0 0 1px rgba(232, 212, 139, 0.55);
+  padding: 0.75rem 1rem;
   margin: 1rem 0;
 }
 
 ul.plain { padding-left: 1.2rem; }
 ul.plain li { margin: 0.25rem 0; }
 
+ol li { margin: 0.4rem 0; }
+
 footer {
   margin-top: 2.5rem;
   padding-top: 1rem;
-  border-top: 1px solid var(--rule);
+  border-top: 2px solid var(--gold);
+  box-shadow: 0 -1px 0 var(--gold-hi);
   color: var(--muted);
-  font-size: 0.92rem;
+  font-size: 0.98rem;
+}
+
+/* Narrow: readable, no sideways blowout, hide overflow-prone ornaments */
+@media (max-width: 640px) {
+  body { font-size: 16px; }
+
+  .book {
+    margin: 0.4rem auto;
+    padding: 0.35rem;
+  }
+
+  .wrap {
+    padding: 1rem 0.75rem 2rem;
+  }
+
+  header {
+    padding: 1rem 0.75rem 1.05rem;
+  }
+
+  header::before,
+  header::after,
+  .book::before,
+  .book::after,
+  .wrap::before,
+  .wrap::after {
+    display: none;
+  }
+
+  code,
+  td {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .badge { white-space: normal; }
+
+  .table-scroll table {
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  table th:nth-child(2),
+  table td:nth-child(2) {
+    width: 5.6rem;
+  }
+
+  nav.toc a {
+    display: block;
+    min-height: 2.75rem;
+    padding: 0.65rem 0.15rem;
+  }
+
+  th, td { padding: 0.4rem 0.48rem; }
+}
+
+/* Very narrow — still a usable journal page */
+@media (max-width: 400px) {
+  body { font-size: 16px; }
+
+  .book {
+    margin: 0;
+    padding: 0.22rem;
+    border-radius: 0;
+  }
+
+  .wrap {
+    padding: 0.8rem 0.58rem 1.7rem;
+    border-width: 1px;
+    box-shadow:
+      inset 0 0 0 1px var(--gold-hi),
+      inset 0 0 0 3px var(--gold);
+  }
+
+  header { padding: 0.85rem 0.55rem 0.9rem; }
+
+  th, td { padding: 0.34rem 0.4rem; }
+
+  nav.toc { padding: 0.75rem 0.7rem 0.5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
 }

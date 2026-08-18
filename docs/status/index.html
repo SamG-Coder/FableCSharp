@@ -3,11 +3,16 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1a1008">
   <title>FableCSharp status — done vs left</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Cormorant+Garamond:ital,wght@0,400;0,600;0,700;1,400;1,600;1,700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="wrap">
+  <div class="book">
+    <div class="wrap">
     <header>
       <p class="kicker">FableCSharp · human overview</p>
       <h1>What’s done / what’s left</h1>
@@ -27,6 +32,7 @@
       </p>
     </header>
 
+    <div class="table-scroll">
     <table>
       <thead><tr><th>This page</th><th>The ledgers</th></tr></thead>
       <tbody>
@@ -40,6 +46,7 @@
         </tr>
       </tbody>
     </table>
+    </div>
 
     <div class="callout">
       <strong>North star:</strong> close first-scene New Game
@@ -76,6 +83,7 @@
 
     <h2 id="read">How to read this</h2>
     <p>Statuses are the project’s own words:</p>
+    <div class="table-scroll">
     <table>
       <thead><tr><th>Word</th><th>Meaning here</th></tr></thead>
       <tbody>
@@ -86,6 +94,7 @@
         <tr><td><span class="badge TEMPORARY">TEMPORARY</span></td><td>Stand-in classified as such (often a D3D default)</td></tr>
       </tbody>
     </table>
+    </div>
     <p>
       Parse / dispatch / return ≠ apply ≠ runtime. A finished fixture is
       script-layer apply, not a mesh or UI body.
@@ -93,6 +102,7 @@
     <p>This is <strong>not</strong> a “finish every UNREAD command” roadmap.</p>
 
     <h2 id="ledgers">Authoritative files</h2>
+    <div class="table-scroll">
     <table>
       <thead><tr><th>Ledger</th><th>What it owns</th></tr></thead>
       <tbody>
@@ -108,6 +118,7 @@
         <tr><td><a href="../render/FIRST_SCENE_WORLD_PARITY.md">docs/render/FIRST_SCENE_WORLD_PARITY.md</a></td><td>World/space/visibility checklist</td></tr>
       </tbody>
     </table>
+    </div>
     <p class="note">
       Boot/clock facts below are from <code>EngineLifecycle</code> /
       <code>EngineLifecycleTests</code> (not yet copied into
@@ -120,6 +131,7 @@
       (generated from exe token list <code>0x012C1500–0x012C2C00</code> +
       <code>ScriptCommandMap</code>):
     </p>
+    <div class="table-scroll">
     <table>
       <thead><tr><th>Metric</th><th>Count</th></tr></thead>
       <tbody>
@@ -130,6 +142,7 @@
         <tr><td>UNREAD tokens</td><td>29</td></tr>
       </tbody>
     </table>
+    </div>
     <p>
       The 13 <span class="badge PROVEN">PROVEN</span> overall runtimes are
       <code>FadeOut</code> / <code>FadeIn</code> (global and entity),
@@ -160,6 +173,7 @@
     </p>
 
     <h3>Formats / first-scene world (already locked)</h3>
+    <div class="table-scroll">
     <table>
       <thead><tr><th>Item</th><th>Status</th><th>Where</th></tr></thead>
       <tbody>
@@ -230,6 +244,7 @@
         </tr>
       </tbody>
     </table>
+    </div>
 
     <h3>Phase 1 in progress — boot / world clock (current master)</h3>
     <p>
@@ -241,6 +256,7 @@
       names-only banks / LevelLibrary cache (<code>253126e</code>),
       PresentWorld headers (<code>17908c3</code>).
     </p>
+    <div class="table-scroll">
     <table>
       <thead><tr><th>Item</th><th>Status</th><th>Evidence</th></tr></thead>
       <tbody>
@@ -496,6 +512,7 @@
         </tr>
       </tbody>
     </table>
+    </div>
 
     <div class="callout">
       <strong>Correction vs a “first region is Oakvale” reading:</strong>
@@ -526,6 +543,7 @@
       Keep locking today’s exe facts. Do not invent an Oakvale write on
       the no-save path.
     </p>
+    <div class="table-scroll">
     <table>
       <thead><tr><th>Left</th><th>Status</th><th>Notes</th></tr></thead>
       <tbody>
@@ -596,6 +614,7 @@
         </tr>
       </tbody>
     </table>
+    </div>
     <p>
       No-save <code>WorldFrame</code> now ticks after Create Players
       (<code>+9826=1</code>). The Oakvale intro fiber still needs a
@@ -612,6 +631,7 @@
       <code>Hero.SneakTo MK_OVIF_HERO5,0.0,TRUE</code>
       (<code>RegionTravel.IntroCutsceneLastCommand</code>).
     </p>
+    <div class="table-scroll">
     <table>
       <thead><tr><th>Leftover on this fiber</th><th>Status</th><th>Where</th></tr></thead>
       <tbody>
@@ -677,6 +697,7 @@
         </tr>
       </tbody>
     </table>
+    </div>
     <p>
       <code>DoScriptFrame</code> / <code>PlayAVI</code> / cameras / fades are
       <span class="badge PROVEN">PROVEN</span> at the script layer.
@@ -718,6 +739,7 @@
       (<code>CS_WAKING_UP_*</code>) need the clock; create still has
       <code>FirstSeenPlaysAnim=false</code>.
     </p>
+    <div class="table-scroll">
     <table>
       <thead><tr><th>Left</th><th>Status</th></tr></thead>
       <tbody>
@@ -739,8 +761,10 @@
         </tr>
       </tbody>
     </table>
+    </div>
 
     <h3>5. Later (README order, after first-scene boot)</h3>
+    <div class="table-scroll">
     <table>
       <thead><tr><th>#</th><th>Area</th><th>Status</th></tr></thead>
       <tbody>
@@ -752,6 +776,7 @@
         <tr><td>7</td><td>Remaining world / shader / state</td><td>see phase 3</td></tr>
       </tbody>
     </table>
+    </div>
 
     <h2 id="out">Out of scope for this page</h2>
     <ul class="plain">
@@ -798,6 +823,7 @@
       Live:
       <a href="https://samg-coder.github.io/FableCSharp/docs/status/index.html">https://samg-coder.github.io/FableCSharp/docs/status/index.html</a>
     </footer>
+    </div>
   </div>
 </body>
 </html>
