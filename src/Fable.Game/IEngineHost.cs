@@ -38,4 +38,6 @@ public readonly record struct EngineFrame(
     byte FadeAlpha,
     byte FadeR,
     byte FadeG,
-    byte FadeB);
+    byte FadeB,
+    Fable.Render.MeshVertex[]? Vertices = null,
+    Fable.Render.MeshDraw[]? Draws = null);

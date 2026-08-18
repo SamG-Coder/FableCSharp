@@ -1696,10 +1696,11 @@ public sealed class EngineLifecycleTests
         Assert.DoesNotContain("PicnicArea", life.ActivatedMaps);
         Assert.True(life.WorldSubmitted);
         Assert.NotNull(life.SubmittedWorld);
-        Assert.True(life.SubmittedWorld.Expanded);
-        Assert.True(life.SubmittedWorld.Triangles.Count > 128);
-        Assert.All(life.SubmittedWorld.Regions, name =>
-            Assert.Equal("LookoutPoint", name));
+        Assert.False(life.SubmittedWorld.Expanded);
+        Assert.Empty(life.SubmittedWorld.Triangles);
+        Assert.NotNull(life.SubmittedMesh);
+        Assert.True(life.SubmittedMesh.Vertices.Length > 128);
+        Assert.Equal("LookoutPoint", life.SubmittedWorld.Region);
         var presented = life.PresentWorld();
         Assert.NotNull(presented);
         Assert.Equal("LookoutPoint", presented.Region);

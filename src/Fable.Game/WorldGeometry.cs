@@ -453,6 +453,24 @@ public sealed class WorldGeometry
     }
 
     /// <summary>
+    /// Primary-map landscape only.
+    /// Neighbours stay headers.
+    /// </summary>
+    public List<MeshTriangle> TessellatePrimary(
+        LevelLibrary levels,
+        LandscapeFrustum.Plane[]? landscapePlanes = null)
+    {
+        var triangles = new List<MeshTriangle>(64_000);
+        var textureHeader = Path.Combine(
+            levels.Install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h");
+        var landscapeEnums = File.Exists(textureHeader)
+            ? HeaderEnums.Load(textureHeader)
+            : null;
+        AddTerrain(levels, Region, 0, 0, triangles, landscapeEnums, landscapePlanes);
+        return triangles;
+    }
+
+    /// <summary>
     /// Draw-time expand. Open keeps
     /// <c>009AD410</c> handles only.
     /// </summary>

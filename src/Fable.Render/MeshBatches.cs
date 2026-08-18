@@ -1,3 +1,4 @@
+using System.Numerics;
 using Fable.Formats.Meshes;
 using Fable.Formats.Scene;
 
@@ -59,6 +60,64 @@ public static class MeshBatches
 
         return new TexturedMesh { Vertices = vertices, Draws = [.. draws] };
     }
+
+    /// <summary>
+    /// One C3D parse per mesh id, verts
+    /// transformed per instance. No
+    /// <c>WorldGeometry</c> triangle soup.
+    /// </summary>
+    public static TexturedMesh BuildMeshes(
+        IReadOnlyList<(MeshFile Mesh, Matrix4x4 Transform)> instances)
+    {
+        var tris = new List<MeshTriangle>();
+        foreach (var (mesh, transform) in instances)
+        {
+            foreach (var tri in mesh.Triangles)
+            {
+                var a = Vector3.Transform(tri.A, transform);
+                var b = Vector3.Transform(tri.B, transform);
+                var c = Vector3.Transform(tri.C, transform);
+                var n = Vector3.TransformNormal(tri.Normal, transform);
+                if (n.LengthSquared() < 1e-8f)
+                    n = Vector3.UnitZ;
+                else
+                    n = Vector3.Normalize(n);
+                tris.Add(tri with
+                {
+                    A = a, B = b, C = c, Normal = n,
+                    NormalA = Unit(Vector3.TransformNormal(tri.NormalA, transform), n),
+                    NormalB = Unit(Vector3.TransformNormal(tri.NormalB, transform), n),
+                    NormalC = Unit(Vector3.TransformNormal(tri.NormalC, transform), n),
+                });
+            }
+        }
+
+        return Build(tris);
+    }
+
+    public static TexturedMesh Concat(TexturedMesh a, TexturedMesh b)
+    {
+        if (a.Vertices.Length == 0)
+            return b;
+        if (b.Vertices.Length == 0)
+            return a;
+        var vertices = new MeshVertex[a.Vertices.Length + b.Vertices.Length];
+        a.Vertices.CopyTo(vertices, 0);
+        b.Vertices.CopyTo(vertices, a.Vertices.Length);
+        var draws = new MeshDraw[a.Draws.Length + b.Draws.Length];
+        a.Draws.CopyTo(draws, 0);
+        var off = (uint)a.Vertices.Length;
+        for (var i = 0; i < b.Draws.Length; i++)
+        {
+            var d = b.Draws[i];
+            draws[a.Draws.Length + i] = d with { FirstVertex = d.FirstVertex + off };
+        }
+
+        return new TexturedMesh { Vertices = vertices, Draws = draws };
+    }
+
+    private static Vector3 Unit(Vector3 n, Vector3 face) =>
+        n.LengthSquared() < 1e-8f ? face : Vector3.Normalize(n);
 
     private static MeshVertex Vert(
         System.Numerics.Vector3 p, System.Numerics.Vector3 n, System.Numerics.Vector3 face,

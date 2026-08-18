@@ -7,8 +7,10 @@ using Fable.Formats.Levels;
 using Fable.Formats.Qst;
 using Fable.Formats.Scene;
 using Fable.Formats.Tng;
+using Fable.Formats.Meshes;
 using Fable.Formats.Wld;
 using Fable.Game.Scripting;
+using Fable.Render;
 
 namespace Fable.Game;
 
@@ -946,6 +948,7 @@ public sealed class EngineLifecycle : IDisposable
     public IEngineHost? Host { get; private set; }
     public WmvPlayer? StartupAvi { get; private set; }
     public WorldGeometry? SubmittedWorld { get; private set; }
+    public Fable.Render.TexturedMesh? SubmittedMesh { get; private set; }
     public bool WorldSubmitted { get; private set; }
 
     public void AttachHost(IEngineHost host) => Host = host;
@@ -1117,12 +1120,31 @@ public sealed class EngineLifecycle : IDisposable
         if (Install is null || CurrentRegion is null || !HeroSpawned)
             return;
         UnloadStartupAvi();
+        EnsureLevels();
+        OpenMeshBank();
         var opened = PresentWorld();
-        SubmittedWorld = ExpandPresentedWorld(opened);
-        WorldSubmitted = SubmittedWorld is { Expanded: true };
+        if (opened is null || _levels is null)
+            return;
+        SubmittedWorld = opened;
+        var land = MeshBatches.Build(opened.TessellatePrimary(_levels));
+        var props = new List<(MeshFile Mesh, Matrix4x4 Transform)>();
+        var seen = new HashSet<uint>();
+        foreach (var inst in opened.Instances)
+        {
+            if (!inst.Map.Equals(opened.Region, StringComparison.OrdinalIgnoreCase))
+                continue;
+            var mesh = Meshes.Get(inst.MeshId);
+            if (mesh is null)
+                continue;
+            seen.Add(inst.MeshId);
+            props.Add((mesh, inst.Transform));
+        }
+
+        SubmittedMesh = MeshBatches.Concat(land, MeshBatches.BuildMeshes(props));
+        WorldSubmitted = SubmittedMesh.Vertices.Length > 0;
         Note(OpenStaticMapsFn, "Submit", "World",
             WorldSubmitted
-                ? "primary " + SubmittedWorld!.Region
+                ? $"primary {opened.Region} meshes={seen.Count} verts={SubmittedMesh.Vertices.Length}"
                 : "submit miss");
     }
 
@@ -1213,7 +1235,9 @@ public sealed class EngineLifecycle : IDisposable
             avi?.FrameSerial ?? runtime?.AviFrameSerial ?? 0,
             playing,
             runtime?.OverlayAlphaByte ?? 0,
-            fade.R, fade.G, fade.B);
+            fade.R, fade.G, fade.B,
+            SubmittedMesh?.Vertices,
+            SubmittedMesh?.Draws);
     }
 
     /// <summary>

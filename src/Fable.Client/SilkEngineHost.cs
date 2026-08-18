@@ -71,6 +71,20 @@ public sealed class SilkEngineHost : IEngineHost
         renderer.FadeOverlayAlpha = frame.FadeAlpha;
         renderer.FadeOverlayRgb = (frame.FadeR, frame.FadeG, frame.FadeB);
 
+        if (frame.Vertices is { Length: > 0 } verts)
+        {
+            var draws = frame.Draws ?? [];
+            if (Textures is { } bank)
+            {
+                var dummy = new TexturedMesh { Vertices = verts, Draws = draws };
+                renderer.SetTextures(LoadGpuTextures(dummy, bank));
+            }
+
+            renderer.SetMesh(verts, draws);
+            _uploadedWorld = frame.World;
+            return;
+        }
+
         if (frame.World is { Expanded: true, Triangles.Count: > 0 } world)
         {
             if (ReferenceEquals(_uploadedWorld, world))

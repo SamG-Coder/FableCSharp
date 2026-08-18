@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Fable.Core\Fable.Core.csproj" />
     <ProjectReference Include="..\Fable.Formats\Fable.Formats.csproj" />
+    <ProjectReference Include="..\Fable.Render\Fable.Render.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
