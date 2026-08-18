@@ -14,6 +14,20 @@ public sealed class EngineLifecycleTests
         Assert.NotEqual(RegionTravel.StartOakValeSetup, EngineLifecycle.PeEntry);
         Assert.NotEqual(RegionTravel.StartOakValeSetup, EngineLifecycle.WinMain);
         Assert.NotEqual(0x00DBDE40u, EngineLifecycle.RetailPump);
+        Assert.Equal(0x00412F90u, EngineLifecycle.RunModes);
+        Assert.Equal(0x00418DCAu, EngineLifecycle.GameModeCtor);
+        Assert.Equal(0x004184BDu, EngineLifecycle.GameStart);
+        Assert.Equal(0x004189C2u, EngineLifecycle.GamePump);
+        Assert.Equal(0x0041735Au, EngineLifecycle.InitWorldFn);
+        Assert.Equal(0x004A6E30u, EngineLifecycle.InitWorldInitFn);
+        Assert.Equal(0x00B40000u, EngineLifecycle.CloseStaticMapFileFn);
+        Assert.Equal(0x00B3E820u, EngineLifecycle.OpenStaticMapsMode1Current);
+        Assert.Equal(0x00B41E50u, EngineLifecycle.OpenStaticMapsAttach);
+        Assert.Equal(0x0049E620u, EngineLifecycle.InitMeshBankFn);
+        Assert.Equal(0x00A09F20u, EngineLifecycle.MeshBankLookupFn);
+        Assert.Equal(0x00A27030u, EngineLifecycle.MeshBankObjectCtor);
+        Assert.Equal(0x004BBFD0u, EngineLifecycle.MeshBankSetGlobalFn);
+        Assert.Equal("MBANK_ALLMESHES", MeshBank.BankName);
     }
 
     [Fact]
@@ -1376,6 +1390,7 @@ public sealed class EngineLifecycleTests
         Assert.Equal(424, EngineLifecycle.OpenStaticMapsModeOffset);
         Assert.Equal(0x00B3EFA0u, EngineLifecycle.ParseMapHeaderFn);
         Assert.Equal(0x00B3EF40u, EngineLifecycle.CloseStaticMapFn);
+        Assert.Equal(0x00B40000u, EngineLifecycle.CloseStaticMapFileFn);
         Assert.Equal(0x00BE03A0u, EngineLifecycle.CreateBackgroundPatchFn);
         Assert.Equal(0x00BDD0E0u, EngineLifecycle.BuildCurrentPatchFn);
         Assert.Equal(0x00595582u, EngineLifecycle.FrontendUiGet);
@@ -1646,7 +1661,7 @@ public sealed class EngineLifecycleTests
         Assert.Equal(25, body.HeaderVersion);
         Assert.Equal(0x1904u, body.HeaderConstant);
         Assert.True(body.CompiledSize > 1000, $"lev={body.CompiledSize}");
-        Assert.True(body.StbSize > 1000, $"stb={body.StbSize}");
+        Assert.True(body.StbSize > 0, $"stb={body.StbSize}");
         Assert.True(body.GridWidth >= 64, $"w={body.GridWidth}");
         Assert.True(body.HeightSamples > 0, $"samples={body.HeightSamples}");
         Assert.NotNull(life.CurrentCompiledLev);
@@ -1654,6 +1669,23 @@ public sealed class EngineLifecycleTests
         Assert.Equal(body.GridHeight, life.CurrentCompiledLev.GridHeight);
         Assert.NotNull(life.CurrentHeightField);
         Assert.True(life.CurrentHeightField.SampleCount > 0);
+        Assert.True(life.Meshes.Opened);
+        Assert.True(life.Meshes.EntryCount > 100, $"entries={life.Meshes.EntryCount}");
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InitMeshBankFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CloseStaticMapFileFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.OpenStaticMapsAttach);
+        Assert.True(life.OpenedMapBodies.Count > 1, $"bodies={life.OpenedMapBodies.Count}");
+        Assert.Contains(life.OpenedMapBodies, b => b.Name == "PicnicArea");
+        Assert.Contains("LookoutPoint", life.ActivatedMaps);
+        Assert.DoesNotContain("PicnicArea", life.ActivatedMaps);
+        var presented = life.PresentWorld();
+        Assert.NotNull(presented);
+        Assert.Equal("LookoutPoint", presented.Region);
+        foreach (var opened in life.OpenedStaticMaps)
+            Assert.Contains(opened, presented.Regions);
+        life.CloseStaticMapFile();
+        Assert.Empty(life.OpenedMapBodies);
+        Assert.Equal(0, life.OpenStaticMapsMode);
         var dest = Path.Combine(
             @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
             "traces");

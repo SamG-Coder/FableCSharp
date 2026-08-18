@@ -15,9 +15,10 @@ namespace Fable.Game;
 /// <summary>
 /// Recovered Fable.exe process entry → WinMain →
 /// named bootstrap → library/D3D9 → mode loop.
+/// Walk is <c>docs/runtime/FORWARD_TREE.md</c>.
 /// Do not start at <c>00DBDE40</c> / New Game.
 /// </summary>
-public sealed class EngineLifecycle
+public sealed class EngineLifecycle : IDisposable
 {
     public const uint ImageBase = 0x00400000;
     public const uint PeEntry = 0x00401067;
@@ -207,11 +208,15 @@ public sealed class EngineLifecycle
         ("Init Event Manager", 0x00687510),
         ("Init Game Camera Manager", 0x0069AE80),
         ("Init Game Camera", 0x006FD8C0),
-        ("Init Mesh Bank", 0x0049E620),
+        ("Init Mesh Bank", InitMeshBankFn),
         ("Init UI Manager", 0x0041D198),
     ];
 
     public const uint InitWorldInitFn = 0x004A6E30;
+    public const uint InitMeshBankFn = MeshBank.OpenFn;
+    public const uint MeshBankLookupFn = MeshBank.LookupFn;
+    public const uint MeshBankObjectCtor = MeshBank.ObjectCtor;
+    public const uint MeshBankSetGlobalFn = MeshBank.SetGlobalFn;
     public const uint InitWorldMapFn = 0x005066E0;
     public const uint WorldMapVtbl = 0x01244AEC;
     public const uint LoadWldFile = 0x00507C30;
@@ -639,6 +644,16 @@ public sealed class EngineLifecycle
     public const uint OpenStaticMapsFn = 0x00B42750;
     public const uint OpenStaticMapFn = 0x00B42530;
     public const uint ParseMapHeaderFn = 0x00B3EFA0;
+    /// <summary>
+    /// <c>00B428E0</c> first call.
+    /// Walks the open-map list from index 1
+    /// and <c>00B3EF40</c> each slot.
+    /// </summary>
+    public const uint CloseStaticMapFileFn = 0x00B40000;
+    public const uint CloseStaticMapFilePrelude = 0x00B40070;
+    public const uint OpenStaticMapsMode1Current = 0x00B3E820;
+    public const uint OpenStaticMapsNameTable = 0x00B420F0;
+    public const uint OpenStaticMapsAttach = 0x00B41E50;
     public const uint CloseStaticMapFn = 0x00B3EF40;
     public const uint CreateBackgroundPatchFn = 0x00BE03A0;
     public const uint BuildCurrentPatchFn = 0x00BDD0E0;
@@ -922,6 +937,8 @@ public sealed class EngineLifecycle
     private readonly List<string> _activatedQuests = [];
     private readonly List<uint> _submittedLayers = [];
     private GameBin? _defs;
+    private LevelLibrary? _levels;
+    public MeshBank Meshes { get; } = new();
 
     public static int CreateDeviceBehaviorFlags(bool hardwareTnl) =>
         hardwareTnl ? CreateDeviceHardwareFlags : CreateDeviceSoftwareFlags;
@@ -1178,7 +1195,11 @@ public sealed class EngineLifecycle
         Note(InitWorldFn, "Init World", "World", "004A67D0 vtbl 012390F0");
         Note(InitWorldInitFn, "Init World Init", "World", "004A6E30 vtbl+36");
         foreach (var (name, apply) in InitWorldInitStages)
+        {
             Note(apply, name, "World", name);
+            if (apply == InitMeshBankFn)
+                OpenMeshBank();
+        }
         InitWorldCameras();
         LoadWorldMap();
         CreatePlayers();
@@ -2036,6 +2057,85 @@ public sealed class EngineLifecycle
     }
 
     /// <summary>
+    /// <c>00B40000</c>: if <c>[+424]</c> set,
+    /// <c>00B3EF40</c> each list slot from
+    /// index 1, then water <c>00B6DB80</c>.
+    /// </summary>
+    public void CloseStaticMapFile()
+    {
+        Note(CloseStaticMapFileFn, "StaticMap", "WLD",
+            "00B40000 CloseStaticMapFile");
+        if (_openedBodies.Count == 0 && OpenStaticMapsMode == 0)
+            return;
+        for (var i = 1; i < _openedBodies.Count; i++)
+            Note(CloseStaticMapFn, "StaticMap", "WLD",
+                "00B3EF40 " + _openedBodies[i].Name);
+        _openedBodies.Clear();
+        CurrentCompiledLev = null;
+        CurrentHeightField = null;
+        OpenStaticMapsMode = 0;
+    }
+
+    /// <summary>
+    /// Engine-owned submit: opened static maps
+    /// plus <c>006C2170</c> ContainsMap things.
+    /// Not a second <c>graphics.big</c> dump.
+    /// </summary>
+    public WorldGeometry? PresentWorld()
+    {
+        if (Install is null || CurrentRegion is null)
+            return null;
+        var primary = FirstSceneMapName
+                      ?? CurrentRegion.ContainsMaps.FirstOrDefault()
+                      ?? CurrentRegion.RegionName;
+        var things = ThingsForMap(primary);
+        if (things.Count == 0)
+            things = _regionThings;
+        LandscapeFrustum.Plane[]? planes = null;
+        if (WorldCamera.Seeded)
+        {
+            LandscapeFrustum.LetterboxCots(
+                float.DegreesToRadians(Camera.FovDegrees), 4f / 3f, 1f,
+                out var cotH, out var cotV);
+            planes = LandscapeFrustum.ExtractSidePlanes(
+                Camera.Position, Camera.Forward, Camera.Up, cotH, cotV);
+        }
+
+        var byMap = new Dictionary<string, IReadOnlyList<ThingInstance>>(
+            StringComparer.OrdinalIgnoreCase);
+        foreach (var (name, list) in _thingsByMap)
+            byMap[name] = list;
+        EnsureLevels();
+        OpenMeshBank();
+        return WorldGeometry.Build(
+            Install, primary, things,
+            adjacentStaticMaps: false,
+            landscapePlanes: planes,
+            levels: _levels,
+            onlyMaps: OpenedStaticMaps.Count > 0 ? OpenedStaticMaps : null,
+            thingsByMap: byMap,
+            meshes: Meshes);
+    }
+
+    /// <summary>
+    /// <c>0049E620</c> Opening Mesh Bank
+    /// <c>MBANK_ALLMESHES</c>. Directory only.
+    /// </summary>
+    public void OpenMeshBank()
+    {
+        if (Meshes.Opened || Install is null)
+            return;
+        Note(InitMeshBankFn, "Init Mesh Bank", "Bank",
+            "0049E620 Opening Mesh Bank " + MeshBank.BankName);
+        Note(MeshBankLookupFn, "Init Mesh Bank", "Bank", "00A09F20");
+        Note(MeshBankObjectCtor, "Init Mesh Bank", "Bank",
+            $"00A27030 size 0x{MeshBank.ObjectSize:X} vtbl 0129CE94");
+        Meshes.Open(Install);
+        Note(MeshBankSetGlobalFn, "Init Mesh Bank", "Bank",
+            $"004BBFD0 [0x13B8A04] entries={Meshes.EntryCount}");
+    }
+
+    /// <summary>
     /// <c>00B428E0</c> <c>SetStaticMapFileForUse</c>
     /// then <c>00B42750</c> mode 1. Map set is
     /// existing <see cref="WorldGeometry.StaticMapsAround"/>.
@@ -2044,6 +2144,7 @@ public sealed class EngineLifecycle
     {
         Note(SetStaticMapFileForUseFn, "StaticMap", "WLD",
             "SetStaticMapFileForUse: CloseStaticMapFile");
+        CloseStaticMapFile();
         Note(SetStaticMapFileForUseFn, "StaticMap", "WLD",
             "SetStaticMapFileForUse: EnablePoolAllocation");
         Note(SetStaticMapFileForUseFn, "StaticMap", "WLD",
@@ -2052,9 +2153,6 @@ public sealed class EngineLifecycle
         Note(OpenStaticMapsFn, "StaticMap", "WLD",
             $"00B42750 mode={OpenStaticMapsMode} [+424]");
         _openedStaticMaps.Clear();
-        _openedBodies.Clear();
-        CurrentCompiledLev = null;
-        CurrentHeightField = null;
         if (Install is null || World is null || CurrentRegion is null)
             return;
 
@@ -2067,6 +2165,15 @@ public sealed class EngineLifecycle
 
         Note(OpenStaticMapsFn, "StaticMap", "WLD",
             $"opened={_openedStaticMaps.Count} primary={primary}");
+        Note(OpenStaticMapsMode1Current, "StaticMap", "WLD", "00B3E820 " + primary);
+        foreach (var name in _openedStaticMaps)
+        {
+            if (name.Equals(primary, StringComparison.OrdinalIgnoreCase))
+                continue;
+            Note(OpenStaticMapsAttach, "StaticMap", "WLD", "00B41E50 " + name);
+            OpenStaticMap(name);
+        }
+
         OpenStaticMap(primary);
     }
 
@@ -2087,73 +2194,42 @@ public sealed class EngineLifecycle
         if (Install is null || World is null)
             return;
 
-        BbbArchive? wad = null;
-        StbArchive? stb = null;
-        try
+        EnsureLevels();
+        var compiled = _levels?.LoadCompiledLev(name);
+        var height = _levels?.LoadHeightField(name);
+        Note(OpenStaticMapFn, "StaticMap", "WLD",
+            height is null
+                ? "009CCDC0 miss " + name
+                : $"009CCDC0 stb samples={height.SampleCount} {name}");
+
+        var version = compiled is null ? 0 : LevFile.Version;
+        var constant = compiled is null ? 0u : LevFile.FormatConstant;
+        Note(ParseMapHeaderFn, "StaticMap", "WLD",
+            $"00B3EFA0 version={version} constant=0x{constant:X}");
+
+        if (OpenStaticMapsMode == OpenStaticMapsUseMode)
         {
-            if (File.Exists(Install.WadPath))
-                wad = BbbArchive.Open(Install.WadPath);
-            if (File.Exists(Install.RuntimeStbPath))
-                stb = StbArchive.Open(Install.RuntimeStbPath);
-
-            var map = World.FindMap(name);
-            var stem = map?.FileStem ?? name;
-            var stbEntry = stb?.FindLev(stem) ?? stb?.FindLev(name);
-            var stbBytes = stbEntry is null ? null : stb!.Read(stbEntry);
-            Note(OpenStaticMapFn, "StaticMap", "WLD",
-                stbBytes is null
-                    ? "009CCDC0 miss " + name
-                    : $"009CCDC0 stb={stbBytes.Length} {name}");
-
-            var compiledEntry = wad?.Find(stem + ".lev")
-                                ?? wad?.Find(name + ".lev")
-                                ?? (map is null
-                                    ? null
-                                    : wad?.Find(map.LevelName));
-            LevFile? compiled = null;
-            if (compiledEntry is not null)
-                compiled = LevFile.Parse(wad!.Read(compiledEntry));
-
-            var version = compiled is null ? 0 : LevFile.Version;
-            var constant = compiled is null ? 0u : LevFile.FormatConstant;
-            Note(ParseMapHeaderFn, "StaticMap", "WLD",
-                $"00B3EFA0 version={version} constant=0x{constant:X}");
-
-            LevHeightField? height = null;
-            if (stbBytes is not null && map is not null)
-            {
-                var width = compiled?.GridWidth ?? 128;
-                var heightCells = compiled?.GridHeight ?? 128;
-                height = LevHeightField.Parse(stbBytes, map.MapX, map.MapY, width, heightCells);
-            }
-
-            if (OpenStaticMapsMode == OpenStaticMapsUseMode)
-            {
-                Note(CreateBackgroundPatchFn, "StaticMap", "WLD", "00BE03A0");
-                Note(BuildCurrentPatchFn, "StaticMap", "WLD", "00BDD0E0");
-            }
-
-            var body = new OpenedStaticMapBody(
-                name,
-                stbBytes?.Length ?? 0,
-                compiled?.Raw.Length ?? 0,
-                compiled?.GridWidth ?? height?.FineWidth ?? 0,
-                compiled?.GridHeight ?? height?.FineHeight ?? 0,
-                height?.SampleCount ?? 0,
-                compiled is null ? version : LevFile.Version,
-                constant);
-            _openedBodies.Add(body);
-            CurrentCompiledLev = compiled;
-            CurrentHeightField = height;
-            Note(OpenStaticMapFn, "StaticMap", "WLD",
-                $"body {name} lev={body.CompiledSize} stb={body.StbSize} " +
-                $"{body.GridWidth}x{body.GridHeight} samples={body.HeightSamples}");
+            Note(CreateBackgroundPatchFn, "StaticMap", "WLD", "00BE03A0");
+            Note(BuildCurrentPatchFn, "StaticMap", "WLD", "00BDD0E0");
         }
-        finally
-        {
-            wad?.Dispose();
-            stb?.Dispose();
-        }
+
+        _openedBodies.RemoveAll(b =>
+            b.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        var body = new OpenedStaticMapBody(
+            name,
+            height?.SampleCount ?? 0,
+            compiled?.Raw.Length ?? 0,
+            compiled?.GridWidth ?? height?.FineWidth ?? 0,
+            compiled?.GridHeight ?? height?.FineHeight ?? 0,
+            height?.SampleCount ?? 0,
+            compiled is null ? version : LevFile.Version,
+            constant);
+        _openedBodies.Add(body);
+        CurrentCompiledLev = compiled;
+        CurrentHeightField = height;
+        Note(OpenStaticMapFn, "StaticMap", "WLD",
+            $"body {name} lev={body.CompiledSize} stb={body.StbSize} " +
+            $"{body.GridWidth}x{body.GridHeight} samples={body.HeightSamples}");
     }
 
     private void EnsureLevelLoader()
@@ -2571,8 +2647,24 @@ public sealed class EngineLifecycle
     public void ShutdownEngine()
     {
         Note(Shutdown, "Shutdown", "App", "00401B80");
+        CloseStaticMapFile();
         Stage = EngineStage.Shutdown;
         Mode = EngineMode.None;
+    }
+
+    public void Dispose()
+    {
+        CloseStaticMapFile();
+        _levels?.Dispose();
+        _levels = null;
+        Meshes.Dispose();
+    }
+
+    private void EnsureLevels()
+    {
+        if (_levels is not null || Install is null)
+            return;
+        _levels = new LevelLibrary(Install);
     }
 
     private void RegisterRetailBankTable(GameInstall? install)

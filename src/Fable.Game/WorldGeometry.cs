@@ -37,7 +37,11 @@ public sealed class WorldGeometry
         bool adjacentStaticMaps = true,
         LandscapeFrustum.Plane[]? landscapePlanes = null,
         IReadOnlyDictionary<string, Vector3>? actorPositions = null,
-        IReadOnlyDictionary<string, string>? actorPoses = null)
+        IReadOnlyDictionary<string, string>? actorPoses = null,
+        LevelLibrary? levels = null,
+        IReadOnlyList<string>? onlyMaps = null,
+        IReadOnlyDictionary<string, IReadOnlyList<ThingInstance>>? thingsByMap = null,
+        MeshBank? meshes = null)
     {
         var headerPath = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "meshdata.h");
         var graphicsPath = Path.Combine(install.DataRoot, "graphics", "graphics.big");
@@ -47,31 +51,27 @@ public sealed class WorldGeometry
         var binPath = install.FindCompiledDef("game.bin");
         if (namesPath is not null && binPath is not null)
             defs = TryLoadDefs(install);
-        using var big = BigArchive.Open(graphicsPath);
-        var bank = big.SubBanks.First(item => item.Name.Contains("MESH", StringComparison.OrdinalIgnoreCase));
-        var entries = big.ReadEntries(bank);
-        var byId = entries
-            .Where(entry => entry.Type is not 3)
-            .GroupBy(entry => entry.Id)
-            .ToDictionary(group => group.Key, group => group.First());
-
-        var cache = new Dictionary<uint, MeshFile?>();
+        var ownMeshes = meshes is null;
+        meshes ??= new MeshBank();
+        if (!meshes.Opened)
+            meshes.Open(install);
         var triangles = new List<MeshTriangle>(200_000);
         var loaded = new List<string>();
         var instances = 0;
         var missing = 0;
         var missingDefs = new List<string>();
 
-        using var levels = new LevelLibrary(install);
+        var ownLevels = levels is null;
+        levels ??= new LevelLibrary(install);
+        try
+        {
         var textureHeader = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h");
         var landscapeEnums = File.Exists(textureHeader) ? HeaderEnums.Load(textureHeader) : null;
         var primaryThings = ApplyActorPositions(
             things as IReadOnlyList<ThingInstance> ?? things.ToList(),
             actorPositions);
 
-        var maps = adjacentStaticMaps
-            ? StaticMapsAround(levels.World, install, region)
-            : PrimaryOnly(levels.World, region);
+        var maps = ResolveMaps(levels.World, install, region, adjacentStaticMaps, onlyMaps);
         foreach (var map in maps)
         {
             var primary = levels.World.FindMap(region);
@@ -82,10 +82,14 @@ public sealed class WorldGeometry
             var dy = neighbour.Y;
             AddTerrain(levels, map.ScriptName, dx, dy, triangles, landscapeEnums, landscapePlanes);
 
-            var mapThings = IsPrimary(map, region)
-                ? primaryThings
-                : levels.TryLoadThings(map.ScriptName)?.Things ?? [];
-            AddInstances(mapThings, dx, dy, defs, enums, big, byId, cache, triangles, ref instances, ref missing, missingDefs);
+            IReadOnlyList<ThingInstance> mapThings;
+            if (IsPrimary(map, region))
+                mapThings = primaryThings;
+            else if (thingsByMap is not null)
+                mapThings = thingsByMap.TryGetValue(map.ScriptName, out var listed) ? listed : [];
+            else
+                mapThings = levels.TryLoadThings(map.ScriptName)?.Things.ToList() ?? [];
+            AddInstances(mapThings, dx, dy, defs, enums, meshes, triangles, ref instances, ref missing, missingDefs);
 
             // OpenStaticMaps still opens Sees/Contains maps when they emit
             // no landscape tris (sea/water cells are not landscape FG).
@@ -95,7 +99,7 @@ public sealed class WorldGeometry
         if (loaded.Count == 0)
         {
             AddTerrain(levels, region, 0, 0, triangles, landscapeEnums, landscapePlanes);
-            AddInstances(primaryThings, 0, 0, defs, enums, big, byId, cache, triangles, ref instances, ref missing, missingDefs);
+            AddInstances(primaryThings, 0, 0, defs, enums, meshes, triangles, ref instances, ref missing, missingDefs);
             loaded.Add(region);
         }
 
@@ -111,8 +115,7 @@ public sealed class WorldGeometry
                            ?? enums?.FindMeshId(existingHero.DefinitionType!)
                            ?? 0;
             if (playerMeshId != 0 &&
-                cache.TryGetValue((uint)playerMeshId, out var heroMesh) &&
-                heroMesh is not null)
+                meshes.Get((uint)playerMeshId) is { } heroMesh)
                 playerHeight = (heroMesh.BoundsMax.Z - heroMesh.BoundsMin.Z) * MeshToWorld;
         }
         else if (IsPrimaryStart(region) &&
@@ -128,8 +131,8 @@ public sealed class WorldGeometry
                     actorPositions.TryGetValue(RegionTravel.IntroHeroActor, out var teleported))
                     heroPos = teleported;
                 var hero = CloneAs(start, RegionTravel.KidCreature, heroPos);
-                AddInstances([hero], 0, 0, defs, enums, big, byId, cache, triangles, ref instances, ref missing, missingDefs);
-                if (cache.TryGetValue((uint)playerMeshId, out var kid) && kid is not null)
+                AddInstances([hero], 0, 0, defs, enums, meshes, triangles, ref instances, ref missing, missingDefs);
+                if (meshes.Get((uint)playerMeshId) is { } kid)
                     playerHeight = (kid.BoundsMax.Z - kid.BoundsMin.Z) * MeshToWorld;
             }
         }
@@ -150,6 +153,41 @@ public sealed class WorldGeometry
                 ? new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
                 : new Dictionary<string, string>(actorPoses, StringComparer.OrdinalIgnoreCase),
         };
+        }
+        finally
+        {
+            if (ownLevels)
+                levels.Dispose();
+            if (ownMeshes)
+                meshes.Dispose();
+        }
+    }
+
+    private static IReadOnlyList<WorldMap> ResolveMaps(
+        WorldFile world,
+        GameInstall install,
+        string region,
+        bool adjacentStaticMaps,
+        IReadOnlyList<string>? onlyMaps)
+    {
+        if (onlyMaps is { Count: > 0 })
+        {
+            var list = new List<WorldMap>();
+            var seen = new HashSet<int>();
+            foreach (var name in onlyMaps)
+            {
+                var map = world.FindMap(name);
+                if (map is null || !seen.Add(map.MapUid))
+                    continue;
+                list.Add(map);
+            }
+
+            return list;
+        }
+
+        return adjacentStaticMaps
+            ? StaticMapsAround(world, install, region)
+            : PrimaryOnly(world, region);
     }
 
     private static bool IsPrimaryStart(string region) =>
@@ -322,9 +360,7 @@ public sealed class WorldGeometry
         float dy,
         GameBin? defs,
         HeaderEnums? enums,
-        BigArchive big,
-        Dictionary<uint, BankEntry> byId,
-        Dictionary<uint, MeshFile?> cache,
+        MeshBank meshes,
         List<MeshTriangle> triangles,
         ref int instances,
         ref int missing,
@@ -352,14 +388,9 @@ public sealed class WorldGeometry
             var any = false;
             foreach (var meshId in meshIds)
             {
-                if (!byId.TryGetValue((uint)meshId, out var entry))
+                if (!meshes.TryGetEntry((uint)meshId, out _))
                     continue;
-
-                if (!cache.TryGetValue(entry.Id, out var mesh))
-                {
-                    mesh = MeshFile.TryParse(big.Read(entry), (int)entry.Type);
-                    cache[entry.Id] = mesh;
-                }
+                var mesh = meshes.Get((uint)meshId);
 
                 if (mesh is null)
                     continue;

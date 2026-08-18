@@ -311,12 +311,15 @@ void CopyGameToDebug()
 
 void BindLifecycleFirstRegion()
 {
-    var mapName = life.FirstSceneMapName;
-    if (mapName is null || life.Hero is null)
+    if (life.Hero is null)
         return;
-    if (mapName.Contains("StartOakVale", StringComparison.OrdinalIgnoreCase))
+    var presented = life.PresentWorld();
+    if (presented is null)
         return;
+    var mapName = life.FirstSceneMapName ?? presented.Region;
     var mapThings = life.ThingsForMap(mapName).ToList();
+    if (mapThings.Count == 0)
+        mapThings = life.RegionThings.ToList();
     if (mapThings.Count == 0)
         return;
 
@@ -335,14 +338,14 @@ void BindLifecycleFirstRegion()
         life.Hero.ScriptName ?? EngineLifecycle.HeroScriptName,
         life.Camera.Position, life.Camera.LookAt, life.Camera.Up,
         life.Camera.FovDegrees);
-    world = WorldGeometry.Build(install, mapName, mapThings);
+    world = presented;
     map = levels.World.FindMap(mapName);
     exits = RegionTravel.ActiveExits(mapThings);
     BindWorldToRenderer();
     Console.WriteLine(
         $"first scene {mapName} hero " +
         $"{life.Hero.PositionX:0.0},{life.Hero.PositionY:0.0},{life.Hero.PositionZ:0.0} " +
-        $"things={mapThings.Count} meshes={world.MeshInstances} not 00DBDE40");
+        $"things={mapThings.Count} meshes={world.MeshInstances} opened={life.OpenedStaticMaps.Count} not 00DBDE40");
 }
 
 void EnterRegion(string next, RegionExit? arrivedFromExit)
