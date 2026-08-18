@@ -52,7 +52,7 @@ public sealed class EntityTaskQueue
             else if (task.Kind == EntityTaskKind.Slide)
                 task.TickSlide(world);
             else if (task.Kind is EntityTaskKind.Animate or EntityTaskKind.CombatAnimate
-                     or EntityTaskKind.LoopAnimate)
+                     or EntityTaskKind.LoopAnimate or EntityTaskKind.ObjectAnimate)
                 task.TickAnim();
         }
     }
@@ -67,6 +67,7 @@ public enum EntityTaskKind
     Animate,
     LoopAnimate,
     CombatAnimate,
+    ObjectAnimate,
     Follow,
     Slide,
 }

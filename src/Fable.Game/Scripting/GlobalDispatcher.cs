@@ -230,6 +230,24 @@ public static class GlobalDispatcher
         if (Eq(v, "FadeThingIn") || Eq(v, "FadeThingOut"))
             return ApplyFadeThing(line, ctx, fadeIn: Eq(v, "FadeThingIn"));
 
+        if (Eq(v, "PlayObjectAnim"))
+        {
+            // 00CC74DE: arg0+arg1 required; default 0;
+            // IsTrue(arg2)->1; vtbl+288; vtbl+2048(thing,2);
+            // vtbl+1948(thing,name,flag); leftover if [ebp-22].
+            var name = line.Arg(0);
+            var anim = line.Arg(1);
+            if (name.Length == 0 || anim.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            var flag = ScriptLine.IsTrue(line.Arg(2));
+            ctx.World.PauseThing(name, 2);
+            var op = ctx.Animation.PlayObject(name, anim, flag);
+            if (!ctx.Cutscene.AnimationPauseEnabled)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, anim);
+            return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
+                "PlayObjectAnim vtbl+1948", anim, op.Id);
+        }
+
         if (Eq(v, "SetThingConscious"))
         {
             // 00CC8094: arg0 required; default 0; IsTrue(arg1)->1;

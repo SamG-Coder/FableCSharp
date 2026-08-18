@@ -712,6 +712,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "default 1->0; atof arg1; arg2/3 override; loop while current>end; vtbl+2040; leftover if yield; not FadeOut 1488"),
+        Spec("PlayObjectAnim", 0x00CC748B, 0x00CC74DE, "thing,anim[,IsTrue]",
+            ScriptReturn.YieldAfter, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0+arg1 required; default 0; IsTrue(arg2)->1; vtbl+288; vtbl+2048(thing,2); vtbl+1948; leftover if [ebp-22]; not PlayAnimation 72"),
         Spec("SetThingConscious", 0x00CC8041, 0x00CC8094, "thing[,IsTrue][,extra]",
             ScriptReturn.CompleteNow, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

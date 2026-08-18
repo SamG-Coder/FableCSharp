@@ -3096,6 +3096,94 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void PlayObjectAnim_is_vtbl_1948_after_unpause_mode_2()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("poa",
+        [
+            "AnimationPause FALSE",
+            "PlayObjectAnim GATE,OPEN,TRUE",
+            "PlayObjectAnim DOOR,CLOSE",
+            "PlayObjectAnim",
+            "PlayObjectAnim ONLYNAME",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(2, runtime.World.PauseModes["GATE"]);
+        Assert.Equal(2, runtime.World.PauseModes["DOOR"]);
+        Assert.Equal("OPEN", runtime.Animation.States["GATE"].Name);
+        Assert.Equal(1948, runtime.Animation.States["GATE"].RequestMode);
+        Assert.Equal("CLOSE", runtime.Animation.States["DOOR"].Name);
+        Assert.False(runtime.Animation.States.ContainsKey("ONLYNAME"));
+        Assert.Equal(0x00CC74DEu, ScriptCommandMap.Find("PlayObjectAnim")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("PlayAnimation")!.Value.ApplySite,
+            ScriptCommandMap.Find("PlayObjectAnim")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void PlayObjectAnim_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("PlayObjectAnim ", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "PlayObjectAnim GATE,OPEN,TRUE";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("PlayObjectAnim", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-poa",
+            ["AnimationPause FALSE", line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("PlayObjectAnim ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal(2, runtime.World.PauseModes[parsed.Arg(0)]);
+        Assert.Equal(parsed.Arg(1), runtime.Animation.States[parsed.Arg(0)].Name);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-poa.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-playobjectanim.txt"),
+            """
+            PlayObjectAnim 00CC748B / apply 00CC74DE
+              arg0+arg1 00403A00 empty skip 00CC8464
+              default flag=0; 00CBEDBA IsTrue(arg2) → 1
+              always vtbl+288 (not HERO 280)
+              vtbl+2048(thing,2) unpause
+              vtbl+1948(thing,anim,flag)
+              leftover if [ebp-22] AnimationPause + [ebp+103]
+              jmp 00CC82E9
+              not PlayAnimation vtbl+72
+            Object clip body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();

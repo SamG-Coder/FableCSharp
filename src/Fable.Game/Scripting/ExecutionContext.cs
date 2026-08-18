@@ -807,6 +807,32 @@ public sealed class AnimationRuntime
         return op;
     }
 
+    /// <summary>
+    /// <c>00CC74DE</c> <c>vtbl+1948(thing,name,IsTrue)</c>.
+    /// Always preceded by <c>vtbl+2048(thing,2)</c>.
+    /// Not PlayAnimation 72.
+    /// </summary>
+    public PendingOperation PlayObject(string? actor, string name, bool flag)
+    {
+        Plays.Add(new ScriptAnimation(actor, name, flag, false, false, false, false));
+        if (actor is { Length: > 0 })
+        {
+            var state = new AnimationState(actor, name, false, flag, false, false, false, false)
+            {
+                RequestMode = 1948,
+            };
+            BeginInnerPlay(state, name, 1948);
+            States[actor] = state;
+        }
+
+        var task = Tasks.Replace(actor, EntityTaskKind.ObjectAnimate, name, null, 0f);
+        var op = new PendingOperation(task.Id, "PlayObjectAnim", actor, name);
+        if (actor is { Length: > 0 })
+            ByActor[actor] = op;
+        _next++;
+        return op;
+    }
+
     public PendingOperation PlayCombat(
         string? actor, string name, bool a, bool b, bool c, bool d, bool e, int count)
     {

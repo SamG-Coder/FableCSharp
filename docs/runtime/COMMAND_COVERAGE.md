@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 138
-RECOVERED RETURN: 138
-RECOVERED APPLY: 74
+RECOVERED DISPATCH: 139
+RECOVERED RETURN: 139
+RECOVERED APPLY: 75
 IMPLEMENTED RUNTIME: 13
-UNREAD: 47
+UNREAD: 46
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -107,7 +107,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | FadeThingIn | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | FadeThingOut | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | DoOneFrame | Global | Proven | Proven | Proven | Proven | Proven | Proven |
-| PlayObjectAnim | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| PlayObjectAnim | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | LookAtNothing | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | NoDialogCam | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | DebugCamera | Global | Unread | Unread | Unread | Unread | Unread | Unread |
