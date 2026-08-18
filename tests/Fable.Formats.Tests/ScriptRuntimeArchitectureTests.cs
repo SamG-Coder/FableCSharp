@@ -7415,6 +7415,25 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void WaitPlayAnimation_plays_then_polls_vtbl104()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.Animation.Clips["CS_TIRED"] = new AnimationClipRecord("CS_TIRED", 1f);
+        var interp = new ScriptInterpreter("wplay",
+            ["HERO.WaitPlayAnimation CS_TIRED"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Yielded);
+        Assert.Equal("CS_TIRED", runtime.Animation.States["HERO"].Name);
+        Assert.True(runtime.Animation.States["HERO"].InnerApplied);
+        Assert.True(runtime.Animation.States["HERO"].Playing);
+        runtime.Update(2f);
+        interp.Resume(runtime);
+        Assert.True(interp.Finished);
+        Assert.False(runtime.Animation.States["HERO"].Playing);
+        Assert.Equal(0x00CC18E0u, ScriptCommandMap.Find("WaitPlayAnimation")!.Value.ApplySite);
+    }
+
+    [Fact]
     public void PlayLoopingAnim_is_vtbl80_not_PlayAnimation()
     {
         var runtime = ScriptRuntime.Detached();

@@ -49,7 +49,7 @@
 | WaitTask | `00CC0783` | `—` | name | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | poll vtbl+104 leftover; entity task slot |
 | WaitActiveDialog | `00CC656B` | `00CC6612` |  | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | [ebp-44]==0 continue; else leftover +28 then [0x13D2838]+5 → next |
 | AskQuestion | `00CC5F81` | `00CC5FD4` | text[,yes][,no] | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; default YES/NO; [ebp-38] skip; vtbl+1468(handle,1); vtbl+456; poll vtbl+156; esi!=0 → 1 |
-| WaitPlayAnimation | `00CC2518` | `—` |  | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | poll current entity anim task |
+| WaitPlayAnimation | `00CC2518` | `00CC18E0` | name[,IsTrue]x2[,IsFalse][,IsTrue] | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | actor+arg0 required; IsTrue(arg3)->vtbl+76 else vtbl+72 004C7470; leftover vtbl+104 |
 | SneakTo | `00CC0CB5` | `00CC0E5A` | marker[,speed][,wait] | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | thing vtbl+20 is 004C72B0 stub; dest+gait via vtbl+16 006A9960; TickMove |
 | WalkTo | `00CC083D` | `00CC09E2` | marker[,speed][,wait] | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | 012457FC/0127293C +20=004C72B0; dest+gait 006A5D90 or[this+146],2; no warp |
 | RunTo | `00CC0A79` | `00CC09E2` | marker[,speed][,wait] | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | same dest+gait slot as WalkTo; mode 1 |

@@ -146,10 +146,29 @@ public static class EntityDispatcher
 
         if (Eq(v, "WaitPlayAnimation"))
         {
-            var op = ctx.Animation.Current(line.Target);
+            // 00CC18E0: actor + arg0 required else 00CC7081.
+            // IsTrue(arg3) -> vtbl+76 combat; else vtbl+72
+            // 004C7470. Leftover polls vtbl+104 until al!=1.
+            var name = line.Arg(0);
+            if (name.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            PendingOperation op;
+            if (ScriptLine.IsTrue(line.Arg(3)))
+            {
+                var combat = ParseCombat(line);
+                op = ctx.Animation.PlayCombat(
+                    line.Target, name, combat.A, combat.B, combat.C, combat.D, combat.E, 1);
+            }
+            else
+            {
+                var flags = ParseAnimFlags(line);
+                op = ctx.Animation.Play(
+                    line.Target, name, flags.F1, flags.F2, flags.F3, flags.F4, flags.F5);
+            }
+
             return CommandResult.Wait(
                 ExecutionKind.WaitOperation, CommandStatus.Proven, CommandFamily.Entity,
-                "WaitPlayAnimation", "anim-complete", op?.Id, line.Arg(0));
+                "WaitPlayAnimation vtbl+104", "anim-complete", op.Id, name);
         }
 
         if (Eq(v, "WaitForAnimationEvent"))

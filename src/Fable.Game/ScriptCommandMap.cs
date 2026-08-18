@@ -396,9 +396,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "arg0 required; default YES/NO; [ebp-38] skip; vtbl+1468(handle,1); vtbl+456; poll vtbl+156; esi!=0 → 1"),
-        Spec("WaitPlayAnimation", 0x00CC2518, 0, "",
-            ScriptReturn.YieldAfter, CommandParity.ScriptLayer,
-            "poll current entity anim task"),
+        Spec("WaitPlayAnimation", 0x00CC2518, 0x00CC18E0, "name[,IsTrue]x2[,IsFalse][,IsTrue]",
+            ScriptReturn.YieldAfterOrWait, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "actor+arg0 required; IsTrue(arg3)->vtbl+76 else vtbl+72 004C7470; leftover vtbl+104"),
         Spec("SneakTo", 0x00CC0CB5, 0x00CC0E5A, "marker[,speed][,wait]",
             ScriptReturn.YieldAfterOrWait, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
