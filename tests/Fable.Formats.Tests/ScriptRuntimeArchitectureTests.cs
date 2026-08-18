@@ -1284,6 +1284,90 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void HeroHair_accumulates_hair_and_beard()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("hh",
+        [
+            "HeroHair OBJECT_HERO_HAIR_YOUNG_01",
+            "HeroHair OBJECT_HERO_BEARD_TRAMP_01",
+            "HeroHair OBJECT_HERO_HAIR_YOUNG_01",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(2, runtime.World.HeroHairs.Count);
+        Assert.Equal("OBJECT_HERO_HAIR_YOUNG_01", runtime.World.HeroHairs[0]);
+        Assert.Equal("OBJECT_HERO_BEARD_TRAMP_01", runtime.World.HeroHairs[1]);
+        Assert.Equal(0x00CC9182u, ScriptCommandMap.Find("HeroHair")!.Value.ApplySite);
+        Assert.Equal(0x00CC91FBu, ScriptCommandMap.Find("HeroTattoo")!.Value.ApplySite);
+        Assert.Equal(0x00CC9274u, ScriptCommandMap.Find("HeroWear")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("HeroHair")!.Value.ApplySite,
+            ScriptCommandMap.Find("HeroWear")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void HeroWear_and_HeroTattoo_are_distinct_vtbls()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("hw",
+        [
+            "HeroWear OBJECT_HERO_NO_HAT",
+            "HeroTattoo OBJECT_HERO_TATTOO_01",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(["OBJECT_HERO_NO_HAT"], runtime.World.HeroClothes);
+        Assert.Equal(["OBJECT_HERO_TATTOO_01"], runtime.World.HeroTattoos);
+    }
+
+    [Fact]
+    public void HeroHair_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_LOSTBAY_INTRO");
+        Assert.NotNull(hit);
+        var lines = new List<string>();
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.StartsWith("HeroHair ", StringComparison.OrdinalIgnoreCase))
+                lines.Add(raw);
+        }
+
+        Assert.True(lines.Count >= 2);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-hair", lines);
+        isolated.RunUntilYield(runtime);
+        Assert.True(isolated.Finished);
+        Assert.Equal(lines.Count, runtime.World.HeroHairs.Count);
+        Assert.Equal(ScriptLine.Parse(lines[0]).Arg(0), runtime.World.HeroHairs[0]);
+        Assert.Equal(ScriptLine.Parse(lines[1]).Arg(0), runtime.World.HeroHairs[1]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-hair.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-herohair.txt"),
+            """
+            HeroHair 00CC9130 / apply 00CC9182
+              arg0 required else 00CD17FD
+              vtbl+764(name); jmp 00CD17FD no yield
+              CS_LOSTBAY_INTRO applies hair then beard
+            HeroTattoo 00CC91A9 / apply 00CC91FB
+              vtbl+576(name); not HeroHair 764
+            HeroWear 00CC9222 / apply 00CC9274
+              vtbl+760(name); not HeroHair 764
+            Appearance mesh / PALSKIN unread (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void WalkTo_writes_destination_and_entity_task()
     {
         var runtime = ScriptRuntime.Detached();

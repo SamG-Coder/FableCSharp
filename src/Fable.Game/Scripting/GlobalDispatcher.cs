@@ -726,6 +726,33 @@ public static class GlobalDispatcher
                 isFalse ? "vtbl+560" : "vtbl+552");
         }
 
+        if (Eq(v, "HeroHair"))
+        {
+            var name = line.Arg(0);
+            if (name.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ctx.World.ApplyHeroHair(name);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name);
+        }
+
+        if (Eq(v, "HeroTattoo"))
+        {
+            var name = line.Arg(0);
+            if (name.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ctx.World.ApplyHeroTattoo(name);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name);
+        }
+
+        if (Eq(v, "HeroWear"))
+        {
+            var name = line.Arg(0);
+            if (name.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ctx.World.ApplyHeroWear(name);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name);
+        }
+
         if (Eq(v, "GiveHeroHealth"))
         {
             var token = line.Arg(0);

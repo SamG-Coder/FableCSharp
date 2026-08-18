@@ -517,6 +517,21 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "IsFalse(arg0) vtbl+560 else vtbl+552; jmp 00CD17FD; bag body unread"),
+        Spec("HeroHair", 0x00CC9130, 0x00CC9182, "name",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0 required; vtbl+764(name); jmp 00CD17FD; hair+beard accumulate"),
+        Spec("HeroTattoo", 0x00CC91A9, 0x00CC91FB, "name",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0 required; vtbl+576(name); jmp 00CD17FD; not HeroHair 764"),
+        Spec("HeroWear", 0x00CC9222, 0x00CC9274, "name",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0 required; vtbl+760(name); jmp 00CD17FD; not HeroHair 764"),
         Spec("UseTheme", 0x00CCFA38, 0x00CCFA8B, "name[,param][,flag]",
             ScriptReturn.CompleteNow, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

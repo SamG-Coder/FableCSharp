@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 106
-RECOVERED RETURN: 106
-RECOVERED APPLY: 41
+RECOVERED DISPATCH: 109
+RECOVERED RETURN: 109
+RECOVERED APPLY: 44
 IMPLEMENTED RUNTIME: 13
-UNREAD: 79
+UNREAD: 76
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -81,9 +81,9 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | CameraRig | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | PutUpYourSwords | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | RemoveHeroClothes | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| HeroWear | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| HeroTattoo | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| HeroHair | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| HeroWear | Global | Proven | Proven | Proven | Proven | Partial | Partial |
+| HeroTattoo | Global | Proven | Proven | Proven | Proven | Partial | Partial |
+| HeroHair | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | RemoveHeroWeapons | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | PlaySound | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | CacheMusic | Global | Proven | Proven | Proven | Proven | Partial | Partial |

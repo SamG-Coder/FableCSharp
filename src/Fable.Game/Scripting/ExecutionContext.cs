@@ -1055,6 +1055,58 @@ public sealed class WorldRuntime
     /// 560 when <c>IsFalse(arg0)</c>.
     /// </summary>
     public int RemoveHeroWeaponsVtbl { get; set; }
+    /// <summary>
+    /// <c>00CC9182</c> <c>vtbl+764(name)</c>. Hair and
+    /// beard both use this verb — pieces accumulate.
+    /// </summary>
+    public readonly List<string> HeroHairs = [];
+    /// <summary>
+    /// <c>00CC91FB</c> <c>vtbl+576(name)</c>.
+    /// </summary>
+    public readonly List<string> HeroTattoos = [];
+    /// <summary>
+    /// <c>00CC9274</c> <c>vtbl+760(name)</c>.
+    /// </summary>
+    public readonly List<string> HeroClothes = [];
+
+    public void ApplyHeroHair(string name)
+    {
+        if (name.Length == 0)
+            return;
+        foreach (var existing in HeroHairs)
+        {
+            if (existing.Equals(name, StringComparison.OrdinalIgnoreCase))
+                return;
+        }
+
+        HeroHairs.Add(name);
+    }
+
+    public void ApplyHeroTattoo(string name)
+    {
+        if (name.Length == 0)
+            return;
+        foreach (var existing in HeroTattoos)
+        {
+            if (existing.Equals(name, StringComparison.OrdinalIgnoreCase))
+                return;
+        }
+
+        HeroTattoos.Add(name);
+    }
+
+    public void ApplyHeroWear(string name)
+    {
+        if (name.Length == 0)
+            return;
+        foreach (var existing in HeroClothes)
+        {
+            if (existing.Equals(name, StringComparison.OrdinalIgnoreCase))
+                return;
+        }
+
+        HeroClothes.Add(name);
+    }
 
     /// <summary>
     /// <c>00CC63E5</c>: give <c>count - already</c>
