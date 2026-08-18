@@ -55,4 +55,13 @@ public sealed class EngineFrameTests
         Assert.False(frame.World!.Expanded);
         Assert.Empty(frame.World.Triangles);
     }
+
+    [Fact]
+    public void BuildFrame_reuses_texture_array()
+    {
+        var life = new EngineLifecycle();
+        var first = life.BuildFrame().Textures;
+        var second = life.BuildFrame().Textures;
+        Assert.Same(first, second);
+    }
 }

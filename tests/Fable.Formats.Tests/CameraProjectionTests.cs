@@ -2,6 +2,7 @@ using System.Numerics;
 using Fable.Formats;
 using Fable.Formats.Levels;
 using Fable.Formats.Sky;
+using Fable.Game;
 using Fable.Render;
 
 namespace Fable.Formats.Tests;
@@ -91,6 +92,15 @@ public sealed class CameraProjectionTests
         Assert.True(WorldShading.FirstSeenFogC2IsLinearViewZ);
         Assert.False(LandscapeFrustum.FirstSeenUsesThirdPersonView);
         Assert.Equal(new Vector3(0f, 0f, 1f), LandscapeFrustum.FirstSeenCameraUp);
+        Assert.True(WorldCamera.IsCtorAxis(new Vector3(1f, 0f, 0f)));
+        Assert.False(WorldCamera.IsCtorAxis(new Vector3(40f, 50f, 2f)));
+        var helper = new ScriptedCamera();
+        helper.ApplyRendererHelper(
+            new Vector3(40f, 50f, 2f), new Vector3(-1f, 0f, 0f),
+            LandscapeFrustum.FirstSeenCameraUp);
+        Assert.Equal(new Vector3(40f, 50f, 2f), helper.Position);
+        Assert.True((helper.Forward - new Vector3(-1f, 0f, 0f)).Length() < 1e-4f);
+        Assert.Equal(LandscapeFrustum.FirstSeenCameraUp, helper.Up);
         Assert.Equal(18, LandscapeFrustum.LayoutFogRegister);
         Assert.Equal(1, LandscapeFrustum.LayoutFogCount);
         Assert.Equal(56, LandscapeFrustum.LayoutFogRegisterOffset);

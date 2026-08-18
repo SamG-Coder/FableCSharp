@@ -1,6 +1,7 @@
 using System.Text;
 using Fable.Core;
 using Fable.Formats.Banks;
+using Fable.Formats.Defs;
 using Fable.Formats.Levels;
 using Fable.Formats.Tng;
 using Fable.Formats.Wld;
@@ -23,6 +24,27 @@ public sealed class LevelLibrary : IDisposable
 
     public GameInstall Install { get; }
     public WorldFile World { get; }
+    private HeaderEnums? _landscapeEnums;
+    private bool _landscapeEnumsLoaded;
+
+    /// <summary>
+    /// <c>textures.h</c> once. Native
+    /// landscape slots are not a per-triangle
+    /// header walk.
+    /// </summary>
+    public HeaderEnums? LandscapeEnums
+    {
+        get
+        {
+            if (_landscapeEnumsLoaded)
+                return _landscapeEnums;
+            var path = Path.Combine(
+                Install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h");
+            _landscapeEnums = File.Exists(path) ? HeaderEnums.Load(path) : null;
+            _landscapeEnumsLoaded = true;
+            return _landscapeEnums;
+        }
+    }
 
     public LevelLibrary(GameInstall install)
     {

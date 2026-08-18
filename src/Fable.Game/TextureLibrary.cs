@@ -16,6 +16,8 @@ public sealed class TextureLibrary : IDisposable
     private readonly Dictionary<uint, BankEntry> _byId;
     private readonly Dictionary<uint, TextureFile> _cache = new();
 
+    public int DecodedCount => _cache.Count;
+
     public TextureLibrary(GameInstall install)
     {
         var path = Path.Combine(install.DataRoot, "graphics", "pc", "textures.big");

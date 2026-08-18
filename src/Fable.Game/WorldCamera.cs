@@ -60,6 +60,17 @@ public sealed class WorldCamera
     public const float DefaultWeight = 0.2f;
     public const float DefaultAxisX = 1f;
 
+    /// <summary>
+    /// Ctor <c>+3092/+3108=(1,0,0)</c>.
+    /// <c>006B2CA0</c> does not write
+    /// those slots. They are axes, not
+    /// a world eye.
+    /// </summary>
+    public static bool IsCtorAxis(Vector3 v) =>
+        MathF.Abs(v.X - DefaultAxisX) < 1e-4f &&
+        MathF.Abs(v.Y) < 1e-4f &&
+        MathF.Abs(v.Z) < 1e-4f;
+
     public uint VtblValue { get; private set; } = Vtbl;
     public bool Seeded { get; private set; }
     /// <summary>
@@ -297,6 +308,12 @@ public sealed class GameCamera
     public const float Plus148 = 1.25f;
     public const float Plus152 = 10f;
     public const float Plus192 = 0.1f;
+    /// <summary>
+    /// <c>00A0C130</c> helper+44.
+    /// <c>0x3E471B48</c> ≈ 70/360 turns.
+    /// </summary>
+    public const uint FirstSeenFovTurnsBits = 0x3E471B48;
+    public const float FirstSeenFovDegrees = 70f;
 
     public uint VtblValue { get; private set; }
     public int Plus176 { get; private set; }

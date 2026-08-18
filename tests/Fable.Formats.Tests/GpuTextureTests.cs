@@ -99,4 +99,19 @@ public sealed class GpuTextureTests
         Assert.True((a - b).LengthSquared() > 1e-6f, "grass should vary; GPU sampler now does this per pixel");
         Assert.DoesNotContain("fragColor * (0.22", LineShaders.MeshFragment, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void Texture_decode_is_cached()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var textures = new TextureLibrary(install);
+        var first = textures.TryLoad(414);
+        var decoded = textures.DecodedCount;
+        var second = textures.TryLoad(414);
+        Assert.Same(first, second);
+        Assert.Equal(decoded, textures.DecodedCount);
+        textures.LoadMany([414, 414, 4133]);
+        Assert.Equal(decoded + 1, textures.DecodedCount);
+    }
 }

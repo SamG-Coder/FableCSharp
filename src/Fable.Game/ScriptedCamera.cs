@@ -138,6 +138,20 @@ public sealed class ScriptedCamera
         SetUp(up);
     }
 
+    /// <summary>
+    /// <c>00B314E0</c> helper consumed by the
+    /// renderer: <c>+0</c> eye, <c>+12</c>
+    /// forward (normalised), <c>+24</c> up
+    /// (normalised). Not slot axes.
+    /// </summary>
+    public void ApplyRendererHelper(Vector3 position, Vector3 forward, Vector3 up)
+    {
+        Position = position;
+        var dir = forward.LengthSquared() > 1e-8f ? Vector3.Normalize(forward) : Vector3.UnitY;
+        LookAt = position + dir;
+        SetUp(up);
+    }
+
     public bool UseCamera(IEnumerable<ThingInstance> things, string name) =>
         RegionTravel.TryNamedCamera(things, name, out var position, out var lookAt, out var fov, out var up)
         && BindAndTrue(name, position, lookAt, up, fov);

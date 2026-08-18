@@ -681,4 +681,46 @@ public sealed class WorldGeometryTests
             && clip.X is >= -1.2f and <= 1.2f
             && clip.Y is >= -1.2f and <= 1.2f;
     }
+
+    [Fact]
+    public void Lookout_tile_origin_is_region_local()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        var map = levels.World.FindMap("LookoutPoint");
+        Assert.NotNull(map);
+        var height = levels.LoadHeightField("LookoutPoint");
+        Assert.NotNull(height);
+        var compiled = levels.LoadCompiledLev("LookoutPoint");
+        Assert.NotNull(compiled);
+        var cells = LevCellGrid.TryParse(compiled);
+        Assert.NotNull(cells);
+        var tris = height.ToTileTriangles(cells, compiled.Materials);
+        Assert.True(tris.Count > 0);
+        var minX = tris.Min(t => MathF.Min(t.A.X, MathF.Min(t.B.X, t.C.X)));
+        var maxX = tris.Max(t => MathF.Max(t.A.X, MathF.Max(t.B.X, t.C.X)));
+        var minY = tris.Min(t => MathF.Min(t.A.Y, MathF.Min(t.B.Y, t.C.Y)));
+        var maxY = tris.Max(t => MathF.Max(t.A.Y, MathF.Max(t.B.Y, t.C.Y)));
+        Assert.InRange(minX, -2f, 16f);
+        Assert.InRange(minY, -2f, 16f);
+        Assert.True(maxX < map.MapX, $"maxX={maxX} mapX={map.MapX}");
+        Assert.True(maxY < map.MapY, $"maxY={maxY} mapY={map.MapY}");
+        Assert.InRange(maxX, 64f, 160f);
+        Assert.InRange(maxY, 64f, 160f);
+    }
+
+    [Fact]
+    public void MeshBank_does_not_reparse_c3d()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var bank = new MeshBank();
+        bank.Open(install);
+        var first = bank.Get(4299);
+        var parsed = bank.ParsedCount;
+        var second = bank.Get(4299);
+        Assert.Same(first, second);
+        Assert.Equal(parsed, bank.ParsedCount);
+    }
 }

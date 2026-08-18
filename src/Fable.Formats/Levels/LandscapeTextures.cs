@@ -401,12 +401,23 @@ public static class LandscapeTextures
             ? id
             : WaterId;
 
+    private static readonly Dictionary<string, int> ResolveCache =
+        new(StringComparer.OrdinalIgnoreCase);
+    private static readonly Dictionary<string, HashSet<string>> TokenCache =
+        new(StringComparer.OrdinalIgnoreCase);
+
     public static int Resolve(string materialName, HeaderEnums textures)
     {
+        if (ResolveCache.TryGetValue(materialName, out var cached))
+            return cached;
+
         foreach (var key in Candidates(materialName))
         {
             if (textures.ByName.TryGetValue(key, out var id) && !key.Contains("PROC_", StringComparison.Ordinal))
+            {
+                ResolveCache[materialName] = id;
                 return id;
+            }
         }
 
         var tokens = Tokens(materialName);
@@ -433,7 +444,9 @@ public static class LandscapeTextures
             }
         }
 
-        return bestScore > 0 ? best : DefaultId;
+        var resolved = bestScore > 0 ? best : DefaultId;
+        ResolveCache[materialName] = resolved;
+        return resolved;
     }
 
     public static IEnumerable<string> Candidates(string materialName)
@@ -466,6 +479,8 @@ public static class LandscapeTextures
 
     private static HashSet<string> Tokens(string name)
     {
+        if (TokenCache.TryGetValue(name, out var hit))
+            return hit;
         var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var part in name.Split('_', StringSplitOptions.RemoveEmptyEntries))
         {
@@ -473,6 +488,8 @@ public static class LandscapeTextures
                 continue;
             set.Add(part);
         }
+
+        TokenCache[name] = set;
         return set;
     }
 }

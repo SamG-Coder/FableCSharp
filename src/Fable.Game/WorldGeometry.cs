@@ -68,8 +68,7 @@ public sealed class WorldGeometry
         levels ??= new LevelLibrary(install);
         try
         {
-        var textureHeader = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h");
-        var landscapeEnums = File.Exists(textureHeader) ? HeaderEnums.Load(textureHeader) : null;
+        var landscapeEnums = levels.LandscapeEnums;
         var primaryThings = ApplyActorPositions(
             things as IReadOnlyList<ThingInstance> ?? things.ToList(),
             actorPositions);
@@ -344,17 +343,25 @@ public sealed class WorldGeometry
         HeaderEnums? landscapeEnums,
         LandscapeFrustum.Plane[]? landscapePlanes)
     {
-        var height = levels.LoadHeightField(region);
-        if (height is null)
-            return;
-
-        // 00BDC2D0: n-vertex AABB before cells.
-        if (landscapePlanes is { Length: > 0 })
+        // 00BDC2D0 / 00BF6F80: n-vertex AABB from
+        // map size, before the cell walk. Do not
+        // parse the STB height stream for a
+        // rejected neighbour. The current map is
+        // the 00B3E820 handle — keep it.
+        var header = levels.PeekMapHeader(region);
+        var sizeX = header is { GridWidth: > 0 } ? header.Value.GridWidth : 128;
+        var sizeY = header is { GridHeight: > 0 } ? header.Value.GridHeight : 128;
+        var primary = dx == 0 && dy == 0;
+        if (!primary && landscapePlanes is { Length: > 0 })
         {
-            LandscapeFrustum.PatchAabb(dx, dy, height.FineWidth, height.FineHeight, out var min, out var max);
+            LandscapeFrustum.PatchAabb(dx, dy, sizeX, sizeY, out var min, out var max);
             if (LandscapeFrustum.AabbIsOutside(min, max, landscapePlanes))
                 return;
         }
+
+        var height = levels.LoadHeightField(region);
+        if (height is null)
+            return;
 
         var compiled = levels.LoadCompiledLev(region);
         var cells = compiled is null ? null : LevCellGrid.TryParse(compiled);
@@ -462,12 +469,7 @@ public sealed class WorldGeometry
         LandscapeFrustum.Plane[]? landscapePlanes = null)
     {
         var triangles = new List<MeshTriangle>(64_000);
-        var textureHeader = Path.Combine(
-            levels.Install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h");
-        var landscapeEnums = File.Exists(textureHeader)
-            ? HeaderEnums.Load(textureHeader)
-            : null;
-        AddTerrain(levels, Region, 0, 0, triangles, landscapeEnums, landscapePlanes);
+        AddTerrain(levels, Region, 0, 0, triangles, levels.LandscapeEnums, landscapePlanes);
         return triangles;
     }
 
@@ -485,11 +487,7 @@ public sealed class WorldGeometry
         ICollection<string>? acceptedMaps = null)
     {
         var triangles = new List<MeshTriangle>(64_000);
-        var textureHeader = Path.Combine(
-            levels.Install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h");
-        var landscapeEnums = File.Exists(textureHeader)
-            ? HeaderEnums.Load(textureHeader)
-            : null;
+        var landscapeEnums = levels.LandscapeEnums;
         var primary = levels.World.FindMap(Region);
         foreach (var name in Regions)
         {
@@ -527,8 +525,7 @@ public sealed class WorldGeometry
         if (Expanded && !primaryOnly)
             return this;
         var triangles = new List<MeshTriangle>(primaryOnly ? 64_000 : 200_000);
-        var textureHeader = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h");
-        var landscapeEnums = File.Exists(textureHeader) ? HeaderEnums.Load(textureHeader) : null;
+        var landscapeEnums = levels.LandscapeEnums;
         var primary = levels.World.FindMap(Region);
         foreach (var name in Regions)
         {

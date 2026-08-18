@@ -231,6 +231,7 @@ public sealed class LevFormatTests
         Assert.Equal(414, LandscapeTextures.Resolve("GROUND_GRASS", enums));
         Assert.Equal(4118, LandscapeTextures.Resolve("PATH_COBBLES_IRREGULAR_ET", enums));
         Assert.NotEqual(1911, LandscapeTextures.Resolve("GROUND_PATH_SAND", enums));
+        Assert.Equal(4133, LandscapeTextures.Resolve("GROUND_PATH_SAND", enums));
         Assert.True(LandscapeTextures.IsWaterOrSeaPass("SEA_OAKVALE_2"));
         Assert.True(LandscapeTextures.IsWaterOrSeaPass("WATER_GREYCLIFF_ET"));
         Assert.False(LandscapeTextures.FirstSeenWaterDrawShouldSubmit);

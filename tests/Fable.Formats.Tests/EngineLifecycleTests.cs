@@ -1,4 +1,6 @@
 using Fable.Core;
+using Fable.Formats.Levels;
+using Fable.Formats.Scene;
 using Fable.Game;
 
 namespace Fable.Formats.Tests;
@@ -499,9 +501,12 @@ public sealed class EngineLifecycleTests
             t.ScriptName == EngineLifecycle.GuildArrivalHsp);
         Assert.Contains(life.ThingsForMap("LookoutPoint"), t =>
             ReferenceEquals(t, life.Hero));
-        Assert.NotEqual(WorldCamera.DefaultAxisX, life.WorldCamera.SlotA.V0.X);
+        Assert.True(WorldCamera.IsCtorAxis(life.WorldCamera.SlotA.V0));
+        Assert.True(life.RendererHelperBound);
         Assert.True((life.Camera.Position - new System.Numerics.Vector3(
             start.PositionX!.Value, start.PositionY!.Value, start.PositionZ ?? 0f)).Length() < 20f);
+        Assert.Equal(LandscapeFrustum.FirstSeenCameraUp, life.Camera.Up);
+        Assert.Equal(GameCamera.FirstSeenFovDegrees, life.Camera.FovDegrees);
         Assert.DoesNotContain("StartOakVale", life.FirstSceneMapName);
         var defs = WorldGeometry.TryLoadDefs(install);
         var submit = WorldGeometry.ResolveSubmit(defs, null, life.Hero);
@@ -1831,9 +1836,13 @@ public sealed class EngineLifecycleTests
         Assert.Empty(presented.Triangles);
         Assert.True(presented.MeshInstances > 0, $"instances={presented.MeshInstances}");
         Assert.True(life.Meshes.ParsedCount > 0);
-        Assert.Equal(
-            life.Camera.Position.X, life.WorldCamera.SlotA.V0.X, 3);
+        Assert.True(WorldCamera.IsCtorAxis(life.WorldCamera.SlotA.V0));
+        Assert.True(life.RendererHelperBound);
+        Assert.True((life.Camera.Position - RegionTravel.PositionOf(life.Hero!)).Length() < 1f);
+        Assert.Equal(LandscapeFrustum.FirstSeenCameraUp, life.Camera.Up);
+        Assert.Equal(GameCamera.FirstSeenFovDegrees, life.Camera.FovDegrees);
         Assert.Same(life.SubmittedWorld, life.BuildFrame().World);
+        Assert.True(life.SubmitElapsedMs > 0);
         life.CloseStaticMapFile();
         Assert.Empty(life.OpenedMapBodies);
         Assert.Equal(0, life.OpenStaticMapsMode);
@@ -2088,8 +2097,51 @@ public sealed class EngineLifecycleTests
             0069AE80 alloc 0x160 → world+48, copy world+52
             006FD8C0 alloc 0xC8 → world+44 vtbl 01264A8C
               +176 = fistp(15*1.5)=22
-            ScriptedCamera.ApplyManagerOutput(+6296,+6312,+6328).
+            ScriptedCamera.ApplyManagerOutput(+6296/+6312/+6328)
+            is slot state. 00B314E0 consumes the helper
+            (hero eye, 006B2CA0 V4, FirstSeenCameraUp)
+            when +6296 is still the ctor axis.
             Not 00DBDE40.
             """);
+    }
+
+    [Fact]
+    public void World_submit_is_stable_between_frames()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.True(life.WorldSubmitted);
+        var mesh = life.SubmittedMesh;
+        var parsed = life.Meshes.ParsedCount;
+        var decoded = life.Textures?.DecodedCount ?? 0;
+        var elapsed = life.SubmitElapsedMs;
+        Assert.True(life.Pump());
+        Assert.Same(mesh, life.SubmittedMesh);
+        Assert.Equal(parsed, life.Meshes.ParsedCount);
+        Assert.Equal(decoded, life.Textures?.DecodedCount ?? 0);
+        Assert.Equal(elapsed, life.SubmitElapsedMs);
+        Assert.Same(life.BuildFrame().Vertices, mesh!.Vertices);
+        Assert.Same(life.BuildFrame().Textures, life.BuildFrame().Textures);
+    }
+
+    [Fact]
+    public void Native_draw_order_is_begin_layers_end_present()
+    {
+        Assert.Equal(0x00435530u, EngineLifecycle.DisplayApplyBodyFn);
+        Assert.Equal(0x009DA9F0u, EngineLifecycle.DisplayFlushLayersFn);
+        Assert.Equal(0x00B25950u, RegionTravel.RenderFrame);
+        Assert.Equal(
+            new uint[] { 0x4, 0x40, 0x20, 0x2000 },
+            ScenePasses.Registration.Where(p => ScenePasses.Draws(p.Submit))
+                .Select(p => p.Bit)
+                .ToArray());
     }
 }

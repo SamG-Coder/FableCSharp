@@ -1149,6 +1149,19 @@ public sealed class EngineLifecycle : IDisposable
         _submittedTextures;
     public TextureLibrary? Textures { get; private set; }
     public bool SubmittedHeroPalskin { get; private set; }
+    /// <summary>
+    /// <c>00B314E0</c> consumed the hero
+    /// helper, not ctor-axis
+    /// <c>+6296</c>.
+    /// </summary>
+    public bool RendererHelperBound { get; private set; }
+    /// <summary>
+    /// Wall time of the last
+    /// <see cref="SubmitCurrentWorld"/>.
+    /// </summary>
+    public double SubmitElapsedMs { get; private set; }
+    public int SubmitC3dParsed { get; private set; }
+    public int PresentMeshUploads { get; private set; }
 
     public void AttachHost(IEngineHost host) => Host = host;
 
@@ -1163,6 +1176,7 @@ public sealed class EngineLifecycle : IDisposable
     private readonly List<uint> _submittedPalskin = [];
     private readonly List<string> _submittedTerrain = [];
     private readonly List<Fable.Render.GpuTexture> _submittedTextures = [];
+    private Fable.Render.GpuTexture[]? _submittedTextureArray;
     private readonly List<ThingInstance> _regionThings = [];
     private readonly Dictionary<string, List<ThingInstance>> _thingsByMap =
         new(StringComparer.OrdinalIgnoreCase);
@@ -1322,6 +1336,10 @@ public sealed class EngineLifecycle : IDisposable
     {
         if (Install is null || CurrentRegion is null || !HeroSpawned)
             return;
+        if (WorldSubmitted && SubmittedMesh is not null)
+            return;
+        var parsedBefore = Meshes.ParsedCount;
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         UnloadStartupAvi();
         EnsureLevels();
         OpenMeshBank();
@@ -1371,9 +1389,11 @@ public sealed class EngineLifecycle : IDisposable
         SubmittedMesh = MeshBatches.Concat(land, MeshBatches.BuildMeshes(props));
         BindSubmittedTextures();
         WorldSubmitted = SubmittedMesh.Vertices.Length > 0;
+        SubmitC3dParsed = Meshes.ParsedCount - parsedBefore;
+        SubmitElapsedMs = clock.Elapsed.TotalMilliseconds;
         Note(OpenStaticMapsFn, "Submit", "World",
             WorldSubmitted
-                ? $"primary {opened.Region} meshes={seen.Count} palskin={_submittedPalskin.Count} hero={HeroMeshId} terrain={_submittedTerrain.Count} verts={SubmittedMesh.Vertices.Length}"
+                ? $"primary {opened.Region} meshes={seen.Count} palskin={_submittedPalskin.Count} hero={HeroMeshId} terrain={_submittedTerrain.Count} verts={SubmittedMesh.Vertices.Length} {SubmitElapsedMs:0}ms c3d={SubmitC3dParsed}"
                 : "submit miss");
     }
 
@@ -1397,6 +1417,7 @@ public sealed class EngineLifecycle : IDisposable
     private void BindSubmittedTextures()
     {
         _submittedTextures.Clear();
+        _submittedTextureArray = null;
         if (SubmittedMesh is null)
             return;
         OpenTextureBank();
@@ -1409,6 +1430,8 @@ public sealed class EngineLifecycle : IDisposable
             _submittedTextures.Add(new Fable.Render.GpuTexture(
                 file.Id, file.Width, file.Height, file.Rgba));
         }
+
+        _submittedTextureArray = [.. _submittedTextures];
     }
 
     private void EnsureStartupAvi()
@@ -1501,7 +1524,7 @@ public sealed class EngineLifecycle : IDisposable
             fade.R, fade.G, fade.B,
             SubmittedMesh?.Vertices,
             SubmittedMesh?.Draws,
-            _submittedTextures.Count == 0 ? null : [.. _submittedTextures]);
+            _submittedTextureArray);
     }
 
     /// <summary>
@@ -2406,7 +2429,31 @@ public sealed class EngineLifecycle : IDisposable
         var output = WorldCamera.Blend(tBlend);
         Note(CameraManagerBlendFn, "GamePump", "Camera",
             $"006B42F0 t={tBlend} out={output.V0}");
-        Camera.ApplyManagerOutput(output.V0, output.V1, output.V2);
+        // 00B314E0 copies helper +0/+12/+24
+        // as eye / forward / up and
+        // 00A14440-normalises the dirs.
+        // First-seen +6296 is the ctor
+        // axis, not an eye. First-seen
+        // up is (0,0,1), not 006B2CA0 V2.
+        if (WorldCamera.IsCtorAxis(output.V0) &&
+            Hero is { PositionX: not null, PositionY: not null })
+        {
+            var eye = RegionTravel.PositionOf(Hero);
+            var forward = output.V4.LengthSquared() > 1e-8f
+                ? output.V4
+                : WorldCamera.SlotA.V4;
+            if (forward.LengthSquared() < 1e-8f)
+                forward = -Vector3.UnitX;
+            Camera.ApplyRendererHelper(
+                eye, forward, LandscapeFrustum.FirstSeenCameraUp);
+            Camera.SetFovDegrees(GameCamera.FirstSeenFovDegrees);
+            RendererHelperBound = true;
+        }
+        else
+        {
+            Camera.ApplyManagerOutput(output.V0, output.V1, output.V2);
+            RendererHelperBound = false;
+        }
     }
 
     /// <summary>

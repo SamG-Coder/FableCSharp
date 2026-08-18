@@ -13,6 +13,8 @@ public sealed class SilkEngineHost : IEngineHost
     private readonly Action? _quit;
     private EngineFrame _frame;
     private WorldGeometry? _uploadedWorld;
+    private MeshVertex[]? _uploadedVertices;
+    private GpuTexture[]? _uploadedTextures;
 
     public SilkEngineHost(
         VulkanLineRenderer? renderer = null,
@@ -38,6 +40,8 @@ public sealed class SilkEngineHost : IEngineHost
     public string Title { get; set; }
 
     public EngineFrame LastFrame => _frame;
+    public int MeshUploads { get; private set; }
+    public int TextureUploads { get; private set; }
 
     /// <summary>
     /// <c>009BEEB0</c> Present. Does not
@@ -48,41 +52,59 @@ public sealed class SilkEngineHost : IEngineHost
     {
         _frame = frame;
         var renderer = Renderer;
-        if (renderer is null)
-            return;
 
-        if (frame is { AviPlaying: true, AviRgba: not null })
+        if (renderer is not null)
         {
-            var dest = RegionTravel.PlayAviLetterbox(
-                frame.AviWidth, frame.AviHeight, Width, Height);
-            renderer.SetVideoFrame(
-                frame.AviWidth, frame.AviHeight, frame.AviRgba,
-                new Vector4(dest.X0, dest.Y0, dest.X1, dest.Y1),
-                frame.AviSerial);
-            VulkanLineRenderer.NoteReceived(frame.AviSerial);
-            renderer.SetPlayAviPump(true);
-        }
-        else
-        {
-            renderer.ClearVideoFrame();
-            renderer.SetPlayAviPump(false);
-        }
+            if (frame is { AviPlaying: true, AviRgba: not null })
+            {
+                var dest = RegionTravel.PlayAviLetterbox(
+                    frame.AviWidth, frame.AviHeight, Width, Height);
+                renderer.SetVideoFrame(
+                    frame.AviWidth, frame.AviHeight, frame.AviRgba,
+                    new Vector4(dest.X0, dest.Y0, dest.X1, dest.Y1),
+                    frame.AviSerial);
+                VulkanLineRenderer.NoteReceived(frame.AviSerial);
+                renderer.SetPlayAviPump(true);
+            }
+            else
+            {
+                renderer.ClearVideoFrame();
+                renderer.SetPlayAviPump(false);
+            }
 
-        renderer.FadeOverlayAlpha = frame.FadeAlpha;
-        renderer.FadeOverlayRgb = (frame.FadeR, frame.FadeG, frame.FadeB);
+            renderer.FadeOverlayAlpha = frame.FadeAlpha;
+            renderer.FadeOverlayRgb = (frame.FadeR, frame.FadeG, frame.FadeB);
+        }
 
         if (frame.Vertices is { Length: > 0 } verts)
         {
             var draws = frame.Draws ?? [];
-            if (frame.Textures is { Length: > 0 } engineTex)
-                renderer.SetTextures(engineTex);
-            else if (Textures is { } bank)
+            var sameMesh = ReferenceEquals(_uploadedVertices, verts);
+            var sameTex = ReferenceEquals(_uploadedTextures, frame.Textures);
+            if (sameMesh && (sameTex || frame.Textures is null || frame.Textures.Length == 0))
+                return;
+
+            if (frame.Textures is { Length: > 0 } engineTex && !sameTex)
+            {
+                renderer?.SetTextures(engineTex);
+                _uploadedTextures = engineTex;
+                TextureUploads++;
+            }
+            else if (Textures is { } bank && !sameMesh && frame.Textures is null)
             {
                 var dummy = new TexturedMesh { Vertices = verts, Draws = draws };
-                renderer.SetTextures(LoadGpuTextures(dummy, bank));
+                renderer?.SetTextures(LoadGpuTextures(dummy, bank));
+                _uploadedTextures = null;
+                TextureUploads++;
             }
 
-            renderer.SetMesh(verts, draws);
+            if (!sameMesh)
+            {
+                renderer?.SetMesh(verts, draws);
+                _uploadedVertices = verts;
+                MeshUploads++;
+            }
+
             _uploadedWorld = frame.World;
             return;
         }
@@ -94,17 +116,20 @@ public sealed class SilkEngineHost : IEngineHost
 
             var mesh = MeshBatches.Build(world.Triangles);
             if (Textures is { } textures)
-                renderer.SetTextures(LoadGpuTextures(mesh, textures));
-            renderer.SetMesh(mesh.Vertices, mesh.Draws);
+                renderer?.SetTextures(LoadGpuTextures(mesh, textures));
+            renderer?.SetMesh(mesh.Vertices, mesh.Draws);
             _uploadedWorld = world;
+            MeshUploads++;
             return;
         }
 
-        if (_uploadedWorld is null)
+        if (_uploadedWorld is null && _uploadedVertices is null)
             return;
 
-        renderer.SetMesh([], []);
+        renderer?.SetMesh([], []);
         _uploadedWorld = null;
+        _uploadedVertices = null;
+        _uploadedTextures = null;
     }
 
     /// <summary>
@@ -123,13 +148,19 @@ public sealed class SilkEngineHost : IEngineHost
             return;
         }
 
+        // 00B30B50 letterbox uses camera +176/+180
+        // = 1024×768. Window resize is not the
+        // first-seen viewport.
+        var nativeAspect = EngineLifecycle.DisplayDefaultWidth
+            / (float)EngineLifecycle.DisplayDefaultHeight;
+        _ = aspect;
         var fogPlane = WorldShading.LinearFogPlane(cam.Position, cam.Forward);
         Renderer.Draw(
-            cam.ViewProjection(aspect),
+            cam.ViewProjection(nativeAspect),
             cam.Position,
             fogPlane,
-            cam.SkyViewProjection(aspect),
-            cam.HostLandscapeViewProjection(aspect));
+            cam.SkyViewProjection(nativeAspect),
+            cam.HostLandscapeViewProjection(nativeAspect));
     }
 
     public void Quit() => _quit?.Invoke();
