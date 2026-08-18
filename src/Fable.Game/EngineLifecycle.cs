@@ -283,6 +283,24 @@ public sealed class EngineLifecycle : IDisposable
     public const uint FrontendTypeSubmitStubFn = 0x00B4A450;
     public const int FrontendTypeListA = 0xF;
     public const int FrontendTypeListB = 0x10;
+    /// <summary>
+    /// <c>0042E204</c> <c>00B26340</c>
+    /// constructs <c>00B4AC10</c> then
+    /// <c>00BAD040</c> ("VSHADER_2D_SPRITE").
+    /// <c>00B4ABB0</c> → <c>00B8FAD0</c>
+    /// registers types <c>0x22</c>/<c>0x23</c>
+    /// before the first <c>0042DF9E</c>.
+    /// </summary>
+    public const uint FrontendSpriteLayerCtorFn = 0x00B4AC10;
+    public const uint FrontendSpriteHandlerCtorFn = 0x00BAD040;
+    public const uint FrontendSpriteTypeListFn = 0x00BB1640;
+    public const uint FrontendSpriteFactoryFn = 0x00BACFD0;
+    public const uint FrontendSpriteSubmitFn = 0x00BAE2D0;
+    public const uint FrontendSpriteHandlerVtbl = 0x012A5664;
+    public const uint FrontendSpriteInstanceVtbl = 0x012A54BC;
+    public const int FrontendSpriteType = 0x22;
+    public const int FrontendSpriteTypeAlt = 0x23;
+    public const string FrontendSpriteShader = "VSHADER_2D_SPRITE";
     public const uint FrontendWidgetMessageNoopFn = 0x0052F040;
     public const uint FrontendDefResolveFn = 0x0042AEDA;
     public const uint FrontendDefLookupFallbackFn = 0x009E5170;
@@ -2483,6 +2501,13 @@ public sealed class EngineLifecycle : IDisposable
             "0042E204 +88 00B26340");
         Note(FrontendEngineAllocFn, "InitEngine", "Engine",
             $"00B26340 0x{FrontendEngineObjectSize:X} 00B260B0 012A0F3C");
+        Note(FrontendSpriteLayerCtorFn, "InitEngine", "Engine",
+            "00B4AC10 00B4ABB0 00B8FAD0");
+        Note(FrontendSpriteHandlerCtorFn, "InitEngine", "Engine",
+            $"00BAD040 {FrontendSpriteShader} vtbl 0x{FrontendSpriteHandlerVtbl:X}");
+        Note(FrontendSpriteTypeListFn, "InitEngine", "Engine",
+            $"00BB1640 types 0x{FrontendSpriteType:X}/0x{FrontendSpriteTypeAlt:X}");
+        FrontendType22HandlerRegistered = true;
         Note(0x0042EF6F, "InitFrontend", "Frontend", "Init frontend");
         Note(FrontendHelperCtor, "InitFrontend", "Frontend",
             $"0042DB40 size {FrontendHelperSize} vtbl 0x{FrontendHelperVtbl:X}");
@@ -2685,14 +2710,16 @@ public sealed class EngineLifecycle : IDisposable
             $"00B26340 size 0x{FrontendEngineObjectSize:X} vtbl 0x{FrontendEngineVtbl:X}");
         Note(FrontendSubmitFn, "Frontend", "UI",
             $"00B23BC0 engine vtbl+{Frontend2dSubmitVtbl} 012A0F3C → 00B324A0 [0x{FrontendSubmitSingletonVa:X}] type 0x{Frontend2dRecordType:X}");
-        // 00B8FAD0 only registers 00B48220 types 0xF/0x10.
-        // [table+0x22*4+16]=0. dest+4=0 → 00B325FA, no 009DB700.
-        FrontendType22HandlerRegistered = false;
+        // Init Engine already 00B8FAD0'd 00BAD040 for 0x22/0x23.
+        // dest+4=0 → 00BACFD0(0x22) 012A54BC, then factory +20 00BAE2D0.
+        // 00BAE2D0 is shader bind, not 009DB700.
         FrontendEnqueueRan = false;
-        Note(FrontendTypeTableRegisterFn, "Frontend", "UI",
-            $"00B8FAD0 types 0x{FrontendTypeListA:X}/0x{FrontendTypeListB:X} not 0x{Frontend2dRecordType:X}");
+        Note(FrontendSpriteFactoryFn, "Frontend", "UI",
+            $"00BACFD0 type 0x{FrontendSpriteType:X} vtbl 0x{FrontendSpriteInstanceVtbl:X}");
+        Note(FrontendSpriteSubmitFn, "Frontend", "UI",
+            "00BAE2D0 VSHADER_2D_SPRITE 00987FE0 no 009DB700");
         Note(FrontendSubmitDispatchFn, "Frontend", "UI",
-            $"00B324A0 type 0x{Frontend2dRecordType:X} handler=0 dest+4=0 00B325FA no 009DB700");
+            $"00B324A0 type 0x{Frontend2dRecordType:X} dest+4=0 00BACFD0+00BAE2D0");
         Frontend2dLastType = Frontend2dRecordType;
         Frontend2dLastPacker = packer;
         Frontend2dLastSubmitVtbl = Frontend2dSubmitVtbl;

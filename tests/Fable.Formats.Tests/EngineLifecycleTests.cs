@@ -410,11 +410,16 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x178, EngineLifecycle.FrontendEngineObjectSize);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendSubmitFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendSubmitDispatchFn);
-        Assert.False(life.FrontendType22HandlerRegistered);
+        Assert.True(life.FrontendType22HandlerRegistered);
         Assert.False(life.FrontendEnqueueRan);
         Assert.Contains(life.Trace.Events, e =>
-            e.Va == EngineLifecycle.FrontendSubmitDispatchFn &&
-            e.Action.Contains("00B325FA", StringComparison.Ordinal));
+            e.Va == EngineLifecycle.FrontendSpriteHandlerCtorFn &&
+            e.Action.Contains("VSHADER_2D_SPRITE", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendSpriteSubmitFn &&
+            e.Action.Contains("00BAE2D0", StringComparison.Ordinal));
+        Assert.Equal(0x00BAD040u, EngineLifecycle.FrontendSpriteHandlerCtorFn);
+        Assert.Equal(0x00BAE2D0u, EngineLifecycle.FrontendSpriteSubmitFn);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.FrontendWidgetMessageNoopFn &&
             e.Action.Contains("ret 4", StringComparison.Ordinal));
@@ -536,7 +541,7 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0f, life.FrontendWidgetDestY1);
         Assert.True(life.FrontendDefFound);
         Assert.Equal("UI", life.FrontendDefTypeName);
-        Assert.False(life.FrontendType22HandlerRegistered);
+        Assert.True(life.FrontendType22HandlerRegistered);
         Assert.False(life.FrontendEnqueueRan);
         Assert.False(life.Frontend2dDipIssued);
         Assert.Contains(life.Trace.Events, e =>

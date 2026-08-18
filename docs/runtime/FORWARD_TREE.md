@@ -196,9 +196,12 @@ Retail vtbl `01230CA0`: slot 1 start `0042F75E`, slot 2 pump `0042EC7C`.
 │       └── msg 0xE5 → [slot 0x14].vtbl+284 0052F040 ret 4  PROVEN
 │       0059899A / MAIN_MENU is later, not first-seen
 │       0041AFA0 → engine vtbl+92 00B23BC0 → 00B324A0 type 0x22
-│         00B8FAD0 only types 0xF/0x10; [table+0x98]=0
-│         dest+4=0 → 00B325FA, no 009DB700  PROVEN
+│         handler 00BAD040 (after Init Engine)
+│         dest+4=0 → 00BACFD0 012A54BC + factory 00BAE2D0
+│         00BAE2D0 shader bind, not 009DB700  PROVEN
 ├── "Init Engine"   0042E204
+│   └── 00B26340 → 00B4AC10 → 00BAD040 VSHADER_2D_SPRITE
+│       00B4ABB0 → 00B8FAD0 types 0x22/0x23  PROVEN
 ├── "Init frontend"
 │   ├── alloc 16 → 0042DB40 vtbl 01230C34  PROVEN
 │   ├── 009D8CF0 clear + 009BEEB0 Present  PROVEN (black after AVI)
