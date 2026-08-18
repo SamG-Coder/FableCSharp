@@ -387,6 +387,8 @@ then inner loop until [game+8]  PROVEN
 ├── 00416231  dt − [game+96]
 ├── 009A6460  [engine+8]==0 → 1 (update); +8 → 2 leave
 │   first-seen 1
+├── [game+52]==0 → 009F8BA0(game+90556) then 004162B5  PROVEN
+│   [game+52]!=0 → 00417747 (not first-seen)
 ├── 004162B5  GamePumpUpdate  SLOT
 │   ├── 009A57B0  gate [engine+148]==GetTickCount
 │   ├── [game].vtbl+20  00418289  update
@@ -398,7 +400,9 @@ then inner loop until [game+8]  PROVEN
 ```
 
 **First** `004189C2` sees index 0 (dummy). It does **not**
-`SetRegionAsLoaded`. No-save enqueue is the **next** pump.
+`SetRegionAsLoaded` and does **not** `E8` `00501450`.
+Inner `0041726D` walks `game+164`; ctor 0 → `009F1750` empty
+(host type-1 seed DISPROVEN). `00501450` caller still UNREAD.
 
 ---
 

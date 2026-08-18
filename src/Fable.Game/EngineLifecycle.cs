@@ -712,6 +712,19 @@ public sealed class EngineLifecycle : IDisposable
     public const uint ActiveThingVa = 0x013B8A1C;
     public const uint RenderStackZeroFn = 0x00415A60;
     public const uint SleepIat = 0x0143FE1C;
+    /// <summary>
+    /// Inner <c>004189C2</c> before
+    /// <c>004162B5</c> when
+    /// <c>[game+52]==0</c>:
+    /// <c>009F8BA0(game+90556)</c>.
+    /// IAT <c>0x14404B4</c> tick, store
+    /// delta at <c>+4</c>.
+    /// </summary>
+    public const uint InnerLoopDtFn = 0x009F8BA0;
+    public const uint InnerLoopDtIat = 0x014404B4;
+    public const int InnerLoopDtOffset = 90556;
+    public const int GamePlus52Offset = 52;
+    public const int GamePlus52FirstSeen = 0;
     public const uint SleepMsVa = 0x013B8610;
     /// <summary>
     /// Unique increment: <c>004A5E10 inc [0x13B89BC]</c>
@@ -2655,6 +2668,7 @@ public sealed class EngineLifecycle : IDisposable
         if (GamePumpFirstDone)
         {
             EnqueueAfterDummy();
+            NoteInnerLoopDt();
             PumpGameUpdate();
             return;
         }
@@ -2683,7 +2697,21 @@ public sealed class EngineLifecycle : IDisposable
             $"009A6460 [engine+8]=0 → {GamePumpQuitFirstSeen}");
         GamePumpFirstDone = true;
         Note(GamePumpMemlog, "GamePump", "Game", "00415E85 memlog");
+        NoteInnerLoopDt();
         PumpGameUpdate();
+    }
+
+    /// <summary>
+    /// <c>00418B07</c>:
+    /// <c>[game+52]==0</c> first-seen so
+    /// <c>009F8BA0</c> then
+    /// <c>004162B5</c>, not
+    /// <c>00417747</c>.
+    /// </summary>
+    private void NoteInnerLoopDt()
+    {
+        Note(InnerLoopDtFn, "GamePump", "Time",
+            $"009F8BA0 +{InnerLoopDtOffset} [game+{GamePlus52Offset}]={GamePlus52FirstSeen}");
     }
 
     /// <summary>
@@ -3167,17 +3195,18 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
-    /// Table init <c>0121BA2D</c> stores
-    /// <c>00629270</c> at slot 1. Seeded so
-    /// <c>0049DFB0</c> second walk can fire.
+    /// Dispatch table slot 1 is
+    /// <c>00629270</c>. First-seen
+    /// <c>game+164</c> is ctor 0 so
+    /// <c>009F1750</c> is empty —
+    /// do not invent a type-1 queue.
     /// </summary>
     public void SeedWorldTick()
     {
-        if (_tickTypes.Contains(WorldTickType))
-            return;
-        _tickTypes.Add(WorldTickType);
         Note(WorldTickSlot1FnVa, "GamePump", "World",
             "0121BA2D [0x13B92C8]=00629270 type 1");
+        Note(AdvanceGameTicksFn, "InitGame", "World",
+            "0041726D game+164 ctor 0 009F1750 empty");
     }
 
     /// <summary>
