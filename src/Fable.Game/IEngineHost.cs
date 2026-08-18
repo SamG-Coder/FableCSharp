@@ -84,6 +84,7 @@ public readonly record struct FrontendWidget(
     int Font = 0,
     string? FontFace = null,
     int MessageId = 0,
+    int Plus224 = 0,
     float U0 = 0,
     float V0 = 0,
     float U1 = 0,

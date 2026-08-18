@@ -83,6 +83,37 @@ public sealed class FrontendInputMap
     public const uint Type11ActionFn = 0x0054DBC0;
     public const uint Type38ActionFn = 0x0055AD60;
     public const uint PersistMessageCopyFn = 0x0055B040;
+    /// <summary>
+    /// <c>0055AF60</c> posts
+    /// <c>[widget+372]</c> filled from
+    /// <c>[def+224]</c>. First-seen
+    /// Accept / New Game
+    /// <see cref="FrontendUiDef.Plus224Crc"/>
+    /// is 0 so that list is empty.
+    /// </summary>
+    public const uint Type34ClickFn = 0x0055AF60;
+    public const int Action26ListOffset = 372;
+    public const int Action26PostDefOffset = FrontendUiDef.Plus224DefOffset;
+    /// <summary>
+    /// <c>0055ACF0</c> posts
+    /// <c>[widget+380]</c> from
+    /// <c>[def+228]</c> /
+    /// <see cref="FrontendUiDef.MessageIdCrc"/>.
+    /// Not action 26.
+    /// </summary>
+    public const uint Plus228PostFn = 0x0055ACF0;
+    public const int Plus228ListOffset = 380;
+    /// <summary>
+    /// Action 26 tail: <c>cmp 25</c>
+    /// else <c>ret 4</c>. Not a poster.
+    /// </summary>
+    public const uint Action26NopFn = 0x0055B9D0;
+    /// <summary>
+    /// Type 11/38 selected u8
+    /// (inner+348). 0 skips
+    /// <see cref="Type34ClickFn"/>.
+    /// </summary>
+    public const int Type11SelectedOffset = 352;
     public const int PersistMessageDefOffset = FrontendUiDef.MessageIdDefOffset;
     public const int TypeButton = 11;
     public const int TypeAccept = 38;
@@ -164,7 +195,10 @@ public sealed class FrontendInputMap
     /// <summary>
     /// First visible stored id: type-10
     /// attach message, else type 11/38
-    /// persist <c>+228</c>.
+    /// persist <c>+228</c>
+    /// (<see cref="MessageIdCrc"/>).
+    /// Action 26 <c>+372</c> is
+    /// <c>+224</c> and is 0 first-seen.
     /// </summary>
     public static int? MessageFromWidgets(
         int action, IReadOnlyList<FrontendWidget> widgets)

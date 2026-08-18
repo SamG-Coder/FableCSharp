@@ -283,11 +283,17 @@ public sealed class FrontendUiDefTests
         var accept = FrontendUiDef.TryParse(bin.FindEntry("UI_ACCEPT_NEW_PROFILE")!)!;
         Assert.Equal(38, accept.Type);
         Assert.Equal(0x126, accept.MessageId);
+        Assert.Equal(0, accept.Plus224);
         Assert.NotEqual(accept.MessageId, accept.Plus224);
         var newGame = FrontendUiDef.TryParse(bin.FindEntry("UI_FRONTEND_BUTTON_NEW_GAME")!)!;
         Assert.Equal(11, newGame.Type);
         Assert.Equal(15, newGame.MessageId);
+        Assert.Equal(0, newGame.Plus224);
         Assert.NotEqual(newGame.MessageId, newGame.Plus224);
+        var invisible = FrontendUiDef.TryParse(bin.FindEntry("UI_FRONTEND_BUTTON_INVISIBLE")!)!;
+        Assert.Equal(11, invisible.Type);
+        Assert.Equal(0xE5, invisible.MessageId);
+        Assert.Equal(0, invisible.Plus224);
         Assert.Equal(
             0x126,
             FrontendUiDef.ReadPersistI32(
@@ -302,6 +308,18 @@ public sealed class FrontendUiDefTests
             FrontendUiDef.Plus224Crc,
             FrontendUiDef.MessageIdCrc));
         Assert.Equal(228, FrontendInputMap.PersistMessageDefOffset);
+        var invisibleWidget = widgets.Single(w =>
+            w.Name == "UI_FRONTEND_BUTTON_INVISIBLE");
+        Assert.Equal(0xE5, invisibleWidget.MessageId);
+        Assert.Equal(0, invisibleWidget.Plus224);
+        var main = FrontendWidgetFactory.Build(
+            bin,
+            "UI_FRONTEND_MAIN_MENU_NO_LIVEAWARE_NO_CONTINUE",
+            names: names);
+        var newGameWidget = main.Single(w =>
+            w.Name == "UI_FRONTEND_BUTTON_NEW_GAME");
+        Assert.Equal(15, newGameWidget.MessageId);
+        Assert.Equal(0, newGameWidget.Plus224);
         _ = install;
     }
 
