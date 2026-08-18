@@ -175,6 +175,7 @@ Settings chrome only — CSS unchanged.
 | `00662880` / `004CA010` insert binds `CREATURE_HERO` mesh 4299 after the `PLAYER_HERO` miss chain | PROVEN | `e0e0511` / `Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint` (`HeroMeshId=4299`) |
 | `0049F180` after characters: Init GUI `0043A380` `PLAYER_GUI_PC` | PROVEN | `21491ac` / same test (`PlayerGuiReady`); bind still #17 / PARTIAL (Note-only) |
 | `00403079` / `009C0E50` display defaults 1024×768, title `TEXT_GUI_WINDOW_TITLE` | PROVEN | `48a879ac` / `Window_00403079_defaults_1024x768_and_title`. Client Size = `BackBufferWidth`/`Height`. `DefaultVulkan` 1600×900 DISPROVEN (issue #8 closed). |
+| `00413C50` `userst.ini` `SetFullscreen` / `009A64B0` style `0xCA0000` / `009BF7E0` `Windowed=![0x137544A]` | PROVEN (name→byte PARTIAL) | `Userst_00413C50_SetFullscreen_false_is_009BF7E0_windowed`. d3d9 `ForceWindowedMode` wrapper is not authority. |
 | `004B4260` activates WLD `START_INITIAL_QUESTS` (world+172 from `00507C30`) | PROVEN | `efa0e541` / `Init_quests_004B4260_activates_wld_initial_list` (`QuestsInitDone=true`) |
 | `00CB5AD0` starts `QuestFactoryTable` factory scripts (not `S_QNOVI`) | PROVEN | `48a879ac` / `Activate_quests_00CB5AD0_starts_factory_scripts` |
 | `0042E3EE` type/key events dispatch `0041E5F2` actions 0–5 / 20–21 (not WASD) | PROVEN | `e7b3c76` / `Input_0042E3EE_dispatches_0041E5F2_actions`. `0055CB10` records actions; no recovered player-move listener. Not WASD. New Game is still keyboard N/Enter (does not close #14). |
@@ -280,7 +281,7 @@ the no-save path.
 | Slot fields beyond `+6296/+6312/+6328` (weights / `+6340/+6352`) | UNREAD | Lerp into `ScriptedCamera` is PROVEN; first-seen Weight0 ctor 0.2 is locked (`52e26bc`). Leftover slot bodies are not |
 | `00435530` overlay `00435000` / interface `00435070` bodies | PARTIAL | Present + `009DA9F0` layer bits PROVEN; overlay/interface still Note |
 | Frontend `00595222` widget DIP body | DISPROVEN as DIP | Walk only (`[ui+84]` → `0041AFA0`). First-seen dest `0,0,0,0`. DIP remains `009DA9F0` empty skip |
-| `00B324A0` type-0x22 handler vtbl+20 | PARTIAL | dest+4=0 only while dest is 0. Child dest from PositionX/Y is nonempty → `00BAD8A0` `009DB700`. Glyph raster for `TEXT_GUI_MENU_PRESS_BUTTON` is a host stand-in (font `009FE620` UNREAD). |
+| `00B324A0` type-0x22 handler vtbl+20 | PARTIAL | dest+4=0 only while dest is 0. Child dest from PositionX/Y is nonempty → `00BAD8A0` `009DB700`. Type-6 text uses `FONT_ENGLISH_MAIN` `ENG_ARIAL_16` A8 atlas (`0054F4B0` / `0054EF00`). `009FE620` is GPU cache wrap, not the file parse. |
 | `0041AC20` dest rect from +204/+248 | PROVEN first-seen 0,0,0,0 | Empty `+376` skips `+204/+208`. `0041AFA0` uses `+248/+264` ctor 0 |
 | New Game keyboard N/Enter (host stand-in) | PARTIAL | `DispatchFrontendMessage(15)` is `0059A238` vtbl+32. Enter still queues that message. Click widget id=0 UNREAD |
 | `006B8640` / `008889C0` leftover (do not write V0 first-seen) | UNREAD | `006B2CA0` pose is PROVEN (`204a214`). Host `SeedAt(1.6m)` is DISPROVEN as live New Game. Lookout helper FOV 70 from `00A0C130` (`be3339e`). `00A0C130` is a packer (`a6f939a`); ctor look +Z, up `(1,1,1)`. SHOT2 FOV 72 is intro-view leftover — do not collapse into Lookout. Do not close #6 / #13 |
