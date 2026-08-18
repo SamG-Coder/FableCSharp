@@ -2888,14 +2888,6 @@ public sealed class EngineLifecycle : IDisposable
         {
             var mapped = FrontendInputMap.TryMapEvent(
                 type, key, _frontendWidgets);
-            if (mapped is null &&
-                FrontendInputMap.ActionFromEvent(type, key) ==
-                    FrontendInputMap.ActionType4 &&
-                FrontendMenuRoot == FrontendPressStartMenu)
-            {
-                mapped = FrontendPressStartMessage;
-            }
-
             if (mapped is not int msg)
                 continue;
             DispatchFrontendMessage(msg);
@@ -6853,8 +6845,33 @@ public sealed class EngineLifecycle : IDisposable
         FrontendDefTypeName = hit.TypeName;
     }
 
-    private void AttachPressStartWidgets() =>
+    private void AttachPressStartWidgets()
+    {
         AttachFrontendTree(FrontendPressStartMenu);
+        WriteType10AttachMessage();
+    }
+
+    /// <summary>
+    /// <c>00598A1C</c> → <c>00598EE6</c>
+    /// type-10 <c>+352</c> packet
+    /// <c>0xE5</c>. Not a screen-name
+    /// check in the mapper.
+    /// </summary>
+    private void WriteType10AttachMessage()
+    {
+        Note(FrontendInputMap.AttachWriteE5, "Frontend", "UI",
+            $"00598EE6 +{FrontendInputMap.Type10StoredMsgOffset} 0x{FrontendPressStartMessage:X}");
+        for (var i = 0; i < _frontendWidgets.Count; i++)
+        {
+            var widget = _frontendWidgets[i];
+            if (widget.Type != FrontendPressStartType || widget.MessageId != 0)
+                continue;
+            _frontendWidgets[i] = widget with
+            {
+                MessageId = FrontendPressStartMessage,
+            };
+        }
+    }
 
     private void AttachFrontendTree(string rootName)
     {
@@ -6883,16 +6900,6 @@ public sealed class EngineLifecycle : IDisposable
 
         var built = FrontendWidgetFactory.Build(
             FrontendDefs, rootName, _frontendSprites, LookupFrontendText, names);
-        if (built.Count > 0 &&
-            rootName == FrontendPressStartMenu &&
-            built[0].MessageId == 0)
-        {
-            built[0] = built[0] with
-            {
-                MessageId = FrontendPressStartMessage,
-            };
-        }
-
         _frontendWidgets.AddRange(built);
         if (_frontendWidgets.Count > 0)
             FrontendRootType = _frontendWidgets[0].Type;

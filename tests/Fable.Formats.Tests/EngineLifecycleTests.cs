@@ -393,7 +393,7 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
-    public void Frontend_press_start_type4_posts_0xE5_then_new_profile()
+    public void Frontend_press_start_type4_without_widgets_does_not_invent_0xE5()
     {
         var life = new EngineLifecycle();
         life.Bootstrap(null);
@@ -407,11 +407,10 @@ public sealed class EngineLifecycleTests
         life.QueueInput(EngineInput.Type4, 0);
         Assert.True(life.Pump());
         Assert.Equal(
-            EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
-        Assert.Equal("Default", life.FrontendEditBoxName);
+            EngineLifecycle.FrontendPressStartMenu, life.FrontendMenuRoot);
         Assert.False(life.RetailNewGameFlag);
         Assert.Equal(EngineStage.Frontend, life.Stage);
-        Assert.Contains(life.Trace.Events, e =>
+        Assert.DoesNotContain(life.Trace.Events, e =>
             e.Va == EngineLifecycle.FrontendUiMessageFn &&
             e.Action.Contains("msg=229", StringComparison.Ordinal));
         Assert.DoesNotContain(life.Trace.Events, e =>

@@ -160,7 +160,10 @@ public sealed class FrontendInputTests
         Assert.Equal(
             EngineLifecycle.FrontendPressStartMenu, life.FrontendMenuRoot);
         Assert.Contains(life.FrontendWidgets, w =>
-            w.Name == "UI_FRONTEND_PRESS_START_MENU" &&
+            w.Type == FrontendInputMap.Type10 &&
+            w.MessageId == FrontendMessages.PressStart);
+        Assert.Contains(life.FrontendWidgets, w =>
+            w.Type == FrontendInputMap.TypeButton &&
             w.MessageId == FrontendMessages.PressStart);
         life.QueueInput(FrontendInputMap.Type4, 0);
         Assert.True(life.Pump());
@@ -261,6 +264,21 @@ public sealed class FrontendInputTests
         Assert.Equal(0x0055AF60u, FrontendInputMap.Type34ClickFn);
         Assert.Equal(0x0055ACF0u, FrontendInputMap.Plus228PostFn);
         Assert.Equal(0x0055B9D0u, FrontendInputMap.Action26NopFn);
+        var accept = new List<FrontendWidget>
+        {
+            new("UI_FRONTEND_NEW_PROFILE_SCREEN", 10, 0, 0, 0, 0, null, null),
+            new("UI_ACCEPT_NEW_PROFILE", 38, 0, 0, 0, 0, null, null,
+                MessageId: FrontendMessages.AcceptNewProfile),
+        };
+        Assert.Equal(
+            FrontendMessages.AcceptNewProfile,
+            FrontendInputMap.MessageFromPlus228List(accept));
+        Assert.Equal(
+            FrontendMessages.AcceptNewProfile,
+            FrontendInputMap.MessageFromWidgets(
+                FrontendInputMap.ActionType4, accept));
+        Assert.Null(FrontendInputMap.MessageFromAction(
+            FrontendInputMap.ActionType4, FrontendMessages.NewProfileMenu));
     }
 
     [Fact]

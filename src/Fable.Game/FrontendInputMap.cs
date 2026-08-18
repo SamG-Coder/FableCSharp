@@ -193,12 +193,13 @@ public sealed class FrontendInputMap
     }
 
     /// <summary>
-    /// First visible stored id: type-10
-    /// attach message, else type 11/38
-    /// persist <c>+228</c>
-    /// (<see cref="MessageIdCrc"/>).
-    /// Action 26 <c>+372</c> is
-    /// <c>+224</c> and is 0 first-seen.
+    /// Type-10 <c>0054E2FA</c> posts
+    /// <c>+352</c> (attach). Type 11/38
+    /// <c>0055ACF0</c> posts
+    /// <c>+380</c> from persist
+    /// <c>+228</c>. Action 26
+    /// <c>+372</c> is <c>+224</c> and
+    /// is 0 first-seen.
     /// </summary>
     public static int? MessageFromWidgets(
         int action, IReadOnlyList<FrontendWidget> widgets)
@@ -208,11 +209,31 @@ public sealed class FrontendInputMap
         ArgumentNullException.ThrowIfNull(widgets);
         foreach (var widget in widgets)
         {
+            if (!widget.Visible || widget.Clip)
+                continue;
+            if (widget.Type == FrontendWidgetType.Menu &&
+                widget.MessageId != 0)
+                return widget.MessageId;
+        }
+
+        return MessageFromPlus228List(widgets);
+    }
+
+    /// <summary>
+    /// <c>0055ACF0</c> <c>push [this+380]</c>
+    /// <c>vtbl+524</c>. First visible
+    /// type 11/38 persist
+    /// <see cref="MessageIdCrc"/>.
+    /// </summary>
+    public static int? MessageFromPlus228List(
+        IReadOnlyList<FrontendWidget> widgets)
+    {
+        ArgumentNullException.ThrowIfNull(widgets);
+        foreach (var widget in widgets)
+        {
             if (!widget.Visible || widget.Clip || widget.MessageId == 0)
                 continue;
-            if (widget.Type == FrontendWidgetType.Menu ||
-                widget.Type == TypeButton ||
-                widget.Type == TypeAccept)
+            if (widget.Type == TypeButton || widget.Type == TypeAccept)
                 return widget.MessageId;
         }
 
