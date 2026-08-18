@@ -363,11 +363,14 @@ public sealed class WorldPipelineTests
         Assert.False(GameBin.FirstSeenInstancesAsC3d("MARKER", "GAZE_OUT_OF_BUILDING_MARKER"));
 
         Assert.Equal(34, ScenePasses.Registration.Length);
-        Assert.Equal(4, ScenePasses.FirstSeenLayers.Count);
+        Assert.Equal(7, ScenePasses.FirstSeenLayers.Count);
         Assert.Equal(0x4u, ScenePasses.FirstSeenLayers[0].Bit);
         Assert.Equal(0x40u, ScenePasses.FirstSeenLayers[1].Bit);
         Assert.Equal(0x20u, ScenePasses.FirstSeenLayers[2].Bit);
-        Assert.Equal(0x2000u, ScenePasses.FirstSeenLayers[3].Bit);
+        Assert.Equal(0x100u, ScenePasses.FirstSeenLayers[3].Bit);
+        Assert.Equal(0x2000u, ScenePasses.FirstSeenLayers[4].Bit);
+        Assert.Equal(0x80u, ScenePasses.FirstSeenLayers[5].Bit);
+        Assert.Equal(0x200u, ScenePasses.FirstSeenLayers[6].Bit);
 
         var mesh = MeshBatches.Build(scene.Geometry.Triangles);
         Assert.Contains(mesh.Draws, d => d.PassBit == 0x4);

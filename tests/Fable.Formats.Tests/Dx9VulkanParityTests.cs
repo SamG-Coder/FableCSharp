@@ -288,7 +288,10 @@ public sealed class Dx9VulkanParityTests
     {
         Assert.True(ScenePasses.Rank(0x4) < ScenePasses.Rank(0x40));
         Assert.True(ScenePasses.Rank(0x40) < ScenePasses.Rank(0x20));
-        Assert.True(ScenePasses.Rank(0x20) < ScenePasses.Rank(0x2000));
+        Assert.True(ScenePasses.Rank(0x20) < ScenePasses.Rank(0x100));
+        Assert.True(ScenePasses.Rank(0x100) < ScenePasses.Rank(0x2000));
+        Assert.True(ScenePasses.Rank(0x2000) < ScenePasses.Rank(0x80));
+        Assert.True(ScenePasses.Rank(0x80) < ScenePasses.Rank(0x200));
         Assert.True(ScenePasses.Rank(0x2000) < ScenePasses.Rank(0x20000));
         Assert.Equal("VSHADER_LANDSCAPE_FOREGROUND", WorldShading.LandscapeFamilyShader(0));
         Assert.Equal("VSHADER_STATIC_DIRLIGHT_FOG", WorldShading.StaticFamilyShader(0));

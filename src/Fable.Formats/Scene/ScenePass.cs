@@ -18,6 +18,8 @@ public enum SceneSubmit
     Shadows,
     Primitives,
     PalskinBit100,
+    PalskinBit80,
+    PalskinBit200,
 }
 
 public static class ScenePasses
@@ -25,8 +27,10 @@ public static class ScenePasses
     /// <summary>
     /// Registration order. Landscape <c>vtbl+16</c> only draws bits 4 and
     /// <c>0x40</c>. Sky else-path is <c>0x2000</c>. <c>0x2000000</c> is a
-    /// no-op. Static meshes are submitted once on <c>0x20</c> (first
-    /// MainScene+616 bit after landscape FG); the other +616 bits stay unread.
+    /// no-op. Static <c>0x18</c> is slot 0 on <c>0x20</c>.
+    /// PALSKIN is <c>0x100</c> (slots 8+10) then
+    /// <c>0x80</c> (slot 14) / <c>0x200</c> (Flag1 slot 9)
+    /// after sky. Not folded into <c>0x20</c>.
     /// </summary>
     public static readonly ScenePass[] Registration =
     [
@@ -55,8 +59,8 @@ public static class ScenePasses
         new(0x00400000, SceneSubmit.Sky400000),
         new(0x00800000, SceneSubmit.Unread),
         new(0x02000000, SceneSubmit.None),
-        new(0x00000080, SceneSubmit.Unread),
-        new(0x00000200, SceneSubmit.Unread),
+        new(0x00000080, SceneSubmit.PalskinBit80),
+        new(0x00000200, SceneSubmit.PalskinBit200),
         new(0x04000000, SceneSubmit.Unread),
         new(0x01000000, SceneSubmit.Unread),
         new(0x08000000, SceneSubmit.Unread),
@@ -80,7 +84,8 @@ public static class ScenePasses
     public static bool Draws(SceneSubmit submit) =>
         submit is SceneSubmit.LandscapeBit4 or SceneSubmit.LandscapeBit40
             or SceneSubmit.SkyElse or SceneSubmit.Primitives
-            or SceneSubmit.PalskinBit100;
+            or SceneSubmit.PalskinBit100 or SceneSubmit.PalskinBit80
+            or SceneSubmit.PalskinBit200;
 
     public static float ShaderMode(SceneSubmit submit) => submit switch
     {
@@ -89,6 +94,8 @@ public static class ScenePasses
         SceneSubmit.SkyElse => 2f,
         SceneSubmit.Primitives => 3f,
         SceneSubmit.PalskinBit100 => 3f,
+        SceneSubmit.PalskinBit80 => 3f,
+        SceneSubmit.PalskinBit200 => 3f,
         _ => 1f,
     };
 
@@ -121,16 +128,31 @@ public static class ScenePasses
             "PSHADER_LANDSCAPE_FOREGROUND mul_x2 t1*v0",
             "LESSEQUAL", "off", "CCW", "VS oFog",
             "T(cam) native / identity host STB", "landscape"),
-        new(0x20, SceneSubmit.Primitives, "static + PALSKIN",
-            "VSHADER_STATIC_DIRLIGHT_FOG / VSHADER_PALSKIN_DIRLIGHT_FOG",
+        new(0x20, SceneSubmit.Primitives, "static C3D type 0x18",
+            "VSHADER_STATIC_DIRLIGHT_FOG",
             "PSHADER_TEXTURE_DIFFUSE",
-            "LESSEQUAL", "off; PALSKIN SRCALPHA/INVSRCALPHA", "CCW inherit",
-            "VS oFog", "identity W", "static / PALSKIN"),
+            "LESSEQUAL", "off", "CCW inherit",
+            "VS oFog", "instance 3x4", "static"),
+        new(0x100, SceneSubmit.PalskinBit100, "PALSKIN slots 8+10",
+            "VSHADER_PALSKIN_DIRLIGHT_FOG",
+            "PSHADER_TEXTURE_DIFFUSE",
+            "LESSEQUAL", "SRCALPHA/INVSRCALPHA", "CCW inherit",
+            "VS oFog", "instance 3x4 + c38", "PALSKIN"),
         new(0x2000, SceneSubmit.SkyElse, "inner sky else-path",
             "VSHADER_INNER_SKY dp4 oPos v0 c5-c8",
             "PSHADER_INNER_SKY or _SIMPLE; PS c0/c1/c2 UNREAD",
             "MinZ 0.99 MaxZ 1", "UNREAD", "CCW", "UNREAD",
             "identity W; sky P 100/10000", "sky"),
+        new(0x80, SceneSubmit.PalskinBit80, "PALSKIN type1 slot 14",
+            "VSHADER_PALSKIN_DIRLIGHT_FOG",
+            "PSHADER_TEXTURE_DIFFUSE",
+            "LESSEQUAL", "SRCALPHA/INVSRCALPHA", "CCW inherit",
+            "VS oFog", "instance 3x4 + c38", "PALSKIN"),
+        new(0x200, SceneSubmit.PalskinBit200, "PALSKIN Flag1 slot 9",
+            "VSHADER_PALSKIN_DIRLIGHT_FOG",
+            "PSHADER_TEXTURE_DIFFUSE",
+            "LESSEQUAL", "SRCALPHA/INVSRCALPHA", "CCW inherit",
+            "VS oFog", "instance 3x4 + c38", "PALSKIN"),
     ];
 }
 

@@ -19,6 +19,10 @@ public sealed class ScenePassTests
         Assert.True(ScenePasses.Rank(0x20) < ScenePasses.Rank(0x100));
         Assert.True(ScenePasses.Rank(0x100) < ScenePasses.Rank(0x2000));
         Assert.True(ScenePasses.Rank(0x2000) < ScenePasses.Rank(0x20000));
+        Assert.True(ScenePasses.Rank(0x2000) < ScenePasses.Rank(0x80));
+        Assert.True(ScenePasses.Rank(0x80) < ScenePasses.Rank(0x200));
+        Assert.Equal(SceneSubmit.PalskinBit80, ScenePasses.Registration[25].Submit);
+        Assert.Equal(SceneSubmit.PalskinBit200, ScenePasses.Registration[26].Submit);
         Assert.Equal(SceneSubmit.LandscapeBit4, ScenePasses.Registration[2].Submit);
         Assert.Equal(SceneSubmit.LandscapeBit40, ScenePasses.Registration[5].Submit);
         Assert.Equal(SceneSubmit.Primitives, ScenePasses.Registration[6].Submit);
