@@ -4102,15 +4102,18 @@ public sealed class EngineLifecycle : IDisposable
         Note(InputDeviceVa, "GamePump", "Input",
             $"[0x13B8388] vtbl+{InputVtbl8}");
         InputRecordStored = true;
+        Note(GetForegroundWindowIat, "GamePump", "Input",
+            "00416F9D 009A57B0");
+        Note(WorldFrameGetter, "GamePump", "Input",
+            $"0049D870 frame={WorldFrame}");
         if (WorldFrame <= 1)
         {
             Note(GameVtbl24Fn, "GamePump", "Update",
-                "WorldFrame<=1 skip 004457F0");
+                "0049D870<=1 skip 004457F0");
             return;
         }
 
-        if (!Player.Present)
-            return;
+        Player.Construct();
         Player.Preprocess();
         Note(PlayerInterfacePreprocess, "GamePump", "Input",
             "004457F0 [+2196]=0");
@@ -4119,7 +4122,7 @@ public sealed class EngineLifecycle : IDisposable
         Note(PlayerInputPollFn, "GamePump", "Input",
             "00446330 009F4ED0 vtbl+32/00449990/+16");
         Note(PlayerInputFallbackFn, "GamePump", "Input",
-            "00446220 vtbl+24 [+168]");
+            "00446220 vtbl+24 [+168]=0");
         var n = 0;
         while (Player.Pump(Input) && n < 32)
         {
@@ -4128,7 +4131,10 @@ public sealed class EngineLifecycle : IDisposable
                 ApplyPlayerEvent(ev);
         }
 
-        if (n > 0)
+        if (n == 0)
+            Note(PlayerInputPumpFn, "GamePump", "Input",
+                "00446A30 al=0 no 0041649C");
+        else
             Note(PlayerInputPumpFn, "GamePump", "Input",
                 $"delivered {n}");
     }

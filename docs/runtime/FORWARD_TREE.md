@@ -499,7 +499,14 @@ then inner loop until [game+8]  PROVEN
 │   │           ├── 00416392 → 0049E200
 │   │           ├── 009F4A90 [0x13B8388]+60 / +92=[game+72]
 │   │           ├── [0x13B8388].vtbl+8
-│   │           └── WorldFrame<=1 skip 004457F0 / 00446A30
+│   │           ├── 00416F9D 009A57B0
+│   │           ├── 0049D870 WorldFrame before 004A5E10
+│   │           ├── WorldFrame<=1 skip 004457F0 / 00446A30
+│   │           └── first WorldFrame>1  PROVEN
+│   │               004457F0 [+2196]=0
+│   │               00446A30 00446330 miss
+│   │               00446220 [+168]=0 al=0
+│   │               no 0041649C
 │   └── 009E9FB0==0 → [game].vtbl+28  00417001  render
 │       ├── 00415A60 zero 52
 │       ├── world vtbl+12 0049E1B0 → 004C74F0 [0x13B8A1C]
@@ -916,12 +923,17 @@ Fiber +41 setter 00CB78D0  PROVEN
 0041726D → 0049DFB0 type-1 → 00629270 / 004A5A40
 └── 004A5E10  inc WorldFrame [0x13B89BC]
 
-00416E78  vtbl+24
-└── [game+32].vtbl+4  00446A30
-    └── 00446330  listener walk
-        ├── accept  00687DB0  (0123758C)
-        ├── apply   00687FD0 / 0041649C
-        └── miss    00446220
+00416E78  vtbl+24  (before 0041726D / 004A5E10)
+├── prefix  [world+52].vtbl+4 / 00416392 / 009F4A90 / vtbl+8
+├── 00416F9D 009A57B0
+├── 0049D870 WorldFrame
+├── WorldFrame<=1  skip 004457F0
+└── first WorldFrame>1  PROVEN
+    ├── 004457F0 [+2196]=0
+    └── [game+32].vtbl+4  00446A30
+        ├── 00446330 miss (009F4ED0 empty)
+        ├── 00446220 [+168]=0
+        └── al=0  no 0041649C
 
 00417001  render
 ├── WorldFrame<=1  skip camera
@@ -967,7 +979,7 @@ Walk these **from their parent above**, not by string.
 | `00CB8220` parked trio | next type-1 resume / `0049D870` | `0049D870` after `006E7410` vtbl+8 returns |
 | `004167DA` | first call of `[engine+240]` | store-only; 0 `calldisp +240` on engine |
 | `00CE7670` parked | who activates `Q_NewOakValeIntro` | not this yield |
-| `004A5A40` after `006E37D0` | next type-1 / `00416E78` WorldFrame>1 | `00501450` still 0 E8/imm |
+| `00416E78` after `00446A30` al=0 | same-frame `00417001` WorldFrame>1 camera / next type-1 | `00501450` still 0 E8/imm |
 
 After every successful walk: add the node here, then implement
 only that node's semantic equivalent on `EngineLifecycle`.

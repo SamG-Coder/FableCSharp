@@ -1996,6 +1996,63 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void After_WorldFrame_gt_1_00416E78_is_004457F0_then_00446A30()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.True(life.Pump(0.25f));
+        Assert.Equal(1, life.WorldFrame);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.GameVtbl24Fn &&
+            e.Action.Contains("0049D870<=1 skip 004457F0", StringComparison.Ordinal));
+        Assert.True(life.Pump(0.25f));
+        Assert.Equal(2, life.WorldFrame);
+        Assert.True(life.Pump(0.25f));
+        Assert.Equal(3, life.WorldFrame);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.GetForegroundWindowIat &&
+            e.Action.Contains("00416F9D 009A57B0", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.WorldFrameGetter &&
+            e.Action.Contains("0049D870 frame=2", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PlayerInterfacePreprocess &&
+            e.Action.Contains("004457F0 [+2196]=0", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PlayerInputPumpFn &&
+            e.Action.Contains("00446A30 [game+32] vtbl+4", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PlayerInputPollFn &&
+            e.Action.Contains("00446330", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PlayerInputFallbackFn &&
+            e.Action.Contains("00446220 vtbl+24 [+168]=0", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PlayerInputPumpFn &&
+            e.Action.Contains("00446A30 al=0 no 0041649C", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PlayerApplyFn);
+        Assert.Equal(0, life.Player.DeliveredCount);
+        Assert.True(life.Player.Present);
+        Assert.Equal(0x009A57B0u, EngineLifecycle.EngineUpdateGateFn);
+        Assert.Equal(0x0049D870u, EngineLifecycle.WorldFrameGetter);
+        Assert.Equal(0x004457F0u, EngineLifecycle.PlayerInterfacePreprocess);
+        Assert.Equal(0x00446A30u, EngineLifecycle.PlayerInputPumpFn);
+        Assert.Equal(0x00446330u, EngineLifecycle.PlayerInputPollFn);
+        Assert.Equal(0x00446220u, EngineLifecycle.PlayerInputFallbackFn);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
+        Assert.Null(life.CurrentRegion);
+    }
+
+    [Fact]
     public void First_pump_004189C2_is_0040D2A0_then_00B239A0_not_a_region()
     {
         var life = new EngineLifecycle();
