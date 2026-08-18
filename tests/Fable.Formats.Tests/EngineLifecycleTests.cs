@@ -323,11 +323,10 @@ public sealed class EngineLifecycleTests
             """
             00595582: singleton [0x13B8B5C]
               alloc 0xE0, ctor 005953E2, vtbl 012521A8
-            00595B24 builds menu:
-              UI_TEXT_NEW_GAME id=0
-              UI_TEXT_LOAD_GAME id=0
-              OPTIONS 24/1, VIDEO 5, SCOREBOARD 25,
-              REDEFINE 22, AUDIO 4
+            0042E98F: +180, 005958F5, 00598A1C(0)
+              0041DB1D UI_FRONTEND_PRESS_START_MENU slot 0x14
+              msg 0xE5 vtbl+284
+              0059899A / MAIN_MENU later, not first-seen
             0059A238 message pump:
               msg==15 → 0059A2DA
                 [ui+28] vtbl+16
@@ -374,7 +373,15 @@ public sealed class EngineLifecycleTests
         Assert.Equal(1, life.FrontendWidgetsDrawn);
         Assert.True(life.FrontendMenuConstructed);
         Assert.Equal(
-            EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
+            EngineLifecycle.FrontendPressStartMenu, life.FrontendMenuRoot);
+        Assert.Equal(0x00598A1Cu, EngineLifecycle.FrontendPressStartAttachFn);
+        Assert.Equal(0x14, EngineLifecycle.FrontendPressStartSlot);
+        Assert.Equal(0xE5, EngineLifecycle.FrontendPressStartMessage);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendPressStartAttachFn &&
+            e.Action.Contains("PRESS_START", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendMainMenuFn);
         Assert.Equal(2, life.FrontendFlushCount);
         Assert.Equal(84, EngineLifecycle.FrontendWidgetListOffset);
         Assert.Equal(8, EngineLifecycle.FrontendWidgetDrawVtbl);

@@ -178,16 +178,18 @@ public sealed class EngineLifecycle : IDisposable
     public const int FrontendWidgetSlotOffset = 20;
     public const int FrontendWidgetDrawVtbl = 8;
     /// <summary>
-    /// <c>0059899A</c> → <c>00595A06</c> stores
-    /// one root at <c>[node+20]</c> via
-    /// <c>0041DB1D</c> / <c>009AD410</c> /
-    /// <c>0041D21B</c>. Type 0 ctor
-    /// <c>0041B800</c> writes vtbl
-    /// <c>0122F5D4</c>; slot +8 is
-    /// <c>0041AFA0</c> (ret 20). Not
-    /// UI singleton <c>012521A8+8</c>
-    /// <c>0052D900</c>.
+    /// First-seen populate is
+    /// <c>0042E98F</c> → <c>005958F5</c>
+    /// → <c>00598A1C</c>, not
+    /// <c>0059899A</c>. <c>0041DB1D</c>
+    /// / <c>009AD410</c> / <c>0041D21B</c>
+    /// type 0 <c>0041B800</c> vtbl
+    /// <c>0122F5D4</c>; draw slot +8 is
+    /// <c>0041AFA0</c>. Not UI singleton
+    /// <c>012521A8+8</c> <c>0052D900</c>.
     /// </summary>
+    public const uint FrontendProfileBindFn = 0x005958F5;
+    public const uint FrontendPressStartAttachFn = 0x00598A1C;
     public const uint FrontendMainMenuFn = 0x0059899A;
     public const uint FrontendMenuAttachFn = 0x00595A06;
     public const uint FrontendWidgetFactoryFn = 0x0041DB1D;
@@ -272,6 +274,11 @@ public sealed class EngineLifecycle : IDisposable
     public const int FrontendWidgetSubmitDestOffset = 0x15C;
     public const int FrontendWidgetBlendDefault = 2;
     public const int FrontendWidgetDefTypeOffset = 60;
+    public const string FrontendPressStartMenu =
+        "UI_FRONTEND_PRESS_START_MENU";
+    public const int FrontendPressStartSlot = 0x14;
+    public const int FrontendPressStartMessage = 0xE5;
+    public const int FrontendWidgetMessageVtbl = 284;
     public const string FrontendMainMenuNoContinue =
         "UI_FRONTEND_MAIN_MENU_NO_LIVEAWARE_NO_CONTINUE";
     public const string FrontendMainMenuContinue =
@@ -2498,8 +2505,10 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
-    /// <c>00595582</c> then <c>00595B24</c>
-    /// menu labels. Does not leave frontend.
+    /// <c>0042E98F</c> bind: <c>00595582</c>,
+    /// <c>005958F5</c>, <c>00598A1C(0)</c>.
+    /// First <c>0041DB1D</c> is Press Start,
+    /// not <c>0059899A</c>.
     /// </summary>
     public void InitFrontendUi()
     {
@@ -2509,13 +2518,18 @@ public sealed class EngineLifecycle : IDisposable
             "00595582 [0x13B8B5C] size 0xE0");
         Note(FrontendUiCtor, "Frontend", "UI",
             "005953E2 vtbl 012521A8");
-        Note(FrontendMainMenuFn, "Frontend", "UI", "0059899A");
-        Note(FrontendMenuAttachFn, "Frontend", "UI", "00595A06 [ui+84] id=0");
+        Note(RetailAfterAviFn, "Frontend", "UI",
+            "0042E98F +180 UI+28=pump [UI+192]=1");
+        Note(FrontendProfileBindFn, "Frontend", "UI",
+            "005958F5 005955AB empty skip");
+        Note(FrontendPressStartAttachFn, "Frontend", "UI",
+            "00598A1C arg=0 skip MEDIA_PLAYER_ERROR " + FrontendPressStartMenu);
         Note(InputActionGetter, "Frontend", "UI", "0041E5F2");
         Note(FrontendWidgetFactoryFn, "Frontend", "UI",
-            "0041DB1D " + FrontendMainMenuNoContinue);
+            "0041DB1D " + FrontendPressStartMenu +
+            $" slot 0x{FrontendPressStartSlot:X}");
         Note(MeshBank.DefLookupFn, "Frontend", "UI",
-            "009AD410 " + FrontendMainMenuNoContinue);
+            "009AD410 " + FrontendPressStartMenu);
         Note(FrontendWidgetConstructFn, "Frontend", "UI",
             "0041D21B [def+60] type0 0041B800");
         Note(FrontendWidgetType0Ctor, "Frontend", "UI",
@@ -2541,11 +2555,10 @@ public sealed class EngineLifecycle : IDisposable
             "0041AC20 [+376]=0 skip dest");
         Note(FrontendWidgetDrawFn, "Frontend", "UI",
             $"0041AFA0 dest {dest.X0},{dest.Y0},{dest.X1},{dest.Y1} +{FrontendWidgetOriginXOffset}/+{FrontendWidgetScaleXOffset}=0");
-        FrontendMenuRoot = FrontendMainMenuNoContinue;
+        Note(FrontendPressStartAttachFn, "Frontend", "UI",
+            $"00598A1C msg 0x{FrontendPressStartMessage:X} vtbl+{FrontendWidgetMessageVtbl} slot 0x{FrontendPressStartSlot:X}");
+        FrontendMenuRoot = FrontendPressStartMenu;
         FrontendMenuConstructed = true;
-        Note(FrontendUiBuildMenu, "Frontend", "UI", "00595B24");
-        foreach (var (label, id) in FrontendMenuItems)
-            Note(FrontendUiBuildMenu, "Frontend", "UI", $"{label} id={id}");
         FrontendUiPresent = true;
     }
 
@@ -2604,8 +2617,8 @@ public sealed class EngineLifecycle : IDisposable
             $"00595222 [ui+{FrontendWidgetListOffset}]");
         if (!FrontendMenuConstructed)
             return;
-        // One [node+20] from 00595A06. Empty
-        // 00595B24 ids stay null and skip.
+        // First [node+20] is 00598A1C slot
+        // 0x14 Press Start. 0059899A later.
         Note(FrontendWidgetDrawFn, "Frontend", "UI",
             $"0041AFA0 vtbl+{FrontendWidgetDrawVtbl} 0122F5D4");
         QueueFrontend2dRecord();

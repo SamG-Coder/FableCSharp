@@ -3,7 +3,9 @@
 This is the **executable walk**, not a name search.
 
 Every node is an `E8` / vtbl slot recovered with
-`tools/Fable.ExeIndex` (`fn --exact`, `calls`, `vtbl`).
+`tools/Fable.ExeIndex`. Dump the whole `.text` once
+(`map-text`) and grep `out/01-sections/text-map/`
+(`e8.tsv`, `listing-*.txt`). Do not `fn` one VA.
 Do not add a function because a string looks related.
 Do not start at `00DBDE40` / `StartOakVale`.
 
@@ -26,22 +28,12 @@ Statuses:
 From the repo root, against TLC `Fable.exe`:
 
 ```text
-dotnet run --project tools/Fable.ExeIndex -- fn 00401067 --exact 80
-dotnet run --project tools/Fable.ExeIndex -- fn 00403480 --exact 40
-dotnet run --project tools/Fable.ExeIndex -- fn 00402510 --exact 250
-dotnet run --project tools/Fable.ExeIndex -- fn 00412F90 --exact 120
-dotnet run --project tools/Fable.ExeIndex -- fn 0042EC7C --exact 160
-dotnet run --project tools/Fable.ExeIndex -- fn 004184BD --exact 200
-dotnet run --project tools/Fable.ExeIndex -- fn 004189C2 --exact 120
-dotnet run --project tools/Fable.ExeIndex -- fn 0041735A --exact 80
-dotnet run --project tools/Fable.ExeIndex -- fn 004A6E30 --exact 100
-dotnet run --project tools/Fable.ExeIndex -- vtbl 0122F180
-dotnet run --project tools/Fable.ExeIndex -- fn 009A8150 --exact 20
-dotnet run --project tools/Fable.ExeIndex -- fn 0049E620 --exact 80
-dotnet run --project tools/Fable.ExeIndex -- fn 00A09F20 --exact 80
-dotnet run --project tools/Fable.ExeIndex -- fn 00A27030 --exact 40
-dotnet run --project tools/Fable.ExeIndex -- fn 009AD410 --exact 40
+dotnet run --project tools/Fable.ExeIndex -- map-text
 ```
+
+Grep `out/01-sections/text-map/e8.tsv` and
+`listing-*.txt`. `fn` / `vtbl` only if a chunk is
+misaligned.
 
 String dumps (`START_NEW_QUEST`, `Q_NewOakValeIntro`, …) are
 **not** a parent of any node below. Those tokens live in QST/WLD
@@ -193,7 +185,16 @@ Retail vtbl `01230CA0`: slot 1 start `0042F75E`, slot 2 pump `0042EC7C`.
 │   └── 006286F0  PlayAVI  (dest 00628B79; Present 009BEEB0)
 ├── [0x13B8616]==0 skip 009A8840         PROVEN first-seen
 ├── [esi+9]=1
-├── 0042E98F  00595582 → +180; 009BFF40 1024×768  PROVEN
+├── 0042E98F  00595582 → +180; UI+28=pump  PROVEN
+│   ├── [0x1375448]==0 → [UI+192]=1
+│   ├── 005958F5  005955AB empty skip  PROVEN
+│   └── 00598A1C(pump+324==0)  PROVEN
+│       ├── skip UI_FRONTEND_MEDIA_PLAYER_ERROR
+│       ├── 0041DB1D "UI_FRONTEND_PRESS_START_MENU" slot 0x14
+│       ├── 009AD410 / 0041D21B / 0041B800 / 0041AC20
+│       ├── more named slots (profiles/options/…)
+│       └── msg 0xE5 → [slot 0x14].vtbl+284  PROVEN
+│       0059899A / MAIN_MENU is later, not first-seen
 ├── "Init Engine"   0042E204
 ├── "Init frontend"
 │   ├── alloc 16 → 0042DB40 vtbl 01230C34  PROVEN
