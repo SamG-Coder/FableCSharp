@@ -49,6 +49,8 @@ public sealed class EntityTaskQueue
             if (task.Kind is EntityTaskKind.Walk or EntityTaskKind.Run
                 or EntityTaskKind.Sneak or EntityTaskKind.Follow)
                 task.TickMove(dt, world);
+            else if (task.Kind == EntityTaskKind.Slide)
+                task.TickSlide(world);
             else if (task.Kind is EntityTaskKind.Animate or EntityTaskKind.CombatAnimate
                      or EntityTaskKind.LoopAnimate)
                 task.TickAnim();
@@ -66,6 +68,7 @@ public enum EntityTaskKind
     LoopAnimate,
     CombatAnimate,
     Follow,
+    Slide,
 }
 
 public sealed class EntityTask
@@ -75,6 +78,9 @@ public sealed class EntityTask
     public string? Actor { get; }
     public string Name { get; }
     public Vector3? Destination { get; }
+    public Vector3? Source { get; set; }
+    public int SlideCount { get; set; }
+    public int SlideIndex { get; set; }
     public float Speed { get; }
     public bool Complete { get; private set; }
     public bool Cancelled { get; private set; }
@@ -91,7 +97,35 @@ public sealed class EntityTask
         Speed = speed;
     }
 
-    public void MarkComplete() => Complete = true;
+    public void MarkComplete()
+    {
+        Complete = true;
+    }
+
+    /// <summary>
+    /// <c>00CC5931</c>: i = 1..count;
+    /// pos = src + (dest-src)*i/count.
+    /// </summary>
+    public void TickSlide(WorldRuntime world)
+    {
+        if (Actor is not { Length: > 0 } || Destination is not { } dest
+            || Source is not { } src || SlideCount <= 0)
+        {
+            Complete = true;
+            return;
+        }
+
+        SlideIndex++;
+        if (SlideIndex >= SlideCount)
+        {
+            world.Positions[Actor] = dest;
+            Complete = true;
+            return;
+        }
+
+        var t = SlideIndex / (float)SlideCount;
+        world.Positions[Actor] = src + (dest - src) * t;
+    }
 
     public void Cancel()
     {

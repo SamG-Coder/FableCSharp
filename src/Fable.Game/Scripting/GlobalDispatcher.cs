@@ -202,6 +202,16 @@ public static class GlobalDispatcher
                 $"{name}@{pos.X:0.##},{pos.Y:0.##}");
         }
 
+        if (Eq(v, "SlideTeleport"))
+        {
+            // 00CC5A8D: actor,from,to required; count default 100;
+            // leftover each step if [ebp+103].
+            var wait = ctx.Cutscene.YieldEnable;
+            return EntityDispatcher.ApplySlideTeleport(
+                line, ctx, line.Arg(0), line.Arg(1), line.Arg(2),
+                line.Arg(3), wait, ScriptLine.IsFalse(line.Arg(4)));
+        }
+
         if (Eq(v, "TeleportThing"))
         {
             // 00CC7E7F: thing+marker required; IsFalse(arg2)->0 else 1;

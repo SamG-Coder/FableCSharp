@@ -950,6 +950,42 @@ public sealed class MovementRuntime
     public PendingOperation Follow(string? actor, string target, float speed, Vector3? dest) =>
         Queue(actor, EntityTaskKind.Follow, target, dest, speed > 0f ? speed : 1f);
 
+    /// <summary>
+    /// <c>00CC57F7</c> / <c>00CC5A8D</c>: lerp
+    /// src→dest over atoi count (default 100).
+    /// Instant apply lands on dest.
+    /// </summary>
+    public PendingOperation Slide(
+        string? actor, string from, string to, Vector3 src, Vector3 dest, int count, bool wait)
+    {
+        if (actor is { Length: > 0 })
+        {
+            Destinations[actor] = dest;
+            Moving.Add(actor);
+        }
+
+        if (!wait || count <= 0)
+        {
+            if (actor is { Length: > 0 })
+            {
+                // World set by caller via Teleport.
+            }
+
+            var done = new PendingOperation($"slide-{++_next}", "SlideTeleport", actor, to);
+            done.Complete = true;
+            return done;
+        }
+
+        var task = Tasks.Replace(actor, EntityTaskKind.Slide, to, dest, 0f);
+        task.Source = src;
+        task.SlideCount = count;
+        task.SlideIndex = 0;
+        var op = new PendingOperation(task.Id, "SlideTeleport", actor, to);
+        if (actor is { Length: > 0 })
+            ByActor[actor] = op;
+        return op;
+    }
+
     public void Clear(string? actor)
     {
         Tasks.Clear(actor);
@@ -967,6 +1003,8 @@ public sealed class MovementRuntime
         foreach (var actor in Moving)
         {
             var task = Tasks.Current(actor);
+            if (task is { Complete: true } && ByActor.TryGetValue(actor, out var op))
+                op.Complete = true;
             if (task is null || task.Complete)
                 (done ??= []).Add(actor);
         }

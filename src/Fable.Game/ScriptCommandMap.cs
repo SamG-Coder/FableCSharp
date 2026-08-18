@@ -682,6 +682,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "arg0+arg1 required; IsFalse(arg2)->0 else 1; 004AA980+004AAA40; vtbl+1892; not SetHomePosThing 004AA9A0"),
+        Spec("SlideTeleport", 0x00CC57A1, 0x00CC57F7, "from,to[,count][,IsTrue][,IsFalse]",
+            ScriptReturn.YieldAfterOrWait, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "entity 00CC57F7 default 100; IsTrue leftover/step; global 00CC5A8D actor,from,to leftover if yield; vtbl+1892 lerp"),
         Spec("WalkUpToThing", 0x00CC2331, 0x00CC2538, "thing,distance[,…]",
             ScriptReturn.YieldAfterOrWait, CommandParity.ScriptLayer,
             "dest=pos+atof(arg1)*(vtbl+288+12); actor vtbl+16 speed 1; leftover vtbl+104"),

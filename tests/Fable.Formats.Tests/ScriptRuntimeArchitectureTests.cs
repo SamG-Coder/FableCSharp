@@ -2522,6 +2522,139 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void SlideTeleport_lerps_count_steps_vtbl_1892()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.World.Positions["A"] = new System.Numerics.Vector3(0, 0, 0);
+        runtime.World.Positions["B"] = new System.Numerics.Vector3(10, 0, 0);
+        var instant = new ScriptInterpreter("sli", ["HERO.SlideTeleport A,B,4"]);
+        instant.RunUntilYield(runtime);
+        Assert.True(instant.Finished);
+        Assert.Equal(10f, runtime.World.Positions["HERO"].X);
+        Assert.Equal("B", runtime.World.LookTargets["HERO"]);
+        runtime.World.Positions["HERO"] = new System.Numerics.Vector3(0, 0, 0);
+        var wait = new ScriptInterpreter("slw", ["HERO.SlideTeleport A,B,2,TRUE"]);
+        wait.RunUntilYield(runtime);
+        Assert.True(wait.Yielded);
+        Assert.Equal(ExecutionKind.WaitOperation, wait.CurrentWaitKind);
+        runtime.Movement.Tick(1f, runtime.World);
+        Assert.Equal(5f, runtime.World.Positions["HERO"].X);
+        runtime.Movement.Tick(1f, runtime.World);
+        Assert.Equal(10f, runtime.World.Positions["HERO"].X);
+        wait.Resume(runtime);
+        Assert.True(wait.Finished);
+        Assert.Equal(0x00CC57F7u, ScriptCommandMap.Find("SlideTeleport")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("Teleport")!.Value.ApplySite,
+            ScriptCommandMap.Find("SlideTeleport")!.Value.ApplySite);
+        var empty = new ScriptInterpreter("sl0", ["HERO.SlideTeleport A"]);
+        empty.RunUntilYield(runtime);
+        Assert.True(empty.Finished);
+    }
+
+    [Fact]
+    public void SlideTeleport_global_uses_actor_from_to()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.World.Positions["A"] = new System.Numerics.Vector3(0, 2, 0);
+        runtime.World.Positions["B"] = new System.Numerics.Vector3(0, 8, 0);
+        var interp = new ScriptInterpreter("slg",
+            ["ScriptFrame FALSE", "SlideTeleport HERO,A,B,3"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(8f, runtime.World.Positions["HERO"].Y);
+    }
+
+    [Fact]
+    public void SlideTeleport_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains("SlideTeleport ", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "HERO.SlideTeleport MK_A,MK_B,2";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("SlideTeleport", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        string from;
+        string to;
+        string actor;
+        if (parsed.Family == CommandFamily.Entity)
+        {
+            actor = parsed.Target ?? "HERO";
+            from = parsed.Arg(0);
+            to = parsed.Arg(1);
+        }
+        else
+        {
+            actor = parsed.Arg(0);
+            from = parsed.Arg(1);
+            to = parsed.Arg(2);
+        }
+
+        runtime.World.Positions[from] = new System.Numerics.Vector3(1, 0, 0);
+        runtime.World.Positions[to] = new System.Numerics.Vector3(5, 0, 0);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-slide",
+            ["ScriptFrame FALSE", line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains("SlideTeleport ", StringComparison.OrdinalIgnoreCase));
+        if (isolated.Yielded)
+        {
+            for (var i = 0; i < 128 && isolated.Yielded; i++)
+            {
+                runtime.Movement.Tick(1f, runtime.World);
+                isolated.Resume(runtime);
+            }
+        }
+
+        Assert.True(isolated.Finished);
+        Assert.True(runtime.World.Positions.ContainsKey(actor));
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-slide.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-slideteleport.txt"),
+            """
+            SlideTeleport entity 00CC57A1 / apply 00CC57F7
+              from+to required; count atoi default 100
+              00CBF9DE + 004AA980 both ends
+              pos = src+(dest-src)*i/count; i=1..count
+              vtbl+1892 each step; IsTrue(arg3) leftover/step
+              IsFalse(arg4) zeros yaw increment
+            Global 00CC5A3A / apply 00CC5A8D
+              actor,from,to required; leftover if [ebp+103]
+              IsFalse(arg4) uses from 004AAA40 yaw
+              final vtbl+1892 snap
+            Yaw 1/(2pi)*atan UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void AskQuestion_polls_vtbl_156_until_answer()
     {
         var runtime = ScriptRuntime.Detached();

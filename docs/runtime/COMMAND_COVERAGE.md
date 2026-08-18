@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 129
-RECOVERED RETURN: 129
-RECOVERED APPLY: 65
+RECOVERED DISPATCH: 131
+RECOVERED RETURN: 131
+RECOVERED APPLY: 67
 IMPLEMENTED RUNTIME: 13
-UNREAD: 56
+UNREAD: 54
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -135,8 +135,8 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | KeepEntityMap | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | AToSkip | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | Collide | Global | Proven | Proven | Proven | Partial | Partial | Partial |
-| SlideTeleport | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| SlideTeleport | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
+| SlideTeleport | Global | Proven | Proven | Proven | Proven | Partial | Partial |
+| SlideTeleport | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
 | TurnInto | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
 | Decapitate | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
 | ClearCommands | Entity | Proven | Proven | Proven | Partial | Partial | Partial |

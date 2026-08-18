@@ -61,6 +61,10 @@ public static class EntityDispatcher
                 $"{actor}@{pos.X:0.##},{pos.Y:0.##}");
         }
 
+        if (Eq(v, "SlideTeleport"))
+            return ApplySlideTeleport(line, ctx, line.Target ?? "", line.Arg(0), line.Arg(1),
+                line.Arg(2), ScriptLine.IsTrue(line.Arg(3)), ScriptLine.IsFalse(line.Arg(4)));
+
         if (Eq(v, "LookToThing"))
         {
             if (line.Arg(0).Length == 0)
@@ -445,6 +449,54 @@ public static class EntityDispatcher
 
         return CommandResult.Blocked(
             "UNKNOWN", CommandStatus.Unread, CommandFamily.Entity, line.Raw);
+    }
+
+    /// <summary>
+    /// Entity <c>00CC57F7</c>: from,to[,count][,IsTrue yield][,IsFalse].
+    /// Global <c>00CC5A8D</c>: actor,from,to[,count][,IsFalse]; leftover if yield-enable.
+    /// </summary>
+    internal static CommandResult ApplySlideTeleport(
+        ScriptLine line, ScriptExecutionContext ctx, string actor,
+        string from, string to, string countTok, bool wait, bool holdYaw)
+    {
+        if (actor.Length == 0 || from.Length == 0 || to.Length == 0)
+            return CommandResult.Continue(CommandStatus.Proven, line.Family, "");
+        if (!TryMarkerPos(ctx, from, out var src) || !TryMarkerPos(ctx, to, out var dest))
+            return CommandResult.Continue(CommandStatus.Proven, line.Family, "");
+        var count = 100;
+        if (countTok.Length > 0)
+            ScriptLine.TryInt(countTok, out count);
+        if (count < 1)
+            return CommandResult.Continue(CommandStatus.Proven, line.Family, "");
+        _ = holdYaw;
+        ctx.World.LookTargets[actor] = to;
+        if (!wait)
+        {
+            ctx.World.Teleport(actor, to, dest);
+            ctx.Movement.Slide(actor, from, to, src, dest, count, wait: false);
+            return CommandResult.Continue(CommandStatus.Proven, line.Family,
+                $"{actor}->{to}x{count}");
+        }
+
+        ctx.World.Positions[actor] = src;
+        var op = ctx.Movement.Slide(actor, from, to, src, dest, count, wait: true);
+        return CommandResult.Wait(
+            ExecutionKind.WaitOperation, CommandStatus.Proven, line.Family,
+            "SlideTeleport vtbl+1892 steps", "count leftover", op.Id,
+            $"{actor}->{to}x{count}");
+    }
+
+    private static bool TryMarkerPos(
+        ScriptExecutionContext ctx, string name, out System.Numerics.Vector3 pos)
+    {
+        var thing = ctx.FindThing(name);
+        if (thing is { PositionX: not null })
+        {
+            pos = RegionTravel.PositionOf(thing);
+            return true;
+        }
+
+        return ctx.World.Positions.TryGetValue(name, out pos);
     }
 
     private static (bool F1, bool F2, bool F3, bool F4, bool F5) ParseAnimFlags(ScriptLine line) =>
