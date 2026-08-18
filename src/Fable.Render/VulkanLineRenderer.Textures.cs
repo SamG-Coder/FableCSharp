@@ -10,6 +10,7 @@ public sealed unsafe partial class VulkanLineRenderer
     private struct DeviceTexture
     {
         public int Id;
+        public int Height;
         public Image Image;
         public DeviceMemory Memory;
         public ImageView View;
@@ -394,10 +395,29 @@ public sealed unsafe partial class VulkanLineRenderer
             return;
         }
 
+        // All three startup WMVs are 640 wide.
+        // Reusing the image when only height
+        // changes (400 → 480 → 360) leaves the
+        // previous AVI in the unused rows.
+        var sizeChanged = _videoTexture.Image.Handle != 0 &&
+            (_videoTexture.Id != width || _videoTexture.Height != height);
+        if (sizeChanged)
+        {
+            _vk.DeviceWaitIdle(_device);
+            DestroyVideoImage();
+            _videoReady = false;
+            _videoImageLayout = ImageLayout.Undefined;
+            _aviGeomPrinted = false;
+            _videoCpu = null;
+        }
+
         _videoDest = dest;
+        _videoWidth = width;
+        _videoHeight = height;
         if (_videoReady &&
             _videoTexture.Image.Handle != 0 &&
             _videoTexture.Id == width &&
+            _videoTexture.Height == height &&
             serial == _videoSerial)
             return;
 
@@ -407,17 +427,22 @@ public sealed unsafe partial class VulkanLineRenderer
         // consumes the texture via 009DC870.
         var upload0 = Stopwatch.GetTimestamp();
         _videoSerial = serial;
-        if (_videoCpu is null || _videoCpu.Length < rgba.Length)
-            _videoCpu = new byte[rgba.Length];
-        rgba.AsSpan().CopyTo(_videoCpu.AsSpan(0, rgba.Length));
-        _videoHeight = height;
+        var bytes = width * height * 4;
+        if (_videoCpu is null || _videoCpu.Length != bytes)
+            _videoCpu = new byte[bytes];
+        rgba.AsSpan(0, bytes).CopyTo(_videoCpu);
         if (_videoTexture.Image.Handle == 0 ||
             _videoTexture.Id != width ||
+            _videoTexture.Height != height ||
             !_videoReady)
         {
-            DestroyVideoImage();
+            if (_videoTexture.Image.Handle != 0)
+            {
+                _vk.DeviceWaitIdle(_device);
+                DestroyVideoImage();
+            }
             EnsureVideoPool();
-            EnsureVideoStaging((ulong)rgba.Length);
+            EnsureVideoStaging((ulong)bytes);
             _videoTexture = CreateVideoImage(width, height);
             _videoReady = _videoTexture.Set.Handle != 0;
             _videoImageLayout = ImageLayout.Undefined;
@@ -429,9 +454,15 @@ public sealed unsafe partial class VulkanLineRenderer
 
     public void ClearVideoFrame()
     {
+        if (_videoTexture.Image.Handle != 0)
+            _vk.DeviceWaitIdle(_device);
         DestroyVideoTexture();
         _videoReady = false;
         _videoSerial = -1;
+        _videoWidth = 0;
+        _videoHeight = 0;
+        _videoDest = new Vector4(0, 0, 1, 1);
+        _aviGeomPrinted = false;
     }
 
     private DeviceTexture CreateVideoImage(int width, int height)
@@ -504,6 +535,7 @@ public sealed unsafe partial class VulkanLineRenderer
         return new DeviceTexture
         {
             Id = width,
+            Height = height,
             Image = image,
             Memory = memory,
             View = view,
@@ -544,12 +576,13 @@ public sealed unsafe partial class VulkanLineRenderer
             _videoTexture.Image.Handle == 0)
             return;
 
-        var bytes = (ulong)_videoCpu.Length;
+        var pixels = Math.Max(_videoTexture.Id, 1) * Math.Max(_videoTexture.Height, 1) * 4;
+        var bytes = (ulong)Math.Min(_videoCpu.Length, pixels);
         EnsureVideoStaging(bytes);
         var mapped = _videoMapped[_frame];
         if (mapped == null)
             return;
-        _videoCpu.AsSpan().CopyTo(new Span<byte>(mapped, _videoCpu.Length));
+        _videoCpu.AsSpan(0, (int)bytes).CopyTo(new Span<byte>(mapped, (int)bytes));
 
         var from = _videoImageLayout == ImageLayout.Undefined
             ? ImageLayout.Undefined
@@ -564,8 +597,8 @@ public sealed unsafe partial class VulkanLineRenderer
             },
             ImageExtent = new Extent3D
             {
-                Width = (uint)_videoTexture.Id,
-                Height = (uint)Math.Max(_videoHeight, 1),
+                Width = (uint)Math.Max(_videoTexture.Id, 1),
+                Height = (uint)Math.Max(_videoTexture.Height, 1),
                 Depth = 1,
             },
         };

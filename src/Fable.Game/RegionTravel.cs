@@ -1357,29 +1357,13 @@ public static class RegionTravel
         dik is PlayAviSkipEscape or PlayAviSkipSpace or PlayAviSkipReturn or PlayAviSkipF4;
 
     /// <summary>
-    /// <c>00628B79</c> letterbox: fit the WMV in the
-    /// viewport, offset leftover * 0.5 on each side.
-    /// Returns dest in 0–1 screen UV.
+    /// <c>00628B79</c>: scale the WMV to viewport
+    /// width, center leftover height * 0.5. Returns
+    /// dest in 0–1 screen UV. Does not pillarbox.
     /// </summary>
     public static (float X0, float Y0, float X1, float Y1) PlayAviLetterbox(
-        int videoWidth, int videoHeight, int screenWidth, int screenHeight)
-    {
-        var vw = (float)Math.Max(1, videoWidth);
-        var vh = (float)Math.Max(1, videoHeight);
-        var sw = (float)Math.Max(1, screenWidth);
-        var sh = (float)Math.Max(1, screenHeight);
-        var destH = sw * vh / vw;
-        var destW = sw;
-        if (destH > sh)
-        {
-            destH = sh;
-            destW = sh * vw / vh;
-        }
-
-        var x0 = (sw - destW) * PlayAviLetterboxHalf / sw;
-        var y0 = (sh - destH) * PlayAviLetterboxHalf / sh;
-        return (x0, y0, x0 + destW / sw, y0 + destH / sh);
-    }
+        int videoWidth, int videoHeight, int screenWidth, int screenHeight) =>
+        PlayAviDest.Uv(videoWidth, videoHeight, screenWidth, screenHeight);
 
     public static Vector3 ForwardOf(ThingInstance thing)
     {

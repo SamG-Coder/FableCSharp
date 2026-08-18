@@ -1520,7 +1520,9 @@ public sealed class EngineLifecycle : IDisposable
         UnloadStartupAvi();
         if (Stage == EngineStage.StartupVideos)
             FinishStartupVideo();
-        EnsureStartupAvi();
+        // Next Pump opens the next file. This
+        // Present is AviPlaying=false so the
+        // host clears the previous AVI first.
     }
 
     private bool QueuedPlayAviSkip()

@@ -2036,11 +2036,13 @@ public sealed class WorldSceneTests
         var tall = RegionTravel.PlayAviLetterbox(640, 480, 800, 800);
         Assert.True(tall.Y0 > 0.05f, $"letterbox y0={tall.Y0}");
         Assert.True(tall.Y1 < 0.95f, $"letterbox y1={tall.Y1}");
+        // 00628B79 is fit-to-width only. 640×480
+        // into 1920×1080: destH=1440, Y0=-180.
         var wide = RegionTravel.PlayAviLetterbox(640, 480, 1920, 1080);
-        Assert.True(wide.X0 > 0.05f, $"wide letterbox x0={wide.X0}");
-        Assert.True(wide.X1 < 0.95f, $"wide letterbox x1={wide.X1}");
-        Assert.Equal(0f, wide.Y0, 3);
-        Assert.Equal(1f, wide.Y1, 3);
+        Assert.Equal(0f, wide.X0, 3);
+        Assert.Equal(1f, wide.X1, 3);
+        Assert.True(wide.Y0 < 0f, $"fit-width y0={wide.Y0}");
+        Assert.True(wide.Y1 > 1f, $"fit-width y1={wide.Y1}");
         Assert.Equal(0.5f, RegionTravel.PlayAviLetterboxHalf);
         Assert.Equal(0x0122F59Cu, RegionTravel.PlayAviLetterboxHalfVa);
         Assert.Equal(0x009DC870u, RegionTravel.PlayAviBlit);
@@ -2073,6 +2075,35 @@ public sealed class WorldSceneTests
         runtime.Update(0.1f);
         Assert.False(runtime.AviPlaying);
         Assert.Contains("MuteSounds false", intro.Executed);
+    }
+
+    [Fact]
+    public void PlayAVI_00628B79_resizes_to_viewport_width_and_centers()
+    {
+        // 009BEDC0 first-seen viewport is 1024×768.
+        // destH = videoH * 1024 / videoW; leftover
+        // height is centered * 0.5. No pillarbox.
+        Assert.Equal((0f, 64f, 1024f, 704f), PlayAviDest.Pixels(640, 400, 1024, 768));
+        Assert.Equal((0f, 0f, 1024f, 768f), PlayAviDest.Pixels(640, 480, 1024, 768));
+        Assert.Equal((0f, 96f, 1024f, 672f), PlayAviDest.Pixels(640, 360, 1024, 768));
+
+        var lion = RegionTravel.PlayAviLetterbox(640, 400, 1024, 768);
+        Assert.Equal(0f, lion.X0, 4);
+        Assert.Equal(64f / 768f, lion.Y0, 4);
+        Assert.Equal(1f, lion.X1, 4);
+        Assert.Equal(704f / 768f, lion.Y1, 4);
+
+        var logo = RegionTravel.PlayAviLetterbox(640, 480, 1024, 768);
+        Assert.Equal(0f, logo.X0, 4);
+        Assert.Equal(0f, logo.Y0, 4);
+        Assert.Equal(1f, logo.X1, 4);
+        Assert.Equal(1f, logo.Y1, 4);
+
+        var intro = RegionTravel.PlayAviLetterbox(640, 360, 1024, 768);
+        Assert.Equal(0f, intro.X0, 4);
+        Assert.Equal(96f / 768f, intro.Y0, 4);
+        Assert.Equal(1f, intro.X1, 4);
+        Assert.Equal(672f / 768f, intro.Y1, 4);
     }
 
     [Fact]

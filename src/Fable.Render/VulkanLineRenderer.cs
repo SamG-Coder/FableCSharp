@@ -58,7 +58,9 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     private bool _videoDirty;
     private int _videoSerial = -1;
     private byte[]? _videoCpu;
+    private int _videoWidth;
     private int _videoHeight;
+    private bool _aviGeomPrinted;
     private ImageLayout _videoImageLayout;
     private Buffer[] _videoStagings = new Buffer[MaxFrames];
     private DeviceMemory[] _videoStagingMemories = new DeviceMemory[MaxFrames];
@@ -370,6 +372,8 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     public byte FadeOverlayAlpha { get; set; }
     public (byte R, byte G, byte B) FadeOverlayRgb { get; set; }
     public bool VideoOverlayActive => _videoReady;
+    public int FramebufferWidth => (int)_extent.Width;
+    public int FramebufferHeight => (int)_extent.Height;
 
     /// <summary>
     /// <c>006286F0</c> owns the pump: WaitEx then
@@ -1294,7 +1298,29 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
 
         if (_videoReady && _videoPipeline.Handle != 0 && _videoTexture.Set.Handle != 0)
         {
-            var dest = _videoDest;
+            // 00628B79 after 009BEDC0: dest from the
+            // current viewport, not world letterbox.
+            var fbW = (int)_extent.Width;
+            var fbH = (int)_extent.Height;
+            Vector4 dest;
+            if (_videoWidth > 0 && _videoHeight > 0)
+            {
+                var uv = PlayAviDest.Uv(_videoWidth, _videoHeight, fbW, fbH);
+                dest = new Vector4(uv.X0, uv.Y0, uv.X1, uv.Y1);
+            }
+            else
+                dest = _videoDest;
+            _videoDest = dest;
+            if (!_aviGeomPrinted)
+            {
+                _aviGeomPrinted = true;
+                var px = PlayAviDest.Pixels(_videoWidth, _videoHeight, fbW, fbH);
+                Console.WriteLine($"AVI src: {_videoWidth}x{_videoHeight}");
+                Console.WriteLine($"Framebuffer: {fbW}x{fbH}");
+                Console.WriteLine($"AVI dest: {px.X0},{px.Y0},{px.X1},{px.Y1}");
+                Console.WriteLine($"Viewport: {viewport.X},{viewport.Y},{viewport.Width},{viewport.Height}");
+                Console.WriteLine($"Scissor: {scissor.Offset.X},{scissor.Offset.Y},{scissor.Extent.Width},{scissor.Extent.Height}");
+            }
             var set = _videoTexture.Set;
             _vk.CmdBindPipeline(commandBuffer, PipelineBindPoint.Graphics, _videoPipeline);
             _vk.CmdBindDescriptorSets(

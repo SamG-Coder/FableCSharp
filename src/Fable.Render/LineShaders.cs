@@ -47,9 +47,10 @@ internal static class LineShaders
         """;
 
     /// <summary>
-    /// <c>00628B79</c> letterbox dest then
-    /// <c>009DC870</c> 2D submit. UV 0–1 inside dest;
-    /// outside is black bars.
+    /// <c>00628B79</c> dest (scale to viewport width,
+    /// center leftover) then <c>009DC870</c> 2D
+    /// submit. UV 0–1 inside dest; outside is the
+    /// leftover black bars.
     /// </summary>
     public const string VideoVertex = """
         #version 450

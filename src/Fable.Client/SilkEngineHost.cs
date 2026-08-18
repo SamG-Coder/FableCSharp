@@ -12,6 +12,8 @@ public sealed class SilkEngineHost : IEngineHost
 {
     private readonly Action? _quit;
     private EngineFrame _frame;
+    private int _aviWidth;
+    private int _aviHeight;
     private WorldGeometry? _uploadedWorld;
     private MeshVertex[]? _uploadedVertices;
     private MeshVertex[]? _uploadedObjects;
@@ -58,8 +60,21 @@ public sealed class SilkEngineHost : IEngineHost
         {
             if (frame is { AviPlaying: true, AviRgba: not null })
             {
+                if (frame.AviWidth != _aviWidth || frame.AviHeight != _aviHeight)
+                    renderer.ClearVideoFrame();
+                _aviWidth = frame.AviWidth;
+                _aviHeight = frame.AviHeight;
+                // 009BEDC0: dest uses the presented
+                // framebuffer, not a stale 1024×768
+                // host size or the world camera.
+                var fbW = renderer.FramebufferWidth > 0
+                    ? renderer.FramebufferWidth
+                    : Width;
+                var fbH = renderer.FramebufferHeight > 0
+                    ? renderer.FramebufferHeight
+                    : Height;
                 var dest = RegionTravel.PlayAviLetterbox(
-                    frame.AviWidth, frame.AviHeight, Width, Height);
+                    frame.AviWidth, frame.AviHeight, fbW, fbH);
                 renderer.SetVideoFrame(
                     frame.AviWidth, frame.AviHeight, frame.AviRgba,
                     new Vector4(dest.X0, dest.Y0, dest.X1, dest.Y1),
@@ -69,6 +84,8 @@ public sealed class SilkEngineHost : IEngineHost
             }
             else
             {
+                _aviWidth = 0;
+                _aviHeight = 0;
                 renderer.ClearVideoFrame();
                 renderer.SetPlayAviPump(false);
             }
