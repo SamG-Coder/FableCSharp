@@ -956,6 +956,7 @@ public sealed class EngineLifecycle : IDisposable
     /// not a static flatten.
     /// </summary>
     public IReadOnlyList<uint> SubmittedPalskinMeshIds => _submittedPalskin;
+    public IReadOnlyList<string> SubmittedTerrainMaps => _submittedTerrain;
     public bool SubmittedHeroPalskin { get; private set; }
 
     public void AttachHost(IEngineHost host) => Host = host;
@@ -969,6 +970,7 @@ public sealed class EngineLifecycle : IDisposable
     private readonly List<OpenedStaticMapBody> _openedBodies = [];
     private readonly List<int> _tickTypes = [];
     private readonly List<uint> _submittedPalskin = [];
+    private readonly List<string> _submittedTerrain = [];
     private readonly List<ThingInstance> _regionThings = [];
     private readonly Dictionary<string, List<ThingInstance>> _thingsByMap =
         new(StringComparer.OrdinalIgnoreCase);
@@ -1080,8 +1082,6 @@ public sealed class EngineLifecycle : IDisposable
         if (Stage == EngineStage.Game)
         {
             PumpGame();
-            if (HeroSpawned && !WorldSubmitted)
-                SubmitCurrentWorld();
             PresentToHost();
             return true;
         }
@@ -1134,7 +1134,10 @@ public sealed class EngineLifecycle : IDisposable
         if (opened is null || _levels is null)
             return;
         SubmittedWorld = opened;
-        var land = MeshBatches.Build(opened.TessellatePrimary(_levels));
+        var planes = SubmitSidePlanes();
+        _submittedTerrain.Clear();
+        var land = MeshBatches.Build(
+            opened.TessellateVisible(_levels, planes, _submittedTerrain));
         var props = new List<(MeshFile Mesh, Matrix4x4 Transform)>();
         var seen = new HashSet<uint>();
         _submittedPalskin.Clear();
@@ -1174,8 +1177,25 @@ public sealed class EngineLifecycle : IDisposable
         WorldSubmitted = SubmittedMesh.Vertices.Length > 0;
         Note(OpenStaticMapsFn, "Submit", "World",
             WorldSubmitted
-                ? $"primary {opened.Region} meshes={seen.Count} palskin={_submittedPalskin.Count} hero={HeroMeshId} verts={SubmittedMesh.Vertices.Length}"
+                ? $"primary {opened.Region} meshes={seen.Count} palskin={_submittedPalskin.Count} hero={HeroMeshId} terrain={_submittedTerrain.Count} verts={SubmittedMesh.Vertices.Length}"
                 : "submit miss");
+    }
+
+    /// <summary>
+    /// Four side planes <c>00B2FD60</c> /
+    /// <c>00BDC2D0</c>. Same extract
+    /// <see cref="PresentWorld"/> already
+    /// builds when the camera is seeded.
+    /// </summary>
+    public LandscapeFrustum.Plane[]? SubmitSidePlanes()
+    {
+        if (!WorldCamera.Seeded)
+            return null;
+        LandscapeFrustum.LetterboxCots(
+            float.DegreesToRadians(Camera.FovDegrees), 4f / 3f, 1f,
+            out var cotH, out var cotV);
+        return LandscapeFrustum.ExtractSidePlanes(
+            Camera.Position, Camera.Forward, Camera.Up, cotH, cotV);
     }
 
     private void EnsureStartupAvi()
@@ -1676,6 +1696,11 @@ public sealed class EngineLifecycle : IDisposable
 
         Note(FrameDtFn, "GamePump", "Time", "009E1BC0 FrameDt");
         UpdateGameMode();
+        // After 006C2170 / OpenStaticMaps,
+        // before 00435530. Native draw
+        // consumes already-opened maps.
+        if (HeroSpawned && !WorldSubmitted)
+            SubmitCurrentWorld();
         Note(DisplayReadyFn, "GamePump", "Display",
             "009E9FB0 [0x13CAA38] default 0");
         RenderGameMode();
@@ -2350,15 +2375,7 @@ public sealed class EngineLifecycle : IDisposable
         var things = ThingsForMap(primary);
         if (things.Count == 0)
             things = _regionThings;
-        LandscapeFrustum.Plane[]? planes = null;
-        if (WorldCamera.Seeded)
-        {
-            LandscapeFrustum.LetterboxCots(
-                float.DegreesToRadians(Camera.FovDegrees), 4f / 3f, 1f,
-                out var cotH, out var cotV);
-            planes = LandscapeFrustum.ExtractSidePlanes(
-                Camera.Position, Camera.Forward, Camera.Up, cotH, cotV);
-        }
+        var planes = SubmitSidePlanes();
 
         var byMap = new Dictionary<string, IReadOnlyList<ThingInstance>>(
             StringComparer.OrdinalIgnoreCase);

@@ -627,7 +627,7 @@ It is **not** the same load as `Fable.exe`:
 | `004A1840` child list | `LoadWorldMap` then quests immediately | DIVERGE |
 | `00B3EFA0` LEV/STB header | `PeekMapHeader` 48-byte LEV + STB size | MATCH |
 | `009AD410` handle, draw later | `PresentWorld` instances, `expandGeometry: false` | MATCH |
-| Draw | Engine `SubmitCurrentWorld`: primary LEV tessellate + unique primary C3D `Meshes.Get`. Neighbour headers stay closed. | MATCH (draw subset) |
+| Draw | Engine `SubmitCurrentWorld` before `00435530`: `00BDC2D0` AABB on opened patches + primary C3D `Meshes.Get`. | MATCH (patch AABB) |
 | PALSKIN | `00BD2F91` dest = `PaletteForPose` / first-key locals. Hero 4299 is PALSKIN, not static flatten. | MATCH (first-seen bind dest) |
 
 **B. Why load is slow**

@@ -348,6 +348,14 @@ public sealed class WorldGeometry
         if (height is null)
             return;
 
+        // 00BDC2D0: n-vertex AABB before cells.
+        if (landscapePlanes is { Length: > 0 })
+        {
+            LandscapeFrustum.PatchAabb(dx, dy, height.FineWidth, height.FineHeight, out var min, out var max);
+            if (LandscapeFrustum.AabbIsOutside(min, max, landscapePlanes))
+                return;
+        }
+
         var compiled = levels.LoadCompiledLev(region);
         var cells = compiled is null ? null : LevCellGrid.TryParse(compiled);
         IEnumerable<MeshTriangle> local;
@@ -355,13 +363,6 @@ public sealed class WorldGeometry
             local = height.ToTileTriangles(cells, compiled.Materials, landscapeEnums);
         else
             local = height.ToLocalTriangles().Select(tri => tri with { TextureId = TextureLibrary.LandscapeGrassPlainId });
-
-        if (landscapePlanes is { Length: > 0 })
-        {
-            LandscapeFrustum.PatchAabb(dx, dy, height.FineWidth, height.FineHeight, out var min, out var max);
-            if (LandscapeFrustum.AabbIsOutside(min, max, landscapePlanes))
-                return;
-        }
 
         var offset = new Vector3(dx, dy, 0);
         foreach (var tri in local)
@@ -467,6 +468,48 @@ public sealed class WorldGeometry
             ? HeaderEnums.Load(textureHeader)
             : null;
         AddTerrain(levels, Region, 0, 0, triangles, landscapeEnums, landscapePlanes);
+        return triangles;
+    }
+
+    /// <summary>
+    /// <c>00BDC2D0</c> per opened patch:
+    /// neighbour offset, Z=0 AABB, four
+    /// side planes, then stored STB cells
+    /// (<c>00BF4570</c>). Reject is
+    /// fully outside. Instances stay
+    /// primary-only at submit.
+    /// </summary>
+    public List<MeshTriangle> TessellateVisible(
+        LevelLibrary levels,
+        LandscapeFrustum.Plane[]? landscapePlanes = null,
+        ICollection<string>? acceptedMaps = null)
+    {
+        var triangles = new List<MeshTriangle>(64_000);
+        var textureHeader = Path.Combine(
+            levels.Install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h");
+        var landscapeEnums = File.Exists(textureHeader)
+            ? HeaderEnums.Load(textureHeader)
+            : null;
+        var primary = levels.World.FindMap(Region);
+        foreach (var name in Regions)
+        {
+            var map = levels.World.FindMap(name);
+            var dx = 0f;
+            var dy = 0f;
+            if (map is not null && primary is not null)
+            {
+                var neighbour = WorldSpaces.NeighbourRegionOffset(
+                    map.MapX, map.MapY, primary.MapX, primary.MapY);
+                dx = neighbour.X;
+                dy = neighbour.Y;
+            }
+
+            var before = triangles.Count;
+            AddTerrain(levels, name, dx, dy, triangles, landscapeEnums, landscapePlanes);
+            if (triangles.Count > before)
+                acceptedMaps?.Add(name);
+        }
+
         return triangles;
     }
 

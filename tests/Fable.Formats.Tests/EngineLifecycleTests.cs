@@ -1711,6 +1711,8 @@ public sealed class EngineLifecycleTests
             i.MeshId == 4299 ||
             string.Equals(i.Definition, EngineLifecycle.CreatureHeroDefName,
                 StringComparison.OrdinalIgnoreCase));
+        Assert.Contains("LookoutPoint", life.SubmittedTerrainMaps);
+        Assert.NotNull(life.SubmitSidePlanes());
         Assert.Equal("LookoutPoint", life.SubmittedWorld.Region);
         var presented = life.PresentWorld();
         Assert.NotNull(presented);

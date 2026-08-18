@@ -210,6 +210,45 @@ public sealed class WorldGeometryTests
     }
 
     [Fact]
+    public void TessellateVisible_uses_00bdc2d0_aabb()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        var things = levels.LoadThings("LookoutPoint");
+        var opened = WorldGeometry.Build(
+            install, "LookoutPoint", things.Things,
+            adjacentStaticMaps: false,
+            levels: levels,
+            onlyMaps: ["LookoutPoint", "PicnicArea"],
+            expandGeometry: false);
+        Assert.False(opened.Expanded);
+        var unculled = opened.TessellateVisible(levels);
+        Assert.True(unculled.Count > 128);
+
+        LandscapeFrustum.LetterboxCots(
+            float.DegreesToRadians(60f), 4f / 3f, 1f, out var cotH, out var cotV);
+        var planes = LandscapeFrustum.ExtractSidePlanes(
+            new Vector3(64f, 64f, 10f), Vector3.UnitY, Vector3.UnitZ, cotH, cotV);
+        var accepted = new List<string>();
+        var visible = opened.TessellateVisible(levels, planes, accepted);
+        Assert.Contains("LookoutPoint", accepted);
+        Assert.True(visible.Count > 0);
+
+        var primary = levels.World.FindMap("LookoutPoint")!;
+        var picnic = levels.World.FindMap("PicnicArea")!;
+        var height = levels.LoadHeightField("PicnicArea")!;
+        var off = Fable.Formats.World.WorldSpaces.NeighbourRegionOffset(
+            picnic.MapX, picnic.MapY, primary.MapX, primary.MapY);
+        LandscapeFrustum.PatchAabb(
+            off.X, off.Y, height.FineWidth, height.FineHeight, out var min, out var max);
+        if (LandscapeFrustum.AabbIsOutside(min, max, planes))
+            Assert.DoesNotContain("PicnicArea", accepted);
+        else
+            Assert.Contains("PicnicArea", accepted);
+    }
+
+    [Fact]
     public void New_game_oakvale_loads_contains_and_sees_maps()
     {
         var install = GameInstall.TryLocate();
