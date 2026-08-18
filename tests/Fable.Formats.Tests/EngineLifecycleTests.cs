@@ -1,3 +1,4 @@
+using System.Numerics;
 using Fable.Core;
 using Fable.Formats;
 using Fable.Formats.Defs;
@@ -1854,6 +1855,10 @@ public sealed class EngineLifecycleTests
         Assert.Equal(7, life.SubmittedWorld!.Instances.Count(i =>
             i.MeshId == 4978 &&
             i.Map.Equals("LookoutPoint", StringComparison.OrdinalIgnoreCase)));
+        var heroFwd = Vector3.Normalize(
+            Vector3.TransformNormal(Vector3.UnitY, WorldGeometry.ObjectTransform(life.Hero!)));
+        Assert.True((heroFwd - Vector3.UnitX).Length() < 0.05f,
+            $"hero forward={heroFwd} expected +X from GuildArrivalHSP");
         life.CloseStaticMapFile();
         Assert.Empty(life.OpenedMapBodies);
         Assert.Equal(0, life.OpenStaticMapsMode);

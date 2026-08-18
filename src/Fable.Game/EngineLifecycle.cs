@@ -3335,6 +3335,32 @@ public sealed class EngineLifecycle : IDisposable
     public IReadOnlyList<ThingInstance> ThingsForMap(string mapName) =>
         _thingsByMap.TryGetValue(mapName, out var list) ? list : [];
 
+    /// <summary>
+    /// <c>006AC910</c> takes the start marker
+    /// physics basis. GuildArrivalHSP is
+    /// <c>+X</c> / <c>+Z</c>. Missing
+    /// <c>RHSet*</c> made ObjectTransform
+    /// default to <c>+Y</c>.
+    /// </summary>
+    private static void CopyPhysicsAxes(
+        ThingInstance source, Dictionary<string, string> dest)
+    {
+        foreach (var key in new[]
+        {
+            "CTCPhysicsStandard.RHSetForwardX",
+            "CTCPhysicsStandard.RHSetForwardY",
+            "CTCPhysicsStandard.RHSetForwardZ",
+            "CTCPhysicsStandard.RHSetUpX",
+            "CTCPhysicsStandard.RHSetUpY",
+            "CTCPhysicsStandard.RHSetUpZ",
+            "ObjectScale",
+        })
+        {
+            if (source.Properties.TryGetValue(key, out var value))
+                dest[key] = value;
+        }
+    }
+
     private void SpawnHero(ThingInstance source, bool bindExisting)
     {
         if (HeroSpawned)
@@ -3348,6 +3374,12 @@ public sealed class EngineLifecycle : IDisposable
         Note(ConstructFromParamsFn, "LevelLoader", "Player",
             "006A9DD0 ConstructFromParams");
         HeroDefinition = ResolveHeroDefinition();
+        var props = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["DefinitionType"] = HeroDefinition,
+            ["ScriptName"] = HeroScriptName,
+        };
+        CopyPhysicsAxes(source, props);
         Hero = new ThingInstance
         {
             Kind = "NewThing",
@@ -3357,11 +3389,7 @@ public sealed class EngineLifecycle : IDisposable
             PositionX = source.PositionX,
             PositionY = source.PositionY,
             PositionZ = source.PositionZ,
-            Properties = new Dictionary<string, string>
-            {
-                ["DefinitionType"] = HeroDefinition,
-                ["ScriptName"] = HeroScriptName,
-            },
+            Properties = props,
         };
         var inserted = InsertThing(Hero);
         HeroMeshId = inserted.MeshId ?? 0;
