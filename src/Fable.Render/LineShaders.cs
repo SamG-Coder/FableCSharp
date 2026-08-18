@@ -188,8 +188,11 @@ internal static class LineShaders
                 // First-seen c0 is PSCONST_OUTPUT_FACTOR = (1,1,1,1).
                 lit = clamp(t0.rgb * v0 * 2.0, 0.0, 1.0);
             }
+            // Land/static/PALSKIN write oFog. INNER_SKY does not
+            // (FirstSeenInnerSkyWritesFog=false); D3D default 1.
+            float fog = (mode > 1.5 && mode < 2.5) ? 1.0 : fragFog;
             // FOGENABLE=1, FOGCOLOR black: rgb * oFog + (1-oFog) * 0
-            outColor = vec4(lit * fragFog, alpha);
+            outColor = vec4(lit * fog, alpha);
         }
         """;
 }

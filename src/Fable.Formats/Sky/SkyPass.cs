@@ -151,6 +151,14 @@ public static class SkyPass
     /// <c>mov oD0, v1</c> so that alpha is the dome dest+12 byte.
     /// </summary>
     public const bool FirstSeenInnerSkyMulsVertexAlpha = true;
+    /// <summary>
+    /// <c>VSHADER_INNER_SKY</c> is
+    /// <c>dp4 oPos</c> + <c>mov oD0, v1</c>.
+    /// It does not write <c>oFog</c>. D3D
+    /// default is 1 — the 1000/2000 land
+    /// plane must not black the 6500 dome.
+    /// </summary>
+    public const bool FirstSeenInnerSkyWritesFog = false;
     public const int InnerSkyVsC92 = 92;
     /// <summary>
     /// Device-wrapper <c>SetPixelShaderConstantF</c> at

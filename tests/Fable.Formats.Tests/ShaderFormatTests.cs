@@ -565,6 +565,7 @@ public sealed class ShaderFormatTests
         Assert.True(SkyPass.FirstSeenSkyMode2IsStandIn);
         Assert.False(SkyPass.FirstSeenQualityBitKnown);
         Assert.True(SkyPass.FirstSeenInnerSkyMulsVertexAlpha);
+        Assert.False(SkyPass.FirstSeenInnerSkyWritesFog);
         Assert.Equal(92, SkyPass.InnerSkyVsC92);
         Assert.Equal(0x009888E0u, SkyPass.PsConstantWrapper);
         Assert.Equal(0x009888FCu, SkyPass.PsConstantWrapperCall);
