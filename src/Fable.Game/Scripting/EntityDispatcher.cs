@@ -335,8 +335,18 @@ public static class EntityDispatcher
                 scared ? "1" : "0");
         }
 
-        if (Eq(v, "SetBound") ||
-            Eq(v, "SetPushable") || Eq(v, "SetDamageable") || Eq(v, "SetAttackable") ||
+        if (Eq(v, "SetBound"))
+        {
+            // 00CC11FD: arg0 required; default 1; IsFalse → 0.
+            if (line.Arg(0).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            var bound = !ScriptLine.IsFalse(line.Arg(0));
+            ctx.World.SetBound(line.Target ?? "", bound);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity,
+                bound ? "1" : "0");
+        }
+
+        if (Eq(v, "SetPushable") || Eq(v, "SetDamageable") || Eq(v, "SetAttackable") ||
             Eq(v, "SetFree") || Eq(v, "Killable") ||
             Eq(v, "SetAppearanceSeed"))
         {

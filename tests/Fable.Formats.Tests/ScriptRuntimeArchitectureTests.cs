@@ -1509,6 +1509,82 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void SetBound_requires_arg_and_is_vtbl_1976()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("sb",
+        [
+            "PRIS.SetBound TRUE",
+            "PRIS.SetBound FALSE",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.False(runtime.World.Bound["PRIS"]);
+        var empty = new ScriptInterpreter("sb0", ["PRIS.SetBound"]);
+        empty.RunUntilYield(runtime);
+        Assert.True(empty.Finished);
+        Assert.False(runtime.World.Bound["PRIS"]);
+        var on = new ScriptInterpreter("sb1", ["GUARD.SetBound TRUE"]);
+        on.RunUntilYield(runtime);
+        Assert.True(runtime.World.Bound["GUARD"]);
+        Assert.Equal(0x00CC11FDu, ScriptCommandMap.Find("SetBound")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("SetScared")!.Value.ApplySite,
+            ScriptCommandMap.Find("SetBound")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void SetBound_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_HANGINGTREE_EVIL_OUTRO")
+                  ?? bank.Find("CS_HANGINGTREE_EVIL_EXECUTION");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.Contains(".SetBound ", StringComparison.OrdinalIgnoreCase))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("SetBound", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-bound", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".SetBound ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal(!ScriptLine.IsFalse(parsed.Arg(0)),
+            runtime.World.Bound[parsed.Target ?? ""]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-bound.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-setbound.txt"),
+            """
+            SetBound 00CC11AB / apply 00CC11FD
+              ebx required else 00CC7081
+              arg0 00403A00 empty skip 00CC7081
+              default flag=1; 00CBEE0C IsFalse → 0
+              actor vtbl+48; vtbl+1976(actor,flag); jmp 00CC707C
+              not SetScared vtbl+1984 (optional arg)
+            Bind pose UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void GiveGold_real_script_bank_or_isolated()
     {
         var install = GameInstall.TryLocate();

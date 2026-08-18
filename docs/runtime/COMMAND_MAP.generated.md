@@ -83,6 +83,7 @@
 | HoldInHand | `00CC2175` | `00CC21CB` | item[,IsTrue] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; IsTrue(arg1); actor vtbl+48; vtbl+892(actor,item,flag); leftover +28; jmp 00CC707C; not PutInHeroHands |
 | ModifyHealth | `00CC2258` | `00CC22AE` | amount | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | atof arg0; actor vtbl+48; vtbl+1060(actor,amt,0); leftover +28; jmp 00CC707C; not GiveHeroHealth 1052 |
 | SetScared | `00CC1265` | `00CC12B7` | [IsFalse] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | default 1; IsFalse(arg0)->0; vtbl+1984(actor,flag); jmp 00CC707C; not SetBound 1976 |
+| SetBound | `00CC11AB` | `00CC11FD` | IsFalse? | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; default 1; IsFalse->0; vtbl+1976(actor,flag); jmp 00CC707C; not SetScared 1984 |
 | GiveHero | `00CC6392` | `00CC63E5` | item[,n][,extra][,silent][,yield] | YieldAfterUnlessFalse | Proven | Proven | Proven | Proven | Partial | Partial | vtbl+484 x (count-have); already-have skip; leftover if arg4&&!arg3 |
 | GiveHeroHealth | `00CC62A0` | `00CC62F5` | amount|MAX | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | MAX: vtbl+1032-vtbl+1028; else atof; vtbl+1052(amt,1,0); jmp 00CC7081 |
 | GiveHeroMorality | `00CC6222` | `00CC6281` | amount | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | atof arg0; vtbl+624(amount); jmp 00CC7081; scale unread |

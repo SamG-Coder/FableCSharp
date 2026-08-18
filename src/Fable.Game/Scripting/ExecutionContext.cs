@@ -1063,6 +1063,12 @@ public sealed class WorldRuntime
     /// </summary>
     public readonly Dictionary<string, bool> Scared =
         new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// <c>00CC11FD</c> <c>vtbl+1976(actor,!IsFalse)</c>.
+    /// Arg0 required. Not SetScared 1984.
+    /// </summary>
+    public readonly Dictionary<string, bool> Bound =
+        new(StringComparer.OrdinalIgnoreCase);
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
     public float TimeOfDayHours { get; set; }
@@ -1226,6 +1232,15 @@ public sealed class WorldRuntime
     public void SetScared(string actor, bool scared)
     {
         Scared[actor ?? ""] = scared;
+    }
+
+    /// <summary>
+    /// <c>00CC11FD</c>: arg0 required; default 1;
+    /// IsFalse → 0; <c>vtbl+1976</c>. Bind pose UNREAD.
+    /// </summary>
+    public void SetBound(string actor, bool bound)
+    {
+        Bound[actor ?? ""] = bound;
     }
 
     /// <summary>
