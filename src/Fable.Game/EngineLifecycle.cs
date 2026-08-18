@@ -614,6 +614,23 @@ public sealed class EngineLifecycle : IDisposable
     public const uint DisplayFlushLayersFn = 0x009DA9F0;
     public const int DisplayFlushLayersArg = 1;
     public const int DrawIndexedPrimitiveVtbl = 332;
+    /// <summary>
+    /// <c>009DA9F0</c> walks
+    /// <c>[this+16020, +16024)</c>.
+    /// Empty jumps to <c>009DB6E6</c>.
+    /// Nonempty: <c>00A058C0</c> then
+    /// <c>[device+88].vtbl+332</c>
+    /// (push 32, VB <c>+16008</c>, count,
+    /// prim 2 or 4). No
+    /// <c>cmp …,0x22</c>.
+    /// </summary>
+    public const int DisplayQueueBeginOffset = 16020;
+    public const int DisplayQueueEndOffset = 16024;
+    public const int DisplayVertexBufferOffset = 16008;
+    public const uint DisplayPrimitiveFn = 0x00A058C0;
+    public const int DisplayDipStride = 32;
+    public const int DisplayDipPrimLines = 2;
+    public const int DisplayDipPrimTris = 4;
     public const uint RenderFrameFn = RegionTravel.RenderFrame;
 
     /// <summary>
@@ -1016,6 +1033,14 @@ public sealed class EngineLifecycle : IDisposable
     public uint Frontend2dLastType { get; private set; }
     public uint Frontend2dLastPacker { get; private set; }
     public int Frontend2dLastSubmitVtbl { get; private set; }
+    /// <summary>
+    /// First-seen <c>009DA9F0</c>
+    /// <c>[+16020]==[+16024]</c>.
+    /// <c>0041AFA0</c> packs to
+    /// widget <c>+0x15C</c> via
+    /// <c>vtbl+92</c>, not this list.
+    /// </summary>
+    public bool Frontend2dDipIssued { get; private set; }
     /// <summary>
     /// <c>[0x13B7CD8+8]</c>. BSS 0 skips
     /// the <c>00404C00</c> body.
@@ -1652,7 +1677,10 @@ public sealed class EngineLifecycle : IDisposable
         Note(DisplayFlush2dFn, "Frontend", "D3D9",
             "009D9C80 dirty-list no type 0x22 in 009D9C80-009DB000");
         Note(DisplayFlushLayersFn, "Frontend", "D3D9",
-            $"009DA9F0({DisplayFlushLayersArg})");
+            $"009DA9F0({DisplayFlushLayersArg}) [+{DisplayQueueBeginOffset}] empty");
+        Note(DisplayFlushLayersFn, "Frontend", "D3D9",
+            "009DA9F0 skip DIP no type 0x22");
+        Frontend2dDipIssued = false;
         FrontendFlushCount++;
     }
 
@@ -2470,7 +2498,7 @@ public sealed class EngineLifecycle : IDisposable
         Note(QuestListWalkAFn, "GamePump", "Quest", "00CB7C40");
         Note(QuestListWalkBFn, "GamePump", "Quest", "00CB8170");
         Note(FiberUpdateFlagSetter, "GamePump", "Quest",
-            "00CB78D0 setter 0 E8 first-seen 0");
+            "00CB78D0 setter 0 E8 not in 012C3000/012F72D0/0129B938");
         QuestPumpWalked = 0;
         QuestVtbl24Calls = 0;
         foreach (var name in _activatedQuests)

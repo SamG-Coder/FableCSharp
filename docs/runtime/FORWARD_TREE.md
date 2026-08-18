@@ -555,6 +555,16 @@ Fiber +41 setter 00CB78D0  PROVEN
 
 009D9C80 009D9C80–009DB000: no cmp …,0x22. Type-0x22 DIP is not this body.
 
+009DA9F0(1)  PROVEN (981, ret 4)
+├── [this+16020, +16024) count via 0x88888889
+├── empty → 009DB6E6 skip DIP  FIRST-SEEN
+├── nonempty: 00A058C0 then [device+88].vtbl+332
+│   push 32, VB +16008, count, prim 2 or 4
+└── no cmp …,0x22. Not a type-0x22 switch.
+0041AFA0 vtbl+92 dest is widget+0x15C, not +16020.
+
+00CB78D0 not in 012C3000 / 012F72D0 / 012C3688 / 0129B938 / 012C1648 / 012C2748.
+
 004A5A40 type-1 tick  PROVEN (316)
 ├── 004B4490  [0x13B89FC]  PROVEN
 │   └── 00CB8220 → 00CB7C40 + 00CB8170

@@ -330,6 +330,13 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.DisplayFlush2dFn &&
             e.Action.Contains("009D9C80-009DB000", StringComparison.Ordinal));
+        Assert.False(life.Frontend2dDipIssued);
+        Assert.Equal(16020, EngineLifecycle.DisplayQueueBeginOffset);
+        Assert.Equal(332, EngineLifecycle.DrawIndexedPrimitiveVtbl);
+        Assert.Equal(0x00A058C0u, EngineLifecycle.DisplayPrimitiveFn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DisplayFlushLayersFn &&
+            e.Action.Contains("skip DIP", StringComparison.Ordinal));
         Assert.False(life.FrontendDisplayFlag);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendWidgetDrawFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendWidgetFactoryFn);
@@ -1969,6 +1976,9 @@ public sealed class EngineLifecycleTests
             e.Action.Contains("skip", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FiberUpdateFlagSetter);
         Assert.Equal(0x00CB78D0u, EngineLifecycle.FiberUpdateFlagSetter);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FiberUpdateFlagSetter &&
+            e.Action.Contains("012C3000", StringComparison.Ordinal));
         Assert.True(life.SubjectFillNoted);
         Assert.True(life.QuestPumpRan);
         Assert.True(life.QuestPumpWalked >= 6, $"walked={life.QuestPumpWalked}");
