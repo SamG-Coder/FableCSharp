@@ -2908,6 +2908,84 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void LiftRock_is_vtbl_896_HERO_two_strings()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("lift",
+        [
+            "LiftRock ROCK1,MK_ROCK",
+            "LiftRock",
+            "LiftRock ONLYNAME",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Single(runtime.World.LiftRocks);
+        Assert.Equal(("ROCK1", "MK_ROCK"), runtime.World.LiftRocks[0]);
+        Assert.Equal(896, runtime.World.LiftRockVtbl);
+        Assert.Equal(0x00CC828Cu, ScriptCommandMap.Find("LiftRock")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("HoldInHand")!.Value.ApplySite,
+            ScriptCommandMap.Find("LiftRock")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void LiftRock_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("LiftRock ", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "LiftRock ROCK1,MK_ROCK";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("LiftRock", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-lift", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("LiftRock ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal((parsed.Arg(0), parsed.Arg(1)), runtime.World.LiftRocks[0]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-lift.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-liftrock.txt"),
+            """
+            LiftRock 00CC823D / apply 00CC828C
+              arg0+arg1 00403A00 empty skip 00CC8464
+              always HERO vtbl+280; 004ABE90
+              vtbl+896(hero,arg0,arg1) raw strings
+              004AA840; jmp 00CC8464
+              not HoldInHand vtbl+892
+            Lift/attach body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();

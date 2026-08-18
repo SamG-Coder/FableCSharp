@@ -214,6 +214,19 @@ public static class GlobalDispatcher
                 on ? "1" : "0");
         }
 
+        if (Eq(v, "LiftRock"))
+        {
+            // 00CC828C: arg0+arg1 required; always HERO vtbl+280;
+            // vtbl+896(hero,arg0,arg1). Raw strings, not 00CBF9DE.
+            var a0 = line.Arg(0);
+            var a1 = line.Arg(1);
+            if (a0.Length == 0 || a1.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ctx.World.LiftRock(a0, a1);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                $"{a0},{a1}");
+        }
+
         if (Eq(v, "SetThingConscious"))
         {
             // 00CC8094: arg0 required; default 0; IsTrue(arg1)->1;

@@ -1238,6 +1238,12 @@ public sealed class WorldRuntime
         new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, int> GravityVtbl =
         new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// <c>00CC828C</c> <c>vtbl+896(HERO,arg0,arg1)</c>.
+    /// Always hero handle. Args are raw strings.
+    /// </summary>
+    public readonly List<(string Arg0, string Arg1)> LiftRocks = [];
+    public int LiftRockVtbl { get; private set; }
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
     public float TimeOfDayHours { get; set; }
@@ -1529,6 +1535,18 @@ public sealed class WorldRuntime
         var key = actor ?? "";
         GravityOn[key] = on;
         GravityVtbl[key] = 2128;
+    }
+
+    /// <summary>
+    /// <c>00CC828C</c>: arg0+arg1 required;
+    /// always HERO <c>vtbl+280</c>;
+    /// <c>vtbl+896(hero,arg0,arg1)</c>.
+    /// Lift/attach body UNREAD.
+    /// </summary>
+    public void LiftRock(string arg0, string arg1)
+    {
+        LiftRocks.Add((arg0 ?? "", arg1 ?? ""));
+        LiftRockVtbl = 896;
     }
 
     /// <summary>

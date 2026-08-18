@@ -697,6 +697,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "arg0+arg1 required; HERO 280 else 288; default 1; IsFalse(arg1)->0; vtbl+2128; jmp 00CC8231; not PauseThing 2048"),
+        Spec("LiftRock", 0x00CC823D, 0x00CC828C, "arg0,arg1",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0+arg1 required; always HERO vtbl+280; vtbl+896(hero,arg0,arg1); jmp 00CC8464; not HoldInHand 892"),
         Spec("SetThingConscious", 0x00CC8041, 0x00CC8094, "thing[,IsTrue][,extra]",
             ScriptReturn.CompleteNow, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
