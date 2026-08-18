@@ -301,6 +301,8 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
         var factory = QuestFactoryTable.Find(name);
         if (factory is { } bind)
         {
+            if (bind.Init == QuestFactoryTable.SunnyvaleInit)
+                Persist.Install(PersistTable.Sunnyvale);
             quest.StartFactory(bind.Factory, bind.Run, bind.Init, bind.ScriptName);
             if (bind.ScriptName is { Length: > 0 } script &&
                 Bank?.Find(script) is not null)
@@ -322,6 +324,8 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     public void ApplyPersist(string name, bool value) => Persist.SetBool(name, value);
 
     public bool PersistBool(string name) => Persist.Bool(name);
+
+    public int PersistInt(string name) => Persist.Int32(name);
 
     public PersistKind PersistType(string name) => Persist.TypeOf(name);
 

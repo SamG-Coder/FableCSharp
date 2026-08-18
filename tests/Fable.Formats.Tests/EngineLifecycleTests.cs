@@ -731,6 +731,17 @@ public sealed class EngineLifecycleTests
         Assert.Equal(QuestFactoryTable.SunnyvaleInit, master.Init);
         Assert.Null(master.ScriptName);
         Assert.Null(master.ChildCutscene);
+        Assert.Equal(PersistKind.Bool, life.Runtime.PersistType("HauntedBarrowFieldsCompleted"));
+        Assert.False(life.Runtime.PersistBool("HauntedBarrowFieldsCompleted"));
+        Assert.Equal(PersistKind.Int, life.Runtime.PersistType("ArcheryHighScore"));
+        Assert.Equal(0, life.Runtime.PersistInt("ArcheryHighScore"));
+        Assert.Equal(PersistKind.Int, life.Runtime.PersistType("MaxChickenKickingScore"));
+        Assert.False(life.Runtime.PersistBool("ArenaFinished"));
+        Assert.Equal(38, PersistTable.Sunnyvale.Length);
+        Assert.Equal(0x00CDC070u, PersistTable.SunnyvaleBind);
+        Assert.Equal(0x004045C0u, PersistTable.BindBool);
+        Assert.Equal(0x00410BE0u, PersistTable.BindInt);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.SunnyvalePersistFn);
         var boasts = life.Runtime.Quests.Single(q => q.Name == "HeroBoasts");
         Assert.True(boasts.Started);
         Assert.Equal(QuestFactoryTable.HeroBoastsFactory, boasts.Factory);
@@ -787,6 +798,10 @@ public sealed class EngineLifecycleTests
                 factory ctor then 00CB8690 START_SCRIPT_DATA
                 fiber 00A447D0
             Q_SunnyvaleMaster has no CCutsceneDef.
+            00CDC070 vtbl+4 persist bind:
+              004045C0 bool (HauntedBarrowFieldsCompleted +17 …)
+              00410BE0 int (ArcheryHighScore +68 …)
+              defaults 00CDBA10 zeros
             S_HB/S_PSM/S_PSGT/S_VHDS start when bank has them.
             Not S_QNOVI / 00DBDE40.
             """);

@@ -69,6 +69,10 @@ public static class PersistTable
     public const int AttackOverOffset = 80;
     public const bool AttackOverWriterKnown = false;
 
+    public const uint BindBool = 0x004045C0;
+    public const uint BindInt = 0x00410BE0;
+    public const uint SunnyvaleBind = 0x00CDC070;
+
     public static readonly PersistSlot[] Recovered =
     [
         new(NewGameScript.PersistAttackOverName, PersistKind.Bool, false,
@@ -76,6 +80,64 @@ public static class PersistTable
             BindingKind.ProvenGeneric,
             "00DAADA0 004045C0(\"AttackOver\", this+80); writer UNREAD; first-seen false"),
     ];
+
+    /// <summary>
+    /// <c>00CDC070</c> Q_SunnyvaleMaster
+    /// vtbl+4. Bool via <c>004045C0</c>,
+    /// int via <c>00410BE0</c>. Defaults
+    /// are <c>00CDBA10</c> zeros.
+    /// </summary>
+    public static readonly PersistSlot[] Sunnyvale =
+    [
+        Bool("HauntedBarrowFieldsCompleted", 17),
+        Bool("GrannyMemoryReturned", 74),
+        Bool("IsLunaHuman", 75),
+        Bool("FriendOfForeman", 72),
+        Bool("BridgeOpened", 73),
+        Bool("CondemnedManDead", 76),
+        Bool("CondemnedManForgiven", 77),
+        Bool("CondemnedManMeetsBodyGuard", 78),
+        Bool("CondemnedManMeetsBodyGuardCutSceneStart", 79),
+        Bool("CondemnedManMeetsBodyGuardCutSceneFinished", 80),
+        Bool("SeenAbbeyMotherAtGuild", 96),
+        Bool("DefeatedThunder", 97),
+        Bool("LostToThunder", 98),
+        Bool("KilledThunder", 99),
+        Bool("CollectedSoulFromArena", 100),
+        Bool("KilledBriar", 101),
+        Bool("CollectedSoulFromMother", 102),
+        Bool("KilledGM", 103),
+        Bool("CollectedSoulFromNostro", 104),
+        Bool("WhisperKilledByHero", 116),
+        Bool("ArenaFinished", 117),
+        Bool("GatesRequireClosing", 118),
+        Bool("GatesRequireOpening", 119),
+        Bool("HangingTreeBanditKilled", 292),
+        Bool("HangingTreeGuardKilled", 293),
+        Int("ArcheryHighScore", 68),
+        Int("OrchardFarmRaidLastCompleted", 88),
+        Int("OrchardFarmTraderEscortCounter", 92),
+        Int("DeliveredSoul", 108),
+        Int("HighestSkillScore", 168),
+        Int("GlobalMeleeGrade", 180),
+        Int("GlobalSkillGrade", 184),
+        Int("GlobalWillGrade", 188),
+        Int("AmbushTradersKillCount", 204),
+        Int("AmbushTradersBanditHireCount", 208),
+        Int("PrisonRaceNumber", 232),
+        Int("MaxChickenKickingScore", 248),
+        Int("JackBossBattleResult", 136),
+    ];
+
+    private static PersistSlot Bool(string name, int offset) =>
+        new(name, PersistKind.Bool, false, offset, BindBool,
+            BindingKind.ProvenGeneric,
+            $"00CDC070 004045C0(\"{name}\", this+{offset})");
+
+    private static PersistSlot Int(string name, int offset) =>
+        new(name, PersistKind.Int, false, offset, BindInt,
+            BindingKind.ProvenGeneric,
+            $"00CDC070 00410BE0(\"{name}\", this+{offset})");
 }
 
 public readonly record struct PersistSlot(
@@ -98,6 +160,7 @@ public enum PersistKind
 public readonly record struct PersistValue(PersistKind Kind, bool Bool, int Int32, float Float32)
 {
     public static PersistValue FromBool(bool value) => new(PersistKind.Bool, value, 0, 0f);
+    public static PersistValue FromInt(int value) => new(PersistKind.Int, false, value, 0f);
 }
 
 /// <summary>

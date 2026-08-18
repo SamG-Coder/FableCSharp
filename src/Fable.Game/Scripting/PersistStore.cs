@@ -13,19 +13,35 @@ public sealed class PersistStore
 
     public void InstallRecovered()
     {
-        foreach (var slot in PersistTable.Recovered)
+        Install(PersistTable.Recovered);
+    }
+
+    public void Install(IEnumerable<PersistSlot> slots)
+    {
+        foreach (var slot in slots)
         {
-            if (!_slots.ContainsKey(slot.Name))
-                _slots[slot.Name] = PersistValue.FromBool(slot.DefaultBool);
+            if (_slots.ContainsKey(slot.Name))
+                continue;
+            _slots[slot.Name] = slot.Kind == PersistKind.Int
+                ? PersistValue.FromInt(0)
+                : PersistValue.FromBool(slot.DefaultBool);
         }
     }
 
     public void SetBool(string name, bool value) =>
         _slots[name] = PersistValue.FromBool(value);
 
+    public void SetInt(string name, int value) =>
+        _slots[name] = PersistValue.FromInt(value);
+
     public bool Bool(string name) =>
         _slots.TryGetValue(name, out var value) &&
         value.Kind == PersistKind.Bool && value.Bool;
+
+    public int Int32(string name) =>
+        _slots.TryGetValue(name, out var value) && value.Kind == PersistKind.Int
+            ? value.Int32
+            : 0;
 
     public PersistKind TypeOf(string name) =>
         _slots.TryGetValue(name, out var value) ? value.Kind : PersistKind.Unread;

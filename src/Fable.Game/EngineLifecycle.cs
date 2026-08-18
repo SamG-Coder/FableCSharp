@@ -540,6 +540,7 @@ public sealed class EngineLifecycle
     public const uint QuestFactoryBindFn = QuestFactoryTable.Bind;
     public const uint QuestFactoryCollectFn = QuestFactoryTable.Collect;
     public const uint QuestFactoryStartFn = QuestFactoryTable.StartWalk;
+    public const uint SunnyvalePersistFn = PersistTable.SunnyvaleBind;
     public const uint QuestManagerActivate = 0x004B2890;
     /// <summary>
     /// <c>004A1840</c> "Load Quests" during
@@ -2298,6 +2299,9 @@ public sealed class EngineLifecycle
                     (bind.ScriptName is { } script ? " → " + script : " native"));
                 Note(bind.Factory, "Init Quests", "Quest",
                     $"factory 0x{bind.Factory:X} run 0x{bind.Run:X}");
+                if (bind.Init == QuestFactoryTable.SunnyvaleInit)
+                    Note(SunnyvalePersistFn, "Init Quests", "Quest",
+                        "00CDC070 persist bind vtbl+4");
             }
 
             var persistent = Quests?.Quests.Any(q =>
