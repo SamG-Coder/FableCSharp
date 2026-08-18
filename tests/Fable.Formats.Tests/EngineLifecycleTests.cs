@@ -236,9 +236,34 @@ public sealed class EngineLifecycleTests
         life.WorldFrame = 2;
         life.RenderGameMode();
         Assert.True(life.RenderBodyRan);
-        Assert.Contains(life.Trace.Events, e =>
-            e.Va == EngineLifecycle.GameRenderFn &&
-            e.Action.Contains("004164E0", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CameraBodyFn);
+    }
+
+    [Fact]
+    public void WorldFrame_004A5E10_unblocks_004164E0()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.Contains(1, life.GameTickTypes);
+        Assert.Equal(0, life.WorldFrame);
+        Assert.False(life.RenderBodyRan);
+        life.PlayerActionReady = true;
+        life.UpdateGameMode();
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldFrameIncSite);
+        Assert.Equal(1, life.WorldFrame);
+        life.UpdateGameMode();
+        Assert.Equal(2, life.WorldFrame);
+        life.RenderGameMode();
+        Assert.True(life.RenderBodyRan);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CameraBodyFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldTickFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.AdvanceGameTicksFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
     }
 
     [Fact]
@@ -277,6 +302,13 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x004C74F0u, EngineLifecycle.StoreActiveThingFn);
         Assert.Equal(0x0049E1B0u, EngineLifecycle.WorldGetThingFn);
         Assert.Equal(0x00415A60u, EngineLifecycle.RenderStackZeroFn);
+        Assert.Equal(0x004A5E10u, EngineLifecycle.WorldFrameIncSite);
+        Assert.Equal(0x004A5A40u, EngineLifecycle.WorldTickFn);
+        Assert.Equal(0x00629270u, EngineLifecycle.WorldTickThunk);
+        Assert.Equal(0x0041726Du, EngineLifecycle.AdvanceGameTicksFn);
+        Assert.Equal(0x0049DFB0u, EngineLifecycle.DispatchWorldCallbacksFn);
+        Assert.Equal(0x004164E0u, EngineLifecycle.CameraBodyFn);
+        Assert.Equal(1, EngineLifecycle.WorldTickType);
         Assert.Equal(1, EngineLifecycle.RegionTableDummyCount);
         Assert.Equal(0x00500540u, EngineLifecycle.LoadRegionFn);
         Assert.Equal(0x006C2120u, EngineLifecycle.EnqueueLoadJobFn);
@@ -463,6 +495,8 @@ public sealed class EngineLifecycleTests
         Assert.True(life.FirstRealRegionLoadDone);
         Assert.Equal(2, life.GameUpdateCount);
         Assert.Equal(2, life.GameRenderCount);
+        Assert.Equal(0, life.WorldFrame);
+        Assert.Contains(1, life.GameTickTypes);
         Assert.Equal(1, life.CurrentRegionIndex);
         Assert.NotNull(life.CurrentRegion);
         Assert.Equal("LookoutPoint", life.CurrentRegion.RegionName);

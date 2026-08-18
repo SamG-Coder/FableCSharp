@@ -258,6 +258,24 @@ public sealed class EngineLifecycle
     public const uint SleepIat = 0x0143FE1C;
     public const uint SleepMsVa = 0x013B8610;
     /// <summary>
+    /// Unique increment: <c>004A5E10 inc [0x13B89BC]</c>
+    /// at the end of world tick <c>004A5A40</c>.
+    /// Thunk <c>00629270</c> is table slot 1
+    /// (<c>0x13B92C8</c>). <c>0049DFB0</c>
+    /// first walk skips type 1; second walk
+    /// (flag) calls slot 1 only.
+    /// </summary>
+    public const uint AdvanceGameTicksFn = 0x0041726D;
+    public const uint DispatchWorldCallbacksFn = 0x0049DFB0;
+    public const uint WorldTickFn = 0x004A5A40;
+    public const uint WorldTickThunk = 0x00629270;
+    public const uint WorldFrameIncSite = 0x004A5E10;
+    public const uint WorldTickTableVa = 0x013B9288;
+    public const uint WorldTickSlot1FnVa = 0x013B92C8;
+    public const int WorldTickSlotStride = 64;
+    public const int WorldTickType = 1;
+    public const uint CameraBodyFn = 0x004164E0;
+    /// <summary>
     /// <c>005066E0</c> inserts one ctor-zeroed
     /// 88-byte slot before WLD appends.
     /// Native index 0 is that dummy.
@@ -437,6 +455,9 @@ public sealed class EngineLifecycle
     /// <c>0049D870</c> <c>[0x13B89BC]</c>.
     /// </summary>
     public int WorldFrame { get; set; }
+    public int GamePlus72 { get; private set; }
+    public int GamePlus76 { get; private set; }
+    public IReadOnlyList<int> GameTickTypes => _tickTypes;
     public bool LevelLoaderReady { get; private set; }
     public bool FirstRealRegionLoadDone { get; private set; }
     /// <summary>
@@ -467,6 +488,7 @@ public sealed class EngineLifecycle
     private readonly List<string> _activatedMaps = [];
     private readonly List<string> _openedStaticMaps = [];
     private readonly List<OpenedStaticMapBody> _openedBodies = [];
+    private readonly List<int> _tickTypes = [];
 
     public static int CreateDeviceBehaviorFlags(bool hardwareTnl) =>
         hardwareTnl ? CreateDeviceHardwareFlags : CreateDeviceSoftwareFlags;
@@ -619,6 +641,7 @@ public sealed class EngineLifecycle
         GameRenderEnabled = true;
         Note(GameModeCtorRenderEnable, "InitGame", "GameMode",
             "00418EC6 [game+90593]=1");
+        SeedWorldTick();
         Mode = EngineMode.Game;
         Stage = EngineStage.Game;
         WorldFileName = FinalAlbionWld;
@@ -877,6 +900,7 @@ public sealed class EngineLifecycle
                 Note(GameVtbl24Fn, "GamePump", "Update", "vtbl+24 00416E78");
                 GameVtbl24Ran = true;
                 Note(ClearGamePlus68Fn, "GamePump", "Update", "00416047 [game+68]=0");
+                AdvanceGameTicks();
             }
         }
 
@@ -923,7 +947,62 @@ public sealed class EngineLifecycle
         }
 
         RenderBodyRan = true;
-        Note(GameRenderFn, "GamePump", "Render", "004164E0 camera body");
+        Note(CameraBodyFn, "GamePump", "Render", "004164E0 camera body");
+    }
+
+    /// <summary>
+    /// Table init <c>0121BA2D</c> stores
+    /// <c>00629270</c> at slot 1. Seeded so
+    /// <c>0049DFB0</c> second walk can fire.
+    /// </summary>
+    public void SeedWorldTick()
+    {
+        if (_tickTypes.Contains(WorldTickType))
+            return;
+        _tickTypes.Add(WorldTickType);
+        Note(WorldTickSlot1FnVa, "GamePump", "World",
+            "0121BA2D [0x13B92C8]=00629270 type 1");
+    }
+
+    /// <summary>
+    /// <c>0041726D</c>: walk game+164. If
+    /// <c>[+76]==[+72]</c> (ctor 0), flag 1
+    /// and <c>0049DFB0</c> second walk calls
+    /// slot 1.
+    /// </summary>
+    public void AdvanceGameTicks()
+    {
+        Note(AdvanceGameTicksFn, "GamePump", "World", "0041726D");
+        if (_tickTypes.Count == 0)
+        {
+            Note(AdvanceGameTicksFn, "GamePump", "World", "009F1750 empty");
+            return;
+        }
+
+        var flag = GamePlus76 == GamePlus72;
+        Note(DispatchWorldCallbacksFn, "GamePump", "World",
+            $"0049DFB0 flag={(flag ? 1 : 0)} types={_tickTypes.Count}");
+        if (!flag)
+            return;
+        foreach (var type in _tickTypes)
+        {
+            if (type != WorldTickType)
+                continue;
+            Note(WorldTickThunk, "GamePump", "World", "00629270 slot 1");
+            TickWorld();
+        }
+    }
+
+    /// <summary>
+    /// <c>004A5A40</c> ends at
+    /// <c>004A5E10 inc [0x13B89BC]</c>.
+    /// </summary>
+    public void TickWorld()
+    {
+        Note(WorldTickFn, "GamePump", "World", "004A5A40");
+        WorldFrame++;
+        Note(WorldFrameIncSite, "GamePump", "World",
+            $"004A5E10 inc WorldFrame={WorldFrame}");
     }
 
     /// <summary>
