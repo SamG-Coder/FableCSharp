@@ -271,6 +271,20 @@ public sealed class FrontendUiDefTests
             widgets, w => w.Name == "UI_PRESS_START_TEXT");
         Assert.Equal(26051, textWidget.Font);
         Assert.Equal(face, textWidget.FontFace);
+        Assert.Equal(0x53C644E4u, FrontendUiDef.MessageIdCrc);
+        Assert.NotEqual(FableCrc.Hash("Message"), FrontendUiDef.MessageIdCrc);
+        Assert.NotEqual(FableCrc.Hash("MessageId"), FrontendUiDef.MessageIdCrc);
+        var accept = FrontendUiDef.TryParse(bin.FindEntry("UI_ACCEPT_NEW_PROFILE")!)!;
+        Assert.Equal(38, accept.Type);
+        Assert.Equal(0x126, accept.MessageId);
+        var newGame = FrontendUiDef.TryParse(bin.FindEntry("UI_FRONTEND_BUTTON_NEW_GAME")!)!;
+        Assert.Equal(11, newGame.Type);
+        Assert.Equal(15, newGame.MessageId);
+        Assert.Equal(
+            0x126,
+            FrontendUiDef.ReadPersistI32(
+                bin.FindEntry("UI_ACCEPT_NEW_PROFILE")!.Raw,
+                FrontendUiDef.MessageIdCrc));
         _ = install;
     }
 

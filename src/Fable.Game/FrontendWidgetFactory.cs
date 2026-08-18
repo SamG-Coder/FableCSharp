@@ -177,6 +177,7 @@ public static class FrontendWidgetFactory
             ActiveChild: FrontendWidgetType.FirstSeenState,
             Font: font,
             FontFace: ResolveFontFace(font, names),
+            MessageId: def?.MessageId ?? 0,
             Colour: FrontendFrameDump.PackPersistColour(
                 def?.ColourR ?? 0f,
                 def?.ColourG ?? 0f,

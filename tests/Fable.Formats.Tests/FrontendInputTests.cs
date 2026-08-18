@@ -1,3 +1,4 @@
+using Fable.Core;
 using Fable.Game;
 
 namespace Fable.Formats.Tests;
@@ -141,26 +142,37 @@ public sealed class FrontendInputTests
     }
 
     [Fact]
-    public void Type4_drives_lifecycle_0xE5_then_injected_0x126_then_15()
+    public void Type4_drives_lifecycle_0xE5_then_0x126_then_15()
     {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
         var life = new EngineLifecycle();
-        life.Bootstrap(null);
+        life.Bootstrap(install);
         while (life.Stage == EngineStage.StartupVideos)
             life.FinishStartupVideo();
         Assert.Equal(
             EngineLifecycle.FrontendPressStartMenu, life.FrontendMenuRoot);
+        Assert.Contains(life.FrontendWidgets, w =>
+            w.Name == "UI_FRONTEND_PRESS_START_MENU" &&
+            w.MessageId == FrontendMessages.PressStart);
         life.QueueInput(FrontendInputMap.Type4, 0);
         Assert.True(life.Pump());
         Assert.Equal(
             EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
         Assert.Equal("Default", life.FrontendEditBoxName);
         Assert.False(life.RetailNewGameFlag);
-        life.DispatchFrontendMessage(FrontendMessages.AcceptNewProfile);
+        Assert.Contains(life.FrontendWidgets, w =>
+            w.Name == "UI_ACCEPT_NEW_PROFILE" &&
+            w.MessageId == FrontendMessages.AcceptNewProfile);
+        life.QueueInput(FrontendInputMap.Type4, 0);
         Assert.True(life.Pump());
         Assert.Equal(
             EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
         Assert.False(life.RetailNewGameFlag);
-        life.DispatchFrontendMessage(FrontendMessages.NewGame);
+        Assert.Contains(life.FrontendWidgets, w =>
+            w.Name == "UI_FRONTEND_BUTTON_NEW_GAME" &&
+            w.MessageId == FrontendMessages.NewGame);
+        life.QueueInput(FrontendInputMap.Type4, 0);
         Assert.True(life.Pump());
         Assert.True(life.RetailNewGameFlag);
         Assert.Equal(EngineStage.Game, life.Stage);
@@ -208,18 +220,23 @@ public sealed class FrontendInputTests
     }
 
     [Fact]
-    public void Type4_action_26_is_0xE5_on_press_start_only()
+    public void Type4_action_26_posts_stored_widget_message()
     {
         Assert.Equal(26, FrontendInputMap.ActionFromEvent(FrontendInputMap.Type4, 0));
+        var press = new List<FrontendWidget>
+        {
+            new("UI_FRONTEND_PRESS_START_MENU", 10, 0, 0, 0, 0, null, null,
+                MessageId: FrontendMessages.PressStart),
+        };
         Assert.Equal(
             FrontendMessages.PressStart,
-            FrontendInputMap.MessageFromAction(
-                FrontendInputMap.ActionType4,
-                FrontendMessages.PressStartMenu));
+            FrontendInputMap.MessageFromWidgets(
+                FrontendInputMap.ActionType4, press));
         Assert.Equal(
             FrontendMessages.PressStart,
-            FrontendInputMap.TryMapEvent(
-                FrontendInputMap.Type4, 0, FrontendMessages.PressStartMenu));
+            FrontendInputMap.TryMapEvent(FrontendInputMap.Type4, 0, press));
+        Assert.Null(FrontendInputMap.MessageFromAction(
+            FrontendInputMap.ActionType4, FrontendMessages.PressStartMenu));
         Assert.Null(FrontendInputMap.MessageFromAction(
             FrontendInputMap.ActionType4, FrontendMessages.NewProfileMenu));
         Assert.Null(FrontendInputMap.MessageFromAction(

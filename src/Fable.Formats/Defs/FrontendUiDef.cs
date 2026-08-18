@@ -117,6 +117,16 @@ public sealed class FrontendUiDef
     /// <c>GBANK_FRONT_END_PC</c> <c>BankEntry.Id</c>.
     /// </summary>
     public const uint GraphicIndexCrc = 0x38E36902;
+    /// <summary>
+    /// Persist i32 copied by
+    /// <c>0055B040</c> from def
+    /// <c>+224</c> then vtbl+284.
+    /// Type 38 <c>UI_ACCEPT_NEW_PROFILE</c>
+    /// stores <c>0x126</c>; type 11
+    /// <c>UI_FRONTEND_BUTTON_NEW_GAME</c>
+    /// stores 15. Name UNREAD.
+    /// </summary>
+    public const uint MessageIdCrc = 0x53C644E4;
     public const int HeaderBytes = 3;
     public const int StyleRecordBytes = 124;
     public const int StyleGraphicOffset = 60;
@@ -174,6 +184,11 @@ public sealed class FrontendUiDef
     /// Raw persist u8 at def <c>+521</c>.
     /// </summary>
     public byte ScaleOriginByte { get; init; }
+    /// <summary>
+    /// Persist <see cref="MessageIdCrc"/>
+    /// → def <c>+224</c>.
+    /// </summary>
+    public int MessageId { get; init; }
     public IReadOnlyList<uint> UnreadCrcs { get; init; } = [];
     public int UnreadOffset { get; init; }
     public bool Partial { get; init; }
@@ -469,6 +484,12 @@ public sealed class FrontendUiDef
                 continue;
             }
 
+            if (crc == MessageIdCrc && payload + 4 <= raw.Length)
+            {
+                cursor = payload + 4;
+                continue;
+            }
+
             if (crc == StylePlus64Crc && payload + 4 <= raw.Length)
             {
                 cursor = payload + 4;
@@ -501,6 +522,7 @@ public sealed class FrontendUiDef
         var absoluteByte = ReadPersistU8(raw, AbsoluteCrc);
         var scaleSizeByte = ReadPersistU8(raw, ScaleSizeCrc);
         var scaleOriginByte = ReadPersistU8(raw, ScaleOriginCrc);
+        var messageId = ReadPersistI32(raw, MessageIdCrc);
 
         return new FrontendUiDef
         {
@@ -531,6 +553,7 @@ public sealed class FrontendUiDef
             ScaleOriginToViewport = scaleOriginByte != 0,
             ScaleSizeByte = scaleSizeByte,
             ScaleOriginByte = scaleOriginByte,
+            MessageId = messageId,
             UnreadCrcs = unread,
             UnreadOffset = unreadOffset,
             Partial = partial,
@@ -549,6 +572,22 @@ public sealed class FrontendUiDef
         {
             if (BitConverter.ToUInt32(raw, i) == crc)
                 return raw[i + 4];
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// <c>00431102</c> file form: CRC then
+    /// i32. Used for persist
+    /// <see cref="MessageIdCrc"/>.
+    /// </summary>
+    public static int ReadPersistI32(byte[] raw, uint crc)
+    {
+        for (var i = 0; i + 8 <= raw.Length; i++)
+        {
+            if (BitConverter.ToUInt32(raw, i) == crc)
+                return BitConverter.ToInt32(raw, i + 4);
         }
 
         return 0;

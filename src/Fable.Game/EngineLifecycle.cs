@@ -2840,7 +2840,15 @@ public sealed class EngineLifecycle : IDisposable
         foreach (var (type, key) in Input.Applied)
         {
             var mapped = FrontendInputMap.TryMapEvent(
-                type, key, FrontendMenuRoot);
+                type, key, _frontendWidgets);
+            if (mapped is null &&
+                FrontendInputMap.ActionFromEvent(type, key) ==
+                    FrontendInputMap.ActionType4 &&
+                FrontendMenuRoot == FrontendPressStartMenu)
+            {
+                mapped = FrontendPressStartMessage;
+            }
+
             if (mapped is not int msg)
                 continue;
             DispatchFrontendMessage(msg);
@@ -6784,6 +6792,16 @@ public sealed class EngineLifecycle : IDisposable
 
         var built = FrontendWidgetFactory.Build(
             FrontendDefs, rootName, _frontendSprites, LookupFrontendText, names);
+        if (built.Count > 0 &&
+            rootName == FrontendPressStartMenu &&
+            built[0].MessageId == 0)
+        {
+            built[0] = built[0] with
+            {
+                MessageId = FrontendPressStartMessage,
+            };
+        }
+
         _frontendWidgets.AddRange(built);
         if (_frontendWidgets.Count > 0)
             FrontendRootType = _frontendWidgets[0].Type;

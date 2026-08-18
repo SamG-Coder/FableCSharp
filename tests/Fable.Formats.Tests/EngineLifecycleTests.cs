@@ -464,10 +464,12 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
-    public void Frontend_type4_then_injected_0x126_then_15_leaves()
+    public void Frontend_type4_posts_stored_0xE5_then_0x126_then_15()
     {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
         var life = new EngineLifecycle();
-        life.Bootstrap(null);
+        life.Bootstrap(install);
         while (life.Stage == EngineStage.StartupVideos)
             life.FinishStartupVideo();
         life.QueueInput(EngineInput.Type4, 0);
@@ -481,7 +483,7 @@ public sealed class EngineLifecycleTests
         Assert.Equal(
             EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
         Assert.False(life.RetailNewGameFlag);
-        life.DispatchFrontendMessage(EngineLifecycle.FrontendAcceptProfileMessage);
+        life.QueueInput(EngineInput.Type4, 0);
         Assert.True(life.Pump());
         Assert.Equal(
             EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
@@ -494,7 +496,7 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Pump());
         Assert.False(life.RetailNewGameFlag);
         Assert.Equal(EngineStage.Frontend, life.Stage);
-        life.DispatchFrontendMessage(EngineLifecycle.FrontendNewGameMessage);
+        life.QueueInput(EngineInput.Type4, 0);
         Assert.True(life.Pump());
         Assert.True(life.RetailNewGameFlag);
         Assert.Equal(EngineStage.Game, life.Stage);

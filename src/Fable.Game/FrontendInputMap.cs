@@ -1,3 +1,5 @@
+using Fable.Formats.Defs;
+
 namespace Fable.Game;
 
 /// <summary>
@@ -68,9 +70,25 @@ public sealed class FrontendInputMap
     public const uint Type10PostSite = 0x0054E2FA;
 
     /// <summary>
-    /// Physical DIK that produces type 4
-    /// is UNREAD. Return (28) is type 1
-    /// action 33 and does not post 0xE5.
+    /// Persist field copied by
+    /// <c>0055B040</c> from def
+    /// <c>+224</c>. Name UNREAD.
+    /// </summary>
+    public const uint MessageIdCrc = FrontendUiDef.MessageIdCrc;
+    public const uint Type4RecordCtor = 0x00A03C80;
+    public const uint Type4TranslateFn = 0x00AB5420;
+    public const uint Type11ActionFn = 0x0054DBC0;
+    public const uint Type38ActionFn = 0x0055AD60;
+    public const uint PersistMessageCopyFn = 0x0055B040;
+    public const int PersistMessageDefOffset = 224;
+    public const int TypeButton = 11;
+    public const int TypeAccept = 38;
+
+    /// <summary>
+    /// Type 4 is built by
+    /// <c>00A03C80</c> (<c>+40=4</c>).
+    /// It is not a DIK. Return (28) is
+    /// type 1 action 33.
     /// </summary>
     public const bool DikPosterUnread = true;
 
@@ -121,19 +139,44 @@ public sealed class FrontendInputMap
     }
 
     /// <summary>
-    /// Type-10 Press Start
-    /// <c>0054E280</c> action 26 posts
-    /// widget+352 (attach stored 0xE5).
-    /// Action 33 is last-key==1
-    /// <c>00597BF2</c>, not 0xE5.
-    /// 0x126 poster unread — no action
-    /// maps to it.
+    /// Type-10 inner <c>0054E280</c>
+    /// action 26 posts widget+352
+    /// (attach 0xE5). Type 11/38
+    /// <c>0054DBC0</c>/<c>0055AD60</c>
+    /// action 26 posts persist
+    /// <see cref="MessageIdCrc"/>.
+    /// Action 33 is not a frontend
+    /// message.
     /// </summary>
     public static int? MessageFromAction(int action, string? screen)
     {
-        if (action == ActionType4 &&
-            screen == FrontendMessages.PressStartMenu)
-            return FrontendMessages.PressStart;
+        _ = screen;
+        if (action != ActionType4)
+            return null;
+        return null;
+    }
+
+    /// <summary>
+    /// First visible stored id: type-10
+    /// attach message, else type 11/38
+    /// persist <c>+224</c>.
+    /// </summary>
+    public static int? MessageFromWidgets(
+        int action, IReadOnlyList<FrontendWidget> widgets)
+    {
+        if (action != ActionType4)
+            return null;
+        ArgumentNullException.ThrowIfNull(widgets);
+        foreach (var widget in widgets)
+        {
+            if (!widget.Visible || widget.Clip || widget.MessageId == 0)
+                continue;
+            if (widget.Type == FrontendWidgetType.Menu ||
+                widget.Type == TypeButton ||
+                widget.Type == TypeAccept)
+                return widget.MessageId;
+        }
+
         return null;
     }
 
@@ -143,5 +186,14 @@ public sealed class FrontendInputMap
         if (action is null)
             return null;
         return MessageFromAction(action.Value, screen);
+    }
+
+    public static int? TryMapEvent(
+        int type, int key, IReadOnlyList<FrontendWidget> widgets)
+    {
+        var action = ActionFromEvent(type, key);
+        if (action is null)
+            return null;
+        return MessageFromWidgets(action.Value, widgets);
     }
 }
