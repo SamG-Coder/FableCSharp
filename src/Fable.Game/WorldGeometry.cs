@@ -46,13 +46,10 @@ public sealed class WorldGeometry
         MeshBank? meshes = null,
         bool expandGeometry = true)
     {
-        var headerPath = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "meshdata.h");
-        var enums = File.Exists(headerPath) ? HeaderEnums.Load(headerPath) : null;
-        GameBin? defs = null;
-        var namesPath = install.FindCompiledDef("names.bin");
-        var binPath = install.FindCompiledDef("game.bin");
-        if (namesPath is not null && binPath is not null)
-            defs = TryLoadDefs(install);
+        var ownLevels = levels is null;
+        levels ??= new LevelLibrary(install);
+        var enums = levels.MeshEnums;
+        var defs = levels.Defs;
         var ownMeshes = meshes is null;
         meshes ??= new MeshBank();
         if (!meshes.Opened)
@@ -64,8 +61,6 @@ public sealed class WorldGeometry
         var missing = 0;
         var missingDefs = new List<string>();
 
-        var ownLevels = levels is null;
-        levels ??= new LevelLibrary(install);
         try
         {
         var landscapeEnums = levels.LandscapeEnums;

@@ -3446,7 +3446,8 @@ public sealed class EngineLifecycle : IDisposable
             return _defs;
         if (Install is null)
             return null;
-        _defs = WorldGeometry.TryLoadDefs(Install);
+        EnsureLevels();
+        _defs = _levels?.Defs ?? WorldGeometry.TryLoadDefs(Install);
         return _defs;
     }
 

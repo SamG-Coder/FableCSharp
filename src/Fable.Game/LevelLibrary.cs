@@ -28,6 +28,10 @@ public sealed class LevelLibrary : IDisposable
     public WorldFile World { get; }
     private HeaderEnums? _landscapeEnums;
     private bool _landscapeEnumsLoaded;
+    private HeaderEnums? _meshEnums;
+    private bool _meshEnumsLoaded;
+    private GameBin? _defs;
+    private bool _defsLoaded;
 
     /// <summary>
     /// <c>textures.h</c> once. Native
@@ -45,6 +49,40 @@ public sealed class LevelLibrary : IDisposable
             _landscapeEnums = File.Exists(path) ? HeaderEnums.Load(path) : null;
             _landscapeEnumsLoaded = true;
             return _landscapeEnums;
+        }
+    }
+
+    /// <summary>
+    /// <c>meshdata.h</c> once. Graphic ids
+    /// are not a per-thing header walk.
+    /// </summary>
+    public HeaderEnums? MeshEnums
+    {
+        get
+        {
+            if (_meshEnumsLoaded)
+                return _meshEnums;
+            var path = Path.Combine(
+                Install.DataRoot, "Defs", "RetailHeaders", "meshdata.h");
+            _meshEnums = File.Exists(path) ? HeaderEnums.Load(path) : null;
+            _meshEnumsLoaded = true;
+            return _meshEnums;
+        }
+    }
+
+    /// <summary>
+    /// <c>game.bin</c> + <c>names.bin</c>
+    /// process-lifetime. Not a per-map open.
+    /// </summary>
+    public GameBin? Defs
+    {
+        get
+        {
+            if (_defsLoaded)
+                return _defs;
+            _defs = WorldGeometry.TryLoadDefs(Install);
+            _defsLoaded = true;
+            return _defs;
         }
     }
 
