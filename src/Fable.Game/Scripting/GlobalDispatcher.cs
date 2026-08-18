@@ -450,6 +450,17 @@ public static class GlobalDispatcher
                 string.Join(",", ctx.Camera.Preloaded));
         }
 
+        if (Eq(v, "CameraPreload"))
+        {
+            // 00CC7A7C: arg0 required; vtbl+1612(1);
+            // vtbl+1648(name,0,0,-1,0,-1); vtbl+1612(0).
+            var name = line.Arg(0);
+            if (name.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ctx.Camera.CameraPreload(name);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name);
+        }
+
         if (Eq(v, "DoScriptFrame"))
         {
             var count = ParseScriptFrame(line.Arg(0));

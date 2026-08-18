@@ -252,6 +252,11 @@ public static class ScriptCommandMap
         Spec("DoScriptFrame", 0x00CC7085, 0, "[count]",
             ScriptReturn.WaitFrames, CommandParity.Complete,
             "atoi; each count one vtbl+28"),
+        Spec("CameraPreload", 0x00CC7A2D, 0x00CC7A7C, "name",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0 required; vtbl+1612(1); vtbl+1648(name,0,0,-1,0,-1); vtbl+1612(0); jmp 00CC8464; not DoCameraPreloading 1560"),
         Spec("DoCameraPreloading", 0x00CC86D0, 0x00CBF29F, "[IsTrue]",
             ScriptReturn.CompleteNow, CommandParity.ScriptLayer,
             "collects UseCamera names vtbl+1648; vtbl+1560/1568 UNREAD"),

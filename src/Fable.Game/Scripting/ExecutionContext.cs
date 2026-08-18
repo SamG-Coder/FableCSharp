@@ -541,6 +541,21 @@ public sealed class CameraRuntime
             return;
         _preloaded.Add(name);
     }
+
+    /// <summary>
+    /// <c>00CC7A7C</c>: <c>vtbl+1612(1)</c> then
+    /// <c>vtbl+1648(name,0,0,-1,0,-1)</c> then
+    /// <c>vtbl+1612(0)</c>. Not DoCameraPreloading.
+    /// </summary>
+    public int CameraPreloadGateVtbl { get; private set; }
+    public int CameraPreloadBindVtbl { get; private set; }
+
+    public void CameraPreload(string name)
+    {
+        CameraPreloadGateVtbl = 1612;
+        CameraPreloadBindVtbl = 1648;
+        Preload(name);
+    }
 }
 
 public sealed class AudioRuntime

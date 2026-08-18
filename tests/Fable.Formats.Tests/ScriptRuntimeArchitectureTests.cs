@@ -3184,6 +3184,84 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void CameraPreload_is_vtbl_1648_wrapped_by_1612()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("cpre",
+        [
+            "CameraPreload CAM_OVI_SHOT1",
+            "CameraPreload",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Contains("CAM_OVI_SHOT1", runtime.CameraSys.Preloaded);
+        Assert.Equal(1612, runtime.CameraSys.CameraPreloadGateVtbl);
+        Assert.Equal(1648, runtime.CameraSys.CameraPreloadBindVtbl);
+        Assert.Equal(0x00CC7A7Cu, ScriptCommandMap.Find("CameraPreload")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("DoCameraPreloading")!.Value.ApplySite,
+            ScriptCommandMap.Find("CameraPreload")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void CameraPreload_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("CameraPreload ", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains("DoCamera", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "CameraPreload CAM_OVI_SHOT1";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("CameraPreload", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-cpre", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("CameraPreload ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Contains(parsed.Arg(0), runtime.CameraSys.Preloaded);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-cpre.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-camerapreload.txt"),
+            """
+            CameraPreload 00CC7A2D / apply 00CC7A7C
+              arg0 00403A00 empty skip 00CC8464
+              vtbl+1612(1)
+              fld 0x122DEE0=-1; vtbl+1648(name,0,0,-1,0,-1)
+              vtbl+1612(0); jmp 00CC8464
+              not DoCameraPreloading 00CBF29F / 1560/1568
+            Camera resource body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();

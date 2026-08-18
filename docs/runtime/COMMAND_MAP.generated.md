@@ -11,6 +11,7 @@
 | LookToThing | `00CC3B3F` | `—` | target[,mode][,IsFalse] | YieldAfterUnlessFalse | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+1992; FOREVER wait; body UNREAD — record + yield |
 | LookToCamera | `00CC3CE4` | `00CC3D36` | [IsFalse] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | default 1; IsFalse(arg0)->0; 00CBF9DE; vtbl+1996(handle,flag); jmp 00CC707C; not LookToThing 1992 |
 | DoScriptFrame | `00CC7085` | `—` | [count] | WaitFrames | Proven | Proven | Proven | Proven | Proven | Proven | atoi; each count one vtbl+28 |
+| CameraPreload | `00CC7A2D` | `00CC7A7C` | name | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; vtbl+1612(1); vtbl+1648(name,0,0,-1,0,-1); vtbl+1612(0); jmp 00CC8464; not DoCameraPreloading 1560 |
 | DoCameraPreloading | `00CC86D0` | `00CBF29F` | [IsTrue] | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | collects UseCamera names vtbl+1648; vtbl+1560/1568 UNREAD |
 | UseCamera | `00CC9F3A` | `00B23B50` | name | YieldAfter | Proven | Proven | Proven | Proven | Partial | Partial | TNG lookup; bind ScriptedCamera pos/look/fov; one vtbl+28; spline unread |
 | NoLoadUseCamera | `00CC9E6A` | `00CC907D` | name | YieldAfter | Proven | Proven | Proven | Proven | Partial | Partial | separate token; same TNG bind; yield helper 00CC907D |
