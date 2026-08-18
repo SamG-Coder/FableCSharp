@@ -214,11 +214,18 @@ public sealed class EngineLifecycleTests
         Assert.Contains(EngineLifecycle.BeginSceneFn, vas);
         Assert.Contains(EngineLifecycle.EndSceneFn, vas);
         Assert.Contains(EngineLifecycle.PresentFn, vas);
-        Assert.Equal(EngineLifecycle.FrontendMenuItems.Length, life.FrontendWidgetsDrawn);
+        Assert.Equal(1, life.FrontendWidgetsDrawn);
+        Assert.True(life.FrontendMenuConstructed);
+        Assert.Equal(
+            EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
         Assert.Equal(2, life.FrontendFlushCount);
         Assert.Equal(84, EngineLifecycle.FrontendWidgetListOffset);
         Assert.Equal(8, EngineLifecycle.FrontendWidgetDrawVtbl);
         Assert.Equal(0x004292C0u, EngineLifecycle.FrontendWidgetNextFn);
+        Assert.Equal(0x0041AFA0u, EngineLifecycle.FrontendWidgetDrawFn);
+        Assert.Equal(0x0122F5D4u, EngineLifecycle.FrontendWidgetVtbl);
+        Assert.Equal(0x0041DB1Du, EngineLifecycle.FrontendWidgetFactoryFn);
+        Assert.NotEqual(0x0052D900u, EngineLifecycle.FrontendWidgetDrawFn);
         Assert.Equal(0x00404A80u, EngineLifecycle.FrontendDisplayHelperFn);
         Assert.Equal(0x013B7CD8u, EngineLifecycle.FrontendDisplaySingletonVa);
         var begin = Array.IndexOf(vas, EngineLifecycle.BeginSceneFn);
@@ -246,7 +253,9 @@ public sealed class EngineLifecycleTests
               0042DF9E draw:
                 009D8CF0 clear
                 009BEF20 BeginScene
-                00595582 / 00595222 [ui+84] vtbl+8
+                00595582 / 00595222 [ui+84]
+                [node+20] vtbl+8 = 0041AFA0 (0122F5D4)
+                not 0052D900 / 012521A8
                 009D9C80 / 009DA9F0(1)
                 00404A80 / 00404C00
                 009D9C80 / 009DA9F0(1)
@@ -275,7 +284,9 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.BeginSceneFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayFlush2dFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayFlushLayersFn);
-        Assert.Equal(EngineLifecycle.FrontendMenuItems.Length, life.FrontendWidgetsDrawn);
+        Assert.Equal(1, life.FrontendWidgetsDrawn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendWidgetDrawFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendWidgetFactoryFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
     }
 

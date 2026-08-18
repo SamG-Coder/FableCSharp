@@ -161,6 +161,30 @@ public sealed class EngineLifecycle : IDisposable
     public const int FrontendWidgetSlotOffset = 20;
     public const int FrontendWidgetDrawVtbl = 8;
     /// <summary>
+    /// <c>0059899A</c> → <c>00595A06</c> stores
+    /// one root at <c>[node+20]</c> via
+    /// <c>0041DB1D</c> / <c>009AD410</c> /
+    /// <c>0041D21B</c>. Type 0 ctor
+    /// <c>0041B800</c> writes vtbl
+    /// <c>0122F5D4</c>; slot +8 is
+    /// <c>0041AFA0</c> (ret 20). Not
+    /// UI singleton <c>012521A8+8</c>
+    /// <c>0052D900</c>.
+    /// </summary>
+    public const uint FrontendMainMenuFn = 0x0059899A;
+    public const uint FrontendMenuAttachFn = 0x00595A06;
+    public const uint FrontendWidgetFactoryFn = 0x0041DB1D;
+    public const uint FrontendWidgetConstructFn = 0x0041D21B;
+    public const uint FrontendWidgetType0Ctor = 0x0041B800;
+    public const uint FrontendWidgetVtbl = 0x0122F5D4;
+    public const uint FrontendWidgetDrawFn = 0x0041AFA0;
+    public const uint FrontendWidgetQueueFn = 0x0041BEB0;
+    public const int FrontendWidgetDefTypeOffset = 60;
+    public const string FrontendMainMenuNoContinue =
+        "UI_FRONTEND_MAIN_MENU_NO_LIVEAWARE_NO_CONTINUE";
+    public const string FrontendMainMenuContinue =
+        "UI_FRONTEND_MAIN_MENU_NO_LIVEAWARE";
+    /// <summary>
     /// <c>0042DF9E</c> after the widget walk:
     /// <c>009D9C80</c> / <c>009DA9F0(1)</c>
     /// twice, then EndScene / Present.
@@ -917,6 +941,8 @@ public sealed class EngineLifecycle : IDisposable
     public int FrontendPresentCount { get; private set; }
     public int FrontendWidgetsDrawn { get; private set; }
     public int FrontendFlushCount { get; private set; }
+    public string? FrontendMenuRoot { get; private set; }
+    public bool FrontendMenuConstructed { get; private set; }
     public IReadOnlyList<string> FrontendMenuLabels =>
         FrontendMenuItems.Select(i => i.Label).ToList();
     public IReadOnlyList<int> GameTickTypes => _tickTypes;
@@ -1376,6 +1402,19 @@ public sealed class EngineLifecycle : IDisposable
             "00595582 [0x13B8B5C] size 0xE0");
         Note(FrontendUiCtor, "Frontend", "UI",
             "005953E2 vtbl 012521A8");
+        Note(FrontendMainMenuFn, "Frontend", "UI", "0059899A");
+        Note(FrontendMenuAttachFn, "Frontend", "UI", "00595A06 [ui+84] id=0");
+        Note(InputActionGetter, "Frontend", "UI", "0041E5F2");
+        Note(FrontendWidgetFactoryFn, "Frontend", "UI",
+            "0041DB1D " + FrontendMainMenuNoContinue);
+        Note(MeshBank.DefLookupFn, "Frontend", "UI",
+            "009AD410 " + FrontendMainMenuNoContinue);
+        Note(FrontendWidgetConstructFn, "Frontend", "UI",
+            "0041D21B [def+60] type0 0041B800");
+        Note(FrontendWidgetType0Ctor, "Frontend", "UI",
+            $"0041B800 vtbl 0x{FrontendWidgetVtbl:X}");
+        FrontendMenuRoot = FrontendMainMenuNoContinue;
+        FrontendMenuConstructed = true;
         Note(FrontendUiBuildMenu, "Frontend", "UI", "00595B24");
         foreach (var (label, id) in FrontendMenuItems)
             Note(FrontendUiBuildMenu, "Frontend", "UI", $"{label} id={id}");
@@ -1431,13 +1470,16 @@ public sealed class EngineLifecycle : IDisposable
         FrontendWidgetsDrawn = 0;
         Note(FrontendUiDrawFn, "Frontend", "UI",
             $"00595222 [ui+{FrontendWidgetListOffset}]");
-        foreach (var (label, id) in FrontendMenuItems)
-        {
-            Note(FrontendUiDrawFn, "Frontend", "UI",
-                $"vtbl+{FrontendWidgetDrawVtbl} {label} id={id}");
-            Note(FrontendWidgetNextFn, "Frontend", "UI", "004292C0");
-            FrontendWidgetsDrawn++;
-        }
+        if (!FrontendMenuConstructed)
+            return;
+        // One [node+20] from 00595A06. Empty
+        // 00595B24 ids stay null and skip.
+        Note(FrontendWidgetDrawFn, "Frontend", "UI",
+            $"0041AFA0 vtbl+{FrontendWidgetDrawVtbl} 0122F5D4");
+        Note(FrontendWidgetQueueFn, "Frontend", "UI",
+            "0041BEB0 2D queue 0xC0");
+        Note(FrontendWidgetNextFn, "Frontend", "UI", "004292C0");
+        FrontendWidgetsDrawn = 1;
     }
 
     /// <summary>
