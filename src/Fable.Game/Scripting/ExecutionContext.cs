@@ -1230,6 +1230,14 @@ public sealed class WorldRuntime
         new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, int> PauseVtbl =
         new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// <c>00CC7BEB</c> <c>vtbl+2128(thing,!IsFalse)</c>.
+    /// Default 1. Not PauseThing modes 1/2.
+    /// </summary>
+    public readonly Dictionary<string, bool> GravityOn =
+        new(StringComparer.OrdinalIgnoreCase);
+    public readonly Dictionary<string, int> GravityVtbl =
+        new(StringComparer.OrdinalIgnoreCase);
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
     public float TimeOfDayHours { get; set; }
@@ -1508,6 +1516,19 @@ public sealed class WorldRuntime
         var key = actor ?? "";
         PauseModes[key] = mode;
         PauseVtbl[key] = 2048;
+    }
+
+    /// <summary>
+    /// <c>00CC7BEB</c>: arg0+arg1 required;
+    /// HERO vtbl+280 else 288; default 1;
+    /// IsFalse(arg1) → 0; <c>vtbl+2128(thing,flag)</c>.
+    /// Physics body UNREAD.
+    /// </summary>
+    public void SetGravityOnThing(string actor, bool on)
+    {
+        var key = actor ?? "";
+        GravityOn[key] = on;
+        GravityVtbl[key] = 2128;
     }
 
     /// <summary>

@@ -201,6 +201,19 @@ public static class GlobalDispatcher
                 mode.ToString());
         }
 
+        if (Eq(v, "SetGravityOnThing"))
+        {
+            // 00CC7BEB: arg0+arg1 required; HERO vtbl+280 else 288;
+            // default 1; IsFalse(arg1)->0; vtbl+2128(thing,flag).
+            var name = line.Arg(0);
+            if (name.Length == 0 || line.Arg(1).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            var on = !ScriptLine.IsFalse(line.Arg(1));
+            ctx.World.SetGravityOnThing(name, on);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                on ? "1" : "0");
+        }
+
         if (Eq(v, "SetThingConscious"))
         {
             // 00CC8094: arg0 required; default 0; IsTrue(arg1)->1;

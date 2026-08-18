@@ -2793,6 +2793,121 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void SetGravityOnThing_is_vtbl_2128_not_PauseThing()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("grav",
+        [
+            "SetGravityOnThing HERO,FALSE",
+            "SetGravityOnThing FireHeart,TRUE",
+            "SetGravityOnThing CS_AEONS,false",
+            "SetGravityOnThing",
+            "SetGravityOnThing ONLYNAME",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.False(runtime.World.GravityOn["HERO"]);
+        Assert.True(runtime.World.GravityOn["FireHeart"]);
+        Assert.False(runtime.World.GravityOn["CS_AEONS"]);
+        Assert.Equal(2128, runtime.World.GravityVtbl["HERO"]);
+        Assert.False(runtime.World.GravityOn.ContainsKey("ONLYNAME"));
+        Assert.Equal(0x00CC7BEBu, ScriptCommandMap.Find("SetGravityOnThing")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("PauseThing")!.Value.ApplySite,
+            ScriptCommandMap.Find("SetGravityOnThing")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void SetGravityOnThing_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var name in new[]
+                 {
+                     "CS_DRAGON_OUTRO_EVIL",
+                     "CS_SHIP_SAILS",
+                     "CS_SUMSHIP_INTRO",
+                     "CS_FIREHEART_OUTRO",
+                     "CS_JACK_DEATH",
+                 })
+        {
+            hit = bank.Entries.FirstOrDefault(e =>
+                e.InstanceName.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (hit is null)
+                continue;
+            foreach (var raw in hit.Commands.Count > 0
+                         ? hit.Commands
+                         : ScriptBank.ExtractCommands(hit.Raw))
+            {
+                if (raw.StartsWith("SetGravityOnThing ", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        if (line is null)
+        {
+            foreach (var entry in bank.Entries)
+            {
+                foreach (var raw in entry.Commands.Count > 0
+                             ? entry.Commands
+                             : ScriptBank.ExtractCommands(entry.Raw))
+                {
+                    if (raw.StartsWith("SetGravityOnThing ", StringComparison.OrdinalIgnoreCase) &&
+                        !raw.Contains('$', StringComparison.Ordinal))
+                    {
+                        line = raw;
+                        hit = entry;
+                        break;
+                    }
+                }
+
+                if (line is not null)
+                    break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        Assert.NotNull(hit);
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("SetGravityOnThing", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-grav", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("SetGravityOnThing ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        var on = !ScriptLine.IsFalse(parsed.Arg(1));
+        Assert.Equal(on, runtime.World.GravityOn[parsed.Arg(0)]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-grav.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-setgravityonthing.txt"),
+            """
+            SetGravityOnThing 00CC7B98 / apply 00CC7BEB
+              arg0+arg1 00403A00 empty skip 00CC8464
+              HERO vtbl+280 else vtbl+288
+              004ABE90; 004AB130
+              default flag=1; 00CBEE0C IsFalse(arg1) → 0
+              vtbl+2128(thing,flag); jmp 00CC8231
+              not PauseThing vtbl+2048 modes 1/2
+            Physics body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();

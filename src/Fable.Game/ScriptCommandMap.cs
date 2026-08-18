@@ -692,6 +692,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "arg0+arg1 required; 00CBF9DE; 004AB130; IsFalse(arg1)->2 else 1; vtbl+2048; jmp 00CC82E9; not 0/1"),
+        Spec("SetGravityOnThing", 0x00CC7B98, 0x00CC7BEB, "thing,IsFalse?",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0+arg1 required; HERO 280 else 288; default 1; IsFalse(arg1)->0; vtbl+2128; jmp 00CC8231; not PauseThing 2048"),
         Spec("SetThingConscious", 0x00CC8041, 0x00CC8094, "thing[,IsTrue][,extra]",
             ScriptReturn.CompleteNow, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
