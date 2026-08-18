@@ -61,6 +61,30 @@ public sealed class EngineLifecycle
     public const uint PlayAviPlayer = 0x006286F0;
     public const uint FrontendIntern = 0x0042F722;
     public const uint LeaveFrontendSite = 0x0042F2A2;
+    /// <summary>
+    /// <c>00595582</c> singleton at
+    /// <c>[0x13B8B5C]</c>. Size <c>0xE0</c>,
+    /// ctor <c>005953E2</c>, vtbl
+    /// <c>012521A8</c>.
+    /// </summary>
+    public const uint FrontendUiGet = 0x00595582;
+    public const uint FrontendUiCtor = 0x005953E2;
+    public const uint FrontendUiVtbl = 0x012521A8;
+    public const uint FrontendUiSingletonVa = 0x013B8B5C;
+    public const int FrontendUiSize = 0xE0;
+    public const uint FrontendUiBuildMenu = 0x00595B24;
+    public const uint FrontendUiMessageFn = 0x0059A238;
+    public const uint FrontendNewGameApply = 0x0059A2DA;
+    public const uint FrontendNewGameThunk = 0x00594F28;
+    public const uint FrontendMenuSearchFn = 0x005959AB;
+    public const uint FrontendMenuMissFn = 0x00595A03;
+    /// <summary>
+    /// <c>0059A238</c> <c>msg-15</c> branch
+    /// writes <c>[retail+41]=1</c>.
+    /// </summary>
+    public const int FrontendNewGameMessage = 15;
+    public const int RetailNewGameFlagOffset = 41;
+    public const int RetailLoadGameFlagOffset = 42;
     public const uint InitGameSite = 0x0042F491;
     public const string FinalAlbionWld = "FinalAlbion.wld";
     public const uint VideoPlayFlagVa = 0x01375448;
@@ -419,6 +443,23 @@ public sealed class EngineLifecycle
         "NewDisplayName", "ContainsMap", "SeesMap", "AppearOnWorldMap",
     ];
 
+    /// <summary>
+    /// <c>00595B24</c> labels. Third arg is
+    /// the menu id; New Game is 0.
+    /// </summary>
+    public static readonly (string Label, int Id)[] FrontendMenuItems =
+    [
+        ("UI_TEXT_NEW_GAME", 0),
+        ("UI_TEXT_LOAD_GAME", 0),
+        ("UI_TEXT_OPTIONS_MENU_TITLE", 24),
+        ("UI_TEXT_OPTIONS_MENU_TITLE", 1),
+        ("UI_TEXT_GAME_OPTIONS_MENU_TITLE", 1),
+        ("UI_TEXT_VIDEO_MENU_TITLE", 5),
+        ("UI_TEXT_SCOREBOARD_MENU_TITLE", 25),
+        ("UI_TEXT_REDEFINE_KEYS_MENU_TITLE", 22),
+        ("UI_TEXT_AUDIO_OPTIONS_MENU_TITLE", 4),
+    ];
+
     public static readonly (string Logical, string Pc)[] RetailBanks =
     [
         ("GBANK_MAIN", "GBANK_MAIN_PC"),
@@ -558,6 +599,14 @@ public sealed class EngineLifecycle
     public GameCamera GameCamera { get; } = new();
     public GameCameraManager GameCameraManager { get; } = new();
     public bool WorldCameraPresent { get; private set; }
+    public bool FrontendUiPresent { get; private set; }
+    /// <summary>
+    /// Retail mode <c>+41</c>. Nonzero takes
+    /// <c>0042F297</c> Leave frontend.
+    /// </summary>
+    public bool RetailNewGameFlag { get; private set; }
+    public IReadOnlyList<string> FrontendMenuLabels =>
+        FrontendMenuItems.Select(i => i.Label).ToList();
     public IReadOnlyList<int> GameTickTypes => _tickTypes;
     public bool LevelLoaderReady { get; private set; }
     public bool FirstRealRegionLoadDone { get; private set; }
@@ -650,7 +699,17 @@ public sealed class EngineLifecycle
         if (Stage == EngineStage.StartupVideos)
             return true;
         if (Stage == EngineStage.Frontend)
+        {
+            if (!FrontendUiPresent)
+                InitFrontendUi();
+            if (RetailNewGameFlag)
+            {
+                RequestNewGame();
+                EnterGame();
+            }
+
             return true;
+        }
         if (Stage == EngineStage.LeaveFrontend)
         {
             EnterGame();
@@ -697,6 +756,58 @@ public sealed class EngineLifecycle
         Note(0x0042EF6F, "InitFrontend", "Frontend", "Init frontend");
         Note(FrontendIntern, "Frontend", "FRONT_END", "0042F722");
         Stage = EngineStage.Frontend;
+        InitFrontendUi();
+    }
+
+    /// <summary>
+    /// <c>00595582</c> then <c>00595B24</c>
+    /// menu labels. Does not leave frontend.
+    /// </summary>
+    public void InitFrontendUi()
+    {
+        if (FrontendUiPresent)
+            return;
+        Note(FrontendUiGet, "Frontend", "UI",
+            "00595582 [0x13B8B5C] size 0xE0");
+        Note(FrontendUiCtor, "Frontend", "UI",
+            "005953E2 vtbl 012521A8");
+        Note(FrontendUiBuildMenu, "Frontend", "UI", "00595B24");
+        foreach (var (label, id) in FrontendMenuItems)
+            Note(FrontendUiBuildMenu, "Frontend", "UI", $"{label} id={id}");
+        FrontendUiPresent = true;
+    }
+
+    /// <summary>
+    /// <c>0059A238</c> message 15:
+    /// <c>[ui+28]</c> vtbl+16 then
+    /// <c>[retail+41]=1</c>.
+    /// </summary>
+    public void ActivateNewGame()
+    {
+        if (Stage != EngineStage.Frontend)
+            return;
+        if (!FrontendUiPresent)
+            InitFrontendUi();
+        Note(FrontendUiMessageFn, "Frontend", "UI",
+            $"0059A238 msg={FrontendNewGameMessage}");
+        Note(FrontendNewGameApply, "Frontend", "UI",
+            "0059A2DA [ui+28] vtbl+16");
+        Note(FrontendNewGameThunk, "Frontend", "UI",
+            $"00594F28 [retail+{RetailNewGameFlagOffset}]=1");
+        RetailNewGameFlag = true;
+    }
+
+    /// <summary>
+    /// <c>005959AB</c> walks the menu list.
+    /// Miss is <c>00595A03 xor al,al</c>.
+    /// </summary>
+    public bool FrontendMenuContains(string label)
+    {
+        Note(FrontendMenuSearchFn, "Frontend", "UI", "005959AB");
+        var hit = FrontendMenuItems.Any(i => i.Label == label);
+        if (!hit)
+            Note(FrontendMenuMissFn, "Frontend", "UI", "00595A03 miss");
+        return hit;
     }
 
     /// <summary>

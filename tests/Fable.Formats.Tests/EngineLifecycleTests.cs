@@ -104,10 +104,63 @@ public sealed class EngineLifecycleTests
         Assert.Equal(@"Data\Video\intro_comp.xmv", life.CurrentStartupVideo!.Value.RelativePath);
         life.FinishStartupVideo();
         Assert.Equal(EngineStage.Frontend, life.Stage);
+        Assert.True(life.FrontendUiPresent);
+        Assert.Contains("UI_TEXT_NEW_GAME", life.FrontendMenuLabels);
         Assert.Null(life.CurrentStartupVideo);
         Assert.Null(life.WorldFileName);
         Assert.True(life.Pump());
         Assert.NotEqual(EngineStage.Game, life.Stage);
+    }
+
+    [Fact]
+    public void Frontend_00595582_new_game_message_leaves_without_RequestNewGame()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.Equal(EngineStage.Frontend, life.Stage);
+        Assert.True(life.FrontendUiPresent);
+        Assert.True(life.FrontendMenuContains("UI_TEXT_NEW_GAME"));
+        Assert.False(life.FrontendMenuContains("UI_TEXT_NOT_A_MENU"));
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendUiGet);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendUiCtor);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendMenuMissFn);
+        Assert.False(life.RetailNewGameFlag);
+        life.ActivateNewGame();
+        Assert.True(life.RetailNewGameFlag);
+        Assert.Equal(EngineStage.Frontend, life.Stage);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendNewGameApply);
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.Equal("FinalAlbion.wld", life.WorldFileName);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LeaveFrontendSite);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+            "traces");
+        Directory.CreateDirectory(dest);
+        life.Trace.Write(Path.Combine(dest, "frontend-00595582.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-00595582.txt"),
+            """
+            00595582: singleton [0x13B8B5C]
+              alloc 0xE0, ctor 005953E2, vtbl 012521A8
+            00595B24 builds menu:
+              UI_TEXT_NEW_GAME id=0
+              UI_TEXT_LOAD_GAME id=0
+              OPTIONS 24/1, VIDEO 5, SCOREBOARD 25,
+              REDEFINE 22, AUDIO 4
+            0059A238 message pump:
+              msg==15 → 0059A2DA
+                [ui+28] vtbl+16
+                [retail+41]=1 (also 00594F28)
+            0042EC7C: [esi+42] load/save UNREAD
+                       [esi+41] Leave frontend 0042F2A2
+            005959AB menu search; miss 00595A03 xor al,al
+            Not 00DBDE40. Save enumerate unread.
+            """);
     }
 
     [Fact]
@@ -509,6 +562,16 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x00B3EF40u, EngineLifecycle.CloseStaticMapFn);
         Assert.Equal(0x00BE03A0u, EngineLifecycle.CreateBackgroundPatchFn);
         Assert.Equal(0x00BDD0E0u, EngineLifecycle.BuildCurrentPatchFn);
+        Assert.Equal(0x00595582u, EngineLifecycle.FrontendUiGet);
+        Assert.Equal(0x005953E2u, EngineLifecycle.FrontendUiCtor);
+        Assert.Equal(0x012521A8u, EngineLifecycle.FrontendUiVtbl);
+        Assert.Equal(0xE0, EngineLifecycle.FrontendUiSize);
+        Assert.Equal(0x00595B24u, EngineLifecycle.FrontendUiBuildMenu);
+        Assert.Equal(0x0059A238u, EngineLifecycle.FrontendUiMessageFn);
+        Assert.Equal(15, EngineLifecycle.FrontendNewGameMessage);
+        Assert.Equal(41, EngineLifecycle.RetailNewGameFlagOffset);
+        Assert.Equal(0x00595A03u, EngineLifecycle.FrontendMenuMissFn);
+        Assert.Equal("UI_TEXT_NEW_GAME", EngineLifecycle.FrontendMenuItems[0].Label);
         Assert.Equal(25, EngineLifecycle.LevHeaderVersion);
         Assert.Equal(0x1904u, EngineLifecycle.LevHeaderConstant);
         Assert.NotEqual(0x00DBDE40u, EngineLifecycle.GamePump);

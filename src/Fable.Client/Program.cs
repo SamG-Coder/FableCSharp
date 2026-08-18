@@ -115,7 +115,7 @@ window.Update += dt =>
         var nDown = keyboard.IsKeyPressed(Key.N) || keyboard.IsKeyPressed(Key.Enter);
         if (nDown && !nWasDown)
         {
-            life.RequestNewGame();
+            life.ActivateNewGame();
             life.Pump();
             Console.WriteLine(
                 $"Leave frontend {life.WorldFileName} → Init Game 0x{EngineLifecycle.GameModeCtor:X}");
