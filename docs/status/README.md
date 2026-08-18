@@ -147,8 +147,10 @@ only — CSS unchanged.
 | No-save enqueue `00501450` → `00500540(1,0,0)` **LookoutPoint** (native index 1) | PROVEN | install test (`CurrentRegionIndex=1`) |
 | `00501450` is only `00500540(1,0,0)` | DISPROVEN | body also `004FEEC0(0,0)` and later `(saved,0,1)`; `Second_pump_00501450_is_004FEEC0_then_00500540_1_0_0` |
 | Persist `PlayerRegionName` `00487C20` / `00449E60` loads named region (e.g. `StartOakVale` = 4) | PROVEN | `Persist_PlayerRegionName_is_00487C20_not_new_game` |
-| `SetRegionAsLoaded` `004FC8A0` writes `+156`, then `00B42750` mode 1 | PROVEN | `e9952b8` / install test |
+| `SetRegionAsLoaded` `004FC8A0` writes `+156`, then `00B42750` mode 1 | DISPROVEN | `004FC8A0` is MiniMap only. `00B428E0` is `004A1840` vtbl+208 |
 | `004FC8A0` calls `005064C0` / `00B428E0` | DISPROVEN | `004FC8A0` is `+156`/`00437CE0`/`0082BA00`. `005064C0` is vtbl+88 before it. `SetRegionAsLoaded_004FC8A0_is_minimap_after_005064C0` |
+| `00B428E0` after `004AFC00` | DISPROVEN | `00500540` tail is dtor/`ret 12`. Caller is `00B23DC0` from `004A1840` `004A1BD3` |
+| First-seen `00B428E0` opens Lookout STB | DISPROVEN | arg is `Data\Levels\FinalAlbion.stb`; file absent; `00B42750` miss |
 | `OpenStaticMap` `00B42530` STB height + compiled `.lev` (v25 / `0x1904`) | PROVEN | `7869e8e` / install test |
 | `00418289` / `004AEBA0` gate player/world on `[player+9826]`; `00417001` still skips camera body while `WorldFrame<=1` | PROVEN | `7cc44c0` / `Update_00418289_*` / `Render_00417001_*` |
 | `WorldFrame` inc at `004A5E10` via `0049DFB0` type-1 (`00629270` / `004A5A40`) | PROVEN | `ced722f` / `WorldFrame_004A5E10_unblocks_004164E0` |

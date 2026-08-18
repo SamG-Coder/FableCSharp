@@ -544,6 +544,26 @@ public sealed class EngineLifecycle : IDisposable
     public const int DisplayEngineFadeType = 12;
     public const uint DisplayEngineFadeSecondsVa = 0x0122F160;
     public const float DisplayEngineFadeSeconds = 20f;
+    /// <summary>
+    /// Display <c>012A0F3C+208</c>.
+    /// <c>mov ecx,[0x1436E8C]; jmp 00B428E0</c>.
+    /// No <c>E8</c> to <c>00B428E0</c>.
+    /// </summary>
+    public const int DisplayEngineSetStaticMapVtbl = 208;
+    public const uint DisplayEngineSetStaticMapThunk = 0x00B23DC0;
+    public const uint MapManagerGlobalVa = 0x01436E8C;
+    public const uint DeriveStaticMapNameFn = 0x0049DDD0;
+    public const uint DeriveStaticMapNameSite = 0x004A18FC;
+    public const uint SetStaticMapVtblCallSite = 0x004A1BD3;
+    public const uint StaticMapLevelsDirVa = 0x0122F3B4;
+    public const string StaticMapLevelsDir = @"Data\Levels\";
+    public const uint StaticMapStbSuffixVa = 0x01238BAC;
+    public const string StaticMapStbSuffix = ".stb";
+    public const uint StaticMapRtStbSuffixVa = 0x01238BC8;
+    public const string StaticMapRtStbSuffix = "_RT.stb";
+    public const uint RetailStbFlagVa = 0x013B8616;
+    public const int RetailStbFlagFirstSeen = 0;
+    public const uint LoadWaterDataFn = 0x00B41FA0;
     public const uint InputLockObjectVa = 0x013CAA90;
     public const uint InputLockEnterFn = 0x009F2660;
     public const uint InputLockLeaveFn = 0x009F26B0;
@@ -1383,6 +1403,12 @@ public sealed class EngineLifecycle : IDisposable
     public IReadOnlyList<int> PendingLoadIndices => _loadQueue;
     public IReadOnlyList<string> ActivatedMaps => _activatedMaps;
     public int OpenStaticMapsMode { get; private set; }
+    /// <summary>
+    /// <c>0049DDD0</c> name copied onto
+    /// map-manager <c>+48</c> before
+    /// <c>00B42750(1)</c>.
+    /// </summary>
+    public string? StaticMapFileName { get; private set; }
     public IReadOnlyList<string> OpenedStaticMaps => _openedStaticMaps;
     public IReadOnlyList<OpenedStaticMapBody> OpenedMapBodies => _openedBodies;
     /// <summary>
@@ -2451,6 +2477,7 @@ public sealed class EngineLifecycle : IDisposable
         Note(StartupWadSite, "Loading world", "WLD", "Startup WAD");
         Note(SetStaticMapForEngineSite, "Loading world", "WLD",
             "Set Static Map for Engine");
+        SetStaticMapFileForUse();
     }
 
     /// <summary>
@@ -2653,9 +2680,9 @@ public sealed class EngineLifecycle : IDisposable
 
         Note(FrameDtFn, "GamePump", "Time", "009E1BC0 FrameDt");
         UpdateGameMode();
-        // After 006C2170 / OpenStaticMaps,
-        // before 00435530. Native draw
-        // consumes already-opened maps.
+        // After 006C2170. First-seen
+        // 00B428E0 already ran in 004A1840
+        // and missed FinalAlbion.stb.
         if (HeroSpawned && !WorldSubmitted)
             SubmitCurrentWorld();
         Note(DisplayReadyFn, "GamePump", "Display",
@@ -3384,7 +3411,8 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>WorldMap+156</c>,
     /// <c>00437CE0([0x13B8790])</c>,
     /// <c>0082BA00</c>. Not
-    /// <c>005064C0</c> / <c>00B428E0</c>.
+    /// <c>005064C0</c>. <c>00B428E0</c>
+    /// is <c>004A1840</c> vtbl+208.
     /// </summary>
     public void SetRegionAsLoaded(int index)
     {
@@ -3527,9 +3555,81 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
-    /// <c>00B428E0</c> <c>SetStaticMapFileForUse</c>
-    /// then <c>00B42750</c> mode 1. Map set is
-    /// existing <see cref="WorldGeometry.StaticMapsAround"/>.
+    /// <c>0049DDD0</c> first-seen
+    /// (<c>[0x13B8616]==0</c>):
+    /// <c>Data\Levels\</c> + WLD stem +
+    /// <c>.stb</c>. <c>_RT.stb</c> only
+    /// when the retail flag is set.
+    /// </summary>
+    public static string DeriveStaticMapFileName(string wldPath, bool retailRt = false)
+    {
+        var stem = Path.GetFileNameWithoutExtension(wldPath);
+        if (string.IsNullOrEmpty(stem))
+            stem = Path.GetFileNameWithoutExtension(FinalAlbionWld);
+        var suffix = retailRt ? StaticMapRtStbSuffix : StaticMapStbSuffix;
+        return StaticMapLevelsDir + stem + suffix;
+    }
+
+    /// <summary>
+    /// First-seen <c>00B428E0</c> is
+    /// <c>004A1840</c> <c>004A1BD3</c>
+    /// display <c>vtbl+208</c>
+    /// <c>00B23DC0</c>, not
+    /// <c>004FC8A0</c> / <c>00500540</c>
+    /// after <c>004AFC00</c>. TLC has
+    /// <c>FinalAlbion_RT.stb</c> only, so
+    /// first-seen <c>.stb</c> misses
+    /// <c>[+52].vtbl+12</c> and
+    /// <c>00B42750</c> does not write
+    /// <c>+424</c> or walk
+    /// <c>00B420F0</c>.
+    /// </summary>
+    public void SetStaticMapFileForUse()
+    {
+        var retailRt = RetailStbFlagFirstSeen != 0;
+        StaticMapFileName = DeriveStaticMapFileName(
+            WorldFileName ?? FinalAlbionWld, retailRt);
+        Note(DisplayEngineSetStaticMapThunk, "StaticMap", "WLD",
+            $"00B23DC0 vtbl+{DisplayEngineSetStaticMapVtbl} [0x{MapManagerGlobalVa:X}]");
+        Note(DeriveStaticMapNameFn, "StaticMap", "WLD",
+            $"0049DDD0 {StaticMapFileName}");
+        Note(SetStaticMapVtblCallSite, "StaticMap", "WLD",
+            "004A1BD3 [display+208]");
+        Note(SetStaticMapFileForUseFn, "StaticMap", "WLD",
+            "SetStaticMapFileForUse: CloseStaticMapFile");
+        CloseStaticMapFile();
+        Note(SetStaticMapFileForUseFn, "StaticMap", "WLD",
+            "SetStaticMapFileForUse: EnablePoolAllocation");
+        Note(SetStaticMapFileForUseFn, "StaticMap", "WLD",
+            "SetStaticMapFileForUse: OpenStaticMaps");
+        Note(OpenStaticMapsFn, "StaticMap", "WLD",
+            $"00B42750 mode={OpenStaticMapsUseMode} [+424]");
+
+        var path = Install is null
+            ? null
+            : Path.Combine(Install.Root, StaticMapFileName);
+        if (path is null || !File.Exists(path))
+        {
+            Note(OpenStaticMapsFn, "StaticMap", "WLD",
+                $"00B42750 [+52].vtbl+12 miss {StaticMapFileName}");
+        }
+        else
+        {
+            Note(OpenStaticMapsNameTable, "StaticMap", "WLD",
+                "00B420F0 name table UNREAD");
+            OpenStaticMapsMode = OpenStaticMapsUseMode;
+        }
+
+        Note(SetStaticMapFileForUseFn, "StaticMap", "WLD",
+            "SetStaticMapFileForUse: LoadWaterData");
+        Note(LoadWaterDataFn, "StaticMap", "WLD", "00B41FA0");
+    }
+
+    /// <summary>
+    /// Host fill of AABB-touch maps. Not
+    /// first-seen <c>00B428E0</c> (that
+    /// site misses). Kept for later
+    /// recovered hit-path callers.
     /// </summary>
     public void OpenStaticMapsForCurrentRegion()
     {
@@ -3730,7 +3830,8 @@ public sealed class EngineLifecycle : IDisposable
             SetRegionAsLoaded(index);
             Note(QuestRegionNotifyFn, "LevelLoader", "Quest",
                 "004AFC00 [0x13B89FC] record+24");
-            OpenStaticMapsForCurrentRegion();
+            Note(LoadRegionFn, "LevelLoader", "Region",
+                "00500540 after 004AFC00 dtor ret 12");
         }
         else
             SetRegionAsLoaded(index);

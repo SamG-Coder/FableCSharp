@@ -1405,7 +1405,13 @@ public sealed class EngineLifecycleTests
         Assert.True(loadMap > path, "004A1840 after path");
         Assert.True(wad > loadMap && staticMap > wad,
             "Startup WAD / Set Static Map inside 004A1840");
-        Assert.True(initChars > staticMap, "0049F180 after 004A1840");
+        var thunk = events.FindIndex(e =>
+            e.Va == EngineLifecycle.DisplayEngineSetStaticMapThunk);
+        var derive = events.FindIndex(e => e.Va == EngineLifecycle.DeriveStaticMapNameFn);
+        var use = events.FindIndex(e => e.Va == EngineLifecycle.SetStaticMapFileForUseFn);
+        Assert.True(thunk > staticMap && derive > thunk && use > derive,
+            "00B23DC0 / 0049DDD0 / 00B428E0 inside Set Static Map");
+        Assert.True(initChars > use, "0049F180 after 00B428E0");
         Assert.True(activate > initChars, "004B4A10 after 0049F180");
         Assert.True(after > activate, "004BBC00 after 004B4A10");
         Assert.Contains(events, e =>
@@ -1645,6 +1651,9 @@ public sealed class EngineLifecycleTests
             e.Va == EngineLifecycle.SetRegionAsLoadedFn &&
             e.Action.Contains("MiniMap End", StringComparison.Ordinal));
         var notify = events.FindIndex(e => e.Va == EngineLifecycle.QuestRegionNotifyFn);
+        var afterNotify = events.FindIndex(e =>
+            e.Va == EngineLifecycle.LoadRegionFn &&
+            e.Action.Contains("after 004AFC00", StringComparison.Ordinal));
         var staticMap = events.FindIndex(e =>
             e.Va == EngineLifecycle.SetStaticMapFileForUseFn);
         Assert.True(skipNav >= 0 && skipCommit > skipNav, "00500230/0050AF10 +12 skip");
@@ -1653,13 +1662,56 @@ public sealed class EngineLifecycleTests
         Assert.True(ui > plus156 && mini > ui && miniEnd > mini,
             "00437CE0 then 0082BA00");
         Assert.True(notify > miniEnd, "004AFC00 after 004FC8A0");
-        Assert.True(staticMap > notify,
-            "00B428E0 after 004FC8A0, not a child");
+        Assert.True(afterNotify > notify, "00500540 dtor after 004AFC00");
+        Assert.True(staticMap >= 0 && staticMap < villages,
+            "00B428E0 during 004A1840, not after 004AFC00");
         Assert.Equal(0x00437CE0u, EngineLifecycle.MiniMapFromUiFn);
         Assert.Equal(0x00500230u, EngineLifecycle.JobNavPassFn);
         Assert.Equal(0x0050AF10u, EngineLifecycle.JobNavCommitFn);
         Assert.Equal(12, EngineLifecycle.LoadJobNavOffset);
         Assert.Equal(0x004AFC00u, EngineLifecycle.QuestRegionNotifyFn);
+        Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void LoadWorld_004A1840_set_static_map_is_00B23DC0_then_00B428E0()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(@"Data\Levels\FinalAlbion.stb", life.StaticMapFileName);
+        Assert.Equal(0, life.OpenStaticMapsMode);
+        Assert.Empty(life.OpenedStaticMaps);
+        var events = life.Trace.Events;
+        var site = events.FindIndex(e => e.Va == EngineLifecycle.SetStaticMapForEngineSite);
+        var thunk = events.FindIndex(e =>
+            e.Va == EngineLifecycle.DisplayEngineSetStaticMapThunk);
+        var derive = events.FindIndex(e =>
+            e.Va == EngineLifecycle.DeriveStaticMapNameFn &&
+            e.Action.Contains("FinalAlbion.stb", StringComparison.Ordinal));
+        var vtbl = events.FindIndex(e => e.Va == EngineLifecycle.SetStaticMapVtblCallSite);
+        var use = events.FindIndex(e => e.Va == EngineLifecycle.SetStaticMapFileForUseFn);
+        var miss = events.FindIndex(e =>
+            e.Va == EngineLifecycle.OpenStaticMapsFn &&
+            e.Action.Contains("miss", StringComparison.Ordinal));
+        var water = events.FindIndex(e => e.Va == EngineLifecycle.LoadWaterDataFn);
+        var initChars = events.FindIndex(e =>
+            e.Va == EngineLifecycle.InitCharactersFn &&
+            e.Stage == "Init Characters");
+        Assert.True(site >= 0 && thunk > site && derive > thunk && vtbl > derive,
+            "004A1840 site then 00B23DC0 / 0049DDD0 / vtbl+208");
+        Assert.True(use > vtbl && miss > use && water > miss,
+            "00B428E0 miss then 00B41FA0");
+        Assert.True(initChars > water, "0049F180 after Set Static Map");
+        Assert.False(File.Exists(
+            Path.Combine(install.Root, "Data", "Levels", "FinalAlbion.stb")));
+        Assert.True(File.Exists(
+            Path.Combine(install.Root, "Data", "Levels", "FinalAlbion_RT.stb")));
         Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
     }
 
@@ -1995,6 +2047,16 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x00501450u, EngineLifecycle.LoadFromFirstRealRegionFn);
         Assert.Equal(0x00B42750u, EngineLifecycle.OpenStaticMapsFn);
         Assert.Equal(0x00B428E0u, EngineLifecycle.SetStaticMapFileForUseFn);
+        Assert.Equal(0x00B23DC0u, EngineLifecycle.DisplayEngineSetStaticMapThunk);
+        Assert.Equal(208, EngineLifecycle.DisplayEngineSetStaticMapVtbl);
+        Assert.Equal(0x0049DDD0u, EngineLifecycle.DeriveStaticMapNameFn);
+        Assert.Equal(0x004A1BD3u, EngineLifecycle.SetStaticMapVtblCallSite);
+        Assert.Equal(".stb", EngineLifecycle.StaticMapStbSuffix);
+        Assert.Equal("_RT.stb", EngineLifecycle.StaticMapRtStbSuffix);
+        Assert.Equal(@"Data\Levels\FinalAlbion.stb",
+            EngineLifecycle.DeriveStaticMapFileName(EngineLifecycle.FinalAlbionWld));
+        Assert.Equal(@"Data\Levels\FinalAlbion_RT.stb",
+            EngineLifecycle.DeriveStaticMapFileName(EngineLifecycle.FinalAlbionWld, true));
         Assert.Equal(1, EngineLifecycle.OpenStaticMapsUseMode);
         Assert.Equal(2, EngineLifecycle.OpenStaticMapsListMode);
         Assert.Equal(424, EngineLifecycle.OpenStaticMapsModeOffset);
@@ -2262,19 +2324,18 @@ public sealed class EngineLifecycleTests
             e.Action.Contains("LookoutPoint", StringComparison.Ordinal));
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.NotEqual("StartOakVale", life.CurrentRegion.RegionName);
-        Assert.Equal(1, life.OpenStaticMapsMode);
-        Assert.Contains("LookoutPoint", life.OpenedStaticMaps);
+        Assert.Equal(0, life.OpenStaticMapsMode);
+        Assert.Empty(life.OpenedStaticMaps);
+        Assert.Equal(@"Data\Levels\FinalAlbion.stb", life.StaticMapFileName);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.OpenStaticMapsFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.SetStaticMapFileForUseFn);
-        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ParseMapHeaderFn);
-        Assert.Contains(life.OpenedMapBodies, b => b.Name == "LookoutPoint");
-        var body = life.OpenedMapBodies.Single(b => b.Name == "LookoutPoint");
-        Assert.Equal(25, body.HeaderVersion);
-        Assert.Equal(0x1904u, body.HeaderConstant);
-        Assert.True(body.CompiledSize > 1000, $"lev={body.CompiledSize}");
-        Assert.True(body.StbSize > 0, $"stb={body.StbSize}");
-        Assert.True(body.GridWidth >= 64, $"w={body.GridWidth}");
-        Assert.True(body.HeightSamples > 0, $"samples={body.HeightSamples}");
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DisplayEngineSetStaticMapThunk);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.OpenStaticMapsFn &&
+            e.Action.Contains("miss", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LoadWaterDataFn);
+        Assert.Empty(life.OpenedMapBodies);
         Assert.Null(life.CurrentCompiledLev);
         Assert.Null(life.CurrentHeightField);
         Assert.True(life.Meshes.Opened);
@@ -2288,16 +2349,13 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.LoadSaveFn &&
             e.Action.Contains("skipped", StringComparison.Ordinal));
-        Assert.Equal("LookoutPoint", life.CurrentStaticMapName);
-        Assert.Contains("PicnicArea", life.NeighbourStaticMaps);
-        Assert.Contains(life.OpenedMapBodies, b => b.Name == "LookoutPoint" && !b.Neighbour);
-        Assert.Contains(life.OpenedMapBodies, b => b.Name == "PicnicArea" && b.Neighbour);
-        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.OpenStaticMapsNameTable);
-        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.AttachPatchFn);
+        Assert.Null(life.CurrentStaticMapName);
+        Assert.Empty(life.NeighbourStaticMaps);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CloseStaticMapFileFn);
-        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.OpenStaticMapsAttach);
-        Assert.True(life.OpenedMapBodies.Count > 1, $"bodies={life.OpenedMapBodies.Count}");
-        Assert.Contains(life.OpenedMapBodies, b => b.Name == "PicnicArea");
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.OpenStaticMapsNameTable);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.AttachPatchFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.OpenStaticMapsAttach);
         Assert.Contains("LookoutPoint", life.ActivatedMaps);
         Assert.DoesNotContain("PicnicArea", life.ActivatedMaps);
         Assert.True(life.WorldSubmitted);
@@ -2360,8 +2418,6 @@ public sealed class EngineLifecycleTests
         life.CloseStaticMapFile();
         Assert.Empty(life.OpenedMapBodies);
         Assert.Equal(0, life.OpenStaticMapsMode);
-        Assert.False(life.Levels.HasCachedCells("LookoutPoint"));
-        Assert.False(life.Levels.HasCachedCells("PicnicArea"));
         var dest = Path.Combine(
             @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
             "traces");

@@ -457,8 +457,19 @@ enqueue (host second 004189C2 after dummy; E8 caller UNREAD)
         005064C0 / 00B428E0 are NOT children.
 
 00500540 after apply: 004AFC00([0x13B89FC], record+24)  PROVEN
-00B428E0 caller UNREAD (not 004FC8A0)
-    └── 00B428E0  SetStaticMapFileForUse  (caller UNREAD)
+    └── list dtor / 0050F980 stride 28 / ret 12  PROVEN
+        not 00B428E0
+
+00B428E0 first-seen caller  PROVEN
+004A1840 "Set Static Map for Engine"
+├── 0049DDD0(world, [ebp-60], wld-path)  at 004A18FC  PROVEN
+│   ├── [0x13B8616]==0 → 0x1238BAC ".stb"  first-seen
+│   ├── [0x13B8616]!=0 → 0x1238BC8 "_RT.stb"  UNREAD
+│   └── prefix 0x122F3B4 "Data\Levels\" via 0041A410
+├── [0x1375446]==0 skips second 0049DDD0  first-seen
+└── 004A1BD3  [[world+8]+40]+44  vtbl+208  PROVEN
+    └── 00B23DC0  mov ecx,[0x1436E8C]; jmp 00B428E0
+        └── 00B428E0  SetStaticMapFileForUse
         ├── "CloseStaticMapFile" → 00B40000  PROVEN
         │   ├── if [+424]==0  return
         │   ├── for i=1 .. list-1: 00B3EF40  CloseStaticMap
@@ -530,7 +541,8 @@ Called at the **end** of `004184BD`, after Create Players.
     │   ├── "Startup WAD"
     │   ├── 006C20A0 pump until empty    UNREAD
     │   ├── "Generate Offline Data" if [0x1375446]  UNREAD
-    │   └── "Set Static Map for Engine" vtbl+208
+    │   └── "Set Static Map for Engine" vtbl+208  PROVEN
+    │       └── 00B23DC0 → 00B428E0  Data\Levels\FinalAlbion.stb miss
     ├── [0x13B8648]!=0 editor            UNREAD (not no-save)
     │   0049DDD0 / 0049D550 / 0049DEC0 / 0049D6B0
     ├── [0x13B8648]==0                   first-seen
@@ -773,7 +785,7 @@ Verified against this tree, not against `00DBDE40`.
 
 The no-save **spine** matches: PE → WinMain → retail pump →
 Leave frontend → `00416953` → dummy index 0 → `00501450`
-Lookout → `006C2170` ContainsMap TNG → `00B428E0` mode-1 STB
+Lookout → `006C2170` ContainsMap TNG. `00B428E0` already ran in `004A1840` and missed.
 hit (`00B41E50`, not `00B42530`).
 
 It is **not** the same load as `Fable.exe`:
