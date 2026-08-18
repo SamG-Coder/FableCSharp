@@ -72,6 +72,9 @@ switch (command)
     case "mesh":
         DumpMesh(install, rest.FirstOrDefault());
         break;
+    case "anim":
+        DumpAnim(install, rest.FirstOrDefault());
+        break;
     case "lev":
         DumpLev(install, rest.FirstOrDefault() ?? "LookoutPoint");
         break;
@@ -109,6 +112,7 @@ static void PrintUsage()
           big [path-or-name]   BIGB / BBB bank header
           upk [path-or-name]   Unreal package header (Anniversary only)
           mesh [id|name]       parse a graphics.big mesh
+          anim [id|name]       hex-dump a type-6 animation entry
           lev [region]         inspect a compiled .lev
           tex [id|name]        decode a textures.big image
           bin [name]           compiled game.bin def / mesh id
@@ -382,6 +386,48 @@ static void WalkMeshHeader(byte[] data)
     }
 
     Console.WriteLine($"mats={I32()} prims={I32()} bones={I32()} boneNames={I32()} cloth={data[c++]} static={U16()} anim={U16()} cursor={c}/{data.Length}");
+}
+
+static void DumpAnim(GameInstall install, string? query)
+{
+    var graphics = Path.Combine(install.DataRoot, "graphics", "graphics.big");
+    using var big = BigArchive.Open(graphics);
+    var bank = big.SubBanks.First(b => b.Name.Contains("MESH", StringComparison.OrdinalIgnoreCase));
+    var entries = big.ReadEntries(bank);
+    BankEntry? entry = null;
+    if (uint.TryParse(query, out var id))
+        entry = entries.FirstOrDefault(e => e.Id == id);
+    else if (!string.IsNullOrWhiteSpace(query))
+        entry = entries.FirstOrDefault(e =>
+            e.Name.Contains(query, StringComparison.OrdinalIgnoreCase));
+    else
+        entry = entries.FirstOrDefault(e => e.Type == 6);
+    if (entry is null)
+    {
+        Console.WriteLine("No type-6 entry.");
+        return;
+    }
+
+    var data = big.Read(entry);
+    Console.WriteLine($"#{entry.Id} type={entry.Type} size={entry.Size} {entry.Name}");
+    var n = Math.Min(data.Length, 384);
+    for (var i = 0; i < n; i += 16)
+    {
+        var slice = data.AsSpan(i, Math.Min(16, n - i));
+        var hex = Convert.ToHexString(slice);
+        var ascii = new string(slice.ToArray().Select(b => b is >= 32 and <= 126 ? (char)b : '.').ToArray());
+        Console.WriteLine($"{i:X4}  {hex,-32}  {ascii}");
+    }
+
+    for (var i = 0; i + 4 <= data.Length; i++)
+    {
+        if (data[i] is < 0x41 or > 0x5A) continue;
+        var ok = true;
+        for (var k = 1; k < 4; k++)
+            if (data[i + k] is < 0x41 or > 0x5A) { ok = false; break; }
+        if (ok)
+            Console.WriteLine($"FOURCC @{i:X4} {System.Text.Encoding.ASCII.GetString(data, i, 4)}");
+    }
 }
 
 static void DumpLev(GameInstall install, string region)

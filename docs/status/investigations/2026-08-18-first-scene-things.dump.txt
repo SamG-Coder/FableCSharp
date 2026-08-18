@@ -1,0 +1,707 @@
+install TheLostChapters C:\Program Files (x86)\Steam\steamapps\common\Fable The Lost Chapters
+data C:\Program Files (x86)\Steam\steamapps\common\Fable The Lost Chapters\data
+wld C:\Program Files (x86)\Steam\steamapps\common\Fable The Lost Chapters\data\Levels\FinalAlbion.wld exists=True
+wad C:\Program Files (x86)\Steam\steamapps\common\Fable The Lost Chapters\data\Levels\FinalAlbion.wad exists=True
+gtg C:\Program Files (x86)\Steam\steamapps\common\Fable The Lost Chapters\data\Levels\FinalAlbion.gtg exists=True
+gtng C:\Program Files (x86)\Steam\steamapps\common\Fable The Lost Chapters\data\Levels\FinalAlbion.gtng exists=False
+
+=== REGION ===
+index=1 name=LookoutPoint def=REGION_LOOKOUT_POINT display=TXT_REGION_LOOKOUT_POINT
+ContainsMap (3): BowerstoneBridge, LookoutPoint, GuildExterior
+SeesMap (11): LookoutPoint_Filler_01, LookoutPoint_Filler_05, PicnicArea_Filler_02, PicnicArea, Greatwood_1, Greatwood_2, Greatwood_Filler_04, PicnicArea_Filler_03, Fisherman, LookoutPoint_Filler_06, LookoutPoint_Filler_07
+StaticMapsAround (14): LookoutPoint@3232,3488, BowerstoneBridge@3232,3616, GuildExterior@3360,3456, LookoutPoint_Filler_01@3200,3744, LookoutPoint_Filler_05@3360,3680, PicnicArea_Filler_02@3104,3616, PicnicArea@3104,3520, Greatwood_1@3264,3296, Greatwood_2@3168,3296, Greatwood_Filler_04@3360,3296, PicnicArea_Filler_03@3104,3488, Fisherman@3104,3392, LookoutPoint_Filler_06@3040,3744, LookoutPoint_Filler_07@3456,3680
+
+=== MAPS ===
+  Contains BowerstoneBridge                 uid=784595 xy=(3232,3616) sea=False prox=True stem=BowerstoneBridge lev=FinalAlbion\BowerstoneBridge.lev
+           tng=88 levHdr=494063 stb=3311077 grid=128x128 v=25
+  Contains LookoutPoint                     uid=162441 xy=(3232,3488) sea=False prox=True stem=LookoutPoint lev=FinalAlbion\LookoutPoint.lev
+           tng=288 levHdr=516731 stb=3090776 grid=128x128 v=25
+  Contains GuildExterior                    uid=179393 xy=(3360,3456) sea=False prox=True stem=GuildExterior lev=FinalAlbion\GuildExterior.lev
+           tng=88 levHdr=908695 stb=4746916 grid=160x224 v=25
+  Sees     LookoutPoint_Filler_01           uid=2574083 xy=(3200,3744) sea=False prox=False stem=LookoutPoint_Filler_01 lev=FinalAlbion\LookoutPoint_Filler_01.lev
+           tng=0 levHdr=552850 stb=3079180 grid=160x128 v=25
+  Sees     LookoutPoint_Filler_05           uid=2059007 xy=(3360,3680) sea=False prox=False stem=LookoutPoint_Filler_05 lev=FinalAlbion\LookoutPoint_Filler_05.lev
+           tng=0 levHdr=508434 stb=2171649 grid=96x192 v=25
+  Sees     PicnicArea_Filler_02             uid=3121565 xy=(3104,3616) sea=False prox=False stem=PicnicArea_Filler_02 lev=FinalAlbion\PicnicArea_Filler_02.lev
+           tng=0 levHdr=463234 stb=2681727 grid=128x128 v=25
+  Sees     PicnicArea                       uid=163625 xy=(3104,3520) sea=False prox=True stem=PicnicArea lev=FinalAlbion\PicnicArea.lev
+           tng=143 levHdr=475003 stb=2661013 grid=128x96 v=25
+  Sees     Greatwood_1                      uid=1277243 xy=(3264,3296) sea=False prox=True stem=Greatwood_1 lev=FinalAlbion\Greatwood_1.lev
+           tng=313 levHdr=603208 stb=3357180 grid=96x192 v=25
+  Sees     Greatwood_2                      uid=3899874 xy=(3168,3296) sea=False prox=True stem=Greatwood_2 lev=FinalAlbion\Greatwood_2.lev
+           tng=112 levHdr=538801 stb=3709500 grid=96x192 v=25
+  Sees     Greatwood_Filler_04              uid=2786229 xy=(3360,3296) sea=False prox=False stem=Greatwood_Filler_04 lev=FinalAlbion\Greatwood_Filler_04.lev
+           tng=0 levHdr=329314 stb=1123518 grid=64x160 v=25
+  Sees     PicnicArea_Filler_03             uid=3488281 xy=(3104,3488) sea=False prox=False stem=PicnicArea_Filler_03 lev=FinalAlbion\PicnicArea_Filler_03.lev
+           tng=0 levHdr=195204 stb=407572 grid=128x32 v=25
+  Sees     Fisherman                        uid=1998986 xy=(3104,3392) sea=False prox=True stem=Fisherman lev=FinalAlbion\Fisherman.lev
+           tng=146 levHdr=326081 stb=1851207 grid=64x96 v=25
+  Sees     LookoutPoint_Filler_06           uid=44383 xy=(3040,3744) sea=False prox=False stem=LookoutPoint_Filler_06 lev=FinalAlbion\LookoutPoint_Filler_06.lev
+           tng=0 levHdr=552850 stb=1507348 grid=160x128 v=25
+  Sees     LookoutPoint_Filler_07           uid=1023512 xy=(3456,3680) sea=False prox=False stem=LookoutPoint_Filler_07 lev=FinalAlbion\LookoutPoint_Filler_07.lev
+           tng=0 levHdr=463346 stb=2117652 grid=128x128 v=25
+
+=== DEFS game.bin=14761 ===
+
+=== TNG ContainsMap (006C2170 / 00521AE0) ===
+  BowerstoneBridge: version=2 things=88 sections=[NULL:85, QR_EscortTrader:1, Q_FireHeart:1, Q_WaspBoss:1]
+    kinds: Object=67, TrackNode=8, Marker=6, Thing=4, Building=2, Holy Site=1
+  LookoutPoint: version=2 things=288 sections=[Gameflow:2, NULL:252, Q_FireHeart:3, Q_GuildTraining:10, Q_WaspBoss:3, V_BeggarAndChild:14, V_SickChild_Activate:3, V_StatueMaster:1]
+    kinds: Object=192, Marker=45, Thing=39, AICreature=9, Holy Site=3
+  GuildExterior: version=2 things=88 sections=[NULL:80, Q_FireHeart:8]
+    kinds: Marker=37, Thing=27, Object=15, AICreature=6, Building=2, Village=1
+
+=== TNG SeesMap / BWD (terrain only — no 006C2170) ===
+  LookoutPoint_Filler_01: tng=0 (NOT loaded by 006C2170)
+  LookoutPoint_Filler_05: tng=0 (NOT loaded by 006C2170)
+  PicnicArea_Filler_02: tng=0 (NOT loaded by 006C2170)
+  PicnicArea: tng=143 (NOT loaded by 006C2170)
+  Greatwood_1: tng=313 (NOT loaded by 006C2170)
+  Greatwood_2: tng=112 (NOT loaded by 006C2170)
+  Greatwood_Filler_04: tng=0 (NOT loaded by 006C2170)
+  PicnicArea_Filler_03: tng=0 (NOT loaded by 006C2170)
+  Fisherman: tng=146 (NOT loaded by 006C2170)
+  LookoutPoint_Filler_06: tng=0 (NOT loaded by 006C2170)
+  LookoutPoint_Filler_07: tng=0 (NOT loaded by 006C2170)
+
+=== GLOBAL THINGS (004FDBC0 / [0x13B8609]=0) ===
+  proximity maps=151
+  prox LookoutPoint things=288 alsoContains=True
+  prox BowerstoneBridge things=88 alsoContains=True
+  prox HeroGuildComplex things=1110 alsoContains=False
+  prox GuildWoods things=235 alsoContains=False
+  prox GuildExterior things=88 alsoContains=True
+  prox DemonDoor_Guild things=23 alsoContains=False
+  prox DemonDoor_LookoutPoint things=107 alsoContains=False
+  total proximity things=22087 lookoutMapsInGlobal=True
+  native use of 004FDBC0 after parse is UNREAD — not 00521AE0 apply
+
+=== LIFECYCLE New Game ===
+  pump1 frontend→enter index=0 stage=Game hero=False things=0
+  pump2 dummy index=0 region=null hero=False things=0
+  pump3 lookout region=LookoutPoint index=1 hero=True mesh=4299
+  FirstSceneMap=LookoutPoint activated=[BowerstoneBridge,LookoutPoint,GuildExterior]
+  opened=[LookoutPoint,BowerstoneBridge,GuildExterior,LookoutPoint_Filler_01,LookoutPoint_Filler_05,PicnicArea_Filler_02,PicnicArea,Greatwood_1,Greatwood_2,Greatwood_Filler_04,PicnicArea_Filler_03,Fisherman,LookoutPoint_Filler_06,LookoutPoint_Filler_07]
+  neighbours=[BowerstoneBridge,GuildExterior,LookoutPoint_Filler_01,LookoutPoint_Filler_05,PicnicArea_Filler_02,PicnicArea,Greatwood_1,Greatwood_2,Greatwood_Filler_04,PicnicArea_Filler_03,Fisherman,LookoutPoint_Filler_06,LookoutPoint_Filler_07]
+  currentStatic=LookoutPoint mode=1
+  regionThings=465 mapsLoaded=3 inserted=465
+  globalThingsFile=21746 globalMaps=151 gtng=False singleFlag=False
+  submitted=True inst=280 expanded=False verts=917496
+  palskin=[4299] heroPalskin=True
+  terrain=[LookoutPoint,PicnicArea_Filler_02,PicnicArea,Greatwood_2,PicnicArea_Filler_03,Fisherman]
+  layers=[0x4,0x40,0x20,0x2000]
+  HERO def=CREATURE_HERO script=Hero mesh=4299 pos=52.688,69.597,36.982
+  HSP GuildArrivalHSP pos=52.688,69.597,36.982
+
+=== THINGS BY MAP (lifecycle) ===
+  BowerstoneBridge: 88 (heroIn=False)
+  LookoutPoint: 289 (heroIn=True)
+  GuildExterior: 88 (heroIn=False)
+
+=== EXPECTED EXIST / RENDER ===
+  by bucket (ContainsTng + spawned hero):
+    Building   exist=   4 render=   0 uniqueDefs=4
+    Camera     exist=  59 render=   0 uniqueDefs=5
+    Door       exist=   5 render=   0 uniqueDefs=4
+    Hero       exist=   1 render=   1 uniqueDefs=1
+    Light      exist=  14 render=   7 uniqueDefs=2
+    Marker     exist=  91 render=   0 uniqueDefs=9
+    NPC        exist=  15 render=   0 uniqueDefs=10
+    Other      exist=   1 render=   0 uniqueDefs=1
+    Prop       exist= 256 render= 185 uniqueDefs=54
+    Track      exist=   8 render=   0 uniqueDefs=1
+    Travel     exist=  10 render=   0 uniqueDefs=2
+    Village    exist=   1 render=   0 uniqueDefs=1
+
+  LookoutPoint exist-all (native 00521AE0 + 006AC910):
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED script=CAM_GTA_SHOT4START uid=18446741874686298728 pos=100.519,71.119,38.557 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED script=CAM_GTA_SHOT1 uid=18446741874686298628 pos=52.144,72.976,37.2 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED script=CAM_GTA_SHOT3START uid=18446741874686298773 pos=61.071,66.658,39.716 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED script=CAM_GTA_SHOT3END uid=18446741874686298775 pos=69.175,62.165,41.599 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED script=CAM_BB_BEGGARH uid=18446741874686298972 pos=88.806,82.945,41.263 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED script=P_BHCAM2 uid=18446741874686299610 pos=71.541,43.233,41.609 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED script=P_BHCAM3 uid=18446741874686299611 pos=70.869,44.446,41.727 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED script=CAM_GTA_OPENING uid=18446741874686297878 pos=53.161,73.738,38.493 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED script=CAM_BB_MASTER uid=18446741874686298468 pos=89.999,82.132,41.131 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED script=CAM_BB_BULLY uid=18446741874686298449 pos=86.969,83.431,41.414 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED script=CAM_BB_BULLYHERO uid=18446741874686298426 pos=86.361,84.711,41.422 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED script=CAM_BB_BEGGAR uid=18446741874686298361 pos=88.132,83.255,41.328 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_GLOBAL script=GlobalFishingCamera1 uid=18446741874686299275 pos=56.517,68.305,39.007 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_GLOBAL script=GlobalFishingCamera2 uid=18446741874686299273 pos=56.086,65.763,38.503 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=FH10 uid=18446741874686301308 pos=127.448,81.196,29.327 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=HEROWALK10 uid=18446741874686301307 pos=127.773,77.67,29.936 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=GMROSE uid=18446741874686301226 pos=124.165,85.442,29.747 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=EXITDD uid=18446741874686301225 pos=127.51,83.96,28.876 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=CAM_FH_HERODOOR uid=18446741874686300824 pos=124.689,79.351,30.311 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=CAM_GTA_SHOT2A uid=18446741874686298923 pos=51.842,70.213,36.963 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=CAM_GTA_SHOT4 uid=18446741874686298729 pos=100.519,71.119,37.855 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=CAM_GTA_SHOT3 uid=18446741874686298635 pos=61.682,66.398,38.559 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=CAM_GTA_SHOT2 uid=18446741874686298247 pos=51.376,70.439,37.016 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=P_BHCAM1 uid=18446741874686299609 pos=67.863,44.541,40.173 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=P_BHCAM4 uid=18446741874686299613 pos=68.527,46.308,40.633 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=CAM_FH_WIDE uid=18446741874686300264 pos=126.153,78.148,30.518 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=OUTOFDOOR uid=18446741874686301252 pos=126.676,79.035,29.836 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=T2 uid=18446741874686301254 pos=127.884,78.949,29.602 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=CAM_FHDD_MASTER uid=18446741874686301515 pos=124.984,95.69,27.372 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=CAM_AM_1 uid=18446741874686301593 pos=83.67,80.24,40.41 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=CAM_GTA_WALK3 uid=18446741874686297899 pos=77.011,76.096,40 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=CAM_GTA_WALK2 uid=18446741874686297896 pos=72.624,61.881,40.443 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=CAM_BB_BULLYEXIT uid=18446741874686298450 pos=86.969,83.431,39.832 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Camera   exist=Y render=n asC3d=False submitted=False type=THING mesh=- kind=Thing def=CAMERA_POINT_SCRIPTED_SPLINE script=CAM_BB_MASTEREXIT uid=18446741874686298427 pos=89.999,82.132,39.338 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Hero     exist=Y render=Y asC3d=True submitted=True type=CREATURE mesh=4299 kind=NewThing def=CREATURE_HERO script=Hero uid= pos=52.688,69.597,36.982 fwd=- up=- src=SpawnedHero
+    Light    exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=4978 kind=Object def=OBJECT_STREETLAMP_LIT_SINGLE_01 script=NULL uid=18446741874686298551 pos=80.101,105.117,38.338 fwd=0.994516,0.104528,0.0 up=-0.000088,0.000841,0.999994 src=ContainsTng
+    Light    exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=4978 kind=Object def=OBJECT_STREETLAMP_LIT_SINGLE_01 script=NULL uid=18446741874686298538 pos=126.445,75.485,30.164 fwd=-0.788017,-0.615644,0.0 up=0.000301,-0.000385,0.999994 src=ContainsTng
+    Light    exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=4978 kind=Object def=OBJECT_STREETLAMP_LIT_SINGLE_01 script=NULL uid=18446741874686296437 pos=50.392,79.403,35.648 fwd=0.642784,0.76604,0.0 up=-0.0007,0.000587,0.999994 src=ContainsTng
+    Light    exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=4978 kind=Object def=OBJECT_STREETLAMP_LIT_SINGLE_01 script=NULL uid=18446741874686296408 pos=72.596,54.225,41.337 fwd=0.808997,-0.587773,0.0 up=0.000352,0.000484,0.999994 src=ContainsTng
+    Light    exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=4978 kind=Object def=OBJECT_STREETLAMP_LIT_SINGLE_01 script=NULL uid=18446741874686296318 pos=71.469,89.023,40 fwd=-0.951048,0.309025,0.0 up=-0.000185,-0.000569,0.999994 src=ContainsTng
+    Light    exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=4978 kind=Object def=OBJECT_STREETLAMP_LIT_SINGLE_01 script=NULL uid=18446741874686296321 pos=98.007,72.464,38.121 fwd=-0.615659,-0.788005,0.0 up=0.000816,-0.000638,0.999994 src=ContainsTng
+    Light    exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=4978 kind=Object def=OBJECT_STREETLAMP_LIT_SINGLE_01 script=NULL uid=18446741874686296487 pos=47.196,67.908,37.114 fwd=-0.978143,-0.207905,0.0 up=0.000072,-0.000338,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=GAZE_OUT_OF_BUILDING_MARKER script=NULL uid=18446741874686300058 pos=95.172,76.941,38.381 fwd=0.927178,-0.374605,0.0 up=0.000342,0.000847,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=GAZE_OUT_OF_BUILDING_MARKER script=NULL uid=18446741874686300057 pos=78.88,71.587,40.046 fwd=-0.438388,-0.89878,0.0 up=0.000439,-0.000214,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=GAZE_OUT_OF_BUILDING_MARKER script=NULL uid=18446741874686300056 pos=77.317,93.475,39.673 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=HOLY_SITE mesh=- kind=Holy Site def=HOLY_SITE_PLAYER_START script=GuildArrivalHSP uid=18446741874686297902 pos=52.688,69.597,36.982 fwd=0.999994,0.0,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=HOLY_SITE mesh=- kind=Holy Site def=HOLY_SITE_PLAYER_START script=LookoutPointHSP uid=18446741874686296778 pos=102.781,74.156,37.494 fwd=-0.972024,0.234858,0.0 up=-0.000115,-0.000475,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=HOLY_SITE mesh=- kind=Holy Site def=HOLY_SITE_PLAYER_START script=MAIN_START_POSITION uid=18446741874686296065 pos=102.887,74.127,37.488 fwd=-0.970869,0.239589,0.0 up=-0.000219,-0.000887,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=M_Maze uid=18446741874686296750 pos=49.669,76.648,35.252 fwd=-0.651341,0.758778,0.0 up=-0.000454,-0.00039,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=M_LadyGameflow uid=18446741874686296749 pos=50.621,78.386,35.617 fwd=-0.94881,0.31583,0.0 up=-0.000109,-0.000328,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=VC uid=18446741874686301490 pos=125.048,83.492,29.642 fwd=0.499997,0.86602,0.0 up=-0.000299,0.000173,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=VC uid=18446741874686301489 pos=126.61,80.805,29.589 fwd=0.342018,0.939687,0.0 up=-0.000324,0.000118,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=MK_GTA_HERO2A uid=18446741874686298637 pos=57.744,71.163,37.381 fwd=0.819147,-0.573574,0.0 up=0.00028,0.0004,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=MK_GTA_SHOT3START uid=18446741874686298774 pos=59.746,67.832,39.585 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=MK_GTA_SHOT3END uid=18446741874686298776 pos=67.284,63.624,41.353 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=MK_GTA_HERO1A uid=18446741874686298777 pos=54.755,71.179,36.73 fwd=0.96592,0.258817,0.0 up=-0.000155,0.000578,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=FishingMarker uid=18446741874686299198 pos=55.441,67.459,37.232 fwd=0.0,-0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=P_BHWOMAN2 uid=18446741874686299606 pos=70.473,43.923,40.057 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=P_BHWOMAN1 uid=18446741874686299607 pos=65.124,23.217,37.298 fwd=0.374604,0.927179,0.0 up=-0.00032,0.000129,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=P_BHHERO1 uid=18446741874686299608 pos=70.472,45.015,40.275 fwd=0.034874,-0.999386,0.0 up=0.00069,0.000024,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=P_BHWOMAN3 uid=18446741874686299612 pos=69.994,50.422,41.094 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=P_BHHERO2 uid=18446741874686299614 pos=70.955,38.934,39.146 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=MK_GTA_MAZELOOK uid=18446741874686300008 pos=51.129,69.639,38.551 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=MK_AM_WOMAN uid=18446741874686301619 pos=80.729,85.515,40 fwd=0.906303,0.422616,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=MK_AM_HERO uid=18446741874686301620 pos=81.513,85.881,40 fwd=-0.906303,-0.422615,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=MK_GTA_HERO3 uid=18446741874686297898 pos=88.031,78.523,39.472 fwd=0.984802,-0.173648,0.0 up=0.000134,0.00076,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=MK_GTA_MAZE3 uid=18446741874686297897 pos=89.704,76.776,39.271 fwd=0.996172,-0.087155,0.0 up=0.000043,0.000486,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=MK_GTA_HERO2 uid=18446741874686297895 pos=73.411,65.254,40.354 fwd=0.766041,0.642783,0.0 up=-0.000384,0.000458,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=MK_GTA_MAZE2 uid=18446741874686297894 pos=76.165,65.535,40.222 fwd=0.642773,0.766027,0.0 up=-0.000458,0.000384,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=MK_GTA_HERO1 uid=18446741874686297887 pos=50.784,69.415,37.094 fwd=0.866021,0.499997,0.0 up=-0.000244,0.000423,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=MK_GTA_MAZE0 uid=18446741874686297886 pos=51.358,68.735,37.076 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=MK_GTA_MAZE1 uid=18446741874686298007 pos=59.372,67.549,38.1 fwd=0.86602,-0.499998,0.0 up=0.000299,0.000518,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=WaspGuardMoveToPos uid=18446741874686296854 pos=41.321,82.84,33.681 fwd=0.790049,-0.613034,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=RunAwayMarker uid=18446741874686297458 pos=72.728,126.714,30.935 fwd=0.882578,-0.470117,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=BeggarHatSpawn uid=18446741874686296264 pos=89.167,82.638,39.493 fwd=-0.829034,-0.559187,0.0 up=0.000273,-0.000405,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=BeggarLookPos uid=18446741874686296580 pos=87.429,82.235,39.671 fwd=-0.615659,-0.788005,0.0 up=0.000272,-0.000213,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=MK_BB_HERO uid=18446741874686298424 pos=88.49,82.032,39.517 fwd=-0.70709,0.707091,0.0 up=-0.000244,-0.000244,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=MK_BB_BEGGAR uid=18446741874686298358 pos=88.723,83.696,39.603 fwd=-0.874615,-0.484806,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=MK_BB_BULLY uid=18446741874686298356 pos=86.499,84.083,39.977 fwd=0.70709,-0.707091,0.0 up=0.000345,0.000345,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=BanditsAppearHere uid=18446741874686300210 pos=72.418,111.128,35.78 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_BASIC script=HenchmanComment uid=18446741874686297346 pos=79.383,77.897,40 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_FISHING_SPOT script=NULL uid=18446741874686297003 pos=55.03,64.072,36.495 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_GLOBAL script=SM_Center uid=18446741874686298112 pos=79.467,80.232,40 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_GLOBAL script=SM_Guild uid=18446741874686298111 pos=91.906,78.2,38.897 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_GLOBAL script=SM_Greatwood uid=18446741874686298110 pos=77.792,68.807,40.173 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_GLOBAL script=SM_Nothing uid=18446741874686298109 pos=73.467,82.046,40 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_GLOBAL script=SM_Bowerstone uid=18446741874686298108 pos=76.756,86.712,40 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_INFO_DISPLAY script=NULL uid=18446741874686297488 pos=63.481,65.533,38.875 fwd=-0.898785,0.438377,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_INFO_DISPLAY script=NULL uid=18446741874686297448 pos=99.493,75.627,37.88 fwd=0.937478,-0.348028,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Marker   exist=Y render=n asC3d=False submitted=False type=MARKER mesh=- kind=Marker def=MARKER_INFO_DISPLAY script=NULL uid=18446741874686297447 pos=69.851,48.884,40.962 fwd=0.098517,-0.99513,0.0 up=0.000842,0.000083,0.999994 src=ContainsTng
+    NPC      exist=Y render=n asC3d=False submitted=False type=? mesh=- kind=AICreature def=CREATURE_BEGGAR_01 script=LookoutPointBeggar uid=18446741874686296088 pos=- fwd=- up=- src=ContainsTng
+    NPC      exist=Y render=n asC3d=False submitted=False type=? mesh=- kind=AICreature def=CREATURE_BS_VILLAGER_BULLY_MALE script=BeggarBully uid=18446741874686296448 pos=- fwd=- up=- src=ContainsTng
+    NPC      exist=Y render=n asC3d=False submitted=False type=? mesh=- kind=AICreature def=CREATURE_BS_VILLAGER_FEMALE script=FH_Villager uid=18446741874686300554 pos=- fwd=- up=- src=ContainsTng
+    NPC      exist=Y render=n asC3d=False submitted=False type=? mesh=- kind=AICreature def=CREATURE_BS_VILLAGER_FEMALE script=FleeingWoman uid=18446741874686296835 pos=- fwd=- up=- src=ContainsTng
+    NPC      exist=Y render=n asC3d=False submitted=False type=? mesh=- kind=AICreature def=CREATURE_BS_VILLAGER_MALE script=FH_Villager uid=18446741874686300555 pos=- fwd=- up=- src=ContainsTng
+    NPC      exist=Y render=n asC3d=False submitted=False type=? mesh=- kind=AICreature def=CREATURE_BS_VILLAGER_MALE script=FH_Villager uid=18446741874686300549 pos=- fwd=- up=- src=ContainsTng
+    NPC      exist=Y render=n asC3d=False submitted=False type=? mesh=- kind=AICreature def=CREATURE_BS_VILLAGER_MALE script=WaspHelper uid=18446741874686296870 pos=- fwd=- up=- src=ContainsTng
+    NPC      exist=Y render=n asC3d=False submitted=False type=? mesh=- kind=AICreature def=CREATURE_TRADER_01 script=TalkingTrader1 uid=18446741874686300230 pos=- fwd=- up=- src=ContainsTng
+    NPC      exist=Y render=n asC3d=False submitted=False type=? mesh=- kind=AICreature def=CREATURE_TRADER_02 script=TalkingTrader2 uid=18446741874686300231 pos=- fwd=- up=- src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7802 kind=Object def=OBJECT_BIGROCK_01 script=NULL uid=18446741874686298539 pos=111.147,84.225,34.084 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7804 kind=Object def=OBJECT_BIGROCK_02 script=NULL uid=18446741874686297119 pos=81.053,114.896,35.024 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7687 kind=Object def=OBJECT_BLASTEDTREE script=NULL uid=18446741874686298502 pos=107.473,82.33,36.813 fwd=0.406734,0.91354,0.0 up=-0.000631,0.000281,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7820 kind=Object def=OBJECT_BRIGHTWOOD_LARGEROCK_02 script=NULL uid=18446741874686298543 pos=111.688,89.126,32.97 fwd=0.98273,-0.185016,0.0 up=0.00009,0.00048,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7820 kind=Object def=OBJECT_BRIGHTWOOD_LARGEROCK_02 script=NULL uid=18446741874686296393 pos=53.996,82.918,34.976 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7820 kind=Object def=OBJECT_BRIGHTWOOD_LARGEROCK_02 script=NULL uid=18446741874686296509 pos=60.63,38.759,38.513 fwd=0.374604,0.927179,0.0 up=-0.00032,0.000129,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7820 kind=Object def=OBJECT_BRIGHTWOOD_LARGEROCK_02 script=NULL uid=18446741874686296517 pos=63.003,56.116,41.943 fwd=-0.829037,-0.559183,0.0 up=0.000511,-0.000757,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7820 kind=Object def=OBJECT_BRIGHTWOOD_LARGEROCK_02 script=NULL uid=18446741874686297800 pos=39.725,47.048,40.432 fwd=0.069752,-0.997559,0.0 up=0.000911,0.000064,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7822 kind=Object def=OBJECT_BRIGHTWOOD_LARGEROCK_03 script=NULL uid=18446741874686296346 pos=82.982,67.237,39.682 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7822 kind=Object def=OBJECT_BRIGHTWOOD_LARGEROCK_03 script=NULL uid=18446741874686296490 pos=46.204,71.928,36.24 fwd=0.91354,0.406734,0.0 up=-0.000281,0.000631,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7824 kind=Object def=OBJECT_BRIGHTWOOD_LARGEROCK_04 script=NULL uid=18446741874686296413 pos=78.178,59.087,39.678 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7824 kind=Object def=OBJECT_BRIGHTWOOD_LARGEROCK_04 script=NULL uid=18446741874686296375 pos=64.573,73.52,39.78 fwd=0.694647,0.719319,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7826 kind=Object def=OBJECT_BRIGHTWOOD_LARGEROCK_05 script=NULL uid=18446741874686296364 pos=71.74,101.226,39.463 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7826 kind=Object def=OBJECT_BRIGHTWOOD_LARGEROCK_05 script=NULL uid=18446741874686296500 pos=78.2,49.268,40.702 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7826 kind=Object def=OBJECT_BRIGHTWOOD_LARGEROCK_05 script=NULL uid=18446741874686296510 pos=57.012,44.365,38.793 fwd=0.0,0.999994,0.0 up=-0.275636,0.0,0.961256 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7828 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_01 script=NULL uid=18446741874686296414 pos=80.556,59.74,40.13 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7828 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_01 script=NULL uid=18446741874686296347 pos=83.471,69.321,39.698 fwd=-0.469466,0.882944,0.0 up=-0.000305,-0.000162,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7828 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_01 script=NULL uid=18446741874686296374 pos=65.807,76.896,39.446 fwd=0.374604,0.927179,0.0 up=-0.000453,0.000183,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7828 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_01 script=NULL uid=18446741874686296491 pos=48.451,73.406,35.572 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7828 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_01 script=NULL uid=18446741874686296494 pos=43.201,65.119,37.41 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7828 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_01 script=NULL uid=18446741874686296495 pos=65.389,55.374,41.244 fwd=0.882927,-0.469462,0.0 up=0.000429,0.000807,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7828 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_01 script=NULL uid=18446741874686296508 pos=64.299,42.22,38.644 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7830 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_02 script=NULL uid=18446741874686296499 pos=74.893,47.449,40.766 fwd=0.469469,0.882943,0.0 up=-0.000432,0.00023,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7830 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_02 script=NULL uid=18446741874686296513 pos=63.158,51.988,40.875 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7830 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_02 script=NULL uid=18446741874686296518 pos=62.084,54.145,41.212 fwd=0.0,-0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7832 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_03 script=NULL uid=18446741874686296363 pos=68.266,89.173,39.368 fwd=-0.529913,0.848046,0.0 up=-0.000293,-0.000183,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7832 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_03 script=NULL uid=18446741874686296348 pos=85.03,68.216,40.431 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7832 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_03 script=NULL uid=18446741874686296373 pos=67.833,75.265,39.401 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7832 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_03 script=NULL uid=18446741874686296514 pos=54.94,40.363,39.344 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7834 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_04 script=NULL uid=18446741874686296394 pos=56.236,78.812,35.72 fwd=0.0,0.978141,0.207913 up=-0.309015,-0.197737,0.930268 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7834 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_04 script=NULL uid=18446741874686296362 pos=68.506,91.392,39.33 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7834 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_04 script=NULL uid=18446741874686296376 pos=62.347,76.829,40.06 fwd=0.406734,0.91354,0.0 up=-0.000315,0.00014,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7834 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_04 script=NULL uid=18446741874686296498 pos=74.771,50.662,41.091 fwd=-0.898785,0.438377,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7834 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_04 script=NULL uid=18446741874686296507 pos=66.105,38.903,39.326 fwd=-0.898791,-0.438365,0.0 up=0.000262,-0.000537,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7834 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_04 script=NULL uid=18446741874686297801 pos=35.973,51.865,40.168 fwd=-0.829014,0.559186,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7836 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_06 script=NULL uid=18446741874686296390 pos=49.642,82.642,34.804 fwd=0.0,0.999994,0.000001 up=-0.207907,-0.000001,0.978125 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7836 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_06 script=NULL uid=18446741874686296349 pos=84.472,65.443,41.116 fwd=0.882942,0.469469,0.0 up=-0.000281,0.000528,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7836 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_06 script=NULL uid=18446741874686296506 pos=65.288,36.026,39.308 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7836 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_06 script=NULL uid=18446741874686296515 pos=60.122,49.149,40.091 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7836 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_06 script=NULL uid=18446741874686297802 pos=45.911,48.114,41.277 fwd=-0.499994,0.866022,0.0 up=-0.000299,-0.000173,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7836 kind=Object def=OBJECT_BRIGHTWOOD_MEDIUMROCK_06 script=NULL uid=18446741874686297803 pos=29.023,56.01,40.128 fwd=0.898788,-0.43837,0.0 up=0.0004,0.000821,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=4911 kind=Object def=OBJECT_BS_SIGN_POST_DIRECTION_01 script=NULL uid=18446741874686296333 pos=96.064,73.393,38.446 fwd=-0.978137,0.207936,0.0 up=-0.000102,-0.000478,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=3977 kind=Object def=OBJECT_DEGRADABLE_THORN_VINES_01 script=NULL uid=18446741874686297180 pos=87.093,72.726,39.996 fwd=0.676276,-0.736641,0.0 up=0.00036,0.00033,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=3977 kind=Object def=OBJECT_DEGRADABLE_THORN_VINES_01 script=NULL uid=18446741874686297181 pos=85.925,71.765,40 fwd=-0.976253,-0.216527,0.0 up=0.000106,-0.000477,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5357 kind=Object def=OBJECT_LOOKOUT_POINT_KNIGHT_STATUE_01 script=StatueMasterStatue uid=18446741874686297742 pos=79.457,80.217,39.6 fwd=0.999994,0.0,0.0 up=0.0,0.000772,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7704 kind=Object def=OBJECT_OAKVALE_FENCE_01 script=NULL uid=18446741874686296426 pos=41.739,78.193,33.678 fwd=-0.469488,-0.882932,0.0 up=-0.030384,0.016156,0.999402 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7704 kind=Object def=OBJECT_OAKVALE_FENCE_01 script=NULL uid=18446741874686296425 pos=40.222,79.465,33.684 fwd=-0.64278,-0.766021,0.0 up=0.000591,-0.000496,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7704 kind=Object def=OBJECT_OAKVALE_FENCE_01 script=NULL uid=18446741874686296403 pos=60.877,78.5,40.335 fwd=0.926614,0.374375,-0.034897 up=-0.033473,0.174576,0.984051 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7704 kind=Object def=OBJECT_OAKVALE_FENCE_01 script=NULL uid=18446741874686296352 pos=86.408,101.48,41.523 fwd=0.984785,0.173644,0.0 up=-0.012113,0.068697,0.997558 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7704 kind=Object def=OBJECT_OAKVALE_FENCE_01 script=NULL uid=18446741874686296466 pos=62.952,62.389,39.515 fwd=0.499997,0.866021,0.0 up=-0.268178,0.154833,0.950821 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7704 kind=Object def=OBJECT_OAKVALE_FENCE_01 script=NULL uid=18446741874686296467 pos=61.3,63.289,38.799 fwd=0.642773,0.766027,0.0 up=-0.185766,0.155876,0.970146 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7704 kind=Object def=OBJECT_OAKVALE_FENCE_01 script=NULL uid=18446741874686296468 pos=59.809,64.548,38.229 fwd=0.669127,0.743141,0.0 up=-0.104047,0.093685,0.990144 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7704 kind=Object def=OBJECT_OAKVALE_FENCE_01 script=NULL uid=18446741874686296483 pos=43.583,77.235,33.737 fwd=-0.406736,-0.91354,0.0 up=-0.220471,0.098161,0.970436 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7704 kind=Object def=OBJECT_OAKVALE_FENCE_01 script=NULL uid=18446741874686296485 pos=45.379,76.444,34.225 fwd=-0.406735,-0.91354,0.0 up=-0.281779,0.125456,0.951236 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7708 kind=Object def=OBJECT_OAKVALE_FENCE_BROKEN_01 script=NULL uid=18446741874686296405 pos=65.63,67.073,39.315 fwd=0.438361,0.898773,0.0 up=-0.063133,0.030792,0.997507 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7708 kind=Object def=OBJECT_OAKVALE_FENCE_BROKEN_01 script=NULL uid=18446741874686296469 pos=58.354,65.859,37.947 fwd=0.406734,0.91354,0.0 up=-0.127582,0.056803,0.990194 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7712 kind=Object def=OBJECT_OAKVALE_FENCEGATE_01 script=NULL uid=18446741874686296340 pos=87.795,73.482,39.915 fwd=-0.808531,-0.587408,0.034901 up=0.109478,-0.091886,0.98971 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7712 kind=Object def=OBJECT_OAKVALE_FENCEGATE_01 script=NULL uid=18446741874686296493 pos=76.332,58.803,40.543 fwd=-0.633014,0.754406,0.173647 up=0.268444,0.003527,0.963265 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7719 kind=Object def=OBJECT_OAKVALE_FENCEGATE_02 script=NULL uid=18446741874686296402 pos=50.532,85.981,39.038 fwd=0.79692,0.228513,-0.559186 up=0.527364,0.188243,0.828496 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7700 kind=Object def=OBJECT_OAKVALE_FENCEPOST_01 script=NULL uid=18446741874686296404 pos=60.123,80.286,39.839 fwd=0.0,0.978142,-0.207909 up=0.0,0.207909,0.978142 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7700 kind=Object def=OBJECT_OAKVALE_FENCEPOST_01 script=NULL uid=18446741874686296400 pos=53.734,86.385,39.353 fwd=0.069756,0.997558,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7700 kind=Object def=OBJECT_OAKVALE_FENCEPOST_01 script=NULL uid=18446741874686296341 pos=85.424,71.704,40 fwd=0.999994,0.0,0.0 up=0.0,-0.374603,0.927179 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7700 kind=Object def=OBJECT_OAKVALE_FENCEPOST_01 script=NULL uid=18446741874686296472 pos=48.605,65.92,37.186 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7700 kind=Object def=OBJECT_OAKVALE_FENCEPOST_01 script=NULL uid=18446741874686296982 pos=48.605,65.92,37.186 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7700 kind=Object def=OBJECT_OAKVALE_FENCEPOST_01 script=NULL uid=18446741874686296983 pos=56.713,66.715,37.476 fwd=0.0,0.999994,0.0 up=-0.275636,0.0,0.961256 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7702 kind=Object def=OBJECT_OAKVALE_FENCEPOST_02 script=NULL uid=18446741874686296406 pos=63.839,67.979,39.025 fwd=0.0,0.999994,0.0 up=-0.034899,0.0,0.999385 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7702 kind=Object def=OBJECT_OAKVALE_FENCEPOST_02 script=NULL uid=18446741874686296397 pos=36.329,91.868,37.477 fwd=0.0,0.999994,0.0 up=-0.139172,0.0,0.990262 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7702 kind=Object def=OBJECT_OAKVALE_FENCEPOST_02 script=NULL uid=18446741874686296353 pos=86.09,103.462,41.176 fwd=0.069756,0.997558,0.0 up=-0.069586,0.004866,0.997558 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7702 kind=Object def=OBJECT_OAKVALE_FENCEPOST_02 script=NULL uid=18446741874686296317 pos=98.035,79.026,38.321 fwd=0.694654,0.719336,0.0 up=0.10011,-0.096675,0.990246 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7702 kind=Object def=OBJECT_OAKVALE_FENCEPOST_02 script=NULL uid=18446741874686296486 pos=47.037,75.708,34.818 fwd=0.438361,0.898773,0.0 up=-0.217436,0.106051,0.97029 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7706 kind=Object def=OBJECT_OAKVALE_FENCETRIPLE_01 script=NULL uid=18446741874686296399 pos=58.696,83.025,39.383 fwd=0.55919,0.829033,0.0 up=-0.000496,0.000334,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7706 kind=Object def=OBJECT_OAKVALE_FENCETRIPLE_01 script=NULL uid=18446741874686296396 pos=42.231,91.876,38.351 fwd=0.0,0.999385,0.034901 up=-0.139172,-0.034561,0.989659 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7706 kind=Object def=OBJECT_OAKVALE_FENCETRIPLE_01 script=NULL uid=18446741874686296350 pos=86.395,95.579,41.555 fwd=0.999994,0.0,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7706 kind=Object def=OBJECT_OAKVALE_FENCETRIPLE_01 script=NULL uid=18446741874686296316 pos=93.091,82.349,39.1 fwd=-0.559197,-0.829028,0.0 up=0.116073,-0.078294,0.990144 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7706 kind=Object def=OBJECT_OAKVALE_FENCETRIPLE_01 script=NULL uid=18446741874686296471 pos=54.475,66.52,37.165 fwd=-0.104527,0.994516,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7710 kind=Object def=OBJECT_OAKVALE_FENCETRIPLE_BROKEN_01 script=NULL uid=18446741874686296395 pos=47.62,89.426,38.989 fwd=0.406736,0.913539,0.000001 up=-0.095489,0.042514,0.994499 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7017 kind=Object def=OBJECT_OK_ARCH_DOUBLE_CLOSED_HALF script=NULL uid=18446741874686296300 pos=71.648,95.168,39.192 fwd=-0.990244,0.139183,0.0 up=-0.000048,-0.000342,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7021 kind=Object def=OBJECT_OK_ARCH_SINGLE_OPEN script=NULL uid=18446741874686296296 pos=82.644,95.374,39.262 fwd=0.961256,0.275636,0.0 up=-0.00019,0.000664,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7168 kind=Object def=OBJECT_OK_PILLAR_COLLAPSED_01 script=NULL uid=18446741874686296424 pos=77.421,53.658,41.162 fwd=0.970291,0.241919,0.0 up=-0.000167,0.00067,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7168 kind=Object def=OBJECT_OK_PILLAR_COLLAPSED_01 script=NULL uid=18446741874686296415 pos=65.733,59.627,40.915 fwd=0.433012,0.749999,-0.499991 up=0.691523,0.079388,0.717971 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7168 kind=Object def=OBJECT_OK_PILLAR_COLLAPSED_01 script=NULL uid=18446741874686296298 pos=84.987,90.314,40.148 fwd=0.848038,-0.529925,0.0 up=0.000409,0.000655,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7168 kind=Object def=OBJECT_OK_PILLAR_COLLAPSED_01 script=NULL uid=18446741874686297711 pos=68.876,127.159,31.62 fwd=-0.749443,-0.58552,0.309015 up=0.133535,0.323468,0.936763 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7031 kind=Object def=OBJECT_OK_PILLAR_COLLAPSED_02 script=NULL uid=18446741874686296383 pos=65.178,88.309,39.742 fwd=0.882927,-0.469462,0.0 up=0.000429,0.000807,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7170 kind=Object def=OBJECT_OK_PILLAR_COLLAPSED_03 script=NULL uid=18446741874686296423 pos=74.534,55.407,41.283 fwd=0.0,0.999368,-0.034898 up=-0.069756,0.034813,0.996951 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7168 kind=Object def=OBJECT_OK_RUBBLE_PILLAR_01 script=NULL uid=18446741874686296419 pos=65.422,60.823,40.398 fwd=0.941791,-0.306023,0.139172 up=-0.276003,-0.467491,0.839779 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7168 kind=Object def=OBJECT_OK_RUBBLE_PILLAR_01 script=NULL uid=18446741874686296303 pos=85.535,91.09,40.318 fwd=0.989659,-0.034568,0.139174 up=-0.132851,0.144386,0.980557 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=4067 kind=Object def=OBJECT_REGION_TRANSITION_GATE script=NULL uid=18446741874686297587 pos=39.39,84.778,33.683 fwd=-0.898769,0.43837,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=4067 kind=Object def=OBJECT_REGION_TRANSITION_GATE script=NULL uid=18446741874686297589 pos=71.054,37.4,38.8 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7934 kind=Object def=OBJECT_SILVER_KEY script=NULL uid=18446741874686298187 pos=103.027,62.399,36.731 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=4911 kind=Object def=OBJECT_STREETSIGN_01 script=NULL uid=18446741874686296345 pos=68.067,61.012,40.275 fwd=0.206771,0.972784,-0.104527 up=0.020664,0.102468,0.994499 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=4911 kind=Object def=OBJECT_STREETSIGN_01 script=NULL uid=18446741874686296118 pos=72.521,92.148,39.995 fwd=-0.104552,-0.994514,0.0 up=0.000687,-0.000072,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=4911 kind=Object def=OBJECT_STREETSIGN_01 script=NULL uid=18446741874686296117 pos=79.202,62.38,40.313 fwd=0.0,-0.999994,0.0 up=0.000345,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=4911 kind=Object def=OBJECT_STREETSIGN_01 script=NULL uid=18446741874686296539 pos=75.952,59.824,40.47 fwd=0.97029,-0.241921,0.0 up=0.000221,0.000886,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7548 kind=Object def=OBJECT_TOWNBENCH_01 script=NULL uid=18446741874686296108 pos=77.498,80.082,40 fwd=-0.999286,-0.037624,0.0 up=0.000037,-0.000976,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7548 kind=Object def=OBJECT_TOWNBENCH_01 script=NULL uid=18446741874686296107 pos=79.446,78.273,40 fwd=0.076357,-0.997075,0.0 up=0.000487,0.000037,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7548 kind=Object def=OBJECT_TOWNBENCH_01 script=NULL uid=18446741874686296106 pos=79.442,82.098,40 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=7548 kind=Object def=OBJECT_TOWNBENCH_01 script=NULL uid=18446741874686296105 pos=81.501,80.192,40 fwd=0.998439,0.055748,0.0 up=-0.000054,0.000975,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5323 kind=Object def=OBJECT_WALL_SMALL_CURVED_01 script=NULL uid=18446741874686296179 pos=73.102,66.73,40.18 fwd=-0.104462,0.993911,-0.034898 up=-0.038948,0.030974,0.998755 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5323 kind=Object def=OBJECT_WALL_SMALL_CURVED_01 script=NULL uid=18446741874686296206 pos=36.144,82.226,33.684 fwd=-0.500005,-0.866016,0.0 up=0.000732,-0.000423,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5325 kind=Object def=OBJECT_WALL_SMALL_CURVED_02 script=NULL uid=18446741874686296359 pos=67.339,85.191,39.955 fwd=-0.468321,-0.880775,-0.069754 up=-0.063238,-0.045331,0.996963 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5325 kind=Object def=OBJECT_WALL_SMALL_CURVED_02 script=NULL uid=18446741874686296358 pos=63.52,83.523,39.817 fwd=0.848042,-0.529918,0.000001 up=0.037143,0.059443,0.997535 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5325 kind=Object def=OBJECT_WALL_SMALL_CURVED_02 script=NULL uid=18446741874686296356 pos=64.846,79.693,39.755 fwd=0.694231,0.718898,0.0349 up=-0.02474,-0.024625,0.999368 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5325 kind=Object def=OBJECT_WALL_SMALL_CURVED_02 script=NULL uid=18446741874686296369 pos=70.55,75.48,40 fwd=0.990245,0.13917,0.0 up=-0.000068,0.000484,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5325 kind=Object def=OBJECT_WALL_SMALL_CURVED_02 script=NULL uid=18446741874686296370 pos=75.383,70.07,40.144 fwd=-0.95105,0.309017,0.0 up=0.021555,0.06634,0.997541 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5325 kind=Object def=OBJECT_WALL_SMALL_CURVED_02 script=NULL uid=18446741874686296481 pos=50.498,72.324,36.292 fwd=-0.972766,0.102258,-0.207902 up=-0.170015,0.294544,0.940368 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5325 kind=Object def=OBJECT_WALL_SMALL_CURVED_02 script=NULL uid=18446741874686296649 pos=72.844,118.957,32.676 fwd=0.684088,-0.708397,0.173644 up=0.182629,0.396855,0.899523 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5309 kind=Object def=OBJECT_WALL_SMALL_CURVED_180 script=NULL uid=18446741874686296473 pos=46.117,67.82,37.163 fwd=0.951051,0.309015,0.0 up=-0.000107,0.000328,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5327 kind=Object def=OBJECT_WALL_SMALL_CURVED_BIG_01 script=NULL uid=18446741874686296120 pos=104.427,77.338,37.272 fwd=0.712307,-0.687899,-0.139166 up=0.100642,-0.09612,0.990246 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5327 kind=Object def=OBJECT_WALL_SMALL_CURVED_BIG_01 script=NULL uid=18446741874686296086 pos=89.596,75.078,39.154 fwd=-0.71933,0.69466,0.0 up=0.144095,0.149213,0.978244 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5327 kind=Object def=OBJECT_WALL_SMALL_CURVED_BIG_01 script=NULL uid=18446741874686296646 pos=66.016,114.494,35.062 fwd=-0.489075,-0.847094,0.207911 up=0.043294,0.214495,0.975759 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5329 kind=Object def=OBJECT_WALL_SMALL_CURVED_BIG_BROKEN_01 script=NULL uid=18446741874686296342 pos=79.92,67.775,40.196 fwd=-0.994518,-0.104512,0.0 up=-0.00729,0.069372,0.997541 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296360 pos=63.681,83.771,39.601 fwd=0.529916,0.848043,0.0 up=-0.000414,0.000259,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296357 pos=64.642,79.851,39.752 fwd=-0.743135,0.669133,0.0 up=-0.000231,-0.000257,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296343 pos=80.148,65.71,40.277 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296165 pos=69.906,88.789,39.973 fwd=-0.809008,0.587788,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296164 pos=67.455,84.996,39.948 fwd=0.52991,0.848027,0.0 up=-0.000414,0.000259,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296163 pos=68.445,79.786,39.979 fwd=-0.438358,0.898775,0.0 up=-0.00031,-0.000151,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296162 pos=70.459,75.699,40 fwd=-0.438358,0.898775,0.0 up=-0.00031,-0.000151,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296148 pos=81.629,104.323,38.159 fwd=0.104527,0.994499,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296147 pos=81.439,100.401,39.327 fwd=0.0,0.999994,0.0 up=-0.000772,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296141 pos=89.468,84.896,39.427 fwd=0.499997,0.866021,0.0 up=-0.000423,0.000244,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296140 pos=92.767,82.709,38.966 fwd=0.529916,0.848043,0.0 up=-0.000414,0.000259,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296139 pos=98.548,78.66,37.896 fwd=-0.809007,0.587789,0.0 up=-0.000287,-0.000395,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296138 pos=106.117,78.885,37.378 fwd=-0.669123,0.743144,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296137 pos=110.188,74.369,37.086 fwd=-0.438365,0.898791,0.0 up=-0.00031,-0.000151,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296135 pos=102.376,70.94,37.263 fwd=-0.241918,0.970291,0.0 up=0.067682,0.016875,0.997541 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296134 pos=96.177,72.752,38.244 fwd=0.000007,0.999994,0.0 up=0.069754,0.0,0.997541 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296133 pos=88.28,73.718,39.674 fwd=-0.642779,0.766044,0.0 up=-0.000374,-0.000314,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296132 pos=84.947,71.447,40 fwd=-0.241325,0.967928,-0.069756 up=-0.051305,0.059053,0.996913 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296071 pos=75.356,69.855,40.155 fwd=0.173647,0.984802,0.0 up=-0.00034,0.00006,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296194 pos=72.786,66.68,40.177 fwd=-0.207778,0.97753,-0.034899 up=-0.007594,0.034065,0.999385 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296196 pos=66.345,66.803,39.337 fwd=0.104527,0.994516,0.0 up=-0.000595,0.000063,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296219 pos=63.354,62.104,39.47 fwd=0.435967,0.893865,-0.104527 up=0.045383,0.094162,0.994516 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296226 pos=39.705,79.871,33.684 fwd=0.55919,0.829033,0.0 up=-0.000496,0.000334,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296227 pos=36.157,82.152,33.624 fwd=0.55919,0.829033,0.0 up=-0.000496,0.000334,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296228 pos=32.696,81.241,33.68 fwd=-0.743136,0.669131,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296249 pos=66.419,57.27,41.028 fwd=0.308827,0.950472,-0.034899 up=-0.154851,0.086449,0.984142 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296250 pos=65.383,50.398,41.203 fwd=0.034899,0.999385,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296251 pos=66.034,46.462,40.645 fwd=0.0,0.997558,0.069756 up=0.0,-0.069756,0.997558 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296252 pos=66.737,42.677,39.527 fwd=-0.306002,0.941797,0.139173 up=0.042272,-0.1326,0.990262 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296253 pos=68.113,38.763,39.294 fwd=-0.139169,0.990246,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296254 pos=68.18,34.778,38.397 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296255 pos=74.136,35.861,38.62 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296257 pos=73.591,43.947,40.005 fwd=-0.069756,0.997558,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296260 pos=72.709,52.179,41.44 fwd=-0.034899,0.999385,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296262 pos=76.141,60.928,40.449 fwd=0.999385,0.0349,0.0 up=-0.000032,0.000913,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296312 pos=86.08,87.387,39.898 fwd=0.719336,0.694654,0.0 up=-0.00048,0.000497,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296329 pos=98.277,70.212,37.803 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296330 pos=95.429,73.818,38.309 fwd=0.74133,0.667497,-0.069756 up=0.09793,-0.004763,0.995176 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296371 pos=73.584,73.309,40 fwd=0.374604,0.927179,0.0 up=-0.00032,0.000129,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296474 pos=48.177,65.891,37.18 fwd=-0.034899,0.999385,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296475 pos=46.797,70.752,37.164 fwd=-0.406724,0.913526,0.0 up=-0.000315,-0.00014,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296479 pos=50.518,72.448,36.415 fwd=-0.170998,0.969826,-0.173643 up=-0.133754,0.151759,0.97932 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296482 pos=48.215,75.116,35.002 fwd=0.307322,0.945841,-0.104526 up=-0.068023,0.131397,0.988988 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296503 pos=74.203,32.417,38.089 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296504 pos=65.34,54.165,41.535 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296641 pos=72.92,119.195,32.656 fwd=-0.766022,0.642778,0.0 up=0.066967,0.079808,0.994535 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296643 pos=78.969,124.13,30.163 fwd=0.783689,0.612285,-0.104526 up=0.125116,0.009224,0.992093 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296647 pos=67.802,113.572,35.172 fwd=0.690849,0.715395,-0.104526 up=0.046964,0.099861,0.993869 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296648 pos=65.911,120.383,33.741 fwd=0.400555,0.899662,-0.173645 up=-0.025696,0.200464,0.979341 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5331 kind=Object def=OBJECT_WALL_SMALL_POST_01 script=NULL uid=18446741874686296650 pos=72.908,115.552,34.192 fwd=0.858448,0.382206,-0.342015 up=0.171177,0.415094,0.893523 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5319 kind=Object def=OBJECT_WALL_SMALL_RIGHTANGLE_BIG_01 script=NULL uid=18446741874686296407 pos=67.375,61.121,40.212 fwd=0.963265,-0.204749,0.173644 up=-0.12277,0.239253,0.963158 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5319 kind=Object def=OBJECT_WALL_SMALL_RIGHTANGLE_BIG_01 script=NULL uid=18446741874686296344 pos=80.575,61.39,40.323 fwd=0.104528,-0.994516,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5321 kind=Object def=OBJECT_WALL_SMALL_RIGHTANGLE_SMALL_01 script=NULL uid=18446741874686296328 pos=95.929,70.517,38.121 fwd=-0.989067,0.103969,0.104528 up=0.096355,-0.080758,0.99206 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5333 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL uid=18446741874686296145 pos=81.54,102.142,38.891 fwd=-0.997541,0.069757,0.0 up=0.019228,0.274962,0.961257 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5333 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL uid=18446741874686296124 pos=91.178,83.742,39.196 fwd=0.55919,0.829033,0.0 up=0.086164,-0.058118,0.994579 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5333 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL uid=18446741874686296123 pos=87.654,86.155,39.707 fwd=0.587782,0.809012,0.0 up=0.11204,-0.081402,0.990358 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5333 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL uid=18446741874686296074 pos=69.431,77.738,40 fwd=0.898789,0.438369,0.0 up=-0.000303,0.000621,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5333 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL uid=18446741874686296075 pos=68.686,86.915,39.942 fwd=-0.83817,0.545398,0.0 up=-0.000421,-0.000647,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5333 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL uid=18446741874686296207 pos=37.832,81.045,33.664 fwd=0.55919,0.829033,0.0 up=-0.000572,0.000386,0.999994 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5333 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL uid=18446741874686296232 pos=65.401,52.52,41.369 fwd=-0.999994,0.000013,0.0 up=-0.000001,-0.0701,0.997534 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5333 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL uid=18446741874686296233 pos=65.698,48.562,40.982 fwd=-0.984803,-0.173644,0.0 up=0.02425,-0.137532,0.990177 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5333 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL uid=18446741874686296234 pos=66.274,44.768,40.107 fwd=0.984785,0.173644,0.0 up=0.047748,-0.270792,0.961447 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5333 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL uid=18446741874686296235 pos=67.395,40.831,39.464 fwd=0.939671,0.342012,0.0 up=0.011732,-0.032233,0.999406 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5333 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL uid=18446741874686296236 pos=68.124,36.951,38.902 fwd=0.999994,0.0,0.0 up=0.0,-0.274891,0.961469 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5333 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL uid=18446741874686296325 pos=100.429,70.512,37.599 fwd=-0.173643,0.984803,0.0 up=0.102935,0.01815,0.994499 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5333 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL uid=18446741874686296478 pos=48.512,71.622,36.766 fwd=-0.469465,0.882945,0.0 up=0.182906,0.097252,0.978303 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5333 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL uid=18446741874686296502 pos=74.194,34.314,38.334 fwd=-0.999994,0.0,0.0 up=0.0,-0.173644,0.984785 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5335 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_BIG_01 script=NULL uid=18446741874686296497 pos=73.375,46.209,40.374 fwd=-0.994516,-0.104526,0.0 up=0.018186,-0.173032,0.984743 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5335 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_BIG_01 script=NULL uid=18446741874686296644 pos=80.386,125.126,29.705 fwd=-0.615652,0.788011,0.0 up=0.243508,0.190246,0.951052 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5335 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_BIG_01 script=NULL uid=18446741874686296655 pos=66.513,122.368,33.182 fwd=-0.964975,0.240596,-0.104527 up=-0.030811,0.291755,0.955991 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5337 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_BIG_BROKEN_01 script=NULL uid=18446741874686296324 pos=104.41,71.797,37.28 fwd=-0.40673,0.913542,0.0 up=0.031436,0.013996,0.999402 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5337 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_BIG_BROKEN_01 script=NULL uid=18446741874686296501 pos=73.988,38.048,39.019 fwd=-0.997541,-0.069754,0.0 up=0.012113,-0.173224,0.984802 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5337 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_BIG_BROKEN_01 script=NULL uid=18446741874686296642 pos=74.236,120.329,32.048 fwd=-0.615652,0.788011,0.0 up=0.216938,0.169488,0.961353 src=ContainsTng
+    Prop     exist=Y render=Y asC3d=True submitted=True type=OBJECT mesh=5313 kind=Object def=OBJECT_WALL_SMALL_STRAIGHT_BIG_BROKEN_02 script=NULL uid=18446741874686296389 pos=69.64,66.717,39.888 fwd=0.034899,0.999385,0.0 up=-0.104463,0.003648,0.994516 src=ContainsTng
+    Travel   exist=Y render=n asC3d=True submitted=False type=THING mesh=- kind=Thing def=REGION_ENTRANCE_POINT script=NULL uid=18446741874686296666 pos=103.368,74.507,37.489 fwd=-0.951056,-0.309001,0.0 up=0.000107,-0.000328,0.999994 src=ContainsTng
+    Travel   exist=Y render=n asC3d=True submitted=False type=THING mesh=- kind=Thing def=REGION_ENTRANCE_POINT script=NULL uid=18446741874686296175 pos=70.559,43.062,39.901 fwd=0.0,0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Travel   exist=Y render=n asC3d=True submitted=False type=THING mesh=- kind=Thing def=REGION_ENTRANCE_POINT script=NULL uid=18446741874686296173 pos=44.76,80.548,33.786 fwd=0.773852,-0.633358,0.0 up=0.000219,0.000267,0.999994 src=ContainsTng
+    Travel   exist=Y render=n asC3d=True submitted=False type=THING mesh=- kind=Thing def=REGION_EXIT_POINT script=NULL uid=18446741874686296176 pos=70.873,33.854,38.269 fwd=0.0,-0.999994,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+    Travel   exist=Y render=n asC3d=True submitted=False type=THING mesh=- kind=Thing def=REGION_EXIT_POINT script=NULL uid=18446741874686296174 pos=35.401,86.486,33.685 fwd=-0.866015,0.500007,0.0 up=0.0,0.0,0.999994 src=ContainsTng
+
+  Other ContainsMap exist (BowerstoneBridge / GuildExterior) — native load, not first-scene 0x20:
+    BowerstoneBridge       Building n=  1 type=BUILDING submit=True mesh=4787 def=BUILDING_BS_GATEHOUSE
+    BowerstoneBridge       Building n=  1 type=BUILDING submit=True mesh=4783 def=BUILDING_BS_BRIDGE
+    BowerstoneBridge       Camera   n=  1 type=THING submit=False mesh= def=CAMERA_POINT_GENERAL_CASE
+    BowerstoneBridge       Door     n=  2 type=OBJECT submit=True mesh=5080 def=OBJECT_BS_GATEHOUSE_MAIN_DOORS_01
+    BowerstoneBridge       Light    n=  4 type=OBJECT submit=True mesh=4978 def=OBJECT_STREETLAMP_LIT_SINGLE_01
+    BowerstoneBridge       Marker   n=  1 type=HOLY_SITE submit=False mesh= def=HOLY_SITE_PLAYER_START
+    BowerstoneBridge       Marker   n=  1 type=MARKER submit=False mesh= def=MARKER_INFO_DISPLAY
+    BowerstoneBridge       Marker   n=  2 type=MARKER submit=False mesh= def=REGION_KICK_TO_POINT
+    BowerstoneBridge       Marker   n=  3 type=MARKER submit=False mesh= def=MARKER_BASIC
+    BowerstoneBridge       Other    n=  1 type=? submit=False mesh= def=NAVIGATION_SEED
+    BowerstoneBridge       Prop     n=  4 type=OBJECT submit=True mesh=5067 def=OBJECT_BS_BANNER_01
+    BowerstoneBridge       Prop     n=  2 type=OBJECT submit=True mesh=5071 def=OBJECT_BS_BANNER_03
+    BowerstoneBridge       Prop     n=  4 type=OBJECT submit=True mesh=5073 def=OBJECT_BS_BANNER_04
+    BowerstoneBridge       Prop     n=  5 type=OBJECT submit=True mesh=4923 def=OBJECT_BS_SLUM_WALL_TOWER_01
+    BowerstoneBridge       Prop     n= 11 type=OBJECT submit=True mesh=5333 def=OBJECT_WALL_SMALL_STRAIGHT_01
+    BowerstoneBridge       Prop     n= 22 type=OBJECT submit=True mesh=5331 def=OBJECT_WALL_SMALL_POST_01
+    BowerstoneBridge       Prop     n=  1 type=OBJECT submit=True mesh=5337 def=OBJECT_WALL_SMALL_STRAIGHT_BIG_BROKEN_01
+    BowerstoneBridge       Prop     n=  3 type=OBJECT submit=True mesh=5335 def=OBJECT_WALL_SMALL_STRAIGHT_BIG_01
+    BowerstoneBridge       Prop     n=  3 type=OBJECT submit=True mesh=4929 def=OBJECT_BS_SLUM_WALL_STRAIGHT_20M_01
+    BowerstoneBridge       Prop     n=  1 type=OBJECT submit=True mesh=7548 def=OBJECT_TOWNBENCH_01
+    BowerstoneBridge       Prop     n=  2 type=OBJECT submit=True mesh=5327 def=OBJECT_WALL_SMALL_CURVED_BIG_01
+    BowerstoneBridge       Prop     n=  1 type=OBJECT submit=True mesh=7836 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_06
+    BowerstoneBridge       Prop     n=  1 type=OBJECT submit=True mesh=7838 def=OBJECT_BRIGHTWOOD_SMALLROCK_01
+    BowerstoneBridge       Prop     n=  1 type=OBJECT submit=True mesh=7840 def=OBJECT_BRIGHTWOOD_SMALLROCK_02
+    BowerstoneBridge       Track    n=  8 type=THING submit=False mesh= def=TRACK_NODE_BASIC
+    BowerstoneBridge       Travel   n=  1 type=THING submit=False mesh= def=REGION_ENTRANCE_POINT
+    BowerstoneBridge       Travel   n=  1 type=THING submit=False mesh= def=REGION_EXIT_POINT
+    GuildExterior          Building n=  1 type=BUILDING submit=True mesh=4829 def=BUILDING_GUILD_EXTERIOR_SHOP_TITLE_VENDOR
+    GuildExterior          Building n=  1 type=BUILDING submit=True mesh=5949 def=BUILDING_GUILD_LO_POLY_01
+    GuildExterior          Camera   n=  1 type=THING submit=False mesh= def=CAMERA_POINT_FIXED_POINT
+    GuildExterior          Camera   n= 21 type=THING submit=False mesh= def=CAMERA_POINT_SCRIPTED_SPLINE
+    GuildExterior          Camera   n=  2 type=THING submit=False mesh= def=CAMERA_POINT_SCRIPTED
+    GuildExterior          Door     n=  1 type=OBJECT submit=True mesh=3987 def=OBJECT_DEMON_DOOR_WALL_01
+    GuildExterior          Door     n=  1 type=OBJECT submit=True mesh=6078 def=OBJECT_GUILD_FRONT_DOORS_01
+    GuildExterior          Door     n=  1 type=OBJECT submit=True mesh=3983 def=OBJECT_DEMON_DOOR_OVERGROWN_01
+    GuildExterior          Light    n=  1 type=MARKER submit=False mesh= def=MARKER_LIGHT
+    GuildExterior          Light    n=  2 type=OBJECT submit=True mesh=4978 def=OBJECT_STREETLAMP_LIT_SINGLE_01
+    GuildExterior          Marker   n= 32 type=MARKER submit=False mesh= def=MARKER_BASIC
+    GuildExterior          Marker   n=  1 type=MARKER submit=False mesh= def=MARKER_GLOBAL
+    GuildExterior          Marker   n=  1 type=MARKER submit=False mesh= def=MARKER_BOAST_AREA
+    GuildExterior          Marker   n=  1 type=MARKER submit=False mesh= def=REGION_KICK_TO_POINT
+    GuildExterior          Marker   n=  1 type=MARKER submit=False mesh= def=GAZE_AT_WORK_MARKER
+    GuildExterior          NPC      n=  1 type=? submit=False mesh= def=CREATURE_RIVAL_HERO_SCYTHE
+    GuildExterior          NPC      n=  1 type=? submit=False mesh= def=CREATURE_DEMON_DOOR_FACE_01
+    GuildExterior          NPC      n=  1 type=? submit=False mesh= def=CREATURE_GUILDKEEPER
+    GuildExterior          NPC      n=  1 type=? submit=False mesh= def=CREATURE_RIVAL_HERO_BRIAR_ROSE
+    GuildExterior          NPC      n=  2 type=? submit=False mesh= def=CREATURE_BS_VILLAGER_MALE
+    GuildExterior          Prop     n=  3 type=OBJECT submit=True mesh=7035 def=OBJECT_OK_PILLAR_COMPLETE_01
+    GuildExterior          Prop     n=  1 type=OBJECT submit=True mesh=6096 def=OBJECT_GUILD_BOASTING_PODIUM_01
+    GuildExterior          Prop     n=  1 type=OBJECT submit=True mesh=7168 def=OBJECT_OK_PILLAR_COLLAPSED_01
+    GuildExterior          Prop     n=  1 type=OBJECT submit=True mesh=7168 def=OBJECT_OK_RUBBLE_PILLAR_01
+    GuildExterior          Prop     n=  1 type=OBJECT submit=True mesh=7832 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_03
+    GuildExterior          Prop     n=  1 type=OBJECT submit=True mesh=7834 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_04
+    GuildExterior          Prop     n=  1 type=OBJECT submit=True mesh=7836 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_06
+    GuildExterior          Prop     n=  1 type=OBJECT submit=True mesh=7838 def=OBJECT_BRIGHTWOOD_SMALLROCK_01
+    GuildExterior          Travel   n=  2 type=THING submit=False mesh= def=REGION_ENTRANCE_POINT
+    GuildExterior          Travel   n=  1 type=THING submit=False mesh= def=REGION_EXIT_POINT
+    GuildExterior          Village  n=  1 type=VILLAGE submit=True mesh=4516 def=VILLAGE_GUILD_COMPLEX_OUTSIDE
+
+=== PresentWorld ===
+  region=LookoutPoint expanded=False tris=0 instances=280 maps=[LookoutPoint,BowerstoneBridge,GuildExterior,LookoutPoint_Filler_01,LookoutPoint_Filler_05,PicnicArea_Filler_02,PicnicArea,Greatwood_1,Greatwood_2,Greatwood_Filler_04,PicnicArea_Filler_03,Fisherman,LookoutPoint_Filler_06,LookoutPoint_Filler_07] missing=10
+  playerMesh=4299 playerH=0
+  missingDefs: REGION_ENTRANCE_POINT, REGION_EXIT_POINT
+  inst map BowerstoneBridge: 69 uniqueMesh=18
+  inst map GuildExterior: 18 uniqueMesh=14
+  inst map LookoutPoint: 193 uniqueMesh=45
+
+=== SubmitCurrentWorld submitted C3Ds (primary map only) ===
+  already ran=True verts=917496 draws=590
+  primary instances=193 uniqueMesh=45
+  heroFallbackWouldAdd=False heroInInstances=True
+  drawGroups=590 texIds=40 sample=[284,285,414,420,428,444,457,729,730,731,783,1045,1248,1249,1250,1251,1252,1253,1708,1734]
+  submitted instance list:
+    mesh= 4299 def=CREATURE_HERO script=Hero map=LookoutPoint t=T(52.688,69.597,36.982) match=Hero xformOk=True meshOk=True
+    mesh= 7802 def=OBJECT_BIGROCK_01 script=NULL map=LookoutPoint t=T(111.147,84.225,34.084) match=Prop xformOk=True meshOk=True
+    mesh= 7804 def=OBJECT_BIGROCK_02 script=NULL map=LookoutPoint t=T(81.053,114.896,35.024) match=Prop xformOk=True meshOk=True
+    mesh= 7687 def=OBJECT_BLASTEDTREE script=NULL map=LookoutPoint t=T(107.473,82.33,36.813) match=Prop xformOk=True meshOk=True
+    mesh= 7820 def=OBJECT_BRIGHTWOOD_LARGEROCK_02 script=NULL map=LookoutPoint t=T(111.688,89.126,32.97) match=Prop xformOk=True meshOk=True
+    mesh= 7820 def=OBJECT_BRIGHTWOOD_LARGEROCK_02 script=NULL map=LookoutPoint t=T(53.996,82.918,34.976) match=Prop xformOk=True meshOk=True
+    mesh= 7820 def=OBJECT_BRIGHTWOOD_LARGEROCK_02 script=NULL map=LookoutPoint t=T(60.63,38.759,38.513) match=Prop xformOk=True meshOk=True
+    mesh= 7820 def=OBJECT_BRIGHTWOOD_LARGEROCK_02 script=NULL map=LookoutPoint t=T(63.003,56.116,41.943) match=Prop xformOk=True meshOk=True
+    mesh= 7820 def=OBJECT_BRIGHTWOOD_LARGEROCK_02 script=NULL map=LookoutPoint t=T(39.725,47.048,40.432) match=Prop xformOk=True meshOk=True
+    mesh= 7822 def=OBJECT_BRIGHTWOOD_LARGEROCK_03 script=NULL map=LookoutPoint t=T(82.982,67.237,39.682) match=Prop xformOk=True meshOk=True
+    mesh= 7822 def=OBJECT_BRIGHTWOOD_LARGEROCK_03 script=NULL map=LookoutPoint t=T(46.204,71.928,36.24) match=Prop xformOk=True meshOk=True
+    mesh= 7824 def=OBJECT_BRIGHTWOOD_LARGEROCK_04 script=NULL map=LookoutPoint t=T(78.178,59.087,39.678) match=Prop xformOk=True meshOk=True
+    mesh= 7824 def=OBJECT_BRIGHTWOOD_LARGEROCK_04 script=NULL map=LookoutPoint t=T(64.573,73.52,39.78) match=Prop xformOk=True meshOk=True
+    mesh= 7826 def=OBJECT_BRIGHTWOOD_LARGEROCK_05 script=NULL map=LookoutPoint t=T(71.74,101.226,39.463) match=Prop xformOk=True meshOk=True
+    mesh= 7826 def=OBJECT_BRIGHTWOOD_LARGEROCK_05 script=NULL map=LookoutPoint t=T(78.2,49.268,40.702) match=Prop xformOk=True meshOk=True
+    mesh= 7826 def=OBJECT_BRIGHTWOOD_LARGEROCK_05 script=NULL map=LookoutPoint t=T(57.012,44.365,38.793) match=Prop xformOk=True meshOk=True
+    mesh= 7828 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_01 script=NULL map=LookoutPoint t=T(80.556,59.74,40.13) match=Prop xformOk=True meshOk=True
+    mesh= 7828 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_01 script=NULL map=LookoutPoint t=T(83.471,69.321,39.698) match=Prop xformOk=True meshOk=True
+    mesh= 7828 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_01 script=NULL map=LookoutPoint t=T(65.807,76.896,39.446) match=Prop xformOk=True meshOk=True
+    mesh= 7828 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_01 script=NULL map=LookoutPoint t=T(48.451,73.406,35.572) match=Prop xformOk=True meshOk=True
+    mesh= 7828 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_01 script=NULL map=LookoutPoint t=T(43.201,65.119,37.41) match=Prop xformOk=True meshOk=True
+    mesh= 7828 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_01 script=NULL map=LookoutPoint t=T(65.389,55.374,41.244) match=Prop xformOk=True meshOk=True
+    mesh= 7828 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_01 script=NULL map=LookoutPoint t=T(64.299,42.22,38.644) match=Prop xformOk=True meshOk=True
+    mesh= 7830 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_02 script=NULL map=LookoutPoint t=T(74.893,47.449,40.766) match=Prop xformOk=True meshOk=True
+    mesh= 7830 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_02 script=NULL map=LookoutPoint t=T(63.158,51.988,40.875) match=Prop xformOk=True meshOk=True
+    mesh= 7830 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_02 script=NULL map=LookoutPoint t=T(62.084,54.145,41.212) match=Prop xformOk=True meshOk=True
+    mesh= 7832 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_03 script=NULL map=LookoutPoint t=T(68.266,89.173,39.368) match=Prop xformOk=True meshOk=True
+    mesh= 7832 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_03 script=NULL map=LookoutPoint t=T(85.03,68.216,40.431) match=Prop xformOk=True meshOk=True
+    mesh= 7832 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_03 script=NULL map=LookoutPoint t=T(67.833,75.265,39.401) match=Prop xformOk=True meshOk=True
+    mesh= 7832 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_03 script=NULL map=LookoutPoint t=T(54.94,40.363,39.344) match=Prop xformOk=True meshOk=True
+    mesh= 7834 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_04 script=NULL map=LookoutPoint t=T(56.236,78.812,35.72) match=Prop xformOk=True meshOk=True
+    mesh= 7834 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_04 script=NULL map=LookoutPoint t=T(68.506,91.392,39.33) match=Prop xformOk=True meshOk=True
+    mesh= 7834 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_04 script=NULL map=LookoutPoint t=T(62.347,76.829,40.06) match=Prop xformOk=True meshOk=True
+    mesh= 7834 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_04 script=NULL map=LookoutPoint t=T(74.771,50.662,41.091) match=Prop xformOk=True meshOk=True
+    mesh= 7834 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_04 script=NULL map=LookoutPoint t=T(66.105,38.903,39.326) match=Prop xformOk=True meshOk=True
+    mesh= 7834 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_04 script=NULL map=LookoutPoint t=T(35.973,51.865,40.168) match=Prop xformOk=True meshOk=True
+    mesh= 7836 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_06 script=NULL map=LookoutPoint t=T(49.642,82.642,34.804) match=Prop xformOk=True meshOk=True
+    mesh= 7836 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_06 script=NULL map=LookoutPoint t=T(84.472,65.443,41.116) match=Prop xformOk=True meshOk=True
+    mesh= 7836 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_06 script=NULL map=LookoutPoint t=T(65.288,36.026,39.308) match=Prop xformOk=True meshOk=True
+    mesh= 7836 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_06 script=NULL map=LookoutPoint t=T(60.122,49.149,40.091) match=Prop xformOk=True meshOk=True
+    mesh= 7836 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_06 script=NULL map=LookoutPoint t=T(45.911,48.114,41.277) match=Prop xformOk=True meshOk=True
+    mesh= 7836 def=OBJECT_BRIGHTWOOD_MEDIUMROCK_06 script=NULL map=LookoutPoint t=T(29.023,56.01,40.128) match=Prop xformOk=True meshOk=True
+    mesh= 4911 def=OBJECT_BS_SIGN_POST_DIRECTION_01 script=NULL map=LookoutPoint t=T(96.064,73.393,38.446) match=Prop xformOk=True meshOk=True
+    mesh= 3977 def=OBJECT_DEGRADABLE_THORN_VINES_01 script=NULL map=LookoutPoint t=T(87.093,72.726,39.996) match=Prop xformOk=True meshOk=True
+    mesh= 3977 def=OBJECT_DEGRADABLE_THORN_VINES_01 script=NULL map=LookoutPoint t=T(85.925,71.765,40) match=Prop xformOk=True meshOk=True
+    mesh= 5357 def=OBJECT_LOOKOUT_POINT_KNIGHT_STATUE_01 script=StatueMasterStatue map=LookoutPoint t=T(79.457,80.217,39.6) match=Prop xformOk=True meshOk=True
+    mesh= 7704 def=OBJECT_OAKVALE_FENCE_01 script=NULL map=LookoutPoint t=T(41.739,78.193,33.678) match=Prop xformOk=True meshOk=True
+    mesh= 7704 def=OBJECT_OAKVALE_FENCE_01 script=NULL map=LookoutPoint t=T(40.222,79.465,33.684) match=Prop xformOk=True meshOk=True
+    mesh= 7704 def=OBJECT_OAKVALE_FENCE_01 script=NULL map=LookoutPoint t=T(60.877,78.5,40.335) match=Prop xformOk=True meshOk=True
+    mesh= 7704 def=OBJECT_OAKVALE_FENCE_01 script=NULL map=LookoutPoint t=T(86.408,101.48,41.523) match=Prop xformOk=True meshOk=True
+    mesh= 7704 def=OBJECT_OAKVALE_FENCE_01 script=NULL map=LookoutPoint t=T(62.952,62.389,39.515) match=Prop xformOk=True meshOk=True
+    mesh= 7704 def=OBJECT_OAKVALE_FENCE_01 script=NULL map=LookoutPoint t=T(61.3,63.289,38.799) match=Prop xformOk=True meshOk=True
+    mesh= 7704 def=OBJECT_OAKVALE_FENCE_01 script=NULL map=LookoutPoint t=T(59.809,64.548,38.229) match=Prop xformOk=True meshOk=True
+    mesh= 7704 def=OBJECT_OAKVALE_FENCE_01 script=NULL map=LookoutPoint t=T(43.583,77.235,33.737) match=Prop xformOk=True meshOk=True
+    mesh= 7704 def=OBJECT_OAKVALE_FENCE_01 script=NULL map=LookoutPoint t=T(45.379,76.444,34.225) match=Prop xformOk=True meshOk=True
+    mesh= 7708 def=OBJECT_OAKVALE_FENCE_BROKEN_01 script=NULL map=LookoutPoint t=T(65.63,67.073,39.315) match=Prop xformOk=True meshOk=True
+    mesh= 7708 def=OBJECT_OAKVALE_FENCE_BROKEN_01 script=NULL map=LookoutPoint t=T(58.354,65.859,37.947) match=Prop xformOk=True meshOk=True
+    mesh= 7712 def=OBJECT_OAKVALE_FENCEGATE_01 script=NULL map=LookoutPoint t=T(87.795,73.482,39.915) match=Prop xformOk=True meshOk=True
+    mesh= 7712 def=OBJECT_OAKVALE_FENCEGATE_01 script=NULL map=LookoutPoint t=T(76.332,58.803,40.543) match=Prop xformOk=True meshOk=True
+    mesh= 7719 def=OBJECT_OAKVALE_FENCEGATE_02 script=NULL map=LookoutPoint t=T(50.532,85.981,39.038) match=Prop xformOk=True meshOk=True
+    mesh= 7700 def=OBJECT_OAKVALE_FENCEPOST_01 script=NULL map=LookoutPoint t=T(60.123,80.286,39.839) match=Prop xformOk=True meshOk=True
+    mesh= 7700 def=OBJECT_OAKVALE_FENCEPOST_01 script=NULL map=LookoutPoint t=T(53.734,86.385,39.353) match=Prop xformOk=True meshOk=True
+    mesh= 7700 def=OBJECT_OAKVALE_FENCEPOST_01 script=NULL map=LookoutPoint t=T(85.424,71.704,40) match=Prop xformOk=True meshOk=True
+    mesh= 7700 def=OBJECT_OAKVALE_FENCEPOST_01 script=NULL map=LookoutPoint t=T(48.605,65.92,37.186) match=Prop xformOk=True meshOk=True
+    mesh= 7700 def=OBJECT_OAKVALE_FENCEPOST_01 script=NULL map=LookoutPoint t=T(48.605,65.92,37.186) match=Prop xformOk=True meshOk=True
+    mesh= 7700 def=OBJECT_OAKVALE_FENCEPOST_01 script=NULL map=LookoutPoint t=T(56.713,66.715,37.476) match=Prop xformOk=True meshOk=True
+    mesh= 7702 def=OBJECT_OAKVALE_FENCEPOST_02 script=NULL map=LookoutPoint t=T(63.839,67.979,39.025) match=Prop xformOk=True meshOk=True
+    mesh= 7702 def=OBJECT_OAKVALE_FENCEPOST_02 script=NULL map=LookoutPoint t=T(36.329,91.868,37.477) match=Prop xformOk=True meshOk=True
+    mesh= 7702 def=OBJECT_OAKVALE_FENCEPOST_02 script=NULL map=LookoutPoint t=T(86.09,103.462,41.176) match=Prop xformOk=True meshOk=True
+    mesh= 7702 def=OBJECT_OAKVALE_FENCEPOST_02 script=NULL map=LookoutPoint t=T(98.035,79.026,38.321) match=Prop xformOk=True meshOk=True
+    mesh= 7702 def=OBJECT_OAKVALE_FENCEPOST_02 script=NULL map=LookoutPoint t=T(47.037,75.708,34.818) match=Prop xformOk=True meshOk=True
+    mesh= 7706 def=OBJECT_OAKVALE_FENCETRIPLE_01 script=NULL map=LookoutPoint t=T(58.696,83.025,39.383) match=Prop xformOk=True meshOk=True
+    mesh= 7706 def=OBJECT_OAKVALE_FENCETRIPLE_01 script=NULL map=LookoutPoint t=T(42.231,91.876,38.351) match=Prop xformOk=True meshOk=True
+    mesh= 7706 def=OBJECT_OAKVALE_FENCETRIPLE_01 script=NULL map=LookoutPoint t=T(86.395,95.579,41.555) match=Prop xformOk=True meshOk=True
+    mesh= 7706 def=OBJECT_OAKVALE_FENCETRIPLE_01 script=NULL map=LookoutPoint t=T(93.091,82.349,39.1) match=Prop xformOk=True meshOk=True
+    mesh= 7706 def=OBJECT_OAKVALE_FENCETRIPLE_01 script=NULL map=LookoutPoint t=T(54.475,66.52,37.165) match=Prop xformOk=True meshOk=True
+    mesh= 7710 def=OBJECT_OAKVALE_FENCETRIPLE_BROKEN_01 script=NULL map=LookoutPoint t=T(47.62,89.426,38.989) match=Prop xformOk=True meshOk=True
+    mesh= 7017 def=OBJECT_OK_ARCH_DOUBLE_CLOSED_HALF script=NULL map=LookoutPoint t=T(71.648,95.168,39.192) match=Prop xformOk=True meshOk=True
+    mesh= 7021 def=OBJECT_OK_ARCH_SINGLE_OPEN script=NULL map=LookoutPoint t=T(82.644,95.374,39.262) match=Prop xformOk=True meshOk=True
+    mesh= 7168 def=OBJECT_OK_PILLAR_COLLAPSED_01 script=NULL map=LookoutPoint t=T(77.421,53.658,41.162) match=Prop xformOk=True meshOk=True
+    mesh= 7168 def=OBJECT_OK_PILLAR_COLLAPSED_01 script=NULL map=LookoutPoint t=T(65.733,59.627,40.915) match=Prop xformOk=True meshOk=True
+    mesh= 7168 def=OBJECT_OK_PILLAR_COLLAPSED_01 script=NULL map=LookoutPoint t=T(84.987,90.314,40.148) match=Prop xformOk=True meshOk=True
+    mesh= 7168 def=OBJECT_OK_PILLAR_COLLAPSED_01 script=NULL map=LookoutPoint t=T(68.876,127.159,31.62) match=Prop xformOk=True meshOk=True
+    mesh= 7031 def=OBJECT_OK_PILLAR_COLLAPSED_02 script=NULL map=LookoutPoint t=T(65.178,88.309,39.742) match=Prop xformOk=True meshOk=True
+    mesh= 7170 def=OBJECT_OK_PILLAR_COLLAPSED_03 script=NULL map=LookoutPoint t=T(74.534,55.407,41.283) match=Prop xformOk=True meshOk=True
+    mesh= 7168 def=OBJECT_OK_RUBBLE_PILLAR_01 script=NULL map=LookoutPoint t=T(65.422,60.823,40.398) match=Prop xformOk=True meshOk=True
+    mesh= 7168 def=OBJECT_OK_RUBBLE_PILLAR_01 script=NULL map=LookoutPoint t=T(85.535,91.09,40.318) match=Prop xformOk=True meshOk=True
+    mesh= 4067 def=OBJECT_REGION_TRANSITION_GATE script=NULL map=LookoutPoint t=T(39.39,84.778,33.683) match=Prop xformOk=True meshOk=True
+    mesh= 4067 def=OBJECT_REGION_TRANSITION_GATE script=NULL map=LookoutPoint t=T(71.054,37.4,38.8) match=Prop xformOk=True meshOk=True
+    mesh= 7934 def=OBJECT_SILVER_KEY script=NULL map=LookoutPoint t=T(103.027,62.399,36.731) match=Prop xformOk=True meshOk=True
+    mesh= 4978 def=OBJECT_STREETLAMP_LIT_SINGLE_01 script=NULL map=LookoutPoint t=T(80.101,105.117,38.338) match=Light xformOk=True meshOk=True
+    mesh= 4978 def=OBJECT_STREETLAMP_LIT_SINGLE_01 script=NULL map=LookoutPoint t=T(126.445,75.485,30.164) match=Light xformOk=True meshOk=True
+    mesh= 4978 def=OBJECT_STREETLAMP_LIT_SINGLE_01 script=NULL map=LookoutPoint t=T(50.392,79.403,35.648) match=Light xformOk=True meshOk=True
+    mesh= 4978 def=OBJECT_STREETLAMP_LIT_SINGLE_01 script=NULL map=LookoutPoint t=T(72.596,54.225,41.337) match=Light xformOk=True meshOk=True
+    mesh= 4978 def=OBJECT_STREETLAMP_LIT_SINGLE_01 script=NULL map=LookoutPoint t=T(71.469,89.023,40) match=Light xformOk=True meshOk=True
+    mesh= 4978 def=OBJECT_STREETLAMP_LIT_SINGLE_01 script=NULL map=LookoutPoint t=T(98.007,72.464,38.121) match=Light xformOk=True meshOk=True
+    mesh= 4978 def=OBJECT_STREETLAMP_LIT_SINGLE_01 script=NULL map=LookoutPoint t=T(47.196,67.908,37.114) match=Light xformOk=True meshOk=True
+    mesh= 4911 def=OBJECT_STREETSIGN_01 script=NULL map=LookoutPoint t=T(68.067,61.012,40.275) match=Prop xformOk=True meshOk=True
+    mesh= 4911 def=OBJECT_STREETSIGN_01 script=NULL map=LookoutPoint t=T(72.521,92.148,39.995) match=Prop xformOk=True meshOk=True
+    mesh= 4911 def=OBJECT_STREETSIGN_01 script=NULL map=LookoutPoint t=T(79.202,62.38,40.313) match=Prop xformOk=True meshOk=True
+    mesh= 4911 def=OBJECT_STREETSIGN_01 script=NULL map=LookoutPoint t=T(75.952,59.824,40.47) match=Prop xformOk=True meshOk=True
+    mesh= 7548 def=OBJECT_TOWNBENCH_01 script=NULL map=LookoutPoint t=T(77.498,80.082,40) match=Prop xformOk=True meshOk=True
+    mesh= 7548 def=OBJECT_TOWNBENCH_01 script=NULL map=LookoutPoint t=T(79.446,78.273,40) match=Prop xformOk=True meshOk=True
+    mesh= 7548 def=OBJECT_TOWNBENCH_01 script=NULL map=LookoutPoint t=T(79.442,82.098,40) match=Prop xformOk=True meshOk=True
+    mesh= 7548 def=OBJECT_TOWNBENCH_01 script=NULL map=LookoutPoint t=T(81.501,80.192,40) match=Prop xformOk=True meshOk=True
+    mesh= 5323 def=OBJECT_WALL_SMALL_CURVED_01 script=NULL map=LookoutPoint t=T(73.102,66.73,40.18) match=Prop xformOk=True meshOk=True
+    mesh= 5323 def=OBJECT_WALL_SMALL_CURVED_01 script=NULL map=LookoutPoint t=T(36.144,82.226,33.684) match=Prop xformOk=True meshOk=True
+    mesh= 5325 def=OBJECT_WALL_SMALL_CURVED_02 script=NULL map=LookoutPoint t=T(67.339,85.191,39.955) match=Prop xformOk=True meshOk=True
+    mesh= 5325 def=OBJECT_WALL_SMALL_CURVED_02 script=NULL map=LookoutPoint t=T(63.52,83.523,39.817) match=Prop xformOk=True meshOk=True
+    mesh= 5325 def=OBJECT_WALL_SMALL_CURVED_02 script=NULL map=LookoutPoint t=T(64.846,79.693,39.755) match=Prop xformOk=True meshOk=True
+    mesh= 5325 def=OBJECT_WALL_SMALL_CURVED_02 script=NULL map=LookoutPoint t=T(70.55,75.48,40) match=Prop xformOk=True meshOk=True
+    mesh= 5325 def=OBJECT_WALL_SMALL_CURVED_02 script=NULL map=LookoutPoint t=T(75.383,70.07,40.144) match=Prop xformOk=True meshOk=True
+    mesh= 5325 def=OBJECT_WALL_SMALL_CURVED_02 script=NULL map=LookoutPoint t=T(50.498,72.324,36.292) match=Prop xformOk=True meshOk=True
+    mesh= 5325 def=OBJECT_WALL_SMALL_CURVED_02 script=NULL map=LookoutPoint t=T(72.844,118.957,32.676) match=Prop xformOk=True meshOk=True
+    mesh= 5309 def=OBJECT_WALL_SMALL_CURVED_180 script=NULL map=LookoutPoint t=T(46.117,67.82,37.163) match=Prop xformOk=True meshOk=True
+    mesh= 5327 def=OBJECT_WALL_SMALL_CURVED_BIG_01 script=NULL map=LookoutPoint t=T(104.427,77.338,37.272) match=Prop xformOk=True meshOk=True
+    mesh= 5327 def=OBJECT_WALL_SMALL_CURVED_BIG_01 script=NULL map=LookoutPoint t=T(89.596,75.078,39.154) match=Prop xformOk=True meshOk=True
+    mesh= 5327 def=OBJECT_WALL_SMALL_CURVED_BIG_01 script=NULL map=LookoutPoint t=T(66.016,114.494,35.062) match=Prop xformOk=True meshOk=True
+    mesh= 5329 def=OBJECT_WALL_SMALL_CURVED_BIG_BROKEN_01 script=NULL map=LookoutPoint t=T(79.92,67.775,40.196) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(63.681,83.771,39.601) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(64.642,79.851,39.752) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(80.148,65.71,40.277) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(69.906,88.789,39.973) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(67.455,84.996,39.948) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(68.445,79.786,39.979) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(70.459,75.699,40) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(81.629,104.323,38.159) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(81.439,100.401,39.327) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(89.468,84.896,39.427) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(92.767,82.709,38.966) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(98.548,78.66,37.896) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(106.117,78.885,37.378) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(110.188,74.369,37.086) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(102.376,70.94,37.263) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(96.177,72.752,38.244) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(88.28,73.718,39.674) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(84.947,71.447,40) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(75.356,69.855,40.155) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(72.786,66.68,40.177) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(66.345,66.803,39.337) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(63.354,62.104,39.47) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(39.705,79.871,33.684) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(36.157,82.152,33.624) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(32.696,81.241,33.68) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(66.419,57.27,41.028) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(65.383,50.398,41.203) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(66.034,46.462,40.645) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(66.737,42.677,39.527) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(68.113,38.763,39.294) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(68.18,34.778,38.397) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(74.136,35.861,38.62) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(73.591,43.947,40.005) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(72.709,52.179,41.44) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(76.141,60.928,40.449) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(86.08,87.387,39.898) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(98.277,70.212,37.803) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(95.429,73.818,38.309) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(73.584,73.309,40) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(48.177,65.891,37.18) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(46.797,70.752,37.164) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(50.518,72.448,36.415) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(48.215,75.116,35.002) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(74.203,32.417,38.089) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(65.34,54.165,41.535) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(72.92,119.195,32.656) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(78.969,124.13,30.163) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(67.802,113.572,35.172) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(65.911,120.383,33.741) match=Prop xformOk=True meshOk=True
+    mesh= 5331 def=OBJECT_WALL_SMALL_POST_01 script=NULL map=LookoutPoint t=T(72.908,115.552,34.192) match=Prop xformOk=True meshOk=True
+    mesh= 5319 def=OBJECT_WALL_SMALL_RIGHTANGLE_BIG_01 script=NULL map=LookoutPoint t=T(67.375,61.121,40.212) match=Prop xformOk=True meshOk=True
+    mesh= 5319 def=OBJECT_WALL_SMALL_RIGHTANGLE_BIG_01 script=NULL map=LookoutPoint t=T(80.575,61.39,40.323) match=Prop xformOk=True meshOk=True
+    mesh= 5321 def=OBJECT_WALL_SMALL_RIGHTANGLE_SMALL_01 script=NULL map=LookoutPoint t=T(95.929,70.517,38.121) match=Prop xformOk=True meshOk=True
+    mesh= 5333 def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL map=LookoutPoint t=T(81.54,102.142,38.891) match=Prop xformOk=True meshOk=True
+    mesh= 5333 def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL map=LookoutPoint t=T(91.178,83.742,39.196) match=Prop xformOk=True meshOk=True
+    mesh= 5333 def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL map=LookoutPoint t=T(87.654,86.155,39.707) match=Prop xformOk=True meshOk=True
+    mesh= 5333 def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL map=LookoutPoint t=T(69.431,77.738,40) match=Prop xformOk=True meshOk=True
+    mesh= 5333 def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL map=LookoutPoint t=T(68.686,86.915,39.942) match=Prop xformOk=True meshOk=True
+    mesh= 5333 def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL map=LookoutPoint t=T(37.832,81.045,33.664) match=Prop xformOk=True meshOk=True
+    mesh= 5333 def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL map=LookoutPoint t=T(65.401,52.52,41.369) match=Prop xformOk=True meshOk=True
+    mesh= 5333 def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL map=LookoutPoint t=T(65.698,48.562,40.982) match=Prop xformOk=True meshOk=True
+    mesh= 5333 def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL map=LookoutPoint t=T(66.274,44.768,40.107) match=Prop xformOk=True meshOk=True
+    mesh= 5333 def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL map=LookoutPoint t=T(67.395,40.831,39.464) match=Prop xformOk=True meshOk=True
+    mesh= 5333 def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL map=LookoutPoint t=T(68.124,36.951,38.902) match=Prop xformOk=True meshOk=True
+    mesh= 5333 def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL map=LookoutPoint t=T(100.429,70.512,37.599) match=Prop xformOk=True meshOk=True
+    mesh= 5333 def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL map=LookoutPoint t=T(48.512,71.622,36.766) match=Prop xformOk=True meshOk=True
+    mesh= 5333 def=OBJECT_WALL_SMALL_STRAIGHT_01 script=NULL map=LookoutPoint t=T(74.194,34.314,38.334) match=Prop xformOk=True meshOk=True
+    mesh= 5335 def=OBJECT_WALL_SMALL_STRAIGHT_BIG_01 script=NULL map=LookoutPoint t=T(73.375,46.209,40.374) match=Prop xformOk=True meshOk=True
+    mesh= 5335 def=OBJECT_WALL_SMALL_STRAIGHT_BIG_01 script=NULL map=LookoutPoint t=T(80.386,125.126,29.705) match=Prop xformOk=True meshOk=True
+    mesh= 5335 def=OBJECT_WALL_SMALL_STRAIGHT_BIG_01 script=NULL map=LookoutPoint t=T(66.513,122.368,33.182) match=Prop xformOk=True meshOk=True
+    mesh= 5337 def=OBJECT_WALL_SMALL_STRAIGHT_BIG_BROKEN_01 script=NULL map=LookoutPoint t=T(104.41,71.797,37.28) match=Prop xformOk=True meshOk=True
+    mesh= 5337 def=OBJECT_WALL_SMALL_STRAIGHT_BIG_BROKEN_01 script=NULL map=LookoutPoint t=T(73.988,38.048,39.019) match=Prop xformOk=True meshOk=True
+    mesh= 5337 def=OBJECT_WALL_SMALL_STRAIGHT_BIG_BROKEN_01 script=NULL map=LookoutPoint t=T(74.236,120.329,32.048) match=Prop xformOk=True meshOk=True
+    mesh= 5313 def=OBJECT_WALL_SMALL_STRAIGHT_BIG_BROKEN_02 script=NULL map=LookoutPoint t=T(69.64,66.717,39.888) match=Prop xformOk=True meshOk=True
+
+=== COMPARE exist ===
+  expectedExist=465 lifecycleRegionThings=465
+  missingExist=0 extraExist=0 duplicateKeys=0
+
+=== COMPARE render (primary C3D) ===
+  expectedRender=193 submittedInst=193 (CMultiStatic may expand 1 thing → N meshes)
+  missingRender=0 extraRender=0 dupRender=1 wrongMap=0 wrongMesh=0 wrongXform=0 wrongDef=0
+    DUP render n=2 OBJECT_OAKVALE_FENCEPOST_01|NULL|7700|T(48.605,65.92,37.186)
+
+=== PresentWorld neighbour instances (exist as handles, not Submit C3D) ===
+  BowerstoneBridge: instances=69 defs=18
+  GuildExterior: instances=18 defs=15
+
+=== GRAPHICS / PALSKIN ===
+  hero mesh 4299 parsed=True bones=77 skinFaces=2117 palskin=True
+    PALSKIN mesh=4299 bones=77 faces=2117 things=CREATURE_HERO
+  uniqueMeshes=45 parseFail=0 palskinMeshes=1
+
+=== LOOKOUT TNG KIND HISTOGRAM (raw file, no spawn) ===
+  kind Object=192
+  kind Marker=45
+  kind Thing=39
+  kind AICreature=9
+  kind Holy Site=3
+  PlayerCreature in TNG: False
+  CREATURE_HERO in TNG: False
+  CREATURE_HERO_CHILD in TNG: False
+
+=== CAMERA / NON-THING SUBMIT ===
+  camera seeded=True helper=True fov=70 pos=<52.688477, 69.59741, 36.98183> fwd=<-1, 0, 0> up=<0, 0, 1>
+  terrain maps submitted=[LookoutPoint,PicnicArea_Filler_02,PicnicArea,Greatwood_2,PicnicArea_Filler_03,Fisherman]
+  sky is not a Thing (0x2000 ellipsoid) — not in TNG
+  water 0x20000 first-seen empty-out
