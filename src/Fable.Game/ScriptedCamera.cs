@@ -37,6 +37,12 @@ public sealed class ScriptedCamera
     public Vector3 Up { get; private set; } = LandscapeFrustum.FirstSeenCameraUp;
     public float FovDegrees { get; private set; } = RegionTravel.IntroCameraFovDegrees;
     public bool ScriptCameraActive { get; private set; }
+    /// <summary>
+    /// <c>vtbl+1672</c>: true while a spline / path /
+    /// orbit is playing. Snap <c>UseCamera</c> bind
+    /// arrives immediately so this stays false.
+    /// </summary>
+    public bool Playing { get; private set; }
 
     private string _gameplayName = "";
     private Vector3 _gameplayPos;
@@ -68,7 +74,17 @@ public sealed class ScriptedCamera
         Up = up.LengthSquared() > 1e-8f ? Vector3.Normalize(up) : LandscapeFrustum.FirstSeenCameraUp;
         FovDegrees = fovDegrees;
         ScriptCameraActive = true;
+        Playing = false;
     }
+
+    /// <summary>
+    /// Path / rig / rotate / look-between start a
+    /// transition. <c>WaitForCamera</c> leftover-polls
+    /// until <see cref="EndTransition"/>.
+    /// </summary>
+    public void BeginTransition() => Playing = true;
+
+    public void EndTransition() => Playing = false;
 
     public void SnapshotGameplay()
     {
@@ -88,6 +104,7 @@ public sealed class ScriptedCamera
     public void Reset()
     {
         ScriptCameraActive = false;
+        Playing = false;
         if (!_hasGameplay)
         {
             ActiveName = "";

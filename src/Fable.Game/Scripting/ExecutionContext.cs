@@ -108,6 +108,7 @@ public sealed class CutsceneState
 public sealed class CameraRuntime
 {
     private readonly List<string> _preloaded = [];
+    private ScriptedCamera? _live;
     public IReadOnlyList<string> Preloaded => _preloaded;
     public string ActiveName { get; private set; } = "";
     public string LookAt { get; private set; } = "";
@@ -151,9 +152,12 @@ public sealed class CameraRuntime
 
     public void Bind(ScriptedCamera? camera, IReadOnlyList<ThingInstance> things, string name)
     {
+        _live = camera;
         ActiveName = name;
-        Busy = true;
         camera?.UseCamera(things, name);
+        // Snap UseCamera vtbl+1648 arrives immediately;
+        // vtbl+1672 is idle (Playing=false).
+        Busy = camera?.Playing ?? false;
     }
 
     public void ClearBusy() => Busy = false;
@@ -198,6 +202,8 @@ public sealed class CameraRuntime
         PathC = nameC;
         PathD = nameD;
         PathDuration = duration;
+        _live = camera;
+        camera?.BeginTransition();
         Busy = true;
         if (a is { PositionX: not null })
             camera?.SetPosition(RegionTravel.PositionOf(a));
@@ -252,6 +258,8 @@ public sealed class CameraRuntime
         RotateParam = param;
         RotateAxis = axis;
         RotateActive = true;
+        _live = camera;
+        camera?.BeginTransition();
         Busy = true;
         if (thing is { PositionX: not null })
             camera?.SetLookAt(RegionTravel.PositionOf(thing));
@@ -260,6 +268,8 @@ public sealed class CameraRuntime
     public void LookAtThing(ScriptedCamera? camera, ThingInstance? thing, string name)
     {
         LookAt = name;
+        _live = camera;
+        camera?.BeginTransition();
         Busy = true;
         if (thing is { PositionX: not null })
             camera?.SetLookAt(RegionTravel.PositionOf(thing));
@@ -298,6 +308,8 @@ public sealed class CameraRuntime
         LookBetweenDuration = duration;
         LookBetweenFov = fovDegrees;
         LookAt = nameA + "|" + nameB;
+        _live = camera;
+        camera?.BeginTransition();
         Busy = true;
         if (fovDegrees >= 0f)
             camera?.SetFovDegrees(fovDegrees);
@@ -331,13 +343,20 @@ public sealed class CameraRuntime
         RigOffset = offset;
         RigSeconds = seconds;
         RigActive = true;
-        Busy = true;
+        _live = camera;
         ActiveName = nameA;
         if (b is not { PositionX: not null })
+        {
+            camera?.BeginTransition();
+            Busy = true;
             return;
+        }
+
         var dest = RegionTravel.PositionOf(b) + offset;
         camera?.UseCamera(things, nameA);
         camera?.SetPosition(dest);
+        camera?.BeginTransition();
+        Busy = true;
     }
 
     /// <summary>
@@ -436,6 +455,7 @@ public sealed class CameraRuntime
     /// </summary>
     public void Reset(ScriptedCamera? camera)
     {
+        _live = camera;
         camera?.Reset();
         ActiveName = camera?.ActiveName ?? "";
         LookAt = "";
@@ -450,15 +470,24 @@ public sealed class CameraRuntime
     public bool MessageBusy { get; private set; }
     private int _waitSerial;
 
-    public PendingOperation WaitForCamera()
+    /// <summary>
+    /// <c>00CCA58F</c> leftover-polls
+    /// <c>vtbl+1672</c> on the live camera.
+    /// Idle (snap / no transition) continues.
+    /// Busy leftover <c>vtbl+28</c> then re-poll.
+    /// </summary>
+    public PendingOperation WaitForCamera(ScriptedCamera? camera = null)
     {
-        if (!Busy)
+        if (camera is not null)
+            _live = camera;
+        var playing = _live?.Playing ?? Busy;
+        Busy = playing;
+        if (!playing)
         {
-            var done = new PendingOperation($"cam-{++_waitSerial}", "WaitForCamera", null, ActiveName)
+            return new PendingOperation($"cam-{++_waitSerial}", "WaitForCamera", null, ActiveName)
             {
                 Complete = true,
             };
-            return done;
         }
 
         WaitOp = new PendingOperation($"cam-{++_waitSerial}", "WaitForCamera", null, ActiveName);
@@ -495,6 +524,7 @@ public sealed class CameraRuntime
     {
         Busy = false;
         MessageBusy = false;
+        _live?.EndTransition();
         if (WaitOp is not null)
             WaitOp.Complete = true;
         if (MessageWaitOp is not null)

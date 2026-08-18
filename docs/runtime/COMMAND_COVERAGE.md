@@ -3,7 +3,7 @@ GLOBAL: 124
 ENTITY: 61
 RECOVERED DISPATCH: 98
 RECOVERED RETURN: 98
-RECOVERED APPLY: 31
+RECOVERED APPLY: 32
 IMPLEMENTED RUNTIME: 13
 UNREAD: 87
 # Native command coverage
@@ -71,7 +71,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | CameraPath | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | CameraRotateThing | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | SetFlag | Global | Proven | Proven | Proven | Proven | Proven | Proven |
-| WaitForCamera | Global | Proven | Proven | Proven | Partial | Partial | Partial |
+| WaitForCamera | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | TeleportToHSP | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | PlayAVI | Global | Proven | Proven | Proven | Proven | Proven | Proven |
 | NoLoadUseCamera | Global | Proven | Proven | Proven | Proven | Partial | Partial |

@@ -277,12 +277,12 @@ public static class GlobalDispatcher
 
         if (Eq(v, "WaitForCamera"))
         {
-            var op = ctx.Camera.WaitForCamera();
+            var op = ctx.Camera.WaitForCamera(ctx.Runtime.Camera);
             if (op.Complete)
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "idle");
             return CommandResult.Wait(
                 ExecutionKind.WaitOperation, CommandStatus.Proven, CommandFamily.Global,
-                "WaitForCamera vtbl+1672", "camera-idle", op.Id, ctx.Camera.ActiveName);
+                "WaitForCamera leftover vtbl+1672", "camera-idle", op.Id, ctx.Camera.ActiveName);
         }
 
         if (Eq(v, "WaitForMessageCamera"))

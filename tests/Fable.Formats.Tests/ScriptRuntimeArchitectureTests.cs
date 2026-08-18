@@ -3124,6 +3124,154 @@ public sealed class ScriptRuntimeArchitectureTests
         var interp = new ScriptInterpreter("camw", ["WaitForCamera"]);
         interp.RunUntilYield(runtime);
         Assert.True(interp.Finished);
+        Assert.Equal(0x00CCA58Fu, ScriptCommandMap.Find("WaitForCamera")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void UseCamera_snap_then_WaitForCamera_continues()
+    {
+        var camera = new ScriptedCamera();
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "CTCCameraPointScripted",
+                ScriptName = "SecretPassageCryptCam",
+                PositionX = 8,
+                PositionY = 4,
+                PositionZ = 2,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], camera);
+        var interp = new ScriptInterpreter("wfc",
+            ["UseCamera SecretPassageCryptCam", "WaitForCamera", "ResetCamera"]);
+        interp.RunUntilYield(runtime);
+        Assert.Equal("SecretPassageCryptCam", camera.ActiveName);
+        Assert.False(camera.Playing);
+        Assert.False(runtime.CameraSys.Busy);
+        interp.Resume(runtime);
+        Assert.Contains("WaitForCamera", interp.Executed);
+        Assert.Contains("ResetCamera", interp.Executed);
+        Assert.True(interp.Finished);
+        Assert.False(camera.Playing);
+        Assert.False(camera.ScriptCameraActive);
+    }
+
+    [Fact]
+    public void CameraPath_then_WaitForCamera_leftover_polls()
+    {
+        var camera = new ScriptedCamera();
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "MK_A",
+                PositionX = 1,
+                PositionY = 0,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "MK_B",
+                PositionX = 5,
+                PositionY = 0,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], camera);
+        var interp = new ScriptInterpreter("pathw",
+        [
+            "CameraPath MK_A,MK_B,MK_A,MK_B,2.0",
+            "WaitForCamera",
+            "CameraPause FALSE",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(camera.Playing);
+        Assert.True(runtime.CameraSys.Busy);
+        interp.Resume(runtime);
+        Assert.Equal(ExecutionKind.WaitOperation, interp.CurrentWaitKind);
+        runtime.CameraSys.CompleteWait();
+        interp.Resume(runtime);
+        Assert.True(interp.Finished);
+        Assert.False(camera.Playing);
+        Assert.Contains("CameraPause FALSE", interp.Executed);
+    }
+
+    [Fact]
+    public void WaitForCamera_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_OPENGRAVE_CRYPTCAM");
+        Assert.NotNull(hit);
+        var commands = hit.Commands.Count > 0
+            ? hit.Commands
+            : ScriptBank.ExtractCommands(hit.Raw);
+        Assert.Contains(commands, l =>
+            l.StartsWith("UseCamera ", StringComparison.OrdinalIgnoreCase));
+        Assert.Contains(commands, l =>
+            l.Equals("WaitForCamera", StringComparison.OrdinalIgnoreCase));
+        var camera = new ScriptedCamera();
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var camName = ScriptLine.Parse(
+            commands.First(l => l.StartsWith("UseCamera ", StringComparison.OrdinalIgnoreCase))).Arg(0);
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "CTCCameraPointScripted",
+                ScriptName = camName,
+                PositionX = 12,
+                PositionY = 6,
+                PositionZ = 3,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], camera);
+        var isolated = new ScriptInterpreter(hit.InstanceName, commands.ToList());
+        isolated.RunUntilYield(runtime);
+        Assert.Equal(camName, camera.ActiveName);
+        Assert.True(camera.ScriptCameraActive);
+        Assert.False(camera.Playing);
+        isolated.Resume(runtime);
+        Assert.Contains("WaitForCamera", isolated.Executed);
+        Assert.True(isolated.Finished);
+        Assert.Equal(12f, camera.Position.X);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-wfc.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-waitforcamera.txt"),
+            """
+            WaitForCamera 00CCA41F / apply 00CCA58F
+              no args; context vtbl+1672
+              al==0 idle → 00CD17FD
+              al!=0 leftover 00CCA52F:
+                vtbl+40; skip 00CBEB7E; vtbl+28
+                inc [0x13B83C8]; [0x13D2838]+5 → next
+                else re-poll 1672
+            UseCamera vtbl+1648 snap arrives immediately
+              Playing=false so WaitForCamera continues
+            CameraPath/Rig/Rotate BeginTransition
+              Playing=true leftover-poll until idle
+            Spline/blend body UNREAD (Runtime PARTIAL)
+            """);
     }
 
     [Fact]

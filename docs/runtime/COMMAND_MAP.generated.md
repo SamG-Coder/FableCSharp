@@ -13,7 +13,7 @@
 | DoCameraPreloading | `00CC86D0` | `00CBF29F` | [IsTrue] | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | collects UseCamera names vtbl+1648; vtbl+1560/1568 UNREAD |
 | UseCamera | `00CC9F3A` | `00B23B50` | name | YieldAfter | Proven | Proven | Proven | Proven | Partial | Partial | TNG lookup; bind ScriptedCamera pos/look/fov; one vtbl+28; spline unread |
 | NoLoadUseCamera | `00CC9E6A` | `00CC907D` | name | YieldAfter | Proven | Proven | Proven | Proven | Partial | Partial | separate token; same TNG bind; yield helper 00CC907D |
-| WaitForCamera | `00CCA41F` | `00CCA58F` |  | YieldAfterOrWait | Proven | Proven | Proven | Partial | Partial | Partial | poll vtbl+1672; idle -> 00CD17FD; busy -> vtbl+28 then re-poll |
+| WaitForCamera | `00CCA41F` | `00CCA58F` |  | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | vtbl+1672 on live camera; snap idle continue; spline leftover re-poll |
 | WaitForMessageCamera | `00CCFF91` | `00CD0006` | name | YieldAfterOrWait | Proven | Proven | Proven | Partial | Partial | Partial | poll vtbl+2316(name); idle continue; leftover 00CCFFB2 |
 | ResetCamera | `00CC9DF1` | `00CC9E40` |  | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | vtbl+1668(0.0) then vtbl+1664; jmp 00CD17FD; restores gameplay snapshot |
 | DrawThing | `00CC9D07` | `00CC9DDD` | name,IsFalse? | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | lookup arg0; IsFalse(arg1)->0 else 1; vtbl+2044; jmp 00CC864B; World.Drawable |

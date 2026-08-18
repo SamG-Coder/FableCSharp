@@ -261,8 +261,10 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Partial),
             "separate token; same TNG bind; yield helper 00CC907D"),
         Spec("WaitForCamera", 0x00CCA41F, 0x00CCA58F, "",
-            ScriptReturn.YieldAfterOrWait, CommandParity.ScriptLayer,
-            "poll vtbl+1672; idle -> 00CD17FD; busy -> vtbl+28 then re-poll"),
+            ScriptReturn.YieldAfterOrWait, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "vtbl+1672 on live camera; snap idle continue; spline leftover re-poll"),
         Spec("WaitForMessageCamera", 0x00CCFF91, 0x00CD0006, "name",
             ScriptReturn.YieldAfterOrWait, CommandParity.ScriptLayer,
             "poll vtbl+2316(name); idle continue; leftover 00CCFFB2"),
