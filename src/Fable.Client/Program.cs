@@ -123,6 +123,8 @@ window.Update += dt =>
 
         nWasDown = nDown;
         renderer?.ClearVideoFrame();
+        // 0042DF9E BeginScene/UI/EndScene/009BEEB0.
+        // window.Render Draw is that Present.
         life.Pump();
         window.Title = Title();
         return;

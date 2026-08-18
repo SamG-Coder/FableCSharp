@@ -164,6 +164,85 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.Equal(0, life.FrontendFrameCount);
+        Assert.True(life.Pump());
+        Assert.Equal(1, life.FrontendFrameCount);
+        Assert.Equal(1, life.FrontendPresentCount);
+        var vas = life.Trace.Events
+            .Where(e => e.Va is
+                EngineLifecycle.FrontendInputFn or
+                EngineLifecycle.FrontendRecordFillFn or
+                EngineLifecycle.FrontendDrawFn or
+                EngineLifecycle.BeginSceneFn or
+                EngineLifecycle.FrontendUiDrawFn or
+                EngineLifecycle.EndSceneFn or
+                EngineLifecycle.PresentFn)
+            .Select(e => e.Va)
+            .ToArray();
+        Assert.Contains(EngineLifecycle.FrontendInputFn, vas);
+        Assert.Contains(EngineLifecycle.FrontendRecordFillFn, vas);
+        Assert.Contains(EngineLifecycle.FrontendDrawFn, vas);
+        Assert.Contains(EngineLifecycle.BeginSceneFn, vas);
+        Assert.Contains(EngineLifecycle.EndSceneFn, vas);
+        Assert.Contains(EngineLifecycle.PresentFn, vas);
+        var begin = Array.IndexOf(vas, EngineLifecycle.BeginSceneFn);
+        var ui = Array.IndexOf(vas, EngineLifecycle.FrontendUiDrawFn);
+        var end = Array.IndexOf(vas, EngineLifecycle.EndSceneFn);
+        var present = Array.IndexOf(vas, EngineLifecycle.PresentFn);
+        Assert.True(begin >= 0 && begin < ui && ui < end && end < present);
+        Assert.Equal(RegionTravel.PlayAviPresent, EngineLifecycle.PresentFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+            "traces");
+        Directory.CreateDirectory(dest);
+        life.Trace.Write(Path.Combine(dest, "frontend-0042E3EE.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-0042E3EE.txt"),
+            """
+            0042EC7C inner frontend loop (0042F041):
+              0042E3EE input walk [0x13B8388]
+              0042DC94 update dt + 00599E3F
+              0042FA30 zero 112-byte record
+              0042DBFA fill record (zeros + retail+204)
+              0042DF9E draw:
+                009D8CF0 clear
+                009BEF20 BeginScene
+                00595582 / 00595222 UI vtbl+8
+                009BEF50 EndScene
+                009BEEB0 IDirect3DDevice9::Present
+            Same Present as PlayAVI. Vulkan Draw is
+            that Present, not a second swapchain.
+            00595A03 after 0042DF9E is always 0; extra
+            .wmv path skipped. Not 00DBDE40.
+            """);
+    }
+
+    [Fact]
+    public void Frontend_present_runs_on_install_after_videos()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.Equal(EngineStage.Frontend, life.Stage);
+        Assert.True(life.Pump());
+        Assert.Equal(1, life.FrontendPresentCount);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PresentFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.BeginSceneFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void New_game_is_leave_frontend_then_FinalAlbion_wld()
     {
         var life = new EngineLifecycle();
@@ -572,6 +651,17 @@ public sealed class EngineLifecycleTests
         Assert.Equal(41, EngineLifecycle.RetailNewGameFlagOffset);
         Assert.Equal(0x00595A03u, EngineLifecycle.FrontendMenuMissFn);
         Assert.Equal("UI_TEXT_NEW_GAME", EngineLifecycle.FrontendMenuItems[0].Label);
+        Assert.Equal(0x0042E3EEu, EngineLifecycle.FrontendInputFn);
+        Assert.Equal(0x0042DC94u, EngineLifecycle.FrontendUpdateFn);
+        Assert.Equal(0x0042FA30u, EngineLifecycle.FrontendRecordZeroFn);
+        Assert.Equal(0x0042DBFAu, EngineLifecycle.FrontendRecordFillFn);
+        Assert.Equal(0x0042DF9Eu, EngineLifecycle.FrontendDrawFn);
+        Assert.Equal(0x00595222u, EngineLifecycle.FrontendUiDrawFn);
+        Assert.Equal(RegionTravel.PlayAviBeginScene, EngineLifecycle.BeginSceneFn);
+        Assert.Equal(RegionTravel.PlayAviEndScene, EngineLifecycle.EndSceneFn);
+        Assert.Equal(RegionTravel.PlayAviPresent, EngineLifecycle.PresentFn);
+        Assert.Equal(0x009D8CF0u, EngineLifecycle.ClearColorFn);
+        Assert.Equal(112, EngineLifecycle.FrontendRecordSize);
         Assert.Equal(25, EngineLifecycle.LevHeaderVersion);
         Assert.Equal(0x1904u, EngineLifecycle.LevHeaderConstant);
         Assert.NotEqual(0x00DBDE40u, EngineLifecycle.GamePump);

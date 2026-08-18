@@ -85,6 +85,26 @@ public sealed class EngineLifecycle
     public const int FrontendNewGameMessage = 15;
     public const int RetailNewGameFlagOffset = 41;
     public const int RetailLoadGameFlagOffset = 42;
+    /// <summary>
+    /// <c>0042EC7C</c> loop after Init frontend:
+    /// <c>0042E3EE</c> input, <c>0042DC94</c>
+    /// update, <c>0042FA30</c> zero record,
+    /// <c>0042DBFA</c> fill, <c>0042DF9E</c>
+    /// BeginScene / UI draw / EndScene /
+    /// Present. Same device Present as PlayAVI.
+    /// </summary>
+    public const uint FrontendInputFn = 0x0042E3EE;
+    public const uint FrontendUpdateFn = 0x0042DC94;
+    public const uint FrontendRecordZeroFn = 0x0042FA30;
+    public const uint FrontendRecordFillFn = 0x0042DBFA;
+    public const uint FrontendDrawFn = 0x0042DF9E;
+    public const uint FrontendUiDrawFn = 0x00595222;
+    public const uint FrontendUiTickFn = 0x00599E3F;
+    public const uint BeginSceneFn = RegionTravel.PlayAviBeginScene;
+    public const uint EndSceneFn = RegionTravel.PlayAviEndScene;
+    public const uint PresentFn = RegionTravel.PlayAviPresent;
+    public const uint ClearColorFn = 0x009D8CF0;
+    public const int FrontendRecordSize = 112;
     public const uint InitGameSite = 0x0042F491;
     public const string FinalAlbionWld = "FinalAlbion.wld";
     public const uint VideoPlayFlagVa = 0x01375448;
@@ -605,6 +625,8 @@ public sealed class EngineLifecycle
     /// <c>0042F297</c> Leave frontend.
     /// </summary>
     public bool RetailNewGameFlag { get; private set; }
+    public int FrontendFrameCount { get; private set; }
+    public int FrontendPresentCount { get; private set; }
     public IReadOnlyList<string> FrontendMenuLabels =>
         FrontendMenuItems.Select(i => i.Label).ToList();
     public IReadOnlyList<int> GameTickTypes => _tickTypes;
@@ -702,6 +724,7 @@ public sealed class EngineLifecycle
         {
             if (!FrontendUiPresent)
                 InitFrontendUi();
+            PumpFrontendFrame();
             if (RetailNewGameFlag)
             {
                 RequestNewGame();
@@ -775,6 +798,31 @@ public sealed class EngineLifecycle
         foreach (var (label, id) in FrontendMenuItems)
             Note(FrontendUiBuildMenu, "Frontend", "UI", $"{label} id={id}");
         FrontendUiPresent = true;
+    }
+
+    /// <summary>
+    /// <c>0042EC7C</c> inner frontend frame.
+    /// Present is <c>009BEEB0</c> inside
+    /// <c>0042DF9E</c>, same device Present
+    /// the Vulkan path already translates.
+    /// </summary>
+    public void PumpFrontendFrame()
+    {
+        Note(FrontendInputFn, "Frontend", "Input", "0042E3EE");
+        Note(FrontendUpdateFn, "Frontend", "UI", "0042DC94");
+        Note(FrontendUiTickFn, "Frontend", "UI", "00599E3F");
+        Note(FrontendRecordZeroFn, "Frontend", "Render",
+            $"0042FA30 zero {FrontendRecordSize}");
+        Note(FrontendRecordFillFn, "Frontend", "Render", "0042DBFA");
+        Note(FrontendDrawFn, "Frontend", "Render", "0042DF9E");
+        Note(ClearColorFn, "Frontend", "D3D9", "009D8CF0 clear");
+        Note(BeginSceneFn, "Frontend", "D3D9", "009BEF20 BeginScene");
+        Note(FrontendUiGet, "Frontend", "UI", "00595582");
+        Note(FrontendUiDrawFn, "Frontend", "UI", "00595222 vtbl+8 walk");
+        Note(EndSceneFn, "Frontend", "D3D9", "009BEF50 EndScene");
+        Note(PresentFn, "Frontend", "D3D9", "009BEEB0 Present");
+        FrontendFrameCount++;
+        FrontendPresentCount++;
     }
 
     /// <summary>
