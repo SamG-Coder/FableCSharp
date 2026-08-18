@@ -81,7 +81,7 @@ entity), `SetTime`, `WaitFlag`, `SetFlag`, `PlayAVI`, `GamePause`,
 PALSKIN stays bind pose.
 `WaitPlayAnimation` apply is now **PROVEN**; leftover is vtbl+104.
 
-Do not grind the 29 UNREAD tokens (Crowd*, debug, `LadyGreyIntro`,
+Do not grind the 29 UNREAD tokens (Crowd\*, debug, `LadyGreyIntro`,
 boss fights, …) as a phase.
 
 ---
@@ -294,7 +294,7 @@ README item 1, *after* a ticking world. First-seen wake lines
 
 - Optional enhancements (HDR, upscale, DLSS)
 - Linux / non-DirectShow `PlayAVI`
-- Grinding Crowd* / debug / `LadyGreyIntro` / boss UNREAD tokens
+- Grinding Crowd\* / debug / `LadyGreyIntro` / boss UNREAD tokens
 - Making scenes “look like Fable”
 
 ---
