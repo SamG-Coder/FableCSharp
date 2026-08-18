@@ -343,6 +343,21 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public const int GameRenderVtbl = 28;
     public const uint GameRenderFn = 0x00417001;
+    /// <summary>
+    /// Game vtbl+32 <c>00416953</c>.
+    /// <c>[game+90588]</c> nonempty is
+    /// "Loading save" <c>004A3200</c>.
+    /// No-save is empty → "Loading world"
+    /// <c>004A1840</c> then <c>0049F180</c>
+    /// / <c>004B4A10</c>.
+    /// </summary>
+    public const int GameLoadWorldVtbl = 32;
+    public const uint GameLoadWorldFn = 0x00416953;
+    public const uint LoadSaveFn = 0x004A3200;
+    public const int GameSaveNameOffset = 90588;
+    public const uint StartupWadSite = 0x004A19EB;
+    public const uint SetStaticMapForEngineSite = 0x004A1B7D;
+    public const uint AttachPatchFn = 0x00BDF010;
     public const uint GameModeCtorRenderEnable = 0x00418EC6;
     public const int GameRenderEnableOffset = 90593;
     public const uint FrontEndQueryFn = 0x00416296;
@@ -912,6 +927,12 @@ public sealed class EngineLifecycle : IDisposable
     public int OpenStaticMapsMode { get; private set; }
     public IReadOnlyList<string> OpenedStaticMaps => _openedStaticMaps;
     public IReadOnlyList<OpenedStaticMapBody> OpenedMapBodies => _openedBodies;
+    /// <summary>
+    /// <c>00B3E820</c> current-map handle.
+    /// Neighbours are <c>00B41E50</c>.
+    /// </summary>
+    public string? CurrentStaticMapName { get; private set; }
+    public IReadOnlyList<string> NeighbourStaticMaps => _neighbourStaticMaps;
     public LevFile? CurrentCompiledLev { get; private set; }
     public LevHeightField? CurrentHeightField { get; private set; }
     /// <summary>
@@ -928,6 +949,7 @@ public sealed class EngineLifecycle : IDisposable
     private readonly List<int> _loadQueue = [];
     private readonly List<string> _activatedMaps = [];
     private readonly List<string> _openedStaticMaps = [];
+    private readonly List<string> _neighbourStaticMaps = [];
     private readonly List<OpenedStaticMapBody> _openedBodies = [];
     private readonly List<int> _tickTypes = [];
     private readonly List<ThingInstance> _regionThings = [];
@@ -1201,8 +1223,8 @@ public sealed class EngineLifecycle : IDisposable
                 OpenMeshBank();
         }
         InitWorldCameras();
-        LoadWorldMap();
         CreatePlayers();
+        LoadWorld();
         GameRenderEnabled = true;
         Note(GameModeCtorRenderEnable, "InitGame", "GameMode",
             "00418EC6 [game+90593]=1");
@@ -1213,17 +1235,38 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
-    /// <c>005066E0</c> constructs the 0xD8 map
-    /// object (shift 5, bound 0x2000).
-    /// <c>00507C30</c> vtbl+12 is
-    /// <c>Load .wld file</c>: token-switch parse
-    /// of <c>FinalAlbion.wld</c>. Then GTNG,
-    /// global things, region graph.
+    /// Game vtbl+32 <c>00416953</c>.
+    /// No-save <c>[+90588]</c> empty skips
+    /// <c>004A3200</c> "Loading save".
+    /// Then <c>004A1840</c> WLD / quests /
+    /// Startup WAD / Set Static Map, then
+    /// <c>0049F180</c> / <c>004B4A10</c>.
+    /// </summary>
+    public void LoadWorld()
+    {
+        Note(GameLoadWorldFn, "Loading world", "World",
+            "00416953 vtbl+32 [+90588] empty");
+        Note(LoadSaveFn, "Loading world", "World",
+            "004A3200 Loading save skipped");
+        Note(GameLoadWorldFn, "Loading world", "World", "Loading world");
+        LoadWorldMap();
+        Note(StartupWadSite, "Loading world", "WLD", "Startup WAD");
+        Note(SetStaticMapForEngineSite, "Loading world", "WLD",
+            "Set Static Map for Engine");
+    }
+
+    /// <summary>
+    /// <c>004A1840</c> from <c>00416953</c>:
+    /// <c>00507C30</c> token-switch parse of
+    /// <c>FinalAlbion.wld</c>. Then GTNG,
+    /// global things, region graph, quests.
+    /// <c>005066E0</c> ctor already ran in
+    /// Init World Init.
     /// </summary>
     public void LoadWorldMap()
     {
-        Note(InitWorldMapFn, "Init World Map", "WLD",
-            "005066E0 ctor size 0xD8 shift 5 bound 0x2000 vtbl 01244AEC");
+        Note(LoadQuestsFn, "Load Quests", "WLD",
+            "004A1840 Load Quests / WLD / Startup WAD");
         Note(LoadWldFile, "Load .wld file", "WLD", "00507C30 vtbl+12");
         WorldFileName = FinalAlbionWld;
         if (Install is null)
@@ -2071,6 +2114,8 @@ public sealed class EngineLifecycle : IDisposable
             Note(CloseStaticMapFn, "StaticMap", "WLD",
                 "00B3EF40 " + _openedBodies[i].Name);
         _openedBodies.Clear();
+        _neighbourStaticMaps.Clear();
+        CurrentStaticMapName = null;
         CurrentCompiledLev = null;
         CurrentHeightField = null;
         OpenStaticMapsMode = 0;
@@ -2165,39 +2210,58 @@ public sealed class EngineLifecycle : IDisposable
 
         Note(OpenStaticMapsFn, "StaticMap", "WLD",
             $"opened={_openedStaticMaps.Count} primary={primary}");
-        Note(OpenStaticMapsMode1Current, "StaticMap", "WLD", "00B3E820 " + primary);
+        CurrentStaticMapName = primary;
+        Note(OpenStaticMapsMode1Current, "StaticMap", "WLD",
+            "00B3E820 current " + primary);
+        Note(OpenStaticMapsNameTable, "StaticMap", "WLD",
+            "00B420F0 name table");
         foreach (var name in _openedStaticMaps)
         {
-            if (name.Equals(primary, StringComparison.OrdinalIgnoreCase))
-                continue;
-            Note(OpenStaticMapsAttach, "StaticMap", "WLD", "00B41E50 " + name);
-            OpenStaticMap(name);
+            var neighbour = !name.Equals(primary, StringComparison.OrdinalIgnoreCase);
+            if (neighbour)
+                _neighbourStaticMaps.Add(name);
+            AttachStaticMap(name, neighbour);
         }
-
-        OpenStaticMap(primary);
     }
 
     /// <summary>
-    /// <c>00B42530</c>: STB name lookup
-    /// <c>009CCDC0</c>, blob copy, header
-    /// <c>00B3EFA0</c>, version words, then
-    /// mode-1 patch <c>00BE03A0</c> /
-    /// <c>00BDD0E0</c>. Compiled WAD
-    /// <c>.lev</c> is <see cref="LevFile"/>;
-    /// STB runtime copy is
-    /// <see cref="LevHeightField"/>.
+    /// Mode-1 STB hit: <c>00B41E50</c>
+    /// (close, header, <c>00BE03A0</c> /
+    /// <c>00BDD0E0</c>, neighbour
+    /// <c>00BDF010</c>). <c>00B42530</c>
+    /// is the STB-miss fallback only.
+    /// </summary>
+    public void AttachStaticMap(string name, bool neighbour)
+    {
+        Note(OpenStaticMapsAttach, "StaticMap", "WLD",
+            neighbour ? "00B41E50 neighbour " + name : "00B41E50 current " + name);
+        Note(CloseStaticMapFn, "StaticMap", "WLD", "00B3EF40");
+        OpenStaticMapBody(name, neighbour);
+        if (neighbour)
+            Note(AttachPatchFn, "StaticMap", "WLD", "00BDF010 " + name);
+    }
+
+    /// <summary>
+    /// <c>00B42530</c> miss-path open.
+    /// STB-hit New Game uses
+    /// <see cref="AttachStaticMap"/>.
     /// </summary>
     public void OpenStaticMap(string name)
     {
         Note(OpenStaticMapFn, "StaticMap", "WLD", "00B42530 " + name);
         Note(CloseStaticMapFn, "StaticMap", "WLD", "00B3EF40");
+        OpenStaticMapBody(name, neighbour: false);
+    }
+
+    private void OpenStaticMapBody(string name, bool neighbour)
+    {
         if (Install is null || World is null)
             return;
 
         EnsureLevels();
         var compiled = _levels?.LoadCompiledLev(name);
         var height = _levels?.LoadHeightField(name);
-        Note(OpenStaticMapFn, "StaticMap", "WLD",
+        Note(ParseMapHeaderFn, "StaticMap", "WLD",
             height is null
                 ? "009CCDC0 miss " + name
                 : $"009CCDC0 stb samples={height.SampleCount} {name}");
@@ -2223,13 +2287,18 @@ public sealed class EngineLifecycle : IDisposable
             compiled?.GridHeight ?? height?.FineHeight ?? 0,
             height?.SampleCount ?? 0,
             compiled is null ? version : LevFile.Version,
-            constant);
+            constant,
+            neighbour);
         _openedBodies.Add(body);
-        CurrentCompiledLev = compiled;
-        CurrentHeightField = height;
-        Note(OpenStaticMapFn, "StaticMap", "WLD",
+        if (!neighbour)
+        {
+            CurrentCompiledLev = compiled;
+            CurrentHeightField = height;
+        }
+
+        Note(ParseMapHeaderFn, "StaticMap", "WLD",
             $"body {name} lev={body.CompiledSize} stb={body.StbSize} " +
-            $"{body.GridWidth}x{body.GridHeight} samples={body.HeightSamples}");
+            $"{body.GridWidth}x{body.GridHeight} neighbour={neighbour}");
     }
 
     private void EnsureLevelLoader()
@@ -2827,7 +2896,8 @@ public readonly record struct OpenedStaticMapBody(
     int GridHeight,
     int HeightSamples,
     int HeaderVersion,
-    uint HeaderConstant);
+    uint HeaderConstant,
+    bool Neighbour = false);
 
 /// <summary>
 /// <c>004CA010</c> / <c>00662880</c> insert:

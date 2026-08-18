@@ -28,6 +28,11 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x00A27030u, EngineLifecycle.MeshBankObjectCtor);
         Assert.Equal(0x004BBFD0u, EngineLifecycle.MeshBankSetGlobalFn);
         Assert.Equal("MBANK_ALLMESHES", MeshBank.BankName);
+        Assert.Equal(0x00416953u, EngineLifecycle.GameLoadWorldFn);
+        Assert.Equal(32, EngineLifecycle.GameLoadWorldVtbl);
+        Assert.Equal(0x004A3200u, EngineLifecycle.LoadSaveFn);
+        Assert.Equal(0x00BDF010u, EngineLifecycle.AttachPatchFn);
+        Assert.Equal(0x00B420F0u, EngineLifecycle.OpenStaticMapsNameTable);
     }
 
     [Fact]
@@ -1672,6 +1677,19 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Meshes.Opened);
         Assert.True(life.Meshes.EntryCount > 100, $"entries={life.Meshes.EntryCount}");
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InitMeshBankFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameLoadWorldFn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.GameLoadWorldFn &&
+            e.Action.Contains("Loading world", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.LoadSaveFn &&
+            e.Action.Contains("skipped", StringComparison.Ordinal));
+        Assert.Equal("LookoutPoint", life.CurrentStaticMapName);
+        Assert.Contains("PicnicArea", life.NeighbourStaticMaps);
+        Assert.Contains(life.OpenedMapBodies, b => b.Name == "LookoutPoint" && !b.Neighbour);
+        Assert.Contains(life.OpenedMapBodies, b => b.Name == "PicnicArea" && b.Neighbour);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.OpenStaticMapsNameTable);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.AttachPatchFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CloseStaticMapFileFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.OpenStaticMapsAttach);
         Assert.True(life.OpenedMapBodies.Count > 1, $"bodies={life.OpenedMapBodies.Count}");

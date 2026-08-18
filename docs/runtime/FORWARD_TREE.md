@@ -242,7 +242,7 @@ Ctor `00418DCA` — size `0x161E8`, vtbl `0122F180`, `[+90593]=1`.
 | 5 | +20 | `00418289` | update |
 | 6 | +24 | `00416E78` | player input after WorldFrame>1 |
 | 7 | +28 | `00417001` | render |
-| 8 | +32 | `00416953` | called at end of `004184BD` |
+| 8 | +32 | `00416953` | Loading world / Loading save |
 | 9 | +36 | `004197B0` | UNREAD |
 
 Slots 10+ overlap a string (`HERO_ABILITY`) — not a vtbl continuation.
@@ -401,11 +401,13 @@ enqueue (no persist PlayerRegionName)
         │   ├── mode 2: for each [+32..+36) → 00B42530(2)
         │   └── mode 1 (this path):
         │       ├── [+52].vtbl+12(98, +48)
-        │       ├── 00B3E820
+        │       ├── 00B3E820  bind current handle [+280/+284]
         │       ├── 00B6D4D0  sea name
         │       ├── 009CCDC0  STB lookup
-        │       ├── hit  → 00B420F0 then return
-        │       │         (00B41E50 per list entry — not 00B42530)
+        │       ├── hit  → 00B420F0 then return  PROVEN
+        │       │         00B41E50 per list entry
+        │       │         (close, 00B3EFA0, 00BE03A0,
+        │       │          00BDD0E0, neighbour 00BDF010)
         │       └── miss → 00B42530(mode) per list entry
         └── "LoadWaterData" → 00B41FA0
             └── [+432]=3
@@ -435,11 +437,33 @@ The client must not open a second graphics.big dump beside it.
 
 ---
 
-## 10. Loading world (WLD / quests) — after map ctor
+## 10. Loading world `00416953` (vtbl+32)
 
-These named stages sit on the world-map / loading-world path
-(`00507C30`, `00416ABA`). They are **not** called from
-`004184BD` directly.
+Called at the **end** of `004184BD`, after Create Players.
+
+```
+00416953  PROVEN
+├── [world].vtbl+28([game+40])
+├── [game+90588] length via 0099B220
+│   └── >0  "Loading save" → 004A3200   (not no-save)
+└── else "Loading world"
+    ├── path from +90576 / [0x13B8668] / 0x122EE14
+    ├── 004A1840(world, path)  PROVEN
+    │   ├── "Load Quests" → 004A0D90
+    │   ├── 004FDAB0 world map
+    │   ├── "Startup WAD"
+    │   ├── 006C20A0 pump until empty
+    │   ├── "Generate Offline Data" if [0x1375446]
+    │   └── "Set Static Map for Engine" vtbl+208
+    ├── [0x13B8648]==0
+    │   ├── 0049F180 Init Characters / GUI
+    │   └── "Activate Initial Quests"
+    │       └── +90584 empty → 004B4A10
+    └── 004BBC00
+```
+
+WLD token parse `00507C30` is inside that `004A1840` world-map
+path, not inside `005066E0` ctor.
 
 ```
 00507C30  Load .wld file  (World Map vtbl+12)  PROVEN
@@ -520,11 +544,11 @@ Walk these **from their parent above**, not by string.
 
 | Parent | Child | Why |
 |---|---|---|
-| `004184BD` | `00416953` vtbl+32 | end of start; may be Loading world |
+| `004184BD` | `00416953` vtbl+32 | **PROVEN** Loading world / not save |
 | `004A6E30` | after UI manager through `006C37D0` | tail already dumped; bind details |
-| `005066E0` | `00507C30` vtbl+12 | when Load .wld is called vs start |
+| `005066E0` | `00507C30` vtbl+12 | inside `004A1840`, not ctor |
 | `004162B5` | exact order of vtbl+20/+24/+28 | inner body |
-| `00B42750` mode 1 | `00B3E820`, `00B420F0`, `00B41E50` | current vs neighbour open |
+| `00B42750` mode 1 | `00B3E820` / `00B420F0` / `00B41E50` | **PROVEN** current vs neighbour |
 | `00B40000` | `00BDC4F0` / `00BDDD50` | patch destroy |
 | `006C2170` | unload of previous ContainsMaps | region change |
 | `004B4260` | each initial-quest factory run | not Oakvale intro |
