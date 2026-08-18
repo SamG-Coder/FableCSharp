@@ -1101,13 +1101,33 @@ public sealed class EngineLifecycle : IDisposable
     public const uint QuestFiberUpdateVtbl = 24;
     public const int QuestFiberUpdateFlagOffset = 41;
     /// <summary>
-    /// <c>00CB78D0</c>:
-    /// <c>mov al,[esp+4]; mov [ecx+41],al; ret 4</c>.
-    /// Zero <c>E8</c> callers. First-seen
-    /// stays 0 so <c>00CB7950</c> does
-    /// not take <c>00A44880</c>.
+    /// <c>00CB78D0</c> writes <c>+41</c>.
+    /// First-seen <c>+41=0</c> takes
+    /// <c>00CB7997</c> <c>vtbl+4</c>
+    /// <c>00A44880</c>. Host “skip
+    /// <c>00A44880</c>” is DISPROVEN.
     /// </summary>
     public const uint FiberUpdateFlagSetter = 0x00CB78D0;
+    public const uint FiberTickFn = 0x00A44880;
+    public const uint FiberResumeFn = 0x00A44660;
+    public const uint FiberEntryFn = 0x00A446A0;
+    public const uint FiberYieldFn = 0x009D8650;
+    public const uint WatcherRunFn = 0x00CE7640;
+    public const uint GameflowTickFn = 0x00CE7670;
+    public const uint GameflowState0Fn = 0x00CE77D7;
+    public const uint GameflowYieldThunk = 0x006E7410;
+    public const uint WatcherYieldVtbl8 = 0x00A44840;
+    public const uint QuestIsActiveFn = 0x00893610;
+    public const uint QuestCardBindFn = 0x00896A30;
+    public const uint GiveNamedObjectFn = 0x008902E0;
+    public const uint PlayAviFlagFn = 0x00408340;
+    public const uint StoryLogFn = 0x00CBE87F;
+    public const int StoryLogFirstSeen = 10;
+    public const string GameflowWaitQuest = "Q_NewOakValeIntro";
+    public const string GameflowWaitCard = "OBJECT_QUEST_CARD_OAKVALE_INTRO";
+    public const string WatcherMain = "Main";
+    public const string WatcherCoreReminder = "CoreQuestReminder";
+    public const string WatcherBarrowGuards = "CheckBarrowFieldsGuards";
     public const uint QuestSubjectFillFn = 0x008884D0;
     public const uint WorldTickTableVa = 0x013B9288;
     public const uint WorldTickSlot1FnVa = 0x013B92C8;
@@ -2123,6 +2143,9 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>008A9DB0</c> / <c>008AE660</c>.
     /// </summary>
     public IReadOnlyList<string> GameflowStateSlots => _gameflowStates;
+    public IReadOnlyList<string> GameflowWatchers => _gameflowWatchers;
+    public int GameflowState { get; private set; }
+    public string? GameflowYieldQuest { get; private set; }
     /// <summary>
     /// Persist <c>PlayerRegionName</c>. Empty on
     /// no-save New Game. Non-empty takes
@@ -2215,6 +2238,7 @@ public sealed class EngineLifecycle : IDisposable
     private readonly List<InsertedThing> _inserted = [];
     private readonly List<string> _activatedQuests = [];
     private readonly List<string> _gameflowStates = [];
+    private readonly List<string> _gameflowWatchers = [];
     private readonly List<uint> _submittedLayers = [];
     private GameBin? _defs;
     private LevelLibrary? _levels;
@@ -4564,14 +4588,21 @@ public sealed class EngineLifecycle : IDisposable
 
     /// <summary>
     /// <c>004B4490</c> first-seen:
-    /// <c>[0x1375454]==1</c>
-    /// (<c>.data</c>) so
-    /// <c>004B3CE0</c> already
-    /// constructed at
-    /// <c>004B4260</c>.
-    /// <c>00CB8220</c> on this
-    /// type-1 tick is UNREAD.
-    /// Then <c>00449970</c>/<c>00487DC0</c>
+    /// <c>[esi+56]</c> empty skips
+    /// <c>00CB8220</c>. After
+    /// Gameflow construct,
+    /// <c>[quest+8]</c> is the
+    /// factory object:
+    /// <c>00CB8220</c> →
+    /// <c>00CB7C40</c> Main →
+    /// <c>00CB7950</c> <c>+41=0</c>
+    /// <c>vtbl+4</c> <c>00A44880</c>
+    /// → <c>00CE7670</c> state 0
+    /// yield on
+    /// <c>Q_NewOakValeIntro</c>.
+    /// <c>00CB8170</c> <c>+8=0</c>
+    /// empty. Then
+    /// <c>00449970</c>/<c>00487DC0</c>
     /// miss (<c>00A01B50</c> 0).
     /// </summary>
     public void PumpQuests()
@@ -4582,8 +4613,11 @@ public sealed class EngineLifecycle : IDisposable
             $"01375454={QuestFactoryGateFirstSeen} .data");
         Note(QuestFactoryStartFn, "GamePump", "Quest",
             "004B3CE0 construct already at 004B4260");
-        Note(QuestListPumpFn, "GamePump", "Quest",
-            "00CB8220 first-seen type-1 UNREAD");
+        if (_activatedQuests.Count == 0)
+            Note(QuestListPumpFn, "GamePump", "Quest",
+                "00CB8220 skip empty [esi+56]");
+        else
+            PumpQuestList();
         Note(PlayerCreatureBindFn, "GamePump", "Player",
             "00449970 [game+28]+28");
         Note(PlayerSlotWalkFn, "GamePump", "Player", "004498C0");
@@ -4593,9 +4627,74 @@ public sealed class EngineLifecycle : IDisposable
             "00A01B50 +48=0 miss");
         Note(QuestPlayerSyncFn, "GamePump", "Quest",
             "004AFCA0 skip");
-        QuestPumpWalked = 0;
         QuestVtbl24Calls = 0;
         QuestPumpRan = true;
+    }
+
+    /// <summary>
+    /// <c>00CB8220</c> first-seen
+    /// Gameflow: <c>00CB7C40</c>
+    /// ticks Main, <c>00CB8170</c>
+    /// <c>[+8]=0</c> empty.
+    /// </summary>
+    private void PumpQuestList()
+    {
+        Note(QuestListPumpFn, "GamePump", "Quest",
+            "00CB8220 00CB7C40 then 00CB8170");
+        Note(QuestListWalkAFn, "GamePump", "Quest",
+            $"00CB7C40 count={_gameflowWatchers.Count}");
+        if (_gameflowWatchers.Contains(WatcherMain) &&
+            GameflowYieldQuest is null)
+            TickGameflowMain();
+        else if (GameflowYieldQuest is { })
+            Note(FiberYieldFn, "GamePump", "Quest",
+                "009D8650 parked " + GameflowYieldQuest);
+        Note(QuestListWalkBFn, "GamePump", "Quest",
+            "00CB8170 [+8]=0 empty");
+        if (GameflowYieldQuest is { } && QuestPumpWalked == 0)
+            QuestPumpWalked = 1;
+    }
+
+    /// <summary>
+    /// <c>00CB7950</c> <c>+40=0</c>
+    /// <c>00F35A00</c> <c>+44=0</c>
+    /// → 1; <c>+41=0</c> →
+    /// <c>00A44880</c> →
+    /// <c>00A446A0</c> <c>vtbl+16</c>
+    /// <c>00CE7640</c> →
+    /// <c>00CE7670</c>.
+    /// </summary>
+    private void TickGameflowMain()
+    {
+        Note(QuestFiberAttachFn, "GamePump", "Quest",
+            "00CB7950 Main +41=0 vtbl+4");
+        Note(FiberTickFn, "GamePump", "Quest", "00A44880");
+        Note(FiberResumeFn, "GamePump", "Quest", "00A44660 [0x13D2838]");
+        Note(FiberEntryFn, "GamePump", "Quest", "00A446A0 vtbl+16");
+        Note(WatcherRunFn, "GamePump", "Quest", "00CE7640 00CDD440");
+        Note(GameflowTickFn, "GamePump", "Quest", "00CE7670");
+        AttachGameflowWatcher(WatcherCoreReminder, "GamePump");
+        AttachGameflowWatcher(WatcherBarrowGuards, "GamePump");
+        Note(GameflowState0Fn, "GamePump", "Quest",
+            "00CE77D7 SharedRun+4=0");
+        Note(PlayAviFlagFn, "GamePump", "Quest",
+            "0088E090 0040D2A0 00408340 +49=1");
+        Note(GiveNamedObjectFn, "GamePump", "Quest",
+            "008902E0 tattoo 00487DC0 miss");
+        Note(StoryLogFn, "GamePump", "Quest",
+            $"00CBE87F TEXT_QST_LOG_STORY_{StoryLogFirstSeen}");
+        Note(QuestCardBindFn, "GamePump", "Quest",
+            "00896A30 " + GameflowWaitCard + " 004B0C80 miss");
+        Note(QuestIsActiveFn, "GamePump", "Quest",
+            "00893610 " + GameflowWaitQuest + " 0");
+        Note(GameflowYieldThunk, "GamePump", "Quest",
+            "006E7410 vtbl+8 00A44840 009D8650");
+        Note(WatcherYieldVtbl8, "GamePump", "Quest", "00A44840 yield");
+        Note(FiberYieldFn, "GamePump", "Quest",
+            "009D8650 wait " + GameflowWaitQuest);
+        GameflowState = 0;
+        GameflowYieldQuest = GameflowWaitQuest;
+        QuestPumpWalked = 1;
     }
 
     /// <summary>
@@ -5655,6 +5754,16 @@ public sealed class EngineLifecycle : IDisposable
             "00CDD450 Main 0.1f");
         Note(QuestFactoryTable.GameflowWatcherAttach, phase, "Quest",
             "00CB7E50 attach");
+        AttachGameflowWatcher(WatcherMain, phase);
+    }
+
+    private void AttachGameflowWatcher(string name, string phase)
+    {
+        if (_gameflowWatchers.Contains(name))
+            return;
+        _gameflowWatchers.Add(name);
+        Note(QuestFactoryTable.GameflowWatcherAttach, phase, "Quest",
+            "00CB7E50 " + name);
     }
 
     public IReadOnlyList<ThingInstance> ThingsForMap(string mapName) =>

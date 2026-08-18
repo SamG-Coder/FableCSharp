@@ -1830,6 +1830,8 @@ public sealed class EngineLifecycleTests
         Assert.Equal(54, life.GameflowStateSlots.Count);
         Assert.Equal("OV_INTRO", life.GameflowStateSlots[0]);
         Assert.Equal("SNOWSPIRE_ARRIVAL", life.GameflowStateSlots[^1]);
+        Assert.Equal(new[] { EngineLifecycle.WatcherMain }, life.GameflowWatchers);
+        Assert.Null(life.GameflowYieldQuest);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == QuestFactoryTable.SharedRun &&
             e.Action.Contains("00CDBD20", StringComparison.Ordinal));
@@ -1849,6 +1851,63 @@ public sealed class EngineLifecycleTests
             e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
         Assert.Null(life.CurrentRegion);
         Assert.False(life.FirstRealRegionLoadDone);
+    }
+
+    [Fact]
+    public void Type1_00CB8220_Gameflow_state0_yields_on_Q_NewOakValeIntro()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.Equal(new[] { EngineLifecycle.WatcherMain }, life.GameflowWatchers);
+        Assert.Null(life.GameflowYieldQuest);
+        Assert.True(life.Pump());
+        Assert.False(life.QuestPumpRan);
+        Assert.True(life.Pump(0.1f));
+        Assert.True(life.QuestPumpRan);
+        Assert.Equal(1, life.QuestPumpWalked);
+        Assert.Equal(0, life.GameflowState);
+        Assert.Equal(EngineLifecycle.GameflowWaitQuest, life.GameflowYieldQuest);
+        Assert.Contains(EngineLifecycle.WatcherCoreReminder, life.GameflowWatchers);
+        Assert.Contains(EngineLifecycle.WatcherBarrowGuards, life.GameflowWatchers);
+        Assert.DoesNotContain(life.ActivatedQuests, q => q == EngineLifecycle.GameflowWaitQuest);
+        Assert.DoesNotContain(life.Runtime!.Quests, q => q.Name == EngineLifecycle.GameflowWaitQuest);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.QuestListPumpFn &&
+            e.Action.Contains("00CB7C40", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FiberTickFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameflowTickFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameflowState0Fn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.GiveNamedObjectFn &&
+            e.Action.Contains("miss", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.QuestIsActiveFn &&
+            e.Action.Contains(EngineLifecycle.GameflowWaitQuest, StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FiberYieldFn &&
+            e.Action.Contains(EngineLifecycle.GameflowWaitQuest, StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.QuestListWalkBFn &&
+            e.Action.Contains("empty", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
+        Assert.Null(life.CurrentRegion);
+        Assert.False(life.FirstRealRegionLoadDone);
+        Assert.Equal(0x00CB8220u, EngineLifecycle.QuestListPumpFn);
+        Assert.Equal(0x00A44880u, EngineLifecycle.FiberTickFn);
+        Assert.Equal(0x00CE7670u, EngineLifecycle.GameflowTickFn);
+        Assert.Equal(0x006E7410u, EngineLifecycle.GameflowYieldThunk);
+        Assert.Equal(0x004167DAu, EngineLifecycle.EngineReadyCallback);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.EngineReadyCallback &&
+            e.Action.Contains("call", StringComparison.Ordinal));
     }
 
     [Fact]
@@ -2036,7 +2095,7 @@ public sealed class EngineLifecycleTests
         Assert.Equal(1, EngineLifecycle.PlayerSlotPlus534FirstSeen);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.QuestListPumpFn &&
-            e.Action.Contains("UNREAD", StringComparison.Ordinal));
+            e.Action.Contains("skip empty", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.ScriptManagerPumpFn &&
             e.Action.Contains("flag=1", StringComparison.Ordinal));
