@@ -327,6 +327,10 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InitCharactersFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InitHeroDefFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ConstructFromParamsFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InitGuiFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InitQuestsFn);
+        Assert.True(life.PlayerGuiReady);
+        Assert.False(life.QuestsInitDone);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.DoesNotContain(life.RegionThings, t =>
             t.DefinitionType == RegionTravel.KidCreature);
@@ -400,6 +404,20 @@ public sealed class EngineLifecycleTests
               0048A070 InitCharacterAs → 00489D40
               006AC910 Create mesh 4299
             Not CREATURE_HERO_CHILD / 00DBDE40.
+            """);
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-0049F180.txt"),
+            """
+            0049F180 after region objects:
+              Init Characters → 00449D90 CREATURE_HERO
+              006B8410 +0x90 jmp 00881210
+              Init GUI 0043A380 PLAYER_GUI_PC [0x13B878C]
+              Init Quests 004B4260 Activate Quest
+                004B00C0 / 00CB5AD0 / 004BB720
+                then 004B2890
+              game+172 quest list PARTIAL
+            Not 00DBDE40 / S_QNOVI.
             """);
         File.WriteAllText(
             Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",

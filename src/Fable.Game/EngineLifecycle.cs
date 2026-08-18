@@ -422,6 +422,10 @@ public sealed class EngineLifecycle
     public const uint HolySiteFactoryFn = 0x0052AC90;
     public const uint CreateCharacterFn = 0x00489D40;
     public const uint InitCharactersFn = 0x0049F180;
+    public const uint InitGuiFn = 0x0043A380;
+    public const uint InitQuestsFn = 0x004B4260;
+    public const uint ActivateQuestFn = 0x00CB5AD0;
+    public const uint QuestManagerActivate = 0x004B2890;
     public const uint InitHeroDefFn = 0x00449D90;
     public const uint InitCharacterAsFn = 0x0048A070;
     public const uint ConstructFromParamsFn = 0x006A9DD0;
@@ -698,6 +702,8 @@ public sealed class EngineLifecycle
     public string? HeroDefinition { get; private set; }
     public int HeroMeshId { get; private set; }
     public IReadOnlyList<InsertedThing> InsertedThings => _inserted;
+    public bool PlayerGuiReady { get; private set; }
+    public bool QuestsInitDone { get; private set; }
     /// <summary>
     /// Persist <c>PlayerRegionName</c>. Empty on
     /// no-save New Game. Non-empty takes
@@ -1876,6 +1882,7 @@ public sealed class EngineLifecycle
                 "Region Level Files: Activate Topology");
             if (!HeroSpawned)
                 SpawnHeroFromPlayerStart(_regionThings);
+            InitFirstSceneAfterCharacters();
         }
 
         SetRegionAsLoaded(index);
@@ -2022,6 +2029,28 @@ public sealed class EngineLifecycle
 
         FirstSceneMapName ??= CurrentRegion?.RegionName;
         SpawnHero(start, bindExisting: false);
+    }
+
+    /// <summary>
+    /// <c>0049F180</c> after Init Characters:
+    /// Init GUI <c>0043A380</c> <c>PLAYER_GUI_PC</c>
+    /// at <c>[0x13B878C]</c>, then Init Quests
+    /// <c>004B4260</c> "Activate Quest".
+    /// Does not start <c>S_QNOVI</c> /
+    /// <c>00DBDE40</c>. Quest list at
+    /// <c>game+172</c> is still PARTIAL.
+    /// </summary>
+    private void InitFirstSceneAfterCharacters()
+    {
+        Note(InitGuiFn, "LevelLoader", "UI",
+            "0043A380 Init GUI PLAYER_GUI_PC [0x13B878C]");
+        Note(PlayerManagerGetter, "LevelLoader", "UI", "0044C6B0 PLAYER_GUI_PC");
+        PlayerGuiReady = true;
+        Note(InitQuestsFn, "LevelLoader", "Quest",
+            "004B4260 QuestManager: Activate Quest");
+        Note(ActivateQuestFn, "LevelLoader", "Quest",
+            "00CB5AD0 game+172 list UNREAD");
+        QuestsInitDone = false;
     }
 
     public IReadOnlyList<ThingInstance> ThingsForMap(string mapName) =>
