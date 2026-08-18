@@ -227,6 +227,9 @@ public static class GlobalDispatcher
                 $"{a0},{a1}");
         }
 
+        if (Eq(v, "FadeThingIn") || Eq(v, "FadeThingOut"))
+            return ApplyFadeThing(line, ctx, fadeIn: Eq(v, "FadeThingIn"));
+
         if (Eq(v, "SetThingConscious"))
         {
             // 00CC8094: arg0 required; default 0; IsTrue(arg1)->1;
@@ -1425,6 +1428,43 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, side);
         return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
             "SetLightScene vtbl+2180", side);
+    }
+
+    /// <summary>
+    /// FadeThingIn 00CC7881 defaults 0→1;
+    /// FadeThingOut 00CC7682 defaults 1→0.
+    /// arg0+arg1 required. Optional atof arg2/arg3
+    /// override start/end. Duration ≤ 0 or
+    /// start ≤ end skips the leftover loop
+    /// (fcomp 0x122DEDC=0; loop only while
+    /// current &gt; end). Final vtbl+2040(end,1).
+    /// Not screen FadeIn 1496.
+    /// </summary>
+    internal static CommandResult ApplyFadeThing(
+        ScriptLine line, ScriptExecutionContext ctx, bool fadeIn)
+    {
+        var name = line.Arg(0);
+        if (name.Length == 0 || line.Arg(1).Length == 0)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+        ScriptLine.TryFloat(line.Arg(1), out var duration);
+        var start = fadeIn ? 0f : 1f;
+        var end = fadeIn ? 1f : 0f;
+        if (line.Arg(2).Length > 0)
+            ScriptLine.TryFloat(line.Arg(2), out start);
+        if (line.Arg(3).Length > 0)
+            ScriptLine.TryFloat(line.Arg(3), out end);
+        ctx.World.FadeThing(name, end);
+        var side = $"{name}:{start:0.##}->{end:0.##}";
+        if (duration <= 0f || start <= end || !ctx.Cutscene.YieldEnable)
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, side);
+        var frames = duration * RegionTravel.GamePauseScale;
+        ctx.Cutscene.GamePauseTarget = frames;
+        ctx.Cutscene.GamePauseCounter = 0f;
+        ctx.Cutscene.GamePausePhase = 1;
+        return CommandResult.Wait(
+            ExecutionKind.WaitScaledFrames, CommandStatus.Proven, CommandFamily.Global,
+            "FadeThing vtbl+2040 loop", "scaled-frames", null, side,
+            advanceWhenDone: true);
     }
 
     /// <summary>

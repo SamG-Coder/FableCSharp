@@ -702,6 +702,16 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "arg0+arg1 required; always HERO vtbl+280; vtbl+896(hero,arg0,arg1); jmp 00CC8464; not HoldInHand 892"),
+        Spec("FadeThingIn", 0x00CC782E, 0x00CC7881, "thing,duration[,start][,end]",
+            ScriptReturn.YieldAfterOrWait, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "default 0->1; atof arg1; arg2/3 override; loop only start>end; vtbl+2040; leftover if yield; not FadeIn 1496"),
+        Spec("FadeThingOut", 0x00CC762F, 0x00CC7682, "thing,duration[,start][,end]",
+            ScriptReturn.YieldAfterOrWait, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "default 1->0; atof arg1; arg2/3 override; loop while current>end; vtbl+2040; leftover if yield; not FadeOut 1488"),
         Spec("SetThingConscious", 0x00CC8041, 0x00CC8094, "thing[,IsTrue][,extra]",
             ScriptReturn.CompleteNow, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

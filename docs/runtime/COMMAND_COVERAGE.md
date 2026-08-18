@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 136
-RECOVERED RETURN: 136
-RECOVERED APPLY: 72
+RECOVERED DISPATCH: 138
+RECOVERED RETURN: 138
+RECOVERED APPLY: 74
 IMPLEMENTED RUNTIME: 13
-UNREAD: 49
+UNREAD: 47
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -104,8 +104,8 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | SetGravityOnThing | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | PauseThing | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | CameraPreload | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| FadeThingIn | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| FadeThingOut | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| FadeThingIn | Global | Proven | Proven | Proven | Proven | Partial | Partial |
+| FadeThingOut | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | DoOneFrame | Global | Proven | Proven | Proven | Proven | Proven | Proven |
 | PlayObjectAnim | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | LookAtNothing | Global | Proven | Proven | Proven | Partial | Partial | Partial |

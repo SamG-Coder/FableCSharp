@@ -1244,6 +1244,12 @@ public sealed class WorldRuntime
     /// </summary>
     public readonly List<(string Arg0, string Arg1)> LiftRocks = [];
     public int LiftRockVtbl { get; private set; }
+    /// <summary>
+    /// <c>00CC7A1A</c> / <c>00CC781B</c>
+    /// <c>vtbl+2040(thing,alpha,1)</c>.
+    /// Not screen FadeIn 1496.
+    /// </summary>
+    public int FadeThingVtbl { get; private set; }
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
     public float TimeOfDayHours { get; set; }
@@ -1547,6 +1553,17 @@ public sealed class WorldRuntime
     {
         LiftRocks.Add((arg0 ?? "", arg1 ?? ""));
         LiftRockVtbl = 896;
+    }
+
+    /// <summary>
+    /// <c>00CC7881</c> / <c>00CC7682</c>:
+    /// final <c>vtbl+2040(thing,end,1)</c>.
+    /// Mesh fade steps UNREAD.
+    /// </summary>
+    public void FadeThing(string actor, float alpha)
+    {
+        Alpha[actor ?? ""] = alpha;
+        FadeThingVtbl = 2040;
     }
 
     /// <summary>

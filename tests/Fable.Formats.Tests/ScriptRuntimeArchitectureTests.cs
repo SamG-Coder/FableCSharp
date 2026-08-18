@@ -2986,6 +2986,116 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void FadeThingIn_snaps_0_to_1_not_screen_FadeIn()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("fti",
+        [
+            "FadeThingIn FireHeart,0",
+            "FadeThingIn GraveyardPathNewDoor,2.0",
+            "FadeThingIn",
+            "FadeThingIn ONLYNAME",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(1f, runtime.World.Alpha["FireHeart"]);
+        Assert.Equal(1f, runtime.World.Alpha["GraveyardPathNewDoor"]);
+        Assert.Equal(2040, runtime.World.FadeThingVtbl);
+        Assert.False(runtime.World.Alpha.ContainsKey("ONLYNAME"));
+        Assert.Equal(0x00CC7881u, ScriptCommandMap.Find("FadeThingIn")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("FadeIn")!.Value.ApplySite,
+            ScriptCommandMap.Find("FadeThingIn")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void FadeThingOut_duration_0_snaps_to_0_not_screen_FadeOut()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("fto",
+        [
+            "FadeThingOut SKEL,0",
+            "FadeThingOut",
+            "FadeThingOut ONLYNAME",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(0f, runtime.World.Alpha["SKEL"]);
+        Assert.Equal(2040, runtime.World.FadeThingVtbl);
+        Assert.False(runtime.World.Alpha.ContainsKey("ONLYNAME"));
+        Assert.Equal(0x00CC7682u, ScriptCommandMap.Find("FadeThingOut")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("FadeOut")!.Value.ApplySite,
+            ScriptCommandMap.Find("FadeThingOut")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void FadeThingIn_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var name in new[] { "CS_OPENGRAVE_PATHDOOR", "CS_SUMSHIP_INTRO" })
+        {
+            hit = bank.Entries.FirstOrDefault(e =>
+                e.InstanceName.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (hit is null)
+                continue;
+            foreach (var raw in hit.Commands.Count > 0
+                         ? hit.Commands
+                         : ScriptBank.ExtractCommands(hit.Raw))
+            {
+                if (raw.StartsWith("FadeThingIn ", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        Assert.NotNull(hit);
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("FadeThingIn", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-fadin", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("FadeThingIn ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal(1f, runtime.World.Alpha[parsed.Arg(0)]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-fadin.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-fadething.txt"),
+            """
+            FadeThingIn 00CC782E / apply 00CC7881
+            FadeThingOut 00CC762F / apply 00CC7682
+              arg0+arg1 00403A00 empty skip 00CC8464
+              resolve thing HERO vtbl+280 else 288
+              In defaults start=0 end=1; Out start=1 end=0
+              optional atof arg2/arg3 override start/end
+              atof arg1 duration; fcom 0x122DEDC=0
+              duration<=0 skip loop; loop only while current>end
+              In 0->1 therefore snaps to 1 (no leftover)
+              Out 1->0 leftover if [ebp+103]; *15 steps
+              each step + final: vtbl+2040(thing,alpha,1)
+              jmp 00CC8231
+              not screen FadeIn 1496 / FadeOut 1488
+            Intermediate mesh fade UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();
