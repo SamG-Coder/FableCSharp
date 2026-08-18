@@ -14,9 +14,10 @@ or in tests/code, treat it as **UNREAD**.
 `CAM_OVIF_SHOT2`) so `CS_OAKVALE_INTRO_FATHER` can run on a real
 world clock.
 
-Snapshot: **2026-08-18**, master merge `63b03cc`, runtime HEAD
-`1ebece6` (*Runtime: 006C2170 Loading objects is 00521AE0 map TNG.*).
-Just locked on this path: `6e1ff8e`, `64a2e14`, `0d8f5e5`, `1ebece6`.
+Snapshot: **2026-08-18**, master merge `85edc7c`, runtime HEAD
+`fe6a11e` (*Runtime: first LookoutPoint scene consumes
+RegionThings and hero camera.*).
+Just locked on this path: `8f89aad`, `ea479d2`, `fe6a11e`.
 Master is still proving **boot / world clock**, not animation.
 README’s long-term priority list still starts with animation; that
 list is not the current phase.
@@ -107,10 +108,10 @@ when a ledger or test already records them.
 
 ### Phase 1 in progress — boot / world clock (current master)
 
-Recent commits (`8bccec3` … `1ebece6`) lock the retail pump, not
-`00DBDE40`. Just locked: world+24 lerp (`6e1ff8e`), frontend New Game
-message (`64a2e14`), frontend Present (`0d8f5e5`), map TNG load
-(`1ebece6`).
+Recent commits (`8bccec3` … `fe6a11e`) lock the retail pump, not
+`00DBDE40`. Just locked: Load Single Thing hero at `GuildArrivalHSP`
+(`8f89aad`), Create Players `+9826` (`ea479d2`), no-save first
+rendered scene LookoutPoint + hero camera (`fe6a11e`).
 
 | Item | Status | Evidence |
 |---|---|---|
@@ -127,7 +128,7 @@ message (`64a2e14`), frontend Present (`0d8f5e5`), map TNG load
 | Persist `PlayerRegionName` `00487C20` / `00449E60` loads named region (e.g. `StartOakVale` = 4) | PROVEN | `Persist_PlayerRegionName_is_00487C20_not_new_game` |
 | `SetRegionAsLoaded` `004FC8A0` writes `+156`, then `00B42750` mode 1 | PROVEN | `e9952b8` / install test |
 | `OpenStaticMap` `00B42530` STB height + compiled `.lev` (v25 / `0x1904`) | PROVEN | `7869e8e` / install test |
-| `00418289` skips player/world until `[player+9826]`; `00417001` skips camera while `WorldFrame<=1` | PROVEN | `7cc44c0` / `Update_00418289_*` / `Render_00417001_*` |
+| `00418289` / `004AEBA0` gate player/world on `[player+9826]`; `00417001` still skips camera body while `WorldFrame<=1` | PROVEN | `7cc44c0` / `Update_00418289_*` / `Render_00417001_*` |
 | `WorldFrame` inc at `004A5E10` via `0049DFB0` type-1 (`00629270` / `004A5A40`) | PROVEN | `ced722f` / `WorldFrame_004A5E10_unblocks_004164E0` |
 | Camera body `004164E0` steps `arg/15` when `[0x13B8630]>0` | PROVEN | `6d7545a` |
 | `0041707E` interpolates when catchup ticks are 0 (default New Game) | PROVEN | `c3be891` |
@@ -137,17 +138,25 @@ message (`64a2e14`), frontend Present (`0d8f5e5`), map TNG load
 | Frontend frame `0042EC7C`: input `0042E3EE` → fill → draw `0042DF9E` (BeginScene / UI vtbl+8 / EndScene / Present) | PROVEN | `0d8f5e5` / `Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present` |
 | Same Present as PlayAVI (`009BEEB0`); extra `.wmv` after draw skipped (`00595A03` always 0) | PROVEN | same |
 | `006C2170` Loading objects → `00522720` / `00521AE0` current-map `.tng` (LookoutPoint on no-save) | PROVEN | `1ebece6` / `Loading_objects_00521AE0_loads_LookoutPoint_tng` |
+| `0051FD80` Load Single Thing: no-save LookoutPoint TNG has no PlayerCreature; `HOLY_SITE_PLAYER_START` `GuildArrivalHSP` → `00489D40` / `006AC910` inserts PlayerCreature at that pose | PROVEN | `8f89aad` / `Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint` |
+| No-save hero is `00DBDE40` / `CREATURE_HERO_CHILD` / StartOakVale | DISPROVEN | same |
+| `004AE940` Create Players writes `[player+9826]=1` because `0099A350` always returns 1 (`al=1`) | PROVEN | `ea479d2` / `CreatePlayers_004AE940_sets_plus9826_via_0099A350` |
+| `+9826` stays 0 after Create Players (first `004162B5` skips world) | DISPROVEN | same; first pump takes player/world/vtbl+24; `WorldFrame` increments |
+| No-save first *rendered* scene is LookoutPoint `RegionThings` + hero camera `006B3FF0`; client `BindLifecycleFirstRegion` skips if map name contains StartOakVale | PROVEN | `fe6a11e` / same LookoutPoint test + client early return |
 | Game pump / first region is `00DBDE40` / StartOakVale setup | DISPROVEN | tests above |
 | No-save writes `[record+36]` | DISPROVEN | `recover-record36` text in `Camera_004164E0_runs_on_install_after_WorldFrame`; null still loads |
 
 **Correction vs a “first region is Oakvale” reading:**
 `WorldMap+156` is the *index field*. No-save New Game’s first real
-write is **1 = LookoutPoint**. First-scene *view* is still
-`StartOakValeWest` (PARITY / first-scene contract). Persist name
-`StartOakVale` is index **4**. The retail New Game *click/message*
-is now **PROVEN** (`0059A238` / `[retail+41]`). Who writes persist
-`PlayerRegionName` is still **UNREAD**. `[esi+42]` load/save is
-**UNREAD**. `00521AE0` is per-map TNG, not global-things apply.
+write is **1 = LookoutPoint**. No-save first *rendered* scene is
+that map’s `RegionThings` plus `006B3FF0` hero camera. First-scene
+*intro view* is still `StartOakValeWest` / `HerosOldHouse` /
+`CAM_OVIF_SHOT2` / kid (`FIRST_SCENE_*` — do not collapse into
+Lookout). Persist name `StartOakVale` is index **4**. The retail
+New Game *click/message* is now **PROVEN** (`0059A238` /
+`[retail+41]`). Who writes persist `PlayerRegionName` is still
+**UNREAD**. `[esi+42]` load/save is **UNREAD**. `00521AE0` is
+per-map TNG, not global-things apply.
 
 ---
 
@@ -174,8 +183,10 @@ the no-save path.
 | MiniMap `0082BA00` / villages `005064C0` bodies | UNREAD | Named from `SetRegionAsLoaded`; not claimed as runtime |
 | Wire persist-Oakvale (or a proven New Game region write) to `FirstSceneWorld` | UNREAD | Host first-scene lists are a separate reconstructed path |
 
-Until `WorldFrame` ticks and camera/player gates open, the intro
-fiber has no native clock.
+No-save `WorldFrame` now ticks after Create Players (`+9826=1`).
+The Oakvale intro fiber still needs a proven region write (persist
+`PlayerRegionName` writer stays UNREAD) — do not invent one on
+the no-save Lookout path.
 
 ### 2. First-scene intro fiber (apply / runtime)
 
@@ -263,8 +274,11 @@ README item 1, *after* a ticking world. First-seen wake lines
 
 The boot-first sequence holds. Corrections from the repo:
 
-1. **No-save first real region is LookoutPoint**, not Oakvale.
-   Oakvale is persist-name index 4 or the first-scene *view* contract.
+1. **No-save first real region and first *rendered* scene are
+   LookoutPoint** (index 1, `RegionThings` + `006B3FF0` hero
+   camera). Oakvale is persist-name index 4 or the first-scene
+   *intro view* contract (`StartOakValeWest` / `HerosOldHouse` /
+   `CAM_OVIF_SHOT2` / kid). Do not collapse that into Lookout.
    New Game *click* is PROVEN; persist `PlayerRegionName` writer is not.
 2. **GTNG is not an unread file on TLC** — missing skip is PROVEN.
    `00521AE0` loads the current map `.tng`. Remaining UNREAD is

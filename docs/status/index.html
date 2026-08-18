@@ -50,10 +50,10 @@
 
     <p>
       Snapshot: <strong>2026-08-18</strong>, master merge
-      <code>63b03cc</code>, runtime HEAD <code>1ebece6</code>
-      (<em>Runtime: 006C2170 Loading objects is 00521AE0 map TNG.</em>).
-      Just locked on this path: <code>6e1ff8e</code>, <code>64a2e14</code>,
-      <code>0d8f5e5</code>, <code>1ebece6</code>.
+      <code>85edc7c</code>, runtime HEAD <code>fe6a11e</code>
+      (<em>Runtime: first LookoutPoint scene consumes RegionThings and hero camera.</em>).
+      Just locked on this path: <code>8f89aad</code>, <code>ea479d2</code>,
+      <code>fe6a11e</code>.
       Master is still proving <strong>boot / world clock</strong>, not animation.
       README’s long-term priority list still starts with animation; that
       list is not the current phase.
@@ -224,11 +224,11 @@
 
     <h3>Phase 1 in progress — boot / world clock (current master)</h3>
     <p>
-      Recent commits (<code>8bccec3</code> … <code>1ebece6</code>) lock the
-      retail pump, not <code>00DBDE40</code>. Just locked: world+24 lerp
-      (<code>6e1ff8e</code>), frontend New Game message (<code>64a2e14</code>),
-      frontend Present (<code>0d8f5e5</code>), map TNG load
-      (<code>1ebece6</code>).
+      Recent commits (<code>8bccec3</code> … <code>fe6a11e</code>) lock the
+      retail pump, not <code>00DBDE40</code>. Just locked: Load Single Thing
+      hero at <code>GuildArrivalHSP</code> (<code>8f89aad</code>), Create
+      Players <code>+9826</code> (<code>ea479d2</code>), no-save first
+      rendered scene LookoutPoint + hero camera (<code>fe6a11e</code>).
     </p>
     <table>
       <thead><tr><th>Item</th><th>Status</th><th>Evidence</th></tr></thead>
@@ -299,7 +299,7 @@
           <td><code>7869e8e</code> / install test</td>
         </tr>
         <tr>
-          <td><code>00418289</code> skips player/world until <code>[player+9826]</code>; <code>00417001</code> skips camera while <code>WorldFrame&lt;=1</code></td>
+          <td><code>00418289</code> / <code>004AEBA0</code> gate player/world on <code>[player+9826]</code>; <code>00417001</code> still skips camera body while <code>WorldFrame&lt;=1</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
           <td><code>7cc44c0</code> / <code>Update_00418289_*</code> / <code>Render_00417001_*</code></td>
         </tr>
@@ -349,6 +349,31 @@
           <td><code>1ebece6</code> / <code>Loading_objects_00521AE0_loads_LookoutPoint_tng</code></td>
         </tr>
         <tr>
+          <td><code>0051FD80</code> Load Single Thing: no-save LookoutPoint TNG has no PlayerCreature; <code>HOLY_SITE_PLAYER_START</code> <code>GuildArrivalHSP</code> → <code>00489D40</code> / <code>006AC910</code> inserts PlayerCreature at that pose</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>8f89aad</code> / <code>Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint</code></td>
+        </tr>
+        <tr>
+          <td>No-save hero is <code>00DBDE40</code> / <code>CREATURE_HERO_CHILD</code> / StartOakVale</td>
+          <td><span class="badge DISPROVEN">DISPROVEN</span></td>
+          <td>same</td>
+        </tr>
+        <tr>
+          <td><code>004AE940</code> Create Players writes <code>[player+9826]=1</code> because <code>0099A350</code> always returns 1 (<code>al=1</code>)</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>ea479d2</code> / <code>CreatePlayers_004AE940_sets_plus9826_via_0099A350</code></td>
+        </tr>
+        <tr>
+          <td><code>+9826</code> stays 0 after Create Players (first <code>004162B5</code> skips world)</td>
+          <td><span class="badge DISPROVEN">DISPROVEN</span></td>
+          <td>same; first pump takes player/world/vtbl+24; <code>WorldFrame</code> increments</td>
+        </tr>
+        <tr>
+          <td>No-save first <em>rendered</em> scene is LookoutPoint <code>RegionThings</code> + hero camera <code>006B3FF0</code>; client <code>BindLifecycleFirstRegion</code> skips if map name contains StartOakVale</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>fe6a11e</code> / same LookoutPoint test + client early return</td>
+        </tr>
+        <tr>
           <td>Game pump / first region is <code>00DBDE40</code> / StartOakVale setup</td>
           <td><span class="badge DISPROVEN">DISPROVEN</span></td>
           <td>tests above</td>
@@ -365,9 +390,13 @@
       <strong>Correction vs a “first region is Oakvale” reading:</strong>
       <code>WorldMap+156</code> is the <em>index field</em>.
       No-save New Game’s first real write is <strong>1 = LookoutPoint</strong>.
-      First-scene <em>view</em> is still <code>StartOakValeWest</code>
-      (PARITY / first-scene contract). Persist name
-      <code>StartOakVale</code> is index <strong>4</strong>.
+      No-save first <em>rendered</em> scene is that map’s
+      <code>RegionThings</code> plus <code>006B3FF0</code> hero camera.
+      First-scene <em>intro view</em> is still
+      <code>StartOakValeWest</code> / <code>HerosOldHouse</code> /
+      <code>CAM_OVIF_SHOT2</code> / kid
+      (<code>FIRST_SCENE_*</code> — do not collapse into Lookout).
+      Persist name <code>StartOakVale</code> is index <strong>4</strong>.
       The retail New Game <em>click/message</em> is now
       <span class="badge PROVEN">PROVEN</span>
       (<code>0059A238</code> / <code>[retail+41]</code>).
@@ -447,8 +476,11 @@
       </tbody>
     </table>
     <p>
-      Until <code>WorldFrame</code> ticks and camera/player gates open, the
-      intro fiber has no native clock.
+      No-save <code>WorldFrame</code> now ticks after Create Players
+      (<code>+9826=1</code>). The Oakvale intro fiber still needs a
+      proven region write (persist <code>PlayerRegionName</code> writer
+      stays <span class="badge UNREAD">UNREAD</span>) — do not invent
+      one on the no-save Lookout path.
     </p>
 
     <h3>2. First-scene intro fiber (apply / runtime)</h3>
@@ -598,10 +630,14 @@
     <p>The boot-first sequence holds. Corrections from the repo:</p>
     <ol>
       <li>
-        <strong>No-save first real region is LookoutPoint</strong>, not Oakvale.
-        Oakvale is persist-name index 4 or the first-scene <em>view</em> contract.
-        New Game <em>click</em> is PROVEN; persist <code>PlayerRegionName</code>
-        writer is not.
+        <strong>No-save first real region and first <em>rendered</em>
+        scene are LookoutPoint</strong> (index 1, <code>RegionThings</code>
+        + <code>006B3FF0</code> hero camera). Oakvale is persist-name
+        index 4 or the first-scene <em>intro view</em> contract
+        (<code>StartOakValeWest</code> / <code>HerosOldHouse</code> /
+        <code>CAM_OVIF_SHOT2</code> / kid). Do not collapse that into
+        Lookout. New Game <em>click</em> is PROVEN; persist
+        <code>PlayerRegionName</code> writer is not.
       </li>
       <li>
         <strong>GTNG is not an unread file on TLC</strong> — missing skip is
