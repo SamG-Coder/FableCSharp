@@ -14,11 +14,11 @@ or in tests/code, treat it as **UNREAD**.
 `CAM_OVIF_SHOT2`) so `CS_OAKVALE_INTRO_FATHER` can run on a real
 world clock.
 
-Snapshot: **2026-08-18**, master merge `9086f1c` (docs PR #22),
-runtime HEAD `1eec3bc` (*Runtime: WaitPlayAnimation plays via vtbl+72
-then leftover vtbl+104.*).
-Just locked on this path: `e7b3c76`, `12e0d75`, `be8545e`, `a708e60`,
-`012dccad`, `6b02b3b`, `666df8f`, `f778853`, `1eec3bc`.
+Snapshot: **2026-08-18**, master merge `1aaccaf` (docs PR #24),
+runtime HEAD `17908c3` (*Runtime: PresentWorld opens instances and
+LEV/STB headers only.*).
+Just locked on this path: `f0fb184`, `fc8b261`, `5c0b14d`, `253126e`,
+`17908c3`.
 Master is still proving **boot / world clock**, not animation.
 README’s long-term priority list still starts with animation; that
 list is not the current phase.
@@ -113,13 +113,11 @@ when a ledger or test already records them.
 
 ### Phase 1 in progress — boot / world clock (current master)
 
-Recent commits (`8bccec3` … `1eec3bc`) lock the retail pump, not
-`00DBDE40`. Just locked: input dispatch (`e7b3c76`), game Present +
-viewport (`12e0d75`), ScenePasses flush (`be8545e`), Sunnyvale persist
-(`a708e60`), `00416E78` / `00446A30` listeners (`012dccad`),
-`0123758C` / `0041649C` (`6b02b3b`), World.Positions dest
-(`666df8f`), PlayAnimation apply (`f778853`), WaitPlayAnimation
-(`1eec3bc`).
+Recent commits (`8bccec3` … `17908c3`) lock the retail pump, not
+`00DBDE40`. Just locked: FORWARD_TREE / mesh bank (`f0fb184`),
+Loading world vtbl+32 (`fc8b261`), XSEQ PaletteForPose (`5c0b14d`),
+names-only banks / LevelLibrary cache (`253126e`), PresentWorld
+headers (`17908c3`).
 
 | Item | Status | Evidence |
 |---|---|---|
@@ -167,6 +165,10 @@ viewport (`12e0d75`), ScenePasses flush (`be8545e`), Sunnyvale persist
 | `WorldGeometry.ApplyActorPositions` consumes `006A9960` dest via `World.Positions`. Father still `NOVI_LiveFather` via `00DB86B0`. Not a renderer hack | PROVEN | `666df8f` / `WalkTo_writes_destination_and_entity_task` |
 | `PlayAnimation` apply `004C7470` / `0070D580` (vtbl+72 walk; +68 `00686920` accept; `00662A00` table; `0070C050`+`0070D580` inner) | PROVEN | apply `f778853`. XSEQ first-key `PaletteForPose` (`00A999B0`/`00AA4680`/`00A4C5E0`) / `XSeqFormatTests`. Runtime still PARTIAL. Time interp `00AA0090` unread. `FirstSeenPlayAnimationAppliesPose=false`. |
 | `WaitPlayAnimation` `00CC18E0` plays via vtbl+72 (or vtbl+76 if IsTrue arg3) then leftover vtbl+104 | PROVEN | `1eec3bc` / `WaitPlayAnimation_plays_then_polls_vtbl104` |
+| FORWARD_TREE PE→WinMain→no-save New Game. Mesh bank `MBANK_ALLMESHES` at `0049E620` / `00A09F20` / `00A27030` / `004BBFD0`. Engine owns map open/close `00B40000` / `00B42750`. Client must not open a second graphics.big dump | PROVEN | `f0fb184` / `Pe_entry_is_crt_not_new_game` / `Install_banks_and_startup_videos_exist` |
+| Game vtbl+32 `00416953` is Loading world (no-save `[+90588]` empty skips `004A3200` Loading save). Then `004A1840` WLD/quests. `00B3E820` current handle LookoutPoint; `00B41E50` neighbours (PicnicArea); `00B420F0` name table; `00BDF010` neighbour patch. `00B42530` is STB-miss fallback only | PROVEN | `fc8b261` / same install test + `Pe_entry` constants |
+| `009A8150` names-only (`RegisterRetailBankTable` does not open graphics.big/textures.big). LevelLibrary caches LEV/STB/TNG parses | PROVEN | `253126e` / `Install_banks_and_startup_videos_exist` / `LevelLibrary_reuses_lev_and_height_parses` |
+| `PresentWorld` opens instances + LEV/STB headers only (`expandGeometry` false). `00B3EFA0` PeekMapHeader 48-byte LEV + STB size. `009AD410` handles; C3D parse is `ExpandPresentedWorld` at draw. `CurrentCompiledLev`/`CurrentHeightField` null at open. Client `BindLifecycleFirstRegion` expands after `PresentWorld` | PROVEN | `17908c3` / `Install_banks_and_startup_videos_exist` PresentWorld asserts / `Open_records_instances_without_c3d_or_tiles` / `PeekMapHeader_is_00b3efa0_not_full_parse` |
 | Game pump / first region is `00DBDE40` / StartOakVale setup | DISPROVEN | tests above |
 | No-save writes `[record+36]` | DISPROVEN | `recover-record36` text in `Camera_004164E0_runs_on_install_after_WorldFrame`; null still loads |
 
@@ -206,7 +208,7 @@ the no-save path.
 | `[esi+42]` load/save | UNREAD | `recover-00595582`; `[esi+41]` Leave is PROVEN |
 | Global-things *use* after `004FDBC0` / `.gtg` parse | UNREAD | Load switch is PROVEN; `00521AE0` is per-map TNG, not this apply |
 | GTNG file body | N/A on TLC | Missing skip is PROVEN |
-| MiniMap `0082BA00` / villages `005064C0` bodies | UNREAD | Named from `SetRegionAsLoaded`; not claimed as runtime |
+| MiniMap `0082BA00` / villages `005064C0` bodies | UNREAD | Named from `SetRegionAsLoaded`; not claimed as runtime. Loading world vtbl+32 `00416953` is PROVEN (`fc8b261`); leftover is MiniMap/villages bodies only |
 | Wire persist-Oakvale (or a proven New Game region write) to `FirstSceneWorld` | UNREAD | Host first-scene lists are a separate reconstructed path |
 
 No-save `WorldFrame` now ticks after Create Players (`+9826=1`).
@@ -275,7 +277,7 @@ README item 1, *after* a ticking world. First-seen wake lines
 | Left | Status |
 |---|---|
 | Animation resource lookup | UNREAD / PARTIAL |
-| Clip evaluation | UNREAD |
+| Clip first-key sample | in `PaletteForPose` (`00A999B0` / `00AA4680` / `00A4C5E0`); leftover is time interp `00AA0090` |
 | Skeletal pose | UNREAD (`FirstSeenPlayAnimationAppliesPose=false`) |
 | PALSKIN dest beyond bind-pose identity | first-seen dest ≈ identity is PROVEN; play-anim product is not |
 
