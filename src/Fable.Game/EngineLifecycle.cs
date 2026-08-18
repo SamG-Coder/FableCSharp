@@ -47,7 +47,13 @@ public sealed class EngineLifecycle
     public const uint RetailPump = 0x0042EC7C;
     public const int RetailModeSize = 0x148;
     public const uint GameModeCtor = 0x00418DCA;
+    public const uint GameModeVtbl = 0x0122F180;
+    public const uint GameStart = 0x004184BD;
+    public const uint GamePump = 0x004189C2;
     public const int GameModeSize = 0x161E8;
+    public const uint InitWorldFn = 0x0041735A;
+    public const uint CreatePlayersFn = 0x004166A8;
+    public const uint InitGraphicsFn = 0x00416C8A;
     public const uint PlayAviPlayer = 0x006286F0;
     public const uint FrontendIntern = 0x0042F722;
     public const uint LeaveFrontendSite = 0x0042F2A2;
@@ -67,6 +73,48 @@ public sealed class EngineLifecycle
         ("Setup library", 0x00403079),
         ("End basic init", 0x00403354),
     ];
+
+    /// <summary>
+    /// <c>004184BD</c> vtbl+4 after <c>00418DCA</c>.
+    /// Not <c>00DBDE40</c>.
+    /// </summary>
+    public static readonly (string Stage, uint Apply)[] InitGameStages =
+    [
+        ("Init Thing Components", 0x004EE23F),
+        ("Init Definition Manager", 0x00416005),
+        ("Init Graphics", 0x00416C8A),
+        ("Init Subtitled Message", 0x004CDB10),
+        ("Init Conversation Attitude", 0x004CD670),
+        ("Init Player Manager", 0x0041732A),
+        ("Init Player Interface", 0x004473A0),
+        ("Init World", 0x0041735A),
+        ("Init Display Engine", 0x00417418),
+        ("Create Players", 0x004166A8),
+        ("Init Sound", 0x00417A58),
+        ("Load Particles", 0x004174F1),
+    ];
+
+    /// <summary>
+    /// <c>004A6E30</c> world object vtbl+36
+    /// ("Init World Init"). Map file is
+    /// <c>005066E0</c> (body UNREAD).
+    /// </summary>
+    public static readonly (string Stage, uint Apply)[] InitWorldInitStages =
+    [
+        ("Init World Map", 0x005066E0),
+        ("Init Environment", 0x006BBC30),
+        ("Init Navigation Manager", 0x00A15670),
+        ("Init Combat Manager", 0x006ED3F0),
+        ("Init Thing Manager", 0x0049EBF0),
+        ("Init Event Manager", 0x00687510),
+        ("Init Game Camera Manager", 0x0069AE80),
+        ("Init Game Camera", 0x006FD8C0),
+        ("Init Mesh Bank", 0x0049E620),
+        ("Init UI Manager", 0x0041D198),
+    ];
+
+    public const uint InitWorldInitFn = 0x004A6E30;
+    public const uint InitWorldMapFn = 0x005066E0;
 
     public static readonly (string Logical, string Pc)[] RetailBanks =
     [
@@ -240,7 +288,16 @@ public sealed class EngineLifecycle
         if (Stage == EngineStage.Frontend)
             RequestNewGame();
         Note(InitGameSite, "InitGame", "Game", "Init Game");
-        Note(GameModeCtor, "InitGame", "GameMode", "00418DCA size 0x161E8");
+        Note(GameModeCtor, "InitGame", "GameMode", "00418DCA size 0x161E8 vtbl 0122F180");
+        Note(GameStart, "InitGame", "GameStart", "004184BD vtbl+4");
+        foreach (var (name, apply) in InitGameStages)
+            Note(apply, name, "InitGame", name);
+        Note(InitWorldFn, "Init World", "World", "004A67D0 vtbl 012390F0");
+        Note(InitWorldInitFn, "Init World Init", "World", "004A6E30 vtbl+36");
+        foreach (var (name, apply) in InitWorldInitStages)
+            Note(apply, name, "World", name);
+        Note(InitWorldMapFn, "Init World Map", "WLD", "005066E0 body UNREAD");
+        Note(CreatePlayersFn, "Create Players", "Player", "0044A530/004AE940 UNREAD");
         Mode = EngineMode.Game;
         Stage = EngineStage.Game;
         WorldFileName = FinalAlbionWld;
