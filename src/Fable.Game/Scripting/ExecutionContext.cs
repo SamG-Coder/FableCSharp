@@ -1194,6 +1194,17 @@ public sealed class WorldRuntime
     public readonly Dictionary<string, bool> LookToCamera =
         new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, Vector3> Positions = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// <c>00CC409B</c> leftover until
+    /// <c>00CBE2FF</c> <c>dist^2 &lt; r^2</c>.
+    /// </summary>
+    public readonly Dictionary<string, string> UnderRadiusTargets =
+        new(StringComparer.OrdinalIgnoreCase);
+    public readonly Dictionary<string, float> UnderRadius =
+        new(StringComparer.OrdinalIgnoreCase);
+    public readonly Dictionary<string, PendingOperation> UnderRadiusOps =
+        new(StringComparer.OrdinalIgnoreCase);
+    private int _radiusSerial;
     public readonly Dictionary<string, bool> Doors = new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, bool> Chests = new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, bool> Drawable = new(StringComparer.OrdinalIgnoreCase);
@@ -1654,6 +1665,30 @@ public sealed class WorldRuntime
         ReleaseFn[key] = 0x00CD2770;
         AILevels.Remove(key);
         AILevelVtbl.Remove(key);
+    }
+
+    /// <summary>
+    /// <c>00CBE2FF</c>: both <c>vtbl+300</c> then
+    /// pos <c>vtbl+24</c>; success iff
+    /// <c>dist^2 &lt; radius^2</c>. Strict.
+    /// </summary>
+    public bool IsUnderRadius(string actor, string target, float radius)
+    {
+        if (!Positions.TryGetValue(actor ?? "", out var a) ||
+            !Positions.TryGetValue(target ?? "", out var b))
+            return false;
+        var d = a - b;
+        return d.LengthSquared() < radius * radius;
+    }
+
+    public PendingOperation WaitUnderRadius(string actor, string target, float radius)
+    {
+        var key = actor ?? "";
+        UnderRadiusTargets[key] = target ?? "";
+        UnderRadius[key] = radius;
+        var op = new PendingOperation($"rad-{++_radiusSerial}", "WaitForUnderRadius", actor, target ?? "");
+        UnderRadiusOps[key] = op;
+        return op;
     }
 
     /// <summary>

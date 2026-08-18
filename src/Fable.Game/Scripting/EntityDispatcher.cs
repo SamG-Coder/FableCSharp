@@ -159,6 +159,31 @@ public static class EntityDispatcher
                 "WaitForAnimationEvent vtbl+236", ev, op.Id, ev);
         }
 
+        if (Eq(v, "WaitForUnderRadius"))
+        {
+            // 00CC409B: arg0+arg1 required; atof radius;
+            // 00CBE2FF dist^2 < r^2 continue; 00CBEB7E skip;
+            // else leftover loop 00CC40CE.
+            var target = line.Arg(0);
+            if (target.Length == 0 || line.Arg(1).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            if (!ScriptLine.TryFloat(line.Arg(1), out var radius))
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            var actor = line.Target ?? "";
+            if (TryMarkerPos(ctx, actor, out var apos))
+                ctx.World.Positions[actor] = apos;
+            if (TryMarkerPos(ctx, target, out var tpos))
+                ctx.World.Positions[target] = tpos;
+            var op = ctx.World.WaitUnderRadius(actor, target, radius);
+            if (ctx.Cutscene.Skip || ctx.World.IsUnderRadius(actor, target, radius))
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity,
+                    $"{target}:{radius:0.##}");
+            return CommandResult.Wait(
+                ExecutionKind.WaitOperation, CommandStatus.Proven, CommandFamily.Entity,
+                "WaitForUnderRadius 00CBE2FF", target, op.Id,
+                $"{target}:{radius:0.##}");
+        }
+
         if (Eq(v, "PlayCombatAnimation") || Eq(v, "PlayCombatAnim"))
         {
             var name = line.Arg(0);

@@ -762,6 +762,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "ebx actor; no args; 00CD2770=007E70E0(actor+8)+zero; jmp 00CC7081; not SetFree 1980"),
+        Spec("WaitForUnderRadius", 0x00CC4045, 0x00CC409B, "thing,radius",
+            ScriptReturn.YieldAfterOrWait, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0+arg1 required; atof r; 00CBE2FF both vtbl+300+24; dist^2<r^2 continue; skip 00CBEB7E; leftover 00CC40CE"),
         Spec("FollowThing", 0x00CC19F2, 0x00CC1AE9, "target[,speed]",
             ScriptReturn.YieldAfter, CommandParity.ScriptLayer,
             "default speed 1.0; actor vtbl+28; yield 00CC0E96 if [ebp+103]"),

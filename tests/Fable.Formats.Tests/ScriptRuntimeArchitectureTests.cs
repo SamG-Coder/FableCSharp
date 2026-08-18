@@ -3744,6 +3744,89 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void WaitForUnderRadius_continues_when_dist_sq_lt_r_sq()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.World.Positions["HERO"] = new System.Numerics.Vector3(0, 0, 0);
+        runtime.World.Positions["FATHER"] = new System.Numerics.Vector3(1, 0, 0);
+        var inside = new ScriptInterpreter("wur-in", ["HERO.WaitForUnderRadius FATHER,2.0"]);
+        inside.RunUntilYield(runtime);
+        Assert.True(inside.Finished);
+        Assert.Equal("FATHER", runtime.World.UnderRadiusTargets["HERO"]);
+        Assert.Equal(2f, runtime.World.UnderRadius["HERO"]);
+        Assert.Equal(0x00CC409Bu, ScriptCommandMap.Find("WaitForUnderRadius")!.Value.ApplySite);
+
+        runtime.World.Positions["BANDIT"] = new System.Numerics.Vector3(10, 0, 0);
+        var far = new ScriptInterpreter("wur-out", ["HERO.WaitForUnderRadius BANDIT,2.0"]);
+        far.RunUntilYield(runtime);
+        Assert.True(far.Yielded);
+        Assert.False(far.Finished);
+        var empty = new ScriptInterpreter("wur0", ["HERO.WaitForUnderRadius"]);
+        empty.RunUntilYield(runtime);
+        Assert.True(empty.Finished);
+    }
+
+    [Fact]
+    public void WaitForUnderRadius_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".WaitForUnderRadius", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "HERO.WaitForUnderRadius FATHER,2.0";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("WaitForUnderRadius", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        runtime.World.Positions[parsed.Target ?? ""] = new System.Numerics.Vector3(0, 0, 0);
+        runtime.World.Positions[parsed.Arg(0)] = new System.Numerics.Vector3(0.5f, 0, 0);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-wur", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".WaitForUnderRadius", StringComparison.OrdinalIgnoreCase));
+        Assert.Equal(parsed.Arg(0), runtime.World.UnderRadiusTargets[parsed.Target ?? ""]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-wur.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-waitforunderradius.txt"),
+            """
+            WaitForUnderRadius 00CC4045 / apply 00CC409B
+              ebx actor; arg0+arg1 required
+              atof arg1 radius; resolve arg0 280/288
+              actor vtbl+48; 00CBE2FF(handle,target,r)
+              both vtbl+300 then pos vtbl+24
+              success iff dist^2 < r^2 (strict)
+              00CBEB7E skip continue
+              else leftover loop 00CC40CE
+            Mesh/pos vtbl+24 body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();
