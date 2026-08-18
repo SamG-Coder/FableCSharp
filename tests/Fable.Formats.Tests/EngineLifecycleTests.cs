@@ -664,6 +664,16 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GamePresentSite);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ClearColorFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.SetViewportFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayPlayerOverlayFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayFlush2dFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayFlushLayersFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.RenderFrameFn);
+        Assert.True(life.LayerFlushCount >= 1);
+        Assert.Equal(
+            new uint[] { 0x4, 0x40, 0x20, 0x2000 },
+            life.SubmittedLayerBits);
+        Assert.True(Fable.Formats.Scene.ScenePasses.Rank(0x4) <
+                    Fable.Formats.Scene.ScenePasses.Rank(0x20));
         Assert.True(life.Input.Present);
         life.QueueInput(EngineInput.TypeKey, EngineInput.KeyMove3);
         life.Pump();
@@ -688,6 +698,11 @@ public sealed class EngineLifecycleTests
                 009BEEB0 Present
             00417001 does not Present; it calls
             00435F70 → 00435530 after WorldFrame>1.
+              00435000 → 00639E40 player overlay
+              00435070 player interface
+              009D9C80 flush DIP vtbl+332
+              009DA9F0(1) layer flush
+              00B25950 bits 0x4,0x40,0x20,0x2000
             Client Draw is that Present, not a
             second swapchain.
             00446A30 player poll UNREAD (0 E8).
@@ -1255,6 +1270,16 @@ public sealed class EngineLifecycleTests
         Assert.Equal(188, EngineLifecycle.SetViewportVtbl);
         Assert.Equal(0x00446A30u, EngineLifecycle.PlayerInputPumpFn);
         Assert.Equal(0x00446330u, EngineLifecycle.PlayerInputPollFn);
+        Assert.Equal(0x00435000u, EngineLifecycle.DisplayPlayerOverlayFn);
+        Assert.Equal(0x00639E40u, EngineLifecycle.DisplayPlayerOverlayApply);
+        Assert.Equal(0x00435070u, EngineLifecycle.DisplayPlayerInterfaceFn);
+        Assert.Equal(0x009D9C80u, EngineLifecycle.DisplayFlush2dFn);
+        Assert.Equal(0x009DA9F0u, EngineLifecycle.DisplayFlushLayersFn);
+        Assert.Equal(1, EngineLifecycle.DisplayFlushLayersArg);
+        Assert.Equal(332, EngineLifecycle.DrawIndexedPrimitiveVtbl);
+        Assert.Equal(8, EngineLifecycle.DisplaySubmitStages.Length);
+        Assert.Equal(0x009BEF20u, EngineLifecycle.DisplaySubmitStages[0].Va);
+        Assert.Equal(0x009BEEB0u, EngineLifecycle.DisplaySubmitStages[^1].Va);
         Assert.Equal(0xD0, EngineInput.ObjectSize);
         Assert.Equal(0x6F, EngineInput.KeyMove0);
         Assert.Equal(0x1E, EngineInput.KeyDikA);

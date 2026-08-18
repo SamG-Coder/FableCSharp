@@ -5,6 +5,7 @@ using Fable.Formats.Banks;
 using Fable.Formats.Defs;
 using Fable.Formats.Levels;
 using Fable.Formats.Qst;
+using Fable.Formats.Scene;
 using Fable.Formats.Tng;
 using Fable.Formats.Wld;
 using Fable.Game.Scripting;
@@ -443,6 +444,40 @@ public sealed class EngineLifecycle
     /// </summary>
     public const uint PlayerInputPumpFn = 0x00446A30;
     public const uint PlayerInputPollFn = 0x00446330;
+    /// <summary>
+    /// <c>00435530</c> between BeginScene
+    /// and EndScene: player overlay
+    /// <c>00435000</c> / <c>00639E40</c>,
+    /// player interface <c>00435070</c>,
+    /// 2D flush <c>009D9C80</c>, layer
+    /// flush <c>009DA9F0(1)</c>
+    /// DrawIndexedPrimitive vtbl+332.
+    /// </summary>
+    public const uint DisplayPlayerOverlayFn = 0x00435000;
+    public const uint DisplayPlayerOverlayApply = 0x00639E40;
+    public const uint DisplayPlayerInterfaceFn = 0x00435070;
+    public const uint DisplayFlush2dFn = RegionTravel.PlayAviFlush;
+    public const uint DisplayFlushLayersFn = 0x009DA9F0;
+    public const int DisplayFlushLayersArg = 1;
+    public const int DrawIndexedPrimitiveVtbl = 332;
+    public const uint RenderFrameFn = RegionTravel.RenderFrame;
+
+    /// <summary>
+    /// Recovered <c>00435530</c> order.
+    /// Layer bits come from
+    /// <see cref="ScenePasses.Registration"/>.
+    /// </summary>
+    public static readonly (string Name, uint Va)[] DisplaySubmitStages =
+    [
+        ("BeginScene", 0x009BEF20),
+        ("Clear", 0x009D8CF0),
+        ("PlayerOverlay", 0x00435000),
+        ("PlayerInterface", 0x00435070),
+        ("Flush2D", 0x009D9C80),
+        ("FlushLayers", 0x009DA9F0),
+        ("EndScene", 0x009BEF50),
+        ("Present", 0x009BEEB0),
+    ];
     public const uint CameraTimeFn = 0x00416231;
     public const uint CameraInterpolationFn = 0x0041707E;
     public const uint CameraInterpTimeFn = 0x004166E2;
@@ -679,6 +714,8 @@ public sealed class EngineLifecycle
     public float ViewportZNear { get; private set; } = ViewportMinZ;
     public float ViewportZFar { get; private set; } = ViewportMaxZ;
     public int GamePresentCount { get; private set; }
+    public int LayerFlushCount { get; private set; }
+    public IReadOnlyList<uint> SubmittedLayerBits => _submittedLayers;
     /// <summary>
     /// <c>0041E5F2</c> singleton. Built on
     /// the first <c>0042E3EE</c> /
@@ -861,6 +898,7 @@ public sealed class EngineLifecycle
         new(StringComparer.OrdinalIgnoreCase);
     private readonly List<InsertedThing> _inserted = [];
     private readonly List<string> _activatedQuests = [];
+    private readonly List<uint> _submittedLayers = [];
     private GameBin? _defs;
 
     public static int CreateDeviceBehaviorFlags(bool hardwareTnl) =>
@@ -1616,10 +1654,10 @@ public sealed class EngineLifecycle
 
     /// <summary>
     /// <c>00435F70</c> jmp <c>00435530</c>.
-    /// BeginScene / clear / EndScene /
-    /// Present are the same device
-    /// calls as frontend and PlayAVI.
-    /// Submit body (layers) PARTIAL.
+    /// BeginScene / overlay / flush /
+    /// EndScene / Present. Layer bits
+    /// are <see cref="ScenePasses"/>
+    /// flushed by <c>009DA9F0</c>.
     /// </summary>
     public void ApplyDisplayCamera()
     {
@@ -1628,10 +1666,41 @@ public sealed class EngineLifecycle
         Note(DisplayApplyBodyFn, "GamePump", "Display", "00435530");
         Note(BeginSceneFn, "GamePump", "D3D9", "009BEF20 BeginScene");
         Note(ClearColorFn, "GamePump", "D3D9", "009D8CF0 clear");
+        Note(DisplayPlayerOverlayFn, "GamePump", "Display",
+            "00435000 → 00639E40");
+        Note(DisplayPlayerOverlayApply, "GamePump", "Display", "00639E40");
+        Note(DisplayPlayerInterfaceFn, "GamePump", "Display", "00435070");
+        Note(DisplayFlush2dFn, "GamePump", "D3D9",
+            "009D9C80 flush DIP vtbl+332");
+        Note(DisplayFlushLayersFn, "GamePump", "D3D9",
+            "009DA9F0(1) layer flush");
+        Note(RenderFrameFn, "GamePump", "Display",
+            "00B25950 layers +348…+352");
+        FlushSubmittedLayers();
         Note(EndSceneFn, "GamePump", "D3D9", "009BEF50 EndScene");
         Note(GamePresentSite, "GamePump", "D3D9", "00435F50");
         Note(PresentFn, "GamePump", "D3D9", "009BEEB0 Present");
         GamePresentCount++;
+    }
+
+    /// <summary>
+    /// <c>009DA9F0</c> draws the queued
+    /// layer bits. Order is
+    /// <see cref="ScenePasses.Registration"/>.
+    /// </summary>
+    private void FlushSubmittedLayers()
+    {
+        _submittedLayers.Clear();
+        foreach (var pass in ScenePasses.Registration)
+        {
+            if (!ScenePasses.Draws(pass.Submit))
+                continue;
+            _submittedLayers.Add(pass.Bit);
+            Note(DisplayFlushLayersFn, "GamePump", "Layer",
+                $"bit 0x{pass.Bit:X} {pass.Submit}");
+        }
+
+        LayerFlushCount++;
     }
 
     /// <summary>
