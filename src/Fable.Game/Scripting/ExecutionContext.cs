@@ -1050,6 +1050,11 @@ public sealed class WorldRuntime
     /// Distinct from <c>PutInHeroHands</c> <c>vtbl+572</c>.
     /// </summary>
     public string HeroWeapon { get; set; } = "";
+    /// <summary>
+    /// Last <c>RemoveHeroWeapons</c> vtbl: 552 default,
+    /// 560 when <c>IsFalse(arg0)</c>.
+    /// </summary>
+    public int RemoveHeroWeaponsVtbl { get; set; }
 
     /// <summary>
     /// <c>00CC63E5</c>: give <c>count - already</c>

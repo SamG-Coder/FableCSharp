@@ -716,6 +716,16 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name);
         }
 
+        if (Eq(v, "RemoveHeroWeapons"))
+        {
+            // 00CC9106: IsFalse(arg0) → vtbl+560 else vtbl+552.
+            var isFalse = ScriptLine.IsFalse(line.Arg(0));
+            ctx.World.RemoveHeroWeaponsVtbl = isFalse ? 560 : 552;
+            ctx.World.HeroWeapon = "";
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                isFalse ? "vtbl+560" : "vtbl+552");
+        }
+
         if (Eq(v, "GiveHeroHealth"))
         {
             var token = line.Arg(0);

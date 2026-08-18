@@ -85,6 +85,7 @@
 | TakeFromHero | `00CCFB51` | `00CCFBA3` | item | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | vtbl+556(name); jmp 00CD17FD; not TakeObjectFromHero |
 | PutInHeroHands | `00CCFBCA` | `00CCFC20` | item[,NAME] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | NULL vtbl+572 empty; NAME vtbl+572(name); else thing vtbl+568(1,1) |
 | SetHeroWeapon | `00CCFD57` | `00CCFDA9` | item | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; vtbl+488(name); jmp 00CD17FD; not PutInHeroHands 572 |
+| RemoveHeroWeapons | `00CC90B4` | `00CC9106` | IsFalse? | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | IsFalse(arg0) vtbl+560 else vtbl+552; jmp 00CD17FD; bag body unread |
 | UseTheme | `00CCFA38` | `00CCFA8B` | name[,param][,flag] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | RESET vtbl+2628(param); else vtbl+2624(name,param); jmp 00CD17FD |
 | SetDoorOpen | `00CC8A8D` | `00CC8BEB` | name,IsFalse? | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | IsFalse(arg1)->vtbl+1704 close else vtbl+1700 open; jmp 00CD17F8 |
 | SetChestOpen | `00CC8C14` | `00CC8D73` | name,IsFalse? | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | IsFalse(arg1)->vtbl+1744 close else vtbl+1740(thing,0) open; jmp 00CD17F8 |

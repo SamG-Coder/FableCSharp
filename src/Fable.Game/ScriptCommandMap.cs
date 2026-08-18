@@ -512,6 +512,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "arg0 required; vtbl+488(name); jmp 00CD17FD; not PutInHeroHands 572"),
+        Spec("RemoveHeroWeapons", 0x00CC90B4, 0x00CC9106, "IsFalse?",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "IsFalse(arg0) vtbl+560 else vtbl+552; jmp 00CD17FD; bag body unread"),
         Spec("UseTheme", 0x00CCFA38, 0x00CCFA8B, "name[,param][,flag]",
             ScriptReturn.CompleteNow, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

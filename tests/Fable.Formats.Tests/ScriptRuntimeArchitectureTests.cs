@@ -1214,6 +1214,76 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void RemoveHeroWeapons_false_is_vtbl_560()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.World.HeroWeapon = "OBJECT_SWORD_OF_AEONS";
+        var keep = new ScriptInterpreter("rhw0", ["RemoveHeroWeapons FALSE"]);
+        keep.RunUntilYield(runtime);
+        Assert.Equal("", runtime.World.HeroWeapon);
+        Assert.Equal(560, runtime.World.RemoveHeroWeaponsVtbl);
+        var strip = new ScriptInterpreter("rhw1", ["RemoveHeroWeapons TRUE"]);
+        strip.RunUntilYield(runtime);
+        Assert.Equal(552, runtime.World.RemoveHeroWeaponsVtbl);
+        Assert.Equal(0x00CC9106u, ScriptCommandMap.Find("RemoveHeroWeapons")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("SetHeroWeapon")!.Value.ApplySite,
+            ScriptCommandMap.Find("RemoveHeroWeapons")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void RemoveHeroWeapons_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_GUILD_DEPARTURE_GM_DONE") ?? bank.Find("CS_SHIP_SAILS");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.StartsWith("RemoveHeroWeapons", StringComparison.OrdinalIgnoreCase))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("RemoveHeroWeapons", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        runtime.World.HeroWeapon = "OBJECT_IRON_KATANA";
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-rmw", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("RemoveHeroWeapons", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal("", runtime.World.HeroWeapon);
+        Assert.Equal(ScriptLine.IsFalse(parsed.Arg(0)) ? 560 : 552,
+            runtime.World.RemoveHeroWeaponsVtbl);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-rmw.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-removeheroweapons.txt"),
+            """
+            RemoveHeroWeapons 00CC90B4 / apply 00CC9106
+              00CBEE0C IsFalse(arg0)
+              TRUE/empty → vtbl+552
+              FALSE → vtbl+560
+              jmp 00CD17FD no yield
+              sibling of TakeFromHero vtbl+556
+            Weapon bag / sheathe body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void WalkTo_writes_destination_and_entity_task()
     {
         var runtime = ScriptRuntime.Detached();
