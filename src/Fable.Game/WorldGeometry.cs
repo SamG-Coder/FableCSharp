@@ -57,7 +57,7 @@ public sealed class WorldGeometry
         using var levels = new LevelLibrary(install);
         var textureHeader = Path.Combine(install.DataRoot, "Defs", "RetailHeaders", "pc", "textures.h");
         var landscapeEnums = File.Exists(textureHeader) ? HeaderEnums.Load(textureHeader) : null;
-        var primaryThings = PlaceActors(
+        var primaryThings = ApplyActorPositions(
             things as IReadOnlyList<ThingInstance> ?? things.ToList(),
             actorPositions);
 
@@ -145,29 +145,42 @@ public sealed class WorldGeometry
         region.Equals(RegionTravel.NewGameRegion, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
-    /// <c>00DB86B0</c> binds <c>Father</c> to
-    /// <c>NOVI_LiveFather</c>. TNG has no physics
-    /// pos; first-seen <c>Teleport</c> writes
-    /// <c>MK_OVI_ID_DAD</c> via <c>0089B780</c>.
+    /// Consume <c>006A9960</c> dest /
+    /// <c>World.Positions</c>. Father still
+    /// maps <c>NOVI_LiveFather</c> via
+    /// <c>00DB86B0</c> / <c>0089B780</c>.
+    /// Other script names take their
+    /// recorded position. Not a renderer hack.
     /// </summary>
-    private static IReadOnlyList<ThingInstance> PlaceActors(
+    public static IReadOnlyList<ThingInstance> ApplyActorPositions(
         IReadOnlyList<ThingInstance> things,
         IReadOnlyDictionary<string, Vector3>? actorPositions)
     {
-        if (actorPositions is null ||
-            !actorPositions.TryGetValue(RegionTravel.IntroFatherActor, out var fatherPos))
+        if (actorPositions is null || actorPositions.Count == 0)
             return things;
 
+        var hasFather = actorPositions.TryGetValue(
+            RegionTravel.IntroFatherActor, out var fatherPos);
         var list = new List<ThingInstance>(things.Count);
         foreach (var thing in things)
         {
-            if (thing.ScriptName is not null &&
-                thing.ScriptName.Equals(RegionTravel.LiveFatherScript, StringComparison.OrdinalIgnoreCase))
+            if (hasFather &&
+                thing.ScriptName is not null &&
+                thing.ScriptName.Equals(
+                    RegionTravel.LiveFatherScript, StringComparison.OrdinalIgnoreCase))
             {
                 list.Add(CloneAs(
                     thing,
                     thing.DefinitionType ?? RegionTravel.LiveFatherCreature,
                     fatherPos));
+                continue;
+            }
+
+            if (thing.ScriptName is { Length: > 0 } name &&
+                actorPositions.TryGetValue(name, out var pos))
+            {
+                list.Add(CloneAs(
+                    thing, thing.DefinitionType ?? name, pos));
                 continue;
             }
 

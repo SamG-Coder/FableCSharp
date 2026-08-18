@@ -970,6 +970,18 @@ public static class RegionTravel
     public const uint WalkToYieldOnce = 0x00CC0E96;
     public const int WalkToApplyVtbl = 20;
     public const uint WalkToApplyStub = 0x004C72B0;
+    /// <summary>
+    /// Player/AI <c>vtbl+16</c> <c>006A9960</c>
+    /// stores dest via <c>00662930</c>, copies
+    /// gait+80 into +176, <c>or [+146],2</c>.
+    /// <c>vtbl+20</c> <c>004C72B0</c> is the
+    /// WalkTo stub (<c>al=1; ret 4</c>).
+    /// </summary>
+    public const uint CreatureGoVtbl16 = 0x006A9960;
+    public const uint CreatureGoStore = 0x00662930;
+    public const int CreatureMovingFlag = 2;
+    public const int CreatureMovingOffset = 146;
+    public const int CreatureSpeedOffset = 176;
     public const int WalkToMode = 0;
     public const bool FirstSeenWalkToWaitsForArrival = false;
     public const bool FirstSeenWalkToAppliesMove = false;

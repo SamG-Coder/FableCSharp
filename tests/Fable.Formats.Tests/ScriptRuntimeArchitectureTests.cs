@@ -5117,6 +5117,24 @@ public sealed class ScriptRuntimeArchitectureTests
         Assert.Equal(4, runtime.World.Positions["HERO"].Z);
         Assert.True(runtime.Movement.Tasks.Current("HERO")!.Complete);
         Assert.Equal(0x00CC09E2u, ScriptCommandMap.Find("WalkTo")!.Value.ApplySite);
+        var placed = WorldGeometry.ApplyActorPositions(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "CREATURE_HERO",
+                ScriptName = "HERO",
+                PositionX = 0,
+                PositionY = 0,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], runtime.World.Positions);
+        Assert.Equal(10f, placed[0].PositionX);
+        Assert.Equal(4f, placed[0].PositionZ);
+        Assert.Equal(0x006A9960u, RegionTravel.CreatureGoVtbl16);
+        Assert.Equal(0x004C72B0u, RegionTravel.WalkToApplyStub);
     }
 
     [Fact]
