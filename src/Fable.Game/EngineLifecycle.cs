@@ -1288,6 +1288,63 @@ public sealed class EngineLifecycle : IDisposable
     public const uint EventNodeFreeFn = 0x00BFEA14;
     public const int WorldEventManagerOffset = 96;
     public const int EventManagerPlus4Offset = 4;
+    /// <summary>
+    /// <c>004A5DA1</c> 4×
+    /// <c>004498C0([world+12], 0..3)</c>.
+    /// <c>world+12</c> is ctor
+    /// <c>[arg+8]</c> (player manager).
+    /// Create Players
+    /// <c>0048A210</c> /
+    /// <c>0099A350</c> leaves
+    /// <c>[slot+4]=1</c> and
+    /// <c>[slot+40]=index</c> so
+    /// <c>0099A330</c> takes
+    /// <c>00488AB0</c>.
+    /// <c>[+534]=1</c> already so
+    /// <c>004887C0</c> is skipped.
+    /// <c>00A01B50(+44)</c> miss
+    /// skips <c>006A4D00</c> /
+    /// vtbl+48 / <c>005063E0</c>.
+    /// </summary>
+    public const uint PlayerSlotValidFn = 0x0099A330;
+    public const uint PlayerSlotTickFn = 0x00488AB0;
+    public const uint PlayerSlotOneShotFn = 0x004887C0;
+    public const int WorldPlayerManagerOffset = 12;
+    public const int PlayerSlotPlus4Offset = 4;
+    public const int PlayerSlotPlus4FirstSeen = 1;
+    public const int PlayerSlotIndexOffset = 40;
+    public const int PlayerSlotPlus534Offset = 534;
+    public const int PlayerSlotPlus534FirstSeen = 1;
+    public const int PlayerSlotLoopCount = 4;
+    /// <summary>
+    /// <c>004A5DC5 00436FB0</c> then
+    /// <c>00640320(flag)</c>.
+    /// Singleton <c>[0x13BA854]</c>
+    /// vtbl <c>01231584</c>.
+    /// Init Engine OnActivate
+    /// <c>006404D0</c> inserts
+    /// <c>[engine+44]</c>
+    /// (<c>00B26340</c> /
+    /// <c>00B260B0</c> vtbl
+    /// <c>012A0F3C</c>).
+    /// <c>vtbl+204</c> <c>00B23550</c>
+    /// is <c>[display+8]</c>; ctor 0
+    /// so <c>vtbl+36</c> <c>00B24030</c>
+    /// is skipped. Not
+    /// <c>00501450</c>.
+    /// </summary>
+    public const uint DisplayListenerGetFn = 0x00436FB0;
+    public const uint DisplayListenerVa = 0x013BA854;
+    public const uint DisplayListenerVtbl = 0x01231584;
+    public const uint DisplayListenerPumpFn = 0x00640320;
+    public const uint DisplayListenerInsertFn = 0x006404D0;
+    public const uint DisplayObjectAllocFn = 0x00B26340;
+    public const uint DisplayObjectCtor = 0x00B260B0;
+    public const uint DisplayObjectVtbl = 0x012A0F3C;
+    public const uint DisplayActiveGateFn = 0x00B23550;
+    public const uint DisplayActiveApplyFn = 0x00B24030;
+    public const int DisplayPlus8Offset = 8;
+    public const int DisplayPlus8FirstSeen = 0;
     public const int PlayerThingPlus145Offset = 145;
     public const int PlayerThingPlus142Offset = 142;
     public const uint PlayerCreatureFactoryFn = 0x0052B880;
@@ -1847,6 +1904,9 @@ public sealed class EngineLifecycle : IDisposable
     public int ScriptPumpWalked { get; private set; }
     public bool EventPumpRan { get; private set; }
     public int EventPumpWalked { get; private set; }
+    public int PlayerSlotTicks { get; private set; }
+    public bool DisplayListenerPumped { get; private set; }
+    public bool DisplayActiveApplyRan { get; private set; }
     public bool FollowSpringRan { get; private set; }
     public bool SubjectFillNoted { get; private set; }
     public QuestFile? Quests { get; private set; }
@@ -3925,7 +3985,11 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>006E75C0</c> empty
     /// <c>[script+60]</c>, then
     /// <c>006874B0</c> empty
-    /// <c>[event+4]</c>, then
+    /// <c>[event+4]</c>, then 4×
+    /// <c>004498C0</c>/<c>00488AB0</c>
+    /// <c>00A01B50</c> miss, then
+    /// <c>00640320</c> <c>[+8]=0</c>
+    /// skip, then
     /// <c>004A5DF3 006B3FF0</c>,
     /// then <c>004A5E10</c>.
     /// No <c>00501450</c>.
@@ -3936,6 +4000,8 @@ public sealed class EngineLifecycle : IDisposable
         PumpQuests();
         PumpScripts();
         PumpEvents();
+        PumpPlayerSlots();
+        PumpDisplayListeners();
         if (!WorldCameraPresent)
         {
             WorldCamera.Construct();
@@ -4029,6 +4095,51 @@ public sealed class EngineLifecycle : IDisposable
             "00BFEA14 skip");
         EventPumpWalked = 0;
         EventPumpRan = true;
+    }
+
+    /// <summary>
+    /// <c>004A5DA1</c> slots 0..3:
+    /// <c>0099A330</c> 1,
+    /// <c>00488AB0</c> skip
+    /// <c>004887C0</c>,
+    /// <c>00A01B50</c> miss.
+    /// </summary>
+    public void PumpPlayerSlots()
+    {
+        Note(PlayerSlotWalkFn, "GamePump", "Player",
+            $"004498C0 ×{PlayerSlotLoopCount} [world+{WorldPlayerManagerOffset}]");
+        for (var i = 0; i < PlayerSlotLoopCount; i++)
+        {
+            Note(PlayerSlotValidFn, "GamePump", "Player",
+                $"0099A330 slot {i} [+{PlayerSlotPlus4Offset}]={PlayerSlotPlus4FirstSeen}");
+            Note(PlayerSlotTickFn, "GamePump", "Player",
+                $"00488AB0 [+{PlayerSlotPlus534Offset}]={PlayerSlotPlus534FirstSeen} skip 004887C0");
+            Note(PlayerThingSmartPtrFn, "GamePump", "Player",
+                "00A01B50 +44 miss skip 006A4D00");
+        }
+
+        PlayerSlotTicks = PlayerSlotLoopCount;
+    }
+
+    /// <summary>
+    /// <c>00640320</c> first-seen:
+    /// OnActivate inserted
+    /// <c>[engine+44]</c>,
+    /// <c>vtbl+204</c> <c>[+8]=0</c>
+    /// skips <c>00B24030</c>.
+    /// </summary>
+    public void PumpDisplayListeners()
+    {
+        Note(DisplayListenerGetFn, "GamePump", "Display",
+            $"00436FB0 [0x{DisplayListenerVa:X}]");
+        Note(DisplayListenerInsertFn, "GamePump", "Display",
+            "006404D0 OnActivate [engine+44]");
+        Note(DisplayListenerPumpFn, "GamePump", "Display",
+            "00640320 flag=1");
+        Note(DisplayActiveGateFn, "GamePump", "Display",
+            $"vtbl+204 [+{DisplayPlus8Offset}]={DisplayPlus8FirstSeen} skip 00B24030");
+        DisplayListenerPumped = true;
+        DisplayActiveApplyRan = false;
     }
 
     /// <summary>

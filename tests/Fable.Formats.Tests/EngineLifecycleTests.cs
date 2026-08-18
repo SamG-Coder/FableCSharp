@@ -1657,6 +1657,22 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x00687510u, EngineLifecycle.EventManagerCtor);
         Assert.Equal(0x00687540u, EngineLifecycle.EventManagerPostFn);
         Assert.Equal(96, EngineLifecycle.WorldEventManagerOffset);
+        Assert.Equal(4, life.PlayerSlotTicks);
+        Assert.True(life.DisplayListenerPumped);
+        Assert.False(life.DisplayActiveApplyRan);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PlayerSlotTickFn &&
+            e.Action.Contains("skip 004887C0", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DisplayActiveGateFn &&
+            e.Action.Contains("skip 00B24030", StringComparison.Ordinal));
+        Assert.Equal(0x00488AB0u, EngineLifecycle.PlayerSlotTickFn);
+        Assert.Equal(0x00436FB0u, EngineLifecycle.DisplayListenerGetFn);
+        Assert.Equal(0x00640320u, EngineLifecycle.DisplayListenerPumpFn);
+        Assert.Equal(0x00B23550u, EngineLifecycle.DisplayActiveGateFn);
+        Assert.Equal(0, EngineLifecycle.DisplayPlus8FirstSeen);
+        Assert.Equal(1, EngineLifecycle.PlayerSlotPlus4FirstSeen);
+        Assert.Equal(1, EngineLifecycle.PlayerSlotPlus534FirstSeen);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.QuestListPumpFn &&
             e.Action.Contains("skip", StringComparison.Ordinal));

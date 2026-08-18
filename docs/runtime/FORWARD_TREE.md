@@ -436,6 +436,8 @@ then inner loop until [game+8]  PROVEN
 │   │               [world+248]=0 [world+260]=0
 │   │               004B4490 then 006E75C0 empty
 │   │               then 006874B0 empty [event+4]
+│   │               then 4× 004498C0/00488AB0 miss
+│   │               then 00640320 [+8]=0 skip
 │   │               then 004A5DF3 006B3FF0
 │   │               004A5E10 inc WorldFrame
 │   │               no 00501450 / 00500540 / 006C27A0
@@ -822,8 +824,19 @@ Fiber +41 setter 00CB78D0  PROVEN
 │   (004B4260 writes +156 / local
 │   vector). Not 00501450.
 │   Only E8 of 006874B0 is 004A5D99.
-├── 004498C0 ×4 [world+12]  PARTIAL
-│   then 00436FB0 / 00640320  UNREAD
+├── 004498C0 ×4 [world+12]  PROVEN
+│   world+12 = ctor [arg+8] player manager
+│   +40=index, +4=1 (0048A210 0099A350)
+│   0099A330 → 00488AB0
+│   [+534]=1 skip 004887C0
+│   00A01B50(+44) miss skip 006A4D00
+├── 00436FB0 / 00640320  PROVEN skip
+│   singleton [0x13BA854] vtbl 01231584
+│   OnActivate 006404D0 inserts
+│   [engine+44] 00B26340 / 012A0F3C
+│   vtbl+204 00B23550 [+8]=0 (ctor)
+│   skip vtbl+36 00B24030
+│   push ebx is 00640320 arg, not 00436FB0
 └── 004A5DF3 006B3FF0 then 004A5E10
 009D9C80 first 250: dirty-list only. No type 0x22.
 
@@ -878,7 +891,7 @@ Walk these **from their parent above**, not by string.
 | `00B40000` | `00BDC4F0` / `00BDDD50` | patch destroy |
 | `006C2170` | unload of previous ContainsMaps | region change |
 | `004B4260` | each initial-quest factory run | not Oakvale intro |
-| `004A5A40` | `00436FB0` / `00640320` after 4× `004498C0` | after first-seen empty `006874B0` |
+| `004A5A40` | after `00640320` skip: `006BB990` then `006B3FF0` | already seed-proven; next unread callee on this slice |
 
 After every successful walk: add the node here, then implement
 only that node's semantic equivalent on `EngineLifecycle`.
