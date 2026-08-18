@@ -541,17 +541,32 @@ public sealed class EngineLifecycle : IDisposable
     public const int GamePumpQuitUpdate = 1;
     public const int GamePumpQuitFirstSeen = 1;
     /// <summary>
-    /// <c>009A6460</c>: <c>[engine+8]!=0</c>
-    /// → 2 (write <c>[game+8]=1</c> and
-    /// leave). First-seen
-    /// <c>[engine+8]==0</c> → 1 so
-    /// <c>004189C2</c> loops. Not
-    /// <c>00501450</c>.
+    /// <c>009A6460</c> always calls
+    /// <c>009A6370</c> (PeekMessage
+    /// <c>009A4F20</c>, then
+    /// <c>009C00C0</c>). Return 2 iff
+    /// <c>[engine+8]!=0</c>. That byte is
+    /// written by WndProc <c>009A5B60</c>
+    /// <c>WM_DESTROY</c> (table
+    /// <c>0x9A5F7C[1]=009A5BEA</c>).
+    /// First-seen New Game does not
+    /// destroy the window, so return 1
+    /// and loop. Not <c>00501450</c>.
     /// </summary>
+    public const uint EngineMessagePumpFn = 0x009A6370;
+    public const uint PeekMessageFn = 0x009A4F20;
+    public const uint PeekMessageIat = 0x01440370;
+    public const uint DefWindowProcIat = 0x0144037C;
+    public const uint TestCooperativeLevelFn = 0x009C00C0;
+    public const uint EngineWndProc = 0x009A5B60;
+    public const uint EngineWndProcJumpTable = 0x009A5F7C;
+    public const uint EngineQuitStoreSite = 0x009A5BEA;
+    public const int WmDestroy = 2;
     public const int EnginePlus8Offset = 8;
     public const int EnginePlus8FirstSeen = 0;
     public const int GamePlus8Offset = 8;
     public const int GamePlus8FirstSeen = 0;
+    public const uint GamePumpLeaveFn = 0x004175E5;
     /// <summary>
     /// First <c>004189C2</c> after dummy
     /// record: <c>0040D2A0</c> singleton
@@ -1398,6 +1413,12 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>009AC9E0</c>.
     /// </summary>
     public bool GamePlus8 { get; private set; }
+    /// <summary>
+    /// <c>[engine+8]</c>. First-seen 0.
+    /// <c>WM_DESTROY</c> sets 1.
+    /// </summary>
+    public int EnginePlus8 { get; private set; }
+    public bool GamePumpLeft { get; private set; }
     /// <summary>
     /// <c>004AE9D0</c> <c>+9836</c> =
     /// <c>[game+72]</c>.
@@ -2778,11 +2799,12 @@ public sealed class EngineLifecycle : IDisposable
             return;
         GamePumpFrames++;
         GamePlus9 = true;
-        GamePlus8 = false;
+        if (GamePumpLeft)
+            return;
         if (GamePumpFirstDone)
         {
-            NoteInnerLoopHead();
-            PumpGameUpdate();
+            if (NoteInnerLoopHead())
+                PumpGameUpdate();
             NoteInnerLoopTail();
             return;
         }
@@ -2796,8 +2818,8 @@ public sealed class EngineLifecycle : IDisposable
         {
             Note(NamedStartFn, "GamePump", "Region", "00416268 named start");
             GamePumpFirstDone = true;
-            NoteInnerLoopHead();
-            PumpGameUpdate();
+            if (NoteInnerLoopHead())
+                PumpGameUpdate();
             NoteInnerLoopTail();
             return;
         }
@@ -2811,8 +2833,8 @@ public sealed class EngineLifecycle : IDisposable
         ActivateCurrentRegion();
         ApplyFirstPumpAviAndFade();
         GamePumpFirstDone = true;
-        NoteInnerLoopHead();
-        PumpGameUpdate();
+        if (NoteInnerLoopHead())
+            PumpGameUpdate();
         NoteInnerLoopTail();
     }
 
@@ -2825,17 +2847,34 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     /// <summary>
     /// One <c>004189C2</c> inner
-    /// iteration while
-    /// <c>[game+8]==0</c>.
-    /// <c>009A6460</c> first-seen 1.
-    /// Not <c>00501450</c>.
+    /// iteration. <c>009A6460</c> →
+    /// <c>009A6370</c>. First-seen
+    /// PeekMessage empty and
+    /// <c>[engine+8]==0</c> → 1.
+    /// False means return 2 (skip
+    /// <c>004162B5</c>, still run tail).
     /// </summary>
-    private void NoteInnerLoopHead()
+    private bool NoteInnerLoopHead()
     {
         Note(GamePumpInnerStartFn, "GamePump", "Game", "0098E1B0 ret");
+        Note(EngineMessagePumpFn, "GamePump", "Engine", "009A6370");
+        Note(PeekMessageFn, "GamePump", "Engine",
+            "009A4F20 PeekMessage first-seen empty");
+        Note(TestCooperativeLevelFn, "GamePump", "Engine", "009C00C0");
+        Note(EngineWndProc, "GamePump", "Engine",
+            $"009A5B60 table 0x{EngineWndProcJumpTable:X}");
+        if (EnginePlus8 != 0)
+        {
+            GamePlus8 = true;
+            Note(GamePumpQuitQuery, "GamePump", "Engine",
+                $"009A6460 [engine+{EnginePlus8Offset}]=1 → {GamePumpQuitLeave}");
+            return false;
+        }
+
         Note(GamePumpQuitQuery, "GamePump", "Engine",
             $"009A6460 [engine+{EnginePlus8Offset}]={EnginePlus8FirstSeen} → {GamePumpQuitFirstSeen}");
         NoteInnerLoopDt();
+        return true;
     }
 
     private void NoteInnerLoopDt()
@@ -2865,8 +2904,35 @@ public sealed class EngineLifecycle : IDisposable
         Note(PlayerManagerGetter, "GamePump", "Player",
             "0044C6B0 [0x13B879C]");
         Note(PlayerManagerIdleFn, "GamePump", "Player", "009AC9E0 ret 4");
+        if (GamePlus8)
+        {
+            Note(GamePump, "GamePump", "Game",
+                $"[game+{GamePlus8Offset}]=1 leave");
+            Note(GamePumpLeaveFn, "GamePump", "Game", "004175E5");
+            GamePumpLeft = true;
+            return;
+        }
+
         Note(GamePump, "GamePump", "Game",
             $"[game+{GamePlus8Offset}]={GamePlus8FirstSeen} loop");
+    }
+
+    /// <summary>
+    /// WndProc <c>009A5B60</c>.
+    /// <c>WM_DESTROY</c> is table slot 1
+    /// <c>009A5BEA</c>:
+    /// <c>[engine+232]=0</c>,
+    /// <c>[engine+8]=1</c>.
+    /// </summary>
+    public void ApplyEngineWindowMessage(int msg)
+    {
+        Note(EngineWndProc, "GamePump", "Engine",
+            $"009A5B60 msg={msg}");
+        if (msg != WmDestroy)
+            return;
+        Note(EngineQuitStoreSite, "GamePump", "Engine",
+            "009A5BEA WM_DESTROY [engine+8]=1");
+        EnginePlus8 = 1;
     }
 
     /// <summary>

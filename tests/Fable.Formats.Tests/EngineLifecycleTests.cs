@@ -1669,6 +1669,51 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0, EngineLifecycle.GamePlus8FirstSeen);
         Assert.Equal(1, EngineLifecycle.GamePumpQuitFirstSeen);
         Assert.Equal(2, EngineLifecycle.GamePumpQuitLeave);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.EngineMessagePumpFn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PeekMessageFn &&
+            e.Action.Contains("empty", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.TestCooperativeLevelFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.EngineQuitStoreSite);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.GamePumpLeaveFn);
+    }
+
+    [Fact]
+    public void WmDestroy_009A5BEA_sets_engine_plus8_and_leaves_004189C2()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.False(life.GamePlus8);
+        Assert.Equal(0, life.EnginePlus8);
+        life.ApplyEngineWindowMessage(EngineLifecycle.WmDestroy);
+        Assert.Equal(1, life.EnginePlus8);
+        Assert.True(life.Pump());
+        Assert.True(life.GamePlus8);
+        Assert.True(life.GamePumpLeft);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.EngineQuitStoreSite &&
+            e.Action.Contains("WM_DESTROY", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.GamePumpQuitQuery &&
+            e.Action.Contains("→ 2", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.GamePump &&
+            e.Action.Contains("[game+8]=1 leave", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GamePumpLeaveFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
+        Assert.Equal(0x009A6370u, EngineLifecycle.EngineMessagePumpFn);
+        Assert.Equal(0x009A4F20u, EngineLifecycle.PeekMessageFn);
+        Assert.Equal(0x009A5B60u, EngineLifecycle.EngineWndProc);
+        Assert.Equal(0x009A5F7Cu, EngineLifecycle.EngineWndProcJumpTable);
+        Assert.Equal(0x009A5BEAu, EngineLifecycle.EngineQuitStoreSite);
+        Assert.Equal(2, EngineLifecycle.WmDestroy);
+        Assert.Equal(0x004175E5u, EngineLifecycle.GamePumpLeaveFn);
+        Assert.Equal(0x009C00C0u, EngineLifecycle.TestCooperativeLevelFn);
     }
 
     [Fact]

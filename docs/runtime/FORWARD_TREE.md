@@ -385,8 +385,13 @@ then first-pump tail (before inner loop)  PROVEN
 then inner loop until [game+8]  PROVEN
 ├── 0098E1B0  ret
 ├── 00416231  dt − [game+96]
-├── 009A6460  [engine+8]==0 → 1 (update); +8 → 2 leave
-│   first-seen 1
+├── 009A6460  PROVEN
+│   ├── 009A6370  PeekMessage 009A4F20 + 009C00C0
+│   │   └── WndProc 009A5B60  table 0x9A5F7C
+│   │       WM_DESTROY (2) → 009A5BEA [engine+8]=1  PROVEN
+│   ├── [engine+8]==0 → 1 (first-seen; no WM_DESTROY)
+│   └── [engine+8]!=0 → 2 leave 004175E5
+│       not 00501450  DISPROVEN as this exit
 ├── [game+52]==0 → 009F8BA0(game+90556) then 004162B5  PROVEN
 │   [game+52]!=0 → 00417747 (not first-seen)
 ├── 004162B5  GamePumpUpdate  PROVEN
@@ -429,8 +434,12 @@ After `009AC9E0`, `[game+8]==0` (`009A6460`
 iteration repeats. Host `EnqueueAfterDummy`
 /`00501450` on the second `Pump` is
 DISPROVEN as that next first-seen callee.
-`004175E5` is teardown after leave, not
-first-seen. `00501450` E8 caller still UNREAD.
+Loop exit is WndProc `009A5B60` `WM_DESTROY`
+(`0x9A5F7C[1]=009A5BEA`) writing
+`[engine+8]=1`; then `009A6460` returns 2,
+`[game+8]=1`, `004175E5`. First-seen New
+Game does not destroy the window.
+`00501450` E8 caller still UNREAD.
 
 ---
 
