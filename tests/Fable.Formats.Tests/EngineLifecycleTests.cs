@@ -59,6 +59,19 @@ public sealed class EngineLifecycleTests
         Assert.Equal("default_user.ini", EngineLifecycle.DefaultUserIniName);
         Assert.Equal("user.ini", EngineLifecycle.UserIniName);
         Assert.Equal(0x009EC890u, EngineLifecycle.IniApplyFn);
+        Assert.Equal(0x009EC710u, EngineLifecycle.IniTokenizeFn);
+        Assert.Equal(0x009EB430u, EngineLifecycle.IniDispatchFn);
+        Assert.Equal(0x0040D2A0u, EngineLifecycle.PlayAviSingletonFn);
+        Assert.Equal(0x0040CEC0u, EngineLifecycle.PlayAviSingletonCtor);
+        Assert.Equal(0x140, EngineLifecycle.PlayAviSingletonSize);
+        Assert.Equal(0x0040BC80u, EngineLifecycle.PlayAviApplyFn);
+        Assert.Equal(0x0040A7F0u, EngineLifecycle.PlayAviApplyBodyFn);
+        Assert.Equal(0x00B239A0u, EngineLifecycle.DisplayEngineFadeFn);
+        Assert.Equal(220, EngineLifecycle.DisplayEngineFadeVtbl);
+        Assert.Equal(12, EngineLifecycle.DisplayEngineFadeType);
+        Assert.Equal(20f, EngineLifecycle.DisplayEngineFadeSeconds);
+        Assert.Equal(0x009F2660u, EngineLifecycle.InputLockEnterFn);
+        Assert.Equal(0x009F26B0u, EngineLifecycle.InputLockLeaveFn);
         Assert.Equal(0x004167DAu, EngineLifecycle.EngineReadyCallback);
         Assert.Equal(0x0049F180u, EngineLifecycle.InitCharactersFn);
         Assert.Equal(0x004B4A10u, EngineLifecycle.ActivateInitialQuestsFn);
@@ -1439,6 +1452,51 @@ public sealed class EngineLifecycleTests
         Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.LoadRegionFn);
         Assert.False(life.GamePumpFirstDone);
+    }
+
+    [Fact]
+    public void First_pump_004189C2_is_0040D2A0_then_00B239A0_not_a_region()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.False(life.GamePumpFirstDone);
+        Assert.False(life.PlayAviSingletonReady);
+        Assert.True(life.Pump());
+        Assert.True(life.GamePumpFirstDone);
+        Assert.True(life.PlayAviSingletonReady);
+        Assert.True(life.DisplayEngineFadeSet);
+        Assert.Equal(12, life.DisplayEngineFadeKind);
+        Assert.Equal(20f, life.DisplayEngineFadeTime);
+        Assert.Equal(0, life.CurrentRegionIndex);
+        Assert.Null(life.CurrentRegion);
+        Assert.False(life.FirstRealRegionLoadDone);
+        var events = life.Trace.Events;
+        var dummy = events.FindIndex(e =>
+            e.Va == EngineLifecycle.GetRegionRecordFn &&
+            e.Action.Contains("dummy", StringComparison.Ordinal));
+        var avi = events.FindIndex(e => e.Va == EngineLifecycle.PlayAviSingletonFn);
+        var ctor = events.FindIndex(e => e.Va == EngineLifecycle.PlayAviSingletonCtor);
+        var apply = events.FindIndex(e => e.Va == EngineLifecycle.PlayAviApplyBodyFn);
+        var fade = events.FindIndex(e => e.Va == EngineLifecycle.DisplayEngineFadeFn);
+        var enter = events.FindIndex(e => e.Va == EngineLifecycle.InputLockEnterFn);
+        var leave = events.FindIndex(e => e.Va == EngineLifecycle.InputLockLeaveFn);
+        var update = events.FindIndex(e => e.Va == EngineLifecycle.GamePumpUpdate);
+        Assert.True(dummy >= 0 && avi > dummy, "0040D2A0 after dummy record");
+        Assert.True(ctor > avi && apply > ctor, "0040CEC0 then 0040A7F0");
+        Assert.True(fade > apply, "00B239A0 after 0040A7F0");
+        Assert.True(enter > fade && leave > enter, "009F2660/009F26B0 after fade");
+        Assert.True(update > leave, "004162B5 after first-pump tail");
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.DisplayEngineFadeFn &&
+            e.Action.Contains("20", StringComparison.Ordinal));
+        Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.LoadRegionFn);
+        Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
     }
 
     [Fact]

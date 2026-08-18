@@ -374,6 +374,14 @@ Loading-world path after start. See §9.
     └── 004FC180                    [map+44] + index*88
         └── [record+36] touch (inc/dec). Ctor 0 = dummy.
 
+then first-pump tail (before inner loop)  PROVEN
+├── 0040D2A0  [0x13B7D4C] alloc 0x140  0040CEC0  +51=1 +52=1
+├── 0040BC80  00407370 then +51 → 0040A7F0  (body PARTIAL)
+├── [game+40]+44 vtbl+220  00B239A0  PROVEN
+│   └── +24=1  +28=12  +32=20.0f from 0x122F160
+├── 009F2660  [0x13CAA90]+1040 vtbl+52 walk
+└── 009F26B0  Enter/Leave 0x13CAA70  (empty pair)
+
 then inner loop until [game+8]
 ├── 009A6460  quit? (2 = leave)
 ├── 004162B5  GamePumpUpdate  SLOT

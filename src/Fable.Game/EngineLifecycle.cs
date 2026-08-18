@@ -513,6 +513,37 @@ public sealed class EngineLifecycle : IDisposable
     public const uint GamePumpMemlog = 0x00415E85;
     public const uint GamePumpQuitQuery = 0x009A6460;
     /// <summary>
+    /// First <c>004189C2</c> after dummy
+    /// record: <c>0040D2A0</c> singleton
+    /// <c>[0x13B7D4C]</c> alloc <c>0x140</c>
+    /// ctor <c>0040CEC0</c> sets
+    /// <c>+51=1</c>, so <c>0040BC80</c>
+    /// runs <c>00407370</c> then
+    /// <c>0040A7F0</c>. Then
+    /// <c>[game+40]+44</c> vtbl+220
+    /// <c>00B239A0(12, 20.0f)</c> from
+    /// <c>0x122F160</c>. <c>009F2660</c> /
+    /// <c>009F26B0</c> lock
+    /// <c>[0x13CAA90]</c>. Not a region.
+    /// <c>0040A7F0</c> body PARTIAL.
+    /// </summary>
+    public const uint PlayAviSingletonFn = RegionTravel.PlayAviSingleton;
+    public const uint PlayAviSingletonVa = RegionTravel.PlayAviSingletonVa;
+    public const uint PlayAviSingletonCtor = 0x0040CEC0;
+    public const int PlayAviSingletonSize = 0x140;
+    public const uint PlayAviApplyFn = 0x0040BC80;
+    public const uint PlayAviPrepareFn = 0x00407370;
+    public const uint PlayAviApplyBodyFn = 0x0040A7F0;
+    public const byte PlayAviPlus51FirstSeen = 1;
+    public const int DisplayEngineFadeVtbl = 220;
+    public const uint DisplayEngineFadeFn = 0x00B239A0;
+    public const int DisplayEngineFadeType = 12;
+    public const uint DisplayEngineFadeSecondsVa = 0x0122F160;
+    public const float DisplayEngineFadeSeconds = 20f;
+    public const uint InputLockObjectVa = 0x013CAA90;
+    public const uint InputLockEnterFn = 0x009F2660;
+    public const uint InputLockLeaveFn = 0x009F26B0;
+    /// <summary>
     /// <c>009A57B0</c>:
     /// <c>[engine+148] == GetTickCount</c>
     /// (<c>0x1440378</c>). False skips
@@ -613,6 +644,8 @@ public sealed class EngineLifecycle : IDisposable
     public const string UserIniName = "user.ini";
     public const uint FileExistsFn = 0x00999230;
     public const uint IniApplyFn = 0x009EC890;
+    public const uint IniTokenizeFn = 0x009EC710;
+    public const uint IniDispatchFn = 0x009EB430;
     public const uint EngineReadyCallback = 0x004167DA;
     public const int EngineReadyCallbackOffset = 240;
     public const int EngineGamePtrOffset = 244;
@@ -1141,6 +1174,11 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public bool RegionObjectPresent { get; private set; }
     public bool GamePumpFirstDone { get; private set; }
+    public bool PlayAviSingletonReady { get; private set; }
+    public bool DisplayEngineFadeSet { get; private set; }
+    public int DisplayEngineFadeKind { get; private set; }
+    public float DisplayEngineFadeTime { get; private set; }
+    public IReadOnlyList<string> UserIniCommands { get; private set; } = [];
     public int GamePumpFrames { get; private set; }
     /// <summary>
     /// <c>009A57B0</c> last result. After
@@ -2256,10 +2294,45 @@ public sealed class EngineLifecycle : IDisposable
             ? null
             : Path.Combine(Install.Root, UserIniName);
         if (userIni is not null && File.Exists(userIni))
+        {
             Note(IniApplyFn, "InitGame", "Ini",
                 "009EC890 " + UserIniName + " exists");
+            Note(IniTokenizeFn, "InitGame", "Ini", "009EC710");
+            Note(IniDispatchFn, "InitGame", "Ini", "009EB430 [ini+64] vtbl+4");
+            ApplyUserIniCommands(userIni);
+        }
+
         Note(EngineReadyCallback, "InitGame", "GameStart",
             $"009A4EC0 [engine+{EngineReadyCallbackOffset}]=004167DA +{EngineGamePtrOffset}=game");
+    }
+
+    /// <summary>
+    /// <c>009EC710</c> walks tokens;
+    /// <c>009EB430</c> looks up
+    /// <c>[ini+64]</c> and calls
+    /// handler vtbl+4. Command bodies
+    /// (including
+    /// <c>ActivateQuest("Gameflow")</c>)
+    /// stay UNREAD — do not start a
+    /// quest here.
+    /// </summary>
+    private void ApplyUserIniCommands(string path)
+    {
+        var names = new List<string>();
+        foreach (var raw in File.ReadAllLines(path))
+        {
+            var line = raw.Trim();
+            if (line.Length == 0 || line.StartsWith(';') || line.StartsWith('#'))
+                continue;
+            var end = line.IndexOfAny(['(', ' ', '\t']);
+            var name = end < 0 ? line.TrimEnd(';') : line[..end];
+            if (name.Length == 0)
+                continue;
+            names.Add(name);
+            Note(IniDispatchFn, "InitGame", "Ini", "009EB430 " + name);
+        }
+
+        UserIniCommands = names;
     }
 
     /// <summary>
@@ -2485,9 +2558,39 @@ public sealed class EngineLifecycle : IDisposable
         Note(GetRegionRecordFn, "GamePump", "Region",
             $"004FC180 [WorldMap+44]+{CurrentRegionIndex}*{NewRegionRecordSize}");
         ActivateCurrentRegion();
+        ApplyFirstPumpAviAndFade();
         GamePumpFirstDone = true;
         Note(GamePumpMemlog, "GamePump", "Game", "00415E85 memlog");
         PumpGameUpdate();
+    }
+
+    /// <summary>
+    /// First <c>004189C2</c> after dummy
+    /// <c>004FC180</c>: <c>0040D2A0</c> /
+    /// <c>0040BC80</c> / vtbl+220
+    /// <c>00B239A0(12, 20.0)</c> /
+    /// <c>009F2660</c>+<c>009F26B0</c>.
+    /// Then the inner loop. Not a region.
+    /// </summary>
+    public void ApplyFirstPumpAviAndFade()
+    {
+        Note(PlayAviSingletonFn, "GamePump", "PlayAVI",
+            "0040D2A0 [0x13B7D4C] alloc 0x140");
+        Note(PlayAviSingletonCtor, "GamePump", "PlayAVI",
+            $"0040CEC0 +51={PlayAviPlus51FirstSeen}");
+        PlayAviSingletonReady = true;
+        Note(PlayAviApplyFn, "GamePump", "PlayAVI", "0040BC80");
+        Note(PlayAviPrepareFn, "GamePump", "PlayAVI", "00407370");
+        Note(PlayAviApplyBodyFn, "GamePump", "PlayAVI",
+            "0040A7F0 +51 first-seen");
+        Note(DisplayEngineFadeFn, "GamePump", "Display",
+            $"00B239A0 vtbl+{DisplayEngineFadeVtbl} ({DisplayEngineFadeType}, {DisplayEngineFadeSeconds})");
+        DisplayEngineFadeSet = true;
+        DisplayEngineFadeKind = DisplayEngineFadeType;
+        DisplayEngineFadeTime = DisplayEngineFadeSeconds;
+        Note(InputLockObjectVa, "GamePump", "Input", "013CAA90");
+        Note(InputLockEnterFn, "GamePump", "Input", "009F2660 vtbl+52 walk");
+        Note(InputLockLeaveFn, "GamePump", "Input", "009F26B0 lock pair");
     }
 
     /// <summary>
