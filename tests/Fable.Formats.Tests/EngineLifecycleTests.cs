@@ -190,6 +190,52 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Frontend_009DA9F0_first_seen_is_empty_skip_not_type_22()
+    {
+        Assert.False(EngineLifecycle.DisplayFlushShouldDip(0, 0));
+        Assert.True(EngineLifecycle.DisplayFlushShouldDip(0, 60));
+        Assert.Equal(1, EngineLifecycle.DisplayQueueCount(0, 60));
+        Assert.Equal(2, EngineLifecycle.DisplayFlushPrimitive(false));
+        Assert.Equal(4, EngineLifecycle.DisplayFlushPrimitive(true));
+        Assert.Equal(60, EngineLifecycle.DisplayQueueRecordSize);
+        Assert.Equal(0x009DB700u, EngineLifecycle.DisplayQueueEnqueueFn);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.True(life.Pump());
+        Assert.False(life.Frontend2dDipIssued);
+        Assert.False(EngineLifecycle.DisplayFlushShouldDip(0, 0));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DisplayFlushLayersFn &&
+            e.Action.Contains("empty", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Frontend_0059A238_message_15_sets_retail_41()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.False(life.RetailNewGameFlag);
+        life.DispatchFrontendMessage(14);
+        Assert.False(life.RetailNewGameFlag);
+        life.DispatchFrontendMessage(EngineLifecycle.FrontendNewGameMessage);
+        Assert.True(life.RetailNewGameFlag);
+        Assert.Equal(EngineStage.Frontend, life.Stage);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendUiMessageFn &&
+            e.Action.Contains("msg=15", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendNewGameApply);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendNewGameThunk);
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.Equal("FinalAlbion.wld", life.WorldFileName);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Frontend_00595582_new_game_message_leaves_without_RequestNewGame()
     {
         var life = new EngineLifecycle();

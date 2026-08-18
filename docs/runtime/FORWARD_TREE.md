@@ -217,6 +217,13 @@ Retail vtbl `01230CA0`: slot 1 start `0042F75E`, slot 2 pump `0042EC7C`.
     │              0041BEB0 type 0x22 (not sibling 0041BF60)
     │              [edx+92] dest this+0x15C size 0xC0
     │              009D9C80 / 009DA9F0(1) empty skip DIP  PROVEN
+    │              nonempty (not first-seen): 00A058C0 +
+    │                [dev+88].vtbl+332 prim 2/4, VB +16008
+    │              enqueue is 009DB700 (+16020), not 0041BEB0
+    └── 0059A238 UI vtbl+32 (012521C8)  PROVEN
+        msg 15 → 0059A2DA [ui+28].vtbl+16
+        then 00594F28 [retail+41]=1
+        0042EC7C reads +41 → Leave 0042F2A2
     │              00404A80 → 00404C00 [0x13B7CD8+8]==0 skip
     │              009D9C80 / 009DA9F0(1)
     │              009BEF50 / 009BEEB0

@@ -716,11 +716,36 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public const int DisplayQueueBeginOffset = 16020;
     public const int DisplayQueueEndOffset = 16024;
+    public const int DisplayQueueRecordSize = 60;
+    public const uint DisplayQueueCountMagic = 0x88888889;
     public const int DisplayVertexBufferOffset = 16008;
+    public const uint DisplayQueueEnqueueFn = 0x009DB700;
     public const uint DisplayPrimitiveFn = 0x00A058C0;
     public const int DisplayDipStride = 32;
     public const int DisplayDipPrimLines = 2;
     public const int DisplayDipPrimTris = 4;
+    /// <summary>
+    /// <c>009DA9F0</c> count is
+    /// <c>(end-begin)*0x88888889</c>
+    /// (60-byte records). Zero jumps
+    /// <c>009DB6E6</c>. Enqueue is
+    /// <c>009DB700</c>, not
+    /// <c>0041BEB0</c> type 0x22.
+    /// First-seen frontend is empty.
+    /// </summary>
+    public static int DisplayQueueCount(int begin, int end)
+    {
+        var bytes = end - begin;
+        if (bytes <= 0)
+            return 0;
+        return bytes / DisplayQueueRecordSize;
+    }
+
+    public static bool DisplayFlushShouldDip(int begin, int end) =>
+        DisplayQueueCount(begin, end) != 0;
+
+    public static int DisplayFlushPrimitive(bool triangleStrip) =>
+        triangleStrip ? DisplayDipPrimTris : DisplayDipPrimLines;
     public const uint RenderFrameFn = RegionTravel.RenderFrame;
 
     /// <summary>
@@ -1626,7 +1651,7 @@ public sealed class EngineLifecycle : IDisposable
         {
             if (key == RegionTravel.PlayAviSkipReturn)
             {
-                ActivateNewGame();
+                DispatchFrontendMessage(FrontendNewGameMessage);
                 return;
             }
         }
@@ -1958,12 +1983,42 @@ public sealed class EngineLifecycle : IDisposable
             "009D9C80 [0x13CB508]+10248 bump");
         Note(DisplayFlush2dFn, "Frontend", "D3D9",
             "009D9C80 dirty-list no type 0x22 in 009D9C80-009DB000");
+        var shouldDip = DisplayFlushShouldDip(0, 0);
         Note(DisplayFlushLayersFn, "Frontend", "D3D9",
-            $"009DA9F0({DisplayFlushLayersArg}) [+{DisplayQueueBeginOffset}] empty");
+            shouldDip
+                ? $"009DA9F0({DisplayFlushLayersArg}) [+{DisplayQueueBeginOffset}] DIP vtbl+{DrawIndexedPrimitiveVtbl}"
+                : $"009DA9F0({DisplayFlushLayersArg}) [+{DisplayQueueBeginOffset}] empty");
         Note(DisplayFlushLayersFn, "Frontend", "D3D9",
-            "009DA9F0 skip DIP no type 0x22");
-        Frontend2dDipIssued = false;
+            shouldDip
+                ? $"00A058C0 then vtbl+{DrawIndexedPrimitiveVtbl} prim {DisplayFlushPrimitive(false)}/{DisplayFlushPrimitive(true)}"
+                : "009DA9F0 skip DIP no type 0x22");
+        Frontend2dDipIssued = shouldDip;
         FrontendFlushCount++;
+    }
+
+    /// <summary>
+    /// <c>0059A238</c> is UI vtbl+32
+    /// (<c>012521A8+32</c> =
+    /// <c>012521C8</c>). Message 15
+    /// is <c>0059A2DA</c>.
+    /// </summary>
+    public const int FrontendUiMessageVtbl = 32;
+
+    public void DispatchFrontendMessage(int msg)
+    {
+        if (Stage != EngineStage.Frontend)
+            return;
+        if (!FrontendUiPresent)
+            InitFrontendUi();
+        Note(FrontendUiMessageFn, "Frontend", "UI",
+            $"0059A238 msg={msg} vtbl+{FrontendUiMessageVtbl}");
+        if (msg != FrontendNewGameMessage)
+            return;
+        Note(FrontendNewGameApply, "Frontend", "UI",
+            "0059A2DA [ui+28] vtbl+16");
+        Note(FrontendNewGameThunk, "Frontend", "UI",
+            $"00594F28 [retail+{RetailNewGameFlagOffset}]=1");
+        RetailNewGameFlag = true;
     }
 
     /// <summary>
@@ -1971,20 +2026,8 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>[ui+28]</c> vtbl+16 then
     /// <c>[retail+41]=1</c>.
     /// </summary>
-    public void ActivateNewGame()
-    {
-        if (Stage != EngineStage.Frontend)
-            return;
-        if (!FrontendUiPresent)
-            InitFrontendUi();
-        Note(FrontendUiMessageFn, "Frontend", "UI",
-            $"0059A238 msg={FrontendNewGameMessage}");
-        Note(FrontendNewGameApply, "Frontend", "UI",
-            "0059A2DA [ui+28] vtbl+16");
-        Note(FrontendNewGameThunk, "Frontend", "UI",
-            $"00594F28 [retail+{RetailNewGameFlagOffset}]=1");
-        RetailNewGameFlag = true;
-    }
+    public void ActivateNewGame() =>
+        DispatchFrontendMessage(FrontendNewGameMessage);
 
     /// <summary>
     /// <c>005959AB</c> walks the menu list.
