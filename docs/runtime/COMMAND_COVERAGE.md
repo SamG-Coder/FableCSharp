@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 131
-RECOVERED RETURN: 131
-RECOVERED APPLY: 67
+RECOVERED DISPATCH: 132
+RECOVERED RETURN: 132
+RECOVERED APPLY: 68
 IMPLEMENTED RUNTIME: 13
-UNREAD: 54
+UNREAD: 53
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -98,7 +98,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | WaitBossFight | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | GiveGold | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | LiftRock | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| SetThingConscious | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| SetThingConscious | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | TeleportThing | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | SetHomePosThing | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | SetGravityOnThing | Global | Unread | Unread | Unread | Unread | Unread | Unread |

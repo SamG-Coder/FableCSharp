@@ -682,6 +682,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "arg0+arg1 required; IsFalse(arg2)->0 else 1; 004AA980+004AAA40; vtbl+1892; not SetHomePosThing 004AA9A0"),
+        Spec("SetThingConscious", 0x00CC8041, 0x00CC8094, "thing[,IsTrue][,extra]",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0 required; default 0; IsTrue(arg1)->1; arg2 extra; vtbl+2324; jmp 00CC8469; not SetScared 1984"),
         Spec("SlideTeleport", 0x00CC57A1, 0x00CC57F7, "from,to[,count][,IsTrue][,IsFalse]",
             ScriptReturn.YieldAfterOrWait, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

@@ -188,6 +188,19 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "reset");
         }
 
+        if (Eq(v, "SetThingConscious"))
+        {
+            // 00CC8094: arg0 required; default 0; IsTrue(arg1)->1;
+            // optional arg2 extra; vtbl+2324(thing,flag,extra).
+            var name = line.Arg(0);
+            if (name.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            var on = ScriptLine.IsTrue(line.Arg(1));
+            ctx.World.SetThingConscious(name, on, line.Arg(2));
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                on ? "1" : "0");
+        }
+
         if (Eq(v, "SetHomePosThing"))
         {
             // 00CC7D3C: arg0 required; HERO vtbl+280 else 288;

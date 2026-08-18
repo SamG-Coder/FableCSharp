@@ -2522,6 +2522,82 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void SetThingConscious_default_off_IsTrue_on_vtbl_2324()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("stc",
+        [
+            "SetThingConscious FIGHTER,TRUE",
+            "SetThingConscious TYLER,FALSE",
+            "SetThingConscious KO",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.True(runtime.World.Conscious["FIGHTER"]);
+        Assert.False(runtime.World.Conscious["TYLER"]);
+        Assert.False(runtime.World.Conscious["KO"]);
+        Assert.Equal(2324, runtime.World.ConsciousVtbl["FIGHTER"]);
+        Assert.Equal(0x00CC8094u, ScriptCommandMap.Find("SetThingConscious")!.Value.ApplySite);
+        var empty = new ScriptInterpreter("stc0", ["SetThingConscious"]);
+        empty.RunUntilYield(runtime);
+        Assert.True(empty.Finished);
+        Assert.False(runtime.World.Conscious.ContainsKey(""));
+    }
+
+    [Fact]
+    public void SetThingConscious_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_PUNCHCLUB_BC_ROUNDWON")
+                  ?? bank.Find("CS_PUNCHCLUB_OV_FINALWIN")
+                  ?? bank.Find("CS_PUNCHCLUB_BS_FINALWIN");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.StartsWith("SetThingConscious ", StringComparison.OrdinalIgnoreCase))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("SetThingConscious", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-con", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("SetThingConscious ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal(ScriptLine.IsTrue(parsed.Arg(1)),
+            runtime.World.Conscious[parsed.Arg(0)]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-con.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-setthingconscious.txt"),
+            """
+            SetThingConscious 00CC8041 / apply 00CC8094
+              arg0 00403A00 empty skip 00CC8464
+              default flag=0; 00CBEDBA IsTrue(arg1) → 1
+              00CD3187 actor-map else HERO vtbl+280/288
+              optional arg2 0099EFB0 extra string
+              vtbl+2324(thing,flag,extra); jmp 00CC8469
+              not SetScared default-1 / vtbl+1984
+            Consciousness / KO body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();

@@ -1206,6 +1206,16 @@ public sealed class WorldRuntime
     /// </summary>
     public readonly Dictionary<string, int> AppearanceSeed =
         new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// <c>00CC8094</c> <c>vtbl+2324(thing,IsTrue,extra)</c>.
+    /// Default 0. Not SetScared default-1.
+    /// </summary>
+    public readonly Dictionary<string, bool> Conscious =
+        new(StringComparer.OrdinalIgnoreCase);
+    public readonly Dictionary<string, int> ConsciousVtbl =
+        new(StringComparer.OrdinalIgnoreCase);
+    public readonly Dictionary<string, string> ConsciousExtra =
+        new(StringComparer.OrdinalIgnoreCase);
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
     public float TimeOfDayHours { get; set; }
@@ -1457,6 +1467,19 @@ public sealed class WorldRuntime
     public void SetAppearanceSeed(string actor, int seed)
     {
         AppearanceSeed[actor ?? ""] = seed;
+    }
+
+    /// <summary>
+    /// <c>00CC8094</c>: default 0; IsTrue(arg1) → 1;
+    /// optional arg2 extra; <c>vtbl+2324</c>.
+    /// Consciousness body UNREAD.
+    /// </summary>
+    public void SetThingConscious(string actor, bool conscious, string extra)
+    {
+        var key = actor ?? "";
+        Conscious[key] = conscious;
+        ConsciousVtbl[key] = 2324;
+        ConsciousExtra[key] = extra ?? "";
     }
 
     /// <summary>
