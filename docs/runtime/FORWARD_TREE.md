@@ -401,9 +401,13 @@ then inner loop until [game+8]  PROVEN
 │   │           ├── [0x13B8388].vtbl+8
 │   │           └── WorldFrame<=1 skip 004457F0 / 00446A30
 │   └── 009E9FB0==0 → [game].vtbl+28  00417001  render
-│       └── 00435530  BeginScene / layers / EndScene / 009BEEB0
-├── 00416202 / 00415E85
-└── 0044C6B0 / 009AC9E0
+│       └── WorldFrame<=1 skip camera / 00435530
+├── 00416202  PROVEN
+│   └── add ecx, 90488 → 0049B9E0  (0049BA70 ring, cap 60, float*4)
+│       └── 0049B9A0  mean → +40
+├── 00415E85  PROVEN first-seen skip
+│   └── [0x13B85F1]==0 (no writer) → 00BFE9F9 only
+└── 0044C6B0  [0x13B879C] then 009AC9E0  ret 4  PROVEN
 ```
 
 **First** `004189C2` sees index 0 (dummy). It does **not**
@@ -414,7 +418,11 @@ writer) with `004166E2` startup 0 and `+9836=[game+72]=0`
 → al=0. `004AEAA0` misses; `00418289` skips `00416E78`
 and `0041726D`. Host “always run vtbl+24” is DISPROVEN.
 `004162B5` does **not** call vtbl+24 (only vtbl+20 then
-vtbl+28). `00501450` caller still UNREAD.
+vtbl+28). After it: `00416202` pushes the inner dt onto
+the `0049BA70` ring; `00415E85` first-seen skips
+(`[0x13B85F1]` no writer); `009AC9E0` is `ret 4`.
+Host memlog-before-`004162B5` is DISPROVEN.
+`00501450` caller still UNREAD.
 
 ---
 

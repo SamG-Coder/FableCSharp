@@ -516,6 +516,25 @@ public sealed class EngineLifecycle : IDisposable
     public const uint FrameDtFn = 0x009E1BC0;
     public const uint GamePumpUpdate = 0x004162B5;
     public const uint GamePumpMemlog = 0x00415E85;
+    /// <summary>
+    /// After <c>004162B5</c>:
+    /// <c>00416202</c> → <c>0049B9E0</c>
+    /// on the <c>0049BA70</c> ring at
+    /// <c>game+90488</c> (capacity 60,
+    /// float stride 4, mean at +40).
+    /// Then <c>00415E85</c>:
+    /// <c>[0x13B85F1]==0</c> (no writer)
+    /// skips the memlog body.
+    /// Then <c>0044C6B0</c> /
+    /// <c>009AC9E0 ret 4</c>.
+    /// </summary>
+    public const uint FrameDtRingFn = 0x00416202;
+    public const uint FrameDtRingPushFn = 0x0049B9E0;
+    public const uint FrameDtRingMeanFn = 0x0049B9A0;
+    public const int FrameDtRingMeanOffset = 40;
+    public const uint MemlogFlagVa = 0x013B85F1;
+    public const int MemlogFlagFirstSeen = 0;
+    public const uint PlayerManagerIdleFn = 0x009AC9E0;
     public const uint GamePumpQuitQuery = 0x009A6460;
     public const uint GamePumpInnerStartFn = 0x0098E1B0;
     public const int GamePumpQuitLeave = 2;
@@ -1377,6 +1396,11 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public int PlayerBindSlot2 { get; private set; }
     public bool PlayerCatchupHit { get; private set; }
+    /// <summary>
+    /// <c>0049B9E0</c> <c>[ring+24]</c>
+    /// after each inner <c>00416202</c>.
+    /// </summary>
+    public int FrameDtRingSamples { get; private set; }
     public bool GameModePaused { get; set; }
     public int GameSleepMs { get; set; }
     public bool FrontEndQuery { get; private set; }
@@ -2741,6 +2765,7 @@ public sealed class EngineLifecycle : IDisposable
             EnqueueAfterDummy();
             NoteInnerLoopDt();
             PumpGameUpdate();
+            NoteInnerLoopTail();
             return;
         }
 
@@ -2754,6 +2779,7 @@ public sealed class EngineLifecycle : IDisposable
             Note(NamedStartFn, "GamePump", "Region", "00416268 named start");
             GamePumpFirstDone = true;
             PumpGameUpdate();
+            NoteInnerLoopTail();
             return;
         }
 
@@ -2769,9 +2795,9 @@ public sealed class EngineLifecycle : IDisposable
         Note(GamePumpQuitQuery, "GamePump", "Engine",
             $"009A6460 [engine+8]=0 → {GamePumpQuitFirstSeen}");
         GamePumpFirstDone = true;
-        Note(GamePumpMemlog, "GamePump", "Game", "00415E85 memlog");
         NoteInnerLoopDt();
         PumpGameUpdate();
+        NoteInnerLoopTail();
     }
 
     /// <summary>
@@ -2785,6 +2811,29 @@ public sealed class EngineLifecycle : IDisposable
     {
         Note(InnerLoopDtFn, "GamePump", "Time",
             $"009F8BA0 +{InnerLoopDtOffset} [game+{GamePlus52Offset}]={GamePlus52FirstSeen}");
+    }
+
+    /// <summary>
+    /// After <c>004162B5</c> on the same
+    /// <c>004189C2</c> inner iteration:
+    /// <c>00416202</c> / <c>00415E85</c>
+    /// skip / <c>0044C6B0</c>+<c>009AC9E0</c>.
+    /// </summary>
+    private void NoteInnerLoopTail()
+    {
+        if (FrameDtRingSamples < PostLoadWorldReserveCount)
+            FrameDtRingSamples++;
+        Note(FrameDtRingFn, "GamePump", "Time",
+            $"00416202 +{GamePlus90488Offset} 0049B9E0 count={FrameDtRingSamples}");
+        Note(FrameDtRingMeanFn, "GamePump", "Time",
+            $"0049B9A0 +{FrameDtRingMeanOffset}");
+        Note(MemlogFlagVa, "GamePump", "Game",
+            $"013B85F1={MemlogFlagFirstSeen}");
+        Note(GamePumpMemlog, "GamePump", "Game",
+            "00415E85 skip");
+        Note(PlayerManagerGetter, "GamePump", "Player",
+            "0044C6B0 [0x13B879C]");
+        Note(PlayerManagerIdleFn, "GamePump", "Player", "009AC9E0 ret 4");
     }
 
     /// <summary>

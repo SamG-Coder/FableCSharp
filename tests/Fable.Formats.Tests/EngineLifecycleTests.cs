@@ -1529,6 +1529,16 @@ public sealed class EngineLifecycleTests
         Assert.True(enter > fade && leave > enter, "009F2660/009F26B0 after fade");
         Assert.True(innerDt > leave && update > innerDt,
             "009F8BA0 then 004162B5 after first-pump tail");
+        var ring = events.FindIndex(e => e.Va == EngineLifecycle.FrameDtRingFn);
+        var memlog = events.FindIndex(e => e.Va == EngineLifecycle.GamePumpMemlog);
+        var idle = events.FindIndex(e => e.Va == EngineLifecycle.PlayerManagerIdleFn);
+        Assert.True(ring > update, "00416202 after 004162B5");
+        Assert.True(memlog > ring, "00415E85 after 00416202");
+        Assert.True(idle > memlog, "009AC9E0 after 00415E85");
+        Assert.Equal(1, life.FrameDtRingSamples);
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.GamePumpMemlog &&
+            e.Action.Contains("skip", StringComparison.Ordinal));
         Assert.False(life.InputRecordStored);
         Assert.False(life.PlayerCatchupHit);
         Assert.False(life.GameVtbl24Ran);
@@ -1581,6 +1591,49 @@ public sealed class EngineLifecycleTests
             e.Va == EngineLifecycle.GameVtbl24Fn &&
             e.Action.Contains("skip 004457F0", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.TickListAppendFn);
+    }
+
+    [Fact]
+    public void First_pump_00416202_is_0049B9E0_then_00415E85_skip()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(0, life.FrameDtRingSamples);
+        Assert.True(life.Pump());
+        Assert.Equal(1, life.FrameDtRingSamples);
+        var events = life.Trace.Events;
+        var update = events.FindIndex(e => e.Va == EngineLifecycle.GamePumpUpdate);
+        var ring = events.FindIndex(e => e.Va == EngineLifecycle.FrameDtRingFn);
+        var mean = events.FindIndex(e => e.Va == EngineLifecycle.FrameDtRingMeanFn);
+        var memlog = events.FindIndex(e => e.Va == EngineLifecycle.GamePumpMemlog);
+        var getter = events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.PlayerManagerGetter && e.Stage == "GamePump");
+        var idle = events.FindIndex(e => e.Va == EngineLifecycle.PlayerManagerIdleFn);
+        Assert.True(update >= 0 && ring > update, "00416202 after 004162B5");
+        Assert.True(mean > ring && memlog > mean, "0049B9A0 then 00415E85");
+        Assert.True(getter > memlog && idle > getter, "0044C6B0 then 009AC9E0");
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.MemlogFlagVa &&
+            e.Action.Contains("013B85F1=0", StringComparison.Ordinal));
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.GamePumpMemlog &&
+            e.Action.Contains("skip", StringComparison.Ordinal));
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.PlayerManagerIdleFn &&
+            e.Action.Contains("ret 4", StringComparison.Ordinal));
+        Assert.DoesNotContain(events, e =>
+            e.Va == EngineLifecycle.GamePumpMemlog &&
+            e.Action.Contains("memlog", StringComparison.Ordinal));
+        Assert.Equal(0x00416202u, EngineLifecycle.FrameDtRingFn);
+        Assert.Equal(0x0049B9E0u, EngineLifecycle.FrameDtRingPushFn);
+        Assert.Equal(0x0049B9A0u, EngineLifecycle.FrameDtRingMeanFn);
+        Assert.Equal(0x013B85F1u, EngineLifecycle.MemlogFlagVa);
+        Assert.Equal(0, EngineLifecycle.MemlogFlagFirstSeen);
+        Assert.Equal(0x009AC9E0u, EngineLifecycle.PlayerManagerIdleFn);
     }
 
     [Fact]
@@ -2127,6 +2180,9 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0, EngineLifecycle.DefaultNamedStartFlag);
         Assert.Equal(0x00416268u, EngineLifecycle.NamedStartFn);
         Assert.Equal(0x004162B5u, EngineLifecycle.GamePumpUpdate);
+        Assert.Equal(0x00416202u, EngineLifecycle.FrameDtRingFn);
+        Assert.Equal(0x00415E85u, EngineLifecycle.GamePumpMemlog);
+        Assert.Equal(0x009AC9E0u, EngineLifecycle.PlayerManagerIdleFn);
         Assert.Equal(0x009A57B0u, EngineLifecycle.EngineUpdateGateFn);
         Assert.Equal(148, EngineLifecycle.EngineTickOffset);
         Assert.Equal(0x00418289u, EngineLifecycle.GameUpdateFn);
