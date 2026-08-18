@@ -767,6 +767,16 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "arg0+arg1 required; atof r; 00CBE2FF both vtbl+300+24; dist^2<r^2 continue; skip 00CBEB7E; leftover 00CC40CE"),
+        Spec("ReturnFollowers", 0x00CC689A, 0x00CC68ED, "IsTrue",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0 required; IsTrue vtbl+924+HeroFollower0+008ADF90; FALSE [ebp-40]=0; not TeleportFollowers 956"),
+        Spec("TeleportFollowers", 0x00CC69DA, 0x00CC6A2E, "[IsTrue]",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "empty list skip; IsTrue 1492/1504 0.5 then vtbl+956 then FadeIn 1496; not ReturnFollowers 924"),
         Spec("FollowThing", 0x00CC19F2, 0x00CC1AE9, "target[,speed]",
             ScriptReturn.YieldAfter, CommandParity.ScriptLayer,
             "default speed 1.0; actor vtbl+28; yield 00CC0E96 if [ebp+103]"),

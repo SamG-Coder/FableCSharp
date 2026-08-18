@@ -1337,6 +1337,20 @@ public sealed class WorldRuntime
     public readonly Dictionary<string, uint> ReleaseFn =
         new(StringComparer.OrdinalIgnoreCase);
     /// <summary>
+    /// <c>00CC68ED</c> <c>vtbl+924</c> then
+    /// <c>HeroFollower0</c> bind. Not TeleportFollowers 956.
+    /// </summary>
+    public bool FollowersReturned { get; private set; }
+    public int FollowerReturnVtbl { get; private set; }
+    public readonly List<string> Followers = [];
+    /// <summary>
+    /// <c>00CC6A2E</c> <c>vtbl+956</c>. TRUE wraps
+    /// fade 1492/1504 then FadeIn 1496.
+    /// </summary>
+    public bool FollowersTeleported { get; private set; }
+    public bool FollowerTeleportFade { get; private set; }
+    public int FollowerTeleportVtbl { get; private set; }
+    /// <summary>
     /// <c>00CC4B7E</c> <c>vtbl+1916(actor,atoi)</c>.
     /// Signed seed. Not a boolean flag.
     /// </summary>
@@ -1665,6 +1679,34 @@ public sealed class WorldRuntime
         ReleaseFn[key] = 0x00CD2770;
         AILevels.Remove(key);
         AILevelVtbl.Remove(key);
+    }
+
+    /// <summary>
+    /// <c>00CC68ED</c>: arg0 required; IsTrue →
+    /// vtbl+924(HERO) + HeroFollower0 + 008ADF90
+    /// each valid member. FALSE only clears flag.
+    /// Follower list body UNREAD.
+    /// </summary>
+    public void ReturnFollowers(bool restore)
+    {
+        FollowersReturned = restore;
+        FollowerReturnVtbl = restore ? 924 : 0;
+        if (restore && !Followers.Contains("HeroFollower0", StringComparer.OrdinalIgnoreCase))
+            Followers.Add("HeroFollower0");
+    }
+
+    /// <summary>
+    /// <c>00CC6A2E</c>: empty list skips.
+    /// IsTrue fades 1492/1504 then vtbl+956 then 1496.
+    /// Follower warp UNREAD.
+    /// </summary>
+    public void TeleportFollowers(bool fade)
+    {
+        if (Followers.Count == 0)
+            return;
+        FollowersTeleported = true;
+        FollowerTeleportFade = fade;
+        FollowerTeleportVtbl = 956;
     }
 
     /// <summary>

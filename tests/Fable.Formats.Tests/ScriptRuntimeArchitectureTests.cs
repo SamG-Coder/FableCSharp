@@ -3827,6 +3827,117 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void ReturnFollowers_TRUE_binds_HeroFollower0_not_TeleportFollowers()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("rfol",
+        [
+            "ReturnFollowers FALSE",
+            "ReturnFollowers TRUE",
+            "ReturnFollowers",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.True(runtime.World.FollowersReturned);
+        Assert.Equal(924, runtime.World.FollowerReturnVtbl);
+        Assert.Contains("HeroFollower0", runtime.World.Followers);
+        Assert.False(runtime.World.FollowersTeleported);
+        Assert.Equal(0x00CC68EDu, ScriptCommandMap.Find("ReturnFollowers")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("TeleportFollowers")!.Value.ApplySite,
+            ScriptCommandMap.Find("ReturnFollowers")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void TeleportFollowers_empty_list_skips_956()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var empty = new ScriptInterpreter("tfol0", ["TeleportFollowers TRUE"]);
+        empty.RunUntilYield(runtime);
+        Assert.True(empty.Finished);
+        Assert.False(runtime.World.FollowersTeleported);
+
+        var prep = new ScriptInterpreter("tfol",
+        [
+            "ReturnFollowers TRUE",
+            "TeleportFollowers TRUE",
+        ]);
+        prep.RunUntilYield(runtime);
+        Assert.True(prep.Finished);
+        Assert.True(runtime.World.FollowersTeleported);
+        Assert.True(runtime.World.FollowerTeleportFade);
+        Assert.Equal(956, runtime.World.FollowerTeleportVtbl);
+        Assert.Equal(0x00CC6A2Eu, ScriptCommandMap.Find("TeleportFollowers")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void ReturnFollowers_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var name in new[]
+                 {
+                     "CS_RANSOM_OUTRO_GOOD_TELL",
+                     "CS_RANSOM_OUTRO_GOOD",
+                     "CS_RANSOM_OUTRO_GOOD_NOTELL",
+                 })
+        {
+            hit = bank.Entries.FirstOrDefault(e =>
+                e.InstanceName.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (hit is null)
+                continue;
+            foreach (var raw in hit.Commands.Count > 0
+                         ? hit.Commands
+                         : ScriptBank.ExtractCommands(hit.Raw))
+            {
+                if (raw.StartsWith("ReturnFollowers ", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        Assert.NotNull(hit);
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("ReturnFollowers", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-rfol", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("ReturnFollowers ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal(ScriptLine.IsTrue(parsed.Arg(0)), runtime.World.FollowersReturned);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-rfol.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-followers.txt"),
+            """
+            ReturnFollowers 00CC689A / apply 00CC68ED
+              arg0 required; IsTrue → vtbl+924(HERO)
+              HeroFollower0 00CD3187+0041C820
+              each valid vtbl+300 → 008ADF90
+              FALSE [ebp-40]=0 no restore
+            TeleportFollowers 00CC69DA / apply 00CC6A2E
+              empty list skip
+              IsTrue: vtbl+1492/1504 0.5 then 956 then FadeIn 1496
+              not ReturnFollowers 924
+            Follower warp/list UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();

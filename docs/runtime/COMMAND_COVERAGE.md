@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 146
-RECOVERED RETURN: 146
-RECOVERED APPLY: 83
+RECOVERED DISPATCH: 148
+RECOVERED RETURN: 148
+RECOVERED APPLY: 85
 IMPLEMENTED RUNTIME: 13
-UNREAD: 39
+UNREAD: 37
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -118,8 +118,8 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | DoScriptFrame | Global | Proven | Proven | Proven | Proven | Proven | Proven |
 | return | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | RemoveExtras | Global | Proven | Proven | Proven | Proven | Partial | Partial |
-| TeleportFollowers | Global | Unread | Unread | Unread | Unread | Unread | Unread |
-| ReturnFollowers | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| TeleportFollowers | Global | Proven | Proven | Proven | Proven | Partial | Partial |
+| ReturnFollowers | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | RemoveAll | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | LadyGreyIntro | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | RemoveAllThings | Global | Proven | Proven | Proven | Partial | Partial | Partial |

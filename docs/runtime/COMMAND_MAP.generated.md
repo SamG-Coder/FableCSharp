@@ -140,6 +140,8 @@
 | WaitForAnimationEvent | `00CC41FC` | `00CC4252` | event | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; 00CBEB7E skip; vtbl+48; leftover poll 004AAF60->vtbl+236; jmp 00CC707C; not WaitPlayAnimation |
 | Release | `00CC4610` | `00CC4663` |  | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | ebx actor; no args; 00CD2770=007E70E0(actor+8)+zero; jmp 00CC7081; not SetFree 1980 |
 | WaitForUnderRadius | `00CC4045` | `00CC409B` | thing,radius | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | arg0+arg1 required; atof r; 00CBE2FF both vtbl+300+24; dist^2<r^2 continue; skip 00CBEB7E; leftover 00CC40CE |
+| ReturnFollowers | `00CC689A` | `00CC68ED` | IsTrue | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; IsTrue vtbl+924+HeroFollower0+008ADF90; FALSE [ebp-40]=0; not TeleportFollowers 956 |
+| TeleportFollowers | `00CC69DA` | `00CC6A2E` | [IsTrue] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | empty list skip; IsTrue 1492/1504 0.5 then vtbl+956 then FadeIn 1496; not ReturnFollowers 924 |
 | FollowThing | `00CC19F2` | `00CC1AE9` | target[,speed] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | default speed 1.0; actor vtbl+28; yield 00CC0E96 if [ebp+103] |
 | StopFollowingThing | `00CC1B2F` | `00CC1BF4` | [target] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | actor vtbl+32; jmp 00CC568C leftover |
 | SetFlag | `00CCA475` | `00CCA4C8` | name,IsFalse?[,IsTrue skip] | YieldAfter | Proven | Proven | Proven | Proven | Proven | Proven | 008ADF10 write 0/1; [ebp-39] latch; jmp 00CC907D |

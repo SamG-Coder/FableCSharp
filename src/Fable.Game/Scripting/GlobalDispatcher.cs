@@ -642,6 +642,34 @@ public static class GlobalDispatcher
         if (Eq(v, "RemoveEffect"))
             return ApplyRemoveEffect(line, ctx);
 
+        if (Eq(v, "ReturnFollowers"))
+        {
+            // 00CC68ED: arg0 required; IsTrue → vtbl+924
+            // + HeroFollower0 + 008ADF90; else flag 0.
+            if (line.Arg(0).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            var restore = ScriptLine.IsTrue(line.Arg(0));
+            ctx.World.ReturnFollowers(restore);
+            if (restore)
+                ctx.Bindings.BindAcquired("HeroFollower0", null, "ReturnFollowers");
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                restore ? "HeroFollower0" : "0");
+        }
+
+        if (Eq(v, "TeleportFollowers"))
+        {
+            // 00CC6A2E: empty list skip; IsTrue 1492/1504
+            // then vtbl+956 then FadeIn 1496.
+            var fade = ScriptLine.IsTrue(line.Arg(0));
+            if (ctx.World.Followers.Count == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "empty");
+            ctx.World.TeleportFollowers(fade);
+            if (fade)
+                ctx.Runtime.ApplyFadeIn(0.5f, 0.5f);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                fade ? "956+1496" : "956");
+        }
+
         if (Eq(v, "RemoveExtras"))
         {
             // 00CC6B21: hide=!IsFalse(arg0); 00BFEBA8
