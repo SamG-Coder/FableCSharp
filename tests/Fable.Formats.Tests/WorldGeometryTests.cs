@@ -747,6 +747,7 @@ public sealed class WorldGeometryTests
         var built = MeshBatches.BuildMeshes([(mesh, xform)]);
         Assert.True(built.Draws.Length > 0);
         Assert.True(built.Draws.All(d => d.World == xform));
+        Assert.All(built.Draws, d => Assert.Equal(0x20u, d.PassBit));
         var origin = Vector3.Transform(Vector3.Zero, xform);
         Assert.InRange((origin - new Vector3(
             lamp.PositionX!.Value, lamp.PositionY!.Value, lamp.PositionZ ?? 0f)).Length(),

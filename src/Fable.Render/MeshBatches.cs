@@ -126,6 +126,7 @@ public static class MeshBatches
             var source = mesh.BoneCount > 0
                 ? mesh.TrianglesForPose()
                 : mesh.Triangles;
+            var layer = mesh.BoneCount > 0 ? SceneLayer.Palskin : SceneLayer.Prop;
             foreach (var group in source.GroupBy(tri => (
                 tri.TextureId,
                 tri.TextureId1 == 0 ? tri.TextureId : tri.TextureId1,
@@ -143,12 +144,12 @@ public static class MeshBatches
                 var n = (uint)(cursor - first);
                 if (n == 0)
                     continue;
-                foreach (var pass in ScenePasses.DrawnPasses(group.Key.Layer))
+                foreach (var pass in ScenePasses.DrawnPasses(layer))
                 {
                     draws.Add(new MeshDraw(
                         group.Key.TextureId, (uint)first, n, group.Key.Item2,
                         pass.Bit, ScenePasses.ShaderMode(pass.Submit),
-                        group.Key.SrcAlphaBlend, transform));
+                        group.Key.SrcAlphaBlend || mesh.BoneCount > 0, transform));
                 }
             }
         }
@@ -174,7 +175,18 @@ public static class MeshBatches
             draws[a.Draws.Length + i] = d with { FirstVertex = d.FirstVertex + off };
         }
 
-        return new TexturedMesh { Vertices = vertices, Draws = draws };
+        return new TexturedMesh { Vertices = vertices, Draws = SortByPass(draws) };
+    }
+
+    public static MeshDraw[] SortByPass(IReadOnlyList<MeshDraw> draws)
+    {
+        var list = draws.ToArray();
+        Array.Sort(list, (a, b) =>
+        {
+            var rank = ScenePasses.Rank(a.PassBit).CompareTo(ScenePasses.Rank(b.PassBit));
+            return rank != 0 ? rank : a.TextureId.CompareTo(b.TextureId);
+        });
+        return list;
     }
 
     private static Vector3 Unit(Vector3 n, Vector3 face) =>

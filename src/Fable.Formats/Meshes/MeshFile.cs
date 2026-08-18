@@ -966,4 +966,5 @@ public enum SceneLayer
     Sky = 0,
     Landscape = 1,
     Prop = 2,
+    Palskin = 3,
 }

@@ -783,7 +783,7 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.RenderFrameFn);
         Assert.True(life.LayerFlushCount >= 1);
         Assert.Equal(
-            new uint[] { 0x4, 0x40, 0x20, 0x2000 },
+            new uint[] { 0x4, 0x40, 0x20, 0x100, 0x2000 },
             life.SubmittedLayerBits);
         Assert.True(Fable.Formats.Scene.ScenePasses.Rank(0x4) <
                     Fable.Formats.Scene.ScenePasses.Rank(0x20));
@@ -2142,7 +2142,7 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x009DA9F0u, EngineLifecycle.DisplayFlushLayersFn);
         Assert.Equal(0x00B25950u, RegionTravel.RenderFrame);
         Assert.Equal(
-            new uint[] { 0x4, 0x40, 0x20, 0x2000 },
+            new uint[] { 0x4, 0x40, 0x20, 0x100, 0x2000 },
             ScenePasses.Registration.Where(p => ScenePasses.Draws(p.Submit))
                 .Select(p => p.Bit)
                 .ToArray());

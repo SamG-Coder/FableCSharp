@@ -1410,7 +1410,12 @@ public sealed class EngineLifecycle : IDisposable
             () => MeshBatches.Build(SkyGeometry.Build(Install)),
             m => $"verts={m.Vertices.Length}");
         SubmittedLandscape = land;
-        SubmittedObjects = MeshBatches.Concat(objects, sky);
+        var combined = MeshBatches.Concat(objects, sky);
+        SubmittedObjects = new TexturedMesh
+        {
+            Vertices = combined.Vertices,
+            Draws = MeshBatches.SortByPass(combined.Draws),
+        };
         SubmittedLandscapeCells = cells.Count;
         SubmittedMesh = MeshBatches.Concat(land, objects);
         timing.Measure("Textures", () => { BindSubmittedTextures(); return _submittedTextures.Count; },

@@ -17,6 +17,7 @@ public enum SceneSubmit
     Water,
     Shadows,
     Primitives,
+    PalskinBit100,
 }
 
 public static class ScenePasses
@@ -36,7 +37,7 @@ public static class ScenePasses
         new(0x00000010, SceneSubmit.Unread),
         new(0x00000040, SceneSubmit.LandscapeBit40),
         new(0x00000020, SceneSubmit.Primitives),
-        new(0x00000100, SceneSubmit.Unread),
+        new(0x00000100, SceneSubmit.PalskinBit100),
         new(0x00000400, SceneSubmit.Unread),
         new(0x00001000, SceneSubmit.Unread),
         new(0x00002000, SceneSubmit.SkyElse),
@@ -78,7 +79,8 @@ public static class ScenePasses
 
     public static bool Draws(SceneSubmit submit) =>
         submit is SceneSubmit.LandscapeBit4 or SceneSubmit.LandscapeBit40
-            or SceneSubmit.SkyElse or SceneSubmit.Primitives;
+            or SceneSubmit.SkyElse or SceneSubmit.Primitives
+            or SceneSubmit.PalskinBit100;
 
     public static float ShaderMode(SceneSubmit submit) => submit switch
     {
@@ -86,6 +88,7 @@ public static class ScenePasses
         SceneSubmit.LandscapeBit40 => 1f,
         SceneSubmit.SkyElse => 2f,
         SceneSubmit.Primitives => 3f,
+        SceneSubmit.PalskinBit100 => 3f,
         _ => 1f,
     };
 
@@ -95,6 +98,7 @@ public static class ScenePasses
         {
             Meshes.SceneLayer.Landscape => (SceneSubmit[]) [SceneSubmit.LandscapeBit4, SceneSubmit.LandscapeBit40],
             Meshes.SceneLayer.Sky => [SceneSubmit.SkyElse],
+            Meshes.SceneLayer.Palskin => [SceneSubmit.PalskinBit100],
             _ => [SceneSubmit.Primitives],
         };
         return Registration.Where(p => submit.Contains(p.Submit)).ToArray();
