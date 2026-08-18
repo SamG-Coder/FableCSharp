@@ -305,9 +305,19 @@ public static class EntityDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, mode);
         }
 
+        if (Eq(v, "HoldInHand"))
+        {
+            var item = line.Arg(0);
+            if (item.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            var flag = ScriptLine.IsTrue(line.Arg(1));
+            ctx.World.HoldInHand(line.Target ?? "", item, flag);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, item);
+        }
+
         if (Eq(v, "SetScared") || Eq(v, "SetBound") ||
             Eq(v, "SetPushable") || Eq(v, "SetDamageable") || Eq(v, "SetAttackable") ||
-            Eq(v, "SetFree") || Eq(v, "Killable") || Eq(v, "HoldInHand") ||
+            Eq(v, "SetFree") || Eq(v, "Killable") ||
             Eq(v, "SetAppearanceSeed"))
         {
             ctx.World.Flags[$"{line.Target}.{v}"] = line.Arg(0);

@@ -1269,6 +1269,88 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void HoldInHand_is_vtbl_892_not_PutInHeroHands()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("hih",
+        [
+            "SMITH.HoldInHand OBJECT_HAMMER_SMITH,TRUE",
+            "M1.HoldInHand OBJECT_KHG_LOG_PILE_03,TRUE",
+            "GUARD.HoldInHand OBJECT_SWORD",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal("OBJECT_HAMMER_SMITH", runtime.World.HeldInHand["SMITH"]);
+        Assert.True(runtime.World.HeldInHandFlag["SMITH"]);
+        Assert.Equal("OBJECT_KHG_LOG_PILE_03", runtime.World.HeldInHand["M1"]);
+        Assert.True(runtime.World.HeldInHandFlag["M1"]);
+        Assert.Equal("OBJECT_SWORD", runtime.World.HeldInHand["GUARD"]);
+        Assert.False(runtime.World.HeldInHandFlag["GUARD"]);
+        Assert.Equal("", runtime.World.HeroHands);
+        Assert.Equal(0x00CC21CBu, ScriptCommandMap.Find("HoldInHand")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("PutInHeroHands")!.Value.ApplySite,
+            ScriptCommandMap.Find("HoldInHand")!.Value.ApplySite);
+        var empty = new ScriptInterpreter("hih0", ["SMITH.HoldInHand"]);
+        empty.RunUntilYield(runtime);
+        Assert.True(empty.Finished);
+        Assert.Equal("OBJECT_HAMMER_SMITH", runtime.World.HeldInHand["SMITH"]);
+    }
+
+    [Fact]
+    public void HoldInHand_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_ATTRACT_3") ?? bank.Find("CS_ATTRACT_12");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.Contains(".HoldInHand ", StringComparison.OrdinalIgnoreCase))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("HoldInHand", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-hold", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".HoldInHand ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal(parsed.Arg(0), runtime.World.HeldInHand[parsed.Target ?? ""]);
+        Assert.Equal(ScriptLine.IsTrue(parsed.Arg(1)),
+            runtime.World.HeldInHandFlag[parsed.Target ?? ""]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-hold.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-holdinhand.txt"),
+            """
+            HoldInHand 00CC2175 / apply 00CC21CB
+              ebx required else 00CC7081
+              arg0 00403A00 empty skip 00CC7081
+              arg1 00CBEDBA IsTrue
+              actor vtbl+48 name
+              CGameScriptInterface vtbl+892(actor,item,flag)
+              [ebp+103] leftover vtbl+28; 00CBF7FE; jmp 00CC707C
+              not PutInHeroHands vtbl+572/568
+            Attach mesh UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void GiveGold_real_script_bank_or_isolated()
     {
         var install = GameInstall.TryLocate();

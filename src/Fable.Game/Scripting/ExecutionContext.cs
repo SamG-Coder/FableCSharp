@@ -1043,6 +1043,14 @@ public sealed class WorldRuntime
         new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, int> SheatheVtbl =
         new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// <c>00CC21CB</c> <c>vtbl+892(actor,item,IsTrue)</c>.
+    /// Distinct from <c>PutInHeroHands</c> 572/568.
+    /// </summary>
+    public readonly Dictionary<string, string> HeldInHand =
+        new(StringComparer.OrdinalIgnoreCase);
+    public readonly Dictionary<string, bool> HeldInHandFlag =
+        new(StringComparer.OrdinalIgnoreCase);
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
     public float TimeOfDayHours { get; set; }
@@ -1168,6 +1176,20 @@ public sealed class WorldRuntime
             vtbl = 2024;
         Sheathed[key] = mode;
         SheatheVtbl[key] = vtbl;
+    }
+
+    /// <summary>
+    /// <c>00CC21CB</c>: arg0 required; IsTrue(arg1);
+    /// actor <c>vtbl+48</c> then engine <c>vtbl+892</c>.
+    /// Attach mesh UNREAD.
+    /// </summary>
+    public void HoldInHand(string actor, string item, bool flag)
+    {
+        var key = actor ?? "";
+        if (item.Length == 0)
+            return;
+        HeldInHand[key] = item;
+        HeldInHandFlag[key] = flag;
     }
 
     /// <summary>
