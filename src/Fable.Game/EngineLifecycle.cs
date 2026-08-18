@@ -338,6 +338,41 @@ public sealed class EngineLifecycle : IDisposable
     public const int FrontendPressStartSlot = 0x14;
     public const int FrontendPressStartMessage = 0xE5;
     public const int FrontendWidgetMessageVtbl = 284;
+    /// <summary>
+    /// <c>0059A238</c> <c>sub ecx, 0xE5</c>
+    /// → <c>00599D5C</c>. Attach-time
+    /// <c>0xE5</c> is widget vtbl+284
+    /// only; this is the UI message.
+    /// </summary>
+    public const uint FrontendPressStartAcceptFn = 0x00599D5C;
+    public const uint FrontendProfileEnumFn = 0x005955AB;
+    /// <summary>
+    /// Empty <c>005955AB</c> from
+    /// <c>00599D5C</c>. Not msg
+    /// <c>0x125</c> first-seen.
+    /// </summary>
+    public const uint FrontendNoProfileFn = 0x00595845;
+    public const int FrontendUiArmedOffset = 160;
+    public const int FrontendUi100Offset = 100;
+    public const int FrontendUi96Offset = 96;
+    /// <summary>
+    /// Next <c>00599E3F</c> after
+    /// <c>[ui+160]=1</c>. Slot
+    /// <c>0x17</c> is bound in
+    /// <c>00598A1C</c>.
+    /// </summary>
+    public const uint FrontendNewProfileBindFn = 0x00596917;
+    public const uint FrontendMenuSwitchFn = 0x00596763;
+    public const uint FrontendUi96CtorFn = 0x00851700;
+    public const uint FrontendUi96EditBoxFn = 0x00851770;
+    public const int FrontendNewProfileSlot = 0x17;
+    public const string FrontendNewProfileMenu =
+        "UI_FRONTEND_NEW_PROFILE_SCREEN";
+    /// <summary>
+    /// <c>0059A238</c> msg <c>0x124</c>
+    /// and one-name <c>00599D5C</c>.
+    /// </summary>
+    public const int FrontendMainMenuMessage = 0x124;
     public const string FrontendMainMenuNoContinue =
         "UI_FRONTEND_MAIN_MENU_NO_LIVEAWARE_NO_CONTINUE";
     public const string FrontendMainMenuContinue =
@@ -1933,6 +1968,32 @@ public sealed class EngineLifecycle : IDisposable
     public int FrontendWidgetTexture { get; private set; }
     public string? FrontendMenuRoot { get; private set; }
     public bool FrontendMenuConstructed { get; private set; }
+    /// <summary>
+    /// First-seen <c>005955AB</c> is
+    /// empty (same enumerator
+    /// <c>005958F5</c> skipped).
+    /// </summary>
+    public int FrontendProfileCount { get; set; }
+    /// <summary>
+    /// <c>[ui+160]</c>. Ctor 0.
+    /// <c>00595845</c> writes 1.
+    /// </summary>
+    public bool FrontendUiArmed { get; private set; }
+    /// <summary>
+    /// <c>[ui+100]</c> from
+    /// <c>00595845</c>.
+    /// </summary>
+    public bool FrontendUi100 { get; private set; }
+    /// <summary>
+    /// <c>[ui+96]</c> after
+    /// <c>00596917</c>. First
+    /// object has <c>+4=+5=0</c>
+    /// so this tick still skips
+    /// <c>0059899A</c>.
+    /// </summary>
+    public bool FrontendUi96Present { get; private set; }
+    public bool FrontendUi96Accept { get; private set; }
+    public bool FrontendUi96Armed { get; private set; }
     public GameBin? FrontendDefs { get; private set; }
     public bool FrontendDefFound { get; private set; }
     public string? FrontendDefTypeName { get; private set; }
@@ -2164,7 +2225,6 @@ public sealed class EngineLifecycle : IDisposable
             if (!FrontendUiPresent)
                 InitFrontendUi();
             PumpFrontendFrame();
-            MaybeActivateNewGameFromInput();
             if (RetailNewGameFlag)
             {
                 RequestNewGame();
@@ -2429,11 +2489,17 @@ public sealed class EngineLifecycle : IDisposable
             return;
         foreach (var (_, key) in Input.Applied)
         {
-            if (key == RegionTravel.PlayAviSkipReturn)
-            {
+            if (key != RegionTravel.PlayAviSkipReturn)
+                continue;
+            // Host stand-in only. Native
+            // key → 0xE5 is UNREAD.
+            // Return → msg 15 from Press
+            // Start is DISPROVEN.
+            if (FrontendMenuRoot == FrontendPressStartMenu)
+                DispatchFrontendMessage(FrontendPressStartMessage);
+            else
                 DispatchFrontendMessage(FrontendNewGameMessage);
-                return;
-            }
+            return;
         }
     }
 
@@ -2636,6 +2702,8 @@ public sealed class EngineLifecycle : IDisposable
             $"0052F040 ret 4 msg 0x{FrontendPressStartMessage:X} vtbl+{FrontendWidgetMessageVtbl}");
         Note(FrontendPressStartAttachFn, "Frontend", "UI",
             $"00598A1C msg 0x{FrontendPressStartMessage:X} vtbl+{FrontendWidgetMessageVtbl} slot 0x{FrontendPressStartSlot:X}");
+        Note(FrontendUiCtor, "Frontend", "UI",
+            $"00595422 [ui+{FrontendUi96Offset}]=0 [ui+{FrontendUiArmedOffset}]=0");
         FrontendMenuRoot = FrontendPressStartMenu;
         FrontendMenuConstructed = true;
         FrontendUiPresent = true;
@@ -2658,6 +2726,11 @@ public sealed class EngineLifecycle : IDisposable
         Note(InputEventKeyFn, "Frontend", "Input",
             "00A03B70 key [record+0]");
         PumpInput();
+        // 0042E3EE then 0042DC94: 0xE5
+        // lands before 00599E3F so
+        // 00595845 and 00596917 are
+        // the same frame.
+        MaybeActivateNewGameFromInput();
         Note(FrontendUpdateFn, "Frontend", "UI", "0042DC94");
         Note(FrontendUiTickFn, "Frontend", "UI", "00599E3F");
         Note(FrontendRecordZeroFn, "Frontend", "Render",
@@ -2695,6 +2768,8 @@ public sealed class EngineLifecycle : IDisposable
             $"00599E3F [ui+{FrontendWidgetListOffset}] vtbl+{FrontendWidgetTickVtbl}");
         if (!FrontendMenuConstructed)
             return;
+        if (FrontendUiArmed)
+            BindNewProfileFromArmedTick();
         Note(FrontendWidgetTickFn, "Frontend", "UI",
             $"0052C7E0 vtbl+{FrontendWidgetTickVtbl} 0122F5D4");
         Note(FrontendDestLayoutFn, "Frontend", "UI",
@@ -2869,6 +2944,18 @@ public sealed class EngineLifecycle : IDisposable
             InitFrontendUi();
         Note(FrontendUiMessageFn, "Frontend", "UI",
             $"0059A238 msg={msg} vtbl+{FrontendUiMessageVtbl}");
+        if (msg == FrontendPressStartMessage)
+        {
+            AcceptPressStartMessage();
+            return;
+        }
+
+        if (msg == FrontendMainMenuMessage)
+        {
+            AttachFrontendMainMenu();
+            return;
+        }
+
         if (msg != FrontendNewGameMessage)
             return;
         Note(FrontendNewGameApply, "Frontend", "UI",
@@ -2876,6 +2963,86 @@ public sealed class EngineLifecycle : IDisposable
         Note(FrontendNewGameThunk, "Frontend", "UI",
             $"00594F28 [retail+{RetailNewGameFlagOffset}]=1");
         RetailNewGameFlag = true;
+    }
+
+    /// <summary>
+    /// <c>0059A238</c> msg <c>0xE5</c>
+    /// → <c>00599D5C</c>. Empty
+    /// <c>005955AB</c> is first-seen
+    /// → <c>00595845</c>. One name
+    /// → <c>0059899A</c> (not first).
+    /// </summary>
+    private void AcceptPressStartMessage()
+    {
+        Note(FrontendPressStartAcceptFn, "Frontend", "UI",
+            "00599D5C 005955AB");
+        Note(FrontendProfileEnumFn, "Frontend", "UI",
+            $"005955AB count={FrontendProfileCount}");
+        if (FrontendProfileCount == 0)
+        {
+            Note(FrontendNoProfileFn, "Frontend", "UI",
+                $"00595845 [ui+{FrontendUiArmedOffset}]=1 [ui+{FrontendUi100Offset}]=1");
+            FrontendUiArmed = true;
+            FrontendUi100 = true;
+            return;
+        }
+
+        if (FrontendProfileCount == 1)
+        {
+            AttachFrontendMainMenu();
+            return;
+        }
+
+        Note(0x00597B20, "Frontend", "UI",
+            "00597B20 profiles>1 UNREAD");
+    }
+
+    /// <summary>
+    /// <c>0059899A</c>: empty continue
+    /// list →
+    /// <c>UI_FRONTEND_MAIN_MENU_NO_LIVEAWARE_NO_CONTINUE</c>
+    /// then <c>00595A06</c> /
+    /// <c>00595B24</c>.
+    /// </summary>
+    private void AttachFrontendMainMenu()
+    {
+        var name = FrontendProfileCount == 0
+            ? FrontendMainMenuNoContinue
+            : FrontendMainMenuContinue;
+        Note(FrontendMainMenuFn, "Frontend", "UI",
+            "0059899A " + name);
+        Note(FrontendMenuAttachFn, "Frontend", "UI", "00595A06");
+        Note(FrontendUiBuildMenu, "Frontend", "UI", "00595B24");
+        FrontendMenuRoot = name;
+        ResolveFrontendDef(name);
+    }
+
+    /// <summary>
+    /// <c>00599E3F</c> when
+    /// <c>[ui+160]≠0</c>: clear it,
+    /// <c>00596917</c> slot <c>0x17</c>,
+    /// <c>00851700</c> <c>+4=+5=0</c>.
+    /// Same tick still skips
+    /// <c>0059899A</c>.
+    /// </summary>
+    private void BindNewProfileFromArmedTick()
+    {
+        Note(FrontendUiTickFn, "Frontend", "UI",
+            $"00599E3F [ui+{FrontendUiArmedOffset}] 00596917");
+        FrontendUiArmed = false;
+        Note(FrontendNewProfileBindFn, "Frontend", "UI",
+            $"00596917 slot 0x{FrontendNewProfileSlot:X} " + FrontendNewProfileMenu);
+        Note(FrontendMenuSwitchFn, "Frontend", "UI",
+            $"00596763 slot 0x{FrontendNewProfileSlot:X}");
+        Note(FrontendUi96CtorFn, "Frontend", "UI",
+            $"00851700 [ui+{FrontendUi96Offset}] +4=0 +5=0");
+        Note(FrontendUi96EditBoxFn, "Frontend", "UI",
+            "00851770 UI_NEW_PROFILE_EDIT_BOX");
+        FrontendMenuRoot = FrontendNewProfileMenu;
+        FrontendUi96Present = true;
+        FrontendUi96Accept = false;
+        FrontendUi96Armed = false;
+        ResolveFrontendDef(FrontendNewProfileMenu);
     }
 
     /// <summary>

@@ -289,6 +289,106 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Frontend_0059A238_msg_E5_empty_005955AB_is_00595845_then_00596917()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.Equal(
+            EngineLifecycle.FrontendPressStartMenu, life.FrontendMenuRoot);
+        Assert.Equal(0, life.FrontendProfileCount);
+        Assert.False(life.FrontendUiArmed);
+        Assert.False(life.FrontendUi96Present);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendMainMenuFn);
+        life.DispatchFrontendMessage(EngineLifecycle.FrontendPressStartMessage);
+        Assert.True(life.FrontendUiArmed);
+        Assert.True(life.FrontendUi100);
+        Assert.False(life.FrontendUi96Present);
+        Assert.Equal(
+            EngineLifecycle.FrontendPressStartMenu, life.FrontendMenuRoot);
+        Assert.False(life.RetailNewGameFlag);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendUiMessageFn &&
+            e.Action.Contains("msg=229", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendPressStartAcceptFn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendNoProfileFn);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendMainMenuFn);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendNewProfileBindFn);
+        Assert.True(life.Pump());
+        Assert.False(life.FrontendUiArmed);
+        Assert.True(life.FrontendUi96Present);
+        Assert.False(life.FrontendUi96Accept);
+        Assert.False(life.FrontendUi96Armed);
+        Assert.Equal(
+            EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        Assert.Equal(EngineStage.Frontend, life.Stage);
+        Assert.False(life.RetailNewGameFlag);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendNewProfileBindFn &&
+            e.Action.Contains("0x17", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendMenuSwitchFn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendUi96CtorFn &&
+            e.Action.Contains("+4=0", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendMainMenuFn);
+        Assert.Equal(0x00599D5Cu, EngineLifecycle.FrontendPressStartAcceptFn);
+        Assert.Equal(0x00595845u, EngineLifecycle.FrontendNoProfileFn);
+        Assert.Equal(0x00596917u, EngineLifecycle.FrontendNewProfileBindFn);
+        Assert.Equal(0x17, EngineLifecycle.FrontendNewProfileSlot);
+        Assert.Equal(0xE5, EngineLifecycle.FrontendPressStartMessage);
+        Assert.Equal(0x124, EngineLifecycle.FrontendMainMenuMessage);
+    }
+
+    [Fact]
+    public void Frontend_press_start_Return_is_msg_E5_not_15()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.QueueInput(EngineInput.TypeKey, RegionTravel.PlayAviSkipReturn);
+        Assert.True(life.Pump());
+        Assert.Equal(
+            EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        Assert.False(life.RetailNewGameFlag);
+        Assert.Equal(EngineStage.Frontend, life.Stage);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendUiMessageFn &&
+            e.Action.Contains("msg=229", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendUiMessageFn &&
+            e.Action.Contains("msg=15", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendMainMenuFn);
+    }
+
+    [Fact]
+    public void Frontend_0059A238_msg_124_attaches_main_menu_no_continue()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.DispatchFrontendMessage(EngineLifecycle.FrontendMainMenuMessage);
+        Assert.Equal(
+            EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
+        Assert.False(life.RetailNewGameFlag);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendMainMenuFn &&
+            e.Action.Contains("NO_CONTINUE", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendMenuAttachFn);
+    }
+
+    [Fact]
     public void Frontend_00595582_new_game_message_leaves_without_RequestNewGame()
     {
         var life = new EngineLifecycle();
@@ -2669,6 +2769,17 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x00595B24u, EngineLifecycle.FrontendUiBuildMenu);
         Assert.Equal(0x0059A238u, EngineLifecycle.FrontendUiMessageFn);
         Assert.Equal(15, EngineLifecycle.FrontendNewGameMessage);
+        Assert.Equal(0xE5, EngineLifecycle.FrontendPressStartMessage);
+        Assert.Equal(0x124, EngineLifecycle.FrontendMainMenuMessage);
+        Assert.Equal(0x00599D5Cu, EngineLifecycle.FrontendPressStartAcceptFn);
+        Assert.Equal(0x00595845u, EngineLifecycle.FrontendNoProfileFn);
+        Assert.Equal(0x00596917u, EngineLifecycle.FrontendNewProfileBindFn);
+        Assert.Equal(0x00596763u, EngineLifecycle.FrontendMenuSwitchFn);
+        Assert.Equal(0x00851700u, EngineLifecycle.FrontendUi96CtorFn);
+        Assert.Equal(0x17, EngineLifecycle.FrontendNewProfileSlot);
+        Assert.Equal(
+            "UI_FRONTEND_NEW_PROFILE_SCREEN",
+            EngineLifecycle.FrontendNewProfileMenu);
         Assert.Equal(41, EngineLifecycle.RetailNewGameFlagOffset);
         Assert.Equal(0x00595A03u, EngineLifecycle.FrontendMenuMissFn);
         Assert.Equal("UI_TEXT_NEW_GAME", EngineLifecycle.FrontendMenuItems[0].Label);
