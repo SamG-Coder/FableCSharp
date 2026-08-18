@@ -266,9 +266,12 @@ public static class GlobalDispatcher
 
         if (Eq(v, "PutUpYourSwords"))
         {
-            ctx.World.SwordsUp = !ScriptLine.IsFalse(line.Arg(0));
+            // 00CC9356: IsTrue(arg0) classifies vtbl+788/792;
+            // vtbl+520 sheathe always. FALSE still sheathes.
+            ctx.World.SwordClassifyRequested = ScriptLine.IsTrue(line.Arg(0));
+            ctx.World.SwordsUp = true;
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
-                ctx.World.SwordsUp ? "TRUE" : "FALSE");
+                ctx.World.SwordClassifyRequested ? "TRUE" : "sheathe");
         }
 
         if (Eq(v, "NoDialogCam"))

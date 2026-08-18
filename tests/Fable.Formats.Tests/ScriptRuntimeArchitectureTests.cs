@@ -1117,6 +1117,67 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void PutUpYourSwords_false_still_sheathes()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var down = new ScriptInterpreter("pus0", ["PutUpYourSwords FALSE"]);
+        down.RunUntilYield(runtime);
+        Assert.True(runtime.World.SwordsUp);
+        Assert.False(runtime.World.SwordClassifyRequested);
+        var up = new ScriptInterpreter("pus1", ["PutUpYourSwords TRUE"]);
+        up.RunUntilYield(runtime);
+        Assert.True(runtime.World.SwordsUp);
+        Assert.True(runtime.World.SwordClassifyRequested);
+        Assert.Equal(0x00CC9356u, ScriptCommandMap.Find("PutUpYourSwords")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void PutUpYourSwords_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_ARENA_HOH_INTRO") ?? bank.Find("CS_GUILD_MELEE_INTRO");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.StartsWith("PutUpYourSwords", StringComparison.OrdinalIgnoreCase))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        runtime.World.SwordsUp = false;
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-swords", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("PutUpYourSwords", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.True(runtime.World.SwordsUp);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-swords.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-putupyourswords.txt"),
+            """
+            PutUpYourSwords 00CC9300 / apply 00CC9356
+              IsTrue(arg0) → vtbl+280 hero, vtbl+788 MELEE else vtbl+792 RANGED
+              always vtbl+520 sheathe; jmp 00CD17FD
+              FALSE/empty still sheathes (DISPROVES SwordsUp=!IsFalse)
+            Classify 788/792 bodies UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void UseTheme_real_script_bank_line()
     {
         var install = GameInstall.TryLocate();

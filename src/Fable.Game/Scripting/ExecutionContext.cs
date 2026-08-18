@@ -1023,7 +1023,16 @@ public sealed class WorldRuntime
     public readonly Dictionary<string, (byte R, byte G, byte B, byte A)> LightColors =
         new(StringComparer.OrdinalIgnoreCase);
     public int ActiveLightScene { get; set; } = -1;
+    /// <summary>
+    /// <c>00CC93D5</c> <c>vtbl+520</c> always runs.
+    /// </summary>
     public bool SwordsUp { get; set; }
+    /// <summary>
+    /// <c>TRUE</c> path classifies via <c>vtbl+788/792</c>
+    /// as MELEE or RANGED. Bodies unread.
+    /// </summary>
+    public string SwordClass { get; set; } = "";
+    public bool SwordClassifyRequested { get; set; }
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
     public float TimeOfDayHours { get; set; }

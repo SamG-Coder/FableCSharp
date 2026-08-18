@@ -74,7 +74,7 @@
 | SetLightScene | `00CD1425` | `00CD172A` | index | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | atoi; +84 defs NAME:r,g,b; +96 comma indices; vtbl+2180; yield if [ebp+103] |
 | TintScreenOut | `00CD11D0` | `00CD11F7` | seconds | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | atof; vtbl+2704([ebp-112],dur); clear hold; jmp 00CD17FD |
 | TintScreenTo | `00CD0CE4` | `00CD115A` | 5floats,rgb,filter | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | 7 required; RGB*1/255; ALL:/ALLDEF: vtbl+300/320; vtbl+2700 handle |
-| PutUpYourSwords | `00CC9303` | `—` | IsFalse? | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | token 00CC9303; sheathe apply unread |
+| PutUpYourSwords | `00CC9300` | `00CC9356` | IsTrue? | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | IsTrue classifies vtbl+788/792 MELEE/RANGED; always vtbl+520; FALSE still sheathes |
 | RegisterActor | `00CC662D` | `00CC669B` | name | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | empty skip; 004AC860 register; jmp 00CC7081 |
 | CrowdAcquire | `00CCCEA7` | `00515700` | type,alias | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | real members only as alias0..n |
 | CrowdClearActions | `—` | `—` | crowd | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | clear member entity tasks |

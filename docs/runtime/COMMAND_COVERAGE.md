@@ -3,7 +3,7 @@ GLOBAL: 124
 ENTITY: 61
 RECOVERED DISPATCH: 111
 RECOVERED RETURN: 111
-RECOVERED APPLY: 46
+RECOVERED APPLY: 47
 IMPLEMENTED RUNTIME: 13
 UNREAD: 74
 # Native command coverage
@@ -79,7 +79,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | DrawThing | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | UseCameraFOVMarkerList | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | CameraRig | Global | Proven | Proven | Proven | Proven | Partial | Partial |
-| PutUpYourSwords | Global | Proven | Proven | Proven | Partial | Partial | Partial |
+| PutUpYourSwords | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | RemoveHeroClothes | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | HeroWear | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | HeroTattoo | Global | Proven | Proven | Proven | Proven | Partial | Partial |
