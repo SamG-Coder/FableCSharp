@@ -474,6 +474,79 @@ public sealed class WorldGeometry
     }
 
     /// <summary>
+    /// Visible 16 m cells after
+    /// <c>00BDC2D0</c> AABB. Neighbour
+    /// offset is ΔMapX/ΔMapY. Current
+    /// map is never culled.
+    /// </summary>
+    public List<LandscapeCell> CollectVisibleCells(
+        LevelLibrary levels,
+        LandscapeFrustum.Plane[]? landscapePlanes = null,
+        ICollection<string>? acceptedMaps = null)
+    {
+        var list = new List<LandscapeCell>(256);
+        var primary = levels.World.FindMap(Region);
+        foreach (var name in Regions)
+        {
+            var map = levels.World.FindMap(name);
+            var dx = 0f;
+            var dy = 0f;
+            if (map is not null && primary is not null)
+            {
+                var neighbour = WorldSpaces.NeighbourRegionOffset(
+                    map.MapX, map.MapY, primary.MapX, primary.MapY);
+                dx = neighbour.X;
+                dy = neighbour.Y;
+            }
+
+            var header = levels.PeekMapHeader(name);
+            var sizeX = header is { GridWidth: > 0 } ? header.Value.GridWidth : 128;
+            var sizeY = header is { GridHeight: > 0 } ? header.Value.GridHeight : 128;
+            var isPrimary = name.Equals(Region, StringComparison.OrdinalIgnoreCase);
+            if (!isPrimary && landscapePlanes is { Length: > 0 })
+            {
+                LandscapeFrustum.PatchAabb(dx, dy, sizeX, sizeY, out var min, out var max);
+                if (LandscapeFrustum.AabbIsOutside(min, max, landscapePlanes))
+                    continue;
+            }
+
+            var offset = new Vector3(dx, dy, 0);
+            var before = list.Count;
+            foreach (var cell in levels.LoadCells(name))
+            {
+                if (cell.Faces.Count == 0)
+                    continue;
+                if (offset == Vector3.Zero)
+                    list.Add(cell);
+                else
+                {
+                    var faces = new MeshTriangle[cell.Faces.Count];
+                    for (var i = 0; i < cell.Faces.Count; i++)
+                    {
+                        var f = cell.Faces[i];
+                        faces[i] = f with
+                        {
+                            A = f.A + offset, B = f.B + offset, C = f.C + offset,
+                        };
+                    }
+
+                    list.Add(cell with
+                    {
+                        Min = cell.Min + offset,
+                        Max = cell.Max + offset,
+                        Faces = faces,
+                    });
+                }
+            }
+
+            if (list.Count > before)
+                acceptedMaps?.Add(name);
+        }
+
+        return list;
+    }
+
+    /// <summary>
     /// <c>00BDC2D0</c> per opened patch:
     /// neighbour offset, Z=0 AABB, four
     /// side planes, then stored STB cells

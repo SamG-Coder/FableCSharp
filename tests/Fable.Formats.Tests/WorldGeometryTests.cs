@@ -683,6 +683,27 @@ public sealed class WorldGeometryTests
     }
 
     [Fact]
+    public void Lookout_cells_match_stb_tiles()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        var cells = levels.LoadCells("LookoutPoint");
+        Assert.True(cells.Count >= 40, $"cells={cells.Count}");
+        Assert.All(cells, c => Assert.True(c.Faces.Count > 0));
+        var opened = WorldGeometry.Build(
+            install, "LookoutPoint", [],
+            adjacentStaticMaps: false, levels: levels,
+            onlyMaps: ["LookoutPoint"], expandGeometry: false);
+        var visible = opened.CollectVisibleCells(levels);
+        Assert.Equal(cells.Count, visible.Count);
+        var mesh = MeshBatches.BuildCells(visible);
+        Assert.Equal(visible.Sum(c => c.Faces.Count * 3), mesh.Vertices.Length);
+        Assert.Equal(visible.Count * 2, mesh.Draws.Length);
+        Assert.Contains(mesh.Draws, d => d.PassBit == LandscapeCells.LayerForeground);
+    }
+
+    [Fact]
     public void Lookout_tile_origin_is_region_local()
     {
         var install = GameInstall.TryLocate();

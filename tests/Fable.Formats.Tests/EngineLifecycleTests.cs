@@ -2128,8 +2128,11 @@ public sealed class EngineLifecycleTests
         Assert.Equal(parsed, life.Meshes.ParsedCount);
         Assert.Equal(decoded, life.Textures?.DecodedCount ?? 0);
         Assert.Equal(elapsed, life.SubmitElapsedMs);
-        Assert.Same(life.BuildFrame().Vertices, mesh!.Vertices);
+        Assert.True(life.SubmittedLandscapeCells > 0);
+        Assert.Same(life.BuildFrame().Vertices, life.SubmittedLandscape!.Vertices);
+        Assert.Same(life.BuildFrame().ObjectVertices, life.SubmittedObjects!.Vertices);
         Assert.Same(life.BuildFrame().Textures, life.BuildFrame().Textures);
+        Assert.NotNull(life.LastLoadTiming);
     }
 
     [Fact]

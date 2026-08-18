@@ -109,10 +109,29 @@ public sealed class LevTileMesh
         IReadOnlyList<LevMaterial> materials,
         HeaderEnums? textures = null)
     {
+        var all = new List<MeshTriangle>(Tiles.Count * 512);
+        foreach (var cell in ToCells(originX, originY, cells, materials, textures))
+            all.AddRange(cell.Faces);
+        return all;
+    }
+
+    /// <summary>
+    /// One cell per STB tile. Matches
+    /// <c>00BF4570</c> 16 m DIP units.
+    /// </summary>
+    public IReadOnlyList<LandscapeCell> ToCells(
+        float originX,
+        float originY,
+        LevCellGrid cells,
+        IReadOnlyList<LevMaterial> materials,
+        HeaderEnums? textures = null,
+        string map = "")
+    {
         var bySlot = materials.ToDictionary(item => item.Slot);
-        var triangles = new List<MeshTriangle>(Tiles.Count * 512);
+        var list = new List<LandscapeCell>(Tiles.Count);
         foreach (var tile in Tiles)
         {
+            var faces = new List<MeshTriangle>(512);
             var points = new Vector3[tile.Vertices.Count];
             for (var i = 0; i < tile.Vertices.Count; i++)
                 points[i] = WorldSpaces.StbFileToRegionLocal(tile.Vertices[i], originX, originY);
@@ -147,12 +166,12 @@ public sealed class LevTileMesh
                     var tex = LayersAt(a.P, cells, bySlot, textures);
                     if (tex.A < 0)
                         continue;
-                    Add(triangles, a, b, d, tex.A, tex.B);
-                    Add(triangles, a, d, c, tex.A, tex.B);
+                    Add(faces, a, b, d, tex.A, tex.B);
+                    Add(faces, a, d, c, tex.A, tex.B);
                 }
             }
             else if (tile.Indices.Count >= 3)
-                AddStrip(triangles, tile.Vertices, points, tile.Indices, cells, bySlot, textures);
+                AddStrip(faces, tile.Vertices, points, tile.Indices, cells, bySlot, textures);
 
             foreach (var extra in tile.Extras)
             {
@@ -160,11 +179,26 @@ public sealed class LevTileMesh
                 for (var i = 0; i < extra.Vertices.Count; i++)
                     extraPoints[i] = WorldSpaces.StbFileToRegionLocal(extra.Vertices[i], originX, originY);
 
-                AddStrip(triangles, extra.Vertices, extraPoints, extra.Indices, cells, bySlot, textures);
+                AddStrip(faces, extra.Vertices, extraPoints, extra.Indices, cells, bySlot, textures);
             }
+
+            if (faces.Count == 0)
+                continue;
+            var min = faces[0].A;
+            var max = min;
+            foreach (var f in faces)
+            {
+                min = Vector3.Min(min, Vector3.Min(f.A, Vector3.Min(f.B, f.C)));
+                max = Vector3.Max(max, Vector3.Max(f.A, Vector3.Max(f.B, f.C)));
+            }
+
+            var tex0 = faces[0].TextureId;
+            var tex1 = faces[0].TextureId1;
+            list.Add(new LandscapeCell(
+                map, tile.CellX, tile.CellY, min, max, faces, tex0, tex1));
         }
 
-        return triangles;
+        return list;
     }
 
     private static void AddStrip(

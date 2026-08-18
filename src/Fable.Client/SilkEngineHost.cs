@@ -14,6 +14,7 @@ public sealed class SilkEngineHost : IEngineHost
     private EngineFrame _frame;
     private WorldGeometry? _uploadedWorld;
     private MeshVertex[]? _uploadedVertices;
+    private MeshVertex[]? _uploadedObjects;
     private GpuTexture[]? _uploadedTextures;
 
     public SilkEngineHost(
@@ -76,10 +77,15 @@ public sealed class SilkEngineHost : IEngineHost
             renderer.FadeOverlayRgb = (frame.FadeR, frame.FadeG, frame.FadeB);
         }
 
-        if (frame.Vertices is { Length: > 0 } verts)
+        if ((frame.Vertices is { Length: > 0 }) ||
+            frame.ObjectVertices is { Length: > 0 })
         {
+            var verts = frame.Vertices ?? [];
             var draws = frame.Draws ?? [];
-            var sameMesh = ReferenceEquals(_uploadedVertices, verts);
+            var objects = frame.ObjectVertices ?? [];
+            var objectDraws = frame.ObjectDraws ?? [];
+            var sameMesh = ReferenceEquals(_uploadedVertices, frame.Vertices) &&
+                           ReferenceEquals(_uploadedObjects, frame.ObjectVertices);
             var sameTex = ReferenceEquals(_uploadedTextures, frame.Textures);
             if (sameMesh && (sameTex || frame.Textures is null || frame.Textures.Length == 0))
                 return;
@@ -101,7 +107,9 @@ public sealed class SilkEngineHost : IEngineHost
             if (!sameMesh)
             {
                 renderer?.SetMesh(verts, draws);
-                _uploadedVertices = verts;
+                renderer?.SetObjects(objects, objectDraws);
+                _uploadedVertices = frame.Vertices;
+                _uploadedObjects = frame.ObjectVertices;
                 MeshUploads++;
             }
 
@@ -127,8 +135,10 @@ public sealed class SilkEngineHost : IEngineHost
             return;
 
         renderer?.SetMesh([], []);
+        renderer?.SetObjects([], []);
         _uploadedWorld = null;
         _uploadedVertices = null;
+        _uploadedObjects = null;
         _uploadedTextures = null;
     }
 

@@ -1137,6 +1137,10 @@ public sealed class EngineLifecycle : IDisposable
     public WmvPlayer? StartupAvi { get; private set; }
     public WorldGeometry? SubmittedWorld { get; private set; }
     public Fable.Render.TexturedMesh? SubmittedMesh { get; private set; }
+    public Fable.Render.TexturedMesh? SubmittedLandscape { get; private set; }
+    public Fable.Render.TexturedMesh? SubmittedObjects { get; private set; }
+    public int SubmittedLandscapeCells { get; private set; }
+    public LoadTiming? LastLoadTiming { get; private set; }
     public bool WorldSubmitted { get; private set; }
     /// <summary>
     /// Primary-map C3Ds with a bone
@@ -1340,33 +1344,43 @@ public sealed class EngineLifecycle : IDisposable
             return;
         var parsedBefore = Meshes.ParsedCount;
         var clock = System.Diagnostics.Stopwatch.StartNew();
+        var timing = new LoadTiming();
         UnloadStartupAvi();
         EnsureLevels();
         OpenMeshBank();
-        var opened = PresentWorld();
+        var opened = timing.Measure("PresentWorld", PresentWorld);
         if (opened is null || _levels is null)
             return;
         SubmittedWorld = opened;
         var planes = SubmitSidePlanes();
         _submittedTerrain.Clear();
-        var land = MeshBatches.Build(
-            opened.TessellateVisible(_levels, planes, _submittedTerrain));
+        var cells = timing.Measure("TerrainCells",
+            () => opened.CollectVisibleCells(_levels, planes, _submittedTerrain),
+            c => $"n={c.Count} maps={_submittedTerrain.Count}");
+        var land = timing.Measure("LandDraws",
+            () => MeshBatches.BuildCells(cells),
+            m => $"verts={m.Vertices.Length} draws={m.Draws.Length}");
         var props = new List<(MeshFile Mesh, Matrix4x4 Transform)>();
         var seen = new HashSet<uint>();
         _submittedPalskin.Clear();
         SubmittedHeroPalskin = false;
-        foreach (var inst in opened.Instances)
+        timing.Measure("C3D", () =>
         {
-            if (!inst.Map.Equals(opened.Region, StringComparison.OrdinalIgnoreCase))
-                continue;
-            var mesh = Meshes.Get(inst.MeshId);
-            if (mesh is null)
-                continue;
-            seen.Add(inst.MeshId);
-            props.Add((mesh, inst.Transform));
-            if (mesh.BoneCount > 0)
-                _submittedPalskin.Add(inst.MeshId);
-        }
+            foreach (var inst in opened.Instances)
+            {
+                if (!inst.Map.Equals(opened.Region, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                var mesh = Meshes.Get(inst.MeshId);
+                if (mesh is null)
+                    continue;
+                seen.Add(inst.MeshId);
+                props.Add((mesh, inst.Transform));
+                if (mesh.BoneCount > 0)
+                    _submittedPalskin.Add(inst.MeshId);
+            }
+
+            return seen.Count;
+        }, n => $"ids={n} inst={props.Count}");
 
         // 006AC910 spawn is a Thing, not a TNG
         // Graphic. Submit it as PALSKIN even if
@@ -1386,14 +1400,23 @@ public sealed class EngineLifecycle : IDisposable
 
         SubmittedHeroPalskin = HeroMeshId != 0 &&
             _submittedPalskin.Contains((uint)HeroMeshId);
-        SubmittedMesh = MeshBatches.Concat(land, MeshBatches.BuildMeshes(props));
+        var objects = timing.Measure("BuildMeshes",
+            () => MeshBatches.BuildMeshes(props),
+            m => $"verts={m.Vertices.Length}");
+        SubmittedLandscape = land;
+        SubmittedObjects = objects;
+        SubmittedLandscapeCells = cells.Count;
+        SubmittedMesh = MeshBatches.Concat(land, objects);
         BindSubmittedTextures();
         WorldSubmitted = SubmittedMesh.Vertices.Length > 0;
         SubmitC3dParsed = Meshes.ParsedCount - parsedBefore;
         SubmitElapsedMs = clock.Elapsed.TotalMilliseconds;
+        timing.Add("Textures", 0, $"n={_submittedTextures.Count}");
+        LastLoadTiming = timing;
+        Console.WriteLine(timing.Format());
         Note(OpenStaticMapsFn, "Submit", "World",
             WorldSubmitted
-                ? $"primary {opened.Region} meshes={seen.Count} palskin={_submittedPalskin.Count} hero={HeroMeshId} terrain={_submittedTerrain.Count} verts={SubmittedMesh.Vertices.Length} {SubmitElapsedMs:0}ms c3d={SubmitC3dParsed}"
+                ? $"primary {opened.Region} cells={cells.Count} meshes={seen.Count} palskin={_submittedPalskin.Count} hero={HeroMeshId} terrain={_submittedTerrain.Count} verts={SubmittedMesh.Vertices.Length} {SubmitElapsedMs:0}ms c3d={SubmitC3dParsed}"
                 : "submit miss");
     }
 
@@ -1522,9 +1545,11 @@ public sealed class EngineLifecycle : IDisposable
             playing,
             runtime?.OverlayAlphaByte ?? 0,
             fade.R, fade.G, fade.B,
-            SubmittedMesh?.Vertices,
-            SubmittedMesh?.Draws,
-            _submittedTextureArray);
+            SubmittedLandscape?.Vertices,
+            SubmittedLandscape?.Draws,
+            _submittedTextureArray,
+            SubmittedObjects?.Vertices,
+            SubmittedObjects?.Draws);
     }
 
     /// <summary>

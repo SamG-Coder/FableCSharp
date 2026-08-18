@@ -201,6 +201,11 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     private DeviceMemory _meshMemory;
     private uint _meshCapacity;
     private uint _meshCount;
+    private Buffer _objectBuffer;
+    private DeviceMemory _objectMemory;
+    private uint _objectCapacity;
+    private uint _objectCount;
+    private MeshDraw[] _objectDraws = [];
     private int _frame;
     private bool _resized;
     private bool _playAviPump;
@@ -283,6 +288,40 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         Check(_vk.MapMemory(_device, _meshMemory, 0, bytes, 0, &mapped));
         vertices.CopyTo(new Span<MeshVertex>(mapped, vertices.Length));
         _vk.UnmapMemory(_device, _meshMemory);
+    }
+
+    /// <summary>
+    /// Static C3D family (layer <c>0x20</c>).
+    /// Separate VB from landscape cells.
+    /// </summary>
+    public void SetObjects(ReadOnlySpan<MeshVertex> vertices, ReadOnlySpan<MeshDraw> draws = default)
+    {
+        _objectDraws = draws.Length == 0 ? [] : draws.ToArray();
+        _objectCount = (uint)vertices.Length;
+        if (_objectCount == 0)
+            return;
+
+        var bytes = (ulong)(vertices.Length * Unsafe.SizeOf<MeshVertex>());
+        if (_objectCapacity < _objectCount)
+        {
+            if (_objectBuffer.Handle != 0)
+            {
+                _vk.DestroyBuffer(_device, _objectBuffer, null);
+                _vk.FreeMemory(_device, _objectMemory, null);
+            }
+
+            CreateBuffer(bytes,
+                BufferUsageFlags.VertexBufferBit,
+                MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
+                out _objectBuffer,
+                out _objectMemory);
+            _objectCapacity = _objectCount;
+        }
+
+        void* mapped;
+        Check(_vk.MapMemory(_device, _objectMemory, 0, bytes, 0, &mapped));
+        vertices.CopyTo(new Span<MeshVertex>(mapped, vertices.Length));
+        _vk.UnmapMemory(_device, _objectMemory);
     }
 
     public bool ShowGizmos { get; set; }
@@ -431,6 +470,11 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         {
             _vk.DestroyBuffer(_device, _meshBuffer, null);
             _vk.FreeMemory(_device, _meshMemory, null);
+        }
+        if (_objectBuffer.Handle != 0)
+        {
+            _vk.DestroyBuffer(_device, _objectBuffer, null);
+            _vk.FreeMemory(_device, _objectMemory, null);
         }
 
         for (var i = 0; i < MaxFrames; i++)
@@ -1159,7 +1203,9 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         var playAviOnly = _playAviPump ||
             (_videoReady && _videoPipeline.Handle != 0 && _videoTexture.Set.Handle != 0);
 
-        if (!playAviOnly && _meshCount > 0 && _meshBuffer.Handle != 0)
+        if (!playAviOnly &&
+            ((_meshCount > 0 && _meshBuffer.Handle != 0) ||
+             (_objectCount > 0 && _objectBuffer.Handle != 0)))
         {
             _skyViewProj = skyViewProjection;
             _worldViewProj = viewProjection;

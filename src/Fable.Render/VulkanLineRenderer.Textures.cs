@@ -47,16 +47,32 @@ public sealed unsafe partial class VulkanLineRenderer
 
     private void DrawMeshBatches(CommandBuffer commandBuffer)
     {
-        if (_draws.Length == 0)
+        DrawFamily(commandBuffer, _meshBuffer, _meshCount, _draws);
+        DrawFamily(commandBuffer, _objectBuffer, _objectCount, _objectDraws);
+    }
+
+    private void DrawFamily(
+        CommandBuffer commandBuffer, Buffer buffer, uint count, MeshDraw[] draws)
+    {
+        if (count == 0 && draws.Length == 0)
+            return;
+        if (buffer.Handle != 0)
+        {
+            var vb = buffer;
+            ulong off = 0;
+            _vk.CmdBindVertexBuffers(commandBuffer, 0, 1, in vb, in off);
+        }
+
+        if (draws.Length == 0)
         {
             BindTexture(commandBuffer, 0, 0);
             BindTexture(commandBuffer, 0, 1);
-            _vk.CmdDraw(commandBuffer, _meshCount, 1, 0, 0);
+            _vk.CmdDraw(commandBuffer, count, 1, 0, 0);
             return;
         }
 
         var alpha = false;
-        foreach (var draw in _draws)
+        foreach (var draw in draws)
         {
             if (draw.VertexCount == 0)
                 continue;

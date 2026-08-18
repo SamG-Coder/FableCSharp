@@ -21,6 +21,8 @@ public sealed class LevelLibrary : IDisposable
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<string, LevHeightField?> _heights =
         new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, IReadOnlyList<LandscapeCell>> _cells =
+        new(StringComparer.OrdinalIgnoreCase);
 
     public GameInstall Install { get; }
     public WorldFile World { get; }
@@ -168,11 +170,42 @@ public sealed class LevelLibrary : IDisposable
         return field;
     }
 
+    /// <summary>
+    /// Region-lifetime stored tessellation
+    /// (<c>00BDD0E0</c> / <c>00BF4570</c>).
+    /// </summary>
+    public IReadOnlyList<LandscapeCell> LoadCells(string region)
+    {
+        if (_cells.TryGetValue(region, out var cached))
+            return cached;
+        var height = LoadHeightField(region);
+        var compiled = LoadCompiledLev(region);
+        if (height is null || compiled is null)
+        {
+            _cells[region] = [];
+            return [];
+        }
+
+        var grid = LevCellGrid.TryParse(compiled);
+        if (grid is null)
+        {
+            _cells[region] = [];
+            return [];
+        }
+
+        var built = height.Tiles.ToCells(
+            height.OriginX, height.OriginY, grid, compiled.Materials,
+            LandscapeEnums, region);
+        _cells[region] = built;
+        return built;
+    }
+
     public void Dispose()
     {
         _things.Clear();
         _levs.Clear();
         _heights.Clear();
+        _cells.Clear();
         _wad?.Dispose();
         _stb?.Dispose();
     }

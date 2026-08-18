@@ -62,6 +62,46 @@ public static class MeshBatches
     }
 
     /// <summary>
+    /// One draw per 16 m cell
+    /// (<c>00BF4570</c> DIP). Does not
+    /// regroup across cells.
+    /// </summary>
+    public static TexturedMesh BuildCells(
+        IReadOnlyList<Fable.Formats.Levels.LandscapeCell> cells)
+    {
+        var count = 0;
+        foreach (var cell in cells)
+            count += cell.Faces.Count * 3;
+        var vertices = new MeshVertex[count];
+        var draws = new List<MeshDraw>(cells.Count * 2);
+        var cursor = 0;
+        foreach (var cell in cells)
+        {
+            var first = cursor;
+            foreach (var tri in cell.Faces)
+            {
+                vertices[cursor++] = Vert(tri.A, tri.NormalA, tri.Normal, tri.UvA, tri.ColorA, tri.ExtraA, tri.ColorAlphaA);
+                vertices[cursor++] = Vert(tri.B, tri.NormalB, tri.Normal, tri.UvB, tri.ColorB, tri.ExtraB, tri.ColorAlphaB);
+                vertices[cursor++] = Vert(tri.C, tri.NormalC, tri.Normal, tri.UvC, tri.ColorC, tri.ExtraC, tri.ColorAlphaC);
+            }
+
+            var n = (uint)(cursor - first);
+            if (n == 0)
+                continue;
+            draws.Add(new MeshDraw(
+                cell.TextureId, (uint)first, n,
+                cell.TextureId1 == 0 ? cell.TextureId : cell.TextureId1,
+                Fable.Formats.Levels.LandscapeCells.LayerBackground, 0f, false));
+            draws.Add(new MeshDraw(
+                cell.TextureId, (uint)first, n,
+                cell.TextureId1 == 0 ? cell.TextureId : cell.TextureId1,
+                Fable.Formats.Levels.LandscapeCells.LayerForeground, 1f, false));
+        }
+
+        return new TexturedMesh { Vertices = vertices, Draws = [.. draws] };
+    }
+
+    /// <summary>
     /// One C3D parse per mesh id, verts
     /// transformed per instance. No
     /// <c>WorldGeometry</c> triangle soup.
