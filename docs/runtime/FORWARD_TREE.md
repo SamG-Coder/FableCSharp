@@ -505,9 +505,31 @@ constructs that quest object.
 ## 11. Per-frame game (after WorldFrame writer)
 
 ```
-00418289  update  SLOT
-├── fade / player  004AEBA0
-└── world          0049D9E0  (ret — no work)
+00418289  update  PROVEN (164)
+├── 00416296 / 00490A22  frontend+GUI gate
+├── 009E1BC0 → [game+90544]
+├── fade / player  004AEBA0  PROVEN (6)
+│   └── [+9826]==0 → al=0; else 004AEAA0
+├── world          0049D9E0  (ret — no work)
+├── game vtbl+24   00416E78
+└── 0041726D  WorldFrame  PROVEN (87)
+    └── 0049DFB0 type-1  PROVEN (73)
+        table [0x13B9288]; type 1 special
+
+START_INITIAL_QUESTS factories (fn --exact):
+  00CDE2F0  PersonalScriptMain  alloc 72 + 00CB8110 vtbl 012C3000
+  00F01760  CS_PlayCutscene     alloc 72 + 00CB8110 vtbl 012F72D0
+  00CDBD20  shared run          alloc 0x144 vtbl 012C2748
+  00CB8690  START_SCRIPT_DATA   token parse; not 00CBFB7D
+  012C3000+8  00CDDCB0  walks "PersonalScript_" things (439)
+  012C3000+24 00A44880  microthread (0 E8 callers; vtbl only)
+  012F72D0+24 00A44880  same
+  Do not StartCutscene(S_PSM) from the factory ctor.
+
+006B3FF0  camera seed  PROVEN (208)
+├── 006B63C0  bank copy 6×0x1F4  PROVEN (91)
+├── 006B8640 / 008889C0 / 006B2CA0  pose  UNREAD (dumped; not wired)
+Host SeedAt(1.6m) is a DIVERGE. FOV 72 is SHOT2 leftover.
 
 0041726D → 0049DFB0 type-1 → 00629270 / 004A5A40
 └── 004A5E10  inc WorldFrame [0x13B89BC]
