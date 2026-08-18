@@ -1871,13 +1871,33 @@ public sealed class EngineLifecycleTests
         Assert.False(life.QuestPumpRan);
         Assert.True(life.Pump(0.1f));
         Assert.True(life.QuestPumpRan);
-        Assert.Equal(1, life.QuestPumpWalked);
+        Assert.Equal(3, life.QuestPumpWalked);
         Assert.Equal(0, life.GameflowState);
         Assert.Equal(EngineLifecycle.GameflowWaitQuest, life.GameflowYieldQuest);
         Assert.Contains(EngineLifecycle.WatcherCoreReminder, life.GameflowWatchers);
         Assert.Contains(EngineLifecycle.WatcherBarrowGuards, life.GameflowWatchers);
         Assert.DoesNotContain(life.ActivatedQuests, q => q == EngineLifecycle.GameflowWaitQuest);
         Assert.DoesNotContain(life.Runtime!.Quests, q => q.Name == EngineLifecycle.GameflowWaitQuest);
+        Assert.DoesNotContain(life.ActivatedQuests, q => q == EngineLifecycle.TraderConflictEvil);
+        Assert.DoesNotContain(life.ActivatedQuests, q => q == EngineLifecycle.TraderConflictGood);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.CoreReminderFn &&
+            e.Action.Contains("+72]=0", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.BarrowGuardsFn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.QuestThingHasFn &&
+            e.Action.Contains(EngineLifecycle.TraderConflictEvil, StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FiberYieldFn &&
+            e.Action.Contains(EngineLifecycle.WatcherCoreReminder, StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FiberYieldFn &&
+            e.Action.Contains(EngineLifecycle.WatcherBarrowGuards, StringComparison.Ordinal));
+        Assert.Equal(0x00CEF3B0u, EngineLifecycle.CoreReminderFn);
+        Assert.Equal(0x00CEF550u, EngineLifecycle.BarrowGuardsFn);
+        Assert.Equal(0x004B0FC0u, EngineLifecycle.QuestThingHasBody);
+        Assert.Equal(0x004AF610u, EngineLifecycle.QuestNameActiveBody);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.QuestListPumpFn &&
             e.Action.Contains("00CB7C40", StringComparison.Ordinal));

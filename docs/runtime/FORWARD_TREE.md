@@ -851,12 +851,14 @@ Fiber +41 setter 00CB78D0  PROVEN
 │   │   00CB7950 +41=0 vtbl+4 00A44880
 │   │   00A446A0 vtbl+16 00CE7640
 │   │   00CE7670 attach CoreQuestReminder
-│   │   / CheckBarrowFieldsGuards
-│   │   state 0 00CE77D7
-│   │   008902E0 tattoo 00487DC0 miss
-│   │   00893610 Q_NewOakValeIntro 0
-│   │   006E7410 → 00A44840 009D8650
-│   │   00CB8170 [+8]=0 empty
+│   │   / CheckBarrowFieldsGuards at tail
+│   │   state 0 00CE77D7 then 009D8650
+│   │   same 00CB7C40: 00CEF3B0 [+72]=0
+│   │   yield; 00CEF550 vtbl+1144
+│   │   004B0FC0 trader 0; vtbl+1136
+│   │   004AF610 0; yield. +41=0 keeps
+│   │   nodes. 00CB8170 [+8]=0 empty
+│   │   0049D870 after resume, not now
 │   │   not 00501450. 004167DA store only.
 │   └── 00449970 / 00487DC0  PROVEN miss
 │       0044BC10 00A01B10 +48=0
@@ -951,7 +953,7 @@ Walk these **from their parent above**, not by string.
 | `00B40000` | `00BDC4F0` / `00BDDD50` | patch destroy |
 | `006C2170` | unload of previous ContainsMaps | region change |
 | `004B4260` | each initial-quest factory run | not Oakvale intro |
-| `00CB8220` first type-1 | next `00CB7C40` on CoreQuestReminder / CheckBarrowFieldsGuards | Main yielded; those watchers unread |
+| `00CB8220` parked trio | next type-1 resume / `0049D870` | `0049D870` after `006E7410` vtbl+8 returns |
 | `004167DA` | first call of `[engine+240]` | store-only; 0 `calldisp +240` on engine |
 | `00CE7670` parked | who activates `Q_NewOakValeIntro` | not this yield |
 | `004A5A40` | after `00640320` skip: `006BB990` then `006B3FF0` | already seed-proven; next unread callee on this slice |

@@ -1128,6 +1128,14 @@ public sealed class EngineLifecycle : IDisposable
     public const string WatcherMain = "Main";
     public const string WatcherCoreReminder = "CoreQuestReminder";
     public const string WatcherBarrowGuards = "CheckBarrowFieldsGuards";
+    public const uint CoreReminderFn = 0x00CEF3B0;
+    public const uint BarrowGuardsFn = 0x00CEF550;
+    public const uint QuestThingHasFn = 0x00892F60;
+    public const uint QuestNameActiveFn = 0x00892F40;
+    public const uint QuestThingHasBody = 0x004B0FC0;
+    public const uint QuestNameActiveBody = 0x004AF610;
+    public const string TraderConflictEvil = "Q_TraderConflictEvil";
+    public const string TraderConflictGood = "Q_TraderConflictGood";
     public const uint QuestSubjectFillFn = 0x008884D0;
     public const uint WorldTickTableVa = 0x013B9288;
     public const uint WorldTickSlot1FnVa = 0x013B92C8;
@@ -4645,14 +4653,18 @@ public sealed class EngineLifecycle : IDisposable
             $"00CB7C40 count={_gameflowWatchers.Count}");
         if (_gameflowWatchers.Contains(WatcherMain) &&
             GameflowYieldQuest is null)
+        {
             TickGameflowMain();
+            TickCoreReminder();
+            TickBarrowGuards();
+        }
         else if (GameflowYieldQuest is { })
             Note(FiberYieldFn, "GamePump", "Quest",
                 "009D8650 parked " + GameflowYieldQuest);
         Note(QuestListWalkBFn, "GamePump", "Quest",
             "00CB8170 [+8]=0 empty");
-        if (GameflowYieldQuest is { } && QuestPumpWalked == 0)
-            QuestPumpWalked = 1;
+        if (GameflowYieldQuest is { } && QuestPumpWalked < 3)
+            QuestPumpWalked = 3;
     }
 
     /// <summary>
@@ -4695,6 +4707,51 @@ public sealed class EngineLifecycle : IDisposable
         GameflowState = 0;
         GameflowYieldQuest = GameflowWaitQuest;
         QuestPumpWalked = 1;
+    }
+
+    /// <summary>
+    /// Same <c>00CB7C40</c> walk after
+    /// Main yield: insert-at-tail so
+    /// Core is next. <c>00CEF3B0</c>
+    /// <c>[+72]=0</c> → <c>vtbl+28</c>
+    /// yield. Not the guild message.
+    /// </summary>
+    private void TickCoreReminder()
+    {
+        Note(QuestFiberAttachFn, "GamePump", "Quest",
+            "00CB7950 CoreQuestReminder +41=0");
+        Note(CoreReminderFn, "GamePump", "Quest",
+            "00CEF3B0 [+72]=0");
+        Note(GameflowYieldThunk, "GamePump", "Quest",
+            "006E7410 wait Gameflow+72");
+        Note(FiberYieldFn, "GamePump", "Quest",
+            "009D8650 wait CoreQuestReminder");
+        QuestPumpWalked++;
+    }
+
+    /// <summary>
+    /// Same walk: <c>00CEF550</c>
+    /// <c>vtbl+1144</c> <c>00892F60</c>
+    /// <c>004B0FC0</c> miss both
+    /// trader quests → <c>vtbl+1136</c>
+    /// <c>004AF610</c> miss → yield.
+    /// </summary>
+    private void TickBarrowGuards()
+    {
+        Note(QuestFiberAttachFn, "GamePump", "Quest",
+            "00CB7950 CheckBarrowFieldsGuards +41=0");
+        Note(BarrowGuardsFn, "GamePump", "Quest", "00CEF550");
+        Note(QuestThingHasFn, "GamePump", "Quest",
+            "00892F60 004B0FC0 " + TraderConflictEvil + " 0");
+        Note(QuestThingHasFn, "GamePump", "Quest",
+            "00892F60 004B0FC0 " + TraderConflictGood + " 0");
+        Note(QuestNameActiveFn, "GamePump", "Quest",
+            "00892F40 004AF610 trader miss");
+        Note(GameflowYieldThunk, "GamePump", "Quest",
+            "006E7410 wait trader");
+        Note(FiberYieldFn, "GamePump", "Quest",
+            "009D8650 wait CheckBarrowFieldsGuards");
+        QuestPumpWalked++;
     }
 
     /// <summary>
