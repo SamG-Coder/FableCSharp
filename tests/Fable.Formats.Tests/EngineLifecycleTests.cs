@@ -59,6 +59,9 @@ public sealed class EngineLifecycleTests
         Assert.Equal("default_user.ini", EngineLifecycle.DefaultUserIniName);
         Assert.Equal("user.ini", EngineLifecycle.UserIniName);
         Assert.Equal(0x009EC890u, EngineLifecycle.IniApplyFn);
+        Assert.Equal(0x009ECB70u, EngineLifecycle.IniRunScriptFn);
+        Assert.Equal(0x009EB260u, EngineLifecycle.IniUnknownFn);
+        Assert.Equal(0x00419CE0u, EngineLifecycle.IniActivateQuestThunk);
         Assert.Equal(0x009EC710u, EngineLifecycle.IniTokenizeFn);
         Assert.Equal(0x009EB430u, EngineLifecycle.IniDispatchFn);
         Assert.Equal(0x0040D2A0u, EngineLifecycle.PlayAviSingletonFn);
@@ -1718,6 +1721,48 @@ public sealed class EngineLifecycleTests
         Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.LoadRegionFn);
         Assert.False(life.GamePumpFirstDone);
+    }
+
+    [Fact]
+    public void UserIni_009EC890_RunScript_joystick_is_00999230_miss()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var userIni = Path.Combine(install.Root, EngineLifecycle.UserIniName);
+        Assert.True(File.Exists(userIni));
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.Contains("SetMaxAnisotropy", life.UserIniCommands);
+        Assert.Contains("RunScript", life.UserIniCommands);
+        Assert.Contains("ActivateQuest", life.UserIniCommands);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.IniUnknownFn &&
+            e.Action.Contains("SetMaxAnisotropy", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.IniRunScriptFn &&
+            e.Action.Contains("joystick.ini", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FileExistsFn &&
+            e.Action.Contains("joystick.ini", StringComparison.Ordinal) &&
+            e.Action.Contains("miss", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.IniActivateQuestThunk &&
+            e.Action.Contains("Gameflow", StringComparison.Ordinal) &&
+            e.Action.Contains("UNREAD", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.IniActivateQuestGate &&
+            e.Action.Contains("xor al,al", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.ActivateQuestFn &&
+            e.Action.Contains("Gameflow", StringComparison.Ordinal));
+        Assert.Equal(0x009ECB70u, EngineLifecycle.IniRunScriptFn);
+        Assert.Equal(0x00419CE0u, EngineLifecycle.IniActivateQuestThunk);
+        Assert.False(life.FirstRealRegionLoadDone);
     }
 
     [Fact]

@@ -894,6 +894,15 @@ public sealed class EngineLifecycle : IDisposable
     public const uint IniApplyFn = 0x009EC890;
     public const uint IniTokenizeFn = 0x009EC710;
     public const uint IniDispatchFn = 0x009EB430;
+    public const uint IniUnknownFn = 0x009EB260;
+    public const uint IniRunScriptFn = 0x009ECB70;
+    public const string IniRunScriptName = "RunScript";
+    public const string IniRunScriptArg = "joystick.ini";
+    public const string IniRunScriptSuffix = ".ini";
+    public const uint IniActivateQuestThunk = 0x00419CE0;
+    public const uint IniActivateQuestGate = 0x004197B0;
+    public const uint IniActivateQuestRegister = 0x00419D90;
+    public const uint IniConsoleCommandsFn = 0x009ED190;
     public const uint EngineReadyCallback = 0x004167DA;
     public const int EngineReadyCallbackOffset = 240;
     public const int EngineGamePtrOffset = 244;
@@ -3233,10 +3242,15 @@ public sealed class EngineLifecycle : IDisposable
         Note(GameSingletonVa, "InitGame", "GameStart",
             $"013B86A0 game [retail+0] successor 0x{RetailSuccessorVa:X}");
         Note(0x009E9EF0, "InitGame", "GameStart", "009E9EF0 / 009E9F90 / 00416832");
+        Note(IniConsoleCommandsFn, "InitGame", "Ini",
+            "009ED190 BindKey/RunScript");
         foreach (var (name, apply) in InitGameStages)
         {
             if (name == "Init Conversation Attitude")
                 Note(0x0041863D, "InitGame", "InitGame", "Adding Console Variables");
+            if (name == "Init World")
+                Note(IniActivateQuestRegister, "InitGame", "Ini",
+                    "00419D90 ActivateQuest");
             Note(apply, name, "InitGame", name);
             if (name == "Init Graphics")
                 OpenTextureBank();
@@ -3339,10 +3353,19 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>009EC710</c> walks tokens;
     /// <c>009EB430</c> looks up
     /// <c>[ini+64]</c> and calls
-    /// handler vtbl+4. Command bodies
-    /// (including
-    /// <c>ActivateQuest("Gameflow")</c>)
-    /// stay UNREAD — do not start a
+    /// handler vtbl+4.
+    /// First-seen TLC <c>user.ini</c>:
+    /// <c>SetMaxAnisotropy</c> is not
+    /// a .text name → unknown.
+    /// <c>RunScript("joystick.ini")</c>
+    /// is <c>009ECB70</c> →
+    /// <c>009EC890</c> /
+    /// <c>00999230</c> miss.
+    /// <c>ActivateQuest</c> is
+    /// <c>00419D90</c> /
+    /// <c>00419CE0</c>;
+    /// <c>[world+56]</c> vtbl+1104
+    /// is UNREAD — do not start a
     /// quest here.
     /// </summary>
     private void ApplyUserIniCommands(string path)
@@ -3350,18 +3373,72 @@ public sealed class EngineLifecycle : IDisposable
         var names = new List<string>();
         foreach (var raw in File.ReadAllLines(path))
         {
-            var line = raw.Trim();
+            var line = raw.Trim().TrimEnd(';');
             if (line.Length == 0 || line.StartsWith(';') || line.StartsWith('#'))
                 continue;
-            var end = line.IndexOfAny(['(', ' ', '\t']);
-            var name = end < 0 ? line.TrimEnd(';') : line[..end];
+            var paren = line.IndexOf('(');
+            var space = line.IndexOfAny([' ', '\t']);
+            string name;
+            var arg = "";
+            if (paren > 0)
+            {
+                name = line[..paren];
+                var close = line.LastIndexOf(')');
+                if (close > paren)
+                    arg = line[(paren + 1)..close].Trim().Trim('"');
+            }
+            else
+            {
+                var end = space < 0 ? line.Length : space;
+                name = line[..end];
+            }
+
             if (name.Length == 0)
                 continue;
             names.Add(name);
             Note(IniDispatchFn, "InitGame", "Ini", "009EB430 " + name);
+            DispatchUserIniCommand(name, arg);
         }
 
         UserIniCommands = names;
+    }
+
+    private void DispatchUserIniCommand(string name, string arg)
+    {
+        if (name == IniRunScriptName)
+        {
+            var file = arg.EndsWith(IniRunScriptSuffix, StringComparison.OrdinalIgnoreCase)
+                ? arg
+                : arg + IniRunScriptSuffix;
+            Note(IniRunScriptFn, "InitGame", "Ini",
+                "009ECB70 " + file);
+            var path = Install is null
+                ? file
+                : Path.Combine(Install.Root, file);
+            if (File.Exists(path))
+            {
+                Note(IniApplyFn, "InitGame", "Ini", "009EC890 " + file);
+                ApplyUserIniCommands(path);
+            }
+            else
+                Note(FileExistsFn, "InitGame", "Ini",
+                    "00999230 " + file + " miss");
+            return;
+        }
+
+        if (name == "ActivateQuest")
+        {
+            Note(IniActivateQuestRegister, "InitGame", "Ini",
+                "00419D90 ActivateQuest");
+            Note(IniActivateQuestGate, "InitGame", "Ini",
+                "004197B0 xor al,al");
+            Note(IniActivateQuestThunk, "InitGame", "Ini",
+                "00419CE0 [world+56] vtbl+1104 UNREAD " + arg);
+            return;
+        }
+
+        Note(IniUnknownFn, "InitGame", "Ini",
+            "009EB260 unknown input - " + name);
     }
 
     /// <summary>

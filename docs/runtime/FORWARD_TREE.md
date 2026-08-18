@@ -340,7 +340,14 @@ Slots 10+ overlap a string (`HERO_ABILITY`) — not a vtbl continuation.
 │   │   └── 0051E530([world+80]) + [0x13B89BC]
 │   ├── 004AE9D0(game+80568)          if +9826: +9836/+9840/+9844
 │   ├── 0x122F030 default_user.ini    00999230; TLC miss → skip 009EC890
-│   └── 0x122F01C user.ini            009EC890 (exists check inside)
+│   └── 0x122F01C user.ini            009EC890  PROVEN
+│       009EC710 tokens → 009EB430 [ini+64] vtbl+4
+│       SetMaxAnisotropy — no .text name → 009EB260 unknown  PROVEN
+│       RunScript("joystick.ini") 009ECB70 → 009EC890 / 00999230 miss  PROVEN
+│       ActivateQuest 00419D90 / 00419CE0
+│         004197B0 xor al,al (never skip)
+│         [world+56] vtbl+1104 UNREAD
+│       009ED190 registers BindKey/RunScript before user.ini
 └── seed 009A4EC0 [engine+240]=004167DA [+244]=game
     [+90544]=0  009E1BC0 → [+90548]  [+90592]=1
 ```
