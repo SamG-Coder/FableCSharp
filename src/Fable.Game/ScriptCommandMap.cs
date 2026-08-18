@@ -364,6 +364,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "[ebp-44]==0 continue; else leftover +28 then [0x13D2838]+5 → next"),
+        Spec("AskQuestion", 0x00CC5F81, 0x00CC5FD4, "text[,yes][,no]",
+            ScriptReturn.YieldAfterOrWait, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0 required; default YES/NO; [ebp-38] skip; vtbl+1468(handle,1); vtbl+456; poll vtbl+156; esi!=0 → 1"),
         Spec("WaitPlayAnimation", 0x00CC2518, 0, "",
             ScriptReturn.YieldAfter, CommandParity.ScriptLayer,
             "poll current entity anim task"),

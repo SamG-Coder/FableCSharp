@@ -75,6 +75,10 @@ public sealed class CutsceneState
     public bool StayFadedOut { get; set; }
     public bool NoDialogCam { get; set; }
     /// <summary>
+    /// <c>[ebp-38]</c>: AskQuestion skips when set.
+    /// </summary>
+    public bool QuestionLock { get; set; }
+    /// <summary>
     /// <c>[ebp-39]</c>: SetFlag sets 1 after a write.
     /// A later SetFlag with IsTrue(arg2) skips rewrite.
     /// </summary>
@@ -641,6 +645,8 @@ public sealed class DialogueRuntime
     {
         if (WaitOp is not null)
             WaitOp.Complete = true;
+        if (Session is { Verb: "AskQuestion", Answer: null })
+            Session.Answer = 0;
         Dismiss();
     }
 
@@ -657,6 +663,35 @@ public sealed class DialogueRuntime
         if (Session is not { HasHandle: true, Active: true })
             WaitOp.Complete = true;
         return WaitOp;
+    }
+
+    /// <summary>
+    /// <c>00CC5FD4</c>: <c>vtbl+1468(handle,1)</c> then
+    /// <c>vtbl+456(question,yes,no,caption,1)</c>.
+    /// Poll <c>vtbl+156</c> until <c>&gt;=0</c>.
+    /// </summary>
+    public PendingOperation AskQuestion(string text, string yes, string no, string? body = null)
+    {
+        Open(null, "", text, 0, "AskQuestion", handle: true, hold: false, body);
+        if (Session is not null)
+        {
+            Session.YesLabel = yes;
+            Session.NoLabel = no;
+        }
+
+        WaitOp = new PendingOperation($"ask-{++_waitSerial}", "AskQuestion", null, text);
+        return WaitOp;
+    }
+
+    /// <summary>
+    /// <c>vtbl+156</c> result: <c>&lt;0</c> wait,
+    /// <c>0</c> no, <c>!=0</c> yes.
+    /// </summary>
+    public void Answer(int esi)
+    {
+        if (Session is not null)
+            Session.Answer = esi == 0 ? 0 : 1;
+        CompleteWait();
     }
 
     public void DialogSpeak(string? actor, string listener, string text, string? body = null)
@@ -705,6 +740,12 @@ public sealed class DialogueSession
     public bool HasHandle { get; set; }
     public bool Hold { get; set; }
     public string ResolvedBody { get; set; } = "";
+    public string YesLabel { get; set; } = "";
+    public string NoLabel { get; set; } = "";
+    /// <summary>
+    /// <c>[ebp-180]</c>: <c>vtbl+156</c> <c>esi!=0</c>.
+    /// </summary>
+    public int? Answer { get; set; }
 
     public DialogueSession(string? speaker, string listener, string text, int mode, string verb)
     {

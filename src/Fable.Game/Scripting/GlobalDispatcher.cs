@@ -586,6 +586,26 @@ public static class GlobalDispatcher
                 open ? $"{chest} open" : $"{chest} close");
         }
 
+        if (Eq(v, "AskQuestion"))
+        {
+            var text = line.Arg(0);
+            if (text.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            if (ctx.Cutscene.QuestionLock)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "locked");
+            var yes = line.Arg(1);
+            if (yes.Length == 0)
+                yes = "TEXT_OBJECT_HERO_ANSWER_YES";
+            var no = line.Arg(2);
+            if (no.Length == 0)
+                no = "TEXT_OBJECT_HERO_ANSWER_NO";
+            ctx.Cutscene.QuestionLock = true;
+            var op = ctx.Dialogue.AskQuestion(text, yes, no, ctx.Runtime.LookupText(text));
+            return CommandResult.Wait(
+                ExecutionKind.WaitOperation, CommandStatus.Proven, CommandFamily.Global,
+                "AskQuestion vtbl+456 poll vtbl+156", "esi>=0", op.Id, text);
+        }
+
         if (Eq(v, "WaitActiveDialog"))
         {
             ctx.Runtime.WaitActiveDialogCount++;

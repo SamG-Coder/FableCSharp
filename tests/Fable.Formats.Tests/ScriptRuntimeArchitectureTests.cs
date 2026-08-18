@@ -2055,6 +2055,112 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void AskQuestion_polls_vtbl_156_until_answer()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("aq",
+        [
+            "AskQuestion TEXT_QST_FOO",
+            "AskQuestion TEXT_AGAIN",
+            "SetTime 12",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Yielded);
+        Assert.False(interp.Finished);
+        Assert.Equal(ExecutionKind.WaitOperation, interp.CurrentWaitKind);
+        Assert.Equal("AskQuestion", runtime.Dialogue.Session!.Verb);
+        Assert.Equal("TEXT_QST_FOO", runtime.Dialogue.Session.Text);
+        Assert.Equal("TEXT_OBJECT_HERO_ANSWER_YES", runtime.Dialogue.Session.YesLabel);
+        Assert.Equal("TEXT_OBJECT_HERO_ANSWER_NO", runtime.Dialogue.Session.NoLabel);
+        Assert.Null(runtime.Dialogue.Session.Answer);
+        Assert.True(runtime.Dialogue.Session.HasHandle);
+        runtime.Dialogue.Answer(1);
+        interp.Resume(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(1, runtime.Dialogue.Session.Answer);
+        Assert.Equal("TEXT_QST_FOO", runtime.Dialogue.Session.Text);
+        Assert.Equal(0x00CC5FD4u, ScriptCommandMap.Find("AskQuestion")!.Value.ApplySite);
+        var custom = new ScriptInterpreter("aq2",
+            ["AskQuestion TEXT_QST_BAR,TEXT_YES_CUSTOM,TEXT_NO_CUSTOM"]);
+        custom.RunUntilYield(runtime);
+        Assert.Equal("TEXT_YES_CUSTOM", runtime.Dialogue.Session!.YesLabel);
+        Assert.Equal("TEXT_NO_CUSTOM", runtime.Dialogue.Session.NoLabel);
+        var empty = new ScriptInterpreter("aq0", ["AskQuestion"]);
+        empty.RunUntilYield(runtime);
+        Assert.True(empty.Finished);
+    }
+
+    [Fact]
+    public void AskQuestion_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("AskQuestion ", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "AskQuestion TEXT_OBJECT_HERO_ANSWER_YES";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("AskQuestion", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-ask", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("AskQuestion ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Yielded);
+        Assert.Equal(ExecutionKind.WaitOperation, isolated.CurrentWaitKind);
+        Assert.Equal(parsed.Arg(0), runtime.Dialogue.Session!.Text);
+        var yes = parsed.Arg(1);
+        if (yes.Length == 0)
+            yes = "TEXT_OBJECT_HERO_ANSWER_YES";
+        Assert.Equal(yes, runtime.Dialogue.Session.YesLabel);
+        runtime.Dialogue.Answer(0);
+        isolated.Resume(runtime);
+        Assert.True(isolated.Finished);
+        Assert.Equal(0, runtime.Dialogue.Session.Answer);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-ask.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-askquestion.txt"),
+            """
+            AskQuestion 00CC5F81 / apply 00CC5FD4
+              arg0 00403A00 empty skip 00CC7081
+              [ebp-38] != 0 skip 00CC7081
+              default YES TEXT_OBJECT_HERO_ANSWER_YES
+              default NO  TEXT_OBJECT_HERO_ANSWER_NO
+              arg1/arg2 0099EFB0 overwrite if non-empty
+              vtbl+1468([ebp-44],1)
+              vtbl+456(question,yes,no,caption,1)
+              leftover +28; poll vtbl+156 until esi>=0
+              esi!=0 → [ebp-180]=1 else 0; jmp 00CC2C6B
+            Question UI / input UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void GiveGold_real_script_bank_or_isolated()
     {
         var install = GameInstall.TryLocate();
