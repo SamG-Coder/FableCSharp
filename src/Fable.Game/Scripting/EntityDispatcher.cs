@@ -390,8 +390,11 @@ public static class EntityDispatcher
 
         if (Eq(v, "SetAppearanceSeed"))
         {
-            ctx.World.Flags[$"{line.Target}.{v}"] = line.Arg(0);
-            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, line.Arg(0));
+            // 00CC4B7E: atoi(arg0); 004AB130; vtbl+1916(actor,seed).
+            ScriptLine.TryInt(line.Arg(0), out var seed);
+            ctx.World.SetAppearanceSeed(line.Target ?? "", seed);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity,
+                seed.ToString());
         }
 
         return CommandResult.Blocked(

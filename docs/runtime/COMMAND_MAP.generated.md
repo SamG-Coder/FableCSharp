@@ -89,6 +89,7 @@
 | SetDamageable | `00CC1054` | `00CC10A6` | [ignored] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg ignored; vtbl+2064(actor,0); extras 008ADF90; jmp 00CC707C; not Killable 2068 |
 | SetAttackable | `00CC0FB6` | `00CC1008` | [ignored] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg ignored; vtbl+1832(actor,0); extras 008ADF90; jmp 00CC707C; not SetDamageable 2064 |
 | SetFree | `00CC0F2C` | `00CC0F7E` | [ignored] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg ignored; unary vtbl+1980(actor); no extras; jmp 00CC707C; not SetAttackable 1832 |
+| SetAppearanceSeed | `00CC4B2C` | `00CC4B7E` | seed | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | atoi arg0; 004AB130; vtbl+1916(actor,seed); jmp 00CC707C; signed; not flag lump |
 | GiveHero | `00CC6392` | `00CC63E5` | item[,n][,extra][,silent][,yield] | YieldAfterUnlessFalse | Proven | Proven | Proven | Proven | Partial | Partial | vtbl+484 x (count-have); already-have skip; leftover if arg4&&!arg3 |
 | GiveHeroHealth | `00CC62A0` | `00CC62F5` | amount|MAX | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | MAX: vtbl+1032-vtbl+1028; else atof; vtbl+1052(amt,1,0); jmp 00CC7081 |
 | GiveHeroMorality | `00CC6222` | `00CC6281` | amount | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | atof arg0; vtbl+624(amount); jmp 00CC7081; scale unread |

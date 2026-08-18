@@ -1108,6 +1108,12 @@ public sealed class WorldRuntime
         new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, int> SetFreeVtbl =
         new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// <c>00CC4B7E</c> <c>vtbl+1916(actor,atoi)</c>.
+    /// Signed seed. Not a boolean flag.
+    /// </summary>
+    public readonly Dictionary<string, int> AppearanceSeed =
+        new(StringComparer.OrdinalIgnoreCase);
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
     public float TimeOfDayHours { get; set; }
@@ -1339,6 +1345,16 @@ public sealed class WorldRuntime
         var key = actor ?? "";
         Freed.Add(key);
         SetFreeVtbl[key] = 1980;
+    }
+
+    /// <summary>
+    /// <c>00CC4B7E</c>: atoi(arg0); actor
+    /// <c>vtbl+48</c>; <c>004AB130</c> then
+    /// <c>vtbl+1916(name,seed)</c>. PALSKIN unread.
+    /// </summary>
+    public void SetAppearanceSeed(string actor, int seed)
+    {
+        AppearanceSeed[actor ?? ""] = seed;
     }
 
     /// <summary>

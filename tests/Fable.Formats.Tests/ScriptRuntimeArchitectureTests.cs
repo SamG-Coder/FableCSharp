@@ -1987,6 +1987,74 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void SetAppearanceSeed_is_atoi_vtbl_1916()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("sas",
+        [
+            "WOMAN.SetAppearanceSeed 20",
+            "Girl.SetAppearanceSeed -1293062401",
+            "UNDEAD.SetAppearanceSeed",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(20, runtime.World.AppearanceSeed["WOMAN"]);
+        Assert.Equal(-1293062401, runtime.World.AppearanceSeed["Girl"]);
+        Assert.Equal(0, runtime.World.AppearanceSeed["UNDEAD"]);
+        Assert.Equal(0x00CC4B7Eu, ScriptCommandMap.Find("SetAppearanceSeed")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void SetAppearanceSeed_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_ATTRACT_1") ?? bank.Find("CS_ATTRACT_5");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.Contains(".SetAppearanceSeed ", StringComparison.OrdinalIgnoreCase))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("SetAppearanceSeed", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-seed", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".SetAppearanceSeed ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        ScriptLine.TryInt(parsed.Arg(0), out var seed);
+        Assert.Equal(seed, runtime.World.AppearanceSeed[parsed.Target ?? ""]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-seed.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-setappearanceseed.txt"),
+            """
+            SetAppearanceSeed 00CC4B2C / apply 00CC4B7E
+              ebx required else 00CC7081
+              actor vtbl+48; 0099E7F0 atoi(arg0) — signed
+              004AB130 name-valid; miss skip vtbl
+              vtbl+1916(actor,seed); jmp 00CC707C
+              not a boolean flag lump
+            PALSKIN appearance UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void GiveGold_real_script_bank_or_isolated()
     {
         var install = GameInstall.TryLocate();

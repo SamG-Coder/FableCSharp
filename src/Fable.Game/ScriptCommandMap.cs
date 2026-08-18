@@ -534,6 +534,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "arg ignored; unary vtbl+1980(actor); no extras; jmp 00CC707C; not SetAttackable 1832"),
+        Spec("SetAppearanceSeed", 0x00CC4B2C, 0x00CC4B7E, "seed",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "atoi arg0; 004AB130; vtbl+1916(actor,seed); jmp 00CC707C; signed; not flag lump"),
         Spec("GiveHero", 0x00CC6392, 0x00CC63E5, "item[,n][,extra][,silent][,yield]",
             ScriptReturn.YieldAfterUnlessFalse, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
