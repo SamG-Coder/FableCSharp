@@ -32,6 +32,7 @@ public sealed class EngineFrameTests
         Assert.Equal(1, frame.FadeR);
         Assert.Equal(2, frame.FadeG);
         Assert.Equal(3, frame.FadeB);
+        Assert.Null(frame.Textures);
     }
 
     [Fact]

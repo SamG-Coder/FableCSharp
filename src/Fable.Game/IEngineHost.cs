@@ -40,4 +40,5 @@ public readonly record struct EngineFrame(
     byte FadeG,
     byte FadeB,
     Fable.Render.MeshVertex[]? Vertices = null,
-    Fable.Render.MeshDraw[]? Draws = null);
+    Fable.Render.MeshDraw[]? Draws = null,
+    Fable.Render.GpuTexture[]? Textures = null);

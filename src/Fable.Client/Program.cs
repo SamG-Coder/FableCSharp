@@ -24,7 +24,6 @@ var options = WindowOptions.DefaultVulkan with
 };
 
 using var window = Window.Create(options);
-TextureLibrary? textures = null;
 var host = new SilkEngineHost(
     width: life.BackBufferWidth,
     height: life.BackBufferHeight,
@@ -46,8 +45,6 @@ window.Load += () =>
         throw new NotSupportedException("This window backend cannot create a Vulkan surface.");
 
     host.Renderer = new VulkanLineRenderer(window);
-    textures = new TextureLibrary(install);
-    host.Textures = textures;
     input = window.CreateInput();
     mouse = input.Mice.Count > 0 ? input.Mice[0] : null;
     if (mouse is not null)
@@ -138,7 +135,6 @@ window.Render += _ =>
 window.Closing += () =>
 {
     life.Dispose();
-    textures?.Dispose();
     host.Renderer?.Dispose();
 };
 

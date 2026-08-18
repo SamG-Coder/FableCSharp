@@ -74,7 +74,9 @@ public sealed class SilkEngineHost : IEngineHost
         if (frame.Vertices is { Length: > 0 } verts)
         {
             var draws = frame.Draws ?? [];
-            if (Textures is { } bank)
+            if (frame.Textures is { Length: > 0 } engineTex)
+                renderer.SetTextures(engineTex);
+            else if (Textures is { } bank)
             {
                 var dummy = new TexturedMesh { Vertices = verts, Draws = draws };
                 renderer.SetTextures(LoadGpuTextures(dummy, bank));

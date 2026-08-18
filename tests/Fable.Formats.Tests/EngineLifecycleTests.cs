@@ -1713,6 +1713,11 @@ public sealed class EngineLifecycleTests
                 StringComparison.OrdinalIgnoreCase));
         Assert.Contains("LookoutPoint", life.SubmittedTerrainMaps);
         Assert.NotNull(life.SubmitSidePlanes());
+        Assert.NotNull(life.Textures);
+        Assert.True(life.SubmittedTextures.Count > 0, "engine 009BE8B0 ids");
+        var frameTex = life.BuildFrame().Textures;
+        Assert.NotNull(frameTex);
+        Assert.Equal(life.SubmittedTextures.Count, frameTex.Length);
         Assert.Equal("LookoutPoint", life.SubmittedWorld.Region);
         var presented = life.PresentWorld();
         Assert.NotNull(presented);

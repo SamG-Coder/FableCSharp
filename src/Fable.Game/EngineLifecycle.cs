@@ -957,6 +957,9 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public IReadOnlyList<uint> SubmittedPalskinMeshIds => _submittedPalskin;
     public IReadOnlyList<string> SubmittedTerrainMaps => _submittedTerrain;
+    public IReadOnlyList<Fable.Render.GpuTexture> SubmittedTextures =>
+        _submittedTextures;
+    public TextureLibrary? Textures { get; private set; }
     public bool SubmittedHeroPalskin { get; private set; }
 
     public void AttachHost(IEngineHost host) => Host = host;
@@ -971,6 +974,7 @@ public sealed class EngineLifecycle : IDisposable
     private readonly List<int> _tickTypes = [];
     private readonly List<uint> _submittedPalskin = [];
     private readonly List<string> _submittedTerrain = [];
+    private readonly List<Fable.Render.GpuTexture> _submittedTextures = [];
     private readonly List<ThingInstance> _regionThings = [];
     private readonly Dictionary<string, List<ThingInstance>> _thingsByMap =
         new(StringComparer.OrdinalIgnoreCase);
@@ -1075,14 +1079,17 @@ public sealed class EngineLifecycle : IDisposable
         if (Stage == EngineStage.LeaveFrontend)
         {
             EnterGame();
-            PresentToHost();
+            // 00435530 only after WorldFrame>1 and
+            // maps are open. Do not Present origin
+            // camera / empty mesh.
             return true;
         }
 
         if (Stage == EngineStage.Game)
         {
             PumpGame();
-            PresentToHost();
+            if (WorldSubmitted && WorldCamera.Seeded)
+                PresentToHost();
             return true;
         }
 
@@ -1174,6 +1181,7 @@ public sealed class EngineLifecycle : IDisposable
         SubmittedHeroPalskin = HeroMeshId != 0 &&
             _submittedPalskin.Contains((uint)HeroMeshId);
         SubmittedMesh = MeshBatches.Concat(land, MeshBatches.BuildMeshes(props));
+        BindSubmittedTextures();
         WorldSubmitted = SubmittedMesh.Vertices.Length > 0;
         Note(OpenStaticMapsFn, "Submit", "World",
             WorldSubmitted
@@ -1196,6 +1204,23 @@ public sealed class EngineLifecycle : IDisposable
             out var cotH, out var cotV);
         return LandscapeFrustum.ExtractSidePlanes(
             Camera.Position, Camera.Forward, Camera.Up, cotH, cotV);
+    }
+
+    private void BindSubmittedTextures()
+    {
+        _submittedTextures.Clear();
+        if (SubmittedMesh is null)
+            return;
+        OpenTextureBank();
+        if (Textures is null)
+            return;
+        var ids = SubmittedMesh.Draws.SelectMany(d =>
+            new[] { d.TextureId, d.TextureId1 });
+        foreach (var file in Textures.LoadMany(ids))
+        {
+            _submittedTextures.Add(new Fable.Render.GpuTexture(
+                file.Id, file.Width, file.Height, file.Rgba));
+        }
     }
 
     private void EnsureStartupAvi()
@@ -1287,7 +1312,8 @@ public sealed class EngineLifecycle : IDisposable
             runtime?.OverlayAlphaByte ?? 0,
             fade.R, fade.G, fade.B,
             SubmittedMesh?.Vertices,
-            SubmittedMesh?.Draws);
+            SubmittedMesh?.Draws,
+            _submittedTextures.Count == 0 ? null : [.. _submittedTextures]);
     }
 
     /// <summary>
@@ -1435,6 +1461,8 @@ public sealed class EngineLifecycle : IDisposable
         foreach (var (name, apply) in InitGameStages)
         {
             Note(apply, name, "InitGame", name);
+            if (name == "Init Graphics")
+                OpenTextureBank();
             if (name == "Init Player Interface")
             {
                 Player.Construct();
@@ -2429,6 +2457,24 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
+    /// Init Graphics <c>00416C8A</c>:
+    /// <c>GBANK_MAIN_PC</c> directory.
+    /// Decode is per submitted id
+    /// (<c>009BE8B0</c>), not
+    /// <c>window.Load</c>.
+    /// </summary>
+    public void OpenTextureBank()
+    {
+        if (Textures is not null || Install is null)
+            return;
+        Note(0x00416C8A, "Init Graphics", "Bank",
+            "Opening Main Graphic Bank GBANK_MAIN_PC");
+        Note(Fable.Formats.Textures.TextureFile.CreateTextureDxt1Named,
+            "Init Graphics", "Bank", "009BE830");
+        Textures = new TextureLibrary(Install);
+    }
+
+    /// <summary>
     /// <c>00B428E0</c> <c>SetStaticMapFileForUse</c>
     /// then <c>00B42750</c> mode 1. Map set is
     /// existing <see cref="WorldGeometry.StaticMapsAround"/>.
@@ -2974,6 +3020,8 @@ public sealed class EngineLifecycle : IDisposable
         CloseStaticMapFile();
         _levels?.Dispose();
         _levels = null;
+        Textures?.Dispose();
+        Textures = null;
         Meshes.Dispose();
     }
 
