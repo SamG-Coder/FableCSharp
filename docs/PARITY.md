@@ -9,6 +9,7 @@ parsers and notes.
 
 | Piece | What we know | Locked by |
 |---|---|---|
+| Retail pump after PlayAVI | `0042EC7C` writes slot RGBA to `[0x13961E0]` before `006286F0`. After the third video: `[0x13B8616]==0` skips `009A8840`, `0042E98F` binds UI, `0042E204` Init Engine, `0042DB40` 16-byte helper, **`009D8CF0`+`009BEEB0`**, then `0042DED5(0)` / `005952C3` / `0062F800` / `0062F8B0` / `0040F0E0`. Dest is `00628B79` width-fit. Invented contain/pillarbox is DISPROVEN. | `EngineLifecycleTests.Retail_0042EC7C_after_AVI_clears_then_inits_frontend`, `WorldSceneTests.PlayAVI_00628B79_resizes_to_viewport_width_and_centers` |
 | Install | TLC `data\` is the source of truth. Anniversary FableData is a fallback. | `TlcInstallTests` |
 | WLD | Text region graph. Map 1 is Lookout Point at (3232, 3488). | `TlcInstallTests` |
 | WAD / BBB | `FinalAlbion.wad` is a BBB bank of `.lev` / `.tng` / etc. `Find` requires the extension. | `TlcInstallTests` |

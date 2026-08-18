@@ -186,13 +186,19 @@ Retail vtbl `01230CA0`: slot 1 start `0042F75E`, slot 2 pump `0042EC7C`.
 0042EC7C  retail pump  PROVEN
 ├── 009E1BC0  QPC dt → [esi+184]/[+188]
 ├── video table (3 slots, 32 bytes each)  if [0x1375448] && [0x137544A]
-│   ├── Data\Video\lionhead_logo.xmv      640×400
-│   ├── Data\Video\Microsoft_Logo.xmv     640×480
-│   ├── Data\Video\intro_comp.xmv         640×360
-│   └── 006286F0  PlayAVI  (same Present 009BEEB0)
+│   ├── Data\Video\lionhead_logo.xmv      640×400  RGBA 0xFFFFFFFF
+│   ├── Data\Video\Microsoft_Logo.xmv     640×480  RGBA 0xFF000000
+│   ├── Data\Video\intro_comp.xmv         640×360  RGBA 0x00000000
+│   ├── [0x13961E0] = slot RGBA          PROVEN 0042ED85
+│   └── 006286F0  PlayAVI  (dest 00628B79; Present 009BEEB0)
+├── [0x13B8616]==0 skip 009A8840         PROVEN first-seen
+├── [esi+9]=1
+├── 0042E98F  00595582 → +180; 009BFF40 1024×768  PROVEN
 ├── "Init Engine"   0042E204
 ├── "Init frontend"
-│   ├── alloc 16 → 0042DB40
+│   ├── alloc 16 → 0042DB40 vtbl 01230C34  PROVEN
+│   ├── 009D8CF0 clear + 009BEEB0 Present  PROVEN (black after AVI)
+│   ├── 0042DED5(0)  audio vtbl+68         PROVEN
 │   ├── 005952C3
 │   ├── 0062F800 / 0062F8B0
 │   └── 0040F0E0

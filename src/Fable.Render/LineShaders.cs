@@ -71,8 +71,10 @@ internal static class LineShaders
         void main() {
             if (fragUv.x < pc.dest.x || fragUv.x > pc.dest.z ||
                 fragUv.y < pc.dest.y || fragUv.y > pc.dest.w) {
-                outColor = vec4(0.0, 0.0, 0.0, 1.0);
-                return;
+                // 009BE420 / 009D8CF0 already
+                // cleared to [0x13961E0]. The
+                // dest quad does not write bars.
+                discard;
             }
             vec2 t = (fragUv - pc.dest.xy) / (pc.dest.zw - pc.dest.xy);
             // 00A3B730 writes GetPointer row 0 into

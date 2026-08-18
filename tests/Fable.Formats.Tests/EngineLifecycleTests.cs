@@ -115,6 +115,57 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x006286F0u, EngineLifecycle.PlayAviPlayer);
         Assert.Equal(1, EngineLifecycle.DefaultVideoPlayFlag);
         Assert.Equal(1, EngineLifecycle.DefaultVideoPlayFlag2);
+        Assert.Equal(0xFFFFFFFFu, EngineLifecycle.StartupVideos[0].Rgba);
+        Assert.Equal(0xFF000000u, EngineLifecycle.StartupVideos[1].Rgba);
+        Assert.Equal(0x00000000u, EngineLifecycle.StartupVideos[2].Rgba);
+        Assert.Equal(0x013961E0u, EngineLifecycle.PlayAviClearColorVa);
+        Assert.Equal(0x0042E98Fu, EngineLifecycle.RetailAfterAviFn);
+        Assert.Equal(0x0042DB40u, EngineLifecycle.FrontendHelperCtor);
+        Assert.Equal(0x0042DED5u, EngineLifecycle.RetailAudioFadeFn);
+        Assert.Equal(0x009BFF40u, EngineLifecycle.DisplayModeFn);
+        Assert.Equal(0x400, EngineLifecycle.DisplayModeWidth);
+        Assert.Equal(0x300, EngineLifecycle.DisplayModeHeight);
+    }
+
+    [Fact]
+    public void Retail_0042EC7C_after_AVI_clears_then_inits_frontend()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        Assert.Equal(0xFFFFFFFFu, life.PlayAviClearArgb);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PlayAviClearColorVa &&
+            e.Action.Contains("FFFFFFFF", StringComparison.Ordinal));
+        life.FinishStartupVideo();
+        Assert.Equal(0xFF000000u, life.PlayAviClearArgb);
+        life.FinishStartupVideo();
+        Assert.Equal(0x00000000u, life.PlayAviClearArgb);
+        life.FinishStartupVideo();
+        Assert.Equal(EngineStage.Frontend, life.Stage);
+        Assert.Equal(EngineLifecycle.PlayAviClearRestoreArgb, life.PlayAviClearArgb);
+        var events = life.Trace.Events;
+        Assert.Contains(events, e => e.Va == EngineLifecycle.RetailBankSwapFlagVa);
+        Assert.Contains(events, e => e.Va == EngineLifecycle.RetailAfterAviFn);
+        Assert.Contains(events, e => e.Va == EngineLifecycle.DisplayModeFn);
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.ClearColorFn && e.Stage == "InitFrontend");
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.PresentFn && e.Stage == "InitFrontend");
+        Assert.Contains(events, e => e.Va == EngineLifecycle.RetailAudioFadeFn);
+        Assert.Contains(events, e => e.Va == EngineLifecycle.FrontendHelperCtor);
+        Assert.Contains(events, e => e.Va == EngineLifecycle.FrontendUiShowFn);
+        Assert.Contains(events, e => e.Va == EngineLifecycle.FrontendPostInitFn);
+        var complete = events.FindIndex(e =>
+            e.Va == EngineLifecycle.PlayAviPlayer &&
+            e.Action.Contains("complete", StringComparison.Ordinal) &&
+            e.Action.Contains("intro_comp", StringComparison.Ordinal));
+        var after = events.FindIndex(e => e.Va == EngineLifecycle.RetailAfterAviFn);
+        var present = events.FindIndex(e =>
+            e.Va == EngineLifecycle.PresentFn && e.Stage == "InitFrontend");
+        var engine = events.FindIndex(e => e.Va == EngineLifecycle.FrontendEngineInitFn);
+        Assert.True(complete >= 0 && after > complete, "0042E98F after last PlayAVI");
+        Assert.True(engine > after, "Init Engine after 0042E98F");
+        Assert.True(present > engine, "009BEEB0 after Init Engine");
     }
 
     [Fact]
@@ -270,7 +321,7 @@ public sealed class EngineLifecycleTests
         var ui = Array.IndexOf(vas, EngineLifecycle.FrontendUiDrawFn);
         var flush = Array.IndexOf(vas, EngineLifecycle.DisplayFlush2dFn);
         var end = Array.IndexOf(vas, EngineLifecycle.EndSceneFn);
-        var present = Array.IndexOf(vas, EngineLifecycle.PresentFn);
+        var present = Array.LastIndexOf(vas, EngineLifecycle.PresentFn);
         Assert.True(begin >= 0 && begin < ui && ui < flush && flush < end && end < present);
         Assert.Equal(RegionTravel.PlayAviPresent, EngineLifecycle.PresentFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);

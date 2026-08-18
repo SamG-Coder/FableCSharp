@@ -44,4 +44,5 @@ public readonly record struct EngineFrame(
     Fable.Render.GpuTexture[]? Textures = null,
     Fable.Render.MeshVertex[]? ObjectVertices = null,
     Fable.Render.MeshDraw[]? ObjectDraws = null,
-    ushort[]? Indices = null);
+    ushort[]? Indices = null,
+    uint AviClearArgb = 0xFF000000);

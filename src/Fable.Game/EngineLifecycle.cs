@@ -273,6 +273,50 @@ public sealed class EngineLifecycle : IDisposable
     public const uint VideoPlayFlag2Va = 0x0137544A;
     public const byte DefaultVideoPlayFlag = 1;
     public const byte DefaultVideoPlayFlag2 = 1;
+    /// <summary>
+    /// <c>0042ED85</c> writes the 32-byte
+    /// slot RGBA to <c>[0x13961E0]</c>
+    /// before <c>006286F0</c>. After the
+    /// last video it is restored to
+    /// <c>0xFF000000</c>.
+    /// </summary>
+    public const uint PlayAviClearColorVa = 0x013961E0;
+    public const uint PlayAviClearRestoreArgb = 0xFF000000;
+    /// <summary>
+    /// <c>0042EE3D</c> <c>[0x13B8616]==0</c>
+    /// skips the three <c>009A8840</c>
+    /// bank swaps. BSS first-seen is 0.
+    /// </summary>
+    public const uint RetailBankSwapFlagVa = 0x013B8616;
+    public const byte RetailBankSwapFlagFirstSeen = 0;
+    /// <summary>
+    /// After the video table: <c>[esi+9]=1</c>
+    /// then <c>0042E98F</c> binds UI
+    /// <c>00595582</c> at retail+180 and
+    /// <c>009BFF40</c> 1024×768.
+    /// </summary>
+    public const uint RetailAfterAviFn = 0x0042E98F;
+    public const uint DisplayModeFn = 0x009BFF40;
+    public const int DisplayModeWidth = 0x400;
+    public const int DisplayModeHeight = 0x300;
+    /// <summary>
+    /// <c>0042EF8E</c> alloc 16,
+    /// <c>0042DB40</c> vtbl
+    /// <c>01230C34</c>.
+    /// </summary>
+    public const uint FrontendHelperCtor = 0x0042DB40;
+    public const uint FrontendHelperVtbl = 0x01230C34;
+    public const int FrontendHelperSize = 16;
+    /// <summary>
+    /// <c>0042DED5(0)</c> after the
+    /// post-AVI <c>009D8CF0</c> /
+    /// <c>009BEEB0</c> Present.
+    /// </summary>
+    public const uint RetailAudioFadeFn = 0x0042DED5;
+    public const uint FrontendUiShowFn = 0x005952C3;
+    public const uint RetailFadeClockStartFn = 0x0062F800;
+    public const uint RetailFadeClockResetFn = 0x0062F8B0;
+    public const uint FrontendPostInitFn = 0x0040F0E0;
 
     public static readonly (string Stage, uint Va)[] NamedBootstrapStages =
     [
@@ -1142,6 +1186,11 @@ public sealed class EngineLifecycle : IDisposable
     public GameInstall? Install { get; private set; }
     public IEngineHost? Host { get; private set; }
     public WmvPlayer? StartupAvi { get; private set; }
+    /// <summary>
+    /// Live <c>[0x13961E0]</c> from the
+    /// current 32-byte video slot.
+    /// </summary>
+    public uint PlayAviClearArgb { get; private set; } = PlayAviClearRestoreArgb;
     public WorldGeometry? SubmittedWorld { get; private set; }
     public Fable.Render.TexturedMesh? SubmittedMesh { get; private set; }
     public Fable.Render.TexturedMesh? SubmittedLandscape { get; private set; }
@@ -1244,7 +1293,7 @@ public sealed class EngineLifecycle : IDisposable
             : EngineStage.Frontend;
         StartupVideoIndex = 0;
         if (Stage == EngineStage.StartupVideos)
-            Note(RetailPump, "StartupVideos", "PlayAVI", StartupVideos[0].RelativePath);
+            ApplyPlayAviSlot(StartupVideos[0]);
         else
             Note(FrontendIntern, "Frontend", "FRONT_END", "skip videos");
         Timing.Add("bootstrap", boot.Elapsed.TotalMilliseconds, Stage.ToString());
@@ -1499,6 +1548,7 @@ public sealed class EngineLifecycle : IDisposable
             return;
         }
 
+        ApplyPlayAviSlot(video);
         StartupAvi = WmvPlayer.TryOpen(file);
         Note(PlayAviPlayer, "StartupVideos", "PlayAVI",
             video.RelativePath + " " + (WmvPlayer.LastError ?? "ok"));
@@ -1577,7 +1627,8 @@ public sealed class EngineLifecycle : IDisposable
             _submittedTextureArray,
             SubmittedObjects?.Vertices,
             SubmittedObjects?.Draws,
-            SubmittedLandscape?.Indices);
+            SubmittedLandscape?.Indices,
+            PlayAviClearArgb);
     }
 
     /// <summary>
@@ -1595,16 +1646,57 @@ public sealed class EngineLifecycle : IDisposable
         StartupVideoIndex++;
         if (StartupVideoIndex < StartupVideos.Length)
         {
-            Note(RetailPump, "StartupVideos", "PlayAVI", StartupVideos[StartupVideoIndex].RelativePath);
+            ApplyPlayAviSlot(StartupVideos[StartupVideoIndex]);
             return;
         }
 
+        EnterFrontendAfterAvi();
+    }
+
+    /// <summary>
+    /// <c>0042ED85</c> slot RGBA →
+    /// <c>[0x13961E0]</c> before
+    /// <c>006286F0</c>.
+    /// </summary>
+    private void ApplyPlayAviSlot(StartupVideo video)
+    {
+        PlayAviClearArgb = video.Rgba;
+        Note(RetailPump, "StartupVideos", "PlayAVI", video.RelativePath);
+        Note(PlayAviClearColorVa, "StartupVideos", "PlayAVI",
+            $"013961E0 {video.Rgba:X8}");
+    }
+
+    /// <summary>
+    /// <c>0042EE3D</c> after the video
+    /// table: <c>0042E98F</c>, Init
+    /// Engine, Init frontend, then
+    /// <c>009D8CF0</c> / <c>009BEEB0</c>
+    /// before the UI show calls.
+    /// </summary>
+    private void EnterFrontendAfterAvi()
+    {
+        PlayAviClearArgb = PlayAviClearRestoreArgb;
+        Note(RetailBankSwapFlagVa, "StartupVideos", "PlayAVI",
+            $"013B8616 {RetailBankSwapFlagFirstSeen} skip 009A8840");
+        Note(RetailAfterAviFn, "InitFrontend", "Frontend",
+            "0042E98F [esi+9]=1 00595582 +180");
+        Note(DisplayModeFn, "InitFrontend", "D3D9",
+            $"009BFF40 {DisplayModeWidth}x{DisplayModeHeight}");
         Note(0x0042EF40, "InitEngine", "Engine", "Init Engine");
         Note(FrontendEngineInitFn, "InitEngine", "Engine",
             "0042E204 +88 00B26340");
         Note(FrontendEngineAllocFn, "InitEngine", "Engine",
             $"00B26340 0x{FrontendEngineObjectSize:X} 00B260B0 012A0F3C");
         Note(0x0042EF6F, "InitFrontend", "Frontend", "Init frontend");
+        Note(FrontendHelperCtor, "InitFrontend", "Frontend",
+            $"0042DB40 size {FrontendHelperSize} vtbl 0x{FrontendHelperVtbl:X}");
+        Note(ClearColorFn, "InitFrontend", "D3D9", "009D8CF0 clear");
+        Note(PresentFn, "InitFrontend", "D3D9", "009BEEB0 Present");
+        Note(RetailAudioFadeFn, "InitFrontend", "Audio", "0042DED5 0");
+        Note(FrontendUiShowFn, "InitFrontend", "Frontend", "005952C3");
+        Note(RetailFadeClockStartFn, "InitFrontend", "Frontend", "0062F800");
+        Note(RetailFadeClockResetFn, "InitFrontend", "Frontend", "0062F8B0");
+        Note(FrontendPostInitFn, "InitFrontend", "Frontend", "0040F0E0");
         Note(FrontendIntern, "Frontend", "FRONT_END", "0042F722");
         Stage = EngineStage.Frontend;
         InitFrontendUi();

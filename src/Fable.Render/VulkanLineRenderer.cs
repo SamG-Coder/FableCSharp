@@ -374,6 +374,13 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     public bool VideoOverlayActive => _videoReady;
     public int FramebufferWidth => (int)_extent.Width;
     public int FramebufferHeight => (int)_extent.Height;
+    /// <summary>
+    /// <c>[0x13961E0]</c> clear used by
+    /// <c>009D8CF0</c> / <c>009BE420</c>
+    /// before the dest blit.
+    /// </summary>
+    public Vector4 VideoClearColor { get; set; } =
+        new(0f, 0f, 0f, 1f);
 
     /// <summary>
     /// <c>006286F0</c> owns the pump: WaitEx then
@@ -1214,13 +1221,13 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         Check(_vk.BeginCommandBuffer(commandBuffer, in begin));
         RecordVideoCopy(commandBuffer);
 
+        var clear = _playAviPump || _videoReady
+            ? VideoClearColor
+            : Parity.Dx9Vulkan.Dx9VulkanColor.FirstSeenClear;
         var clears = stackalloc ClearValue[]
         {
             new() { Color = new ClearColorValue(
-                Parity.Dx9Vulkan.Dx9VulkanColor.FirstSeenClear.X,
-                Parity.Dx9Vulkan.Dx9VulkanColor.FirstSeenClear.Y,
-                Parity.Dx9Vulkan.Dx9VulkanColor.FirstSeenClear.Z,
-                Parity.Dx9Vulkan.Dx9VulkanColor.FirstSeenClear.W) },
+                clear.X, clear.Y, clear.Z, clear.W) },
             new() { DepthStencil = new ClearDepthStencilValue { Depth = 1f } },
         };
         var pass = new RenderPassBeginInfo

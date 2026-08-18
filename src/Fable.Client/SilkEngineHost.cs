@@ -2,6 +2,7 @@ using System.Numerics;
 using Fable.Formats;
 using Fable.Game;
 using Fable.Render;
+using Fable.Render.Parity.Dx9Vulkan;
 
 /// <summary>
 /// Silk / Vulkan Present adapter for
@@ -75,6 +76,8 @@ public sealed class SilkEngineHost : IEngineHost
                     : Height;
                 var dest = RegionTravel.PlayAviLetterbox(
                     frame.AviWidth, frame.AviHeight, fbW, fbH);
+                renderer.VideoClearColor =
+                    Dx9VulkanColor.FromD3dArgb(frame.AviClearArgb);
                 renderer.SetVideoFrame(
                     frame.AviWidth, frame.AviHeight, frame.AviRgba,
                     new Vector4(dest.X0, dest.Y0, dest.X1, dest.Y1),
