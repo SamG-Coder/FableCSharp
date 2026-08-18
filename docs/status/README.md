@@ -14,11 +14,13 @@ or in tests/code, treat it as **UNREAD**.
 `CAM_OVIF_SHOT2`) so `CS_OAKVALE_INTRO_FATHER` can run on a real
 world clock.
 
-Snapshot: **2026-08-18**, master merge `1aaccaf` (docs PR #24),
-runtime HEAD `17908c3` (*Runtime: PresentWorld opens instances and
-LEV/STB headers only.*).
-Just locked on this path: `f0fb184`, `fc8b261`, `5c0b14d`, `253126e`,
-`17908c3`.
+Snapshot: **2026-08-18**, master merge `1fc7ff3` (docs PR #26
+journal restyle — chrome only, not a runtime lock),
+runtime HEAD `6607c1e` (*00404A80 is getter 0x13B7CD8 on the
+frontend flush.*).
+Just locked on this path: `9c625bc`, `0ace433`, `d9977fb`,
+`f63b741`, `5cb3435`, `b062c5d`, `991bab2`, `5657176`,
+`6607c1e`.
 Master is still proving **boot / world clock**, not animation.
 README’s long-term priority list still starts with animation; that
 list is not the current phase.
@@ -99,10 +101,10 @@ when a ledger or test already records them.
 |---|---|---|
 | TLC data formats (WLD, WAD/BBB, LEV/TNG, QST, bins, C3D, STB, …) | PROVEN | [PARITY.md](../PARITY.md) Worked |
 | New Game *view* is `StartOakValeWest` / `HerosOldHouse` / `CAM_OVIF_SHOT2`, not Lookout | PROVEN | [FIRST_SCENE_CONTRACT.md](../render/FIRST_SCENE_CONTRACT.md), `WorldSceneTests` |
-| Adult Lookout is not the first-scene camera | PROVEN | [FIRST_SCENE_WORLD_PARITY.md](../render/FIRST_SCENE_WORLD_PARITY.md) |
+| Adult Lookout is not the first-scene camera | PROVEN | [FIRST_SCENE_WORLD_PARITY.md](../FIRST_SCENE_WORLD_PARITY.md) |
 | TNG local vs STB WLD; `STB − (MapX, MapY)` meeting space | PROVEN | same |
 | House 6909/6911, kid 4300 bind-pose, landscape strips, sky else-path `0x2000` | PROVEN | contract + world parity |
-| DX9 → Vulkan first-scene submit (layers `0x4` → `0x40` → `0x20` → `0x2000`) | PROVEN / EQUIVALENT | [DX9_VULKAN_PARITY.md](../render/DX9_VULKAN_PARITY.md) |
+| DX9 → Vulkan first-scene submit (layers `0x4` → `0x40` → `0x20` → `0x2000`) | PROVEN / EQUIVALENT | [DX9_VULKAN_PARITY.md](../DX9_VULKAN_PARITY.md) |
 | `T(cam)` on host world-space STB verts | DISPROVEN | world parity; submit uses identity W |
 | Invented `stars.dat` billboards / 1 m landscape fill | DISPROVEN | PARITY / world parity |
 | `S_QNOVI` + `NOVI_LiveFather` → `CS_OAKVALE_INTRO_FATHER` | PROVEN | [COMMAND_MAP.md](../runtime/COMMAND_MAP.md), PARITY |
@@ -113,11 +115,16 @@ when a ledger or test already records them.
 
 ### Phase 1 in progress — boot / world clock (current master)
 
-Recent commits (`8bccec3` … `17908c3`) lock the retail pump, not
-`00DBDE40`. Just locked: FORWARD_TREE / mesh bank (`f0fb184`),
-Loading world vtbl+32 (`fc8b261`), XSEQ PaletteForPose (`5c0b14d`),
-names-only banks / LevelLibrary cache (`253126e`), PresentWorld
-headers (`17908c3`).
+Recent commits (`9c625bc` … `6607c1e`) lock engine submit / host
+Present / frontend flush, not `00DBDE40`. Just locked: primary-map
+draw + seed camera (`9c625bc`), PlayAVI unload-before-next-slot
+(`0ace433`), `IEngineHost` Pump owns AVI / New Game / world submit
+(`d9977fb`), unique C3Ds + primary terrain (`f63b741`), PALSKIN
+hero 4299 (`5cb3435`), submit before Present / `00BDC2D0` AABB
+(`b062c5d`), GBANK textures + Present waits seed+submit
+(`991bab2`), `0042DF9E` `[ui+84]` double flush (`5657176`),
+`00404A80` getter `0x13B7CD8` (`6607c1e`).
+`5657176` also added one Phase 1 README row (kept; not reverted).
 
 | Item | Status | Evidence |
 |---|---|---|
@@ -164,17 +171,21 @@ headers (`17908c3`).
 | After `00446A30` hit: `0041649C` unless paused; action==2 queues `009F1650`. Default KeyMove3 `DeliveredCount=0` until owner ResultSelect (recovered) | PROVEN | `6b02b3b` / `Player_apply_0041649C_queues_009F1650_on_action_2` |
 | `WorldGeometry.ApplyActorPositions` consumes `006A9960` dest via `World.Positions`. Father still `NOVI_LiveFather` via `00DB86B0`. Not a renderer hack | PROVEN | `666df8f` / `WalkTo_writes_destination_and_entity_task` |
 | `PlayAnimation` apply `004C7470` / `0070D580` (vtbl+72 walk; +68 `00686920` accept; `00662A00` table; `0070C050`+`0070D580` inner) | PROVEN | apply `f778853`. XSEQ first-key `PaletteForPose` (`00A999B0`/`00AA4680`/`00A4C5E0`) / `XSeqFormatTests`. Runtime still PARTIAL. Time interp `00AA0090` unread. `FirstSeenPlayAnimationAppliesPose=false`. |
-| Engine submit skins PALSKIN C3Ds (`TrianglesForPose` / `00BD2F91`) not static flatten. Hero 4299 is in `SubmittedPalskinMeshIds` | PROVEN | `Install_banks_and_startup_videos_exist` + `Kid_c3d` / `Wake_loop_3420`. First-seen dest is bind locals. |
-| Submit before `00435530`. Terrain is `00BDC2D0` AABB then `00BF4570` cells on opened patches | PROVEN | `TessellateVisible_uses_00bdc2d0_aabb` / `Install_banks`. Instances stay primary-only. |
-| Init Graphics opens `GBANK_MAIN_PC`; submitted ids go on `EngineFrame.Textures`. Game Present waits for seed+submit | PROVEN | `Install_banks` `SubmittedTextures`. Program no longer constructs `TextureLibrary`. |
+| Engine primary-map draw, unload AVI, seed camera `006B3FF0` (LookoutPoint only; neighbour headers stay closed) | PROVEN | `9c625bc` / `Install_banks_and_startup_videos_exist` / `Open_records_instances_without_c3d_or_tiles` (`primaryOnly`) |
+| PlayAVI `00A3B380`/`00A3BC20` unload graph before the next `006286F0` slot | PROVEN | `0ace433` / `PlayAvi_rewrites_xmv_to_installed_wmv_and_blocks` (`WmvPlayer.ReleaseGraphFn`, `PlayerDtorFn`, `GraphReleased`). Does not lock leftover #20 3D Draw. |
+| Client is `IEngineHost`; `Pump` owns AVI, New Game, world submit. Host only queues input and Presents | PROVEN | `d9977fb` / `EngineFrame_constructs_for_host_present` / `Unexpanded_world_is_not_a_geometry_submit` / `Install_banks` `WorldSubmitted` |
+| Engine submit: unique primary C3Ds + primary terrain, no world triangle soup. `SubmittedWorld` stays unexpanded | PROVEN | `f63b741` / `Install_banks_and_startup_videos_exist` (`SubmittedMesh` verts, LookoutPoint) |
+| Engine submit skins PALSKIN C3Ds (`TrianglesForPose` / `00BD2F91`) not static flatten. Hero 4299 is in `SubmittedPalskinMeshIds` | PROVEN | `5cb3435` / `Install_banks_and_startup_videos_exist` + `Kid_c3d` / `Wake_loop_3420`. First-seen dest is bind locals. |
+| Submit before `00435530`. Terrain is `00BDC2D0` AABB then `00BF4570` cells on opened patches | PROVEN | `b062c5d` / `TessellateVisible_uses_00bdc2d0_aabb` / `Install_banks`. Instances stay primary-only. |
+| Init Graphics opens `GBANK_MAIN_PC`; submitted ids go on `EngineFrame.Textures`. Game Present waits for seed+submit | PROVEN | `991bab2` / `Install_banks` `SubmittedTextures`. Program no longer constructs `TextureLibrary`. |
 | First-seen Lookout green is leftover `c3=(0,0.125,0)` × `mul_x2` × `oT1=(0,0)`, not a missing sampler | PROVEN | `Dx9VulkanShaderConstants.UnlitRgbIsC3Leftover`. Do not invent world UV. |
 | `Q_NewOakValeIntro` / SHOT2 is not first no-save Present. First playable is Lookout `006B3FF0` | PROVEN | `004162B5` dump: +20 then +28. Frontend widgets `00595222` UNREAD (black). |
-| `0042DF9E` after `00595222`: `[ui+84]` vtbl+8 walk, then `009D9C80`/`009DA9F0(1)` twice | PROVEN | `Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present`. Widget DIP body UNREAD. |
+| `0042DF9E` walks `[ui+84]` vtbl+8, then `009D9C80`/`009DA9F0(1)` twice. `00404A80` is getter `0x13B7CD8` | PROVEN | `5657176` / `6607c1e` / `Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present` (`FrontendFlushCount=2`, `FrontendDisplayHelperFn`, `FrontendDisplaySingletonVa`). Widget DIP body still UNREAD (`00595222` Note). New Game still keyboard N/Enter (does not close #14). |
 | `WaitPlayAnimation` `00CC18E0` plays via vtbl+72 (or vtbl+76 if IsTrue arg3) then leftover vtbl+104 | PROVEN | `1eec3bc` / `WaitPlayAnimation_plays_then_polls_vtbl104` |
 | FORWARD_TREE PE→WinMain→no-save New Game. Mesh bank `MBANK_ALLMESHES` at `0049E620` / `00A09F20` / `00A27030` / `004BBFD0`. Engine owns map open/close `00B40000` / `00B42750`. Client must not open a second graphics.big dump | PROVEN | `f0fb184` / `Pe_entry_is_crt_not_new_game` / `Install_banks_and_startup_videos_exist` |
 | Game vtbl+32 `00416953` is Loading world (no-save `[+90588]` empty skips `004A3200` Loading save). Then `004A1840` WLD/quests. `00B3E820` current handle LookoutPoint; `00B41E50` neighbours (PicnicArea); `00B420F0` name table; `00BDF010` neighbour patch. `00B42530` is STB-miss fallback only | PROVEN | `fc8b261` / same install test + `Pe_entry` constants |
 | `009A8150` names-only (`RegisterRetailBankTable` does not open graphics.big/textures.big). LevelLibrary caches LEV/STB/TNG parses | PROVEN | `253126e` / `Install_banks_and_startup_videos_exist` / `LevelLibrary_reuses_lev_and_height_parses` |
-| `PresentWorld` opens instances + LEV/STB headers only (`expandGeometry` false). `00B3EFA0` PeekMapHeader 48-byte LEV + STB size. `009AD410` handles; C3D parse is `ExpandPresentedWorld` at draw. `CurrentCompiledLev`/`CurrentHeightField` null at open. Client `BindLifecycleFirstRegion` expands after `PresentWorld` | PROVEN | `17908c3` / `Install_banks_and_startup_videos_exist` PresentWorld asserts / `Open_records_instances_without_c3d_or_tiles` / `PeekMapHeader_is_00b3efa0_not_full_parse` |
+| `PresentWorld` opens instances + LEV/STB headers only (`expandGeometry` false). `00B3EFA0` PeekMapHeader 48-byte LEV + STB size. `009AD410` handles; C3D parse is later at submit/draw. `CurrentCompiledLev`/`CurrentHeightField` null at open | PROVEN | `17908c3` / `Install_banks_and_startup_videos_exist` PresentWorld asserts / `Open_records_instances_without_c3d_or_tiles` / `PeekMapHeader_is_00b3efa0_not_full_parse` |
 | Game pump / first region is `00DBDE40` / StartOakVale setup | DISPROVEN | tests above |
 | No-save writes `[record+36]` | DISPROVEN | `recover-record36` text in `Camera_004164E0_runs_on_install_after_WorldFrame`; null still loads |
 
@@ -208,6 +219,8 @@ the no-save path.
 | `0041714D` when `world+164 != 0` | UNREAD | Default New Game is `world+164==0` |
 | Slot fields beyond `+6296/+6312/+6328` (weights / `+6340/+6352`) | UNREAD | Lerp into `ScriptedCamera` is PROVEN; leftover slot bodies are not |
 | `00435530` overlay `00435000` / interface `00435070` bodies | PARTIAL | Present + `009DA9F0` layer bits PROVEN; overlay/interface still Note |
+| Frontend `00595222` widget DIP body | UNREAD (Note) | `5657176` / `6607c1e` lock `[ui+84]` walk + double 2D/layer flush + `00404A80` getter `0x13B7CD8`. Not the DIP. Not New Game N/Enter |
+| New Game keyboard N/Enter (host stand-in) | leftover #14 | Retail click/message `0059A238` is PROVEN; `00595222` and N/Enter are not that lock |
 | `0055CB10` frontend player-move listener | UNREAD | Actions 0–5 / 20–21 recorded; no recovered listener |
 | Game input poll `00446462` / `004963E6` | UNREAD | `e7b3c76` recover note (separate from `00446A30`) |
 | Who writes persist `PlayerRegionName` on New Game | UNREAD | Click/message path is PROVEN; persist HEADER writer is not |
@@ -243,12 +256,15 @@ opcode.” Last persist-vector-0 command:
 | `SneakTo` / `WalkTo` mesh move (`004C72B0` stub) | PARTIAL | `FirstSeenSneakToAppliesMove=false`. Dest via `006A9960` / `World.Positions` is PROVEN (`666df8f`); mesh body is not. |
 | `PlayCombatAnimation` pose | PARTIAL | `vtbl+76` does not read the name |
 | `call [vtbl+8]` resume site; `vtbl+28` yield body; `Main` `00CDD440` | UNREAD | PARITY 0b |
+| Startup PlayAVI still runs 3D Draw | PARTIAL | issue #20. Unload `00A3B380`/`00A3BC20` before next slot is recovered (`0ace433` / `PlayAvi_rewrites_xmv_to_installed_wmv_and_blocks`); leftover is the 3D Draw, not unload |
 | `WmvPlayer` never QIs `IBasicAudio` (native `00A3B9D0` does) | PARTIAL | issue #9 |
 
 `DoScriptFrame` / `PlayAVI` / cameras / fades are **PROVEN** at the
-script layer. PlayAVI dest vs 1600×900 (#8) is closed. `IBasicAudio`
-(#9) stays a **PARTIAL** leftover. Do not invent fade/AVI/wake
-playback beyond those bodies.
+script layer. PlayAVI dest vs 1600×900 (#8) is closed. Unload
+`00A3B380`/`00A3BC20` before the next slot is now recovered
+(`0ace433`); leftover #20 is still 3D Draw during startup PlayAVI.
+`IBasicAudio` (#9) stays a **PARTIAL** leftover. Do not invent
+fade/AVI/wake playback beyond those bodies.
 
 ### 3. First-scene render leftovers
 
@@ -271,8 +287,9 @@ From [FIRST_SCENE_AUDIT.md](../render/FIRST_SCENE_AUDIT.md)
 TEMPORARY stand-ins (LINEAR/REPEAT, MaxLod=1, Z test+write on) stay
 classified. PlayAVI *script* apply is PROVEN; dest vs
 `Silk.WindowOptions.DefaultVulkan` 1600×900 (#8) is closed.
-`IBasicAudio` (#9) stays a PARTIAL leftover. Steam timing is PARITY
-Open item 0, not a first-scene 3D invent.
+Unload-before-next-slot is recovered; leftover #20 is 3D Draw
+during startup PlayAVI. `IBasicAudio` (#9) stays a PARTIAL leftover.
+Steam timing is PARITY Open item 0, not a first-scene 3D invent.
 
 ### 4. Animation (after boot)
 
@@ -319,6 +336,8 @@ The boot-first sequence holds. Corrections from the repo:
    *intro view* contract (`StartOakValeWest` / `HerosOldHouse` /
    `CAM_OVIF_SHOT2` / kid). Do not collapse that into Lookout.
    New Game *click* is PROVEN; persist `PlayerRegionName` writer is not.
+   Frontend leftover is still `00595222` Note and New Game keyboard
+   N/Enter (#14).
 2. **GTNG is not an unread file on TLC** — missing skip is PROVEN.
    `00521AE0` loads the current map `.tng`. Remaining UNREAD is
    global-things *use* after `004FDBC0` / `.gtg` parse, plus
