@@ -1,25 +1,48 @@
-/* FableCSharp status — native iOS 17/18 Settings / Music / Notes.
-   System grouped lists. Same phone app at every width.
-   No status facts live here. */
+/* iOS Settings — system grouped lists (Apple HIG / UIKit). */
 
 :root {
-  --bg: #000000;
-  --grouped: #1c1c1e;
-  --tertiary: #2c2c2e;
-  --label: #ffffff;
-  --secondary: rgba(235, 235, 245, 0.6);
-  --tertiary-label: rgba(235, 235, 245, 0.3);
-  --separator: rgba(84, 84, 88, 0.65);
-  --fill: rgba(120, 120, 128, 0.32);
-  --tint: #d4b45a;
-  --green: #30d158;
-  --orange: #ff9f0a;
-  --gray: #8e8e93;
-  --red: #ff453a;
-  --blue: #0a84ff;
+  --grouped-bg: #F2F2F7;
+  --cell: #FFFFFF;
+  --tertiary: #2C2C2E;
+  --label: #000000;
+  --secondary: rgba(60, 60, 67, 0.60);
+  --tertiary-label: rgba(60, 60, 67, 0.30);
+  --separator: rgba(60, 60, 67, 0.29);
+  --fill: rgba(120, 120, 128, 0.20);
+  --fill-secondary: rgba(120, 120, 128, 0.16);
+  --nav: rgba(242, 242, 247, 0.86);
+  --thumb: #FFFFFF;
+  --tint: #007AFF;
+  --green: #34C759;
+  --orange: #FF9500;
+  --red: #FF3B30;
+  --gray: #8E8E93;
+  --blue: #007AFF;
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "SF Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  color-scheme: dark;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --grouped-bg: #000000;
+    --cell: #1C1C1E;
+    --tertiary: #2C2C2E;
+    --label: #FFFFFF;
+    --secondary: rgba(235, 235, 245, 0.60);
+    --tertiary-label: rgba(235, 235, 245, 0.30);
+    --separator: rgba(84, 84, 88, 0.65);
+    --fill: rgba(120, 120, 128, 0.36);
+    --fill-secondary: rgba(120, 120, 128, 0.32);
+    --nav: rgba(0, 0, 0, 0.72);
+    --thumb: #2C2C2E;
+    --tint: #0A84FF;
+    --green: #30D158;
+    --orange: #FF9F0A;
+    --red: #FF453A;
+    --gray: #8E8E93;
+    --blue: #0A84FF;
+  }
 }
 
 *,
@@ -29,7 +52,7 @@
 html {
   overflow-x: hidden;
   overscroll-behavior-x: none;
-  background: var(--bg);
+  background: var(--grouped-bg);
   -webkit-text-size-adjust: 100%;
 }
 
@@ -40,7 +63,7 @@ body {
   min-height: 100vh;
   min-height: 100dvh;
   color: var(--label);
-  background: var(--bg);
+  background: var(--grouped-bg);
   font-family: var(--font);
   font-size: 17px;
   font-weight: 400;
@@ -70,7 +93,7 @@ body {
   max-width: none;
   margin: 0;
   padding: 0;
-  background: var(--bg);
+  background: var(--grouped-bg);
   border: none;
   box-shadow: none;
 }
@@ -80,12 +103,12 @@ body {
   margin: 0 auto;
   padding: 0 0 calc(28px + env(safe-area-inset-bottom, 0px));
   color: var(--label);
-  background: var(--bg);
+  background: var(--grouped-bg);
   border: none;
   box-shadow: none;
 }
 
-/* ——— Navigation bar ——— */
+/* Sticky navigation bar */
 
 .app-bar {
   position: sticky;
@@ -94,7 +117,7 @@ body {
   margin: 0;
   padding: calc(6px + env(safe-area-inset-top, 0px)) 16px 10px;
   color: var(--label);
-  background: rgba(28, 28, 30, 0.92);
+  background: var(--nav);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   backdrop-filter: saturate(180%) blur(20px);
   border: none;
@@ -110,7 +133,7 @@ body {
   line-height: 1.2;
   letter-spacing: 0;
   text-transform: none;
-  color: var(--tint);
+  color: var(--secondary);
 }
 
 .app-title {
@@ -119,9 +142,9 @@ body {
   border: none;
   font-family: var(--font);
   font-size: 34px;
-  font-weight: 700;
+  font-weight: 400;
   line-height: 1.15;
-  letter-spacing: -0.5px;
+  letter-spacing: -0.4px;
   color: var(--label);
 }
 
@@ -140,7 +163,7 @@ body {
   line-height: 36px;
   color: var(--label);
   background-color: var(--fill);
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%238e8e93' stroke-width='1.8' stroke-linecap='round'><circle cx='6.6' cy='6.6' r='5'/><path d='M10.4 10.4 14 14'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%238E8E93' stroke-width='1.8' stroke-linecap='round'><circle cx='6.6' cy='6.6' r='5'/><path d='M10.4 10.4 14 14'/></svg>");
   background-repeat: no-repeat;
   background-position: 10px 50%;
   background-size: 16px 16px;
@@ -165,39 +188,34 @@ body {
   outline: none;
 }
 
-/* Capsules — App Store / Music. Fade on the right so DISPROVEN / TEMPORARY are discoverable. */
+/* Segmented control */
 
 .chips {
   display: flex;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 2px;
   margin: 10px 0 0;
-  padding: 0 28px 0 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  overscroll-behavior-x: contain;
-  -webkit-mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 36px), transparent 100%);
-  mask-image: linear-gradient(to right, #000 0, #000 calc(100% - 36px), transparent 100%);
+  padding: 2px;
+  background: var(--fill-secondary);
+  border-radius: 9px;
 }
 
-.chips::-webkit-scrollbar { display: none; }
-
 .chip {
-  flex: 0 0 auto;
-  height: 32px;
-  min-height: 32px;
-  padding: 0 12px;
+  flex: 1 1 calc(33.333% - 2px);
+  min-width: 0;
+  height: 28px;
+  min-height: 28px;
+  padding: 0 8px;
   font-family: var(--font);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 400;
   letter-spacing: 0;
   text-transform: none;
-  line-height: 32px;
+  line-height: 28px;
   color: var(--secondary);
-  background: var(--fill);
+  background: transparent;
   border: none;
-  border-radius: 999px;
+  border-radius: 7px;
   box-shadow: none;
   cursor: pointer;
 }
@@ -208,9 +226,10 @@ body {
 .chip.is-on.UNREAD,
 .chip.is-on.DISPROVEN,
 .chip.is-on.TEMPORARY {
-  color: #000000;
-  background: var(--tint);
+  color: var(--label);
+  background: var(--thumb);
   border: none;
+  box-shadow: 0 0.5px 1px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .chip:focus-visible {
@@ -227,22 +246,19 @@ body {
   color: var(--secondary);
 }
 
-/* ——— Intro: grouped footnote, not a masthead ——— */
+/* Intro: grouped footer footnote */
 
 header.doc-intro {
-  margin: 8px 16px 16px;
-  padding: 11px 16px;
-  background: var(--grouped);
+  margin: 8px 32px 8px;
+  padding: 0;
+  background: none;
   border: none;
-  border-radius: 10px;
+  border-radius: 0;
   box-shadow: none;
 }
 
+header.doc-intro h1,
 header.doc-intro .kicker,
-header.doc-intro h1 {
-  display: none;
-}
-
 header.doc-intro .muted {
   display: none;
 }
@@ -255,10 +271,12 @@ header.doc-intro p {
   color: var(--secondary);
 }
 
+/* Section headers */
+
 h2,
 h3 {
-  margin: 20px 0 6px;
-  padding: 0 32px;
+  margin: 24px 0 6px;
+  padding: 0 0 0 32px;
   border: none;
   background: none;
   font-family: var(--font);
@@ -322,7 +340,7 @@ code,
   font-family: var(--mono);
   font-size: 13px;
   color: var(--label);
-  background: var(--tertiary);
+  background: var(--fill);
   padding: 0.08em 0.32em;
   border-radius: 4px;
   border: none;
@@ -331,58 +349,23 @@ code,
   word-break: break-word;
 }
 
+@media (prefers-color-scheme: dark) {
+  code,
+  .mono {
+    background: var(--tertiary);
+  }
+}
+
 p, li, td, th, code, a {
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
 nav.toc {
-  display: none;
+  display: none !important;
 }
 
-@media (min-width: 600px) {
-  nav.toc {
-    display: block;
-    margin: 8px 16px 16px;
-    padding: 4px 16px;
-    background: var(--grouped);
-    border: none;
-    border-radius: 10px;
-    box-shadow: none;
-  }
-
-  nav.toc strong {
-    display: block;
-    padding: 8px 0 4px;
-    font-size: 13px;
-    font-weight: 400;
-    color: var(--secondary);
-  }
-
-  nav.toc ol {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  nav.toc li {
-    margin: 0;
-    border-bottom: 0.5px solid var(--separator);
-  }
-
-  nav.toc li:last-child { border-bottom: none; }
-
-  nav.toc a {
-    display: block;
-    padding: 11px 0;
-    font-size: 17px;
-    font-weight: 400;
-    color: var(--tint);
-    background: none;
-    border: none;
-    border-radius: 0;
-  }
-}
+/* Inset grouped lists */
 
 .table-scroll {
   overflow: visible;
@@ -393,10 +376,7 @@ nav.toc {
 .table-scroll table,
 .table-scroll thead,
 .table-scroll tbody,
-.table-scroll tfoot,
-.table-scroll tr,
-.table-scroll th,
-.table-scroll td {
+.table-scroll tfoot {
   display: block;
   width: 100%;
 }
@@ -405,9 +385,9 @@ nav.toc {
 
 .table-scroll table {
   margin: 0;
-  background: var(--grouped);
+  background: var(--cell);
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   border-collapse: separate;
   border-spacing: 0;
   overflow: hidden;
@@ -419,16 +399,21 @@ nav.toc {
 }
 
 .table-scroll tr {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 12px;
+  row-gap: 2px;
   position: relative;
   margin: 0;
-  padding: 10px 16px;
+  padding: 11px 16px;
   min-height: 44px;
   background: transparent;
   border: none;
   box-shadow: none;
 }
 
-.table-scroll tr:not(:last-child)::after {
+.table-scroll tbody tr:not([hidden]):not(.is-hidden)::after {
   content: "";
   position: absolute;
   left: 16px;
@@ -439,37 +424,68 @@ nav.toc {
   pointer-events: none;
 }
 
-.table-scroll tr:last-child { border: none; }
+.table-scroll tbody tr:not([hidden]):not(.is-hidden):not(:has(+ tr:not([hidden]):not(.is-hidden)))::after {
+  display: none;
+}
 
 .table-scroll th,
 .table-scroll td {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  min-width: 0;
   border: none;
   background: transparent;
-  padding: 1px 0;
+  padding: 0;
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
   overflow-wrap: anywhere;
   word-break: break-word;
 }
 
 .table-scroll td:first-child {
+  grid-column: 1;
+  grid-row: 1;
   font-size: 17px;
   font-weight: 400;
   line-height: 1.3;
   color: var(--label);
 }
 
-.table-scroll td:not(:first-child) {
+.table-scroll td:has(.badge):not(:first-child) {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  align-self: center;
+  text-align: right;
+  width: auto;
+  padding: 0;
+}
+
+.table-scroll td:not(:first-child):not(:has(.badge)) {
+  grid-column: 1 / -1;
   font-size: 13px;
   font-weight: 400;
   line-height: 1.35;
   color: var(--secondary);
-  padding-top: 3px;
 }
 
-.table-scroll td:has(.badge) {
-  padding-top: 4px;
-  padding-bottom: 2px;
+.table-scroll tr:has(> td:first-child .badge) > td:first-child {
+  grid-column: 2;
+  grid-row: 1;
+  justify-self: end;
+  align-self: center;
+  text-align: right;
+  width: auto;
+}
+
+.table-scroll tr:has(> td:first-child .badge) > td:not(:first-child) {
+  grid-column: 1;
+  grid-row: 1;
+  font-size: 17px;
+  font-weight: 400;
+  line-height: 1.3;
+  color: var(--label);
 }
 
 .badge {
@@ -490,40 +506,36 @@ nav.toc {
 
 .badge.PROVEN {
   color: var(--green);
-  background: rgba(48, 209, 88, 0.18);
+  background: color-mix(in srgb, var(--green) 18%, transparent);
 }
 
 .badge.PARTIAL {
   color: var(--orange);
-  background: rgba(255, 159, 10, 0.18);
+  background: color-mix(in srgb, var(--orange) 18%, transparent);
 }
 
-.badge.UNREAD {
+.badge.UNREAD,
+.badge.N-A {
   color: var(--gray);
-  background: rgba(142, 142, 147, 0.22);
+  background: color-mix(in srgb, var(--gray) 22%, transparent);
 }
 
 .badge.DISPROVEN {
   color: var(--red);
-  background: rgba(255, 69, 58, 0.18);
+  background: color-mix(in srgb, var(--red) 18%, transparent);
 }
 
 .badge.TEMPORARY {
   color: var(--blue);
-  background: rgba(10, 132, 255, 0.18);
-}
-
-.badge.N-A {
-  color: var(--gray);
-  background: rgba(142, 142, 147, 0.22);
+  background: color-mix(in srgb, var(--blue) 18%, transparent);
 }
 
 .callout {
   margin: 8px 16px 16px;
   padding: 11px 16px;
-  background: var(--grouped);
+  background: var(--cell);
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   box-shadow: none;
   font-size: 13px;
   font-weight: 400;
@@ -549,30 +561,6 @@ footer {
   font-size: 13px;
   font-weight: 400;
   line-height: 1.4;
-}
-
-@media (min-width: 600px) {
-  .table-scroll {
-    overflow: visible;
-  }
-
-  .table-scroll table {
-    display: block;
-    border-collapse: separate;
-  }
-
-  .table-scroll thead { display: none; }
-
-  .table-scroll tr {
-    display: block;
-  }
-
-  .table-scroll th,
-  .table-scroll td {
-    display: block;
-    width: 100%;
-    border: none;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
