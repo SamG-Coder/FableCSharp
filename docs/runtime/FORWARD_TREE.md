@@ -402,7 +402,10 @@ then inner loop until [game+8]  PROVEN
 ├── [game+52]==0 → 009F8BA0(game+90556) then 004162B5  PROVEN
 │   [game+52]!=0 → 00417747 (not first-seen)
 ├── 004162B5  GamePumpUpdate  PROVEN
-│   ├── 009A57B0  gate [engine+148]==GetTickCount
+│   ├── 009A57B0  GetForegroundWindow()==[engine+148]  PROVEN
+│   │   IAT 0x1440378 is USER32!GetForegroundWindow
+│   │   first-seen hwnd from CreateWindowExW, window focused → 1
+│   │   host GetTickCount / GraphicsCreated gate DISPROVEN
 │   ├── [game].vtbl+20  00418289  update
 │   │   └── 004AEBA0 → 004AEAA0 → 0041674A
 │   │       first-seen 0 → skip vtbl+24 / 0041726D  PROVEN

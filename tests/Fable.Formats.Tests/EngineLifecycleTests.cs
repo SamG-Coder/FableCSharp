@@ -2054,6 +2054,40 @@ public sealed class EngineLifecycleTests
             e.Action.Contains("skip", StringComparison.Ordinal));
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.GameUpdateFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.GameRenderFn);
+        Assert.False(life.EngineWindowCreated);
+    }
+
+    [Fact]
+    public void First_pump_009A57B0_is_GetForegroundWindow_eq_hwnd()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.True(life.EngineWindowCreated);
+        Assert.True(life.EngineForeground);
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.True(life.EngineUpdateAllowed);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.GetForegroundWindowIat &&
+            e.Action.Contains("GetForegroundWindow", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.EngineUpdateGateFn &&
+            e.Action.Contains("allow", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.GetForegroundWindowIat &&
+            e.Action.Contains("GetTickCount", StringComparison.Ordinal));
+        Assert.Equal(1, life.GameUpdateCount);
+        life.EngineForeground = false;
+        life.PumpGameUpdate();
+        Assert.False(life.EngineUpdateAllowed);
+        Assert.Equal(1, life.GameUpdateCount);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.EngineUpdateGateFn &&
+            e.Action.Contains("skip", StringComparison.Ordinal));
+        Assert.Equal(0x01440388u, EngineLifecycle.CreateWindowExIat);
     }
 
     [Fact]
@@ -2309,6 +2343,8 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x009AC9E0u, EngineLifecycle.PlayerManagerIdleFn);
         Assert.Equal(0x009A57B0u, EngineLifecycle.EngineUpdateGateFn);
         Assert.Equal(148, EngineLifecycle.EngineTickOffset);
+        Assert.Equal(148, EngineLifecycle.EngineHwndOffset);
+        Assert.Equal(0x01440378u, EngineLifecycle.GetForegroundWindowIat);
         Assert.Equal(0x00418289u, EngineLifecycle.GameUpdateFn);
         Assert.Equal(20, EngineLifecycle.GameUpdateVtbl);
         Assert.Equal(0x00417001u, EngineLifecycle.GameRenderFn);

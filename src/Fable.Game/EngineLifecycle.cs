@@ -642,13 +642,21 @@ public sealed class EngineLifecycle : IDisposable
     public const uint InputLockLeaveFn = 0x009F26B0;
     /// <summary>
     /// <c>009A57B0</c>:
-    /// <c>[engine+148] == GetTickCount</c>
-    /// (<c>0x1440378</c>). False skips
+    /// <c>GetForegroundWindow() == [engine+148]</c>
+    /// (HWND from <c>CreateWindowExW</c>).
+    /// IAT <c>0x1440378</c> is
+    /// <c>USER32!GetForegroundWindow</c>,
+    /// not GetTickCount. False skips
     /// vtbl+20 / vtbl+28.
+    /// First-seen after AVI: window
+    /// exists and is foreground → 1.
     /// </summary>
     public const uint EngineUpdateGateFn = 0x009A57B0;
     public const int EngineTickOffset = 148;
+    public const int EngineHwndOffset = 148;
+    public const uint GetForegroundWindowIat = 0x01440378;
     public const uint GetTickCountIat = 0x01440378;
+    public const uint CreateWindowExIat = 0x01440388;
     /// <summary>
     /// Game vtbl+20 <c>00418289</c>. Fade /
     /// player <c>004AEBA0</c>; world
@@ -1454,6 +1462,17 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public int EnginePlus9 { get; private set; }
     public bool EnginePlus124 { get; private set; }
+    /// <summary>
+    /// <c>009A64B0</c> <c>CreateWindowExW</c>
+    /// wrote <c>[engine+148]</c>.
+    /// </summary>
+    public bool EngineWindowCreated { get; private set; }
+    /// <summary>
+    /// First-seen after AVI: Fable
+    /// window is foreground so
+    /// <c>009A57B0</c> returns 1.
+    /// </summary>
+    public bool EngineForeground { get; set; }
     /// <summary>
     /// <c>004AE9D0</c> <c>+9836</c> =
     /// <c>[game+72]</c>.
@@ -2895,13 +2914,17 @@ public sealed class EngineLifecycle : IDisposable
         Note(EngineMessagePumpFn, "GamePump", "Engine", "009A6370");
         Note(PeekMessageFn, "GamePump", "Engine",
             "009A4F20 PeekMessage first-seen empty");
+        Note(GetForegroundWindowIat, "GamePump", "Engine",
+            "GetForegroundWindow IAT 0x1440378 vs +148");
+        EnginePlus9 = EngineWindowCreated && EngineForeground ? 1 : 0;
         if (EnginePlus88)
         {
             Note(InputFocusFn, "GamePump", "Input",
                 $"009F4E20 +{EnginePlus88Offset} arg={EnginePlus9}");
         }
 
-        Note(TestCooperativeLevelFn, "GamePump", "Engine", "009C00C0");
+        Note(TestCooperativeLevelFn, "GamePump", "Engine",
+            "009C00C0 TestCooperativeLevel S_OK → 1");
         Note(EngineWndProc, "GamePump", "Engine",
             $"009A5B60 table 0x{EngineWndProcJumpTable:X}");
         if (EnginePlus8 != 0)
@@ -3041,8 +3064,11 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public bool EvaluateEngineUpdateGate()
     {
-        Note(GetTickCountIat, "GamePump", "Engine", "GetTickCount IAT 0x1440378");
-        return GraphicsCreated;
+        Note(GetForegroundWindowIat, "GamePump", "Engine",
+            "009A57B0 GetForegroundWindow == [engine+148]");
+        var allow = EngineWindowCreated && EngineForeground;
+        EnginePlus9 = allow ? 1 : 0;
+        return allow;
     }
 
     /// <summary>
@@ -4793,6 +4819,10 @@ public sealed class EngineLifecycle : IDisposable
         EnginePlus88 = true;
         EnginePlus124 = false;
         EnginePlus9 = EnginePlus9AfterSetup;
+        Note(CreateWindowExIat, "Setup library", "Window",
+            "CreateWindowExW [engine+148]");
+        EngineWindowCreated = true;
+        EngineForeground = true;
         Note(SetupLibrary, "Setup library", "Engine",
             $"[engine+{EnginePlus9Offset}]=1 +{EnginePlus124Offset}=0");
         CreateDeviceFlags = CreateDeviceSoftwareFlags;
