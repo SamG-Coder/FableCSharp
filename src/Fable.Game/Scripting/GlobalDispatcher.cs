@@ -75,6 +75,21 @@ public static class GlobalDispatcher
                 ctx.Audio.Muted ? "mute" : "unmute");
         }
 
+        if (Eq(v, "UseTheme"))
+        {
+            var name = line.Arg(0);
+            if (name.Length == 0 || ScriptLine.IsNull(name))
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            var param = 0f;
+            if (line.Arg(1).Length > 0)
+                ScriptLine.TryFloat(line.Arg(1), out param);
+            var flag = line.Arg(2).Length == 0 || ScriptLine.IsTrue(line.Arg(2));
+            var reset = name.Equals("RESET", StringComparison.OrdinalIgnoreCase);
+            ctx.Audio.UseTheme(name, param, flag, reset);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                reset ? "RESET" : name);
+        }
+
         if (Eq(v, "EnableSounds"))
         {
             ctx.Audio.Mute(false);
@@ -657,6 +672,15 @@ public static class GlobalDispatcher
             if (yield && ctx.Cutscene.YieldEnable)
                 return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
                     "GiveHero leftover vtbl+28", item);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, item);
+        }
+
+        if (Eq(v, "TakeFromHero"))
+        {
+            var item = line.Arg(0);
+            if (item.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ctx.World.TakeFromHero(item);
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, item);
         }
 

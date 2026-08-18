@@ -497,6 +497,16 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "007ADB30 lookup; miss skip; vtbl+900(name,esi,flag); jmp 00CC2C6B"),
+        Spec("TakeFromHero", 0x00CCFB51, 0x00CCFBA3, "item",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "vtbl+556(name); jmp 00CD17FD; not TakeObjectFromHero"),
+        Spec("UseTheme", 0x00CCFA38, 0x00CCFA8B, "name[,param][,flag]",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "RESET vtbl+2628(param); else vtbl+2624(name,param); jmp 00CD17FD"),
         Spec("SetDoorOpen", 0x00CC8A8D, 0x00CC8BEB, "name,IsFalse?",
             ScriptReturn.CompleteNow, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

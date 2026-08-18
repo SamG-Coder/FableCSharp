@@ -82,6 +82,8 @@
 | GiveHeroHealth | `00CC62A0` | `00CC62F5` | amount|MAX | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | MAX: vtbl+1032-vtbl+1028; else atof; vtbl+1052(amt,1,0); jmp 00CC7081 |
 | GiveHeroMorality | `00CC6222` | `00CC6281` | amount | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | atof arg0; vtbl+624(amount); jmp 00CC7081; scale unread |
 | GiveHeroExpression | `00CC6132` | `00CC6185` | name[,flag][,param] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | 007ADB30 lookup; miss skip; vtbl+900(name,esi,flag); jmp 00CC2C6B |
+| TakeFromHero | `00CCFB51` | `00CCFBA3` | item | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | vtbl+556(name); jmp 00CD17FD; not TakeObjectFromHero |
+| UseTheme | `00CCFA38` | `00CCFA8B` | name[,param][,flag] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | RESET vtbl+2628(param); else vtbl+2624(name,param); jmp 00CD17FD |
 | SetDoorOpen | `00CC8A8D` | `00CC8BEB` | name,IsFalse? | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | IsFalse(arg1)->vtbl+1704 close else vtbl+1700 open; jmp 00CD17F8 |
 | SetChestOpen | `00CC8C14` | `00CC8D73` | name,IsFalse? | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | IsFalse(arg1)->vtbl+1744 close else vtbl+1740(thing,0) open; jmp 00CD17F8 |
 | ClearCommands | `—` | `—` | IsTrue[,…] | YieldAfterUnlessFalse | Proven | Proven | Proven | Partial | Partial | Partial | cancel entity task slot; TRUE continue else vtbl+28 |

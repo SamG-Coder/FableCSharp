@@ -547,6 +547,10 @@ public sealed class AudioRuntime
     public bool Muted { get; private set; }
     public readonly List<ScriptAudioInstance> Instances = [];
     public readonly List<string> Cached = [];
+    public string Theme { get; private set; } = "";
+    public float ThemeParam { get; private set; }
+    public bool ThemeFlag { get; private set; }
+    public bool ThemeReset { get; private set; }
 
     public void PlayMusic(string track, string? resource = null)
     {
@@ -576,6 +580,19 @@ public sealed class AudioRuntime
     {
         Music = "";
         MusicResource = null;
+    }
+
+    /// <summary>
+    /// <c>00CCFA8B</c>: <c>RESET</c> is
+    /// <c>vtbl+2628(param)</c>, else
+    /// <c>vtbl+2624(name,param)</c>.
+    /// </summary>
+    public void UseTheme(string name, float param, bool flag, bool reset)
+    {
+        ThemeParam = param;
+        ThemeFlag = flag;
+        ThemeReset = reset;
+        Theme = reset ? "" : name;
     }
 
     public void Mute(bool mute) => Muted = mute;
@@ -1071,6 +1088,26 @@ public sealed class WorldRuntime
         }
 
         Expressions.Add(new HeroExpression(name, param, flag));
+    }
+
+    /// <summary>
+    /// <c>00CCFBA3</c> <c>vtbl+556(name)</c>.
+    /// No count — the named slot is removed.
+    /// </summary>
+    public int TakeFromHero(string item)
+    {
+        if (item.Length == 0)
+            return 0;
+        var removed = 0;
+        for (var i = Inventory.Count - 1; i >= 0; i--)
+        {
+            if (!Inventory[i].Name.Equals(item, StringComparison.OrdinalIgnoreCase))
+                continue;
+            removed += Inventory[i].Count;
+            Inventory.RemoveAt(i);
+        }
+
+        return removed;
     }
 
     public int GiveHero(string item, int count, int extra = -1, bool silent = false)

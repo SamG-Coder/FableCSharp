@@ -995,6 +995,97 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void UseTheme_sets_theme_and_RESET_clears()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("ut",
+        [
+            "UseTheme ENVIRONMENT_CAVE",
+            "UseTheme RESET,0,FALSE",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.True(runtime.Audio.ThemeReset);
+        Assert.Equal("", runtime.Audio.Theme);
+        Assert.Equal(0f, runtime.Audio.ThemeParam);
+        Assert.False(runtime.Audio.ThemeFlag);
+        Assert.Equal(0x00CCFA8Bu, ScriptCommandMap.Find("UseTheme")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void TakeFromHero_removes_given_item()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("tfh",
+        [
+            "GiveHero OBJECT_TEDDY_BEAR_UNGIVEABLE",
+            "TakeFromHero OBJECT_TEDDY_BEAR_UNGIVEABLE",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Empty(runtime.World.Inventory);
+        Assert.Equal(0x00CCFBA3u, ScriptCommandMap.Find("TakeFromHero")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("GiveHero")!.Value.ApplySite,
+            ScriptCommandMap.Find("TakeFromHero")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void UseTheme_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_ARENA_HOH_INTRO") ?? bank.Find("CS_FABLE_CREDITS");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.StartsWith("UseTheme ", StringComparison.OrdinalIgnoreCase))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("UseTheme", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-theme", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("UseTheme ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        if (parsed.Arg(0).Equals("RESET", StringComparison.OrdinalIgnoreCase))
+            Assert.True(runtime.Audio.ThemeReset);
+        else
+            Assert.Equal(parsed.Arg(0), runtime.Audio.Theme);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-theme.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-usetheme.txt"),
+            """
+            UseTheme 00CCFA38 / apply 00CCFA8B
+              arg0 required; IsNull skip 00CD17FD
+              arg1 atof default 0; arg2 empty|TRUE → [ebp-63]=1
+              00BFEBA8 RESET → vtbl+2628(param)
+              else vtbl+2624(name,param)
+              jmp 00CD17FD no yield
+            TakeFromHero 00CCFB51 / apply 00CCFBA3
+              arg0 required; vtbl+556(name); jmp 00CD17FD
+              not TakeObjectFromHero
+            Theme mixer / take-item bag body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void WalkTo_writes_destination_and_entity_task()
     {
         var runtime = ScriptRuntime.Detached();
