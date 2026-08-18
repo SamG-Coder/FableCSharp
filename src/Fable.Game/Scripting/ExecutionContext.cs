@@ -948,6 +948,22 @@ public sealed class MovementRuntime
     }
 }
 
+public sealed class HeroInventoryItem
+{
+    public string Name { get; }
+    public int Count { get; set; }
+    public int Extra { get; set; }
+    public bool Silent { get; set; }
+
+    public HeroInventoryItem(string name, int count, int extra, bool silent)
+    {
+        Name = name;
+        Count = count;
+        Extra = extra;
+        Silent = silent;
+    }
+}
+
 public sealed class WorldRuntime
 {
     public readonly List<ScriptCreate> Creates = [];
@@ -967,6 +983,7 @@ public sealed class WorldRuntime
     public readonly Dictionary<string, string> Flags = new(StringComparer.OrdinalIgnoreCase);
     public readonly List<string> Modes = [];
     public readonly List<(string Item, int Count)> HeroGifts = [];
+    public readonly List<HeroInventoryItem> Inventory = [];
     public readonly List<(bool Hide, string Mode)> ExtraOps = [];
     public readonly List<(string Verb, string Arg)> RemoveFamily = [];
     public readonly List<ScriptCreate> Effects = [];
@@ -979,6 +996,41 @@ public sealed class WorldRuntime
     public string ExtraMode { get; private set; } = "";
     public float TimeOfDayHours { get; set; }
     public float TimeOfDayFraction { get; set; }
+
+    /// <summary>
+    /// <c>00CC63E5</c>: give <c>count - already</c>
+    /// via <c>vtbl+484</c>. Requested ≤ owned skips.
+    /// </summary>
+    public int GiveHero(string item, int count, int extra = -1, bool silent = false)
+    {
+        if (item.Length == 0 || count <= 0)
+            return 0;
+        HeroGifts.Add((item, count));
+        var have = 0;
+        HeroInventoryItem? slot = null;
+        foreach (var entry in Inventory)
+        {
+            if (!entry.Name.Equals(item, StringComparison.OrdinalIgnoreCase))
+                continue;
+            slot = entry;
+            have = entry.Count;
+            break;
+        }
+
+        var add = count - have;
+        if (add <= 0)
+            return 0;
+        if (slot is null)
+        {
+            slot = new HeroInventoryItem(item, 0, extra, silent);
+            Inventory.Add(slot);
+        }
+
+        slot.Count += add;
+        slot.Extra = extra;
+        slot.Silent = silent;
+        return add;
+    }
 
     public void RemoveExtras(bool hide, string mode)
     {

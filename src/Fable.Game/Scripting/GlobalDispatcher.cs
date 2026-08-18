@@ -640,11 +640,24 @@ public static class GlobalDispatcher
 
         if (Eq(v, "GiveHero"))
         {
-            ScriptLine.TryInt(line.Arg(1), out var count);
+            var item = line.Arg(0);
+            if (item.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            var count = 1;
+            if (line.Arg(1).Length > 0)
+                ScriptLine.TryInt(line.Arg(1), out count);
             if (count <= 0)
                 count = 1;
-            ctx.World.HeroGifts.Add((line.Arg(0), count));
-            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, line.Arg(0));
+            var extra = -1;
+            if (line.Arg(2).Length > 0)
+                ScriptLine.TryInt(line.Arg(2), out extra);
+            var silent = ScriptLine.IsTrue(line.Arg(3));
+            var yield = ScriptLine.IsTrue(line.Arg(4)) && !silent;
+            ctx.World.GiveHero(item, count, extra, silent);
+            if (yield && ctx.Cutscene.YieldEnable)
+                return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Global,
+                    "GiveHero leftover vtbl+28", item);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, item);
         }
 
         if (Eq(v, "SetFlag"))

@@ -752,6 +752,94 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void GiveHero_adds_inventory_and_skips_when_already_owned()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("gh",
+        [
+            "GiveHero OBJECT_TEDDY_BEAR_UNGIVEABLE",
+            "GiveHero OBJECT_TEDDY_BEAR_UNGIVEABLE",
+            "GiveHero OBJECT_IRON_KATANA,2",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(2, runtime.World.Inventory.Count);
+        Assert.Equal(1, runtime.World.Inventory[0].Count);
+        Assert.Equal("OBJECT_TEDDY_BEAR_UNGIVEABLE", runtime.World.Inventory[0].Name);
+        Assert.Equal(2, runtime.World.Inventory[1].Count);
+        Assert.Equal(0x00CC63E5u, ScriptCommandMap.Find("GiveHero")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void GiveHero_arg4_yields_unless_silent()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var yield = new ScriptInterpreter("ghy",
+            ["GiveHero OBJECT_X,1,-1,FALSE,TRUE", "CameraPause FALSE"]);
+        yield.RunUntilYield(runtime);
+        Assert.True(yield.Yielded);
+        Assert.Contains("GiveHero OBJECT_X,1,-1,FALSE,TRUE", yield.Executed);
+        yield.Resume(runtime);
+        Assert.True(yield.Finished);
+        var silent = new ScriptInterpreter("ghs",
+            ["GiveHero OBJECT_Y,1,1,TRUE,TRUE", "CameraPause FALSE"]);
+        silent.RunUntilYield(runtime);
+        Assert.True(silent.Finished);
+        Assert.True(runtime.World.Inventory.Exists(i => i.Name == "OBJECT_Y" && i.Silent));
+    }
+
+    [Fact]
+    public void GiveHero_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_OAKVALEINTRO_BULLYRUN2")
+                  ?? bank.Find("CS_GUILD_DEPARTURE_MELEE_TEST_APLUS_PRIZE");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.StartsWith("GiveHero ", StringComparison.OrdinalIgnoreCase) &&
+                !raw.Contains('$', StringComparison.Ordinal))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-give", [line, line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("GiveHero ", StringComparison.OrdinalIgnoreCase));
+        Assert.Single(runtime.World.Inventory);
+        Assert.Equal(1, runtime.World.Inventory[0].Count);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-give.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-givehero.txt"),
+            """
+            GiveHero 00CC6392 / apply 00CC63E5
+              arg0 item required else 00CC7081
+              esi=1; arg1 atoi count; arg2 atoi extra (edi default -1)
+              arg3 IsTrue [ebp-604] silent
+              arg4 IsTrue [ebp+127] leftover unless silent
+              arg5 IsFalse [ebp+19]=0 → vtbl+572 else vtbl+488
+              00515700 item lookup; vtbl+484 x (count-have)
+              already-have skip; jmp 00CC2C6B
+            Item def / hero bag body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void WalkTo_writes_destination_and_entity_task()
     {
         var runtime = ScriptRuntime.Detached();

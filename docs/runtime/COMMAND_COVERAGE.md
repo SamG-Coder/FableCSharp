@@ -3,7 +3,7 @@ GLOBAL: 124
 ENTITY: 61
 RECOVERED DISPATCH: 98
 RECOVERED RETURN: 98
-RECOVERED APPLY: 32
+RECOVERED APPLY: 33
 IMPLEMENTED RUNTIME: 13
 UNREAD: 87
 # Native command coverage
@@ -125,7 +125,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | RemoveAllThings | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | RegisterActor | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | WaitActiveDialog | Global | Proven | Proven | Proven | Proven | Partial | Partial |
-| GiveHero | Global | Proven | Proven | Proven | Partial | Partial | Partial |
+| GiveHero | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | GiveHeroHealth | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | GiveHeroMorality | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | GiveHeroExpression | Global | Unread | Unread | Unread | Unread | Unread | Unread |

@@ -477,9 +477,11 @@ public static class ScriptCommandMap
         Spec("CrowdClearActions", 0, 0, "crowd",
             ScriptReturn.CompleteNow, CommandParity.ScriptLayer,
             "clear member entity tasks"),
-        Spec("GiveHero", 0, 0, "item[,n]",
-            ScriptReturn.CompleteNow, CommandParity.ScriptLayer,
-            "gift list; count default 1"),
+        Spec("GiveHero", 0x00CC6392, 0x00CC63E5, "item[,n][,extra][,silent][,yield]",
+            ScriptReturn.YieldAfterUnlessFalse, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "vtbl+484 x (count-have); already-have skip; leftover if arg4&&!arg3"),
         Spec("SetDoorOpen", 0x00CC8A8D, 0x00CC8BEB, "name,IsFalse?",
             ScriptReturn.CompleteNow, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
