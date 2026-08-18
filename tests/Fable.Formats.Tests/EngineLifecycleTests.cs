@@ -151,6 +151,13 @@ public sealed class EngineLifecycleTests
         Assert.Equal(5, life.PlayerSlotsCreated);
         Assert.Equal(4, life.PlayerActiveCount);
         Assert.True(life.PlayerObjectReady);
+        Assert.True(life.WorldCameraPresent);
+        Assert.True(life.GameCamera.Constructed);
+        Assert.True(life.GameCameraManager.Constructed);
+        Assert.Equal(22, life.GameCamera.Plus176);
+        Assert.Equal(0x0125D53Cu, life.WorldCamera.VtblValue);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraCtor);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameCameraCtor);
         Assert.Null(life.CurrentRegion);
         Assert.False(life.GamePumpFirstDone);
         Assert.True(life.Pump());
@@ -378,6 +385,33 @@ public sealed class EngineLifecycleTests
         Assert.True(unread.CameraInterpolationUnread);
         Assert.False(unread.CameraInterpolationRan);
         Assert.DoesNotContain(unread.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraApplyFn);
+        Assert.Equal(new System.Numerics.Vector3(1f, 0f, 0f), life.Camera.Position);
+        Assert.Equal(new System.Numerics.Vector3(1f, 0f, 0f), life.Camera.LookAt);
+    }
+
+    [Fact]
+    public void World_camera_006B4900_slots_lerp_into_ScriptedCamera()
+    {
+        var cam = new WorldCamera();
+        cam.Construct();
+        Assert.Equal(0x0125D53Cu, cam.VtblValue);
+        Assert.False(cam.Seeded);
+        Assert.Equal(new System.Numerics.Vector3(1f, 0f, 0f), cam.SlotA.V0);
+        Assert.Equal(0.2f, cam.SlotA.Weight0);
+        var at0 = cam.Blend(0f);
+        Assert.True(cam.Seeded);
+        Assert.Equal(System.Numerics.Vector3.Zero, at0.V0);
+        var at1 = cam.Blend(1f);
+        Assert.Equal(new System.Numerics.Vector3(1f, 0f, 0f), at1.V0);
+        var mid = cam.Blend(0.5f);
+        Assert.Equal(0.5f, mid.V0.X);
+        cam.WriteTarget(
+            new System.Numerics.Vector3(10f, 20f, 30f),
+            new System.Numerics.Vector3(11f, 21f, 31f),
+            System.Numerics.Vector3.UnitZ);
+        var snapped = cam.Blend(1f);
+        Assert.Equal(new System.Numerics.Vector3(10f, 20f, 30f), snapped.V0);
+        Assert.Equal(new System.Numerics.Vector3(11f, 21f, 31f), snapped.V1);
     }
 
     [Fact]
@@ -436,6 +470,18 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x004166E2u, EngineLifecycle.CameraInterpTimeFn);
         Assert.Equal(0x0041919Cu, EngineLifecycle.CameraClampFn);
         Assert.Equal(0x004AEA70u, EngineLifecycle.PlayerReadyQueryFn);
+        Assert.Equal(0x006B4900u, EngineLifecycle.WorldCameraCtor);
+        Assert.Equal(0x0125D53Cu, EngineLifecycle.WorldCameraVtbl);
+        Assert.Equal(0x1970, EngineLifecycle.WorldCameraObjectSize);
+        Assert.Equal(24, EngineLifecycle.WorldCameraOffset);
+        Assert.Equal(0x006FD8C0u, EngineLifecycle.GameCameraCtor);
+        Assert.Equal(0x01264A8Cu, EngineLifecycle.GameCameraVtbl);
+        Assert.Equal(0xC8, EngineLifecycle.GameCameraObjectSize);
+        Assert.Equal(44, EngineLifecycle.GameCameraOffset);
+        Assert.Equal(0x0069AE80u, EngineLifecycle.GameCameraManagerCtor);
+        Assert.Equal(0x160, EngineLifecycle.GameCameraManagerObjectSize);
+        Assert.Equal(22, EngineLifecycle.FistpTowardZero(
+            EngineLifecycle.CameraCatchupMin * GameCamera.Scale));
         Assert.Equal(13, EngineLifecycle.CameraRecordDwords);
         Assert.Equal(52, EngineLifecycle.CameraRecordSize);
         Assert.Equal(1, EngineLifecycle.FistpTowardZero(15 * EngineLifecycle.CameraStepScale));
@@ -798,6 +844,9 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraApplyFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CameraManagerBlendFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayApplyBodyFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraCtor);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraSeedFn);
+        Assert.True(life.WorldCamera.Seeded);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         var dest = Path.Combine(
             @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
@@ -865,6 +914,31 @@ public sealed class EngineLifecycleTests
 
             Null is the native no-save state.
             First non-null writer still UNREAD (not this path).
+            """);
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-006B42F0.txt"),
+            """
+            world+24 is NOT 006FD8C0.
+            004A6E30 after Init Environment:
+              alloc 0x1970, ctor 006B4900, store [world+24]
+            006B4900 vtbl 0125D53C
+              6x 008864A0 at +84 stride 0x1F4
+              6x 008864A0 at +3188
+              +3092/+3108 = (1,0,0)
+              +3088/+3104 = 0.2
+              +68 = 0
+            006B42F0(world+24, t):
+              clamp t [0,1]
+              +68==0 → 006B3FF0 seed
+              out+6296 = (1-t)*+6196 + t*+3092
+              out+6312 = lerp +3108/+6212
+              out+6328 = lerp +3120/+6224
+            0069AE80 alloc 0x160 → world+48, copy world+52
+            006FD8C0 alloc 0xC8 → world+44 vtbl 01264A8C
+              +176 = fistp(15*1.5)=22
+            ScriptedCamera.ApplyManagerOutput(+6296,+6312,+6328).
+            Not 00DBDE40.
             """);
     }
 }

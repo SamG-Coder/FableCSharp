@@ -297,6 +297,19 @@ public sealed class EngineLifecycle
     public const uint FistpFn = 0x00BFEA70;
     public const uint WorldCameraApplyFn = 0x0049E080;
     public const uint CameraManagerBlendFn = 0x006B42F0;
+    public const uint WorldCameraCtor = WorldCamera.Ctor;
+    public const uint WorldCameraVtbl = WorldCamera.Vtbl;
+    public const uint WorldCameraSeedFn = WorldCamera.SeedFn;
+    public const int WorldCameraObjectSize = WorldCamera.ObjectSize;
+    public const int WorldCameraOffset = WorldCamera.WorldOffset;
+    public const uint GameCameraCtor = GameCamera.Ctor;
+    public const uint GameCameraVtbl = GameCamera.Vtbl;
+    public const int GameCameraObjectSize = GameCamera.ObjectSize;
+    public const int GameCameraOffset = GameCamera.WorldOffset;
+    public const uint GameCameraManagerCtor = GameCameraManager.Ctor;
+    public const uint GameCameraManagerVtbl = GameCameraManager.Vtbl;
+    public const int GameCameraManagerObjectSize = GameCameraManager.ObjectSize;
+    public const int GameCameraManagerOffset = GameCameraManager.WorldOffset;
     public const uint ThingWalkApplyFn = 0x0051EBD0;
     public const uint DisplayApplyThunk = 0x00435F70;
     public const uint DisplayApplyBodyFn = 0x00435530;
@@ -537,9 +550,14 @@ public sealed class EngineLifecycle
     public double DisplayTime { get; set; }
     /// <summary>
     /// Same camera the renderer consumes.
-    /// <c>006B42F0</c> slot lerp is PARTIAL.
+    /// Filled by <c>006B42F0</c> from
+    /// <see cref="WorldCamera"/>.
     /// </summary>
     public ScriptedCamera Camera { get; } = new();
+    public WorldCamera WorldCamera { get; } = new();
+    public GameCamera GameCamera { get; } = new();
+    public GameCameraManager GameCameraManager { get; } = new();
+    public bool WorldCameraPresent { get; private set; }
     public IReadOnlyList<int> GameTickTypes => _tickTypes;
     public bool LevelLoaderReady { get; private set; }
     public bool FirstRealRegionLoadDone { get; private set; }
@@ -719,6 +737,7 @@ public sealed class EngineLifecycle
         Note(InitWorldInitFn, "Init World Init", "World", "004A6E30 vtbl+36");
         foreach (var (name, apply) in InitWorldInitStages)
             Note(apply, name, "World", name);
+        InitWorldCameras();
         LoadWorldMap();
         CreatePlayers();
         GameRenderEnabled = true;
@@ -1164,10 +1183,34 @@ public sealed class EngineLifecycle
         value >= 0 ? (int)value : -(int)(-value);
 
     /// <summary>
+    /// After Environment: alloc
+    /// <c>0x1970</c> <c>006B4900</c> at
+    /// world+24. Then named manager
+    /// <c>0069AE80</c> at +48 and
+    /// <c>006FD8C0</c> at +44.
+    /// </summary>
+    public void InitWorldCameras()
+    {
+        Note(WorldCameraCtor, "Init World Init", "Camera",
+            "006B4900 world+24 size 0x1970 vtbl 0125D53C");
+        WorldCamera.Construct();
+        WorldCameraPresent = true;
+        Note(GameCameraManagerCtor, "Init Game Camera Manager", "Camera",
+            "0069AE80 world+48 size 0x160 vtbl 0125C754");
+        GameCameraManager.Construct();
+        Note(GameCameraCtor, "Init Game Camera", "Camera",
+            "006FD8C0 world+44 size 0xC8 vtbl 01264A8C");
+        GameCamera.Construct();
+        Note(GameCameraCtor, "Init Game Camera", "Camera",
+            $"006FD8C0 +176={GameCamera.Plus176}");
+    }
+
+    /// <summary>
     /// <c>0049E080</c>: store thing, walk
     /// <c>0051EBD0</c>, blend
     /// <c>006B42F0(world+24, t)</c>.
-    /// Slot lerp body is PARTIAL.
+    /// Output <c>+6296/+6312/+6328</c>
+    /// writes <see cref="Camera"/>.
     /// </summary>
     public void ApplyWorldCamera(float tBlend)
     {
@@ -1178,8 +1221,14 @@ public sealed class EngineLifecycle
         Note(WorldCameraApplyFn, "GamePump", "Camera", "0049E080");
         Note(StoreActiveThingFn, "GamePump", "World", "004C74F0");
         Note(ThingWalkApplyFn, "GamePump", "World", "0051EBD0");
+        if (!WorldCameraPresent)
+            WorldCamera.Construct();
+        if (!WorldCamera.Seeded)
+            Note(WorldCameraSeedFn, "GamePump", "Camera", "006B3FF0 +68");
+        var output = WorldCamera.Blend(tBlend);
         Note(CameraManagerBlendFn, "GamePump", "Camera",
-            $"006B42F0 t={tBlend}");
+            $"006B42F0 t={tBlend} out={output.V0}");
+        Camera.ApplyManagerOutput(output.V0, output.V1, output.V2);
     }
 
     /// <summary>

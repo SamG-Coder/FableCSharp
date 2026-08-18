@@ -122,7 +122,21 @@ public sealed class ScriptedCamera
 
     public void SetPosition(Vector3 position) => Position = position;
 
+    public void SetUp(Vector3 up) =>
+        Up = up.LengthSquared() > 1e-8f ? Vector3.Normalize(up) : LandscapeFrustum.FirstSeenCameraUp;
+
     public void SetFovDegrees(float fovDegrees) => FovDegrees = fovDegrees;
+
+    /// <summary>
+    /// <c>006B42F0</c> writes <c>+6296/+6312/+6328</c>
+    /// into the live game camera.
+    /// </summary>
+    public void ApplyManagerOutput(Vector3 position, Vector3 lookAt, Vector3 up)
+    {
+        Position = position;
+        LookAt = lookAt;
+        SetUp(up);
+    }
 
     public bool UseCamera(IEnumerable<ThingInstance> things, string name) =>
         RegionTravel.TryNamedCamera(things, name, out var position, out var lookAt, out var fov, out var up)
