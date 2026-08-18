@@ -324,6 +324,9 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.DisplayFlush2dFn &&
             e.Action.Contains("0x13BC800", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DisplayFlush2dFn &&
+            e.Action.Contains("no type 0x22", StringComparison.Ordinal));
         Assert.False(life.FrontendDisplayFlag);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendWidgetDrawFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendWidgetFactoryFn);
@@ -1355,7 +1358,11 @@ public sealed class EngineLifecycleTests
         var mid = cam.Blend(0.5f);
         Assert.Equal(0.5f, mid.V0.X);
         cam.ComputePose();
+        cam.ApplyFollowSpring();
         Assert.True(cam.PoseComputed);
+        Assert.True(cam.FollowSpringRan);
+        Assert.Equal(0.2f, cam.SlotA.Weight0);
+        Assert.Equal(new System.Numerics.Vector3(1f, 0f, 0f), cam.SlotA.V0);
         Assert.Equal(new System.Numerics.Vector3(1f, 0f, 0f), cam.SlotA.V2);
         Assert.Equal(new System.Numerics.Vector3(1f, 0f, 0f), cam.SlotA.V3);
         Assert.Equal(new System.Numerics.Vector3(-1f, 0f, 0f), cam.SlotA.V4);
@@ -1943,10 +1950,20 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraCtor);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraSeedFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraPoseFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.QuestManagerPumpFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.QuestFiberAttachFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.QuestSubjectFillFn);
         Assert.True(life.WorldCamera.Seeded);
         Assert.True(life.WorldCamera.PoseComputed);
+        Assert.True(life.FollowSpringRan);
+        Assert.True(life.SubjectFillNoted);
+        Assert.True(life.QuestPumpRan);
+        Assert.True(life.QuestPumpWalked >= 6, $"walked={life.QuestPumpWalked}");
+        Assert.Equal(0, life.QuestVtbl24Calls);
         Assert.Equal(new System.Numerics.Vector3(1f, 0f, 0f), life.WorldCamera.SlotA.V2);
         Assert.Equal(new System.Numerics.Vector3(-1f, 0f, 0f), life.WorldCamera.SlotA.V4);
+        Assert.Equal(new System.Numerics.Vector3(1f, 0f, 0f), life.WorldCamera.SlotA.V0);
+        Assert.Equal(0.2f, life.WorldCamera.SlotA.Weight0);
         Assert.NotEqual(
             System.Numerics.Vector3.UnitZ * 1.6f,
             life.Camera.Position - (life.Hero is { } hero

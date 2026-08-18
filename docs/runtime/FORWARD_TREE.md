@@ -535,10 +535,23 @@ START_INITIAL_QUESTS factories (fn --exact):
 │   ├── [0x122DEDC]=0 → dirs (1,0,0)
 │   ├── 00A14440 normalize
 │   └── +412=0 → V4=(-1,0,0)
-├── 006B3030  V0 spring  UNREAD (dumped)
-└── 006B3B80  tick  UNREAD (dumped)
-Host no longer invents SeedAt(1.6m). V0/V1 stay ctor (1,0,0)
-until 008884D0 subject fill. FOV 72 is SHOT2 leftover.
+├── 006B3030  V0 spring  PROVEN (161)
+│   ├── +3168=0 runs
+│   ├── 004978A0 LCG (ecx misread as "MessageA"); seed UNREAD
+│   ├── 00A14260 yaw/pitch rotate; not applied first-seen
+│   └── Weight0 clamp [0.04, 0.2]; ctor 0.2 stays
+├── 008884D0  list helper → 00888260 table search; not V0
+└── 006B3B80  tick  UNREAD
+V0/V1 stay ctor (1,0,0). FOV 72 is SHOT2 leftover.
+
+004A5A40 type-1 tick  PROVEN (316)
+├── 004B4490  [0x13B89FC]  PROVEN
+│   └── 00CB8220 → 00CB7C40 + 00CB8170
+│       └── 00CB7950 [fiber+41]
+│           ├── +41!=0  [vtbl+24] 00A44880
+│           └── +41==0  [vtbl+4] start  FIRST-SEEN
+└── 004A5E10 inc WorldFrame
+009D9C80 first 250: dirty-list only. No type 0x22.
 
 0041726D → 0049DFB0 type-1 → 00629270 / 004A5A40
 └── 004A5E10  inc WorldFrame [0x13B89BC]

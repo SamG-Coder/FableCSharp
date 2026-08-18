@@ -57,6 +57,13 @@ public sealed class WorldCamera
     /// </summary>
     public bool PoseSkipFlag { get; private set; }
     public bool PoseComputed { get; private set; }
+    public bool FollowSpringRan { get; private set; }
+    public const uint FollowRngFn = 0x004978A0;
+    public const uint YawRotateFn = 0x00A14260;
+    public const float FollowWeightMin = 0.04f;
+    public const float FollowWeightMax = 0.2f;
+    public const uint FollowWeightMinBits = 0x3D23D70A;
+    public const uint FollowWeightMaxBits = 0x3E4CCCCD;
     public CameraSlot SlotA { get; private set; } = CameraSlot.CtorDefault();
     public CameraSlot SlotB { get; private set; } = CameraSlot.Zero();
     public CameraSlot Output { get; private set; } = CameraSlot.Zero();
@@ -74,6 +81,7 @@ public sealed class WorldCamera
         Seeded = false;
         PoseSkipFlag = false;
         PoseComputed = false;
+        FollowSpringRan = false;
         SlotA = CameraSlot.CtorDefault();
         SlotB = CameraSlot.Zero();
         Output = CameraSlot.Zero();
@@ -119,6 +127,27 @@ public sealed class WorldCamera
         var blended = Normalize(-first * (1f - k) - second * k);
         SlotA = SlotA with { V2 = first, V3 = second, V4 = blended };
         PoseComputed = true;
+    }
+
+    /// <summary>
+    /// <c>006B3030</c>. Gate
+    /// <c>[+3168]==0</c>. <c>004978A0</c>
+    /// is an LCG (not a named float);
+    /// first-seen seed is UNREAD so the
+    /// yaw rotate is not applied.
+    /// Weight0 already 0.2 stays inside
+    /// <c>[0.04, 0.2]</c>. V0/V1 stay
+    /// ctor <c>(1,0,0)</c>.
+    /// </summary>
+    public void ApplyFollowSpring()
+    {
+        FollowSpringRan = true;
+        var w = SlotA.Weight0;
+        if (w < FollowWeightMin)
+            w = FollowWeightMin;
+        else if (w > FollowWeightMax)
+            w = FollowWeightMax;
+        SlotA = SlotA with { Weight0 = w };
     }
 
     private static Vector3 Normalize(Vector3 v)

@@ -480,6 +480,25 @@ public sealed class EngineLifecycle : IDisposable
     public const uint WorldTickFn = 0x004A5A40;
     public const uint WorldTickThunk = 0x00629270;
     public const uint WorldFrameIncSite = 0x004A5E10;
+    /// <summary>
+    /// <c>004A5A40</c> at <c>004A5D88</c>
+    /// when <c>[world+260]==0</c>:
+    /// <c>004B4490</c> → <c>00CB8220</c>
+    /// → <c>00CB7C40</c>+<c>00CB8170</c>
+    /// → <c>00CB7950</c>. First-seen
+    /// fiber <c>+41==0</c> takes
+    /// <c>vtbl+4</c>, not
+    /// <c>00A44880</c>.
+    /// </summary>
+    public const uint QuestManagerPumpFn = 0x004B4490;
+    public const uint QuestManagerVa = 0x013B89FC;
+    public const uint QuestListPumpFn = 0x00CB8220;
+    public const uint QuestListWalkAFn = 0x00CB7C40;
+    public const uint QuestListWalkBFn = 0x00CB8170;
+    public const uint QuestFiberAttachFn = 0x00CB7950;
+    public const uint QuestFiberUpdateVtbl = 24;
+    public const int QuestFiberUpdateFlagOffset = 41;
+    public const uint QuestSubjectFillFn = 0x008884D0;
     public const uint WorldTickTableVa = 0x013B9288;
     public const uint WorldTickSlot1FnVa = 0x013B92C8;
     public const int WorldTickSlotStride = 64;
@@ -1021,6 +1040,11 @@ public sealed class EngineLifecycle : IDisposable
     public IReadOnlyList<InsertedThing> InsertedThings => _inserted;
     public bool PlayerGuiReady { get; private set; }
     public bool QuestsInitDone { get; private set; }
+    public bool QuestPumpRan { get; private set; }
+    public int QuestPumpWalked { get; private set; }
+    public int QuestVtbl24Calls { get; private set; }
+    public bool FollowSpringRan { get; private set; }
+    public bool SubjectFillNoted { get; private set; }
     public QuestFile? Quests { get; private set; }
     public ScriptRuntime? Runtime { get; private set; }
     public IReadOnlyList<string> ActivatedQuests => _activatedQuests;
@@ -1617,6 +1641,8 @@ public sealed class EngineLifecycle : IDisposable
             "009D9C80 [0x13BC800] device flags");
         Note(DisplayFlush2dFn, "Frontend", "D3D9",
             "009D9C80 [0x13CB508]+10248 bump");
+        Note(DisplayFlush2dFn, "Frontend", "D3D9",
+            "009D9C80 dirty-list no type 0x22");
         Note(DisplayFlushLayersFn, "Frontend", "D3D9",
             $"009DA9F0({DisplayFlushLayersArg})");
         FrontendFlushCount++;
@@ -2413,9 +2439,38 @@ public sealed class EngineLifecycle : IDisposable
     public void TickWorld()
     {
         Note(WorldTickFn, "GamePump", "World", "004A5A40");
+        PumpQuests();
         WorldFrame++;
         Note(WorldFrameIncSite, "GamePump", "World",
             $"004A5E10 inc WorldFrame={WorldFrame}");
+    }
+
+    /// <summary>
+    /// <c>004A5D88</c> <c>004B4490</c>
+    /// when world+260 is 0. Walks
+    /// <c>00CB8220</c>. First-seen
+    /// <c>[fiber+41]==0</c> so
+    /// <c>00CB7950</c> takes
+    /// <c>vtbl+4</c>, not
+    /// <c>00A44880</c>.
+    /// </summary>
+    public void PumpQuests()
+    {
+        Note(QuestManagerPumpFn, "GamePump", "Quest",
+            $"004B4490 [0x{QuestManagerVa:X}]");
+        Note(QuestListPumpFn, "GamePump", "Quest", "00CB8220");
+        Note(QuestListWalkAFn, "GamePump", "Quest", "00CB7C40");
+        Note(QuestListWalkBFn, "GamePump", "Quest", "00CB8170");
+        QuestPumpWalked = 0;
+        QuestVtbl24Calls = 0;
+        foreach (var name in _activatedQuests)
+        {
+            Note(QuestFiberAttachFn, "GamePump", "Quest",
+                $"00CB7950 +{QuestFiberUpdateFlagOffset}=0 {name}");
+            QuestPumpWalked++;
+        }
+
+        QuestPumpRan = true;
     }
 
     /// <summary>
@@ -3133,13 +3188,18 @@ public sealed class EngineLifecycle : IDisposable
                 "006B3FF0 +68 " + (FirstSceneMapName ?? ""));
             Note(WorldCamera.FollowSlotFn, "LevelLoader", "Camera",
                 "008889C0 [this+72]");
+            Note(QuestSubjectFillFn, "LevelLoader", "Camera",
+                "008884D0 list helper not V0");
+            SubjectFillNoted = true;
             WorldCamera.SeedHero();
             Note(WorldCamera.PoseFn, "LevelLoader", "Camera",
                 "006B2CA0 +61=0 +3084=0 +412=0");
             Note(WorldCamera.NormalizeFn, "LevelLoader", "Camera",
                 "00A14440 normalize");
+            WorldCamera.ApplyFollowSpring();
             Note(WorldCamera.PoseFollowFn, "LevelLoader", "Camera",
-                "006B3030 UNREAD");
+                "006B3030 004978A0 LCG 00A14260");
+            FollowSpringRan = WorldCamera.FollowSpringRan;
             Note(WorldCamera.PoseTickFn, "LevelLoader", "Camera",
                 "006B3B80 UNREAD");
             ApplyWorldCamera(1f);
