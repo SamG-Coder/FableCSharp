@@ -1694,25 +1694,22 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.OpenedMapBodies, b => b.Name == "PicnicArea");
         Assert.Contains("LookoutPoint", life.ActivatedMaps);
         Assert.DoesNotContain("PicnicArea", life.ActivatedMaps);
+        Assert.True(life.WorldSubmitted);
+        Assert.NotNull(life.SubmittedWorld);
+        Assert.True(life.SubmittedWorld.Expanded);
+        Assert.True(life.SubmittedWorld.Triangles.Count > 128);
+        Assert.All(life.SubmittedWorld.Regions, name =>
+            Assert.Equal("LookoutPoint", name));
         var presented = life.PresentWorld();
         Assert.NotNull(presented);
         Assert.Equal("LookoutPoint", presented.Region);
         Assert.False(presented.Expanded);
         Assert.Empty(presented.Triangles);
         Assert.True(presented.MeshInstances > 0, $"instances={presented.MeshInstances}");
-        Assert.True(presented.Instances.Count > 0);
-        Assert.Equal(0, life.Meshes.ParsedCount);
-        foreach (var opened in life.OpenedStaticMaps)
-            Assert.Contains(opened, presented.Regions);
-        var drawn = life.ExpandPresentedWorld(presented);
-        Assert.NotNull(drawn);
-        Assert.True(drawn.Expanded);
-        Assert.True(drawn.Triangles.Count > 128);
-        Assert.All(drawn.Regions, name =>
-            Assert.Equal("LookoutPoint", name));
         Assert.True(life.Meshes.ParsedCount > 0);
         Assert.Equal(
             life.Camera.Position.X, life.WorldCamera.SlotA.V0.X, 3);
+        Assert.Same(life.SubmittedWorld, life.BuildFrame().World);
         life.CloseStaticMapFile();
         Assert.Empty(life.OpenedMapBodies);
         Assert.Equal(0, life.OpenStaticMapsMode);

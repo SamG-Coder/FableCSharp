@@ -943,6 +943,12 @@ public sealed class EngineLifecycle : IDisposable
     public IReadOnlyList<string> CompletedStages => _completed;
     public IReadOnlyList<string> RegisteredBanks => _banks;
     public GameInstall? Install { get; private set; }
+    public IEngineHost? Host { get; private set; }
+    public WmvPlayer? StartupAvi { get; private set; }
+    public WorldGeometry? SubmittedWorld { get; private set; }
+    public bool WorldSubmitted { get; private set; }
+
+    public void AttachHost(IEngineHost host) => Host = host;
 
     private readonly List<string> _completed = [];
     private readonly List<string> _banks = [];
@@ -1016,34 +1022,59 @@ public sealed class EngineLifecycle : IDisposable
     /// One <c>00412F90</c> / <c>0042EC7C</c> step.
     /// Returns false when the mode loop exits.
     /// </summary>
-    public bool Pump()
+    public bool Pump() => Pump(0f);
+
+    /// <summary>
+    /// One <c>00412F90</c> / <c>0042EC7C</c>
+    /// step. The host only queues input
+    /// and Presents what this returns.
+    /// </summary>
+    public bool Pump(float dt)
     {
         if (Stage == EngineStage.StartupVideos)
+        {
+            PumpInput();
+            if (QueuedPlayAviSkip())
+                SkipStartupVideo();
+            else
+                PumpStartupAvi(dt);
+            PresentToHost();
             return true;
+        }
+
         if (Stage == EngineStage.Frontend)
         {
+            UnloadStartupAvi();
             if (!FrontendUiPresent)
                 InitFrontendUi();
             PumpFrontendFrame();
+            MaybeActivateNewGameFromInput();
             if (RetailNewGameFlag)
             {
                 RequestNewGame();
                 EnterGame();
             }
 
+            PresentToHost();
             return true;
         }
+
         if (Stage == EngineStage.LeaveFrontend)
         {
             EnterGame();
+            PresentToHost();
             return true;
         }
 
         if (Stage == EngineStage.Game)
         {
             PumpGame();
+            if (HeroSpawned && !WorldSubmitted)
+                SubmitCurrentWorld();
+            PresentToHost();
             return true;
         }
+
         if (Stage == EngineStage.Shutdown)
             return false;
         return Stage != EngineStage.Exited;
@@ -1055,6 +1086,135 @@ public sealed class EngineLifecycle : IDisposable
         StartupVideoIndex < StartupVideos.Length
             ? StartupVideos[StartupVideoIndex]
             : null;
+
+    public void UnloadStartupAvi()
+    {
+        if (StartupAvi is null)
+            return;
+        StartupAvi.Dispose();
+        if (!StartupAvi.GraphReleased)
+        {
+            while (Stage == EngineStage.StartupVideos)
+                FinishStartupVideo();
+            StartupAvi = null;
+            return;
+        }
+
+        StartupAvi = null;
+    }
+
+    public void SkipStartupVideo()
+    {
+        UnloadStartupAvi();
+        if (Stage != EngineStage.StartupVideos)
+            return;
+        FinishStartupVideo();
+        EnsureStartupAvi();
+    }
+
+    public void SubmitCurrentWorld()
+    {
+        if (Install is null || CurrentRegion is null || !HeroSpawned)
+            return;
+        UnloadStartupAvi();
+        var opened = PresentWorld();
+        SubmittedWorld = ExpandPresentedWorld(opened);
+        WorldSubmitted = SubmittedWorld is { Expanded: true };
+        Note(OpenStaticMapsFn, "Submit", "World",
+            WorldSubmitted
+                ? "primary " + SubmittedWorld!.Region
+                : "submit miss");
+    }
+
+    private void EnsureStartupAvi()
+    {
+        if (Stage != EngineStage.StartupVideos || Install is null)
+            return;
+        if (StartupAvi is not null)
+            return;
+        if (CurrentStartupVideo is not { } video)
+            return;
+        var file = RegionTravel.ResolvePlayAviFile(Install, video.RelativePath);
+        if (file is null)
+        {
+            Note(PlayAviPlayer, "StartupVideos", "PlayAVI", "miss " + video.RelativePath);
+            FinishStartupVideo();
+            EnsureStartupAvi();
+            return;
+        }
+
+        StartupAvi = WmvPlayer.TryOpen(file);
+        Note(PlayAviPlayer, "StartupVideos", "PlayAVI",
+            video.RelativePath + " " + (WmvPlayer.LastError ?? "ok"));
+        if (StartupAvi is null)
+        {
+            FinishStartupVideo();
+            EnsureStartupAvi();
+        }
+    }
+
+    private void PumpStartupAvi(float dt)
+    {
+        EnsureStartupAvi();
+        if (StartupAvi is null)
+            return;
+        StartupAvi.TryAdvance(dt);
+        if (!StartupAvi.Ended)
+            return;
+        UnloadStartupAvi();
+        if (Stage == EngineStage.StartupVideos)
+            FinishStartupVideo();
+        EnsureStartupAvi();
+    }
+
+    private bool QueuedPlayAviSkip()
+    {
+        foreach (var (_, key) in Input.Applied)
+        {
+            if (RegionTravel.IsPlayAviSkipScan(key))
+                return true;
+        }
+
+        return false;
+    }
+
+    private void MaybeActivateNewGameFromInput()
+    {
+        if (Stage != EngineStage.Frontend)
+            return;
+        foreach (var (_, key) in Input.Applied)
+        {
+            if (key == RegionTravel.PlayAviSkipReturn)
+            {
+                ActivateNewGame();
+                return;
+            }
+        }
+    }
+
+    private void PresentToHost()
+    {
+        Host?.Present(BuildFrame());
+    }
+
+    public EngineFrame BuildFrame()
+    {
+        var avi = StartupAvi;
+        var runtime = Runtime;
+        var playing = avi is { Rgba: not null } ||
+                      runtime is { AviPlaying: true, AviRgba: not null };
+        var fade = runtime?.FadeColor ?? default;
+        return new EngineFrame(
+            Camera,
+            SubmittedWorld,
+            avi?.Width ?? runtime?.AviWidth ?? 0,
+            avi?.Height ?? runtime?.AviHeight ?? 0,
+            avi?.Rgba ?? runtime?.AviRgba,
+            avi?.FrameSerial ?? runtime?.AviFrameSerial ?? 0,
+            playing,
+            runtime?.OverlayAlphaByte ?? 0,
+            fade.R, fade.G, fade.B);
+    }
 
     /// <summary>
     /// <c>006286F0</c> returned for one table slot.
@@ -2739,6 +2899,7 @@ public sealed class EngineLifecycle : IDisposable
 
     public void Dispose()
     {
+        UnloadStartupAvi();
         CloseStaticMapFile();
         _levels?.Dispose();
         _levels = null;
