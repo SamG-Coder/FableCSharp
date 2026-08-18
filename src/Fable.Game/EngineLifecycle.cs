@@ -2553,6 +2553,10 @@ public sealed class EngineLifecycle : IDisposable
         Note(MeshBankLookupFn, "Init Mesh Bank", "Bank", "00A09F20");
         Note(MeshBankObjectCtor, "Init Mesh Bank", "Bank",
             $"00A27030 size 0x{MeshBank.ObjectSize:X} vtbl 0129CE94");
+        Note(MeshBank.OpenVtbl4, "Init Mesh Bank", "Bank",
+            "009D56C0 vtbl+4 Open Bank File Async");
+        Note(MeshBank.OpenBankFileAsync, "Init Mesh Bank", "Bank",
+            "009A7F80 [0x13CA79C]");
         Meshes.Open(Install);
         Note(MeshBankSetGlobalFn, "Init Mesh Bank", "Bank",
             $"004BBFD0 [0x13B8A04] entries={Meshes.EntryCount}");

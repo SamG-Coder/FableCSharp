@@ -25,6 +25,8 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x00B41E50u, EngineLifecycle.OpenStaticMapsAttach);
         Assert.Equal(0x0049E620u, EngineLifecycle.InitMeshBankFn);
         Assert.Equal(0x00A09F20u, EngineLifecycle.MeshBankLookupFn);
+        Assert.Equal(0x009D56C0u, MeshBank.OpenVtbl4);
+        Assert.Equal(0x009A7F80u, MeshBank.OpenBankFileAsync);
         Assert.Equal(0x00A27030u, EngineLifecycle.MeshBankObjectCtor);
         Assert.Equal(0x004BBFD0u, EngineLifecycle.MeshBankSetGlobalFn);
         Assert.Equal("MBANK_ALLMESHES", MeshBank.BankName);
@@ -1704,6 +1706,7 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Meshes.Opened);
         Assert.True(life.Meshes.EntryCount > 100, $"entries={life.Meshes.EntryCount}");
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InitMeshBankFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == MeshBank.OpenVtbl4);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameLoadWorldFn);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.GameLoadWorldFn &&

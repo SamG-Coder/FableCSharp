@@ -22,6 +22,15 @@ public sealed class MeshBank : IDisposable
     public const uint LookupFn = 0x00A09F20;
     public const uint ObjectCtor = 0x00A27030;
     public const uint ObjectVtbl = 0x0129CE94;
+    /// <summary>
+    /// <c>00A09F20</c> miss: <c>[bank].vtbl+4</c>
+    /// is <c>009D56C0</c> ("Open Bank File
+    /// Async") then <c>009A7F80</c> on
+    /// <c>[0x13CA79C]</c>.
+    /// </summary>
+    public const uint OpenVtbl4 = 0x009D56C0;
+    public const uint OpenBankFileAsync = 0x009A7F80;
+    public const uint OpenBankTableVa = 0x013CA79C;
     public const int ObjectSize = 0x460;
     public const uint SetGlobalFn = 0x004BBFD0;
     public const uint GlobalVa = 0x013B8A04;
