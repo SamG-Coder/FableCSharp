@@ -552,7 +552,7 @@ public sealed class EngineLifecycleTests
         life.ActivateNewGame();
         Assert.True(life.Pump());
         Assert.True(life.Pump());
-        Assert.True(life.Pump());
+        life.LoadFromFirstRealRegion();
         Assert.Contains("LookoutPoint", life.ActivatedMaps);
         Assert.True(life.RegionThingMapsLoaded > 0);
         Assert.True(life.RegionThings.Count > 0, $"things={life.RegionThings.Count}");
@@ -591,7 +591,7 @@ public sealed class EngineLifecycleTests
         life.ActivateNewGame();
         Assert.True(life.Pump());
         Assert.True(life.Pump());
-        Assert.True(life.Pump());
+        life.LoadFromFirstRealRegion();
         Assert.Equal("LookoutPoint", life.FirstSceneMapName);
         Assert.Contains(life.RegionThings, t =>
             t.DefinitionType == RegionTravel.PlayerStartType &&
@@ -1637,6 +1637,41 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Second_pump_004189C2_loops_inner_not_00501450()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.True(life.GamePumpFirstDone);
+        Assert.False(life.FirstRealRegionLoadDone);
+        Assert.False(life.GamePlus8);
+        var before = life.Trace.Events.Count;
+        Assert.True(life.Pump());
+        Assert.False(life.FirstRealRegionLoadDone);
+        Assert.False(life.GamePlus8);
+        Assert.Equal(2, life.FrameDtRingSamples);
+        var later = life.Trace.Events.Skip(before).ToList();
+        Assert.Contains(later, e =>
+            e.Va == EngineLifecycle.GamePumpQuitQuery &&
+            e.Action.Contains("→ 1", StringComparison.Ordinal));
+        Assert.Contains(later, e => e.Va == EngineLifecycle.GamePumpInnerStartFn);
+        Assert.Contains(later, e => e.Va == EngineLifecycle.GamePumpUpdate);
+        Assert.Contains(later, e =>
+            e.Va == EngineLifecycle.GamePump &&
+            e.Action.Contains("[game+8]=0 loop", StringComparison.Ordinal));
+        Assert.DoesNotContain(later, e => e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.LoadRegionFn);
+        Assert.Equal(0, EngineLifecycle.EnginePlus8FirstSeen);
+        Assert.Equal(0, EngineLifecycle.GamePlus8FirstSeen);
+        Assert.Equal(1, EngineLifecycle.GamePumpQuitFirstSeen);
+        Assert.Equal(2, EngineLifecycle.GamePumpQuitLeave);
+    }
+
+    [Fact]
     public void Second_pump_00501450_is_004FEEC0_then_00500540_1_0_0()
     {
         var install = GameInstall.TryLocate();
@@ -1654,7 +1689,7 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0, life.CurrentRegionIndex);
         Assert.Null(life.CurrentRegion);
         Assert.False(life.FirstRealRegionLoadDone);
-        Assert.True(life.Pump());
+        life.LoadFromFirstRealRegion();
         Assert.True(life.FirstRealRegionLoadDone);
         var events = life.Trace.Events;
         var dummy = events.FindIndex(e =>
@@ -1680,7 +1715,7 @@ public sealed class EngineLifecycleTests
         var restore = events.FindIndex(e =>
             e.Va == EngineLifecycle.LoadFromFirstRealRegionFn &&
             e.Action.Contains("(0,0,1)", StringComparison.Ordinal));
-        Assert.True(dummy >= 0 && enqueue > dummy, "00501450 after dummy pump");
+        Assert.True(dummy >= 0 && enqueue > dummy, "00501450 body after dummy; not a 004189C2 E8");
         Assert.True(unload > enqueue, "004FEEC0 after 00501450");
         Assert.True(first > unload, "00500540(1,0,0) after 004FEEC0");
         Assert.True(second > first && last > second,
@@ -1724,7 +1759,7 @@ public sealed class EngineLifecycleTests
         life.RequestNewGame();
         Assert.True(life.Pump());
         Assert.True(life.Pump());
-        Assert.True(life.Pump());
+        life.LoadFromFirstRealRegion();
         Assert.Contains("LookoutPoint", life.ActivatedMaps);
         var events = life.Trace.Events;
         var job = events.FindIndex(e => e.Va == EngineLifecycle.BuildLoadJobFn);
@@ -1771,7 +1806,7 @@ public sealed class EngineLifecycleTests
         life.RequestNewGame();
         Assert.True(life.Pump());
         Assert.True(life.Pump());
-        Assert.True(life.Pump());
+        life.LoadFromFirstRealRegion();
         Assert.Equal(141, life.CurrentRegionIndex);
         var events = life.Trace.Events;
         var skipNav = events.FindIndex(e =>
@@ -2375,7 +2410,7 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Pump());
         Assert.Equal(0, life.CurrentRegionIndex);
         Assert.Null(life.CurrentRegion);
-        Assert.True(life.Pump());
+        life.EnqueueAfterDummy();
         Assert.Equal(4, life.CurrentRegionIndex);
         Assert.Equal("StartOakVale", life.CurrentRegion!.RegionName);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LoadRegionByNameFn);
@@ -2516,8 +2551,9 @@ public sealed class EngineLifecycleTests
         Assert.False(life.FirstRealRegionLoadDone);
         Assert.True(string.IsNullOrEmpty(life.PlayerRegionName));
 
-        Assert.True(life.Pump());
+        life.LoadFromFirstRealRegion();
         Assert.True(life.FirstRealRegionLoadDone);
+        Assert.True(life.Pump());
         Assert.Equal(2, life.GameUpdateCount);
         Assert.Equal(2, life.GameRenderCount);
         Assert.Equal(0, life.WorldFrame);
@@ -2745,7 +2781,7 @@ public sealed class EngineLifecycleTests
         life.RequestNewGame();
         Assert.True(life.Pump());
         Assert.True(life.Pump());
-        Assert.True(life.Pump());
+        life.LoadFromFirstRealRegion();
         Assert.True(life.PlayerActionReady);
         Assert.Equal(0, life.WorldFrame);
         life.WorldFrame = 2;
@@ -2895,6 +2931,7 @@ public sealed class EngineLifecycleTests
         life.ActivateNewGame();
         Assert.True(life.Pump());
         Assert.True(life.Pump());
+        life.LoadFromFirstRealRegion();
         Assert.True(life.Pump());
         Assert.True(life.WorldSubmitted);
         var mesh = life.SubmittedMesh;

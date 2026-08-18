@@ -541,6 +541,18 @@ public sealed class EngineLifecycle : IDisposable
     public const int GamePumpQuitUpdate = 1;
     public const int GamePumpQuitFirstSeen = 1;
     /// <summary>
+    /// <c>009A6460</c>: <c>[engine+8]!=0</c>
+    /// → 2 (write <c>[game+8]=1</c> and
+    /// leave). First-seen
+    /// <c>[engine+8]==0</c> → 1 so
+    /// <c>004189C2</c> loops. Not
+    /// <c>00501450</c>.
+    /// </summary>
+    public const int EnginePlus8Offset = 8;
+    public const int EnginePlus8FirstSeen = 0;
+    public const int GamePlus8Offset = 8;
+    public const int GamePlus8FirstSeen = 0;
+    /// <summary>
     /// First <c>004189C2</c> after dummy
     /// record: <c>0040D2A0</c> singleton
     /// <c>[0x13B7D4C]</c> alloc <c>0x140</c>
@@ -1380,6 +1392,12 @@ public sealed class EngineLifecycle : IDisposable
     /// writes 1 at entry, 0 on leave.
     /// </summary>
     public bool GamePlus9 { get; private set; }
+    /// <summary>
+    /// <c>[game+8]</c>. First-seen 0 so
+    /// <c>004189C2</c> loops after
+    /// <c>009AC9E0</c>.
+    /// </summary>
+    public bool GamePlus8 { get; private set; }
     /// <summary>
     /// <c>004AE9D0</c> <c>+9836</c> =
     /// <c>[game+72]</c>.
@@ -2760,10 +2778,10 @@ public sealed class EngineLifecycle : IDisposable
             return;
         GamePumpFrames++;
         GamePlus9 = true;
+        GamePlus8 = false;
         if (GamePumpFirstDone)
         {
-            EnqueueAfterDummy();
-            NoteInnerLoopDt();
+            NoteInnerLoopHead();
             PumpGameUpdate();
             NoteInnerLoopTail();
             return;
@@ -2778,6 +2796,7 @@ public sealed class EngineLifecycle : IDisposable
         {
             Note(NamedStartFn, "GamePump", "Region", "00416268 named start");
             GamePumpFirstDone = true;
+            NoteInnerLoopHead();
             PumpGameUpdate();
             NoteInnerLoopTail();
             return;
@@ -2791,11 +2810,8 @@ public sealed class EngineLifecycle : IDisposable
             $"004FC180 [WorldMap+44]+{CurrentRegionIndex}*{NewRegionRecordSize}");
         ActivateCurrentRegion();
         ApplyFirstPumpAviAndFade();
-        Note(GamePumpInnerStartFn, "GamePump", "Game", "0098E1B0 ret");
-        Note(GamePumpQuitQuery, "GamePump", "Engine",
-            $"009A6460 [engine+8]=0 → {GamePumpQuitFirstSeen}");
         GamePumpFirstDone = true;
-        NoteInnerLoopDt();
+        NoteInnerLoopHead();
         PumpGameUpdate();
         NoteInnerLoopTail();
     }
@@ -2807,6 +2823,21 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>004162B5</c>, not
     /// <c>00417747</c>.
     /// </summary>
+    /// <summary>
+    /// One <c>004189C2</c> inner
+    /// iteration while
+    /// <c>[game+8]==0</c>.
+    /// <c>009A6460</c> first-seen 1.
+    /// Not <c>00501450</c>.
+    /// </summary>
+    private void NoteInnerLoopHead()
+    {
+        Note(GamePumpInnerStartFn, "GamePump", "Game", "0098E1B0 ret");
+        Note(GamePumpQuitQuery, "GamePump", "Engine",
+            $"009A6460 [engine+{EnginePlus8Offset}]={EnginePlus8FirstSeen} → {GamePumpQuitFirstSeen}");
+        NoteInnerLoopDt();
+    }
+
     private void NoteInnerLoopDt()
     {
         Note(InnerLoopDtFn, "GamePump", "Time",
@@ -2834,6 +2865,8 @@ public sealed class EngineLifecycle : IDisposable
         Note(PlayerManagerGetter, "GamePump", "Player",
             "0044C6B0 [0x13B879C]");
         Note(PlayerManagerIdleFn, "GamePump", "Player", "009AC9E0 ret 4");
+        Note(GamePump, "GamePump", "Game",
+            $"[game+{GamePlus8Offset}]={GamePlus8FirstSeen} loop");
     }
 
     /// <summary>
@@ -3583,6 +3616,7 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public void LoadFromFirstRealRegion()
     {
+        FirstRealRegionLoadDone = true;
         var saved = CurrentRegionIndex;
         var count = (World?.Regions.Count ?? 0) + RegionTableDummyCount;
         Note(LoadFromFirstRealRegionFn, "LevelLoader", "Region",
@@ -3622,9 +3656,12 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
-    /// After dummy <c>004189C2</c>: persist
-    /// name uses <c>00487C20</c>, else
-    /// <c>00501450</c> index 1. Not
+    /// Recovered <c>00501450</c> body.
+    /// Not a first-seen <c>004189C2</c>
+    /// callee: after <c>009AC9E0</c>
+    /// native loops while
+    /// <c>[game+8]==0</c>. E8 caller
+    /// still UNREAD. Not
     /// <c>00DBDE40</c>.
     /// </summary>
     public void EnqueueAfterDummy()

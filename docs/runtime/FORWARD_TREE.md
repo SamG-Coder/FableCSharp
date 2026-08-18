@@ -408,6 +408,8 @@ then inner loop until [game+8]  PROVEN
 ├── 00415E85  PROVEN first-seen skip
 │   └── [0x13B85F1]==0 (no writer) → 00BFE9F9 only
 └── 0044C6B0  [0x13B879C] then 009AC9E0  ret 4  PROVEN
+    then cmp [game+8] ; je 00418AB1
+    first-seen [game+8]=0 so loop  PROVEN
 ```
 
 **First** `004189C2` sees index 0 (dummy). It does **not**
@@ -422,7 +424,13 @@ vtbl+28). After it: `00416202` pushes the inner dt onto
 the `0049BA70` ring; `00415E85` first-seen skips
 (`[0x13B85F1]` no writer); `009AC9E0` is `ret 4`.
 Host memlog-before-`004162B5` is DISPROVEN.
-`00501450` caller still UNREAD.
+After `009AC9E0`, `[game+8]==0` (`009A6460`
+`[engine+8]==0` → 1) so the same inner
+iteration repeats. Host `EnqueueAfterDummy`
+/`00501450` on the second `Pump` is
+DISPROVEN as that next first-seen callee.
+`004175E5` is teardown after leave, not
+first-seen. `00501450` E8 caller still UNREAD.
 
 ---
 
@@ -431,7 +439,7 @@ Host memlog-before-`004162B5` is DISPROVEN.
 Reached after dummy pump. Not `00DBDE40`.
 
 ```
-enqueue (host second 004189C2 after dummy; E8 caller UNREAD)
+enqueue (E8 caller UNREAD; not the second 004189C2 inner iteration)
 └── 00501450  PROVEN body
     ├── 00449970 / 00487DC0  player (may miss)
     ├── 004FEEC0(current=0, 0)  +156=0  PROVEN
