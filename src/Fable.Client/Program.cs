@@ -146,6 +146,14 @@ window.Update += dt =>
 
     if (life.Stage == EngineStage.Game)
     {
+        var aDown = keyboard.IsKeyPressed(Key.A);
+        if (aDown && !aWasDown)
+            life.QueueInput(EngineInput.TypeKey, EngineInput.KeyDikA);
+        aWasDown = aDown;
+        var bDown = keyboard.IsKeyPressed(Key.B);
+        if (bDown && !bWasDown)
+            life.QueueInput(EngineInput.TypeKey, EngineInput.KeyDikB);
+        bWasDown = bDown;
         var first = !life.GamePumpFirstDone;
         var before = life.CurrentRegion;
         life.Pump();

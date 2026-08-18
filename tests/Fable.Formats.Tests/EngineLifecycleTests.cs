@@ -527,6 +527,13 @@ public sealed class EngineLifecycleTests
         Assert.Equal(768, life.BackBufferHeight);
         Assert.Equal(16, life.BackBufferBpp);
         Assert.Equal("Fable - The Lost Chapters", life.WindowTitle);
+        Assert.Equal(0, life.ViewportX);
+        Assert.Equal(0, life.ViewportY);
+        Assert.Equal(1024, life.ViewportWidth);
+        Assert.Equal(768, life.ViewportHeight);
+        Assert.Equal(0f, life.ViewportZNear);
+        Assert.Equal(1f, life.ViewportZFar);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.SetViewportFn);
         Assert.Equal(EngineLifecycle.WindowTitleId, "TEXT_GUI_WINDOW_TITLE");
         Assert.True(life.BackBufferWidth >= EngineLifecycle.GraphicsMinDimension);
         Assert.True(life.BackBufferHeight >= EngineLifecycle.GraphicsMinDimension);
@@ -621,6 +628,71 @@ public sealed class EngineLifecycleTests
             00418289 constructs the same singleton.
             Game poll 00446462 / 004963E6 unread.
             Not WASD. Not 00DBDE40.
+            """);
+    }
+
+    [Fact]
+    public void Game_00435530_Presents_009BEEB0_and_pumps_input()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        life.EnterGame();
+        Assert.Equal(1024, life.ViewportWidth);
+        Assert.Equal(768, life.ViewportHeight);
+        Assert.Equal(0, life.GamePresentCount);
+        var n = 0;
+        while (n < 8 && life.GamePresentCount == 0)
+        {
+            Assert.True(life.Pump());
+            n++;
+        }
+
+        Assert.True(life.WorldFrame >= 2);
+        Assert.True(life.RenderBodyRan);
+        Assert.True(life.GamePresentCount >= 1);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.BeginSceneFn && e.Stage == "GamePump");
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.EndSceneFn && e.Stage == "GamePump");
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PresentFn && e.Stage == "GamePump");
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GamePresentSite);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ClearColorFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.SetViewportFn);
+        Assert.True(life.Input.Present);
+        life.QueueInput(EngineInput.TypeKey, EngineInput.KeyMove3);
+        life.Pump();
+        Assert.Equal(EngineInput.KeyMove3, life.Input.LastKey);
+        Assert.Equal(new[] { 33, 0 }, life.Input.Actions);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-main-dx9.txt"),
+            """
+            Main DX9 after 00403079 / 009BF7E0:
+              backbuffer [0x137545C]x[0x1375460] = 1024x768
+              009BEF80 SetViewport vtbl+188
+                X=0 Y=0 W=1024 H=768 MinZ=0 MaxZ=1
+            Present sites (same 009BEEB0 device Present):
+              00628C82 PlayAVI
+              0042DF9E / 0042EC73 frontend
+              00435530 / 00435F50 game display
+                009BEF20 BeginScene
+                009D8CF0 clear
+                009BEF50 EndScene
+                009BEEB0 Present
+            00417001 does not Present; it calls
+            00435F70 → 00435530 after WorldFrame>1.
+            Client Draw is that Present, not a
+            second swapchain.
+            00446A30 player poll UNREAD (0 E8).
+            Game uses 00418289 + EngineInput.Pump.
+            Not 00DBDE40.
             """);
     }
 
@@ -1178,6 +1250,11 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x0055CB10u, EngineLifecycle.InputActionApply);
         Assert.Equal(0x0041DF10u, EngineLifecycle.InputBindDefaults);
         Assert.Equal(0x00A03B70u, EngineLifecycle.InputEventKeyFn);
+        Assert.Equal(0x00435F50u, EngineLifecycle.GamePresentSite);
+        Assert.Equal(0x009BEF80u, EngineLifecycle.SetViewportFn);
+        Assert.Equal(188, EngineLifecycle.SetViewportVtbl);
+        Assert.Equal(0x00446A30u, EngineLifecycle.PlayerInputPumpFn);
+        Assert.Equal(0x00446330u, EngineLifecycle.PlayerInputPollFn);
         Assert.Equal(0xD0, EngineInput.ObjectSize);
         Assert.Equal(0x6F, EngineInput.KeyMove0);
         Assert.Equal(0x1E, EngineInput.KeyDikA);

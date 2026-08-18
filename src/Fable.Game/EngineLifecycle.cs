@@ -413,6 +413,36 @@ public sealed class EngineLifecycle
     public const uint ThingWalkApplyFn = 0x0051EBD0;
     public const uint DisplayApplyThunk = 0x00435F70;
     public const uint DisplayApplyBodyFn = 0x00435530;
+    /// <summary>
+    /// Tail of <c>00435530</c>:
+    /// <c>009BEF20</c> BeginScene,
+    /// <c>009D8CF0</c> clear,
+    /// <c>009BEF50</c> EndScene,
+    /// <c>009BEEB0</c> Present.
+    /// Same device Present as frontend
+    /// and PlayAVI. Vulkan <c>Draw</c>
+    /// is that Present.
+    /// </summary>
+    public const uint GamePresentSite = 0x00435F50;
+    /// <summary>
+    /// <c>009BEF80</c> after
+    /// <c>009BF7E0</c>:
+    /// <c>SetViewport</c> vtbl+188,
+    /// full backbuffer, MinZ 0 MaxZ 1.
+    /// </summary>
+    public const uint SetViewportFn = 0x009BEF80;
+    public const int SetViewportVtbl = 188;
+    public const float ViewportMinZ = 0f;
+    public const float ViewportMaxZ = 1f;
+    /// <summary>
+    /// Player-manager poll
+    /// <c>00446A30</c> → <c>00446330</c>
+    /// / <c>009F4ED0</c>. Zero <c>E8</c>
+    /// callers; not the retail
+    /// <c>0042E3EE</c> walk. UNREAD.
+    /// </summary>
+    public const uint PlayerInputPumpFn = 0x00446A30;
+    public const uint PlayerInputPollFn = 0x00446330;
     public const uint CameraTimeFn = 0x00416231;
     public const uint CameraInterpolationFn = 0x0041707E;
     public const uint CameraInterpTimeFn = 0x004166E2;
@@ -638,6 +668,17 @@ public sealed class EngineLifecycle
     public int BackBufferHeight { get; private set; }
     public int BackBufferBpp { get; private set; }
     public string WindowTitle { get; private set; } = WindowTitleDefault;
+    /// <summary>
+    /// <c>009BEF80</c> after CreateDevice.
+    /// Full backbuffer, MinZ 0, MaxZ 1.
+    /// </summary>
+    public int ViewportX { get; private set; }
+    public int ViewportY { get; private set; }
+    public int ViewportWidth { get; private set; }
+    public int ViewportHeight { get; private set; }
+    public float ViewportZNear { get; private set; } = ViewportMinZ;
+    public float ViewportZFar { get; private set; } = ViewportMaxZ;
+    public int GamePresentCount { get; private set; }
     /// <summary>
     /// <c>0041E5F2</c> singleton. Built on
     /// the first <c>0042E3EE</c> /
@@ -1310,6 +1351,7 @@ public sealed class EngineLifecycle
         Input.Construct();
         Note(InputActionGetter, "GamePump", "Input",
             "0041E5F2 [0x13B8710] size 0xD0");
+        PumpInput();
         if (Input.Busy)
             Note(InputActionGetter, "GamePump", "Input",
                 $"+{EngineInput.BusyOffset} busy");
@@ -1574,13 +1616,22 @@ public sealed class EngineLifecycle
 
     /// <summary>
     /// <c>00435F70</c> jmp <c>00435530</c>.
-    /// Display frame body PARTIAL.
+    /// BeginScene / clear / EndScene /
+    /// Present are the same device
+    /// calls as frontend and PlayAVI.
+    /// Submit body (layers) PARTIAL.
     /// </summary>
     public void ApplyDisplayCamera()
     {
         Note(DisplayApplyThunk, "GamePump", "Display",
             "00435F70 jmp 00435530");
         Note(DisplayApplyBodyFn, "GamePump", "Display", "00435530");
+        Note(BeginSceneFn, "GamePump", "D3D9", "009BEF20 BeginScene");
+        Note(ClearColorFn, "GamePump", "D3D9", "009D8CF0 clear");
+        Note(EndSceneFn, "GamePump", "D3D9", "009BEF50 EndScene");
+        Note(GamePresentSite, "GamePump", "D3D9", "00435F50");
+        Note(PresentFn, "GamePump", "D3D9", "009BEEB0 Present");
+        GamePresentCount++;
     }
 
     /// <summary>
@@ -2453,6 +2504,14 @@ public sealed class EngineLifecycle
         BackBufferHeight = height;
         BackBufferBpp = DisplayDefaultBpp;
         WindowTitle = WindowTitleDefault;
+        ViewportX = 0;
+        ViewportY = 0;
+        ViewportWidth = width;
+        ViewportHeight = height;
+        ViewportZNear = ViewportMinZ;
+        ViewportZFar = ViewportMaxZ;
+        Note(SetViewportFn, "Setup library", "D3D9",
+            $"009BEF80 SetViewport vtbl+{SetViewportVtbl} {width}x{height}");
     }
 
     private void Note(uint va, string stage, string subsystem, string action) =>
