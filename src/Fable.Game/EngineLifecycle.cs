@@ -1424,6 +1424,7 @@ public sealed class EngineLifecycle : IDisposable
         SubmitC3dParsed = Meshes.ParsedCount - parsedBefore;
         SubmitElapsedMs = clock.Elapsed.TotalMilliseconds;
         LastLoadTiming = timing;
+        Console.WriteLine(timing.Format());
         foreach (var row in timing.Rows)
             Timing.Add("submit/" + row.Name, row.Ms, row.Extra);
         Timing.Add("submit", SubmitElapsedMs,

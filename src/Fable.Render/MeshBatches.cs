@@ -112,19 +112,18 @@ public static class MeshBatches
     {
         var total = 0;
         foreach (var (mesh, _) in instances)
-        {
-            var source = mesh.BoneCount > 0 ? mesh.TrianglesForPose() : mesh.Triangles;
-            total += source.Count * 3;
-        }
+            total += mesh.Triangles.Count * 3;
 
         var vertices = new MeshVertex[total];
         var draws = new List<MeshDraw>(instances.Count);
         var cursor = 0;
         foreach (var (mesh, transform) in instances)
         {
-            var source = mesh.BoneCount > 0
-                ? mesh.TrianglesForPose()
-                : mesh.Triangles;
+            // First-seen dest is already in
+            // MeshFile.Triangles (00A9E1E0 × IBM).
+            // Do not CPU-re-skin; c38 upload is
+            // the later GPU path.
+            var source = mesh.Triangles;
             var layer = mesh.BoneCount > 0 ? SceneLayer.Palskin : SceneLayer.Prop;
             foreach (var group in source.GroupBy(tri => (
                 tri.TextureId,

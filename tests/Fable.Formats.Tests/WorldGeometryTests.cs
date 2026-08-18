@@ -762,6 +762,21 @@ public sealed class WorldGeometryTests
     }
 
     [Fact]
+    public void Palskin_submit_uses_file_triangles_not_repose()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var bank = new MeshBank();
+        bank.Open(install);
+        var mesh = bank.Get(4299);
+        Assert.NotNull(mesh);
+        Assert.True(mesh.BoneCount > 0);
+        var built = MeshBatches.BuildMeshes([(mesh, Matrix4x4.Identity)]);
+        Assert.Equal(mesh.Triangles.Count * 3, built.Vertices.Length);
+        Assert.All(built.Draws, d => Assert.Equal(0x100u, d.PassBit));
+    }
+
+    [Fact]
     public void MeshBank_does_not_reparse_c3d()
     {
         var install = GameInstall.TryLocate();
