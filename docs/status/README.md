@@ -14,15 +14,15 @@ or in tests/code, treat it as **UNREAD**.
 `CAM_OVIF_SHOT2`) so `CS_OAKVALE_INTRO_FATHER` can run on a real
 world clock.
 
-Snapshot: **2026-08-18**, master merge `85edc7c`, runtime HEAD
-`fe6a11e` (*Runtime: first LookoutPoint scene consumes
-RegionThings and hero camera.*).
-Just locked on this path: `8f89aad`, `ea479d2`, `fe6a11e`.
+Snapshot: **2026-08-18**, master merge `5e8ccfe`, runtime HEAD
+`21491ac` (*Runtime: 0049F180 Init GUI is PLAYER_GUI_PC; Init
+Quests list still unread.*).
+Just locked on this path: `e0e0511`, `21491ac`.
 Master is still proving **boot / world clock**, not animation.
 README’s long-term priority list still starts with animation; that
 list is not the current phase.
 
-Live site: <https://samg-coder.github.io/FableCSharp/status/>
+Live site: <https://samg-coder.github.io/FableCSharp/docs/status/index.html>
 ([index.html](index.html) locally; GitHub Pages from `master` `/docs`).
 
 ## How to read this
@@ -108,10 +108,9 @@ when a ledger or test already records them.
 
 ### Phase 1 in progress — boot / world clock (current master)
 
-Recent commits (`8bccec3` … `fe6a11e`) lock the retail pump, not
-`00DBDE40`. Just locked: Load Single Thing hero at `GuildArrivalHSP`
-(`8f89aad`), Create Players `+9826` (`ea479d2`), no-save first
-rendered scene LookoutPoint + hero camera (`fe6a11e`).
+Recent commits (`8bccec3` … `21491ac`) lock the retail pump, not
+`00DBDE40`. Just locked: `00662880` CREATURE_HERO mesh 4299
+(`e0e0511`), Init GUI `PLAYER_GUI_PC` (`21491ac`).
 
 | Item | Status | Evidence |
 |---|---|---|
@@ -138,11 +137,14 @@ rendered scene LookoutPoint + hero camera (`fe6a11e`).
 | Frontend frame `0042EC7C`: input `0042E3EE` → fill → draw `0042DF9E` (BeginScene / UI vtbl+8 / EndScene / Present) | PROVEN | `0d8f5e5` / `Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present` |
 | Same Present as PlayAVI (`009BEEB0`); extra `.wmv` after draw skipped (`00595A03` always 0) | PROVEN | same |
 | `006C2170` Loading objects → `00522720` / `00521AE0` current-map `.tng` (LookoutPoint on no-save) | PROVEN | `1ebece6` / `Loading_objects_00521AE0_loads_LookoutPoint_tng` |
-| `0051FD80` Load Single Thing: no-save LookoutPoint TNG has no PlayerCreature; `HOLY_SITE_PLAYER_START` `GuildArrivalHSP` → `00489D40` / `006AC910` inserts PlayerCreature at that pose | PROVEN | `8f89aad` / `Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint` |
+| `0051FD80` Load Single Thing: no-save LookoutPoint TNG has no PlayerCreature; `HOLY_SITE_PLAYER_START` `GuildArrivalHSP` → `00489D40` / `006AC910` inserts PlayerCreature at that pose | PROVEN | `8f89aad` / `Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint` (refined by `e0e0511`) |
 | No-save hero is `00DBDE40` / `CREATURE_HERO_CHILD` / StartOakVale | DISPROVEN | same |
 | `004AE940` Create Players writes `[player+9826]=1` because `0099A350` always returns 1 (`al=1`) | PROVEN | `ea479d2` / `CreatePlayers_004AE940_sets_plus9826_via_0099A350` |
 | `+9826` stays 0 after Create Players (first `004162B5` skips world) | DISPROVEN | same; first pump takes player/world/vtbl+24; `WorldFrame` increments |
 | No-save first *rendered* scene is LookoutPoint `RegionThings` + hero camera `006B3FF0`; client `BindLifecycleFirstRegion` skips if map name contains StartOakVale | PROVEN | `fe6a11e` / same LookoutPoint test + client early return |
+| `00662880` / `004CA010` insert binds `CREATURE_HERO` mesh 4299 after the `PLAYER_HERO` miss chain | PROVEN | `e0e0511` / `Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint` (`HeroMeshId=4299`) |
+| `0049F180` after characters: Init GUI `0043A380` `PLAYER_GUI_PC` | PROVEN | `21491ac` / same test (`PlayerGuiReady`) |
+| Init Quests `004B4260` / `00CB5AD0` game+172 list | PARTIAL | `21491ac`; `QuestsInitDone=false`; list still UNREAD |
 | Game pump / first region is `00DBDE40` / StartOakVale setup | DISPROVEN | tests above |
 | No-save writes `[record+36]` | DISPROVEN | `recover-record36` text in `Camera_004164E0_runs_on_install_after_WorldFrame`; null still loads |
 
@@ -176,6 +178,7 @@ the no-save path.
 | `0041714D` when `world+164 != 0` | UNREAD | Default New Game is `world+164==0` |
 | Slot fields beyond `+6296/+6312/+6328` (weights / `+6340/+6352`) | UNREAD | Lerp into `ScriptedCamera` is PROVEN; leftover slot bodies are not |
 | `00435530` display apply | PARTIAL | Thunk `00435F70` is the jmp |
+| Init Quests list at game+172 (`004B4260` / `00CB5AD0`) | PARTIAL | `21491ac`; `QuestsInitDone=false`; list still UNREAD |
 | Who writes persist `PlayerRegionName` on New Game | UNREAD | Click/message path is PROVEN; persist HEADER writer is not |
 | `[esi+42]` load/save | UNREAD | `recover-00595582`; `[esi+41]` Leave is PROVEN |
 | Global-things *use* after `004FDBC0` / `.gtg` parse | UNREAD | Load switch is PROVEN; `00521AE0` is per-map TNG, not this apply |
@@ -208,10 +211,12 @@ opcode.” Last persist-vector-0 command:
 | `SneakTo` / `WalkTo` mesh move (`004C72B0` stub) | PARTIAL | `FirstSeenSneakToAppliesMove=false` |
 | `PlayCombatAnimation` pose | PARTIAL | `vtbl+76` does not read the name |
 | `call [vtbl+8]` resume site; `vtbl+28` yield body; `Main` `00CDD440` | UNREAD | PARITY 0b |
+| PlayAVI dest vs `Silk.WindowOptions.DefaultVulkan` 1600×900 (not D3D `CreateDevice` backbuffer) | PARTIAL | issue #8, `Program.cs`, `PlayAviLetterbox` |
+| `WmvPlayer` never QIs `IBasicAudio` (native `00A3B9D0` does) | PARTIAL | issue #9 |
 
 `DoScriptFrame` / `PlayAVI` / cameras / fades are **PROVEN** at the
-script layer. Do not invent fade/AVI/wake playback beyond those
-bodies.
+script layer. Dest/window and `IBasicAudio` are **PARTIAL** leftovers.
+Do not invent fade/AVI/wake playback beyond those bodies.
 
 ### 3. First-scene render leftovers
 
@@ -232,8 +237,10 @@ From [FIRST_SCENE_AUDIT.md](../render/FIRST_SCENE_AUDIT.md)
 - particles / HUD / shadows / `0x400000` sky (not submitted)
 
 TEMPORARY stand-ins (LINEAR/REPEAT, MaxLod=1, Z test+write on) stay
-classified. PlayAVI *script* apply is PROVEN; leftover timing vs
-Steam is PARITY Open item 0, not a first-scene 3D invent.
+classified. PlayAVI *script* apply is PROVEN; dest vs
+`Silk.WindowOptions.DefaultVulkan` 1600×900 (#8) and `IBasicAudio`
+(#9) are PARTIAL leftovers. Steam timing is PARITY Open item 0,
+not a first-scene 3D invent.
 
 ### 4. Animation (after boot)
 
