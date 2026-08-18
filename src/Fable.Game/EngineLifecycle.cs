@@ -385,6 +385,14 @@ public sealed class EngineLifecycle
     /// (<c>005009BE</c>).
     /// </summary>
     public const uint LoadRegionFn = 0x00500540;
+    /// <summary>
+    /// <c>006C2170</c> "Loading objects":
+    /// <c>00522720</c> then
+    /// <c>00521AE0</c> Thing Manager Load
+    /// From File (map <c>.tng</c>).
+    /// </summary>
+    public const uint LoadThingsForMapFn = 0x00522720;
+    public const uint ThingManagerLoadFileFn = 0x00521AE0;
     public const uint BuildLoadJobFn = 0x006C27A0;
     public const uint EnqueueLoadJobFn = 0x006C2120;
     public const uint LevelLoaderUpdate = 0x006C2710;
@@ -632,6 +640,8 @@ public sealed class EngineLifecycle
     public IReadOnlyList<int> GameTickTypes => _tickTypes;
     public bool LevelLoaderReady { get; private set; }
     public bool FirstRealRegionLoadDone { get; private set; }
+    public int RegionThingMapsLoaded { get; private set; }
+    public IReadOnlyList<ThingInstance> RegionThings => _regionThings;
     /// <summary>
     /// Persist <c>PlayerRegionName</c>. Empty on
     /// no-save New Game. Non-empty takes
@@ -661,6 +671,7 @@ public sealed class EngineLifecycle
     private readonly List<string> _openedStaticMaps = [];
     private readonly List<OpenedStaticMapBody> _openedBodies = [];
     private readonly List<int> _tickTypes = [];
+    private readonly List<ThingInstance> _regionThings = [];
 
     public static int CreateDeviceBehaviorFlags(bool hardwareTnl) =>
         hardwareTnl ? CreateDeviceHardwareFlags : CreateDeviceSoftwareFlags;
@@ -1770,17 +1781,28 @@ public sealed class EngineLifecycle
             $"006C2170 index={index} {region?.RegionName ?? (index == 0 ? "dummy" : "?")}");
         if (region is not null)
         {
-            foreach (var map in region.ContainsMaps)
+            BbbArchive? wad = null;
+            if (Install is not null && File.Exists(Install.WadPath))
+                wad = BbbArchive.Open(Install.WadPath);
+            try
             {
-                Note(LevelLoaderApply, "LevelLoader", "Region", "Loading topology " + map);
-                if (!_activatedMaps.Exists(m =>
-                        m.Equals(map, StringComparison.OrdinalIgnoreCase)))
-                    _activatedMaps.Add(map);
-                Note(ActivateTopologyFn, "LevelLoader", "Region",
-                    $"004FCBB0 {map} +38=1");
-                Note(SetMapLoadingFlagFn, "LevelLoader", "Region",
-                    $"004FCFE0 {map} +39");
-                Note(LevelLoaderApply, "LevelLoader", "Region", "Loading objects " + map);
+                foreach (var map in region.ContainsMaps)
+                {
+                    Note(LevelLoaderApply, "LevelLoader", "Region", "Loading topology " + map);
+                    if (!_activatedMaps.Exists(m =>
+                            m.Equals(map, StringComparison.OrdinalIgnoreCase)))
+                        _activatedMaps.Add(map);
+                    Note(ActivateTopologyFn, "LevelLoader", "Region",
+                        $"004FCBB0 {map} +38=1");
+                    Note(SetMapLoadingFlagFn, "LevelLoader", "Region",
+                        $"004FCFE0 {map} +39");
+                    Note(LevelLoaderApply, "LevelLoader", "Region", "Loading objects " + map);
+                    LoadRegionMapThings(map, wad);
+                }
+            }
+            finally
+            {
+                wad?.Dispose();
             }
 
             Note(LevelLoaderApply, "LevelLoader", "Region",
@@ -1788,6 +1810,40 @@ public sealed class EngineLifecycle
         }
 
         SetRegionAsLoaded(index);
+    }
+
+    /// <summary>
+    /// <c>00522720</c> then <c>00521AE0</c>
+    /// Thing Manager: Load From File.
+    /// </summary>
+    private void LoadRegionMapThings(string mapName, BbbArchive? wad)
+    {
+        Note(LoadThingsForMapFn, "LevelLoader", "Thing", "00522720 " + mapName);
+        Note(ThingManagerLoadFileFn, "LevelLoader", "Thing",
+            "00521AE0 Thing Manager: Load From File");
+        if (World is null)
+            return;
+        var map = World.Maps.FirstOrDefault(m =>
+            m.ScriptName.Equals(mapName, StringComparison.OrdinalIgnoreCase) ||
+            m.FileStem.Equals(mapName, StringComparison.OrdinalIgnoreCase));
+        if (map is null)
+        {
+            Note(ThingManagerLoadFileFn, "LevelLoader", "Thing", "no map " + mapName);
+            return;
+        }
+
+        var tng = TryLoadMapTng(map, wad);
+        if (tng is null)
+        {
+            Note(ThingManagerLoadFileFn, "LevelLoader", "Thing", "missing " + mapName);
+            return;
+        }
+
+        var count = tng.Things.Count();
+        _regionThings.AddRange(tng.Things);
+        RegionThingMapsLoaded++;
+        Note(ThingManagerLoadFileFn, "LevelLoader", "Thing",
+            $"things={count} {mapName}");
     }
 
     private ThingFile? TryLoadMapTng(WorldMap map, BbbArchive? wad)

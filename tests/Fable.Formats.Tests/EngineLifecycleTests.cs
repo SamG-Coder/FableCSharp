@@ -243,6 +243,45 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Loading_objects_00521AE0_loads_LookoutPoint_tng()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.Equal("LookoutPoint", life.CurrentRegion!.RegionName);
+        Assert.True(life.RegionThingMapsLoaded > 0);
+        Assert.True(life.RegionThings.Count > 0, $"things={life.RegionThings.Count}");
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LoadThingsForMapFn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.ThingManagerLoadFileFn &&
+            e.Action.StartsWith("things=", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+            "traces");
+        Directory.CreateDirectory(dest);
+        life.Trace.Write(Path.Combine(dest, "loading-objects-00521AE0.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-00521AE0.txt"),
+            """
+            006C2170 Loading objects:
+              00522720 thing-manager for map
+              00521AE0 Thing Manager: Load From File
+            Map .tng via ThingFile (loose or WAD).
+            No-save first region LookoutPoint.
+            Not 00DBDE40 / StartOakVale.
+            """);
+    }
+
+    [Fact]
     public void New_game_is_leave_frontend_then_FinalAlbion_wld()
     {
         var life = new EngineLifecycle();
@@ -622,6 +661,8 @@ public sealed class EngineLifecycleTests
         Assert.Equal(1, EngineLifecycle.WorldTickType);
         Assert.Equal(1, EngineLifecycle.RegionTableDummyCount);
         Assert.Equal(0x00500540u, EngineLifecycle.LoadRegionFn);
+        Assert.Equal(0x00522720u, EngineLifecycle.LoadThingsForMapFn);
+        Assert.Equal(0x00521AE0u, EngineLifecycle.ThingManagerLoadFileFn);
         Assert.Equal(0x006C2120u, EngineLifecycle.EnqueueLoadJobFn);
         Assert.Equal(0x006C2710u, EngineLifecycle.LevelLoaderUpdate);
         Assert.Equal(0x006C2170u, EngineLifecycle.LevelLoaderApply);
