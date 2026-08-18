@@ -14,6 +14,12 @@ public sealed class LevelLibrary : IDisposable
 {
     private readonly BbbArchive? _wad;
     private readonly StbArchive? _stb;
+    private readonly Dictionary<string, ThingFile?> _things =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, LevFile?> _levs =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, LevHeightField?> _heights =
+        new(StringComparer.OrdinalIgnoreCase);
 
     public GameInstall Install { get; }
     public WorldFile World { get; }
@@ -32,24 +38,30 @@ public sealed class LevelLibrary : IDisposable
 
     public ThingFile? TryLoadThings(string region)
     {
+        if (_things.TryGetValue(region, out var cached))
+            return cached;
         var map = World.FindMap(region);
         if (map is null)
+        {
+            _things[region] = null;
             return null;
-        var stem = map.FileStem;
+        }
 
+        var stem = map.FileStem;
+        ThingFile? file = null;
         var loose = Path.Combine(Install.LooseLevelsDirectory, stem + ".tng");
         if (File.Exists(loose))
-            return ThingFile.Load(loose);
-
-        if (_wad is not null)
+            file = ThingFile.Load(loose);
+        else if (_wad is not null)
         {
             var entry = _wad.Find(stem + ".tng")
                         ?? _wad.Find(map.LevelName.Replace(".lev", ".tng", StringComparison.OrdinalIgnoreCase));
             if (entry is not null)
-                return ThingFile.Parse(Encoding.ASCII.GetString(_wad.Read(entry)));
+                file = ThingFile.Parse(Encoding.ASCII.GetString(_wad.Read(entry)));
         }
 
-        return null;
+        _things[region] = file;
+        return file;
     }
 
     private string LooseHint(string region)
@@ -63,39 +75,49 @@ public sealed class LevelLibrary : IDisposable
 
     public LevFile? LoadCompiledLev(string region)
     {
+        if (_levs.TryGetValue(region, out var cached))
+            return cached;
         var map = World.FindMap(region);
         var stem = map?.FileStem ?? region;
         var entry = _wad?.Find(stem + ".lev")
                     ?? _wad?.Find(region + ".lev")
                     ?? (map is null ? null : _wad?.Find(map.LevelName));
-        return entry is null ? null : LevFile.Parse(_wad!.Read(entry));
+        var parsed = entry is null ? null : LevFile.Parse(_wad!.Read(entry));
+        _levs[region] = parsed;
+        return parsed;
     }
 
     public LevHeightField? LoadHeightField(string region)
     {
+        if (_heights.TryGetValue(region, out var cached))
+            return cached;
         if (_stb is null)
-            return null;
-        var entry = _stb.FindLev(region);
-        if (entry is null)
-            return null;
-        var map = World.FindMap(region);
-        if (map is null)
-            return null;
-        var compiled = _wad?.Find(region + ".lev");
-        var width = 128;
-        var height = 128;
-        if (compiled is not null)
         {
-            var wadLev = LevFile.Parse(_wad!.Read(compiled));
-            width = wadLev.GridWidth;
-            height = wadLev.GridHeight;
+            _heights[region] = null;
+            return null;
         }
 
-        return LevHeightField.Parse(_stb.Read(entry), map.MapX, map.MapY, width, height);
+        var entry = _stb.FindLev(region);
+        var map = World.FindMap(region);
+        if (entry is null || map is null)
+        {
+            _heights[region] = null;
+            return null;
+        }
+
+        var compiled = LoadCompiledLev(region);
+        var width = compiled?.GridWidth ?? 128;
+        var height = compiled?.GridHeight ?? 128;
+        var field = LevHeightField.Parse(_stb.Read(entry), map.MapX, map.MapY, width, height);
+        _heights[region] = field;
+        return field;
     }
 
     public void Dispose()
     {
+        _things.Clear();
+        _levs.Clear();
+        _heights.Clear();
         _wad?.Dispose();
         _stb?.Dispose();
     }

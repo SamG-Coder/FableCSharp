@@ -534,6 +534,22 @@ public sealed class LevFormatTests
     }
 
     [Fact]
+    public void LevelLibrary_reuses_lev_and_height_parses()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        var a = levels.LoadCompiledLev("LookoutPoint");
+        var b = levels.LoadCompiledLev("LookoutPoint");
+        var h1 = levels.LoadHeightField("LookoutPoint");
+        var h2 = levels.LoadHeightField("LookoutPoint");
+        Assert.NotNull(a);
+        Assert.Same(a, b);
+        Assert.NotNull(h1);
+        Assert.Same(h1, h2);
+    }
+
+    [Fact]
     public void Fine_lookout_mesh_is_128_by_128_interpolated_from_coarse()
     {
         var install = GameInstall.TryLocate();

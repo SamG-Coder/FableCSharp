@@ -2746,27 +2746,9 @@ public sealed class EngineLifecycle : IDisposable
                 logical + " / " + pc);
         }
 
-        if (install is null)
-            return;
-        foreach (var archive in new[]
-                 {
-                     Path.Combine(install.DataRoot, "graphics", "pc", "textures.big"),
-                     Path.Combine(install.DataRoot, "graphics", "graphics.big"),
-                 })
-        {
-            if (!File.Exists(archive))
-                continue;
-            using var big = BigArchive.Open(archive);
-            foreach (var (logical, pc) in RetailBanks)
-            {
-                var found = big.SubBanks.Any(b =>
-                    b.Name.Equals(pc, StringComparison.OrdinalIgnoreCase) ||
-                    b.Name.Equals(logical, StringComparison.OrdinalIgnoreCase));
-                if (found)
-                    Note(RegisterRetailBank, "Setup basic retail banks", "Bank",
-                        "present " + pc + " in " + Path.GetFileName(archive));
-            }
-        }
+        // 009A8150 / 009AC700 / 0099EFB0 insert names only.
+        // graphics.big / textures.big stay closed until
+        // 0049E620 / texture open.
     }
 
     private void ConstructLibrary()

@@ -1549,8 +1549,9 @@ public sealed class EngineLifecycleTests
         life.Bootstrap(install);
         Assert.Contains(life.Trace.Events, e =>
             e.Action.Equals("GBANK_MAIN / GBANK_MAIN_PC", StringComparison.Ordinal));
-        Assert.Contains(life.Trace.Events, e =>
+        Assert.DoesNotContain(life.Trace.Events, e =>
             e.Action.StartsWith("present GBANK_MAIN_PC", StringComparison.Ordinal));
+        Assert.Contains("GBANK_MAIN_PC", life.RegisteredBanks);
         foreach (var video in EngineLifecycle.StartupVideos)
         {
             var file = RegionTravel.ResolvePlayAviFile(install, video.RelativePath);
