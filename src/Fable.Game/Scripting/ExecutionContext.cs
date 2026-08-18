@@ -948,6 +948,20 @@ public sealed class MovementRuntime
     }
 }
 
+public sealed class HeroExpression
+{
+    public string Name { get; }
+    public int Param { get; set; }
+    public bool Flag { get; set; }
+
+    public HeroExpression(string name, int param, bool flag)
+    {
+        Name = name;
+        Param = param;
+        Flag = flag;
+    }
+}
+
 public sealed class HeroInventoryItem
 {
     public string Name { get; }
@@ -1008,6 +1022,7 @@ public sealed class WorldRuntime
     /// Hero morality. <c>vtbl+624</c>.
     /// </summary>
     public float HeroMorality { get; set; }
+    public readonly List<HeroExpression> Expressions = [];
 
     /// <summary>
     /// <c>00CC63E5</c>: give <c>count - already</c>
@@ -1037,6 +1052,26 @@ public sealed class WorldRuntime
     /// <c>00CC6281</c> <c>vtbl+624(amount)</c>.
     /// </summary>
     public void GiveHeroMorality(float amount) => HeroMorality += amount;
+
+    /// <summary>
+    /// <c>00CC6185</c> <c>vtbl+900(name,param,flag)</c>.
+    /// Def lookup <c>007ADB30</c> unread — name is stored.
+    /// </summary>
+    public void GiveHeroExpression(string name, int param, bool flag)
+    {
+        if (name.Length == 0)
+            return;
+        foreach (var existing in Expressions)
+        {
+            if (!existing.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+                continue;
+            existing.Param = param;
+            existing.Flag = flag;
+            return;
+        }
+
+        Expressions.Add(new HeroExpression(name, param, flag));
+    }
 
     public int GiveHero(string item, int count, int extra = -1, bool silent = false)
     {

@@ -492,6 +492,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "atof arg0; vtbl+624(amount); jmp 00CC7081; scale unread"),
+        Spec("GiveHeroExpression", 0x00CC6132, 0x00CC6185, "name[,flag][,param]",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "007ADB30 lookup; miss skip; vtbl+900(name,esi,flag); jmp 00CC2C6B"),
         Spec("SetDoorOpen", 0x00CC8A8D, 0x00CC8BEB, "name,IsFalse?",
             ScriptReturn.CompleteNow, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

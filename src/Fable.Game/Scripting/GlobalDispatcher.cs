@@ -689,6 +689,19 @@ public static class GlobalDispatcher
                 amount.ToString("0.##"));
         }
 
+        if (Eq(v, "GiveHeroExpression"))
+        {
+            var name = line.Arg(0);
+            if (name.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            var flag = ScriptLine.IsTrue(line.Arg(1));
+            var param = -1;
+            if (line.Arg(2).Length > 0)
+                ScriptLine.TryInt(line.Arg(2), out param);
+            ctx.World.GiveHeroExpression(name, param, flag);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name);
+        }
+
         if (Eq(v, "SetFlag"))
             return ApplySetFlag(line, ctx);
 

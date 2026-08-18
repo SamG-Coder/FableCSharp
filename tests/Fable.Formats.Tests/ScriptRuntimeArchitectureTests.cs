@@ -922,6 +922,79 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void GiveHeroExpression_stores_name_param_and_flag()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("ghe",
+            ["GiveHeroExpression EXPRESSION_FLIRT,TRUE,2", "CameraPause FALSE"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Single(runtime.World.Expressions);
+        Assert.Equal("EXPRESSION_FLIRT", runtime.World.Expressions[0].Name);
+        Assert.True(runtime.World.Expressions[0].Flag);
+        Assert.Equal(2, runtime.World.Expressions[0].Param);
+        Assert.Equal(0x00CC6185u, ScriptCommandMap.Find("GiveHeroExpression")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void GiveHeroExpression_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.StartsWith("GiveHeroExpression ", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "GiveHeroExpression EXPRESSION_FLIRT";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("GiveHeroExpression", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-expr", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("GiveHeroExpression ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Single(runtime.World.Expressions);
+        Assert.Equal(parsed.Arg(0), runtime.World.Expressions[0].Name);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-expr.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-giveheroexpression.txt"),
+            """
+            GiveHeroExpression 00CC6132 / apply 00CC6185
+              arg0 name required else 00CC7081
+              007ADB30 expression-def lookup; miss skip vtbl
+              esi=edi (-1); arg1 IsTrue flag; arg2 atoi param
+              vtbl+900(name, param, flag); jmp 00CC2C6B
+            Def table 007ADB30 UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void WalkTo_writes_destination_and_entity_task()
     {
         var runtime = ScriptRuntime.Detached();

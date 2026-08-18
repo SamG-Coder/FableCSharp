@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 100
-RECOVERED RETURN: 100
-RECOVERED APPLY: 35
+RECOVERED DISPATCH: 101
+RECOVERED RETURN: 101
+RECOVERED APPLY: 36
 IMPLEMENTED RUNTIME: 13
-UNREAD: 85
+UNREAD: 84
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -128,7 +128,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | GiveHero | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | GiveHeroHealth | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | GiveHeroMorality | Global | Proven | Proven | Proven | Proven | Partial | Partial |
-| GiveHeroExpression | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| GiveHeroExpression | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | AskQuestion | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | HideBodies | Global | Unread | Unread | Unread | Unread | Unread | Unread |
 | EnableBlackScreenSubtitles | Global | Unread | Unread | Unread | Unread | Unread | Unread |
