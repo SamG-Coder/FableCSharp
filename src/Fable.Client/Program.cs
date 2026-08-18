@@ -118,7 +118,7 @@ window.Update += dt =>
             life.RequestNewGame();
             life.Pump();
             Console.WriteLine(
-                $"Leave frontend {life.WorldFileName} → Init Game 0x{EngineLifecycle.GameModeCtor:X} unread");
+                $"Leave frontend {life.WorldFileName} → Init Game 0x{EngineLifecycle.GameModeCtor:X}");
         }
 
         nWasDown = nDown;
@@ -126,6 +126,16 @@ window.Update += dt =>
         life.Pump();
         window.Title = Title();
         return;
+    }
+
+    if (life.Stage == EngineStage.Game)
+    {
+        var before = life.CurrentRegion;
+        life.Pump();
+        if (before is null && life.CurrentRegion is { } now)
+            Console.WriteLine(
+                $"Game pump 0x{EngineLifecycle.GamePump:X} vtbl+52 0x{EngineLifecycle.WorldGetMapFn:X} " +
+                $"[{life.CurrentRegionIndex}] {now.RegionName} record+36 null (not 00DBDE40)");
     }
 
     var f2Down = keyboard.IsKeyPressed(Key.F2);
@@ -250,7 +260,9 @@ return 0;
 string Title()
 {
     var mapLabel = map is null
-        ? (life.Stage == EngineStage.Game ? life.WorldFileName ?? "game" : life.Stage.ToString())
+        ? (life.CurrentRegion is { } current
+            ? current.RegionName
+            : life.Stage == EngineStage.Game ? life.WorldFileName ?? "game" : life.Stage.ToString())
         : $"{map.ScriptName}  ({map.MapX},{map.MapY})";
     var pos = debugFly ? debugCam.Position : gameCam.Position;
     var camLabel = debugFly ? "debug" : (gameCam.ActiveName.Length == 0 ? "script" : gameCam.ActiveName);

@@ -151,6 +151,36 @@ public sealed class EngineLifecycleTests
         Assert.Equal(5, life.PlayerSlotsCreated);
         Assert.Equal(4, life.PlayerActiveCount);
         Assert.True(life.PlayerObjectReady);
+        Assert.Null(life.CurrentRegion);
+        Assert.False(life.GamePumpFirstDone);
+        Assert.True(life.Pump());
+        Assert.True(life.GamePumpFirstDone);
+        Assert.Null(life.CurrentRegion);
+        Assert.Equal(0, life.CurrentRegionIndex);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldGetMapFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GetCurrentRegionIndexFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GetRegionRecordFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.NamedStartFn);
+    }
+
+    [Fact]
+    public void Game_pump_is_004189C2_not_00DBDE40()
+    {
+        Assert.Equal(0x004189C2u, EngineLifecycle.GamePump);
+        Assert.Equal(0x004AE8C0u, EngineLifecycle.WorldGetMapFn);
+        Assert.Equal(52, EngineLifecycle.WorldGetMapVtbl);
+        Assert.Equal(20, EngineLifecycle.WorldMapFieldOffset);
+        Assert.Equal(0x004FB150u, EngineLifecycle.GetCurrentRegionIndexFn);
+        Assert.Equal(156, EngineLifecycle.WorldMapCurrentRegionIndexOffset);
+        Assert.Equal(0x004FC180u, EngineLifecycle.GetRegionRecordFn);
+        Assert.Equal(44, EngineLifecycle.WorldMapRegionTableOffset);
+        Assert.Equal(88, EngineLifecycle.NewRegionRecordSize);
+        Assert.Equal(36, EngineLifecycle.NewRegionObjectOffset);
+        Assert.Equal(0, EngineLifecycle.DefaultNamedStartFlag);
+        Assert.Equal(0x00416268u, EngineLifecycle.NamedStartFn);
+        Assert.Equal(0x004162B5u, EngineLifecycle.GamePumpUpdate);
+        Assert.NotEqual(0x00DBDE40u, EngineLifecycle.GamePump);
+        Assert.NotEqual(RegionTravel.StartOakValeSetup, EngineLifecycle.GetRegionRecordFn);
     }
 
     [Fact]
@@ -250,12 +280,50 @@ public sealed class EngineLifecycleTests
             e.Va == EngineLifecycle.LoadRegionGraphFn &&
             e.Action.StartsWith("nodes=", StringComparison.Ordinal));
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.Null(life.CurrentRegion);
+        Assert.True(life.Pump());
+        Assert.True(life.GamePumpFirstDone);
+        Assert.Equal(0, life.CurrentRegionIndex);
+        Assert.NotNull(life.CurrentRegion);
+        Assert.Equal("LookoutPoint", life.CurrentRegion.RegionName);
+        Assert.Equal(1, life.CurrentRegion.Index);
+        Assert.Contains("LookoutPoint", life.CurrentRegion.ContainsMaps);
+        Assert.NotEqual("StartOakVale", life.CurrentRegion.RegionName);
+        Assert.Equal("StartOakVale", life.World.Regions[3].RegionName);
+        Assert.False(life.RegionObjectPresent);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GamePump);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldGetMapFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GetCurrentRegionIndexFn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.GetRegionRecordFn &&
+            e.Action.Contains("LookoutPoint", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GamePumpUpdate);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.NamedStartFn);
         var dest = Path.Combine(
             @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
             "traces");
         Directory.CreateDirectory(dest);
         life.Trace.Write(Path.Combine(dest, "winmain-forward.txt"));
         life.Trace.Write(Path.Combine(dest, "init-world-map.txt"));
+        life.Trace.Write(Path.Combine(dest, "game-pump-004189C2.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-game-pump.txt"),
+            """
+            004189C2 game-mode vtbl+8 first iteration:
+              [esi+36] world, vtbl+52 = 004AE8C0 [world+20] World Map
+              004FB150 [WorldMap+156] current region index (ctor 0)
+              004FC180 [WorldMap+44] + index*88
+              [record+36] refcount touch; 006BC410 zeros it
+            Flags 0x13B85F6 / 0x13B85F5 default 0 skip
+              00416268 / 0041627F named start.
+            0x13B8628 default 0 skip 009BFF10.
+            First appended NewRegion is LookoutPoint
+            (NewRegion 1). StartOakVale is NewRegion 4
+            = table index 3. Not 00DBDE40.
+            004162B5 inner update unread.
+            """);
         File.WriteAllText(
             Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
                 "recover-init-world-map.txt"),

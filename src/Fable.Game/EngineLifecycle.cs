@@ -151,6 +151,62 @@ public sealed class EngineLifecycle
     public const int WorldMapObjectSize = 0xD8;
     public const int WorldMapCellShift = 5;
     public const int WorldMapBound = 0x2000;
+    /// <summary>
+    /// Game-mode object <c>[esi+36]</c> is the world.
+    /// </summary>
+    public const int GameWorldOffset = 36;
+    /// <summary>
+    /// World vtbl+52 <c>004AE8C0</c>:
+    /// <c>mov eax, [ecx+20]; ret</c> World Map.
+    /// </summary>
+    public const int WorldGetMapVtbl = 52;
+    public const uint WorldGetMapFn = 0x004AE8C0;
+    public const int WorldMapFieldOffset = 20;
+    /// <summary>
+    /// <c>004FB150</c>: <c>mov eax, [ecx+156]; ret</c>.
+    /// Ctor-zeroed. Not a host StartOakVale index.
+    /// </summary>
+    public const uint GetCurrentRegionIndexFn = 0x004FB150;
+    public const int WorldMapCurrentRegionIndexOffset = 156;
+    /// <summary>
+    /// <c>004FC180</c>:
+    /// <c>[ecx+44] + index * 88</c>.
+    /// </summary>
+    public const uint GetRegionRecordFn = 0x004FC180;
+    public const int WorldMapRegionTableOffset = 44;
+    public const int NewRegionRecordSize = 88;
+    /// <summary>
+    /// 88-byte record <c>+36</c> is a refcounted
+    /// pointer. Ctor <c>006BC410</c> zeros it.
+    /// First pump inc/dec-touches; body unread.
+    /// </summary>
+    public const int NewRegionObjectOffset = 36;
+    public const uint RegionRecordCtor = 0x006BC410;
+    public const uint AppendRegionRecord = 0x0051D200;
+    public const uint CopyRegionRecord = 0x0051A900;
+    /// <summary>
+    /// <c>0x13B85F6</c> then <c>0x13B85F5</c>.
+    /// BSS default 0 skips
+    /// <c>00416268</c> / <c>0041627F</c>.
+    /// </summary>
+    public const uint NamedStartFlagVa = 0x013B85F6;
+    public const uint NamedStartFlag2Va = 0x013B85F5;
+    public const byte DefaultNamedStartFlag = 0;
+    public const uint NamedStartFn = 0x00416268;
+    public const uint NamedStartAltFn = 0x0041627F;
+    public const uint NamedStartStringVa = 0x013B865C;
+    /// <summary>
+    /// <c>0x13B8628</c> nonzero takes
+    /// <c>009BFF10</c> instead of the
+    /// <c>004FC180</c> record. BSS default 0.
+    /// </summary>
+    public const uint GamePumpFadeFlagVa = 0x013B8628;
+    public const byte DefaultGamePumpFadeFlag = 0;
+    public const uint GamePumpPlayerFn = 0x004AE9C0;
+    public const uint FrameDtFn = 0x009E1BC0;
+    public const uint GamePumpUpdate = 0x004162B5;
+    public const uint GamePumpMemlog = 0x00415E85;
+    public const uint GamePumpQuitQuery = 0x009A6460;
 
     /// <summary>
     /// <c>00507C30</c> token switch. Same
@@ -209,6 +265,24 @@ public sealed class EngineLifecycle
     public int PlayerSlotsCreated { get; private set; }
     public int PlayerActiveCount { get; private set; }
     public bool PlayerObjectReady { get; private set; }
+    /// <summary>
+    /// <c>WorldMap+156</c>. Ctor 0 → first
+    /// appended NewRegion (LookoutPoint).
+    /// </summary>
+    public int CurrentRegionIndex { get; private set; }
+    public WorldRegion? CurrentRegion { get; private set; }
+    /// <summary>
+    /// <c>[record+36] != 0</c>. False after
+    /// WLD parse; who writes the pointer is unread.
+    /// </summary>
+    public bool RegionObjectPresent { get; private set; }
+    public bool GamePumpFirstDone { get; private set; }
+    public int GamePumpFrames { get; private set; }
+    /// <summary>
+    /// <c>0x13B85F6</c> / <c>0x13B85F5</c>.
+    /// Default false matches BSS 0.
+    /// </summary>
+    public bool UseNamedStart { get; set; }
     public IReadOnlyList<string> CompletedStages => _completed;
     public IReadOnlyList<string> RegisteredBanks => _banks;
     public GameInstall? Install { get; private set; }
@@ -283,7 +357,10 @@ public sealed class EngineLifecycle
         }
 
         if (Stage == EngineStage.Game)
+        {
+            PumpGame();
             return true;
+        }
         if (Stage == EngineStage.Shutdown)
             return false;
         return Stage != EngineStage.Exited;
@@ -504,6 +581,71 @@ public sealed class EngineLifecycle
         PlayerObjectReady = true;
         Note(CreatePlayersFn, "Create Players", "Player",
             $"slots={PlayerSlotsCreated} active={PlayerActiveCount}");
+    }
+
+    /// <summary>
+    /// <c>004189C2</c> game-mode vtbl+8.
+    /// First iteration: skip named start
+    /// (flags default 0), then world vtbl+52
+    /// → <c>004FB150</c> → <c>004FC180</c>.
+    /// Not <c>00DBDE40</c>.
+    /// </summary>
+    public void PumpGame()
+    {
+        if (Stage != EngineStage.Game)
+            return;
+        GamePumpFrames++;
+        if (GamePumpFirstDone)
+            return;
+
+        Note(GamePump, "GamePump", "Game", "004189C2 vtbl+8");
+        Note(GamePumpPlayerFn, "GamePump", "Player", "004AE9C0 game+80568");
+        Note(FrameDtFn, "GamePump", "Time", "009E1BC0 FrameDt");
+        if (UseNamedStart)
+        {
+            Note(NamedStartFn, "GamePump", "Region", "00416268 named start");
+            GamePumpFirstDone = true;
+            Note(GamePumpUpdate, "GamePump", "Update", "004162B5 unread");
+            return;
+        }
+
+        Note(WorldGetMapFn, "GamePump", "World",
+            "vtbl+52 004AE8C0 [world+20]");
+        Note(GetCurrentRegionIndexFn, "GamePump", "Region",
+            $"004FB150 [WorldMap+156]={CurrentRegionIndex}");
+        Note(GetRegionRecordFn, "GamePump", "Region",
+            $"004FC180 [WorldMap+44]+{CurrentRegionIndex}*{NewRegionRecordSize}");
+        ActivateCurrentRegion();
+        GamePumpFirstDone = true;
+        Note(GamePumpMemlog, "GamePump", "Game", "00415E85 memlog");
+        Note(GamePumpUpdate, "GamePump", "Update", "004162B5 unread");
+    }
+
+    /// <summary>
+    /// Table index is append order, not the
+    /// <c>NewRegion N</c> token. Index 0 is
+    /// LookoutPoint. <c>[record+36]</c> is
+    /// still null after parse.
+    /// </summary>
+    public void ActivateCurrentRegion()
+    {
+        if (World is null ||
+            CurrentRegionIndex < 0 ||
+            CurrentRegionIndex >= World.Regions.Count)
+        {
+            CurrentRegion = null;
+            RegionObjectPresent = false;
+            Note(GetRegionRecordFn, "GamePump", "Region",
+                $"index={CurrentRegionIndex} no record");
+            return;
+        }
+
+        CurrentRegion = World.Regions[CurrentRegionIndex];
+        RegionObjectPresent = false;
+        Note(GetRegionRecordFn, "GamePump", "Region",
+            $"index={CurrentRegionIndex} {CurrentRegion.RegionName} record+36 null");
+        Note(RegionRecordCtor, "GamePump", "Region",
+            "006BC410 +36 zero; touch skipped");
     }
 
     private ThingFile? TryLoadMapTng(WorldMap map, BbbArchive? wad)
