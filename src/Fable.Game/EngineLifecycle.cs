@@ -166,6 +166,10 @@ public sealed class EngineLifecycle : IDisposable
     /// twice, then EndScene / Present.
     /// </summary>
     public const uint FrontendDisplayHelperFn = 0x00404A80;
+    /// <summary>
+    /// <c>00404A80</c> is <c>mov eax, 0x13B7CD8; ret</c>.
+    /// </summary>
+    public const uint FrontendDisplaySingletonVa = 0x013B7CD8;
     public const uint FrontendDisplayHelper2Fn = 0x00404C00;
     public const uint FrontendUiTickFn = 0x00599E3F;
     public const uint BeginSceneFn = RegionTravel.PlayAviBeginScene;

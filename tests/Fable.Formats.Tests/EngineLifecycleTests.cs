@@ -219,6 +219,8 @@ public sealed class EngineLifecycleTests
         Assert.Equal(84, EngineLifecycle.FrontendWidgetListOffset);
         Assert.Equal(8, EngineLifecycle.FrontendWidgetDrawVtbl);
         Assert.Equal(0x004292C0u, EngineLifecycle.FrontendWidgetNextFn);
+        Assert.Equal(0x00404A80u, EngineLifecycle.FrontendDisplayHelperFn);
+        Assert.Equal(0x013B7CD8u, EngineLifecycle.FrontendDisplaySingletonVa);
         var begin = Array.IndexOf(vas, EngineLifecycle.BeginSceneFn);
         var ui = Array.IndexOf(vas, EngineLifecycle.FrontendUiDrawFn);
         var flush = Array.IndexOf(vas, EngineLifecycle.DisplayFlush2dFn);
