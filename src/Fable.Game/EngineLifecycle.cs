@@ -954,6 +954,34 @@ public sealed class EngineLifecycle : IDisposable
     public const uint WorldTickSlot1FnVa = 0x013B92C8;
     public const int WorldTickSlotStride = 64;
     public const int WorldTickType = 1;
+    /// <summary>
+    /// <c>00416670</c> → <c>00415FE0</c>
+    /// only if sub[+0]==2.
+    /// First-seen type 1 skips
+    /// game vtbl+16.
+    /// </summary>
+    public const uint WalkTickBeforeDispatchFn = 0x00416670;
+    public const uint ApplyTickTypeFn = 0x00415FE0;
+    public const int GameVtbl16 = 16;
+    /// <summary>
+    /// <c>00434A60</c> calls
+    /// table[type]+48.
+    /// Type 1 <c>[0x13B92F8]</c>
+    /// is 0 (<c>0121BA4F</c>).
+    /// </summary>
+    public const uint WalkTickAfterDispatchFn = 0x00434A60;
+    public const uint WorldTickSlot1Plus48Va = 0x013B92F8;
+    public const int WorldTickSlot1Plus48FirstSeen = 0;
+    public const uint DisplayTickTailFn = 0x00434F60;
+    public const int DisplayPlus232Offset = 232;
+    public const int DisplayPlus232FirstSeen = 0;
+    /// <summary>
+    /// <c>004A5A40</c> <c>004A5DF3</c>
+    /// <c>006B3FF0</c> before
+    /// <c>004A5E10</c>. Not
+    /// <c>00501450</c>.
+    /// </summary>
+    public const uint WorldTickCameraSeedSite = 0x004A5DF3;
     public const uint CameraBodyFn = 0x004164E0;
     /// <summary>
     /// <c>00417001</c> reads <c>[0x13B8630]</c>
@@ -3754,6 +3782,15 @@ public sealed class EngineLifecycle : IDisposable
         }
 
         var flag = GamePlus76 == GamePlus72;
+        Note(WalkTickBeforeDispatchFn, "GamePump", "World", "00416670");
+        foreach (var type in _tickTypes)
+        {
+            Note(ApplyTickTypeFn, "GamePump", "World",
+                type == 2
+                    ? $"00415FE0 type={type} vtbl+{GameVtbl16}"
+                    : $"00415FE0 type={type} skip vtbl+{GameVtbl16}");
+        }
+
         Note(DispatchWorldCallbacksFn, "GamePump", "World",
             $"0049DFB0 flag={(flag ? 1 : 0)} types={_tickTypes.Count}");
         if (flag)
@@ -3769,6 +3806,8 @@ public sealed class EngineLifecycle : IDisposable
             }
         }
 
+        Note(WalkTickAfterDispatchFn, "GamePump", "World",
+            $"00434A60 [0x{WorldTickSlot1Plus48Va:X}]={WorldTickSlot1Plus48FirstSeen} skip");
         GamePlus76 = TickRecordWatermark;
         if (TickRecordWatermark >= GamePlus72)
             GamePlus72 = TickRecordWatermark;
@@ -3776,16 +3815,37 @@ public sealed class EngineLifecycle : IDisposable
         PlayerBindSlot1 = WorldFrame;
         Note(PlayerBindAfterWorldFn, "GamePump", "Player",
             $"004AE9D0 +{PlayerBindSlot0Offset}={PlayerBindSlot0} +{PlayerBindSlot1Offset}={PlayerBindSlot1}");
+        Note(DisplayTickTailFn, "GamePump", "Display",
+            $"00434F60 +{DisplayPlus232Offset}={DisplayPlus232FirstSeen} skip");
     }
 
     /// <summary>
-    /// <c>004A5A40</c> ends at
-    /// <c>004A5E10 inc [0x13B89BC]</c>.
+    /// <c>004A5A40</c>: first-seen
+    /// <c>[world+248]==0</c>,
+    /// <c>[world+260]==0</c>,
+    /// <c>004B4490</c>, then
+    /// <c>004A5DF3 006B3FF0</c>,
+    /// then <c>004A5E10</c>.
+    /// No <c>00501450</c>.
     /// </summary>
     public void TickWorld()
     {
         Note(WorldTickFn, "GamePump", "World", "004A5A40");
         PumpQuests();
+        if (!WorldCameraPresent)
+        {
+            WorldCamera.Construct();
+            WorldCameraPresent = true;
+        }
+
+        if (!WorldCamera.Seeded)
+        {
+            Note(WorldTickCameraSeedSite, "GamePump", "Camera",
+                "004A5DF3 006B3FF0");
+            Note(WorldCameraSeedFn, "GamePump", "Camera", "006B3FF0 +68");
+            WorldCamera.SeedHero();
+        }
+
         WorldFrame++;
         Note(WorldFrameIncSite, "GamePump", "World",
             $"004A5E10 inc WorldFrame={WorldFrame}");

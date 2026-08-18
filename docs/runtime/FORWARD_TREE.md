@@ -428,11 +428,18 @@ then inner loop until [game+8]  PROVEN
 │   │           0041726D  PROVEN
 │   │             009F1750 / 009F1730
 │   │             [+0] > [game+76] (0)
+│   │             00416670 → 00415FE0  PROVEN
+│   │               type 1 dec dec ≠0 skip vtbl+16
 │   │             flag [+76]==[+72] first-seen 1
 │   │             0049DFB0 first walk skip type 1
-│   │             flag walk 00629270 → 004A5A40
-│   │             004A5E10 inc WorldFrame
+│   │             flag walk 00629270 → 004A5A40  PROVEN
+│   │               [world+248]=0 [world+260]=0
+│   │               004B4490 then 004A5DF3 006B3FF0
+│   │               004A5E10 inc WorldFrame
+│   │               no 00501450 / 00500540 / 006C27A0
+│   │             00434A60  PROVEN type1 [0x13B92F8]=0 skip
 │   │             +76=+0  +72=max  004AE9D0 +9836=+72
+│   │             00434F60  PROVEN +232=0 skip
 │   │       1 → [game].vtbl+24  00416E78
 │   │           ├── [world+52].vtbl+4 + 00BFEA70
 │   │           ├── 00416392 → 0049E200
@@ -471,9 +478,15 @@ and `0041726D`. Host “always run vtbl+24” is DISPROVEN.
 `004A5E10`. `004AEAA0` on hit: `inc +9836`,
 `009F1720` zeros `[game+164]`, `009F16F0` appends one
 `0x648` record (sub[+0]=1, +0=+9836). Same
-`00418289` then `0041726D` → `0049DFB0` flag 1 →
-`00629270` → `004A5E10`. Host note-only `009F16F0`
-is DISPROVEN.
+`00418289` then `0041726D` → `00416670`/`00415FE0`
+(type 1 skip), `0049DFB0` flag 1 → `00629270` →
+`004A5A40` (`006B3FF0` at `004A5DF3`, then
+`004A5E10`). `00434A60` type-1 `+48` is 0
+(`0121BA4F`). `00434F60` `+232` first-seen 0.
+`00501450` still 0 `E8`/`imm`; `00501935` is the
+restore call inside `00501450`. Host tying
+`006B3FF0` only to `00501450` is leftover.
+`00501450` E8 caller still UNREAD.
 `004162B5` does **not** call vtbl+24 (only vtbl+20 then
 vtbl+28). After it: `00416202` pushes the inner dt onto
 the `0049BA70` ring; `00415E85` first-seen skips

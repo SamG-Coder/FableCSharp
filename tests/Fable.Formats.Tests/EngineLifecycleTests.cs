@@ -1628,7 +1628,23 @@ public sealed class EngineLifecycleTests
             e.Action.Contains("> 1", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerBindIncSite);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.TickListClearFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WalkTickBeforeDispatchFn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.ApplyTickTypeFn &&
+            e.Action.Contains("skip", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.WalkTickAfterDispatchFn &&
+            e.Action.Contains("skip", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldTickCameraSeedSite);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldFrameIncSite);
+        Assert.True(life.WorldCamera.Seeded);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
+        Assert.Equal(0x00416670u, EngineLifecycle.WalkTickBeforeDispatchFn);
+        Assert.Equal(0x00415FE0u, EngineLifecycle.ApplyTickTypeFn);
+        Assert.Equal(0x00434A60u, EngineLifecycle.WalkTickAfterDispatchFn);
+        Assert.Equal(0x013B92F8u, EngineLifecycle.WorldTickSlot1Plus48Va);
+        Assert.Equal(0, EngineLifecycle.WorldTickSlot1Plus48FirstSeen);
+        Assert.Equal(0x004A5DF3u, EngineLifecycle.WorldTickCameraSeedSite);
         Assert.Equal(0x0143FE00u, EngineLifecycle.FrameDtQpcIat);
         Assert.Equal(0x0143FE04u, EngineLifecycle.FrameDtQpfIat);
         Assert.Equal(0x013B86A4u, EngineLifecycle.DisplayClockForceQpcVa);
