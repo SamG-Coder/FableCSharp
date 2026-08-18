@@ -514,6 +514,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "arg0 required; default 1; IsFalse->0; vtbl+2068(actor,flag,1); jmp 00CC707C; not SetBound 1976"),
+        Spec("SetPushable", 0x00CC10F2, 0x00CC1144, "[IsTrue]",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "default 0; IsTrue(arg0)->1; vtbl+3376; jmp 00CC707C; not SetBound IsFalse/1976"),
         Spec("GiveHero", 0x00CC6392, 0x00CC63E5, "item[,n][,extra][,silent][,yield]",
             ScriptReturn.YieldAfterUnlessFalse, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

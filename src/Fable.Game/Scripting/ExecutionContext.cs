@@ -1077,6 +1077,12 @@ public sealed class WorldRuntime
         new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, int> KillableExtra =
         new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// <c>00CC1144</c> <c>vtbl+3376(actor,IsTrue)</c>.
+    /// Default 0. Not SetBound IsFalse/1976.
+    /// </summary>
+    public readonly Dictionary<string, bool> Pushable =
+        new(StringComparer.OrdinalIgnoreCase);
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
     public float TimeOfDayHours { get; set; }
@@ -1261,6 +1267,15 @@ public sealed class WorldRuntime
         var key = actor ?? "";
         Killable[key] = killable;
         KillableExtra[key] = 1;
+    }
+
+    /// <summary>
+    /// <c>00CC1144</c>: default 0; IsTrue(arg0) → 1;
+    /// <c>vtbl+3376</c>. Physics body UNREAD.
+    /// </summary>
+    public void SetPushable(string actor, bool pushable)
+    {
+        Pushable[actor ?? ""] = pushable;
     }
 
     /// <summary>

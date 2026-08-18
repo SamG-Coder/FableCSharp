@@ -1673,6 +1673,92 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void SetPushable_IsTrue_default_off_not_SetBound()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("sp",
+        [
+            "SCARED.SetPushable FALSE",
+            "JACK.SetPushable TRUE",
+            "MUM.SetPushable",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.False(runtime.World.Pushable["SCARED"]);
+        Assert.True(runtime.World.Pushable["JACK"]);
+        Assert.False(runtime.World.Pushable["MUM"]);
+        Assert.Equal(0x00CC1144u, ScriptCommandMap.Find("SetPushable")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("SetBound")!.Value.ApplySite,
+            ScriptCommandMap.Find("SetPushable")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void SetPushable_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var name in new[]
+                 {
+                     "CS_JACK_BOSS_INTRO", "CS_FOCALSITE_4",
+                     "CS_OAKVALE_INTRO_THERESA",
+                 })
+        {
+            var entry = bank.Find(name);
+            if (entry is null)
+                continue;
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".SetPushable", StringComparison.OrdinalIgnoreCase))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        Assert.NotNull(hit);
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("SetPushable", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-push", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".SetPushable", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal(ScriptLine.IsTrue(parsed.Arg(0)),
+            runtime.World.Pushable[parsed.Target ?? ""]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-push.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-setpushable.txt"),
+            """
+            SetPushable 00CC10F2 / apply 00CC1144
+              ebx required else 00CC7081
+              default flag=0; 00CBEDBA IsTrue(arg0) → 1
+              empty stays 0 (no 00403A00 skip)
+              actor vtbl+48; 004ABE90; vtbl+3376; jmp 00CC707C
+              not SetBound IsFalse/default 1/vtbl+1976
+              SetDamageable is vtbl+2064(actor,0)+008ADF90, ignores arg
+            Physics body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void GiveGold_real_script_bank_or_isolated()
     {
         var install = GameInstall.TryLocate();

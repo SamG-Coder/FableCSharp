@@ -358,7 +358,16 @@ public static class EntityDispatcher
                 killable ? "1" : "0");
         }
 
-        if (Eq(v, "SetPushable") || Eq(v, "SetDamageable") || Eq(v, "SetAttackable") ||
+        if (Eq(v, "SetPushable"))
+        {
+            // 00CC1144: default 0; IsTrue(arg0) → 1; no empty skip.
+            var pushable = ScriptLine.IsTrue(line.Arg(0));
+            ctx.World.SetPushable(line.Target ?? "", pushable);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity,
+                pushable ? "1" : "0");
+        }
+
+        if (Eq(v, "SetDamageable") || Eq(v, "SetAttackable") ||
             Eq(v, "SetFree") ||
             Eq(v, "SetAppearanceSeed"))
         {
