@@ -498,6 +498,14 @@ public sealed class EngineLifecycle : IDisposable
     public const uint QuestFiberAttachFn = 0x00CB7950;
     public const uint QuestFiberUpdateVtbl = 24;
     public const int QuestFiberUpdateFlagOffset = 41;
+    /// <summary>
+    /// <c>00CB78D0</c>:
+    /// <c>mov al,[esp+4]; mov [ecx+41],al; ret 4</c>.
+    /// Zero <c>E8</c> callers. First-seen
+    /// stays 0 so <c>00CB7950</c> does
+    /// not take <c>00A44880</c>.
+    /// </summary>
+    public const uint FiberUpdateFlagSetter = 0x00CB78D0;
     public const uint QuestSubjectFillFn = 0x008884D0;
     public const uint WorldTickTableVa = 0x013B9288;
     public const uint WorldTickSlot1FnVa = 0x013B92C8;
@@ -1642,7 +1650,7 @@ public sealed class EngineLifecycle : IDisposable
         Note(DisplayFlush2dFn, "Frontend", "D3D9",
             "009D9C80 [0x13CB508]+10248 bump");
         Note(DisplayFlush2dFn, "Frontend", "D3D9",
-            "009D9C80 dirty-list no type 0x22");
+            "009D9C80 dirty-list no type 0x22 in 009D9C80-009DB000");
         Note(DisplayFlushLayersFn, "Frontend", "D3D9",
             $"009DA9F0({DisplayFlushLayersArg})");
         FrontendFlushCount++;
@@ -2461,6 +2469,8 @@ public sealed class EngineLifecycle : IDisposable
         Note(QuestListPumpFn, "GamePump", "Quest", "00CB8220");
         Note(QuestListWalkAFn, "GamePump", "Quest", "00CB7C40");
         Note(QuestListWalkBFn, "GamePump", "Quest", "00CB8170");
+        Note(FiberUpdateFlagSetter, "GamePump", "Quest",
+            "00CB78D0 setter 0 E8 first-seen 0");
         QuestPumpWalked = 0;
         QuestVtbl24Calls = 0;
         foreach (var name in _activatedQuests)
@@ -3200,8 +3210,11 @@ public sealed class EngineLifecycle : IDisposable
             Note(WorldCamera.PoseFollowFn, "LevelLoader", "Camera",
                 "006B3030 004978A0 LCG 00A14260");
             FollowSpringRan = WorldCamera.FollowSpringRan;
+            WorldCamera.ApplyCameraTick();
             Note(WorldCamera.PoseTickFn, "LevelLoader", "Camera",
-                "006B3B80 UNREAD");
+                WorldCamera.CameraTickSkipped
+                    ? "006B3B80 skip +460=0 +24=-1"
+                    : "006B3B80 body");
             ApplyWorldCamera(1f);
         }
     }

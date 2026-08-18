@@ -23,6 +23,18 @@ public sealed class WorldCamera
     public const uint PoseFn = 0x006B2CA0;
     public const uint PoseFollowFn = 0x006B3030;
     public const uint PoseTickFn = 0x006B3B80;
+    /// <summary>
+    /// Ctor <c>fld qword [0x1236700]</c>
+    /// stores <c>-1.0</c> at <c>+24</c>.
+    /// <c>006B3B80</c> with <c>+460==0</c>
+    /// and <c>+24 &lt; 0</c> jumps to
+    /// <c>006B3E59</c> ret.
+    /// </summary>
+    public const uint TickTimerVa = 0x01236700;
+    public const uint TickEpsilonVa = 0x0122ED70;
+    public const double TickTimerDefault = -1.0;
+    public const int TickTimerOffset = 24;
+    public const int TickGateOffset = 460;
     public const uint NormalizeFn = 0x00A14440;
     public const uint FollowSlotFn = 0x008889C0;
     public const uint ZeroFloatVa = 0x0122DEDC;
@@ -58,6 +70,8 @@ public sealed class WorldCamera
     public bool PoseSkipFlag { get; private set; }
     public bool PoseComputed { get; private set; }
     public bool FollowSpringRan { get; private set; }
+    public bool CameraTickSkipped { get; private set; }
+    public double CameraTickTimer { get; private set; } = TickTimerDefault;
     public const uint FollowRngFn = 0x004978A0;
     public const uint YawRotateFn = 0x00A14260;
     public const float FollowWeightMin = 0.04f;
@@ -82,6 +96,8 @@ public sealed class WorldCamera
         PoseSkipFlag = false;
         PoseComputed = false;
         FollowSpringRan = false;
+        CameraTickSkipped = false;
+        CameraTickTimer = TickTimerDefault;
         SlotA = CameraSlot.CtorDefault();
         SlotB = CameraSlot.Zero();
         Output = CameraSlot.Zero();
@@ -148,6 +164,20 @@ public sealed class WorldCamera
         else if (w > FollowWeightMax)
             w = FollowWeightMax;
         SlotA = SlotA with { Weight0 = w };
+    }
+
+    /// <summary>
+    /// <c>006B3B80</c> first-seen:
+    /// <c>[+460]==0</c> (slot ctor) and
+    /// qword <c>+24 == -1</c> so
+    /// <c>jne 006B3E59</c> skip. Does
+    /// not write V0/V1 or spawn
+    /// <c>CS_LIGHTNING_THUNDER</c>.
+    /// </summary>
+    public void ApplyCameraTick()
+    {
+        CameraTickTimer = TickTimerDefault;
+        CameraTickSkipped = CameraTickTimer < 0.0;
     }
 
     private static Vector3 Normalize(Vector3 v)

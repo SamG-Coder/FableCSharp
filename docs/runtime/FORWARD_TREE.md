@@ -541,8 +541,19 @@ START_INITIAL_QUESTS factories (fn --exact):
 │   ├── 00A14260 yaw/pitch rotate; not applied first-seen
 │   └── Weight0 clamp [0.04, 0.2]; ctor 0.2 stays
 ├── 008884D0  list helper → 00888260 table search; not V0
-└── 006B3B80  tick  UNREAD
+└── 006B3B80  tick  PROVEN first-seen skip
+    ├── +460=0 (008864A0)
+    ├── qword +24 = -1.0 from [0x1236700]
+    └── fcomp [0x122ED70]=0 → jne 006B3E59 ret
+        (no V0 write, no CS_LIGHTNING_THUNDER)
 V0/V1 stay ctor (1,0,0). FOV 72 is SHOT2 leftover.
+
+Fiber +41 setter 00CB78D0  PROVEN
+  mov al,[esp+4]; mov [ecx+41],al; ret 4
+  0 E8 callers. 00A447D0 writes +5=0 not +41.
+  00CB7950 CLEARS +41 after update. First-seen stays 0.
+
+009D9C80 009D9C80–009DB000: no cmp …,0x22. Type-0x22 DIP is not this body.
 
 004A5A40 type-1 tick  PROVEN (316)
 ├── 004B4490  [0x13B89FC]  PROVEN

@@ -327,6 +327,9 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.DisplayFlush2dFn &&
             e.Action.Contains("no type 0x22", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DisplayFlush2dFn &&
+            e.Action.Contains("009D9C80-009DB000", StringComparison.Ordinal));
         Assert.False(life.FrontendDisplayFlag);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendWidgetDrawFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendWidgetFactoryFn);
@@ -1359,8 +1362,12 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0.5f, mid.V0.X);
         cam.ComputePose();
         cam.ApplyFollowSpring();
+        cam.ApplyCameraTick();
         Assert.True(cam.PoseComputed);
         Assert.True(cam.FollowSpringRan);
+        Assert.True(cam.CameraTickSkipped);
+        Assert.Equal(-1.0, cam.CameraTickTimer);
+        Assert.Equal(0x006B3B80u, WorldCamera.PoseTickFn);
         Assert.Equal(0.2f, cam.SlotA.Weight0);
         Assert.Equal(new System.Numerics.Vector3(1f, 0f, 0f), cam.SlotA.V0);
         Assert.Equal(new System.Numerics.Vector3(1f, 0f, 0f), cam.SlotA.V2);
@@ -1956,6 +1963,12 @@ public sealed class EngineLifecycleTests
         Assert.True(life.WorldCamera.Seeded);
         Assert.True(life.WorldCamera.PoseComputed);
         Assert.True(life.FollowSpringRan);
+        Assert.True(life.WorldCamera.CameraTickSkipped);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == WorldCamera.PoseTickFn &&
+            e.Action.Contains("skip", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FiberUpdateFlagSetter);
+        Assert.Equal(0x00CB78D0u, EngineLifecycle.FiberUpdateFlagSetter);
         Assert.True(life.SubjectFillNoted);
         Assert.True(life.QuestPumpRan);
         Assert.True(life.QuestPumpWalked >= 6, $"walked={life.QuestPumpWalked}");
