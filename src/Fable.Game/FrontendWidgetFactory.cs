@@ -1,6 +1,4 @@
-using Fable.Formats.Banks;
 using Fable.Formats.Defs;
-using Fable.Formats.Text;
 
 namespace Fable.Game;
 
