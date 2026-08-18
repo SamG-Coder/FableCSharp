@@ -732,6 +732,34 @@ public sealed class WorldGeometryTests
     }
 
     [Fact]
+    public void Instance_world_is_009881f0_not_baked_verts()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        var lamp = levels.LoadThings("LookoutPoint").Things
+            .First(t => t.DefinitionType == "OBJECT_STREETLAMP_LIT_SINGLE_01");
+        var xform = WorldGeometry.ObjectTransform(lamp);
+        using var bank = new MeshBank();
+        bank.Open(install);
+        var mesh = bank.Get(4978);
+        Assert.NotNull(mesh);
+        var built = MeshBatches.BuildMeshes([(mesh, xform)]);
+        Assert.True(built.Draws.Length > 0);
+        Assert.True(built.Draws.All(d => d.World == xform));
+        var origin = Vector3.Transform(Vector3.Zero, xform);
+        Assert.InRange((origin - new Vector3(
+            lamp.PositionX!.Value, lamp.PositionY!.Value, lamp.PositionZ ?? 0f)).Length(),
+            0f, 0.05f);
+        Assert.True(built.Vertices[0].Position.Length() < 500f);
+        var plane = new Vector4(0, 0, 1, -3);
+        var p = new Vector3(1, 2, 4);
+        var lhs = Vector4.Dot(new Vector4(Vector3.Transform(p, xform), 1f), plane);
+        var rhs = Vector4.Dot(new Vector4(p, 1f), MeshPushConstants.TransformPlane(xform, plane));
+        Assert.InRange(MathF.Abs(lhs - rhs), 0f, 1e-3f);
+    }
+
+    [Fact]
     public void MeshBank_does_not_reparse_c3d()
     {
         var install = GameInstall.TryLocate();

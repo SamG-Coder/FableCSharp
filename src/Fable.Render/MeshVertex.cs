@@ -25,7 +25,18 @@ public readonly record struct MeshDraw(
     int TextureId1 = 0,
     uint PassBit = 0,
     float ShaderMode = 1f,
-    bool SrcAlphaBlend = false);
+    bool SrcAlphaBlend = false,
+    Matrix4x4 World = default)
+{
+    /// <summary>
+    /// Native wrapper+496. Zero matrix means
+    /// identity (<c>00988290</c>).
+    /// </summary>
+    public Matrix4x4 WorldOrIdentity =>
+        World.M44 == 0 && World.M11 == 0 && World.M22 == 0
+            ? Matrix4x4.Identity
+            : World;
+}
 
 public readonly record struct GpuTexture(int Id, int Width, int Height, byte[] Rgba)
 {

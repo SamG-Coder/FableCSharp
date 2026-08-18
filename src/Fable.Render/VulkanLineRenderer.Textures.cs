@@ -72,6 +72,8 @@ public sealed unsafe partial class VulkanLineRenderer
         }
 
         var alpha = false;
+        var baseFog = _meshPush.CameraPos;
+        var baseLight = _meshPush.LightDir;
         foreach (var draw in draws)
         {
             if (draw.VertexCount == 0)
@@ -81,22 +83,29 @@ public sealed unsafe partial class VulkanLineRenderer
                 alpha = draw.SrcAlphaBlend;
                 _vk.CmdBindPipeline(commandBuffer, PipelineBindPoint.Graphics,
                     alpha ? _meshAlphaPipeline : _meshPipeline);
-                PushMeshConstants(commandBuffer);
-            }
-            if (Math.Abs(_meshPush.Pass.X - draw.ShaderMode) > 0.01f)
-            {
-                _meshPush.Pass = MeshPushConstants.PackPass(draw.ShaderMode);
-                PushMeshConstants(commandBuffer);
             }
 
             var sky = draw.PassBit == Fable.Formats.Sky.SkyPass.FirstSeenLayerBit;
             var landscape = draw.PassBit is 0x4 or 0x40;
             var wanted = sky ? _skyViewProj : landscape ? _landscapeViewProj : _worldViewProj;
-            if (_meshPush.ViewProj != wanted)
+            var world = draw.WorldOrIdentity;
+            if (world != Matrix4x4.Identity)
             {
-                _meshPush.ViewProj = wanted;
-                PushMeshConstants(commandBuffer);
+                wanted = MeshPushConstants.WorldViewProj(world, wanted);
+                _meshPush.CameraPos = MeshPushConstants.TransformPlane(world, baseFog);
+                _meshPush.LightDir = new Vector4(
+                    MeshPushConstants.TransformLightDir(world, new Vector3(baseLight.X, baseLight.Y, baseLight.Z)),
+                    baseLight.W);
             }
+            else
+            {
+                _meshPush.CameraPos = baseFog;
+                _meshPush.LightDir = baseLight;
+            }
+
+            _meshPush.ViewProj = wanted;
+            _meshPush.Pass = MeshPushConstants.PackPass(draw.ShaderMode);
+            PushMeshConstants(commandBuffer);
 
             // PSHADER_LANDSCAPE_FOREGROUND: mul_x2 t1 * v0 (RGB), t0.a * v0.a.
             // Stage 1 is the albedo. Primary TextureId must sit on t1 for FG.

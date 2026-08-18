@@ -102,43 +102,58 @@ public static class MeshBatches
     }
 
     /// <summary>
-    /// One C3D parse per mesh id, verts
-    /// transformed per instance. No
-    /// <c>WorldGeometry</c> triangle soup.
+    /// File-local C3D verts. World is the
+    /// instance 3×4 (<c>009881F0</c>
+    /// wrapper+496), not a baked triangle.
+    /// PALSKIN dest stays bind-pose locals
+    /// until <c>c38</c> is wired.
     /// </summary>
     public static TexturedMesh BuildMeshes(
         IReadOnlyList<(MeshFile Mesh, Matrix4x4 Transform)> instances)
     {
-        var tris = new List<MeshTriangle>();
+        var total = 0;
+        foreach (var (mesh, _) in instances)
+        {
+            var source = mesh.BoneCount > 0 ? mesh.TrianglesForPose() : mesh.Triangles;
+            total += source.Count * 3;
+        }
+
+        var vertices = new MeshVertex[total];
+        var draws = new List<MeshDraw>(instances.Count);
+        var cursor = 0;
         foreach (var (mesh, transform) in instances)
         {
-            // PALSKIN dest via PaletteForPose
-            // (00A9E1E0 / 00BD2F91). Static C3D
-            // stays file triangles.
             var source = mesh.BoneCount > 0
                 ? mesh.TrianglesForPose()
                 : mesh.Triangles;
-            foreach (var tri in source)
+            foreach (var group in source.GroupBy(tri => (
+                tri.TextureId,
+                tri.TextureId1 == 0 ? tri.TextureId : tri.TextureId1,
+                tri.SrcAlphaBlend,
+                tri.Layer)))
             {
-                var a = Vector3.Transform(tri.A, transform);
-                var b = Vector3.Transform(tri.B, transform);
-                var c = Vector3.Transform(tri.C, transform);
-                var n = Vector3.TransformNormal(tri.Normal, transform);
-                if (n.LengthSquared() < 1e-8f)
-                    n = Vector3.UnitZ;
-                else
-                    n = Vector3.Normalize(n);
-                tris.Add(tri with
+                var first = cursor;
+                foreach (var tri in group)
                 {
-                    A = a, B = b, C = c, Normal = n,
-                    NormalA = Unit(Vector3.TransformNormal(tri.NormalA, transform), n),
-                    NormalB = Unit(Vector3.TransformNormal(tri.NormalB, transform), n),
-                    NormalC = Unit(Vector3.TransformNormal(tri.NormalC, transform), n),
-                });
+                    vertices[cursor++] = Vert(tri.A, tri.NormalA, tri.Normal, tri.UvA, tri.ColorA, tri.ExtraA, tri.ColorAlphaA);
+                    vertices[cursor++] = Vert(tri.B, tri.NormalB, tri.Normal, tri.UvB, tri.ColorB, tri.ExtraB, tri.ColorAlphaB);
+                    vertices[cursor++] = Vert(tri.C, tri.NormalC, tri.Normal, tri.UvC, tri.ColorC, tri.ExtraC, tri.ColorAlphaC);
+                }
+
+                var n = (uint)(cursor - first);
+                if (n == 0)
+                    continue;
+                foreach (var pass in ScenePasses.DrawnPasses(group.Key.Layer))
+                {
+                    draws.Add(new MeshDraw(
+                        group.Key.TextureId, (uint)first, n, group.Key.Item2,
+                        pass.Bit, ScenePasses.ShaderMode(pass.Submit),
+                        group.Key.SrcAlphaBlend, transform));
+                }
             }
         }
 
-        return Build(tris);
+        return new TexturedMesh { Vertices = vertices, Draws = [.. draws] };
     }
 
     public static TexturedMesh Concat(TexturedMesh a, TexturedMesh b)
