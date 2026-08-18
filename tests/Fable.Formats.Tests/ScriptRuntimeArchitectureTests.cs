@@ -1149,6 +1149,71 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void SetHeroWeapon_is_not_PutInHeroHands()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("shw",
+            ["SetHeroWeapon OBJECT_SWORD_OF_AEONS", "PutInHeroHands OBJECT_TROPHY_JOB_MASK_01,NAME"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal("OBJECT_SWORD_OF_AEONS", runtime.World.HeroWeapon);
+        Assert.Equal("OBJECT_TROPHY_JOB_MASK_01", runtime.World.HeroHands);
+        Assert.Equal(0x00CCFDA9u, ScriptCommandMap.Find("SetHeroWeapon")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("SetHeroWeapon")!.Value.ApplySite,
+            ScriptCommandMap.Find("PutInHeroHands")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void SetHeroWeapon_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_JACK_BOSS_ENDING_EVIL");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.StartsWith("SetHeroWeapon ", StringComparison.OrdinalIgnoreCase))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("SetHeroWeapon", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-weapon", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("SetHeroWeapon ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal(parsed.Arg(0), runtime.World.HeroWeapon);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-weapon.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-setheroweapon.txt"),
+            """
+            SetHeroWeapon 00CCFD57 / apply 00CCFDA9
+              arg0 required else 00CD17FD
+              vtbl+488(name); jmp 00CD17FD no yield
+              not PutInHeroHands vtbl+572
+              not GiveHero vtbl+484
+            Weapon mesh / sheathe body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void WalkTo_writes_destination_and_entity_task()
     {
         var runtime = ScriptRuntime.Detached();

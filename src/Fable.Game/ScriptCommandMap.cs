@@ -507,6 +507,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "NULL vtbl+572 empty; NAME vtbl+572(name); else thing vtbl+568(1,1)"),
+        Spec("SetHeroWeapon", 0x00CCFD57, 0x00CCFDA9, "item",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0 required; vtbl+488(name); jmp 00CD17FD; not PutInHeroHands 572"),
         Spec("UseTheme", 0x00CCFA38, 0x00CCFA8B, "name[,param][,flag]",
             ScriptReturn.CompleteNow, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

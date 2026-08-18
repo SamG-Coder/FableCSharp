@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 104
-RECOVERED RETURN: 104
-RECOVERED APPLY: 39
+RECOVERED DISPATCH: 105
+RECOVERED RETURN: 105
+RECOVERED APPLY: 40
 IMPLEMENTED RUNTIME: 13
-UNREAD: 81
+UNREAD: 80
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -38,7 +38,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | Remove | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | RemoveEffect | Global | Proven | Proven | Proven | Partial | Partial | Partial |
 | WaitForMessageCamera | Global | Proven | Proven | Proven | Partial | Partial | Partial |
-| SetHeroWeapon | Global | Unread | Unread | Unread | Unread | Unread | Unread |
+| SetHeroWeapon | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | PutInHeroHands | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | TakeFromHero | Global | Proven | Proven | Proven | Proven | Partial | Partial |
 | UseTheme | Global | Proven | Proven | Proven | Proven | Partial | Partial |

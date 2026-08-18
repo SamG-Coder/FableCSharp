@@ -707,6 +707,15 @@ public static class GlobalDispatcher
                 ctx.World.HeroHands);
         }
 
+        if (Eq(v, "SetHeroWeapon"))
+        {
+            var name = line.Arg(0);
+            if (name.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ctx.World.HeroWeapon = name;
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, name);
+        }
+
         if (Eq(v, "GiveHeroHealth"))
         {
             var token = line.Arg(0);

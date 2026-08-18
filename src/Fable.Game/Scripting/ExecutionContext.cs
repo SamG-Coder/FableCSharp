@@ -1045,6 +1045,11 @@ public sealed class WorldRuntime
     /// hands. Empty after a NULL put.
     /// </summary>
     public string HeroHands { get; set; } = "";
+    /// <summary>
+    /// <c>00CCFDA9</c> <c>vtbl+488(name)</c>.
+    /// Distinct from <c>PutInHeroHands</c> <c>vtbl+572</c>.
+    /// </summary>
+    public string HeroWeapon { get; set; } = "";
 
     /// <summary>
     /// <c>00CC63E5</c>: give <c>count - already</c>
