@@ -412,10 +412,12 @@ enqueue (host second 004189C2 after dummy; E8 caller UNREAD)
     ├── 00449970 / 00487DC0  player (may miss)
     ├── 004FEEC0(current=0, 0)  +156=0  PROVEN
     ├── count = (+48−+44)/88
-    ├── count>1: for i=1..  00500540(i,0,0)
-    │   first i=1 LookoutPoint; +36 null → 006BB2F0 then 006C27A0
-    │   i>1 PARTIAL (not applied on host)
-    └── 00500540(saved=0, 0, 1)  restore  PARTIAL note
+    ├── count>1: for i=1..count-1  00500540(i,0,0)  PROVEN
+    │   i=1 LookoutPoint; +36 null → 006BB2F0 then 006C27A0
+    │   after each i: 0048D400 / 004FC190 / 005198B0  PARTIAL bodies
+    │   last i=141 Filler_NorthernWastes_02  +156=141
+    ├── RegionGraph.txt  0x124467C  PROVEN
+    └── 00500540(saved=0, 0, 1)  no sync pump  PROVEN
     native index 1 = WLD NewRegion 1 LookoutPoint
 
 00500540  LoadRegion  PROVEN

@@ -144,8 +144,8 @@ only — CSS unchanged.
 | Global things: BSS `[0x13B8609]=0` → per-map `.tng` `004FDBC0`; flag → `.gtg` `004FE2A0` | PROVEN | `Gtng_is_stem_gtng_gtg_is_004FE2A0_single_file` |
 | Current region index is `WorldMap+156` (`004FB150`); ctor 0 is dummy | PROVEN | `Game_pump_is_004189C2_not_00DBDE40` |
 | First `004189C2` pump does **not** `SetRegionAsLoaded` | PROVEN | install test |
-| No-save enqueue `00501450` → `00500540(1,0,0)` **LookoutPoint** (native index 1) | PROVEN | install test (`CurrentRegionIndex=1`) |
-| `00501450` is only `00500540(1,0,0)` | DISPROVEN | body also `004FEEC0(0,0)` and later `(saved,0,1)`; `Second_pump_00501450_is_004FEEC0_then_00500540_1_0_0` |
+| No-save enqueue `00501450` → `00500540(1,0,0)` **LookoutPoint** (native index 1) | PROVEN | first i=1; then i=2..141 |
+| `00501450` is only `00500540(1,0,0)` | DISPROVEN | loops all i; last `+156=141` `Filler_NorthernWastes_02`; restore `(0,0,1)` no pump |
 | Persist `PlayerRegionName` `00487C20` / `00449E60` loads named region (e.g. `StartOakVale` = 4) | PROVEN | `Persist_PlayerRegionName_is_00487C20_not_new_game` |
 | `SetRegionAsLoaded` `004FC8A0` writes `+156`, then `00B42750` mode 1 | DISPROVEN | `004FC8A0` is MiniMap only. `00B428E0` is `004A1840` vtbl+208 |
 | `004FC8A0` calls `005064C0` / `00B428E0` | DISPROVEN | `004FC8A0` is `+156`/`00437CE0`/`0082BA00`. `005064C0` is vtbl+88 before it. `SetRegionAsLoaded_004FC8A0_is_minimap_after_005064C0` |

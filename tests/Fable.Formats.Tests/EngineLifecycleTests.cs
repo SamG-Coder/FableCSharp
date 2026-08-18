@@ -553,7 +553,7 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Pump());
         Assert.True(life.Pump());
         Assert.True(life.Pump());
-        Assert.Equal("LookoutPoint", life.CurrentRegion!.RegionName);
+        Assert.Contains("LookoutPoint", life.ActivatedMaps);
         Assert.True(life.RegionThingMapsLoaded > 0);
         Assert.True(life.RegionThings.Count > 0, $"things={life.RegionThings.Count}");
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LoadThingsForMapFn);
@@ -592,7 +592,7 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Pump());
         Assert.True(life.Pump());
         Assert.True(life.Pump());
-        Assert.Equal("LookoutPoint", life.CurrentRegion!.RegionName);
+        Assert.Equal("LookoutPoint", life.FirstSceneMapName);
         Assert.Contains(life.RegionThings, t =>
             t.DefinitionType == RegionTravel.PlayerStartType &&
             t.ScriptName == EngineLifecycle.GuildArrivalHsp);
@@ -1557,8 +1557,6 @@ public sealed class EngineLifecycleTests
         Assert.False(life.FirstRealRegionLoadDone);
         Assert.True(life.Pump());
         Assert.True(life.FirstRealRegionLoadDone);
-        Assert.Equal(1, life.CurrentRegionIndex);
-        Assert.Equal("LookoutPoint", life.CurrentRegion!.RegionName);
         var events = life.Trace.Events;
         var dummy = events.FindIndex(e =>
             e.Va == EngineLifecycle.GetRegionRecordFn &&
@@ -1570,13 +1568,32 @@ public sealed class EngineLifecycleTests
         var first = events.FindIndex(e =>
             e.Va == EngineLifecycle.LoadRegionFn &&
             e.Action.Contains("(1,0,0)", StringComparison.Ordinal));
+        var second = events.FindIndex(e =>
+            e.Va == EngineLifecycle.LoadRegionFn &&
+            e.Action.Contains("(2,0,0)", StringComparison.Ordinal));
+        var last = events.FindIndex(e =>
+            e.Va == EngineLifecycle.LoadRegionFn &&
+            e.Action.Contains("(141,0,0)", StringComparison.Ordinal));
+        var collect = events.FindIndex(e =>
+            e.Va == EngineLifecycle.CollectRegionThingsFn &&
+            e.Action.Contains("after 1", StringComparison.Ordinal));
+        var graph = events.FindIndex(e => e.Va == EngineLifecycle.RegionGraphNameVa);
         var restore = events.FindIndex(e =>
             e.Va == EngineLifecycle.LoadFromFirstRealRegionFn &&
             e.Action.Contains("(0,0,1)", StringComparison.Ordinal));
         Assert.True(dummy >= 0 && enqueue > dummy, "00501450 after dummy pump");
         Assert.True(unload > enqueue, "004FEEC0 after 00501450");
         Assert.True(first > unload, "00500540(1,0,0) after 004FEEC0");
-        Assert.True(restore > first, "00500540(0,0,1) after first load");
+        Assert.True(second > first && last > second,
+            "00500540(i,0,0) through count-1");
+        Assert.True(collect > first, "0048D400 after first 00500540");
+        Assert.True(graph > last && restore > graph,
+            "RegionGraph.txt then 00500540(0,0,1)");
+        Assert.Equal(141, life.CurrentRegionIndex);
+        Assert.Equal("Filler_NorthernWastes_02", life.CurrentRegion!.RegionName);
+        Assert.Equal(0x0048D400u, EngineLifecycle.CollectRegionThingsFn);
+        Assert.Equal(0x005198B0u, EngineLifecycle.ReleaseRegionThingsFn);
+        Assert.Equal("RegionGraph.txt", EngineLifecycle.RegionGraphName);
         Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.NamedStartFn);
     }
@@ -1594,7 +1611,7 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Pump());
         Assert.True(life.Pump());
         Assert.True(life.Pump());
-        Assert.Equal("LookoutPoint", life.CurrentRegion!.RegionName);
+        Assert.Contains("LookoutPoint", life.ActivatedMaps);
         var events = life.Trace.Events;
         var job = events.FindIndex(e => e.Va == EngineLifecycle.BuildLoadJobFn);
         var copy = events.FindIndex(e => e.Va == EngineLifecycle.BuildLoadJobCopyMapsFn);
@@ -1641,7 +1658,7 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Pump());
         Assert.True(life.Pump());
         Assert.True(life.Pump());
-        Assert.Equal(1, life.CurrentRegionIndex);
+        Assert.Equal(141, life.CurrentRegionIndex);
         var events = life.Trace.Events;
         var skipNav = events.FindIndex(e =>
             e.Va == EngineLifecycle.JobNavPassFn &&
@@ -2376,9 +2393,9 @@ public sealed class EngineLifecycleTests
         Assert.Equal(2, life.GameRenderCount);
         Assert.Equal(2, life.WorldFrame);
         Assert.Contains(1, life.GameTickTypes);
-        Assert.Equal(1, life.CurrentRegionIndex);
+        Assert.Equal(141, life.CurrentRegionIndex);
         Assert.NotNull(life.CurrentRegion);
-        Assert.Equal("LookoutPoint", life.CurrentRegion.RegionName);
+        Assert.Equal("Filler_NorthernWastes_02", life.CurrentRegion.RegionName);
         Assert.Contains("LookoutPoint", life.ActivatedMaps);
         Assert.Contains("BowerstoneBridge", life.ActivatedMaps);
         Assert.Contains("GuildExterior", life.ActivatedMaps);
@@ -2427,7 +2444,7 @@ public sealed class EngineLifecycleTests
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.AttachPatchFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.OpenStaticMapsAttach);
         Assert.Contains("LookoutPoint", life.ActivatedMaps);
-        Assert.DoesNotContain("PicnicArea", life.ActivatedMaps);
+        Assert.Contains("PicnicArea", life.ActivatedMaps);
         Assert.True(life.WorldSubmitted);
         Assert.NotNull(life.SubmittedWorld);
         Assert.False(life.SubmittedWorld.Expanded);

@@ -1073,15 +1073,21 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>+156=0</c>, table count
     /// <c>(+48-+44)/88</c>. Count &gt; 1
     /// loops <c>00500540(i,0,0)</c> from 1
-    /// (+36 null still
-    /// <c>006C27A0</c>). Then
-    /// <c>00500540(saved,0,1)</c>. First
-    /// seen saved is dummy 0. Later
-    /// indices after 1 stay PARTIAL.
+    /// through count-1 (+36 null still
+    /// <c>006C27A0</c>). After each i:
+    /// <c>0048D400</c> / <c>004FC190</c> /
+    /// <c>005198B0</c> (bodies PARTIAL).
+    /// Then <c>RegionGraph.txt</c> and
+    /// <c>00500540(saved,0,1)</c> with no
+    /// sync pump. First-seen saved is 0.
     /// E8 caller UNREAD (not in
     /// <c>004162B5</c> / <c>00418289</c>).
     /// </summary>
     public const uint LoadFromFirstRealRegionFn = 0x00501450;
+    public const uint CollectRegionThingsFn = 0x0048D400;
+    public const uint ReleaseRegionThingsFn = 0x005198B0;
+    public const uint RegionGraphNameVa = 0x0124467C;
+    public const string RegionGraphName = "RegionGraph.txt";
     public const uint UnloadCurrentRegionFn = 0x004FEEC0;
     /// <summary>
     /// <c>004FC190</c>: map → region, search
@@ -3339,8 +3345,11 @@ public sealed class EngineLifecycle : IDisposable
 
     /// <summary>
     /// <c>00501450</c>: table count &gt; 1 then
-    /// <c>00500540(1,0,0)</c>. No-save New Game
-    /// after the dummy first pump.
+    /// <c>00500540(i,0,0)</c> for i=1..count-1.
+    /// After each: <c>0048D400</c> /
+    /// <c>004FC190</c> / <c>005198B0</c>.
+    /// Then <c>RegionGraph.txt</c> and
+    /// <c>00500540(saved,0,1)</c> (no pump).
     /// </summary>
     public void LoadFromFirstRealRegion()
     {
@@ -3354,11 +3363,26 @@ public sealed class EngineLifecycle : IDisposable
             $"004FEEC0({saved},0) +156=0");
         if (count <= 1)
             return;
-        Note(LoadRegionFn, "LevelLoader", "Region",
-            "00500540(1,0,0) first +36 null continues");
-        RequestLoadRegion(1, sync: true);
+        for (var i = 1; i < count; i++)
+        {
+            Note(LoadRegionFn, "LevelLoader", "Region",
+                i == 1
+                    ? "00500540(1,0,0) first +36 null continues"
+                    : $"00500540({i},0,0)");
+            RequestLoadRegion(i, sync: true);
+            Note(CollectRegionThingsFn, "LevelLoader", "Thing",
+                $"0048D400 after {i}");
+            Note(MapToRegionFn, "LevelLoader", "Region",
+                $"004FC190 i={i}");
+            Note(ReleaseRegionThingsFn, "LevelLoader", "Thing",
+                "005198B0");
+        }
+
+        Note(RegionGraphNameVa, "LevelLoader", "Region", RegionGraphName);
         Note(LoadFromFirstRealRegionFn, "LevelLoader", "Region",
-            $"00500540({saved},0,1) restore PARTIAL");
+            $"00500540({saved},0,1) restore no-pump");
+        if (saved > 0)
+            RequestLoadRegion(saved, sync: false);
     }
 
     /// <summary>
@@ -4264,8 +4288,8 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     private void BindAuthoredEnvironmentTheme()
     {
-        AuthoredEnvironmentThemeId = 0;
-        AuthoredEnvironmentTheme = null;
+        if (AuthoredEnvironmentThemeId != 0)
+            return;
         var def = CurrentRegion?.RegionDef;
         if (string.IsNullOrEmpty(def))
             return;
