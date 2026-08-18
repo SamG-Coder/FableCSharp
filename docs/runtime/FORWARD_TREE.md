@@ -416,7 +416,11 @@ then inner loop until [game+8]  PROVEN
 │   │           ├── [0x13B8388].vtbl+8
 │   │           └── WorldFrame<=1 skip 004457F0 / 00446A30
 │   └── 009E9FB0==0 → [game].vtbl+28  00417001  render
-│       └── WorldFrame<=1 skip camera / 00435530
+│       ├── 00415A60 zero 52
+│       ├── world vtbl+12 0049E1B0 → 004C74F0 [0x13B8A1C]
+│       ├── WorldFrame<=1 skip camera / 00435530
+│       └── always [0x13B7D6C]=[display+104]  PROVEN
+│           004350D0 first-seen +104=0
 ├── 00416202  PROVEN
 │   └── add ecx, 90488 → 0049B9E0  (0049BA70 ring, cap 60, float*4)
 │       └── 0049B9A0  mean → +40

@@ -2091,6 +2091,44 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void First_pump_00417001_copies_display_plus104_when_WorldFrame_le_1()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.Equal(0, life.WorldFrame);
+        Assert.Equal(0, life.FrameListCount);
+        Assert.Equal(0, life.DisplayPlus104);
+        Assert.Equal(0, life.DisplayPlus104Copy);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrameListCountVa &&
+            e.Action.Contains("[0x13B89A8]=0", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.UpdateDtVa);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.RenderDtVa);
+        var skip = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.GameRenderFn &&
+            e.Action.Contains("WorldFrame<=1", StringComparison.Ordinal));
+        var copy = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.DisplayPlus104CopyVa);
+        Assert.True(skip >= 0 && copy > skip,
+            "00417265 after WorldFrame<=1 skip");
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DisplayPlus104CopyVa &&
+            e.Action.Contains("[display+104]=0", StringComparison.Ordinal));
+        Assert.False(life.RenderBodyRan);
+        Assert.Equal(0x013B89A8u, EngineLifecycle.FrameListCountVa);
+        Assert.Equal(0x013B8690u, EngineLifecycle.UpdateDtVa);
+        Assert.Equal(0x013B8698u, EngineLifecycle.RenderDtVa);
+        Assert.Equal(0x013B7D6Cu, EngineLifecycle.DisplayPlus104CopyVa);
+        Assert.Equal(104, EngineLifecycle.DisplayPlus104Offset);
+        Assert.Equal(0, EngineLifecycle.DisplayPlus104FirstSeen);
+    }
+
+    [Fact]
     public void Update_00418289_player_flag_runs_world_and_vtbl24()
     {
         var life = new EngineLifecycle();

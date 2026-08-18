@@ -825,6 +825,23 @@ public sealed class EngineLifecycle : IDisposable
     public const uint WorldFrameGetter = 0x0049D870;
     public const uint WorldFrameVa = 0x013B89BC;
     public const uint WorldFrameCopyVa = 0x013B7D70;
+    /// <summary>
+    /// After <c>009A57B0</c> allow:
+    /// <c>and [0x13B89A8],0</c>, then
+    /// vtbl+20 / vtbl+28 dt at
+    /// <c>0x13B8690</c> / <c>0x13B8698</c>.
+    /// <c>00417001</c> always ends
+    /// <c>[0x13B7D6C]=[display+104]</c>
+    /// even if <c>WorldFrame&lt;=1</c>.
+    /// <c>004350D0</c> writes
+    /// <c>[display+104]=0</c>.
+    /// </summary>
+    public const uint FrameListCountVa = 0x013B89A8;
+    public const uint UpdateDtVa = 0x013B8690;
+    public const uint RenderDtVa = 0x013B8698;
+    public const uint DisplayPlus104CopyVa = 0x013B7D6C;
+    public const int DisplayPlus104Offset = 104;
+    public const int DisplayPlus104FirstSeen = 0;
     public const uint WorldGetThingFn = 0x0049E1B0;
     public const int WorldThingOffset = 80;
     public const uint StoreActiveThingFn = 0x004C74F0;
@@ -1473,6 +1490,9 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>009A57B0</c> returns 1.
     /// </summary>
     public bool EngineForeground { get; set; }
+    public int DisplayPlus104 { get; private set; }
+    public int DisplayPlus104Copy { get; private set; }
+    public int FrameListCount { get; private set; }
     /// <summary>
     /// <c>004AE9D0</c> <c>+9836</c> =
     /// <c>[game+72]</c>.
@@ -3046,8 +3066,12 @@ public sealed class EngineLifecycle : IDisposable
         if (!EngineUpdateAllowed)
             return;
 
+        FrameListCount = 0;
+        Note(FrameListCountVa, "GamePump", "World",
+            "004162CD [0x13B89A8]=0");
         Note(FrameDtFn, "GamePump", "Time", "009E1BC0 FrameDt");
         UpdateGameMode();
+        Note(UpdateDtVa, "GamePump", "Time", "0x13B8690 009E1BC0-dt");
         // After 006C2170. First-seen
         // 00B428E0 already ran in 004A1840
         // and missed FinalAlbion.stb.
@@ -3056,6 +3080,7 @@ public sealed class EngineLifecycle : IDisposable
         Note(DisplayReadyFn, "GamePump", "Display",
             "009E9FB0 [0x13CAA38] default 0");
         RenderGameMode();
+        Note(RenderDtVa, "GamePump", "Time", "0x13B8698 009E1BC0-dt");
     }
 
     /// <summary>
@@ -3268,10 +3293,14 @@ public sealed class EngineLifecycle : IDisposable
         Note(StoreActiveThingFn, "GamePump", "World", "004C74F0 [0x13B8A1C]");
         GameRenderCount++;
         if (!EngineUpdateAllowed)
+        {
+            CopyDisplayPlus104();
             return;
+        }
         if (!GameRenderEnabled)
         {
             Note(GameRenderFn, "GamePump", "Render", "[game+90593]=0 skip");
+            CopyDisplayPlus104();
             return;
         }
 
@@ -3281,6 +3310,7 @@ public sealed class EngineLifecycle : IDisposable
         {
             Note(GameRenderFn, "GamePump", "Render",
                 "WorldFrame<=1 skip camera body");
+            CopyDisplayPlus104();
             return;
         }
 
@@ -3288,6 +3318,7 @@ public sealed class EngineLifecycle : IDisposable
         if (CameraCatchupTicks <= 0)
         {
             ApplyCameraInterpolation();
+            CopyDisplayPlus104();
             return;
         }
 
@@ -3301,6 +3332,20 @@ public sealed class EngineLifecycle : IDisposable
         ApplyCameraBody(CameraCatchupTicks);
         GamePlus90594 = true;
         Note(CameraBodyFn, "GamePump", "Render", "[game+90594]=1");
+        CopyDisplayPlus104();
+    }
+
+    /// <summary>
+    /// <c>0041725F</c>:
+    /// <c>[0x13B7D6C]=[display+104]</c>.
+    /// <c>004350D0</c> first-seen 0.
+    /// </summary>
+    private void CopyDisplayPlus104()
+    {
+        DisplayPlus104 = DisplayPlus104FirstSeen;
+        DisplayPlus104Copy = DisplayPlus104;
+        Note(DisplayPlus104CopyVa, "GamePump", "Render",
+            $"00417265 [0x13B7D6C]=[display+{DisplayPlus104Offset}]={DisplayPlus104Copy}");
     }
 
     /// <summary>
