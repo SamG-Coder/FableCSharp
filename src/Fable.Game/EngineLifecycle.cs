@@ -417,6 +417,11 @@ public sealed class EngineLifecycle : IDisposable
     public const uint MeshBankSetGlobalFn = MeshBank.SetGlobalFn;
     public const uint InitWorldMapFn = 0x005066E0;
     public const uint WorldMapVtbl = 0x01244AEC;
+    public const uint WorldVtbl = 0x012390F0;
+    public const int WorldLoadWldVtbl = 8;
+    public const uint WorldLoadWldFn = 0x0049E220;
+    public const uint WorldAfterWldFn = 0x0049D970;
+    public const int WorldLoadedFlagOffset = 128;
     public const uint LoadWldFile = 0x00507C30;
     public const uint LoadGtng = 0x0050959F;
     public const uint LoadGlobalThings = 0x00509859;
@@ -674,6 +679,18 @@ public sealed class EngineLifecycle : IDisposable
     public const int EngineReadyCallbackOffset = 240;
     public const int EngineGamePtrOffset = 244;
     public const uint StartupWadSite = 0x004A19EB;
+    public const uint ExtraWadFlagVa = 0x01375456;
+    public const int ExtraWadFlagFirstSeen = 0;
+    public const uint WorldMapOpenBankFn = 0x004FDAB0;
+    public const uint EmptyCStringVa = 0x0122D70C;
+    public const uint DeriveQuestPathFn = 0x0049D770;
+    public const uint QuestSuffixVa = 0x01238C40;
+    public const string QuestSuffix = ".qst";
+    public const uint GlobalQuestsVa = 0x01238F38;
+    public const string GlobalQuestsName = @"Data\Levels\GlobalQuests.qst";
+    public const uint GenerateOfflineDataSite = 0x004A1AF8;
+    public const uint GenerateOfflineDataFlagVa = 0x01375446;
+    public const int GenerateOfflineDataFlagFirstSeen = 0;
     public const uint SetStaticMapForEngineSite = 0x004A1B7D;
     public const uint AttachPatchFn = 0x00BDF010;
     public const uint GameModeCtorRenderEnable = 0x00418EC6;
@@ -2438,22 +2455,30 @@ public sealed class EngineLifecycle : IDisposable
 
     /// <summary>
     /// <c>004A1840</c> from <c>00416953</c>:
-    /// <c>00507C30</c> token-switch parse of
-    /// <c>FinalAlbion.wld</c>. Then GTNG,
-    /// global things, region graph, QST
-    /// <c>004A0D90</c> into world+184,
-    /// Startup WAD, Set Static Map.
-    /// <c>0049F180</c> / <c>004B4A10</c> are
-    /// siblings after this call, not children.
-    /// <c>005066E0</c> ctor already ran in
-    /// Init World Init.
+    /// <c>004A0D90</c> <c>FinalAlbion.qst</c>
+    /// then <c>GlobalQuests.qst</c>,
+    /// <c>004FDAB0</c> empty, Startup WAD,
+    /// world <c>vtbl+8</c> <c>0049E220</c>
+    /// → map <c>vtbl+12</c> <c>00507C30</c>,
+    /// empty <c>006C20A0</c>, skip
+    /// Generate Offline Data
+    /// (<c>[0x1375446]==0</c>), Set Static Map.
+    /// Host WLD-before-WAD is DISPROVEN.
     /// </summary>
     public void LoadWorldMap()
     {
         Note(LoadQuestsFn, "Load Quests", "WLD",
             "004A1840 Load Quests / WLD / Startup WAD");
-        Note(LoadWldFile, "Load .wld file", "WLD", "00507C30 vtbl+12");
         WorldFileName = FinalAlbionWld;
+        LoadQuestDefs();
+        Note(WorldMapOpenBankFn, "Loading world", "WLD",
+            "004FDAB0 empty 0x122D70C");
+        Note(StartupWadSite, "Loading world", "WLD", "Startup WAD");
+        Note(ExtraWadFlagVa, "Loading world", "WLD",
+            $"01375456={ExtraWadFlagFirstSeen} skip");
+        Note(WorldLoadWldFn, "Loading world", "WLD",
+            $"0049E220 vtbl+{WorldLoadWldVtbl}");
+        Note(LoadWldFile, "Load .wld file", "WLD", "00507C30 vtbl+12");
         if (Install is not null)
         {
             if (!File.Exists(Install.WorldPath))
@@ -2469,12 +2494,15 @@ public sealed class EngineLifecycle : IDisposable
                     n => $"maps={n} things={GlobalThings?.Things.Count() ?? 0}");
                 Timing.Measure("region graph", () => { LoadRegionGraphFile(); return Regions?.Neighbors.Count ?? 0; },
                     n => $"nodes={n}");
-                Timing.Measure("quests", () => { LoadQuestDefs(); return Quests?.Quests.Count ?? 0; },
-                    n => $"defs={n}");
             }
         }
 
-        Note(StartupWadSite, "Loading world", "WLD", "Startup WAD");
+        Note(WorldAfterWldFn, "Loading world", "WLD",
+            $"0049D970 +{WorldLoadedFlagOffset}=1");
+        Note(LevelLoaderHasWork, "Loading world", "WLD",
+            "006C20A0 empty skip");
+        Note(GenerateOfflineDataSite, "Loading world", "WLD",
+            $"Generate Offline Data 01375446={GenerateOfflineDataFlagFirstSeen} skip");
         Note(SetStaticMapForEngineSite, "Loading world", "WLD",
             "Set Static Map for Engine");
         SetStaticMapFileForUse();
@@ -3988,9 +4016,24 @@ public sealed class EngineLifecycle : IDisposable
     /// AddTestQuest into world+184.
     /// Not <c>0049F180</c>.
     /// </summary>
+    /// <summary>
+    /// <c>0049D770</c> first-seen:
+    /// <c>Data\Levels\</c> + WLD stem +
+    /// <c>.qst</c>.
+    /// </summary>
+    public static string DeriveQuestFileName(string wldPath)
+    {
+        var stem = Path.GetFileNameWithoutExtension(wldPath);
+        if (string.IsNullOrEmpty(stem))
+            stem = Path.GetFileNameWithoutExtension(FinalAlbionWld);
+        return StaticMapLevelsDir + stem + QuestSuffix;
+    }
+
     private void LoadQuestDefs()
     {
         Note(LoadQuestsSite, "Load Quests", "Quest", "00416ABA 004A1840");
+        var qst = DeriveQuestFileName(WorldFileName ?? FinalAlbionWld);
+        Note(DeriveQuestPathFn, "Load Quests", "Quest", "0049D770 " + qst);
         Note(QstParseFn, "Load Quests", "Quest", "004A0D90 AddQuest/AddTestQuest");
         if (Install is not null && File.Exists(Install.QuestPath))
         {
@@ -3998,6 +4041,14 @@ public sealed class EngineLifecycle : IDisposable
             Note(QstParseFn, "Load Quests", "Quest",
                 $"quests={Quests.Quests.Count} {Path.GetFileName(Install.QuestPath)}");
         }
+
+        Note(GlobalQuestsVa, "Load Quests", "Quest", GlobalQuestsName);
+        if (Install is not null && File.Exists(Install.GlobalQuestPath))
+            Note(QstParseFn, "Load Quests", "Quest",
+                "004A0D90 " + Path.GetFileName(Install.GlobalQuestPath));
+        else
+            Note(FileExistsFn, "Load Quests", "Quest",
+                "00999230 miss " + GlobalQuestsName);
     }
 
     /// <summary>

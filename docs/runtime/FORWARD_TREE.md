@@ -535,12 +535,17 @@ Called at the **end** of `004184BD`, after Create Players.
     │   ├── else [0x13B8668]             empty first-seen
     │   └── else 0x122EE14               UTF-16 updatedscenic.wld
     │                                    (not first-seen New Game)
-    ├── 004A1840(world, path)            PARTIAL (LoadWorldMap)
-    │   ├── "Load Quests" → 004A0D90
-    │   ├── 004FDAB0 world map
-    │   ├── "Startup WAD"
-    │   ├── 006C20A0 pump until empty    UNREAD
-    │   ├── "Generate Offline Data" if [0x1375446]  UNREAD
+    ├── 004A1840(world, path)            PROVEN order
+    │   ├── 0049D770 → Data\Levels\FinalAlbion.qst  004A0D90  PROVEN
+    │   ├── Data\Levels\GlobalQuests.qst exists → 004A0D90  PROVEN
+    │   ├── 004FDAB0(empty 0x122D70C)    PROVEN
+    │   ├── "Startup WAD"                PROVEN
+    │   ├── [0x1375456]==0 skip extra wad  first-seen
+    │   ├── world vtbl+8 0049E220         PROVEN
+    │   │   └── map vtbl+12 00507C30(file, -1)
+    │   ├── 0049D970 [world+128]=1
+    │   ├── 006C20A0 empty skip          PROVEN (00507C30 does not E8 006C27A0)
+    │   ├── "Generate Offline Data" [0x1375446]==0 skip  PROVEN
     │   └── "Set Static Map for Engine" vtbl+208  PROVEN
     │       └── 00B23DC0 → 00B428E0  Data\Levels\FinalAlbion.stb miss
     ├── [0x13B8648]!=0 editor            UNREAD (not no-save)

@@ -1403,8 +1403,18 @@ public sealed class EngineLifecycleTests
         Assert.True(skipSave > prepare, "004A3200 skip after vtbl+28");
         Assert.True(path > skipSave, "+90576 after skip-save");
         Assert.True(loadMap > path, "004A1840 after path");
-        Assert.True(wad > loadMap && staticMap > wad,
-            "Startup WAD / Set Static Map inside 004A1840");
+        var wld = events.FindIndex(e =>
+            e.Va == EngineLifecycle.LoadWldFile &&
+            e.Action.Contains("00507C30", StringComparison.Ordinal));
+        var empty = events.FindIndex(e =>
+            e.Va == EngineLifecycle.LevelLoaderHasWork &&
+            e.Action.Contains("empty", StringComparison.Ordinal));
+        var offline = events.FindIndex(e =>
+            e.Va == EngineLifecycle.GenerateOfflineDataSite);
+        Assert.True(wad > loadMap && wld > wad,
+            "00507C30 after Startup WAD");
+        Assert.True(empty > wld && offline > empty && staticMap > offline,
+            "empty 006C20A0 then skip Generate Offline then Set Static Map");
         var thunk = events.FindIndex(e =>
             e.Va == EngineLifecycle.DisplayEngineSetStaticMapThunk);
         var derive = events.FindIndex(e => e.Va == EngineLifecycle.DeriveStaticMapNameFn);
@@ -1713,6 +1723,66 @@ public sealed class EngineLifecycleTests
         Assert.True(File.Exists(
             Path.Combine(install.Root, "Data", "Levels", "FinalAlbion_RT.stb")));
         Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void LoadWorld_004A1840_after_wad_is_00507C30_then_empty_006C20A0()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.NotNull(life.World);
+        var events = life.Trace.Events;
+        var qst = events.FindIndex(e =>
+            e.Va == EngineLifecycle.DeriveQuestPathFn &&
+            e.Action.Contains("FinalAlbion.qst", StringComparison.Ordinal));
+        var parseQst = events.FindIndex(e =>
+            e.Va == EngineLifecycle.QstParseFn &&
+            e.Action.Contains("FinalAlbion.qst", StringComparison.Ordinal));
+        var global = events.FindIndex(e =>
+            e.Va == EngineLifecycle.QstParseFn &&
+            e.Action.Contains("GlobalQuests.qst", StringComparison.Ordinal));
+        var bank = events.FindIndex(e => e.Va == EngineLifecycle.WorldMapOpenBankFn);
+        var wad = events.FindIndex(e => e.Va == EngineLifecycle.StartupWadSite);
+        var extra = events.FindIndex(e =>
+            e.Va == EngineLifecycle.ExtraWadFlagVa &&
+            e.Action.Contains("skip", StringComparison.Ordinal));
+        var worldVtbl = events.FindIndex(e => e.Va == EngineLifecycle.WorldLoadWldFn);
+        var wld = events.FindIndex(e =>
+            e.Va == EngineLifecycle.LoadWldFile &&
+            e.Action.StartsWith("maps=", StringComparison.Ordinal));
+        var loaded = events.FindIndex(e => e.Va == EngineLifecycle.WorldAfterWldFn);
+        var empty = events.FindIndex(e =>
+            e.Va == EngineLifecycle.LevelLoaderHasWork &&
+            e.Action.Contains("empty", StringComparison.Ordinal));
+        var offline = events.FindIndex(e =>
+            e.Va == EngineLifecycle.GenerateOfflineDataSite &&
+            e.Action.Contains("skip", StringComparison.Ordinal));
+        var staticMap = events.FindIndex(e =>
+            e.Va == EngineLifecycle.SetStaticMapForEngineSite);
+        Assert.True(qst >= 0 && parseQst > qst && global > parseQst,
+            "0049D770 FinalAlbion.qst then GlobalQuests.qst");
+        Assert.True(bank > global && wad > bank && extra > wad,
+            "004FDAB0 then Startup WAD then 01375456 skip");
+        Assert.True(worldVtbl > extra && wld > worldVtbl && loaded > wld,
+            "0049E220 then 00507C30 then +128=1");
+        Assert.True(empty > loaded && offline > empty && staticMap > offline,
+            "006C20A0 empty then Generate Offline skip then Set Static Map");
+        Assert.Equal(@"Data\Levels\FinalAlbion.qst",
+            EngineLifecycle.DeriveQuestFileName(EngineLifecycle.FinalAlbionWld));
+        Assert.Equal(0x0049E220u, EngineLifecycle.WorldLoadWldFn);
+        Assert.Equal(8, EngineLifecycle.WorldLoadWldVtbl);
+        Assert.Equal(0x004FDAB0u, EngineLifecycle.WorldMapOpenBankFn);
+        Assert.Equal(0x01375446u, EngineLifecycle.GenerateOfflineDataFlagVa);
+        Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(events, e =>
+            e.Va == EngineLifecycle.LoadRegionFn &&
+            e.Action.Contains("00500540", StringComparison.Ordinal));
     }
 
     [Fact]
