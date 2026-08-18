@@ -3489,6 +3489,96 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void AILevel_HIGH_is_3_MEDIUM_2_default_4()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("ail",
+        [
+            "GUARD.AILevel HIGH",
+            "BANDIT.AILevel MEDIUM",
+            "HERO.AILevel LOW",
+            "WHISPER.AILevel",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(3, runtime.World.AILevels["GUARD"]);
+        Assert.Equal(2, runtime.World.AILevels["BANDIT"]);
+        Assert.Equal(4, runtime.World.AILevels["HERO"]);
+        Assert.Equal(32, runtime.World.AILevelVtbl["GUARD"]);
+        Assert.False(runtime.World.AILevels.ContainsKey("WHISPER"));
+        Assert.Equal(0x00CC4501u, ScriptCommandMap.Find("AILevel")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("SetScared")!.Value.ApplySite,
+            ScriptCommandMap.Find("AILevel")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void AILevel_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".AILevel", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "GUARD.AILevel HIGH";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("AILevel", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-ail", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".AILevel", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        var level = 4;
+        if (ScriptLine.TokenMatches(parsed.Arg(0), "HIGH"))
+            level = 3;
+        else if (ScriptLine.TokenMatches(parsed.Arg(0), "MEDIUM"))
+            level = 2;
+        Assert.Equal(level, runtime.World.AILevels[parsed.Target ?? ""]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-ail.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-ailevel.txt"),
+            """
+            AILevel 00CC44A9 / apply 00CC4501
+              ebx actor else 00CC7081
+              arg0 00403A00 empty skip
+              default edi=4
+              00BFEBA8 HIGH → 3
+              00BFEBA8 MEDIUM → 2
+              no LOW token
+              actor vtbl+48 handle; 004AB130
+              00CD2770(actor); vtbl+32(handle,actor,level)
+              004AA8B0+00CD3D2E+008ABD10; jmp 00CC707C
+            AI brain UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();

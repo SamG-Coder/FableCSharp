@@ -1166,6 +1166,14 @@ public sealed class WorldRuntime
     public readonly Dictionary<string, bool> Chests = new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, bool> Drawable = new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, bool> Collide = new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// <c>00CC45E5</c> <c>vtbl+32(handle,actor,level)</c>.
+    /// Default 4; HIGH=3; MEDIUM=2. No LOW token.
+    /// </summary>
+    public readonly Dictionary<string, int> AILevels =
+        new(StringComparer.OrdinalIgnoreCase);
+    public readonly Dictionary<string, int> AILevelVtbl =
+        new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, float> Alpha = new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, string> Flags = new(StringComparer.OrdinalIgnoreCase);
     public readonly List<string> Modes = [];
@@ -1499,6 +1507,19 @@ public sealed class WorldRuntime
     public void SetScared(string actor, bool scared)
     {
         Scared[actor ?? ""] = scared;
+    }
+
+    /// <summary>
+    /// <c>00CC4501</c>: arg0 required; default 4;
+    /// HIGH=3; MEDIUM=2; actor vtbl+48;
+    /// <c>vtbl+32(handle,actor,level)</c>.
+    /// AI brain UNREAD.
+    /// </summary>
+    public void SetAILevel(string actor, int level)
+    {
+        var key = actor ?? "";
+        AILevels[key] = level;
+        AILevelVtbl[key] = 32;
     }
 
     /// <summary>

@@ -747,6 +747,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "arg0 required; ebx actor; 00BFEBA8 run=1 sneak=2 else 0; IsTrue(arg2); vtbl+24; leftover 00CC5691; not WalkTo 16"),
+        Spec("AILevel", 0x00CC44A9, 0x00CC4501, "HIGH|MEDIUM|other",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "ebx actor; arg0 required; default 4; HIGH=3 MEDIUM=2; vtbl+48; vtbl+32; 00CD2770+008ABD10; jmp 00CC707C; no LOW"),
         Spec("FollowThing", 0x00CC19F2, 0x00CC1AE9, "target[,speed]",
             ScriptReturn.YieldAfter, CommandParity.ScriptLayer,
             "default speed 1.0; actor vtbl+28; yield 00CC0E96 if [ebp+103]"),

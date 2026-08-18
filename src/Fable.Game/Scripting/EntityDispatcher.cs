@@ -405,6 +405,23 @@ public static class EntityDispatcher
                 now.ToString("0.###"));
         }
 
+        if (Eq(v, "AILevel"))
+        {
+            // 00CC4501: arg0 required; default 4;
+            // 00BFEBA8 HIGH->3 MEDIUM->2; actor vtbl+48;
+            // vtbl+32(handle,actor,level); jmp 00CC707C.
+            if (line.Arg(0).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            var level = 4;
+            if (ScriptLine.TokenMatches(line.Arg(0), "HIGH"))
+                level = 3;
+            else if (ScriptLine.TokenMatches(line.Arg(0), "MEDIUM"))
+                level = 2;
+            ctx.World.SetAILevel(line.Target ?? "", level);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity,
+                level.ToString());
+        }
+
         if (Eq(v, "SetScared"))
         {
             // 00CC12B7: default 1; IsFalse(arg0) → 0. Empty stays 1.
