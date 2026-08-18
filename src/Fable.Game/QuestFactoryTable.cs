@@ -40,6 +40,11 @@ public static class QuestFactoryTable
     public const uint PlayCutsceneFactory = 0x00F01760;
     public const uint PlayCutsceneVtbl = 0x012F72D0;
     public const int PlayCutsceneSize = 72;
+    public const uint GameflowFactory = 0x00CEF950;
+    public const uint GameflowVtbl = 0x012C3FA4;
+    public const uint GameflowMain = 0x00CE75B0;
+    public const int GameflowSize = 100;
+    public const string GameflowScript = "S_GF";
     public const string MasterLike = "_LIKE";
     public const string MasterHate = "_HATE";
     public const uint MasterLikeVa = 0x0143E938;
@@ -86,6 +91,13 @@ public static class QuestFactoryTable
             BindingKind.ProvenGeneric,
             "00CD52D0 CS_PlayCutscene empty factory " +
             "00F01760 size 72 vtbl 012F72D0; no CCutsceneDef"),
+        new("Gameflow", GameflowScript,
+            GameflowFactory, SharedRun, GameflowMain,
+            GameflowVtbl, GameflowSize, false,
+            BindingKind.ProvenGeneric,
+            "00CD52D0 Gameflow / S_GF; factory 00CEF950 " +
+            "size 100 vtbl 012C3FA4; vtbl+4 00CE75B0; " +
+            "user.ini 00892E80 → 004B4A10 → 00CB5AD0"),
     ];
 
     public static QuestNameFactory? Find(string questName)

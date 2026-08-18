@@ -76,6 +76,8 @@ public sealed class ScriptRuntimeParityTests
         Assert.Equal("Q_SunnyvaleMaster", QuestFactoryTable.Recovered[0].QuestName);
         Assert.Null(QuestFactoryTable.Recovered[0].ScriptName);
         Assert.Equal("S_HB", QuestFactoryTable.Find("HeroBoasts")!.Value.ScriptName);
+        Assert.Equal("S_GF", QuestFactoryTable.Find("Gameflow")!.Value.ScriptName);
+        Assert.Equal(0x00CEF950u, QuestFactoryTable.GameflowFactory);
         Assert.Equal(PersistKind.Bool, PersistTable.Recovered[0].Kind);
         Assert.False(PersistTable.AttackOverWriterKnown);
     }

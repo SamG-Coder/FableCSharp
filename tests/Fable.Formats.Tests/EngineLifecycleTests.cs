@@ -1020,9 +1020,10 @@ public sealed class EngineLifecycleTests
         Assert.Equal(7, life.Runtime.Quests.Count);
         Assert.Equal(7, life.Runtime.Scheduler.Fibers.Count);
         Assert.All(life.Runtime.Quests, q => Assert.NotNull(q.Fiber));
-        Assert.All(
-            life.Runtime.Quests.Where(q => q.Name != "Gameflow"),
-            q => Assert.True(q.Started));
+        Assert.All(life.Runtime.Quests, q => Assert.True(q.Started));
+        Assert.Equal(
+            QuestFactoryTable.GameflowFactory,
+            life.Runtime.Quests.Single(q => q.Name == "Gameflow").Factory);
         Assert.Equal(QuestFactoryTable.SunnyvaleFactory,
             life.Runtime.Quests.Single(q => q.Name == "Q_SunnyvaleMaster").Factory);
         Assert.DoesNotContain(life.ActivatedQuests, q => q == RegionTravel.IntroScriptName);
@@ -1418,10 +1419,10 @@ public sealed class EngineLifecycleTests
         Assert.True(play.Started);
         Assert.Equal(QuestFactoryTable.PlayCutsceneFactory, play.Factory);
         Assert.Null(play.ScriptName);
-        Assert.All(
-            life.Runtime.Quests.Where(q => q.Name != "Gameflow"),
-            q => Assert.True(q.Started));
-        Assert.Contains(life.Runtime.Quests, q => q.Name == "Gameflow");
+        Assert.All(life.Runtime.Quests, q => Assert.True(q.Started));
+        var gameflow = life.Runtime.Quests.Single(q => q.Name == "Gameflow");
+        Assert.Equal(QuestFactoryTable.GameflowFactory, gameflow.Factory);
+        Assert.Equal(QuestFactoryTable.GameflowScript, gameflow.ScriptName);
         Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == RegionTravel.IntroScriptName);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ActivateQuestFn);
@@ -1771,6 +1772,10 @@ public sealed class EngineLifecycleTests
             e.Va == EngineLifecycle.ActivateQuestFn &&
             e.Action.Contains("Gameflow", StringComparison.Ordinal));
         Assert.Contains(life.Runtime!.Quests, q => q.Name == "Gameflow");
+        Assert.True(life.Runtime.Quests.Single(q => q.Name == "Gameflow").Started);
+        Assert.Equal(
+            QuestFactoryTable.GameflowScript,
+            life.Runtime.Quests.Single(q => q.Name == "Gameflow").ScriptName);
         Assert.Equal(0x00892E80u, EngineLifecycle.ScriptManagerActivateQuestFn);
         Assert.Equal(1104, EngineLifecycle.ScriptManagerActivateQuestVtbl);
         Assert.Equal(0x01260F0Cu, EngineLifecycle.ScriptManagerVtbl);
