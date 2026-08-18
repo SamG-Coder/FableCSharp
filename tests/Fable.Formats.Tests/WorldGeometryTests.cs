@@ -759,6 +759,13 @@ public sealed class WorldGeometryTests
         var lhs = Vector4.Dot(new Vector4(Vector3.Transform(p, xform), 1f), plane);
         var rhs = Vector4.Dot(new Vector4(p, 1f), MeshPushConstants.TransformPlane(xform, plane));
         Assert.InRange(MathF.Abs(lhs - rhs), 0f, 1e-3f);
+        var shifted = xform * Matrix4x4.CreateTranslation(8f, 0f, 0f);
+        var twice = MeshBatches.BuildMeshes([(mesh, xform), (mesh, shifted)]);
+        Assert.Equal(built.Vertices.Length, twice.Vertices.Length);
+        Assert.True(twice.Draws.Length >= built.Draws.Length * 2);
+        Assert.Equal(twice.Draws[0].FirstVertex, twice.Draws[built.Draws.Length].FirstVertex);
+        Assert.Equal(xform, twice.Draws[0].World);
+        Assert.Equal(shifted, twice.Draws[built.Draws.Length].World);
     }
 
     [Fact]

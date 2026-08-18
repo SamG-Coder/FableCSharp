@@ -101,55 +101,70 @@ public static class MeshBatches
     }
 
     /// <summary>
-    /// File-local C3D verts. World is the
+    /// File-local C3D verts, one VB range per
+    /// <see cref="MeshFile"/>. World is the
     /// instance 3×4 (<c>009881F0</c>
-    /// wrapper+496), not a baked triangle.
-    /// PALSKIN dest stays bind-pose locals
-    /// until <c>c38</c> is wired.
+    /// wrapper+496). Native
+    /// <c>00BB2540</c> copies locals once and
+    /// DIP each instance; it does not bake
+    /// <c>ObjectTransform</c> into a soup.
     /// </summary>
     public static TexturedMesh BuildMeshes(
         IReadOnlyList<(MeshFile Mesh, Matrix4x4 Transform)> instances)
     {
-        var total = 0;
+        var unique = 0;
+        var seenMesh = new HashSet<MeshFile>();
         foreach (var (mesh, _) in instances)
-            total += mesh.Triangles.Count * 3;
+        {
+            if (seenMesh.Add(mesh))
+                unique += mesh.Triangles.Count * 3;
+        }
 
-        var vertices = new MeshVertex[total];
+        var vertices = new MeshVertex[unique];
+        var templates = new Dictionary<MeshFile, MeshDraw[]>();
         var draws = new List<MeshDraw>(instances.Count);
         var cursor = 0;
         foreach (var (mesh, transform) in instances)
         {
-            // First-seen dest is already in
-            // MeshFile.Triangles (00A9E1E0 × IBM).
-            // Do not CPU-re-skin; c38 upload is
-            // the later GPU path.
-            var source = mesh.Triangles;
-            var layer = mesh.BoneCount > 0 ? SceneLayer.Palskin : SceneLayer.Prop;
-            foreach (var group in source.GroupBy(tri => (
-                tri.TextureId,
-                tri.TextureId1 == 0 ? tri.TextureId : tri.TextureId1,
-                tri.SrcAlphaBlend,
-                tri.Layer)))
+            if (!templates.TryGetValue(mesh, out var groups))
             {
-                var first = cursor;
-                foreach (var tri in group)
+                // First-seen dest is already in
+                // MeshFile.Triangles (00A9E1E0 × IBM).
+                var source = mesh.Triangles;
+                var layer = mesh.BoneCount > 0 ? SceneLayer.Palskin : SceneLayer.Prop;
+                var built = new List<MeshDraw>();
+                foreach (var group in source.GroupBy(tri => (
+                    tri.TextureId,
+                    tri.TextureId1 == 0 ? tri.TextureId : tri.TextureId1,
+                    tri.SrcAlphaBlend,
+                    tri.Layer)))
                 {
-                    vertices[cursor++] = Vert(tri.A, tri.NormalA, tri.Normal, tri.UvA, tri.ColorA, tri.ExtraA, tri.ColorAlphaA);
-                    vertices[cursor++] = Vert(tri.B, tri.NormalB, tri.Normal, tri.UvB, tri.ColorB, tri.ExtraB, tri.ColorAlphaB);
-                    vertices[cursor++] = Vert(tri.C, tri.NormalC, tri.Normal, tri.UvC, tri.ColorC, tri.ExtraC, tri.ColorAlphaC);
+                    var first = cursor;
+                    foreach (var tri in group)
+                    {
+                        vertices[cursor++] = Vert(tri.A, tri.NormalA, tri.Normal, tri.UvA, tri.ColorA, tri.ExtraA, tri.ColorAlphaA);
+                        vertices[cursor++] = Vert(tri.B, tri.NormalB, tri.Normal, tri.UvB, tri.ColorB, tri.ExtraB, tri.ColorAlphaB);
+                        vertices[cursor++] = Vert(tri.C, tri.NormalC, tri.Normal, tri.UvC, tri.ColorC, tri.ExtraC, tri.ColorAlphaC);
+                    }
+
+                    var n = (uint)(cursor - first);
+                    if (n == 0)
+                        continue;
+                    foreach (var pass in ScenePasses.DrawnPasses(layer))
+                    {
+                        built.Add(new MeshDraw(
+                            group.Key.TextureId, (uint)first, n, group.Key.Item2,
+                            pass.Bit, ScenePasses.ShaderMode(pass.Submit),
+                            group.Key.SrcAlphaBlend || mesh.BoneCount > 0));
+                    }
                 }
 
-                var n = (uint)(cursor - first);
-                if (n == 0)
-                    continue;
-                foreach (var pass in ScenePasses.DrawnPasses(layer))
-                {
-                    draws.Add(new MeshDraw(
-                        group.Key.TextureId, (uint)first, n, group.Key.Item2,
-                        pass.Bit, ScenePasses.ShaderMode(pass.Submit),
-                        group.Key.SrcAlphaBlend || mesh.BoneCount > 0, transform));
-                }
+                groups = [.. built];
+                templates[mesh] = groups;
             }
+
+            foreach (var draw in groups)
+                draws.Add(draw with { World = transform });
         }
 
         return new TexturedMesh { Vertices = vertices, Draws = [.. draws] };
