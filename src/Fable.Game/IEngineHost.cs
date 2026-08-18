@@ -81,6 +81,8 @@ public readonly record struct FrontendWidget(
     bool Enabled = true,
     bool Clip = false,
     int ActiveChild = 0,
+    int Font = 0,
+    string? FontFace = null,
     float U0 = 0,
     float V0 = 0,
     float U1 = 0,

@@ -141,6 +141,33 @@ public sealed class FrontendInputTests
     }
 
     [Fact]
+    public void Type4_drives_lifecycle_0xE5_then_injected_0x126_then_15()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.Equal(
+            EngineLifecycle.FrontendPressStartMenu, life.FrontendMenuRoot);
+        life.QueueInput(FrontendInputMap.Type4, 0);
+        Assert.True(life.Pump());
+        Assert.Equal(
+            EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        Assert.Equal("Default", life.FrontendEditBoxName);
+        Assert.False(life.RetailNewGameFlag);
+        life.DispatchFrontendMessage(FrontendMessages.AcceptNewProfile);
+        Assert.True(life.Pump());
+        Assert.Equal(
+            EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
+        Assert.False(life.RetailNewGameFlag);
+        life.DispatchFrontendMessage(FrontendMessages.NewGame);
+        Assert.True(life.Pump());
+        Assert.True(life.RetailNewGameFlag);
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.Equal("FinalAlbion.wld", life.WorldFileName);
+    }
+
+    [Fact]
     public void Queue_drives_lifecycle_without_a_key()
     {
         var life = new EngineLifecycle();

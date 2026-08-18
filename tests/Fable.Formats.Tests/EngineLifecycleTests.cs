@@ -364,7 +364,7 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
-    public void Frontend_press_start_Return_is_msg_E5_not_15()
+    public void Frontend_press_start_Return_does_not_post_0xE5_or_15()
     {
         var life = new EngineLifecycle();
         life.Bootstrap(null);
@@ -373,7 +373,39 @@ public sealed class EngineLifecycleTests
         life.QueueInput(EngineInput.TypeKey, RegionTravel.PlayAviSkipReturn);
         Assert.True(life.Pump());
         Assert.Equal(
+            EngineLifecycle.FrontendPressStartMenu, life.FrontendMenuRoot);
+        Assert.False(life.RetailNewGameFlag);
+        Assert.Equal(EngineStage.Frontend, life.Stage);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendUiMessageFn &&
+            e.Action.Contains("msg=229", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendUiMessageFn &&
+            e.Action.Contains("msg=15", StringComparison.Ordinal));
+        Assert.Equal(
+            FrontendInputMap.ActionFromKey,
+            FrontendInputMap.ActionFromEvent(
+                EngineInput.TypeKey, RegionTravel.PlayAviSkipReturn));
+        Assert.Null(FrontendInputMap.TryMapEvent(
+            EngineInput.TypeKey,
+            RegionTravel.PlayAviSkipReturn,
+            EngineLifecycle.FrontendPressStartMenu));
+    }
+
+    [Fact]
+    public void Frontend_press_start_type4_posts_0xE5_then_new_profile()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.Equal(4, EngineInput.Type4);
+        Assert.Equal(26, EngineInput.ActionType4);
+        life.QueueInput(EngineInput.Type4, 0);
+        Assert.True(life.Pump());
+        Assert.Equal(
             EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        Assert.Equal("Default", life.FrontendEditBoxName);
         Assert.False(life.RetailNewGameFlag);
         Assert.Equal(EngineStage.Frontend, life.Stage);
         Assert.Contains(life.Trace.Events, e =>
@@ -382,8 +414,6 @@ public sealed class EngineLifecycleTests
         Assert.DoesNotContain(life.Trace.Events, e =>
             e.Va == EngineLifecycle.FrontendUiMessageFn &&
             e.Action.Contains("msg=15", StringComparison.Ordinal));
-        Assert.DoesNotContain(life.Trace.Events, e =>
-            e.Va == EngineLifecycle.FrontendMainMenuFn);
     }
 
     [Fact]
@@ -434,18 +464,24 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
-    public void Frontend_new_profile_Return_is_0x126_then_main_menu_Return_leaves()
+    public void Frontend_type4_then_injected_0x126_then_15_leaves()
     {
         var life = new EngineLifecycle();
         life.Bootstrap(null);
         while (life.Stage == EngineStage.StartupVideos)
             life.FinishStartupVideo();
+        life.QueueInput(EngineInput.Type4, 0);
+        Assert.True(life.Pump());
+        Assert.Equal(
+            EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        Assert.Equal("Default", life.FrontendEditBoxName);
+        Assert.False(life.RetailNewGameFlag);
         life.QueueInput(EngineInput.TypeKey, RegionTravel.PlayAviSkipReturn);
         Assert.True(life.Pump());
         Assert.Equal(
             EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
         Assert.False(life.RetailNewGameFlag);
-        life.QueueInput(EngineInput.TypeKey, RegionTravel.PlayAviSkipReturn);
+        life.DispatchFrontendMessage(EngineLifecycle.FrontendAcceptProfileMessage);
         Assert.True(life.Pump());
         Assert.Equal(
             EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
@@ -455,6 +491,10 @@ public sealed class EngineLifecycleTests
             e.Va == EngineLifecycle.FrontendUiMessageFn &&
             e.Action.Contains("msg=294", StringComparison.Ordinal));
         life.QueueInput(EngineInput.TypeKey, RegionTravel.PlayAviSkipReturn);
+        Assert.True(life.Pump());
+        Assert.False(life.RetailNewGameFlag);
+        Assert.Equal(EngineStage.Frontend, life.Stage);
+        life.DispatchFrontendMessage(EngineLifecycle.FrontendNewGameMessage);
         Assert.True(life.Pump());
         Assert.True(life.RetailNewGameFlag);
         Assert.Equal(EngineStage.Game, life.Stage);

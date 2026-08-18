@@ -20,15 +20,16 @@ public static class FrontendWidgetFactory
         GameBin defs,
         string rootName,
         FrontendSpriteBank? sprites = null,
-        Func<string, string?>? lookupText = null)
+        Func<string, string?>? lookupText = null,
+        NamesBin? names = null)
     {
         var widgets = new List<FrontendWidget>();
         var root = defs.FindEntry(rootName);
         var parsed = root is null ? null : FrontendUiDef.TryParse(root);
-        Add(widgets, parsed, rootName, parent: null, sprites, lookupText);
+        Add(widgets, parsed, rootName, parent: null, sprites, lookupText, names);
         if (parsed is null)
             return widgets;
-        AttachChildren(widgets, defs, parsed, rootName, sprites, lookupText);
+        AttachChildren(widgets, defs, parsed, rootName, sprites, lookupText, names);
         ApplyFirstSeenState(widgets);
         return widgets;
     }
@@ -106,7 +107,8 @@ public static class FrontendWidgetFactory
         FrontendUiDef parent,
         string parentName,
         FrontendSpriteBank? sprites,
-        Func<string, string?>? lookupText)
+        Func<string, string?>? lookupText,
+        NamesBin? names)
     {
         foreach (var index in parent.ChildIndices)
         {
@@ -115,9 +117,23 @@ public static class FrontendWidgetFactory
             var child = FrontendUiDef.TryParse(defs.Entries[index]);
             if (child is null)
                 continue;
-            Add(widgets, child, child.InstanceName, parentName, sprites, lookupText);
-            AttachChildren(widgets, defs, child, child.InstanceName, sprites, lookupText);
+            Add(widgets, child, child.InstanceName, parentName, sprites, lookupText, names);
+            AttachChildren(
+                widgets, defs, child, child.InstanceName, sprites, lookupText, names);
         }
+    }
+
+    /// <summary>
+    /// Type-6 ctor <c>0054ED90</c> pushes
+    /// persist Font i32 into
+    /// <c>009D49B0</c> names-blob offset
+    /// then <c>009E2C80</c> face lookup.
+    /// </summary>
+    public static string? ResolveFontFace(int font, NamesBin? names)
+    {
+        if (font <= 0 || names is null)
+            return null;
+        return names.Get((uint)font);
     }
 
     private static void Add(
@@ -126,7 +142,8 @@ public static class FrontendWidgetFactory
         string name,
         string? parent,
         FrontendSpriteBank? sprites,
-        Func<string, string?>? lookupText)
+        Func<string, string?>? lookupText,
+        NamesBin? names)
     {
         var text = def?.TextTag;
         string? body = null;
@@ -134,6 +151,7 @@ public static class FrontendWidgetFactory
             body = lookupText(text);
         var graphicId = def?.GraphicBankId ?? 0;
         var texture = sprites?.NameForWidget(name, graphicId);
+        var font = def?.Font ?? 0;
         widgets.Add(new FrontendWidget(
             name,
             def?.Type ?? 0,
@@ -157,6 +175,8 @@ public static class FrontendWidgetFactory
             Enabled: true,
             Clip: false,
             ActiveChild: FrontendWidgetType.FirstSeenState,
+            Font: font,
+            FontFace: ResolveFontFace(font, names),
             Colour: FrontendFrameDump.PackPersistColour(
                 def?.ColourR ?? 0f,
                 def?.ColourG ?? 0f,

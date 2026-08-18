@@ -366,6 +366,15 @@ public sealed class FrontendLayoutTests
         Assert.Equal(titleTex.Width, titleTex.FrameWidth);
         Assert.Equal(256, titleTex.FrameWidth);
         Assert.Equal(128, titleTex.FrameHeight);
+        var textWidget = widgets.First(w => w.Name == "UI_PRESS_START_TEXT");
+        Assert.Equal(0, textWidget.GraphicId);
+        Assert.False(textWidget.ScaleSizeToViewport);
+        Assert.False(textWidget.ScaleOriginToViewport);
+        var textDest = dests["UI_PRESS_START_TEXT"];
+        Assert.Equal(textDest.X0, textDest.X1);
+        Assert.Equal(textDest.Y0, textDest.Y1);
+        Assert.Equal(512f, textDest.OriginX);
+        Assert.InRange(textDest.OriginY, 383.99f, 384.01f);
     }
 
     private static (float X0, float Y0, float X1, float Y1) Rect(FrontendDest dest) =>

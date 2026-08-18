@@ -28,6 +28,13 @@ public sealed class FontFile
     public const string MainBank = "FONT_ENGLISH_MAIN";
     public const string StreamingBank = "STREAMING_FONT_ENGLISH_PC";
     public const string UiFace = "ENG_ARIAL_16";
+    /// <summary>
+    /// Persist Font 26051 on type-6
+    /// <c>UI_PRESS_START_TEXT</c> via
+    /// <c>009D49B0</c> names.bin offset.
+    /// Not the <c>0054F4B0</c> helper.
+    /// </summary>
+    public const string PersistType6Face = "ENG_ARIAL_24";
     public const string GameFace = "ENG_ARIAL_18";
     public const uint UiFaceHelperFn = 0x0054F4B0;
 

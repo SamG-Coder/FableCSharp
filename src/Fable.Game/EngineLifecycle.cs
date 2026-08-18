@@ -2837,20 +2837,13 @@ public sealed class EngineLifecycle : IDisposable
     {
         if (Stage != EngineStage.Frontend)
             return;
-        foreach (var (_, key) in Input.Applied)
+        foreach (var (type, key) in Input.Applied)
         {
-            if (key != RegionTravel.PlayAviSkipReturn)
+            var mapped = FrontendInputMap.TryMapEvent(
+                type, key, FrontendMenuRoot);
+            if (mapped is not int msg)
                 continue;
-            // Host stand-in only. Native
-            // key → 0xE5 / 0x126 is UNREAD.
-            // Return → msg 15 from Press
-            // Start is DISPROVEN.
-            if (FrontendMenuRoot == FrontendPressStartMenu)
-                DispatchFrontendMessage(FrontendPressStartMessage);
-            else if (FrontendMenuRoot == FrontendNewProfileMenu)
-                DispatchFrontendMessage(FrontendAcceptProfileMessage);
-            else
-                DispatchFrontendMessage(FrontendNewGameMessage);
+            DispatchFrontendMessage(msg);
             return;
         }
     }
@@ -6781,8 +6774,16 @@ public sealed class EngineLifecycle : IDisposable
                 return;
         }
 
+        NamesBin? names = null;
+        if (Install is not null)
+        {
+            var namesPath = Install.FindCompiledDef("names.bin");
+            if (namesPath is not null)
+                names = NamesBin.Load(namesPath);
+        }
+
         var built = FrontendWidgetFactory.Build(
-            FrontendDefs, rootName, _frontendSprites, LookupFrontendText);
+            FrontendDefs, rootName, _frontendSprites, LookupFrontendText, names);
         _frontendWidgets.AddRange(built);
         if (_frontendWidgets.Count > 0)
             FrontendRootType = _frontendWidgets[0].Type;
@@ -6963,10 +6964,12 @@ public sealed class EngineLifecycle : IDisposable
                 widget.Type == FrontendWidgetType.Text &&
                 !string.IsNullOrEmpty(widget.Text))
             {
-                var face = _frontendFonts?.TryLoad(FrontendUiFontFace);
+                var faceName = widget.FontFace ?? FrontendUiFontFace;
+                var face = _frontendFonts?.TryLoad(faceName)
+                    ?? _frontendFonts?.TryLoad(FrontendUiFontFace);
                 if (face is not null)
                 {
-                    const string atlasKey = FontFile.UiFace;
+                    var atlasKey = faceName;
                     if (!textureIndex.TryGetValue(atlasKey, out var atlasId))
                     {
                         atlasId = textures.Count;

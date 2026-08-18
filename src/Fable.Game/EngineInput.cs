@@ -25,10 +25,16 @@ public sealed class EngineInput
     public const int EventTypeOffset = 40;
     public const int EventKeyOffset = 0;
     public const int TypeKey = 1;
+    /// <summary>
+    /// <c>0042E3EE</c> <c>[record+40]==4</c>
+    /// → action 26. No DIK compare.
+    /// </summary>
+    public const int Type4 = 4;
     public const int Type10 = 10;
     public const int TypeMouse = 13;
     public const int TypeAnalog = 17;
     public const int ActionFromKey = 33;
+    public const int ActionType4 = 26;
     public const int ActionType10 = 27;
     public const int ActionMouse = 25;
 
@@ -138,6 +144,12 @@ public sealed class EngineInput
             LastKey = key;
             Dispatch(ActionFromKey);
             Mask |= KeyBit(key);
+            return;
+        }
+
+        if (type == Type4)
+        {
+            Dispatch(ActionType4);
             return;
         }
 

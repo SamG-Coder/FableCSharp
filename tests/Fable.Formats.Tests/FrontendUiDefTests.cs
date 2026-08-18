@@ -1,5 +1,6 @@
 using Fable.Core;
 using Fable.Formats.Defs;
+using Fable.Formats.Fonts;
 using Fable.Game;
 using Fable.Render.Parity.Dx9Vulkan;
 
@@ -43,6 +44,13 @@ public sealed class FrontendUiDefTests
         Assert.NotEqual(FableCrc.Hash("TextTag"), FrontendUiDef.TextTagCrc);
         Assert.NotEqual(FableCrc.Hash("Graphic"), FrontendUiDef.GraphicIndexCrc);
         Assert.NotEqual(FableCrc.Hash("Texture"), FrontendUiDef.GraphicIndexCrc);
+        Assert.NotEqual(FableCrc.Hash("Centre"), FrontendUiDef.CentreCrc);
+        Assert.NotEqual(FableCrc.Hash("Absolute"), FrontendUiDef.AbsoluteCrc);
+        Assert.NotEqual(FableCrc.Hash("ScaleSize"), FrontendUiDef.ScaleSizeCrc);
+        Assert.NotEqual(FableCrc.Hash("ScaleOrigin"), FrontendUiDef.ScaleOriginCrc);
+        Assert.Equal(0xBDACBABAu, FrontendUiDef.Plus189Crc);
+        Assert.Equal(0xAC637D43u, FrontendUiDef.Plus190Crc);
+        Assert.Equal(0x00631C60u, FrontendUiDef.PersistFn);
         Assert.Equal(0x0041D21Bu, FrontendWidgetType.ConstructFn);
         Assert.Equal(0x0054E3D0u, FrontendWidgetType.MenuCtor);
         Assert.Equal(0x0054F5C0u, FrontendWidgetType.TextCtor);
@@ -237,6 +245,33 @@ public sealed class FrontendUiDefTests
         Assert.True(FrontendWidgetType.DrawsChildList(10));
         Assert.True(FrontendWidgetType.SelectsChild(18));
         Assert.False(FrontendWidgetType.SelectsChild(5));
+    }
+
+    [Fact]
+    public void Persist_00631C60_plus189_plus190_are_u8_and_font_is_names_offset()
+    {
+        var (install, names, bin) = LoadFrontend();
+        Assert.Equal(0x00631C60u, FrontendUiDef.PersistFn);
+        Assert.Equal(0xBDACBABAu, FrontendUiDef.Plus189Crc);
+        Assert.Equal(0xAC637D43u, FrontendUiDef.Plus190Crc);
+        var text = FrontendUiDef.TryParse(bin.FindEntry("UI_PRESS_START_TEXT")!)!;
+        Assert.Equal(26051, text.Font);
+        var face = names.Get((uint)text.Font);
+        Assert.False(string.IsNullOrEmpty(face));
+        Assert.StartsWith("ENG_ARIAL_", face, StringComparison.Ordinal);
+        Assert.Equal(face, FrontendWidgetFactory.ResolveFontFace(text.Font, names));
+        Assert.Equal(FontFile.PersistType6Face, face);
+        var mouse = FrontendUiDef.TryParse(bin.FindEntry("UI_MOUSE_POINTER")!)!;
+        Assert.True(mouse.Absolute);
+        Assert.Equal(1, FrontendUiDef.ReadPersistU8(
+            bin.FindEntry("UI_MOUSE_POINTER")!.Raw, FrontendUiDef.AbsoluteCrc));
+        var widgets = FrontendWidgetFactory.Build(
+            bin, "UI_FRONTEND_PRESS_START_MENU", names: names);
+        var textWidget = Assert.Single(
+            widgets, w => w.Name == "UI_PRESS_START_TEXT");
+        Assert.Equal(26051, textWidget.Font);
+        Assert.Equal(face, textWidget.FontFace);
+        _ = install;
     }
 
     [Fact]

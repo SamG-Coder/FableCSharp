@@ -56,10 +56,28 @@ public sealed class FrontendUiDef
     public const uint UnknownF97DCrc = 0xF97D3844;
     public const uint UnknownA5F8Crc = 0xA5F8D969;
     /// <summary>
-    /// CUIStateDef persist <c>00625630</c>
-    /// <c>+120</c> u8. Not a nested object.
+    /// Style <c>+120</c> u8. CUIDef persist
+    /// <c>00631C60</c> after the style
+    /// vector. Not a nested object.
     /// </summary>
     public const uint UnreadNestedCrc = 0x56A59976;
+    /// <summary>
+    /// CUIDef persist <c>00631C60</c>
+    /// <c>+189</c> u8 <c>0043314A</c>.
+    /// Name UNREAD.
+    /// </summary>
+    public const uint Plus189Crc = 0xBDACBABA;
+    /// <summary>
+    /// CUIDef persist <c>00631C60</c>
+    /// <c>+190</c> u8 <c>0043314A</c>.
+    /// Name UNREAD.
+    /// </summary>
+    public const uint Plus190Crc = 0xAC637D43;
+    /// <summary>
+    /// CUIDef persist writer
+    /// <c>00631C60</c>.
+    /// </summary>
+    public const uint PersistFn = 0x00631C60;
     /// <summary>
     /// Style <c>+64</c> after
     /// <see cref="UnreadNestedCrc"/>.
@@ -440,6 +458,12 @@ public sealed class FrontendUiDef
             }
 
             if (crc == UnreadNestedCrc && payload < raw.Length)
+            {
+                cursor = payload + 1;
+                continue;
+            }
+
+            if (crc is Plus189Crc or Plus190Crc && payload < raw.Length)
             {
                 cursor = payload + 1;
                 continue;
