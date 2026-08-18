@@ -166,6 +166,7 @@ public sealed class FrontendInputTests
             w.Type == FrontendInputMap.TypeButton &&
             w.MessageId == FrontendMessages.PressStart);
         life.QueueInput(FrontendInputMap.Type4, 0);
+        life.QueueInput(FrontendInputMap.Type6, 0);
         Assert.True(life.Pump());
         Assert.Equal(
             EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
@@ -175,6 +176,7 @@ public sealed class FrontendInputTests
             w.Name == "UI_ACCEPT_NEW_PROFILE" &&
             w.MessageId == FrontendMessages.AcceptNewProfile);
         life.QueueInput(FrontendInputMap.Type4, 0);
+        life.QueueInput(FrontendInputMap.Type6, 0);
         Assert.True(life.Pump());
         Assert.Equal(
             EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
@@ -183,6 +185,7 @@ public sealed class FrontendInputTests
             w.Name == "UI_FRONTEND_BUTTON_NEW_GAME" &&
             w.MessageId == FrontendMessages.NewGame);
         life.QueueInput(FrontendInputMap.Type4, 0);
+        life.QueueInput(FrontendInputMap.Type6, 0);
         Assert.True(life.Pump());
         Assert.True(life.RetailNewGameFlag);
         Assert.Equal(EngineStage.Game, life.Stage);
@@ -268,15 +271,22 @@ public sealed class FrontendInputTests
         {
             new("UI_FRONTEND_NEW_PROFILE_SCREEN", 10, 0, 0, 0, 0, null, null),
             new("UI_ACCEPT_NEW_PROFILE", 38, 0, 0, 0, 0, null, null,
-                MessageId: FrontendMessages.AcceptNewProfile),
+                MessageId: FrontendMessages.AcceptNewProfile,
+                Armed: true),
         };
+        Assert.Null(FrontendInputMap.MessageFromWidgets(
+            FrontendInputMap.ActionType4, accept));
         Assert.Equal(
             FrontendMessages.AcceptNewProfile,
             FrontendInputMap.MessageFromPlus228List(accept));
         Assert.Equal(
             FrontendMessages.AcceptNewProfile,
             FrontendInputMap.MessageFromWidgets(
-                FrontendInputMap.ActionType4, accept));
+                FrontendInputMap.ActionType6, accept));
+        Assert.Null(FrontendInputMap.MessageFromPlus228List(
+        [
+            accept[1] with { Armed = false },
+        ]));
         Assert.Null(FrontendInputMap.MessageFromAction(
             FrontendInputMap.ActionType4, FrontendMessages.NewProfileMenu));
     }

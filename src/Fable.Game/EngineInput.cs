@@ -52,6 +52,7 @@ public sealed class EngineInput
     public const int TypeAnalog = 17;
     public const int ActionFromKey = 33;
     public const int ActionType4 = 26;
+    public const int ActionType6 = 28;
     public const int ActionType10 = 27;
     public const int ActionMouse = 25;
 
@@ -167,6 +168,12 @@ public sealed class EngineInput
         if (type == Type4)
         {
             Dispatch(ActionType4);
+            return;
+        }
+
+        if (type == Type6)
+        {
+            Dispatch(ActionType6);
             return;
         }
 

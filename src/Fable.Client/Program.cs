@@ -102,6 +102,8 @@ window.Update += dt =>
         var lmbDown = mouse.IsButtonPressed(MouseButton.Left);
         if (lmbDown && !lmbWasDown)
             life.QueueInput(EngineInput.Type4, 0);
+        if (!lmbDown && lmbWasDown)
+            life.QueueInput(EngineInput.Type6, 0);
         lmbWasDown = lmbDown;
     }
 

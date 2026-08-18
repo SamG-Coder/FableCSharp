@@ -193,37 +193,49 @@ public sealed class FrontendInputMap
     }
 
     /// <summary>
-    /// Type-10 <c>0054E2FA</c> posts
-    /// <c>+352</c> (attach). Type 11/38
-    /// <c>0055ACF0</c> posts
-    /// <c>+380</c> from persist
-    /// <c>+228</c>. Action 26
+    /// Type-10 action 26
+    /// <c>0054E2FA</c> posts <c>+352</c>.
+    /// Type 11/38 action 28
+    /// <c>0055ACF0</c> posts <c>+380</c>
+    /// after action 26 armed
+    /// <c>+364</c>. Action 26
     /// <c>+372</c> is <c>+224</c> and
     /// is 0 first-seen.
     /// </summary>
     public static int? MessageFromWidgets(
         int action, IReadOnlyList<FrontendWidget> widgets)
     {
-        if (action != ActionType4)
-            return null;
         ArgumentNullException.ThrowIfNull(widgets);
-        foreach (var widget in widgets)
-        {
-            if (!widget.Visible || widget.Clip)
-                continue;
-            if (widget.Type == FrontendWidgetType.Menu &&
-                widget.MessageId != 0)
-                return widget.MessageId;
-        }
-
-        return MessageFromPlus228List(widgets);
+        if (action == ActionType4)
+            return MessageFromType10Attach(widgets);
+        if (action == ActionType6)
+            return MessageFromPlus228List(widgets);
+        return null;
     }
 
     /// <summary>
-    /// <c>0055ACF0</c> <c>push [this+380]</c>
-    /// <c>vtbl+524</c>. First visible
-    /// type 11/38 persist
-    /// <see cref="MessageIdCrc"/>.
+    /// Type-10 <c>0054E2FA</c>
+    /// <c>&amp;widget+352</c>.
+    /// </summary>
+    public static int? MessageFromType10Attach(
+        IReadOnlyList<FrontendWidget> widgets)
+    {
+        ArgumentNullException.ThrowIfNull(widgets);
+        foreach (var widget in widgets)
+        {
+            if (!widget.Visible || widget.Clip || widget.MessageId == 0)
+                continue;
+            if (widget.Type == FrontendWidgetType.Menu)
+                return widget.MessageId;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// <c>0055ACF0</c> <c>vtbl+588</c>
+    /// action 28: <c>push [this+380]</c>
+    /// if armed. Persist <c>+228</c>.
     /// </summary>
     public static int? MessageFromPlus228List(
         IReadOnlyList<FrontendWidget> widgets)
@@ -231,7 +243,9 @@ public sealed class FrontendInputMap
         ArgumentNullException.ThrowIfNull(widgets);
         foreach (var widget in widgets)
         {
-            if (!widget.Visible || widget.Clip || widget.MessageId == 0)
+            if (!widget.Visible || widget.Clip || !widget.Armed)
+                continue;
+            if (widget.MessageId == 0)
                 continue;
             if (widget.Type == TypeButton || widget.Type == TypeAccept)
                 return widget.MessageId;

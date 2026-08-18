@@ -403,6 +403,7 @@ public sealed class EngineLifecycleTests
         Assert.Equal(26, EngineInput.ActionType4);
         Assert.Equal(3, EngineInput.Type4Device);
         Assert.Equal(6, EngineInput.Type6);
+        Assert.Equal(28, EngineInput.ActionType6);
         Assert.Equal(7, EngineInput.Type7);
         life.QueueInput(EngineInput.Type4, 0);
         Assert.True(life.Pump());
@@ -475,6 +476,7 @@ public sealed class EngineLifecycleTests
         while (life.Stage == EngineStage.StartupVideos)
             life.FinishStartupVideo();
         life.QueueInput(EngineInput.Type4, 0);
+        life.QueueInput(EngineInput.Type6, 0);
         Assert.True(life.Pump());
         Assert.Equal(
             EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
@@ -486,6 +488,7 @@ public sealed class EngineLifecycleTests
             EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
         Assert.False(life.RetailNewGameFlag);
         life.QueueInput(EngineInput.Type4, 0);
+        life.QueueInput(EngineInput.Type6, 0);
         Assert.True(life.Pump());
         Assert.Equal(
             EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
@@ -499,6 +502,7 @@ public sealed class EngineLifecycleTests
         Assert.False(life.RetailNewGameFlag);
         Assert.Equal(EngineStage.Frontend, life.Stage);
         life.QueueInput(EngineInput.Type4, 0);
+        life.QueueInput(EngineInput.Type6, 0);
         Assert.True(life.Pump());
         Assert.True(life.RetailNewGameFlag);
         Assert.Equal(EngineStage.Game, life.Stage);

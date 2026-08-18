@@ -2886,8 +2886,14 @@ public sealed class EngineLifecycle : IDisposable
             return;
         foreach (var (type, key) in Input.Applied)
         {
-            var mapped = FrontendInputMap.TryMapEvent(
-                type, key, _frontendWidgets);
+            var action = FrontendInputMap.ActionFromEvent(type, key);
+            if (action == FrontendInputMap.ActionType4)
+                ArmType34Widgets();
+            var mapped = action is int act
+                ? FrontendInputMap.MessageFromWidgets(act, _frontendWidgets)
+                : null;
+            if (action == FrontendInputMap.ActionType6)
+                UnarmType34Widgets();
             if (mapped is not int msg)
                 continue;
             DispatchFrontendMessage(msg);
@@ -6861,15 +6867,42 @@ public sealed class EngineLifecycle : IDisposable
     {
         Note(FrontendInputMap.AttachWriteE5, "Frontend", "UI",
             $"00598EE6 +{FrontendInputMap.Type10StoredMsgOffset} 0x{FrontendPressStartMessage:X}");
+        if (_frontendWidgets.Count == 0)
+            return;
+        var root = _frontendWidgets[0];
+        if (root.Type != FrontendPressStartType || root.MessageId != 0)
+            return;
+        _frontendWidgets[0] = root with
+        {
+            MessageId = FrontendPressStartMessage,
+        };
+    }
+
+    /// <summary>
+    /// Action 26 <c>[inner+364]=1</c> on
+    /// type 11/38. Action 28
+    /// <c>0055ACF0</c> needs this.
+    /// </summary>
+    private void ArmType34Widgets()
+    {
         for (var i = 0; i < _frontendWidgets.Count; i++)
         {
             var widget = _frontendWidgets[i];
-            if (widget.Type != FrontendPressStartType || widget.MessageId != 0)
+            if (widget.Type != FrontendInputMap.TypeButton &&
+                widget.Type != FrontendInputMap.TypeAccept)
                 continue;
-            _frontendWidgets[i] = widget with
-            {
-                MessageId = FrontendPressStartMessage,
-            };
+            _frontendWidgets[i] = widget with { Armed = true };
+        }
+    }
+
+    private void UnarmType34Widgets()
+    {
+        for (var i = 0; i < _frontendWidgets.Count; i++)
+        {
+            var widget = _frontendWidgets[i];
+            if (!widget.Armed)
+                continue;
+            _frontendWidgets[i] = widget with { Armed = false };
         }
     }
 
