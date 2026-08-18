@@ -1700,6 +1700,17 @@ public sealed class EngineLifecycleTests
         Assert.Empty(life.SubmittedWorld.Triangles);
         Assert.NotNull(life.SubmittedMesh);
         Assert.True(life.SubmittedMesh.Vertices.Length > 128);
+        Assert.Equal(4299, life.HeroMeshId);
+        Assert.Contains(life.SubmittedPalskinMeshIds, id => id == 4299);
+        Assert.True(life.SubmittedHeroPalskin);
+        var heroMesh = life.Meshes.Get(4299);
+        Assert.NotNull(heroMesh);
+        Assert.True(heroMesh.BoneCount > 0, $"hero bones={heroMesh.BoneCount}");
+        Assert.True(heroMesh.SkinFaces.Count > 0);
+        Assert.Contains(life.SubmittedWorld.Instances, i =>
+            i.MeshId == 4299 ||
+            string.Equals(i.Definition, EngineLifecycle.CreatureHeroDefName,
+                StringComparison.OrdinalIgnoreCase));
         Assert.Equal("LookoutPoint", life.SubmittedWorld.Region);
         var presented = life.PresentWorld();
         Assert.NotNull(presented);

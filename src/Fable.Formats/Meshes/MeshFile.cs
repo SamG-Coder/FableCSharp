@@ -1,4 +1,5 @@
 using System.Numerics;
+using Fable.Formats.Anims;
 using Fable.Formats.IO;
 
 namespace Fable.Formats.Meshes;
@@ -21,6 +22,15 @@ public sealed class MeshFile
     public IReadOnlyList<MeshBone> Bones { get; init; } = [];
     public IReadOnlyList<MeshPrimitiveReport> PrimitiveReports { get; init; } = [];
     public IReadOnlyList<MeshPalskinSample> PalskinSamples { get; init; } = [];
+    /// <summary>
+    /// Bind-pose PALSKIN stream. First-seen
+    /// <see cref="Triangles"/> already apply
+    /// <see cref="WorldShading.FirstSeenPalettes"/>.
+    /// Submit re-skins these via
+    /// <see cref="TrianglesForPose"/>.
+    /// </summary>
+    public IReadOnlyList<MeshSkinVertex> SkinVertices { get; init; } = [];
+    public IReadOnlyList<MeshSkinFace> SkinFaces { get; init; } = [];
 
     /// <summary>
     /// Exe serialize <c>00A89525</c> / getter <c>00A4BD70</c>: 60-byte
@@ -144,6 +154,8 @@ public sealed class MeshFile
         var degenerateSkipped = 0;
         var primitiveReports = new List<MeshPrimitiveReport>(Math.Max(primitiveCount, 0));
         var palskinSamples = new List<MeshPalskinSample>();
+        var skinVertices = new List<MeshSkinVertex>();
+        var skinFaces = new List<MeshSkinFace>();
 
         for (var i = 0; i < primitiveCount; i++)
         {
@@ -258,6 +270,7 @@ public sealed class MeshFile
             var weightSumMin = 0;
             var weightSumMax = 0;
             var skinned = hasBones && palettes.Length > 0;
+            var skinBase = skinVertices.Count;
             if (skinned && vertCount > 0 && posSize + 8 <= stride)
             {
                 sampleIndexDword = BitConverter.ToUInt32(vertices, posSize);
@@ -307,6 +320,11 @@ public sealed class MeshFile
                     var wgt = vertices.AsSpan(o + posSize + 4, 4);
                     var skinnedP = WorldShading.SkinPosition(p, idx, wgt, palettes, groupBones);
                     var skinnedN = WorldShading.SkinNormal(n, idx, wgt, palettes, groupBones);
+                    skinVertices.Add(new MeshSkinVertex(
+                        p, n, uv,
+                        idx[0], idx[1], idx[2], idx[3],
+                        wgt[0], wgt[1], wgt[2], wgt[3],
+                        groupBones));
                     if (palskinSamples.Count < 16 && (v < 4 || v == vertCount / 2 || v == vertCount - 1))
                     {
                         palskinSamples.Add(new MeshPalskinSample(
@@ -354,6 +372,8 @@ public sealed class MeshFile
                 triangles.Add(new MeshTriangle(pa, pb, pc, n, uvs[a], uvs[b], uvs[c], textureId,
                     SrcAlphaBlend: hasBones,
                     NormalA: normals[a], NormalB: normals[b], NormalC: normals[c]));
+                if (skinned)
+                    skinFaces.Add(new MeshSkinFace(skinBase + a, skinBase + b, skinBase + c, textureId));
             }
 
             if (blocks.Count == 0)
@@ -447,7 +467,59 @@ public sealed class MeshFile
             Bones = bones,
             PrimitiveReports = primitiveReports,
             PalskinSamples = palskinSamples,
+            SkinVertices = skinVertices,
+            SkinFaces = skinFaces,
         };
+    }
+
+    /// <summary>
+    /// PALSKIN dest = hierarchy × IBM
+    /// (<c>00A9E1E0</c> / <c>00BD2F91</c>).
+    /// Null clip is first-seen bind locals.
+    /// Time sample <c>00AA0090</c> unread.
+    /// </summary>
+    public IReadOnlyList<MeshTriangle> TrianglesForPose(XSeqFile? sequence = null) =>
+        TrianglesForPose(WorldShading.PaletteForPose(Bones, sequence?.Name, 0f, sequence));
+
+    public IReadOnlyList<MeshTriangle> TrianglesForPose(Matrix4x4[] palettes)
+    {
+        if (SkinFaces.Count == 0 || SkinVertices.Count == 0 || Bones.Count == 0)
+            return Triangles;
+        var pos = new Vector3[SkinVertices.Count];
+        var nrm = new Vector3[SkinVertices.Count];
+        for (var i = 0; i < SkinVertices.Count; i++)
+        {
+            var v = SkinVertices[i];
+            var group = v.GroupBones ?? [];
+            ReadOnlySpan<byte> idx = [v.Index0, v.Index1, v.Index2, v.Index3];
+            ReadOnlySpan<byte> wgt = [v.Weight0, v.Weight1, v.Weight2, v.Weight3];
+            pos[i] = WorldShading.SkinPosition(v.Position, idx, wgt, palettes, group);
+            nrm[i] = WorldShading.SkinNormal(v.Normal, idx, wgt, palettes, group);
+        }
+
+        var tris = new List<MeshTriangle>(SkinFaces.Count);
+        foreach (var face in SkinFaces)
+        {
+            if ((uint)face.A >= (uint)pos.Length ||
+                (uint)face.B >= (uint)pos.Length ||
+                (uint)face.C >= (uint)pos.Length)
+                continue;
+            var a = pos[face.A];
+            var b = pos[face.B];
+            var c = pos[face.C];
+            var n = Vector3.Cross(b - a, c - a);
+            if (n.LengthSquared() < 1e-10f)
+                continue;
+            n = Vector3.Normalize(n);
+            tris.Add(new MeshTriangle(
+                a, b, c, n,
+                SkinVertices[face.A].Uv, SkinVertices[face.B].Uv, SkinVertices[face.C].Uv,
+                face.TextureId,
+                SrcAlphaBlend: true,
+                NormalA: nrm[face.A], NormalB: nrm[face.B], NormalC: nrm[face.C]));
+        }
+
+        return tris;
     }
 
     private static MeshBone[] ReadBones(byte[] data, ref int cursor, int boneCount, int boneNameSize)
@@ -777,6 +849,30 @@ public readonly record struct MeshPrimitiveReport(
     public byte SampleWeight2 => (byte)(SampleWeightDword >> 16);
     public byte SampleWeight3 => (byte)(SampleWeightDword >> 24);
 }
+
+/// <summary>
+/// Bind-pose PALSKIN vertex kept so submit can
+/// re-skin through <see cref="MeshFile.TrianglesForPose"/>.
+/// </summary>
+public readonly record struct MeshSkinVertex(
+    Vector3 Position,
+    Vector3 Normal,
+    Vector2 Uv,
+    byte Index0,
+    byte Index1,
+    byte Index2,
+    byte Index3,
+    byte Weight0,
+    byte Weight1,
+    byte Weight2,
+    byte Weight3,
+    byte[]? GroupBones = null);
+
+public readonly record struct MeshSkinFace(
+    int A,
+    int B,
+    int C,
+    int TextureId);
 
 /// <summary>
 /// One live C3D PALSKIN vertex: packed dwords plus the

@@ -950,6 +950,13 @@ public sealed class EngineLifecycle : IDisposable
     public WorldGeometry? SubmittedWorld { get; private set; }
     public Fable.Render.TexturedMesh? SubmittedMesh { get; private set; }
     public bool WorldSubmitted { get; private set; }
+    /// <summary>
+    /// Primary-map C3Ds with a bone
+    /// stream. Hero 4299 is PALSKIN,
+    /// not a static flatten.
+    /// </summary>
+    public IReadOnlyList<uint> SubmittedPalskinMeshIds => _submittedPalskin;
+    public bool SubmittedHeroPalskin { get; private set; }
 
     public void AttachHost(IEngineHost host) => Host = host;
 
@@ -961,6 +968,7 @@ public sealed class EngineLifecycle : IDisposable
     private readonly List<string> _neighbourStaticMaps = [];
     private readonly List<OpenedStaticMapBody> _openedBodies = [];
     private readonly List<int> _tickTypes = [];
+    private readonly List<uint> _submittedPalskin = [];
     private readonly List<ThingInstance> _regionThings = [];
     private readonly Dictionary<string, List<ThingInstance>> _thingsByMap =
         new(StringComparer.OrdinalIgnoreCase);
@@ -1129,6 +1137,8 @@ public sealed class EngineLifecycle : IDisposable
         var land = MeshBatches.Build(opened.TessellatePrimary(_levels));
         var props = new List<(MeshFile Mesh, Matrix4x4 Transform)>();
         var seen = new HashSet<uint>();
+        _submittedPalskin.Clear();
+        SubmittedHeroPalskin = false;
         foreach (var inst in opened.Instances)
         {
             if (!inst.Map.Equals(opened.Region, StringComparison.OrdinalIgnoreCase))
@@ -1138,13 +1148,33 @@ public sealed class EngineLifecycle : IDisposable
                 continue;
             seen.Add(inst.MeshId);
             props.Add((mesh, inst.Transform));
+            if (mesh.BoneCount > 0)
+                _submittedPalskin.Add(inst.MeshId);
         }
 
+        // 006AC910 spawn is a Thing, not a TNG
+        // Graphic. Submit it as PALSKIN even if
+        // PresentWorld missed the instance.
+        if (HeroMeshId != 0 &&
+            Hero is { PositionX: not null, PositionY: not null, PositionZ: not null } &&
+            seen.Add((uint)HeroMeshId))
+        {
+            var heroMesh = Meshes.Get((uint)HeroMeshId);
+            if (heroMesh is not null)
+            {
+                props.Add((heroMesh, WorldGeometry.ObjectTransform(Hero)));
+                if (heroMesh.BoneCount > 0)
+                    _submittedPalskin.Add((uint)HeroMeshId);
+            }
+        }
+
+        SubmittedHeroPalskin = HeroMeshId != 0 &&
+            _submittedPalskin.Contains((uint)HeroMeshId);
         SubmittedMesh = MeshBatches.Concat(land, MeshBatches.BuildMeshes(props));
         WorldSubmitted = SubmittedMesh.Vertices.Length > 0;
         Note(OpenStaticMapsFn, "Submit", "World",
             WorldSubmitted
-                ? $"primary {opened.Region} meshes={seen.Count} verts={SubmittedMesh.Vertices.Length}"
+                ? $"primary {opened.Region} meshes={seen.Count} palskin={_submittedPalskin.Count} hero={HeroMeshId} verts={SubmittedMesh.Vertices.Length}"
                 : "submit miss");
     }
 

@@ -114,6 +114,20 @@ public sealed class XSeqFormatTests
 
         Assert.True(changed > 0,
             $"3420 first keys must move at least one PALSKIN dest. tracks={clip.Tracks.Count} names={string.Join(',', clip.BoneNames.Take(8))}");
+        var bindTris = kid.TrianglesForPose();
+        var posedTris = kid.TrianglesForPose(clip);
+        Assert.Equal(kid.Triangles.Count, bindTris.Count);
+        Assert.True(posedTris.Count > 0);
+        var moved = 0;
+        var n = Math.Min(bindTris.Count, posedTris.Count);
+        for (var i = 0; i < n; i++)
+        {
+            if ((bindTris[i].A - posedTris[i].A).LengthSquared() > 1e-4f ||
+                (bindTris[i].B - posedTris[i].B).LengthSquared() > 1e-4f)
+                moved++;
+        }
+
+        Assert.True(moved > 0, "3420 first-key must move PALSKIN triangles off bind");
         Assert.False(RegionTravel.FirstSeenPlayAnimationAppliesPose);
     }
 

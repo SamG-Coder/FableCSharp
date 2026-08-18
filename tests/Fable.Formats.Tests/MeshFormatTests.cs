@@ -216,6 +216,11 @@ public sealed class MeshFormatTests
         Assert.Equal(3, WorldShading.PalskinGpuAddressOffset(1));
         Assert.True(WorldShading.FirstSeenPalskinCpuPaletteIsMeshBone);
         Assert.True(WorldShading.FirstSeenPalskinGpuA0IsPackedSlotTimes3);
+        Assert.True(mesh.SkinVertices.Count > 0, "PALSKIN bind stream");
+        Assert.True(mesh.SkinFaces.Count > 0);
+        var firstSeen = mesh.TrianglesForPose();
+        Assert.Equal(mesh.Triangles.Count, firstSeen.Count);
+        Assert.Equal(mesh.Triangles[0].A, firstSeen[0].A);
         Assert.NotEmpty(mesh.PrimitiveReports);
         Assert.All(mesh.PrimitiveReports, p =>
         {

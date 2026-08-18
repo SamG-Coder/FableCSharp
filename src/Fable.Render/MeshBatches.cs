@@ -72,7 +72,13 @@ public static class MeshBatches
         var tris = new List<MeshTriangle>();
         foreach (var (mesh, transform) in instances)
         {
-            foreach (var tri in mesh.Triangles)
+            // PALSKIN dest via PaletteForPose
+            // (00A9E1E0 / 00BD2F91). Static C3D
+            // stays file triangles.
+            var source = mesh.BoneCount > 0
+                ? mesh.TrianglesForPose()
+                : mesh.Triangles;
+            foreach (var tri in source)
             {
                 var a = Vector3.Transform(tri.A, transform);
                 var b = Vector3.Transform(tri.B, transform);
