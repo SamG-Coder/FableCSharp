@@ -1592,8 +1592,23 @@ public sealed class EngineLifecycleTests
         Assert.Equal(141, life.CurrentRegionIndex);
         Assert.Equal("Filler_NorthernWastes_02", life.CurrentRegion!.RegionName);
         Assert.Equal(0x0048D400u, EngineLifecycle.CollectRegionThingsFn);
-        Assert.Equal(0x005198B0u, EngineLifecycle.ReleaseRegionThingsFn);
+        Assert.Equal(0x0049C770u, EngineLifecycle.CollectThingsListFn);
+        Assert.Equal(0x006A80A0u, EngineLifecycle.CollectThingsBitTestFn);
+        Assert.Equal(0x64, EngineLifecycle.CollectThingsBitIndex);
+        Assert.Equal(145, EngineLifecycle.ThingCollectFlagsOffset);
+        Assert.Equal(0x0C, EngineLifecycle.ThingCollectFlagsNeed);
+        Assert.Equal(0x21, EngineLifecycle.ThingCollectFlagsForbid);
+        Assert.Equal(0x005198B0u, EngineLifecycle.CollectScriptedHookThingsFn);
+        Assert.Equal(0x00518DC0u, EngineLifecycle.ScriptedHookCollectFn);
+        Assert.Equal("CTCActionUseScriptedHook", EngineLifecycle.ScriptedHookName);
+        Assert.Equal(0xC2, EngineLifecycle.ScriptedHookKey);
         Assert.Equal("RegionGraph.txt", EngineLifecycle.RegionGraphName);
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.CollectScriptedHookThingsFn &&
+            e.Action.Contains("CTCActionUseScriptedHook", StringComparison.Ordinal));
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.CollectRegionThingsFn &&
+            e.Action.Contains("0x64", StringComparison.Ordinal));
         Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.NamedStartFn);
     }

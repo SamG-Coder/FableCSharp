@@ -414,7 +414,11 @@ enqueue (host second 004189C2 after dummy; E8 caller UNREAD)
     ├── count = (+48−+44)/88
     ├── count>1: for i=1..count-1  00500540(i,0,0)  PROVEN
     │   i=1 LookoutPoint; +36 null → 006BB2F0 then 006C27A0
-    │   after each i: 0048D400 / 004FC190 / 005198B0  PARTIAL bodies
+    │   after each i:
+    │     0048D400  +145 need 0x0C forbid 0x21, 006A80A0 bit 0x64  PROVEN
+    │     004FC190 cmp region i
+    │     005198B0  same +145 then 00518DC0 CTCActionUseScriptedHook  PROVEN
+    │     (first-seen list occupancy PARTIAL: +145 ctor unread)
     │   last i=141 Filler_NorthernWastes_02  +156=141
     ├── RegionGraph.txt  0x124467C  PROVEN
     └── 00500540(saved=0, 0, 1)  no sync pump  PROVEN

@@ -146,6 +146,8 @@ only — CSS unchanged.
 | First `004189C2` pump does **not** `SetRegionAsLoaded` | PROVEN | install test |
 | No-save enqueue `00501450` → `00500540(1,0,0)` **LookoutPoint** (native index 1) | PROVEN | first i=1; then i=2..141 |
 | `00501450` is only `00500540(1,0,0)` | DISPROVEN | loops all i; last `+156=141` `Filler_NorthernWastes_02`; restore `(0,0,1)` no pump |
+| `005198B0` releases the `0048D400` list | DISPROVEN | second collector: `+145` then `CTCActionUseScriptedHook` |
+| `00501450` E8/E9/imm/vtbl | UNREAD | 0 hits; not `004162B5` / `00418289` (`0049D9E0` is `ret`) |
 | Persist `PlayerRegionName` `00487C20` / `00449E60` loads named region (e.g. `StartOakVale` = 4) | PROVEN | `Persist_PlayerRegionName_is_00487C20_not_new_game` |
 | `SetRegionAsLoaded` `004FC8A0` writes `+156`, then `00B42750` mode 1 | DISPROVEN | `004FC8A0` is MiniMap only. `00B428E0` is `004A1840` vtbl+208 |
 | `004FC8A0` calls `005064C0` / `00B428E0` | DISPROVEN | `004FC8A0` is `+156`/`00437CE0`/`0082BA00`. `005064C0` is vtbl+88 before it. `SetRegionAsLoaded_004FC8A0_is_minimap_after_005064C0` |

@@ -1074,18 +1074,36 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>(+48-+44)/88</c>. Count &gt; 1
     /// loops <c>00500540(i,0,0)</c> from 1
     /// through count-1 (+36 null still
-    /// <c>006C27A0</c>). After each i:
-    /// <c>0048D400</c> / <c>004FC190</c> /
-    /// <c>005198B0</c> (bodies PARTIAL).
-    /// Then <c>RegionGraph.txt</c> and
+    /// <c>006C27A0</c>). After each i two
+    /// collectors on <c>0049C770</c>
+    /// <c>[map+8]+32 +24</c>:
+    /// <c>0048D400</c> (+145 need
+    /// <c>0x0C</c> forbid <c>0x21</c>,
+    /// <c>006A80A0</c> bit <c>0x64</c>)
+    /// and <c>005198B0</c>
+    /// (<c>00518DC0</c>
+    /// <c>CTCActionUseScriptedHook</c>,
+    /// not a release). Then
+    /// <c>RegionGraph.txt</c> and
     /// <c>00500540(saved,0,1)</c> with no
     /// sync pump. First-seen saved is 0.
-    /// E8 caller UNREAD (not in
+    /// E8/E9/imm/vtbl of <c>00501450</c>
+    /// are 0 (caller UNREAD; not
     /// <c>004162B5</c> / <c>00418289</c>).
     /// </summary>
     public const uint LoadFromFirstRealRegionFn = 0x00501450;
     public const uint CollectRegionThingsFn = 0x0048D400;
-    public const uint ReleaseRegionThingsFn = 0x005198B0;
+    public const uint CollectThingsListFn = 0x0049C770;
+    public const uint CollectThingsBitTestFn = 0x006A80A0;
+    public const int CollectThingsBitIndex = 0x64;
+    public const int ThingCollectFlagsOffset = 145;
+    public const int ThingCollectFlagsNeed = 0x0C;
+    public const int ThingCollectFlagsForbid = 0x21;
+    public const uint CollectScriptedHookThingsFn = 0x005198B0;
+    public const uint ScriptedHookCollectFn = 0x00518DC0;
+    public const string ScriptedHookName = "CTCActionUseScriptedHook";
+    public const int ScriptedHookKey = 0xC2;
+    public const uint EmptyNameVa = 0x0122D70E;
     public const uint RegionGraphNameVa = 0x0124467C;
     public const string RegionGraphName = "RegionGraph.txt";
     public const uint UnloadCurrentRegionFn = 0x004FEEC0;
@@ -3346,8 +3364,9 @@ public sealed class EngineLifecycle : IDisposable
     /// <summary>
     /// <c>00501450</c>: table count &gt; 1 then
     /// <c>00500540(i,0,0)</c> for i=1..count-1.
-    /// After each: <c>0048D400</c> /
-    /// <c>004FC190</c> / <c>005198B0</c>.
+    /// After each: <c>0048D400</c> bit
+    /// <c>0x64</c> then <c>005198B0</c>
+    /// <c>CTCActionUseScriptedHook</c>.
     /// Then <c>RegionGraph.txt</c> and
     /// <c>00500540(saved,0,1)</c> (no pump).
     /// </summary>
@@ -3370,12 +3389,18 @@ public sealed class EngineLifecycle : IDisposable
                     ? "00500540(1,0,0) first +36 null continues"
                     : $"00500540({i},0,0)");
             RequestLoadRegion(i, sync: true);
+            Note(CollectThingsListFn, "LevelLoader", "Thing",
+                "0049C770 [map+8]+32 +24");
             Note(CollectRegionThingsFn, "LevelLoader", "Thing",
-                $"0048D400 after {i}");
+                $"0048D400 after {i} +145 need 0x0C forbid 0x21 bit 0x64");
+            Note(CollectThingsBitTestFn, "LevelLoader", "Thing",
+                "006A80A0 bit 0x64 thing+32");
             Note(MapToRegionFn, "LevelLoader", "Region",
                 $"004FC190 i={i}");
-            Note(ReleaseRegionThingsFn, "LevelLoader", "Thing",
-                "005198B0");
+            Note(CollectScriptedHookThingsFn, "LevelLoader", "Thing",
+                "005198B0 +145 then 00518DC0 CTCActionUseScriptedHook");
+            Note(ScriptedHookCollectFn, "LevelLoader", "Thing",
+                "00518DC0 +56 bit4 key=0xC2");
         }
 
         Note(RegionGraphNameVa, "LevelLoader", "Region", RegionGraphName);
