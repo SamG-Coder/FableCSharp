@@ -529,6 +529,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "arg ignored; vtbl+1832(actor,0); extras 008ADF90; jmp 00CC707C; not SetDamageable 2064"),
+        Spec("SetFree", 0x00CC0F2C, 0x00CC0F7E, "[ignored]",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg ignored; unary vtbl+1980(actor); no extras; jmp 00CC707C; not SetAttackable 1832"),
         Spec("GiveHero", 0x00CC6392, 0x00CC63E5, "item[,n][,extra][,silent][,yield]",
             ScriptReturn.YieldAfterUnlessFalse, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

@@ -1907,6 +1907,86 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void SetFree_is_unary_vtbl_1980_not_SetAttackable()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("sf",
+        [
+            "HOST1.SetFree TRUE",
+            "HOST2.SetFree FALSE",
+            "HOST3.SetFree",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Contains("HOST1", runtime.World.Freed);
+        Assert.Contains("HOST2", runtime.World.Freed);
+        Assert.Contains("HOST3", runtime.World.Freed);
+        Assert.Equal(1980, runtime.World.SetFreeVtbl["HOST1"]);
+        Assert.Equal(1980, runtime.World.SetFreeVtbl["HOST2"]);
+        Assert.DoesNotContain("HOST1", runtime.World.ExtrasAppended);
+        Assert.Equal(0x00CC0F7Eu, ScriptCommandMap.Find("SetFree")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("SetAttackable")!.Value.ApplySite,
+            ScriptCommandMap.Find("SetFree")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("SetBound")!.Value.ApplySite,
+            ScriptCommandMap.Find("SetFree")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void SetFree_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_BANDITCAMP_HOSTAGEFREE")
+                  ?? bank.Find("CS_BANDITCAMP_HOSTAGEFREE_NOTOPEN");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.Contains(".SetFree", StringComparison.OrdinalIgnoreCase))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("SetFree", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-free", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".SetFree", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Contains(parsed.Target ?? "", runtime.World.Freed);
+        Assert.Equal(1980, runtime.World.SetFreeVtbl[parsed.Target ?? ""]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-free.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-setfree.txt"),
+            """
+            SetFree 00CC0F2C / apply 00CC0F7E
+              ebx required else 00CC7081
+              NO arg parse — TRUE/FALSE/empty ignored
+              actor vtbl+48; unary vtbl+1980(actor)
+              no extras 008ADF90
+              jmp 00CC707C
+              not SetAttackable vtbl+1832(actor,0)+extras
+              not SetBound 1976 / SetScared 1984
+            Hostage/AI release body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void GiveGold_real_script_bank_or_isolated()
     {
         var install = GameInstall.TryLocate();

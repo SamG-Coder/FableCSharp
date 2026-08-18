@@ -1100,6 +1100,14 @@ public sealed class WorldRuntime
         new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, int> AttackableVtbl =
         new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// <c>00CC0F7E</c> unary <c>vtbl+1980(actor)</c>.
+    /// Arg ignored. No extras. Not SetAttackable 1832.
+    /// </summary>
+    public readonly HashSet<string> Freed =
+        new(StringComparer.OrdinalIgnoreCase);
+    public readonly Dictionary<string, int> SetFreeVtbl =
+        new(StringComparer.OrdinalIgnoreCase);
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
     public float TimeOfDayHours { get; set; }
@@ -1319,6 +1327,18 @@ public sealed class WorldRuntime
         Attackable[key] = false;
         AttackableVtbl[key] = 1832;
         ExtrasAppended.Add(key);
+    }
+
+    /// <summary>
+    /// <c>00CC0F7E</c>: no arg parse; unary
+    /// <c>vtbl+1980(name)</c>; no extras.
+    /// Not SetBound 1976 / SetScared 1984.
+    /// </summary>
+    public void SetFree(string actor)
+    {
+        var key = actor ?? "";
+        Freed.Add(key);
+        SetFreeVtbl[key] = 1980;
     }
 
     /// <summary>

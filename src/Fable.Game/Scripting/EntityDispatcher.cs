@@ -381,8 +381,14 @@ public static class EntityDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "0");
         }
 
-        if (Eq(v, "SetFree") ||
-            Eq(v, "SetAppearanceSeed"))
+        if (Eq(v, "SetFree"))
+        {
+            // 00CC0F7E: ignores arg; unary vtbl+1980(actor); no extras.
+            ctx.World.SetFree(line.Target ?? "");
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "vtbl+1980");
+        }
+
+        if (Eq(v, "SetAppearanceSeed"))
         {
             ctx.World.Flags[$"{line.Target}.{v}"] = line.Arg(0);
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, line.Arg(0));
