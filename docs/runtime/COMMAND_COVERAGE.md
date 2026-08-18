@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 141
-RECOVERED RETURN: 141
-RECOVERED APPLY: 78
+RECOVERED DISPATCH: 142
+RECOVERED RETURN: 142
+RECOVERED APPLY: 79
 IMPLEMENTED RUNTIME: 13
-UNREAD: 44
+UNREAD: 43
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -153,7 +153,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | Teleport | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
 | Release | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
 | AILevel | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
-| FollowNavRoute | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
+| FollowNavRoute | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
 | WaitForAnimationEvent | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
 | WaitForUnderRadius | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
 | LookInDirection | Entity | Proven | Proven | Proven | Partial | Partial | Partial |

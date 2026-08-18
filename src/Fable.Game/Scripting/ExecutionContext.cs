@@ -992,6 +992,36 @@ public sealed class MovementRuntime
         Queue(actor, EntityTaskKind.Follow, target, dest, speed > 0f ? speed : 1f);
 
     /// <summary>
+    /// <c>00CC4350</c> actor <c>vtbl+24(route,gait,IsTrue,0)</c>.
+    /// Gait 0 default, run=1, sneak=2. Not WalkTo 16.
+    /// Route spline UNREAD.
+    /// </summary>
+    public readonly Dictionary<string, string> NavRoutes =
+        new(StringComparer.OrdinalIgnoreCase);
+    public readonly Dictionary<string, int> NavGaits =
+        new(StringComparer.OrdinalIgnoreCase);
+    public readonly Dictionary<string, int> NavVtbl =
+        new(StringComparer.OrdinalIgnoreCase);
+
+    public PendingOperation FollowNav(string? actor, string route, int gait, bool wait)
+    {
+        var key = actor ?? "";
+        if (key.Length > 0)
+        {
+            NavRoutes[key] = route;
+            NavGaits[key] = gait;
+            NavVtbl[key] = 24;
+        }
+
+        _ = wait;
+        return Queue(actor, EntityTaskKind.NavRoute, route, null, gait switch
+        {
+            1 => ResolveSpeed(actor, 0f, true),
+            _ => ResolveSpeed(actor, 0f, false),
+        });
+    }
+
+    /// <summary>
     /// <c>00CC57F7</c> / <c>00CC5A8D</c>: lerp
     /// src→dest over atoi count (default 100).
     /// Instant apply lands on dest.

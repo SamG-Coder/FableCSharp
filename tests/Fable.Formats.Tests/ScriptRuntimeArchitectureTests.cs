@@ -3391,6 +3391,104 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void FollowNavRoute_is_vtbl_24_gait_run1_sneak2()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("fnr",
+        [
+            "ScriptFrame FALSE",
+            "HERO.FollowNavRoute ROUTE1",
+            "GUARD.FollowNavRoute ROUTE2,run,TRUE",
+            "BANDIT.FollowNavRoute PATH,sneak",
+            "HERO.FollowNavRoute",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal("ROUTE1", runtime.Movement.NavRoutes["HERO"]);
+        Assert.Equal(0, runtime.Movement.NavGaits["HERO"]);
+        Assert.Equal(1, runtime.Movement.NavGaits["GUARD"]);
+        Assert.Equal(2, runtime.Movement.NavGaits["BANDIT"]);
+        Assert.Equal(24, runtime.Movement.NavVtbl["HERO"]);
+        Assert.Equal(EntityTaskKind.NavRoute, runtime.Movement.Tasks.Current("GUARD")!.Kind);
+        Assert.Equal(0x00CC4350u, ScriptCommandMap.Find("FollowNavRoute")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("FollowThing")!.Value.ApplySite,
+            ScriptCommandMap.Find("FollowNavRoute")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("WalkTo")!.Value.ApplySite,
+            ScriptCommandMap.Find("FollowNavRoute")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void FollowNavRoute_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".FollowNavRoute", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "HERO.FollowNavRoute ROUTE1,run,TRUE";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("FollowNavRoute", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-fnr",
+            ["ScriptFrame FALSE", line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".FollowNavRoute", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        var gait = 0;
+        if (ScriptLine.TokenMatches(parsed.Arg(1), "run"))
+            gait = 1;
+        else if (ScriptLine.TokenMatches(parsed.Arg(1), "sneak"))
+            gait = 2;
+        Assert.Equal(parsed.Arg(0), runtime.Movement.NavRoutes[parsed.Target ?? ""]);
+        Assert.Equal(gait, runtime.Movement.NavGaits[parsed.Target ?? ""]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-fnr.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-follownavroute.txt"),
+            """
+            FollowNavRoute 00CC42FA / apply 00CC4350
+              ebx actor else 00CC7081
+              arg0 00403A00 empty skip
+              00BFEBA8 "run" → gait 1
+              00BFEBA8 "sneak" → gait 2
+              default gait 0
+              00CBEDBA IsTrue(arg2) wait flag
+              resolve arg0 HERO 280 else 288
+              actor vtbl+24(route,gait,flag,0)
+              leftover 00CC5691 if [ebp+103]
+              not WalkTo/RunTo/SneakTo vtbl+16
+            Route spline UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();

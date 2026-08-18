@@ -189,6 +189,29 @@ public static class EntityDispatcher
                 $"{v} vtbl+20 stub", marker, op.Id);
         }
 
+        if (Eq(v, "FollowNavRoute"))
+        {
+            // 00CC4350: arg0 required; 00BFEBA8 run->1 sneak->2;
+            // IsTrue(arg2); actor vtbl+24(route,gait,flag,0);
+            // leftover 00CC5691 if [ebp+103].
+            var route = line.Arg(0);
+            if (route.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            var gait = 0;
+            if (ScriptLine.TokenMatches(line.Arg(1), "run"))
+                gait = 1;
+            else if (ScriptLine.TokenMatches(line.Arg(1), "sneak"))
+                gait = 2;
+            var wait = ScriptLine.IsTrue(line.Arg(2));
+            var op = ctx.Movement.FollowNav(line.Target, route, gait, wait);
+            ctx.Movement.SeedStart(line.Target, ctx.FindThing(line.Target), ctx.World);
+            if (!ctx.Cutscene.YieldEnable)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity,
+                    $"{route}:{gait}");
+            return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Entity,
+                "FollowNavRoute vtbl+24", route, op.Id);
+        }
+
         if (Eq(v, "FollowThing"))
         {
             var target = line.Arg(0);

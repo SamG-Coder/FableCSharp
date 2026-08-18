@@ -742,6 +742,11 @@ public static class ScriptCommandMap
         Spec("WalkUpToThing", 0x00CC2331, 0x00CC2538, "thing,distance[,…]",
             ScriptReturn.YieldAfterOrWait, CommandParity.ScriptLayer,
             "dest=pos+atof(arg1)*(vtbl+288+12); actor vtbl+16 speed 1; leftover vtbl+104"),
+        Spec("FollowNavRoute", 0x00CC42FA, 0x00CC4350, "route[,run|sneak][,IsTrue]",
+            ScriptReturn.YieldAfter, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0 required; ebx actor; 00BFEBA8 run=1 sneak=2 else 0; IsTrue(arg2); vtbl+24; leftover 00CC5691; not WalkTo 16"),
         Spec("FollowThing", 0x00CC19F2, 0x00CC1AE9, "target[,speed]",
             ScriptReturn.YieldAfter, CommandParity.ScriptLayer,
             "default speed 1.0; actor vtbl+28; yield 00CC0E96 if [ebp+103]"),
