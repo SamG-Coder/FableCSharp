@@ -49,3 +49,139 @@
         (or open this file locally).
       </p>
     </header>
+
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>This page</th><th>The ledgers</th></tr></thead>
+      <tbody>
+        <tr>
+          <td>Skim what’s locked and what’s next</td>
+          <td>Authoritative tables, addresses, tests</td>
+        </tr>
+        <tr>
+          <td>Sequenced by dependency</td>
+          <td>Do not copy their raw tables here</td>
+        </tr>
+      </tbody>
+    </table>
+    </div>
+
+    <div class="callout">
+      <strong>North star:</strong> close first-scene New Game
+      (<code>StartOakValeWest</code> / <code>Q_NewOakValeIntro</code> /
+      <code>HerosOldHouse</code> / <code>CAM_OVIF_SHOT2</code>) so
+      <code>CS_OAKVALE_INTRO_FATHER</code> can run on a real world clock.
+    </div>
+
+    <p>
+      Snapshot: <strong>2026-08-18</strong>, docs merge PR #29
+      <code>bedcf919</code> (iOS Settings chrome — not a runtime lock),
+      runtime HEAD <code>18ef09b</code>
+      (<em>Document dumped 00418289, quest vtbls, and 006B3FF0 camera seed.</em>).
+      Just locked on this path: <code>9c625bc</code>,
+      <code>0ace433</code>, <code>d9977fb</code>, <code>f63b741</code>,
+      <code>5cb3435</code>, <code>b062c5d</code>, <code>991bab2</code>,
+      <code>5657176</code>, <code>6607c1e</code>, <code>128c8e1</code>,
+      <code>bbee903</code>, <code>c612ad5</code>, <code>18ef09b</code>.
+      Master is still proving <strong>boot / world clock</strong>, not animation.
+      README’s long-term priority list still starts with animation; that
+      list is not the current phase.
+    </p>
+
+    <nav class="toc" aria-label="On this page">
+      <strong>On this page</strong>
+      <ol>
+        <li><a href="#read">How to read this</a></li>
+        <li><a href="#ledgers">Authoritative files</a></li>
+        <li><a href="#coverage">Coverage snapshot</a></li>
+        <li><a href="#done">What’s done</a></li>
+        <li><a href="#left">What’s left</a></li>
+        <li><a href="#out">Out of scope</a></li>
+        <li><a href="#check">Phase check</a></li>
+      </ol>
+    </nav>
+
+    <h2 id="read">How to read this</h2>
+    <p>Statuses are the project’s own words:</p>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Word</th><th>Meaning here</th></tr></thead>
+      <tbody>
+        <tr><td><span class="badge PROVEN">PROVEN</span></td><td>Locked from exe / assets / tests</td></tr>
+        <tr><td><span class="badge PARTIAL">PARTIAL</span></td><td>Script-layer or host path recovered; apply or runtime body not</td></tr>
+        <tr><td><span class="badge UNREAD">UNREAD</span></td><td>Not filled with a look-better guess</td></tr>
+        <tr><td><span class="badge DISPROVEN">DISPROVEN</span></td><td>A previous assumption, recorded so it does not return</td></tr>
+        <tr><td><span class="badge TEMPORARY">TEMPORARY</span></td><td>Stand-in classified as such (often a D3D default)</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>
+      Parse / dispatch / return ≠ apply ≠ runtime. A finished fixture is
+      script-layer apply, not a mesh or UI body.
+    </p>
+    <p>This is <strong>not</strong> a “finish every UNREAD command” roadmap.</p>
+
+    <h2 id="ledgers">Authoritative files</h2>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Ledger</th><th>What it owns</th></tr></thead>
+      <tbody>
+        <tr><td><a href="../PARITY.md">docs/PARITY.md</a></td><td>Worked / DISPROVEN / Open</td></tr>
+        <tr><td><a href="../runtime/COMMAND_COVERAGE.md">docs/runtime/COMMAND_COVERAGE.md</a></td><td>Token counts and per-verb overall</td></tr>
+        <tr><td><a href="../runtime/COMMAND_MAP.generated.md">docs/runtime/COMMAND_MAP.generated.md</a></td><td>Generated parse / dispatch / apply / runtime</td></tr>
+        <tr><td><a href="../runtime/COMMAND_MAP.md">docs/runtime/COMMAND_MAP.md</a></td><td>Hand map + StartNewGame bindings</td></tr>
+        <tr><td><a href="../runtime/FIXTURE_COMMAND_AUDIT.md">docs/runtime/FIXTURE_COMMAND_AUDIT.md</a></td><td>Script-layer fixture outcomes</td></tr>
+        <tr><td><a href="../runtime/FORWARD_TREE.md">docs/runtime/FORWARD_TREE.md</a></td><td>PE → WinMain → no-save New Game function tree</td></tr>
+        <tr><td><a href="../render/DX9_VULKAN_PARITY.md">docs/render/DX9_VULKAN_PARITY.md</a></td><td>DX9 → Vulkan matrix</td></tr>
+        <tr><td><a href="../render/FIRST_SCENE_CONTRACT.md">docs/render/FIRST_SCENE_CONTRACT.md</a></td><td>First-scene submit contract</td></tr>
+        <tr><td><a href="../render/FIRST_SCENE_AUDIT.md">docs/render/FIRST_SCENE_AUDIT.md</a></td><td>Live-path classification + leftover UNREAD</td></tr>
+        <tr><td><a href="../render/FIRST_SCENE_WORLD_PARITY.md">docs/render/FIRST_SCENE_WORLD_PARITY.md</a></td><td>World/space/visibility checklist</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p class="note">
+      Boot/clock facts below are from <code>EngineLifecycle</code> /
+      <code>EngineLifecycleTests</code> (not yet copied into
+      <code>PARITY.md</code>).
+    </p>
+
+    <h2 id="coverage">Coverage snapshot</h2>
+    <p>
+      From <a href="../runtime/COMMAND_COVERAGE.md">COMMAND_COVERAGE.md</a>
+      (generated from exe token list <code>0x012C1500–0x012C2C00</code> +
+      <code>ScriptCommandMap</code>):
+    </p>
+    <div class="table-scroll">
+    <table>
+      <thead><tr><th>Metric</th><th>Count</th></tr></thead>
+      <tbody>
+        <tr><td>Native command tokens</td><td>185</td></tr>
+        <tr><td>Recovered dispatch / return</td><td>156</td></tr>
+        <tr><td>Recovered apply</td><td>95</td></tr>
+        <tr><td>Implemented runtime</td><td>13</td></tr>
+        <tr><td>UNREAD tokens</td><td>29</td></tr>
+      </tbody>
+    </table>
+    </div>
+    <p>
+      The 13 <span class="badge PROVEN">PROVEN</span> overall runtimes are
+      <code>FadeOut</code> / <code>FadeIn</code> (global and entity),
+      <code>SetTime</code>, <code>WaitFlag</code>, <code>SetFlag</code>,
+      <code>PlayAVI</code>, <code>GamePause</code>, <code>DoOneFrame</code>,
+      <code>CameraPause</code>, <code>ScriptFrame</code>,
+      <code>DoScriptFrame</code>.
+      <code>PlayAnimation</code> apply is now
+      <span class="badge PROVEN">PROVEN</span>; runtime still
+      <span class="badge PARTIAL">PARTIAL</span>.
+      <code>FirstSeenPlayAnimationAppliesPose=false</code>.
+      Type-6 XSEQ first-key sample drives <code>PaletteForPose</code>
+      48-byte locals (<code>00A999B0</code> /
+      <code>00AA4680</code> / <code>00A4C5E0</code>). Time interpolation
+      <code>00AA0090</code> unread.
+      <code>WaitPlayAnimation</code> apply is now
+      <span class="badge PROVEN">PROVEN</span>; leftover is vtbl+104.
+    </p>
+    <p>
+      Do not grind the 29 UNREAD tokens (Crowd*, debug,
+      <code>LadyGreyIntro</code>, boss fights, …) as a phase.
+    </p>
