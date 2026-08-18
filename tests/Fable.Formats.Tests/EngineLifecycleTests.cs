@@ -361,6 +361,37 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Frontend_0041AC20_dest_is_0041AFA0_scale_not_PlayAVI()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.True(life.Pump());
+        var dest = EngineLifecycle.FrontendWidgetDest(0, 0, 0, 0, 0, 0, 0, 0, false);
+        Assert.Equal((0f, 0f, 0f, 0f), dest);
+        Assert.Equal(dest.X0, life.FrontendWidgetDestX0);
+        Assert.Equal(dest.Y0, life.FrontendWidgetDestY0);
+        Assert.Equal(dest.X1, life.FrontendWidgetDestX1);
+        Assert.Equal(dest.Y1, life.FrontendWidgetDestY1);
+        Assert.Equal(0x00595222u, EngineLifecycle.FrontendUiDrawFn);
+        Assert.Equal(0x00530EC0u, EngineLifecycle.FrontendWidgetFontListFn);
+        Assert.Equal(432, EngineLifecycle.FrontendWidgetFontListVtbl);
+        Assert.Equal(204, EngineLifecycle.FrontendWidgetDestWOffset);
+        Assert.Equal(248, EngineLifecycle.FrontendWidgetOriginXOffset);
+        Assert.Equal(264, EngineLifecycle.FrontendWidgetScaleXOffset);
+        Assert.Equal(1, life.FrontendWidgetsDrawn);
+        Assert.False(life.Frontend2dDipIssued);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendUiDrawFn &&
+            e.Action.Contains("[ui+84]", StringComparison.Ordinal));
+        var scaled = EngineLifecycle.FrontendWidgetDest(640, 400, 0, 0, 0, 0, 1, 1, false);
+        Assert.Equal((0f, 0f, 640f, 400f), scaled);
+        var centered = EngineLifecycle.FrontendWidgetDest(10, 10, 0, 0, 100, 100, 1, 1, true);
+        Assert.Equal((95f, 95f, 105f, 105f), centered);
+    }
+
+    [Fact]
     public void Frontend_present_runs_on_install_after_videos()
     {
         var install = GameInstall.TryLocate();
@@ -383,6 +414,10 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.FrontendWidgetPostCtorFn &&
             e.Action.Contains("skip dest", StringComparison.Ordinal));
+        Assert.Equal(0f, life.FrontendWidgetDestX0);
+        Assert.Equal(0f, life.FrontendWidgetDestY0);
+        Assert.Equal(0f, life.FrontendWidgetDestX1);
+        Assert.Equal(0f, life.FrontendWidgetDestY1);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.DisplayFlush2dFn &&
             e.Action.Contains("0x13BC800", StringComparison.Ordinal));

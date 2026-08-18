@@ -186,6 +186,29 @@ public sealed class EngineLifecycle : IDisposable
     public const uint FrontendWidgetQueueFn = 0x0041BEB0;
     public const uint FrontendWidgetQueueSiblingFn = 0x0041BF60;
     public const uint FrontendWidgetPostCtorFn = 0x0041AC20;
+    /// <summary>
+    /// <c>0122F5D4+432</c> <c>00530EC0</c>.
+    /// Empty def vector → <c>[+376]=0</c>
+    /// and <c>0041AC20</c> skips
+    /// <c>[+204]/[+208]</c>.
+    /// </summary>
+    public const uint FrontendWidgetFontListFn = 0x00530EC0;
+    public const int FrontendWidgetFontListVtbl = 432;
+    public const int FrontendWidgetDestWOffset = 204;
+    public const int FrontendWidgetDestHOffset = 208;
+    public const int FrontendWidgetOriginXOffset = 248;
+    public const int FrontendWidgetOriginYOffset = 252;
+    public const int FrontendWidgetScaleXOffset = 264;
+    public const int FrontendWidgetScaleYOffset = 268;
+    public const int FrontendWidgetSizeWOffset = 360;
+    public const int FrontendWidgetSizeHOffset = 364;
+    /// <summary>
+    /// <c>0122F5D4+424</c> <c>0052F1E0</c>.
+    /// First-seen dest is still 0 after
+    /// scale <c>+264/+268</c> ctor 0.
+    /// </summary>
+    public const uint FrontendWidgetCenterFn = 0x0052F1E0;
+    public const int FrontendWidgetCenterVtbl = 424;
     public const uint Frontend2dRecordType = RegionTravel.FadeOverlayRecordType;
     public const int Frontend2dRecordBytes = unchecked((int)RegionTravel.FadeOverlaySubmit);
     /// <summary>
@@ -1126,6 +1149,15 @@ public sealed class EngineLifecycle : IDisposable
     public bool FrontendDisplayCursorRan { get; private set; }
     public int FrontendWidgetBlend { get; private set; }
     public int FrontendWidgetFont { get; private set; }
+    /// <summary>
+    /// First-seen <c>0041AFA0</c> dest after
+    /// <c>+248/+264</c> ctor 0. Not PlayAVI
+    /// <c>00628B79</c>.
+    /// </summary>
+    public float FrontendWidgetDestX0 { get; private set; }
+    public float FrontendWidgetDestY0 { get; private set; }
+    public float FrontendWidgetDestX1 { get; private set; }
+    public float FrontendWidgetDestY1 { get; private set; }
     public int FrontendWidgetTexture { get; private set; }
     public string? FrontendMenuRoot { get; private set; }
     public bool FrontendMenuConstructed { get; private set; }
@@ -1703,6 +1735,38 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
+    /// <c>0041AFA0</c> dest: if
+    /// <c>+360/+364</c> are 0 use
+    /// <c>+204/+208</c>, then
+    /// <c>* +264/+268</c> from
+    /// <c>+248/+252</c>. First-seen
+    /// ctor zeros the scale so dest
+    /// is 0,0,0,0 even when
+    /// <c>0041AC20</c> wrote sizes.
+    /// </summary>
+    public static (float X0, float Y0, float X1, float Y1) FrontendWidgetDest(
+        int sizeW, int sizeH,
+        float leftoverW, float leftoverH,
+        float originX, float originY,
+        float scaleX, float scaleY,
+        bool center)
+    {
+        var w = sizeW == 0 ? leftoverW : sizeW;
+        var h = sizeH == 0 ? leftoverH : sizeH;
+        w *= scaleX;
+        h *= scaleY;
+        var x0 = originX;
+        var y0 = originY;
+        if (center)
+        {
+            x0 -= w * RegionTravel.PlayAviLetterboxHalf;
+            y0 -= h * RegionTravel.PlayAviLetterboxHalf;
+        }
+
+        return (x0, y0, x0 + w, y0 + h);
+    }
+
+    /// <summary>
     /// <c>00595582</c> then <c>00595B24</c>
     /// menu labels. Does not leave frontend.
     /// </summary>
@@ -1726,14 +1790,26 @@ public sealed class EngineLifecycle : IDisposable
         Note(FrontendWidgetType0Ctor, "Frontend", "UI",
             $"0041B800 vtbl 0x{FrontendWidgetVtbl:X} +{FrontendWidgetBlendOffset}={FrontendWidgetBlendDefault}");
         Note(FrontendWidgetPostCtorFn, "Frontend", "UI",
-            "0041AC20 vtbl+432 font list");
+            $"0041AC20 vtbl+{FrontendWidgetFontListVtbl} 0x{FrontendWidgetFontListFn:X}");
         FrontendWidgetBlend = FrontendWidgetBlendDefault;
         // Empty [obj+64..+68] → [+376]=0 → jbe 0041AF6F.
-        // +204/+208 dest size skipped. Dest UNREAD.
+        // +204/+208 not written. +248/+264 ctor 0.
         FrontendWidgetFont = 0;
         FrontendWidgetTexture = 0;
+        var dest = FrontendWidgetDest(
+            sizeW: 0, sizeH: 0,
+            leftoverW: 0, leftoverH: 0,
+            originX: 0, originY: 0,
+            scaleX: 0, scaleY: 0,
+            center: false);
+        FrontendWidgetDestX0 = dest.X0;
+        FrontendWidgetDestY0 = dest.Y0;
+        FrontendWidgetDestX1 = dest.X1;
+        FrontendWidgetDestY1 = dest.Y1;
         Note(FrontendWidgetPostCtorFn, "Frontend", "UI",
             "0041AC20 [+376]=0 skip dest");
+        Note(FrontendWidgetDrawFn, "Frontend", "UI",
+            $"0041AFA0 dest {dest.X0},{dest.Y0},{dest.X1},{dest.Y1} +{FrontendWidgetOriginXOffset}/+{FrontendWidgetScaleXOffset}=0");
         FrontendMenuRoot = FrontendMainMenuNoContinue;
         FrontendMenuConstructed = true;
         Note(FrontendUiBuildMenu, "Frontend", "UI", "00595B24");
@@ -1782,10 +1858,12 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
-    /// <c>00595222</c> list at <c>[ui+84]</c>.
-    /// Each <c>[node+20]</c> <c>vtbl+8</c>.
-    /// No invented quads — widget DIP is
-    /// still that vtbl body (UNREAD).
+    /// <c>00595222</c> is the <c>[ui+84]</c>
+    /// walk only: <c>[node+20].vtbl+8</c>
+    /// then <c>004292C0</c>. It is not a
+    /// DIP. First-seen nonempty node
+    /// calls <c>0041AFA0</c>; DIP is
+    /// later <c>009DA9F0</c> empty skip.
     /// </summary>
     private void DrawFrontendWidgets()
     {
@@ -1813,9 +1891,10 @@ public sealed class EngineLifecycle : IDisposable
     /// passes the two optional args as 0.
     /// Sibling <c>0041BF60</c> needs
     /// <c>[+380]!=0</c> — ctor leaves 0.
-    /// Dest rect from +204/+248 is
-    /// <c>0041AC20</c> UNREAD; packer
-    /// still writes type/size.
+    /// Dest is <c>0041AFA0</c>
+    /// <c>+248/+264</c> ctor 0 →
+    /// <c>0,0,0,0</c>. Packer writes
+    /// type/size into that dest.
     /// </summary>
     private void QueueFrontend2dRecord()
     {
@@ -1826,7 +1905,7 @@ public sealed class EngineLifecycle : IDisposable
                 ? $"0041BF60 type 0x{Frontend2dRecordType:X} [+380]"
                 : $"0041BEB0 type 0x{Frontend2dRecordType:X} +{FrontendWidgetBlendOffset}={FrontendWidgetBlend}");
         Note(packer, "Frontend", "UI",
-            $"[edx+{Frontend2dSubmitVtbl}] dest +{FrontendWidgetSubmitDestOffset:X} 0x{Frontend2dRecordBytes:X}");
+            $"[edx+{Frontend2dSubmitVtbl}] dest +{FrontendWidgetSubmitDestOffset:X} 0x{Frontend2dRecordBytes:X} {FrontendWidgetDestX0},{FrontendWidgetDestY0},{FrontendWidgetDestX1},{FrontendWidgetDestY1}");
         Note(FrontendEngineAllocFn, "Frontend", "UI",
             $"00B26340 size 0x{FrontendEngineObjectSize:X} vtbl 0x{FrontendEngineVtbl:X}");
         Note(FrontendSubmitFn, "Frontend", "UI",

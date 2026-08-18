@@ -246,9 +246,9 @@ the no-save path.
 | `0041714D` when `world+164 != 0` | UNREAD | Default New Game is `world+164==0` |
 | Slot fields beyond `+6296/+6312/+6328` (weights / `+6340/+6352`) | UNREAD | Lerp into `ScriptedCamera` is PROVEN; first-seen Weight0 ctor 0.2 is locked (`52e26bc`). Leftover slot bodies are not |
 | `00435530` overlay `00435000` / interface `00435070` bodies | PARTIAL | Present + `009DA9F0` layer bits PROVEN; overlay/interface still Note |
-| Frontend `00595222` widget DIP body | UNREAD (Note) | `5657176` / `6607c1e` / `128c8e1` / `c612ad5` / `6493c77` / `d6821b8` lock `[ui+84]` walk, `[node+20]` `0041AFA0`, `0041BEB0` type-0x22, `00404A80`/`00404C00` skip, first-seen empty `009DA9F0` skip DIP, vtbl+332 / `00B23BC0` / `00B324A0`. Not the DIP. Not New Game N/Enter |
+| Frontend `00595222` widget DIP body | DISPROVEN as DIP | Walk only (`[ui+84]` → `0041AFA0`). First-seen dest `0,0,0,0`. DIP remains `009DA9F0` empty skip |
 | `00B324A0` type-0x22 handler vtbl+20 | UNREAD | `d6821b8` dispatch is PROVEN; dest+4=0 first-seen; not memcpy +16020 |
-| `0041AC20` dest rect from +204/+248 | UNREAD | `c612ad5` packer writes type/size; dest rect leftover |
+| `0041AC20` dest rect from +204/+248 | PROVEN first-seen 0,0,0,0 | Empty `+376` skips `+204/+208`. `0041AFA0` uses `+248/+264` ctor 0 |
 | New Game keyboard N/Enter (host stand-in) | leftover #14 | Retail click/message `0059A238` is PROVEN; `00595222` and N/Enter are not that lock |
 | `006B8640` / `008889C0` leftover (do not write V0 first-seen) | UNREAD | `006B2CA0` pose is PROVEN (`204a214`). Host `SeedAt(1.6m)` is DISPROVEN as live New Game. Lookout helper FOV 70 from `00A0C130` (`be3339e`). `00A0C130` is a packer (`a6f939a`); ctor look +Z, up `(1,1,1)`. SHOT2 FOV 72 is intro-view leftover — do not collapse into Lookout. Do not close #6 / #13 |
 | Consumed first-Present helper | UNREAD | `a6f939a` locks ctor packer / `00988A50` WVP / bank lerp `008857E0` / vtbl+244 colour-filter. Does not change the consumed first-Present helper. Do not reopen #6 / #13 |
