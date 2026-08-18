@@ -14,10 +14,10 @@ or in tests/code, treat it as **UNREAD**.
 `CAM_OVIF_SHOT2`) so `CS_OAKVALE_INTRO_FATHER` can run on a real
 world clock.
 
-Snapshot: **2026-08-18**, master merge `5e8ccfe`, runtime HEAD
-`21491ac` (*Runtime: 0049F180 Init GUI is PLAYER_GUI_PC; Init
-Quests list still unread.*).
-Just locked on this path: `e0e0511`, `21491ac`.
+Snapshot: **2026-08-18**, master merge `d559ad07`, runtime HEAD
+`48a879ac` (*Runtime: 00CB5AD0 starts WLD factory scripts; client is
+1024x768 Fable window.*).
+Just locked on this path: `efa0e541`, `48a879ac`.
 Master is still proving **boot / world clock**, not animation.
 README’s long-term priority list still starts with animation; that
 list is not the current phase.
@@ -108,9 +108,10 @@ when a ledger or test already records them.
 
 ### Phase 1 in progress — boot / world clock (current master)
 
-Recent commits (`8bccec3` … `21491ac`) lock the retail pump, not
-`00DBDE40`. Just locked: `00662880` CREATURE_HERO mesh 4299
-(`e0e0511`), Init GUI `PLAYER_GUI_PC` (`21491ac`).
+Recent commits (`8bccec3` … `48a879ac`) lock the retail pump, not
+`00DBDE40`. Just locked: START_INITIAL_QUESTS / `004B4260`
+(`efa0e541`), `00CB5AD0` factory scripts + 1024×768 window
+(`48a879ac`).
 
 | Item | Status | Evidence |
 |---|---|---|
@@ -143,8 +144,10 @@ Recent commits (`8bccec3` … `21491ac`) lock the retail pump, not
 | `+9826` stays 0 after Create Players (first `004162B5` skips world) | DISPROVEN | same; first pump takes player/world/vtbl+24; `WorldFrame` increments |
 | No-save first *rendered* scene is LookoutPoint `RegionThings` + hero camera `006B3FF0`; client `BindLifecycleFirstRegion` skips if map name contains StartOakVale | PROVEN | `fe6a11e` / same LookoutPoint test + client early return |
 | `00662880` / `004CA010` insert binds `CREATURE_HERO` mesh 4299 after the `PLAYER_HERO` miss chain | PROVEN | `e0e0511` / `Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint` (`HeroMeshId=4299`) |
-| `0049F180` after characters: Init GUI `0043A380` `PLAYER_GUI_PC` | PROVEN | `21491ac` / same test (`PlayerGuiReady`) |
-| Init Quests `004B4260` / `00CB5AD0` game+172 list | PARTIAL | `21491ac`; `QuestsInitDone=false`; list still UNREAD |
+| `0049F180` after characters: Init GUI `0043A380` `PLAYER_GUI_PC` | PROVEN | `21491ac` / same test (`PlayerGuiReady`); bind still #17 / PARTIAL (Note-only) |
+| `00403079` / `009C0E50` display defaults 1024×768, title `TEXT_GUI_WINDOW_TITLE` | PROVEN | `48a879ac` / `Window_00403079_defaults_1024x768_and_title`. Client Size = `BackBufferWidth`/`Height`. `DefaultVulkan` 1600×900 DISPROVEN (issue #8 closed). |
+| `004B4260` activates WLD `START_INITIAL_QUESTS` (world+172 from `00507C30`) | PROVEN | `efa0e541` / `Init_quests_004B4260_activates_wld_initial_list` (`QuestsInitDone=true`) |
+| `00CB5AD0` starts `QuestFactoryTable` factory scripts (not `S_QNOVI`) | PROVEN | `48a879ac` / `Activate_quests_00CB5AD0_starts_factory_scripts` |
 | Game pump / first region is `00DBDE40` / StartOakVale setup | DISPROVEN | tests above |
 | No-save writes `[record+36]` | DISPROVEN | `recover-record36` text in `Camera_004164E0_runs_on_install_after_WorldFrame`; null still loads |
 
@@ -178,7 +181,6 @@ the no-save path.
 | `0041714D` when `world+164 != 0` | UNREAD | Default New Game is `world+164==0` |
 | Slot fields beyond `+6296/+6312/+6328` (weights / `+6340/+6352`) | UNREAD | Lerp into `ScriptedCamera` is PROVEN; leftover slot bodies are not |
 | `00435530` display apply | PARTIAL | Thunk `00435F70` is the jmp |
-| Init Quests list at game+172 (`004B4260` / `00CB5AD0`) | PARTIAL | `21491ac`; `QuestsInitDone=false`; list still UNREAD |
 | Who writes persist `PlayerRegionName` on New Game | UNREAD | Click/message path is PROVEN; persist HEADER writer is not |
 | `[esi+42]` load/save | UNREAD | `recover-00595582`; `[esi+41]` Leave is PROVEN |
 | Global-things *use* after `004FDBC0` / `.gtg` parse | UNREAD | Load switch is PROVEN; `00521AE0` is per-map TNG, not this apply |
@@ -211,12 +213,12 @@ opcode.” Last persist-vector-0 command:
 | `SneakTo` / `WalkTo` mesh move (`004C72B0` stub) | PARTIAL | `FirstSeenSneakToAppliesMove=false` |
 | `PlayCombatAnimation` pose | PARTIAL | `vtbl+76` does not read the name |
 | `call [vtbl+8]` resume site; `vtbl+28` yield body; `Main` `00CDD440` | UNREAD | PARITY 0b |
-| PlayAVI dest vs `Silk.WindowOptions.DefaultVulkan` 1600×900 (not D3D `CreateDevice` backbuffer) | PARTIAL | issue #8, `Program.cs`, `PlayAviLetterbox` |
 | `WmvPlayer` never QIs `IBasicAudio` (native `00A3B9D0` does) | PARTIAL | issue #9 |
 
 `DoScriptFrame` / `PlayAVI` / cameras / fades are **PROVEN** at the
-script layer. Dest/window and `IBasicAudio` are **PARTIAL** leftovers.
-Do not invent fade/AVI/wake playback beyond those bodies.
+script layer. PlayAVI dest vs 1600×900 (#8) is closed. `IBasicAudio`
+(#9) stays a **PARTIAL** leftover. Do not invent fade/AVI/wake
+playback beyond those bodies.
 
 ### 3. First-scene render leftovers
 
@@ -238,9 +240,9 @@ From [FIRST_SCENE_AUDIT.md](../render/FIRST_SCENE_AUDIT.md)
 
 TEMPORARY stand-ins (LINEAR/REPEAT, MaxLod=1, Z test+write on) stay
 classified. PlayAVI *script* apply is PROVEN; dest vs
-`Silk.WindowOptions.DefaultVulkan` 1600×900 (#8) and `IBasicAudio`
-(#9) are PARTIAL leftovers. Steam timing is PARITY Open item 0,
-not a first-scene 3D invent.
+`Silk.WindowOptions.DefaultVulkan` 1600×900 (#8) is closed.
+`IBasicAudio` (#9) stays a PARTIAL leftover. Steam timing is PARITY
+Open item 0, not a first-scene 3D invent.
 
 ### 4. Animation (after boot)
 

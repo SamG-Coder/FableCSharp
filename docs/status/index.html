@@ -50,10 +50,9 @@
 
     <p>
       Snapshot: <strong>2026-08-18</strong>, master merge
-      <code>85edc7c</code>, runtime HEAD <code>fe6a11e</code>
-      (<em>Runtime: first LookoutPoint scene consumes RegionThings and hero camera.</em>).
-      Just locked on this path: <code>8f89aad</code>, <code>ea479d2</code>,
-      <code>fe6a11e</code>.
+      <code>d559ad07</code>, runtime HEAD <code>48a879ac</code>
+      (<em>Runtime: 00CB5AD0 starts WLD factory scripts; client is 1024x768 Fable window.</em>).
+      Just locked on this path: <code>efa0e541</code>, <code>48a879ac</code>.
       Master is still proving <strong>boot / world clock</strong>, not animation.
       README’s long-term priority list still starts with animation; that
       list is not the current phase.
@@ -224,11 +223,11 @@
 
     <h3>Phase 1 in progress — boot / world clock (current master)</h3>
     <p>
-      Recent commits (<code>8bccec3</code> … <code>fe6a11e</code>) lock the
-      retail pump, not <code>00DBDE40</code>. Just locked: Load Single Thing
-      hero at <code>GuildArrivalHSP</code> (<code>8f89aad</code>), Create
-      Players <code>+9826</code> (<code>ea479d2</code>), no-save first
-      rendered scene LookoutPoint + hero camera (<code>fe6a11e</code>).
+      Recent commits (<code>8bccec3</code> … <code>48a879ac</code>) lock the
+      retail pump, not <code>00DBDE40</code>. Just locked:
+      START_INITIAL_QUESTS / <code>004B4260</code> (<code>efa0e541</code>),
+      <code>00CB5AD0</code> factory scripts + 1024×768 window
+      (<code>48a879ac</code>).
     </p>
     <table>
       <thead><tr><th>Item</th><th>Status</th><th>Evidence</th></tr></thead>
@@ -351,7 +350,7 @@
         <tr>
           <td><code>0051FD80</code> Load Single Thing: no-save LookoutPoint TNG has no PlayerCreature; <code>HOLY_SITE_PLAYER_START</code> <code>GuildArrivalHSP</code> → <code>00489D40</code> / <code>006AC910</code> inserts PlayerCreature at that pose</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>8f89aad</code> / <code>Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint</code></td>
+          <td><code>8f89aad</code> / <code>Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint</code> (refined by <code>e0e0511</code>)</td>
         </tr>
         <tr>
           <td>No-save hero is <code>00DBDE40</code> / <code>CREATURE_HERO_CHILD</code> / StartOakVale</td>
@@ -372,6 +371,31 @@
           <td>No-save first <em>rendered</em> scene is LookoutPoint <code>RegionThings</code> + hero camera <code>006B3FF0</code>; client <code>BindLifecycleFirstRegion</code> skips if map name contains StartOakVale</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
           <td><code>fe6a11e</code> / same LookoutPoint test + client early return</td>
+        </tr>
+        <tr>
+          <td><code>00662880</code> / <code>004CA010</code> insert binds <code>CREATURE_HERO</code> mesh 4299 after the <code>PLAYER_HERO</code> miss chain</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>e0e0511</code> / <code>Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint</code> (<code>HeroMeshId=4299</code>)</td>
+        </tr>
+        <tr>
+          <td><code>0049F180</code> after characters: Init GUI <code>0043A380</code> <code>PLAYER_GUI_PC</code></td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>21491ac</code> / same test (<code>PlayerGuiReady</code>); bind still #17 / PARTIAL (Note-only)</td>
+        </tr>
+        <tr>
+          <td><code>00403079</code> / <code>009C0E50</code> display defaults 1024×768, title <code>TEXT_GUI_WINDOW_TITLE</code></td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>48a879ac</code> / <code>Window_00403079_defaults_1024x768_and_title</code>. Client Size = <code>BackBufferWidth</code>/<code>Height</code>. <code>DefaultVulkan</code> 1600×900 DISPROVEN (issue #8 closed).</td>
+        </tr>
+        <tr>
+          <td><code>004B4260</code> activates WLD <code>START_INITIAL_QUESTS</code> (world+172 from <code>00507C30</code>)</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>efa0e541</code> / <code>Init_quests_004B4260_activates_wld_initial_list</code> (<code>QuestsInitDone=true</code>)</td>
+        </tr>
+        <tr>
+          <td><code>00CB5AD0</code> starts <code>QuestFactoryTable</code> factory scripts (not <code>S_QNOVI</code>)</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>48a879ac</code> / <code>Activate_quests_00CB5AD0_starts_factory_scripts</code></td>
         </tr>
         <tr>
           <td>Game pump / first region is <code>00DBDE40</code> / StartOakVale setup</td>
@@ -544,11 +568,18 @@
           <td><span class="badge UNREAD">UNREAD</span></td>
           <td>PARITY 0b</td>
         </tr>
+        <tr>
+          <td><code>WmvPlayer</code> never QIs <code>IBasicAudio</code> (native <code>00A3B9D0</code> does)</td>
+          <td><span class="badge PARTIAL">PARTIAL</span></td>
+          <td>issue #9</td>
+        </tr>
       </tbody>
     </table>
     <p>
       <code>DoScriptFrame</code> / <code>PlayAVI</code> / cameras / fades are
       <span class="badge PROVEN">PROVEN</span> at the script layer.
+      PlayAVI dest vs 1600×900 (#8) is closed. <code>IBasicAudio</code>
+      (#9) stays a <span class="badge PARTIAL">PARTIAL</span> leftover.
       Do not invent fade/AVI/wake playback beyond those bodies.
     </p>
 
@@ -573,7 +604,9 @@
     <p>
       <span class="badge TEMPORARY">TEMPORARY</span> stand-ins
       (LINEAR/REPEAT, MaxLod=1, Z test+write on) stay classified.
-      PlayAVI <em>script</em> apply is PROVEN; leftover timing vs Steam is
+      PlayAVI <em>script</em> apply is PROVEN; dest vs
+      <code>Silk.WindowOptions.DefaultVulkan</code> 1600×900 (#8) is closed.
+      <code>IBasicAudio</code> (#9) stays a PARTIAL leftover. Steam timing is
       PARITY Open item 0, not a first-scene 3D invent.
     </p>
 
