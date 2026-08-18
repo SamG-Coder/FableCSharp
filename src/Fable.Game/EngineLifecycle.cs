@@ -512,6 +512,10 @@ public sealed class EngineLifecycle : IDisposable
     public const uint GamePumpUpdate = 0x004162B5;
     public const uint GamePumpMemlog = 0x00415E85;
     public const uint GamePumpQuitQuery = 0x009A6460;
+    public const uint GamePumpInnerStartFn = 0x0098E1B0;
+    public const int GamePumpQuitLeave = 2;
+    public const int GamePumpQuitUpdate = 1;
+    public const int GamePumpQuitFirstSeen = 1;
     /// <summary>
     /// First <c>004189C2</c> after dummy
     /// record: <c>0040D2A0</c> singleton
@@ -1001,11 +1005,22 @@ public sealed class EngineLifecycle : IDisposable
     public const uint LoadRegionByNameFn = 0x00487C20;
     public const uint LoadRegionByNamePersist = 0x00449E60;
     /// <summary>
-    /// <c>00501450</c>: if table count &gt; 1,
-    /// <c>00500540(1,0,0)</c> sync. Native
-    /// index 1 is LookoutPoint.
+    /// <c>00501450</c>: player
+    /// <c>00449970</c>/<c>00487DC0</c>,
+    /// <c>004FEEC0(current,0)</c> writes
+    /// <c>+156=0</c>, table count
+    /// <c>(+48-+44)/88</c>. Count &gt; 1
+    /// loops <c>00500540(i,0,0)</c> from 1
+    /// (+36 null still
+    /// <c>006C27A0</c>). Then
+    /// <c>00500540(saved,0,1)</c>. First
+    /// seen saved is dummy 0. Later
+    /// indices after 1 stay PARTIAL.
+    /// E8 caller UNREAD (not in
+    /// <c>004162B5</c> / <c>00418289</c>).
     /// </summary>
     public const uint LoadFromFirstRealRegionFn = 0x00501450;
+    public const uint UnloadCurrentRegionFn = 0x004FEEC0;
     /// <summary>
     /// <c>004FC190</c>: map → region, search
     /// from 1 via <c>006BBFA0</c> ContainsMap.
@@ -2559,6 +2574,9 @@ public sealed class EngineLifecycle : IDisposable
             $"004FC180 [WorldMap+44]+{CurrentRegionIndex}*{NewRegionRecordSize}");
         ActivateCurrentRegion();
         ApplyFirstPumpAviAndFade();
+        Note(GamePumpInnerStartFn, "GamePump", "Game", "0098E1B0 ret");
+        Note(GamePumpQuitQuery, "GamePump", "Engine",
+            $"009A6460 [engine+8]=0 → {GamePumpQuitFirstSeen}");
         GamePumpFirstDone = true;
         Note(GamePumpMemlog, "GamePump", "Game", "00415E85 memlog");
         PumpGameUpdate();
@@ -3246,12 +3264,21 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public void LoadFromFirstRealRegion()
     {
+        var saved = CurrentRegionIndex;
         var count = (World?.Regions.Count ?? 0) + RegionTableDummyCount;
         Note(LoadFromFirstRealRegionFn, "LevelLoader", "Region",
-            $"00501450 count={count}");
+            $"00501450 count={count} saved={saved}");
+        Note(PlayerCreatureBindFn, "LevelLoader", "Player",
+            "00449970 / 00487DC0");
+        Note(UnloadCurrentRegionFn, "LevelLoader", "Region",
+            $"004FEEC0({saved},0) +156=0");
         if (count <= 1)
             return;
+        Note(LoadRegionFn, "LevelLoader", "Region",
+            "00500540(1,0,0) first +36 null continues");
         RequestLoadRegion(1, sync: true);
+        Note(LoadFromFirstRealRegionFn, "LevelLoader", "Region",
+            $"00500540({saved},0,1) restore PARTIAL");
     }
 
     /// <summary>

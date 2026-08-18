@@ -145,6 +145,7 @@ only — CSS unchanged.
 | Current region index is `WorldMap+156` (`004FB150`); ctor 0 is dummy | PROVEN | `Game_pump_is_004189C2_not_00DBDE40` |
 | First `004189C2` pump does **not** `SetRegionAsLoaded` | PROVEN | install test |
 | No-save enqueue `00501450` → `00500540(1,0,0)` **LookoutPoint** (native index 1) | PROVEN | install test (`CurrentRegionIndex=1`) |
+| `00501450` is only `00500540(1,0,0)` | DISPROVEN | body also `004FEEC0(0,0)` and later `(saved,0,1)`; `Second_pump_00501450_is_004FEEC0_then_00500540_1_0_0` |
 | Persist `PlayerRegionName` `00487C20` / `00449E60` loads named region (e.g. `StartOakVale` = 4) | PROVEN | `Persist_PlayerRegionName_is_00487C20_not_new_game` |
 | `SetRegionAsLoaded` `004FC8A0` writes `+156`, then `00B42750` mode 1 | PROVEN | `e9952b8` / install test |
 | `OpenStaticMap` `00B42530` STB height + compiled `.lev` (v25 / `0x1904`) | PROVEN | `7869e8e` / install test |

@@ -72,6 +72,11 @@ public sealed class EngineLifecycleTests
         Assert.Equal(20f, EngineLifecycle.DisplayEngineFadeSeconds);
         Assert.Equal(0x009F2660u, EngineLifecycle.InputLockEnterFn);
         Assert.Equal(0x009F26B0u, EngineLifecycle.InputLockLeaveFn);
+        Assert.Equal(0x0098E1B0u, EngineLifecycle.GamePumpInnerStartFn);
+        Assert.Equal(0x009A6460u, EngineLifecycle.GamePumpQuitQuery);
+        Assert.Equal(1, EngineLifecycle.GamePumpQuitFirstSeen);
+        Assert.Equal(0x004FEEC0u, EngineLifecycle.UnloadCurrentRegionFn);
+        Assert.Equal(0x00500540u, EngineLifecycle.LoadRegionFn);
         Assert.Equal(0x004167DAu, EngineLifecycle.EngineReadyCallback);
         Assert.Equal(0x0049F180u, EngineLifecycle.InitCharactersFn);
         Assert.Equal(0x004B4A10u, EngineLifecycle.ActivateInitialQuestsFn);
@@ -1494,9 +1499,59 @@ public sealed class EngineLifecycleTests
         Assert.Contains(events, e =>
             e.Va == EngineLifecycle.DisplayEngineFadeFn &&
             e.Action.Contains("20", StringComparison.Ordinal));
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.GamePumpInnerStartFn &&
+            e.Action.Contains("ret", StringComparison.Ordinal));
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.GamePumpQuitQuery &&
+            e.Action.Contains("→ 1", StringComparison.Ordinal));
         Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.LoadRegionFn);
         Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
+    }
+
+    [Fact]
+    public void Second_pump_00501450_is_004FEEC0_then_00500540_1_0_0()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.False(life.GamePumpFirstDone);
+        Assert.True(life.Pump());
+        Assert.True(life.GamePumpFirstDone);
+        Assert.Equal(0, life.CurrentRegionIndex);
+        Assert.Null(life.CurrentRegion);
+        Assert.False(life.FirstRealRegionLoadDone);
+        Assert.True(life.Pump());
+        Assert.True(life.FirstRealRegionLoadDone);
+        Assert.Equal(1, life.CurrentRegionIndex);
+        Assert.Equal("LookoutPoint", life.CurrentRegion!.RegionName);
+        var events = life.Trace.Events;
+        var dummy = events.FindIndex(e =>
+            e.Va == EngineLifecycle.GetRegionRecordFn &&
+            e.Action.Contains("dummy", StringComparison.Ordinal));
+        var enqueue = events.FindIndex(e =>
+            e.Va == EngineLifecycle.LoadFromFirstRealRegionFn &&
+            e.Action.Contains("00501450", StringComparison.Ordinal));
+        var unload = events.FindIndex(e => e.Va == EngineLifecycle.UnloadCurrentRegionFn);
+        var first = events.FindIndex(e =>
+            e.Va == EngineLifecycle.LoadRegionFn &&
+            e.Action.Contains("(1,0,0)", StringComparison.Ordinal));
+        var restore = events.FindIndex(e =>
+            e.Va == EngineLifecycle.LoadFromFirstRealRegionFn &&
+            e.Action.Contains("(0,0,1)", StringComparison.Ordinal));
+        Assert.True(dummy >= 0 && enqueue > dummy, "00501450 after dummy pump");
+        Assert.True(unload > enqueue, "004FEEC0 after 00501450");
+        Assert.True(first > unload, "00500540(1,0,0) after 004FEEC0");
+        Assert.True(restore > first, "00500540(0,0,1) after first load");
+        Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.NamedStartFn);
     }
 
     [Fact]

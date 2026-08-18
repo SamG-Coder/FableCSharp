@@ -382,8 +382,11 @@ then first-pump tail (before inner loop)  PROVEN
 ├── 009F2660  [0x13CAA90]+1040 vtbl+52 walk
 └── 009F26B0  Enter/Leave 0x13CAA70  (empty pair)
 
-then inner loop until [game+8]
-├── 009A6460  quit? (2 = leave)
+then inner loop until [game+8]  PROVEN
+├── 0098E1B0  ret
+├── 00416231  dt − [game+96]
+├── 009A6460  [engine+8]==0 → 1 (update); +8 → 2 leave
+│   first-seen 1
 ├── 004162B5  GamePumpUpdate  SLOT
 │   ├── 009A57B0  gate [engine+148]==GetTickCount
 │   ├── [game].vtbl+20  00418289  update
@@ -404,8 +407,15 @@ then inner loop until [game+8]
 Reached after dummy pump. Not `00DBDE40`.
 
 ```
-enqueue (no persist PlayerRegionName)
-└── 00501450  if table count > 1 → 00500540(1, 0, 0) sync
+enqueue (host second 004189C2 after dummy; E8 caller UNREAD)
+└── 00501450  PROVEN body
+    ├── 00449970 / 00487DC0  player (may miss)
+    ├── 004FEEC0(current=0, 0)  +156=0  PROVEN
+    ├── count = (+48−+44)/88
+    ├── count>1: for i=1..  00500540(i,0,0)
+    │   first i=1 LookoutPoint; +36 null → 006BB2F0 then 006C27A0
+    │   i>1 PARTIAL (not applied on host)
+    └── 00500540(saved=0, 0, 1)  restore  PARTIAL note
     native index 1 = WLD NewRegion 1 LookoutPoint
 
 00500540  LoadRegion  PROVEN
