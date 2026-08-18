@@ -1597,6 +1597,29 @@ public sealed class EngineLifecycle : IDisposable
     public const uint QstParseFn = 0x004A0D90;
     public const uint ActivateInitialQuestsFn = 0x004B4A10;
     public const uint ActivateInitialQuestsSite = 0x00416BCF;
+    /// <summary>
+    /// <c>00CD6E27</c> binds
+    /// <c>Q_NewOakValeIntro</c> to
+    /// <c>S_QNOVI</c> / <c>00DBEF70</c>
+    /// via <c>00CB5C90</c>. Not
+    /// <c>00CB5AD0</c> / <c>004B4A10</c>.
+    /// </summary>
+    public const uint OakvaleBindSite = 0x00CD6E27;
+    public const uint OakvaleFactoryFn = 0x00DBEF70;
+    /// <summary>
+    /// Save-stream parser. One <c>E8</c>
+    /// (<c>004B58F3</c> self). Not on
+    /// no-save New Game.
+    /// </summary>
+    public const uint StartNewQuestParseFn = 0x004B5080;
+    /// <summary>
+    /// <c>00896A30</c> first <c>E8</c>.
+    /// Finds a card thing; requires
+    /// <c>004AF610</c> already active.
+    /// </summary>
+    public const uint QuestCardFindFn = 0x004B0D30;
+    public const uint AddTestQuestStoreFn = 0x004A113B;
+    public const int WorldAddTestQuestOffset = 196;
     public const int WorldQuestListOffset = 172;
     public const int WorldQuestDefListOffset = 184;
     public const uint InitHeroDefFn = 0x00449D90;
@@ -6070,6 +6093,12 @@ public sealed class EngineLifecycle : IDisposable
         var qst = DeriveQuestFileName(WorldFileName ?? FinalAlbionWld);
         Note(DeriveQuestPathFn, "Load Quests", "Quest", "0049D770 " + qst);
         Note(QstParseFn, "Load Quests", "Quest", "004A0D90 AddQuest/AddTestQuest");
+        Note(OakvaleBindSite, "Load Quests", "Quest",
+            "00CD6E27 00CB5C90 S_QNOVI 00DBEF70 bind not 00CB5AD0");
+        Note(AddTestQuestStoreFn, "Load Quests", "Quest",
+            $"004A113B AddTestQuest [world+{WorldAddTestQuestOffset}] store not 004B4A10");
+        Note(StartNewQuestParseFn, "Load Quests", "Quest",
+            "004B5080 START_NEW_QUEST save parse 0 E8 no-save");
         if (Install is not null && File.Exists(Install.QuestPath))
         {
             Quests = QuestFile.Load(Install.QuestPath);
@@ -6119,9 +6148,11 @@ public sealed class EngineLifecycle : IDisposable
 
         Note(QuestManagerActivate, "Init Quests", "Quest", "004B2890");
         Note(ActivateInitialQuestsSite, "Activate Initial Quests", "Quest",
-            "00416BCF +90584 empty 0122D70E → 004B4A10");
+            "00416BCF +90584 empty 0122D70E skip 004B4A10");
         Note(ActivateInitialQuestsFn, "Activate Initial Quests", "Quest",
-            "004B4A10 [0x13B89FC] → 004B4260");
+            "004B4A10 not Q_NewOakValeIntro");
+        Note(QuestCardFindFn, "Init Quests", "Quest",
+            "004B0D30/00896A30 need 004AF610 already active");
         QuestsInitDone = true;
     }
 

@@ -2046,6 +2046,54 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void No_save_does_not_activate_Q_NewOakValeIntro()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.True(life.Pump(0.25f));
+        Assert.Contains(life.World!.InitialQuests, q => q == "Q_SunnyvaleMaster");
+        Assert.DoesNotContain(life.World.InitialQuests, q =>
+            q == EngineLifecycle.GameflowWaitQuest);
+        Assert.DoesNotContain(life.ActivatedQuests, q =>
+            q == EngineLifecycle.GameflowWaitQuest);
+        Assert.DoesNotContain(life.Runtime!.Quests, q =>
+            q.Name == EngineLifecycle.GameflowWaitQuest);
+        Assert.Equal(EngineLifecycle.GameflowWaitQuest, life.GameflowYieldQuest);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.OakvaleBindSite &&
+            e.Action.Contains("bind not 00CB5AD0", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.AddTestQuestStoreFn &&
+            e.Action.Contains("store not 004B4A10", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.StartNewQuestParseFn &&
+            e.Action.Contains("0 E8 no-save", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.ActivateInitialQuestsSite &&
+            e.Action.Contains("skip 004B4A10", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.QuestIsActiveFn &&
+            e.Action.Contains(EngineLifecycle.GameflowWaitQuest, StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == RegionTravel.StartOakValeSetup);
+        Assert.Equal(0x00CD6E27u, EngineLifecycle.OakvaleBindSite);
+        Assert.Equal(0x00DBEF70u, EngineLifecycle.OakvaleFactoryFn);
+        Assert.Equal(0x004B5080u, EngineLifecycle.StartNewQuestParseFn);
+        Assert.Equal(0x004B0D30u, EngineLifecycle.QuestCardFindFn);
+        Assert.Equal(0x004A113Bu, EngineLifecycle.AddTestQuestStoreFn);
+        Assert.Null(life.CurrentRegion);
+    }
+
+    [Fact]
     public void After_WorldFrame_gt_1_00416E78_is_004457F0_then_00446A30()
     {
         var install = GameInstall.TryLocate();

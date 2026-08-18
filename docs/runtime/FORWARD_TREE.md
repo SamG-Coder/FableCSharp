@@ -765,6 +765,7 @@ path, not inside `005066E0` ctor.
 ```
 
 `Q_NewOakValeIntro` / `00DBDE40` are **not** on this list.
+`00CD6E27` binds `S_QNOVI` only. Activator is not this walk.
 They are a factory `vtbl+8` reached only if a later node
 constructs that quest object.
 
@@ -1005,7 +1006,7 @@ Walk these **from their parent above**, not by string.
 | `00B40000` | `00BDC4F0` / `00BDDD50` | patch destroy |
 | `006C2170` | unload of previous ContainsMaps | region change |
 | `004B4260` | each initial-quest factory run | not Oakvale intro |
-| `00CE7670` wait | who activates `Q_NewOakValeIntro` | resume re-checks `00893610` still 0 |
+| `00435530` empty dest | `00501450` caller / next type-1 | 0 E8/imm of `00501450` |
 | `004167DA` | first call of `[engine+240]` | store-only; 0 `calldisp +240` on engine |
 | `00435530` empty dest | next type-1 resume / `00CB8220` parked | `00501450` still 0 E8/imm |
 
