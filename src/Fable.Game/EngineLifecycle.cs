@@ -237,6 +237,26 @@ public sealed class EngineLifecycle
     /// </summary>
     public const int GameRenderVtbl = 28;
     public const uint GameRenderFn = 0x00417001;
+    public const uint GameModeCtorRenderEnable = 0x00418EC6;
+    public const int GameRenderEnableOffset = 90593;
+    public const uint FrontEndQueryFn = 0x00416296;
+    public const uint GuiBlockQueryFn = 0x00490A22;
+    public const uint FadeApplyFn = 0x0041649C;
+    public const uint PlayerActionFn = 0x004AEAA0;
+    public const int PlayerActionFlagOffset = 9826;
+    public const uint GameVtbl24Fn = 0x00416E78;
+    public const int GameVtbl24 = 24;
+    public const uint ClearGamePlus68Fn = 0x00416047;
+    public const uint WorldFrameGetter = 0x0049D870;
+    public const uint WorldFrameVa = 0x013B89BC;
+    public const uint WorldFrameCopyVa = 0x013B7D70;
+    public const uint WorldGetThingFn = 0x0049E1B0;
+    public const int WorldThingOffset = 80;
+    public const uint StoreActiveThingFn = 0x004C74F0;
+    public const uint ActiveThingVa = 0x013B8A1C;
+    public const uint RenderStackZeroFn = 0x00415A60;
+    public const uint SleepIat = 0x0143FE1C;
+    public const uint SleepMsVa = 0x013B8610;
     /// <summary>
     /// <c>005066E0</c> inserts one ctor-zeroed
     /// 88-byte slot before WLD appends.
@@ -395,6 +415,28 @@ public sealed class EngineLifecycle
     public bool EngineUpdateAllowed { get; private set; } = true;
     public int GameUpdateCount { get; private set; }
     public int GameRenderCount { get; private set; }
+    /// <summary>
+    /// <c>00418EC6</c> ctor writes
+    /// <c>[game+90593]=1</c>.
+    /// </summary>
+    public bool GameRenderEnabled { get; private set; }
+    /// <summary>
+    /// <c>[player+9826]</c>. Default 0 →
+    /// <c>004AEBA0</c> returns 0.
+    /// </summary>
+    public bool PlayerActionReady { get; set; }
+    public bool GameModePaused { get; set; }
+    public int GameSleepMs { get; set; }
+    public bool FrontEndQuery { get; private set; }
+    public bool GuiBlocksUpdate { get; private set; }
+    public bool FadeUiActive { get; private set; }
+    public bool WorldUpdateRan { get; private set; }
+    public bool GameVtbl24Ran { get; private set; }
+    public bool RenderBodyRan { get; private set; }
+    /// <summary>
+    /// <c>0049D870</c> <c>[0x13B89BC]</c>.
+    /// </summary>
+    public int WorldFrame { get; set; }
     public bool LevelLoaderReady { get; private set; }
     public bool FirstRealRegionLoadDone { get; private set; }
     /// <summary>
@@ -574,6 +616,9 @@ public sealed class EngineLifecycle
             Note(apply, name, "World", name);
         LoadWorldMap();
         CreatePlayers();
+        GameRenderEnabled = true;
+        Note(GameModeCtorRenderEnable, "InitGame", "GameMode",
+            "00418EC6 [game+90593]=1");
         Mode = EngineMode.Game;
         Stage = EngineStage.Game;
         WorldFileName = FinalAlbionWld;
@@ -795,22 +840,90 @@ public sealed class EngineLifecycle
 
     /// <summary>
     /// Game vtbl+20 <c>00418289</c>.
+    /// Sleep skip, fade only if frontend
+    /// and GUI both block, else
+    /// <c>004AEBA0</c> at game+80568.
     /// </summary>
     public void UpdateGameMode()
     {
         Note(GameUpdateFn, "GamePump", "Update", "vtbl+20 00418289");
-        Note(GameUpdatePlayerFn, "GamePump", "Player", "004AEBA0");
-        Note(GameUpdateWorldFn, "GamePump", "World", "0049D9E0 ret");
+        if (GameSleepMs > 0)
+            Note(SleepIat, "GamePump", "Update", $"Sleep {GameSleepMs}");
+        FrontEndQuery = QueryFrontEnd();
+        GuiBlocksUpdate = false;
+        Note(FrontEndQueryFn, "GamePump", "Update",
+            FrontEndQuery ? "00416296 true" : "00416296 false");
+        Note(GuiBlockQueryFn, "GamePump", "Update", "00490A22 default 0");
+        if (FrontEndQuery && GuiBlocksUpdate)
+        {
+            FadeUiActive = true;
+            Note(FadeApplyFn, "GamePump", "Update", "0041649C fade");
+        }
+        else
+            FadeUiActive = false;
+
+        Note(FrameDtFn, "GamePump", "Time", "009E1BC0 [game+90544]");
+        if (GameModePaused)
+            Note(GameUpdateFn, "GamePump", "Update", "[game+90480] paused");
+        else
+        {
+            Note(GameUpdatePlayerFn, "GamePump", "Player",
+                $"004AEBA0 +{PlayerActionFlagOffset}={PlayerActionReady}");
+            if (PlayerActionReady)
+            {
+                Note(PlayerActionFn, "GamePump", "Player", "004AEAA0");
+                Note(GameUpdateWorldFn, "GamePump", "World", "0049D9E0 ret");
+                WorldUpdateRan = true;
+                Note(GameVtbl24Fn, "GamePump", "Update", "vtbl+24 00416E78");
+                GameVtbl24Ran = true;
+                Note(ClearGamePlus68Fn, "GamePump", "Update", "00416047 [game+68]=0");
+            }
+        }
+
+        Note(WorldFrameGetter, "GamePump", "World",
+            $"0049D870 [0x13B89BC]={WorldFrame}");
+        Note(WorldFrameCopyVa, "GamePump", "World", "0x13B7D70");
         GameUpdateCount++;
     }
 
     /// <summary>
+    /// <c>00416296</c>: empty GUI list →
+    /// <c>009F5250</c> miss → invert → true.
+    /// </summary>
+    public bool QueryFrontEnd() => true;
+
+    /// <summary>
     /// Game vtbl+28 <c>00417001</c>.
+    /// World vtbl+12 / <c>004C74F0</c>, then
+    /// <c>[90593]</c> and <c>WorldFrame&lt;=1</c>
+    /// skip the camera body.
     /// </summary>
     public void RenderGameMode()
     {
         Note(GameRenderFn, "GamePump", "Render", "vtbl+28 00417001");
+        Note(RenderStackZeroFn, "GamePump", "Render", "00415A60");
+        Note(WorldGetThingFn, "GamePump", "World", "0049E1B0 [world+80]");
+        Note(StoreActiveThingFn, "GamePump", "World", "004C74F0 [0x13B8A1C]");
         GameRenderCount++;
+        if (!EngineUpdateAllowed)
+            return;
+        if (!GameRenderEnabled)
+        {
+            Note(GameRenderFn, "GamePump", "Render", "[game+90593]=0 skip");
+            return;
+        }
+
+        Note(WorldFrameGetter, "GamePump", "Render",
+            $"0049D870 frame={WorldFrame}");
+        if (WorldFrame <= 1)
+        {
+            Note(GameRenderFn, "GamePump", "Render",
+                "WorldFrame<=1 skip camera body");
+            return;
+        }
+
+        RenderBodyRan = true;
+        Note(GameRenderFn, "GamePump", "Render", "004164E0 camera body");
     }
 
     /// <summary>
