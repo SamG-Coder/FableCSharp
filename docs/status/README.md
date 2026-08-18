@@ -21,8 +21,8 @@ Master is still proving **boot / world clock**, not animation.
 README’s long-term priority list still starts with animation; that
 list is not the current phase.
 
-Open the same content as a page: [index.html](index.html)
-(local file, or GitHub Pages under `/status/` if Pages is `/docs`).
+Live site: <https://samg-coder.github.io/FableCSharp/status/>
+([index.html](index.html) locally; GitHub Pages from `master` `/docs`).
 
 ## How to read this
 
