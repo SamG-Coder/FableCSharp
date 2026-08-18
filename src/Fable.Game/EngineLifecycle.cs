@@ -302,6 +302,10 @@ public sealed class EngineLifecycle
     public const uint DisplayApplyBodyFn = 0x00435530;
     public const uint CameraTimeFn = 0x00416231;
     public const uint CameraInterpolationFn = 0x0041707E;
+    public const uint CameraInterpTimeFn = 0x004166E2;
+    public const uint CameraClampFn = 0x0041919C;
+    public const uint PlayerReadyQueryFn = 0x004AEA70;
+    public const int WorldPlus164Offset = 164;
     public const int GamePlus80Offset = 80;
     public const int GameCameraSlotOffset = 112;
     public const int CameraRecordDwords = 13;
@@ -518,6 +522,19 @@ public sealed class EngineLifecycle
     public float LastCameraBlend { get; private set; }
     public float LastCameraTime { get; private set; }
     public bool CameraInterpolationUnread { get; private set; }
+    public bool CameraInterpolationRan { get; private set; }
+    public float CameraInterpolationT { get; private set; }
+    /// <summary>
+    /// <c>world+164</c>. Default 0 takes
+    /// <c>00417097</c>. Nonzero is
+    /// <c>0041714D</c> UNREAD.
+    /// </summary>
+    public int WorldPlus164 { get; set; }
+    /// <summary>
+    /// <c>004166E2</c> display time minus
+    /// <c>[game+96]</c>. Startup 0.
+    /// </summary>
+    public double DisplayTime { get; set; }
     /// <summary>
     /// Same camera the renderer consumes.
     /// <c>006B42F0</c> slot lerp is PARTIAL.
@@ -1015,9 +1032,7 @@ public sealed class EngineLifecycle
         RenderBodyRan = true;
         if (CameraCatchupTicks <= 0)
         {
-            Note(CameraInterpolationFn, "GamePump", "Render",
-                "0041707E interpolation UNREAD");
-            CameraInterpolationUnread = true;
+            ApplyCameraInterpolation();
             return;
         }
 
@@ -1089,6 +1104,57 @@ public sealed class EngineLifecycle
             Note(CameraBodyFn, "GamePump", "Render",
                 $"step {i + 1}/{count} t={tBlend}");
         }
+    }
+
+    /// <summary>
+    /// <c>0041707E</c>. Default
+    /// <c>world+164==0</c> builds one
+    /// 52-byte record, clamps t to
+    /// <c>[0,1]</c>, then
+    /// <c>0049E080</c> / <c>00435F70</c>.
+    /// <c>0041714D</c> is UNREAD.
+    /// </summary>
+    public void ApplyCameraInterpolation()
+    {
+        Note(CameraInterpolationFn, "GamePump", "Render", "0041707E interpolation");
+        if (WorldPlus164 != 0)
+        {
+            Note(CameraInterpolationFn, "GamePump", "Render",
+                "0041714D world+164 UNREAD");
+            CameraInterpolationUnread = true;
+            return;
+        }
+
+        Note(CameraInterpTimeFn, "GamePump", "Time", "004166E2");
+        var t = DisplayTime * CameraCatchupMin - GamePlus72;
+        if (t < 0)
+            t = 0;
+        else if (t > 1)
+            t = 1;
+        Note(CameraClampFn, "GamePump", "Render", $"0041919C t={t}");
+        CameraInterpolationT = (float)t;
+        var old112 = GamePlus112;
+        var old116 = GamePlus116;
+        GamePlus112 = CameraInterpolationT;
+        GamePlus116 = 0f;
+        GamePlus120 = old112;
+        GamePlus124 = old116;
+        GamePlus128 = CameraInterpolationT;
+        GamePlus132 = 0f;
+        GamePlus160 = GamePlus72;
+        LastCameraTime = CameraInterpolationT;
+        LastCameraBlend = 0f;
+        ApplyWorldCamera(CameraInterpolationT);
+        Note(PlayerReadyQueryFn, "GamePump", "Player",
+            $"004AEA70 +{PlayerActionFlagOffset}={PlayerActionReady}");
+        ApplyDisplayCamera();
+        GamePlus90424++;
+        GamePlus104 = 0;
+        GamePlus90594 = true;
+        CameraInterpolationRan = true;
+        CameraBodySteps++;
+        Note(CameraInterpolationFn, "GamePump", "Render",
+            $"[game+90594]=1 t={CameraInterpolationT}");
     }
 
     /// <summary>

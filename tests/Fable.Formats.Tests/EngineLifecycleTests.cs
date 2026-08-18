@@ -236,8 +236,12 @@ public sealed class EngineLifecycleTests
         life.WorldFrame = 2;
         life.RenderGameMode();
         Assert.True(life.RenderBodyRan);
-        Assert.True(life.CameraInterpolationUnread);
+        Assert.True(life.CameraInterpolationRan);
+        Assert.False(life.CameraInterpolationUnread);
+        Assert.Equal(0f, life.CameraInterpolationT);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CameraInterpolationFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraApplyFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayApplyBodyFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.CameraBodyFn);
     }
 
@@ -262,8 +266,10 @@ public sealed class EngineLifecycleTests
         Assert.Equal(2, life.WorldFrame);
         life.RenderGameMode();
         Assert.True(life.RenderBodyRan);
-        Assert.True(life.CameraInterpolationUnread);
+        Assert.True(life.CameraInterpolationRan);
+        Assert.False(life.CameraInterpolationUnread);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CameraInterpolationFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraApplyFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldTickFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.AdvanceGameTicksFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.CameraBodyFn);
@@ -351,6 +357,27 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraApplyFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.CameraInterpolationFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.False(life.RegionObjectPresent);
+    }
+
+    [Fact]
+    public void Camera_0041707E_clamps_t_and_skips_unread_world164()
+    {
+        var life = new EngineLifecycle();
+        life.DisplayTime = 2.0 / 15.0;
+        life.GamePlus72 = 0;
+        life.ApplyCameraInterpolation();
+        Assert.True(life.CameraInterpolationRan);
+        Assert.Equal(1f, life.CameraInterpolationT);
+        Assert.True(life.GamePlus90594);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CameraClampFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraApplyFn);
+
+        var unread = new EngineLifecycle { WorldPlus164 = 1 };
+        unread.ApplyCameraInterpolation();
+        Assert.True(unread.CameraInterpolationUnread);
+        Assert.False(unread.CameraInterpolationRan);
+        Assert.DoesNotContain(unread.Trace.Events, e => e.Va == EngineLifecycle.WorldCameraApplyFn);
     }
 
     [Fact]
@@ -406,6 +433,9 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x00435F70u, EngineLifecycle.DisplayApplyThunk);
         Assert.Equal(0x00435530u, EngineLifecycle.DisplayApplyBodyFn);
         Assert.Equal(0x0041707Eu, EngineLifecycle.CameraInterpolationFn);
+        Assert.Equal(0x004166E2u, EngineLifecycle.CameraInterpTimeFn);
+        Assert.Equal(0x0041919Cu, EngineLifecycle.CameraClampFn);
+        Assert.Equal(0x004AEA70u, EngineLifecycle.PlayerReadyQueryFn);
         Assert.Equal(13, EngineLifecycle.CameraRecordDwords);
         Assert.Equal(52, EngineLifecycle.CameraRecordSize);
         Assert.Equal(1, EngineLifecycle.FistpTowardZero(15 * EngineLifecycle.CameraStepScale));
@@ -752,10 +782,15 @@ public sealed class EngineLifecycleTests
         life.UpdateGameMode();
         life.UpdateGameMode();
         Assert.Equal(2, life.WorldFrame);
+        Assert.False(life.RegionObjectPresent);
+        life.RenderGameMode();
+        Assert.True(life.CameraInterpolationRan);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CameraInterpolationFn);
         life.CameraCatchupTicks = 15;
         life.GamePlus72 = 1;
         life.RenderGameMode();
-        Assert.Equal(1, life.CameraBodySteps);
+        Assert.Equal(2, life.CameraBodySteps);
+        Assert.Equal(1, life.LastCameraLoopCount);
         Assert.Equal(1, life.GamePlus80);
         Assert.True(life.GamePlus90594);
         Assert.NotNull(life.Camera);
@@ -792,12 +827,44 @@ public sealed class EngineLifecycleTests
               00435F70 jmp 00435530 display (PARTIAL)
               [game+90424]++ ; [game+80]=[game+72]
             00417001: WorldFrame<=1 skip
-              [0x13B8630]<=0 -> 0041707E UNREAD
+              [0x13B8630]<=0 -> 0041707E interpolation
               else clamp min [0x1375550]=15, call 004164E0
               then [game+90594]=1
             [0x13B8630] writers unread (3 imm sites).
-            [record+36] first writer still unread.
-            Not 00DBDE40.
+            0041707E default New Game path (ticks==0):
+              world+164==0; t=clamp(004166E2*15-[game+72],0,1)
+              0041919C; 0049E080; 004AEA70 (+9826==0 → true)
+              00435F70; [90594]=1
+              0041714D world+164!=0 UNREAD
+            [record+36] first writer is not on no-save:
+              ctor 006BC410 zeros; 0051A900/00519B80 copy
+              0051D924 setter has 0 callers
+              only [table+i*88+36] site is 00500540 READ
+              004FC180 callers read +24/+86; none write +36
+              00523540 CThingManager ctor not called here
+              null → 005009BE still loads. Not 00DBDE40.
+            """);
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-record36.txt"),
+            """
+            DISPROVEN: no-save New Game writes NewRegion [record+36].
+
+            PROVEN:
+            006BC410 ctor zeros +36
+            0051A900 copy + AddRef [obj+4]
+            00519B80 assign Release/AddRef
+            0051D924 mov [ecx+36],eax; ret 4 — 0 E8 / 0 data
+            00500540 READ [table+index*88+36]; null → 005009BE
+            004189C2 AddRef/Release touch only
+            004FC180 callers (00418A57, 00449FEA, 0049E600,
+              0049F8A2, 004A5C83, ...) read name/flags
+            Object layout matches CThingManager 00523540
+              (+60/+144/+164) but that ctor is not called
+              from 004F0000-006D0000 on this path.
+
+            Null is the native no-save state.
+            First non-null writer still UNREAD (not this path).
             """);
     }
 }
