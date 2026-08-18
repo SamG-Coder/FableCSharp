@@ -161,6 +161,32 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GetCurrentRegionIndexFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GetRegionRecordFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.NamedStartFn);
+        Assert.True(life.EngineUpdateAllowed);
+        Assert.Equal(1, life.GameUpdateCount);
+        Assert.Equal(1, life.GameRenderCount);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.EngineUpdateGateFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameUpdateFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameRenderFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameUpdateWorldFn);
+        Assert.True(life.Pump());
+        Assert.Equal(2, life.GameUpdateCount);
+        Assert.Equal(2, life.GameRenderCount);
+    }
+
+    [Fact]
+    public void Inner_frame_009A57B0_skips_when_library_not_constructed()
+    {
+        var life = new EngineLifecycle();
+        Assert.False(life.GraphicsCreated);
+        life.PumpGameUpdate();
+        Assert.False(life.EngineUpdateAllowed);
+        Assert.Equal(0, life.GameUpdateCount);
+        Assert.Equal(0, life.GameRenderCount);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.EngineUpdateGateFn &&
+            e.Action.Contains("skip", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.GameUpdateFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.GameRenderFn);
     }
 
     [Fact]
@@ -179,6 +205,15 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0, EngineLifecycle.DefaultNamedStartFlag);
         Assert.Equal(0x00416268u, EngineLifecycle.NamedStartFn);
         Assert.Equal(0x004162B5u, EngineLifecycle.GamePumpUpdate);
+        Assert.Equal(0x009A57B0u, EngineLifecycle.EngineUpdateGateFn);
+        Assert.Equal(148, EngineLifecycle.EngineTickOffset);
+        Assert.Equal(0x00418289u, EngineLifecycle.GameUpdateFn);
+        Assert.Equal(20, EngineLifecycle.GameUpdateVtbl);
+        Assert.Equal(0x00417001u, EngineLifecycle.GameRenderFn);
+        Assert.Equal(28, EngineLifecycle.GameRenderVtbl);
+        Assert.Equal(0x009E9FB0u, EngineLifecycle.DisplayReadyFn);
+        Assert.Equal(0x004AEBA0u, EngineLifecycle.GameUpdatePlayerFn);
+        Assert.Equal(0x0049D9E0u, EngineLifecycle.GameUpdateWorldFn);
         Assert.Equal(1, EngineLifecycle.RegionTableDummyCount);
         Assert.Equal(0x00500540u, EngineLifecycle.LoadRegionFn);
         Assert.Equal(0x006C2120u, EngineLifecycle.EnqueueLoadJobFn);
@@ -351,6 +386,11 @@ public sealed class EngineLifecycleTests
         Assert.DoesNotContain(life.Trace.Events, e =>
             e.Va == EngineLifecycle.SetRegionAsLoadedFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GamePumpUpdate);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameUpdateFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameRenderFn);
+        Assert.True(life.EngineUpdateAllowed);
+        Assert.Equal(1, life.GameUpdateCount);
+        Assert.Equal(1, life.GameRenderCount);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.NamedStartFn);
         Assert.False(life.FirstRealRegionLoadDone);
@@ -358,6 +398,8 @@ public sealed class EngineLifecycleTests
 
         Assert.True(life.Pump());
         Assert.True(life.FirstRealRegionLoadDone);
+        Assert.Equal(2, life.GameUpdateCount);
+        Assert.Equal(2, life.GameRenderCount);
         Assert.Equal(1, life.CurrentRegionIndex);
         Assert.NotNull(life.CurrentRegion);
         Assert.Equal("LookoutPoint", life.CurrentRegion.RegionName);

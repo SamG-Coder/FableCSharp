@@ -209,6 +209,35 @@ public sealed class EngineLifecycle
     public const uint GamePumpMemlog = 0x00415E85;
     public const uint GamePumpQuitQuery = 0x009A6460;
     /// <summary>
+    /// <c>009A57B0</c>:
+    /// <c>[engine+148] == GetTickCount</c>
+    /// (<c>0x1440378</c>). False skips
+    /// vtbl+20 / vtbl+28.
+    /// </summary>
+    public const uint EngineUpdateGateFn = 0x009A57B0;
+    public const int EngineTickOffset = 148;
+    public const uint GetTickCountIat = 0x01440378;
+    /// <summary>
+    /// Game vtbl+20 <c>00418289</c>. Fade /
+    /// player <c>004AEBA0</c>; world
+    /// <c>0049D9E0</c> is <c>ret</c>.
+    /// </summary>
+    public const int GameUpdateVtbl = 20;
+    public const uint GameUpdateFn = 0x00418289;
+    public const uint GameUpdatePlayerFn = 0x004AEBA0;
+    public const uint GameUpdateWorldFn = 0x0049D9E0;
+    /// <summary>
+    /// <c>009E9FB0</c>: <c>[0x13CAA38]==0</c>
+    /// → al=0 → always vtbl+28.
+    /// </summary>
+    public const uint DisplayReadyFn = 0x009E9FB0;
+    public const uint DisplayReadyVa = 0x013CAA38;
+    /// <summary>
+    /// Game vtbl+28 <c>00417001</c>.
+    /// </summary>
+    public const int GameRenderVtbl = 28;
+    public const uint GameRenderFn = 0x00417001;
+    /// <summary>
     /// <c>005066E0</c> inserts one ctor-zeroed
     /// 88-byte slot before WLD appends.
     /// Native index 0 is that dummy.
@@ -358,6 +387,14 @@ public sealed class EngineLifecycle
     public bool RegionObjectPresent { get; private set; }
     public bool GamePumpFirstDone { get; private set; }
     public int GamePumpFrames { get; private set; }
+    /// <summary>
+    /// <c>009A57B0</c> last result. After
+    /// library construct the host pump is
+    /// the tick, so this is true.
+    /// </summary>
+    public bool EngineUpdateAllowed { get; private set; } = true;
+    public int GameUpdateCount { get; private set; }
+    public int GameRenderCount { get; private set; }
     public bool LevelLoaderReady { get; private set; }
     public bool FirstRealRegionLoadDone { get; private set; }
     /// <summary>
@@ -697,6 +734,7 @@ public sealed class EngineLifecycle
         if (GamePumpFirstDone)
         {
             EnqueueAfterDummy();
+            PumpGameUpdate();
             return;
         }
 
@@ -707,7 +745,7 @@ public sealed class EngineLifecycle
         {
             Note(NamedStartFn, "GamePump", "Region", "00416268 named start");
             GamePumpFirstDone = true;
-            Note(GamePumpUpdate, "GamePump", "Update", "004162B5 unread");
+            PumpGameUpdate();
             return;
         }
 
@@ -720,7 +758,59 @@ public sealed class EngineLifecycle
         ActivateCurrentRegion();
         GamePumpFirstDone = true;
         Note(GamePumpMemlog, "GamePump", "Game", "00415E85 memlog");
-        Note(GamePumpUpdate, "GamePump", "Update", "004162B5 unread");
+        PumpGameUpdate();
+    }
+
+    /// <summary>
+    /// <c>004162B5</c> inner frame. Not map
+    /// load. <c>009A57B0</c> false skips
+    /// vtbl+20 / vtbl+28.
+    /// </summary>
+    public void PumpGameUpdate()
+    {
+        Note(GamePumpUpdate, "GamePump", "Update", "004162B5");
+        Note(EngineSingletonGetter, "GamePump", "Engine", "009A4EC0 0x13CA618");
+        EngineUpdateAllowed = EvaluateEngineUpdateGate();
+        Note(EngineUpdateGateFn, "GamePump", "Engine",
+            EngineUpdateAllowed ? "009A57B0 allow" : "009A57B0 skip");
+        if (!EngineUpdateAllowed)
+            return;
+
+        Note(FrameDtFn, "GamePump", "Time", "009E1BC0 FrameDt");
+        UpdateGameMode();
+        Note(DisplayReadyFn, "GamePump", "Display",
+            "009E9FB0 [0x13CAA38] default 0");
+        RenderGameMode();
+    }
+
+    /// <summary>
+    /// <c>009A57B0</c>. Host <see cref="Pump"/>
+    /// is the tick after library construct.
+    /// </summary>
+    public bool EvaluateEngineUpdateGate()
+    {
+        Note(GetTickCountIat, "GamePump", "Engine", "GetTickCount IAT 0x1440378");
+        return GraphicsCreated;
+    }
+
+    /// <summary>
+    /// Game vtbl+20 <c>00418289</c>.
+    /// </summary>
+    public void UpdateGameMode()
+    {
+        Note(GameUpdateFn, "GamePump", "Update", "vtbl+20 00418289");
+        Note(GameUpdatePlayerFn, "GamePump", "Player", "004AEBA0");
+        Note(GameUpdateWorldFn, "GamePump", "World", "0049D9E0 ret");
+        GameUpdateCount++;
+    }
+
+    /// <summary>
+    /// Game vtbl+28 <c>00417001</c>.
+    /// </summary>
+    public void RenderGameMode()
+    {
+        Note(GameRenderFn, "GamePump", "Render", "vtbl+28 00417001");
+        GameRenderCount++;
     }
 
     /// <summary>
