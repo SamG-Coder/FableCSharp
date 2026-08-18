@@ -677,7 +677,9 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Input.Present);
         life.QueueInput(EngineInput.TypeKey, EngineInput.KeyMove3);
         life.Pump();
-        Assert.Equal((EngineInput.TypeKey, EngineInput.KeyMove3), life.Player.Delivered[^1]);
+        Assert.True(life.Player.PumpCalls >= 1);
+        Assert.True(life.Player.AcceptHits >= 1);
+        Assert.Equal(0, life.Player.DeliveredCount);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         File.WriteAllText(
             Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
@@ -731,16 +733,31 @@ public sealed class EngineLifecycleTests
         }
 
         Assert.True(life.WorldFrame >= 2);
+        Assert.Contains(life.Player.Listeners, l => l.Vtbl == ActionInputListener.VtblVa);
         life.QueueInput(EngineInput.TypeKey, EngineInput.KeyMove3);
         life.Pump();
         Assert.True(life.Player.PumpCalls >= 1);
-        Assert.Equal(1, life.Player.DeliveredCount);
-        Assert.Equal((EngineInput.TypeKey, EngineInput.KeyMove3), life.Player.Delivered[0]);
+        Assert.True(life.Player.AcceptHits >= 1);
+        Assert.True(life.Player.FallbackCalls >= 1);
+        Assert.Equal(0, life.Player.DeliveredCount);
+        Assert.Equal(0, life.Player.OwnerDefaultResult);
+        Assert.Equal(0, life.Player.LookupResult(0));
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerInputPumpFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerInputPollFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerInputFallbackFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerInterfacePreprocess);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerListenerFactoryFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameVtbl24Fn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+
+        life.Player.AddOwnerItem(0, PlayerInterface.ResultSelect);
+        life.QueueInput(EngineInput.TypeKey, EngineInput.KeyMove3);
+        life.Pump();
+        Assert.Equal(1, life.Player.DeliveredCount);
+        Assert.Equal(EngineInput.KeyMove3, life.Player.Delivered[0].Key);
+        Assert.Equal(PlayerInterface.ResultSelect, life.Player.Delivered[0].Result);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerApplyFn);
+        Assert.Equal(0, life.Player.QueuedCount);
         File.WriteAllText(
             Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
                 "recover-00446A30.txt"),
@@ -748,20 +765,68 @@ public sealed class EngineLifecycleTests
             Init Player Interface 004473A0
               alloc 0x898; vtbl 01231BDC
               store 004193C4 at game+32
-              [+1948] disable; [+2196] fallback
+              00A0D4A0 zeros +4 list
+              [+1788] = game+28 (0044A3B0)
+                +12 empty; +24 default 0
+              00488D20 00687A30 vtbl 0123758C
+              00687A70 → 00A0D2B0 → 00A0D4F0
             00416E78 vtbl+24 after WorldFrame>1:
               004457F0 [+2196]=0
               [game+32].vtbl+4 = 00446A30
-            00446A30 (0 E8):
-              00446330 009F4ED0 poll
-              skip device+32==2 && key==15
+              hit → 0041649C
+            00446A30:
+              00446330 009F4ED0
+              skip device==2 && key==15
               skip type==0
-              listeners at +4:
-                vtbl+32 accept
-                vtbl+16 apply
-              miss → 00446220 vtbl+24
+              +4 walk:
+                vtbl+32 00687DB0 accept
+                  device!=1 → true
+                00449990 dest+4 ([event+36])
+                vtbl+28 gate 004863A0
+                vtbl+16 00687FD0
+                  type 1 does not 00A0D390
+                dest+4==1 select
+                dest+4==2 consume 009F55C0
+              miss → 00446220
+                +2196 one-shot
+                00A0D300; 00449700
+                vtbl+24 00486390 ret
+                return [+168]!=0
+            0041649C:
+              0049D8C0 table[action] or
+              00415FF2 action==2
+                → 004AE9A0 +9826
+                → 009F1650 player+0x2010
+              always 0049E1D0 / 00434A30
+            012317A8 +1960 is 00445CB0,
+            not the +4 list.
+            Not RecordingInputListener.
             Not 0042E3EE. Not 00DBDE40.
             """);
+    }
+
+    [Fact]
+    public void Player_apply_0041649C_queues_009F1650_on_action_2()
+    {
+        var life = new EngineLifecycle();
+        life.Player.Construct();
+        life.PlayerActionReady = true;
+        var ev = new PlayerEvent { Action = PlayerInterface.Action2, Type = EngineInput.TypeKey, Key = EngineInput.KeyMove3 };
+        Assert.True(life.Player.ApplyInputEvent(ev, life.PlayerActionReady));
+        Assert.Equal(1, life.Player.QueuedCount);
+        Assert.Equal(PlayerInterface.Action2, life.Player.Queued[0].Action);
+        Assert.False(life.Player.ApplyInputEvent(
+            new PlayerEvent { Action = 99 }, life.PlayerActionReady));
+        Assert.Equal(1, life.Player.QueuedCount);
+        Assert.True(PlayerInterface.WorldTickOccupied(PlayerInterface.WorldTickSlot1));
+        Assert.Equal(0x00687DB0u, ActionInputListener.AcceptFn);
+        Assert.Equal(0x00687FD0u, ActionInputListener.ApplyFn);
+        Assert.Equal(0x0123758Cu, ActionInputListener.VtblVa);
+        Assert.Equal(0x0041649Cu, PlayerInterface.ApplyFn);
+        Assert.Equal(0x009F1650u, PlayerInterface.ApplyQueueFn);
+        Assert.Equal(0x00446220u, PlayerInterface.FallbackFn);
+        Assert.Equal(0x00A0D4F0u, PlayerInterface.ListInsertFn);
+        Assert.Equal(0x00449990u, PlayerInterface.LookupFn);
     }
 
     [Fact]
@@ -1338,6 +1403,11 @@ public sealed class EngineLifecycleTests
         Assert.Equal(188, EngineLifecycle.SetViewportVtbl);
         Assert.Equal(0x00446A30u, EngineLifecycle.PlayerInputPumpFn);
         Assert.Equal(0x00446330u, EngineLifecycle.PlayerInputPollFn);
+        Assert.Equal(0x00446220u, EngineLifecycle.PlayerInputFallbackFn);
+        Assert.Equal(0x0041649Cu, EngineLifecycle.PlayerApplyFn);
+        Assert.Equal(0x009F1650u, EngineLifecycle.PlayerApplyQueueFn);
+        Assert.Equal(0x0123758Cu, EngineLifecycle.PlayerListenerVtbl);
+        Assert.Equal(0x00687DB0u, EngineLifecycle.PlayerListenerAcceptFn);
         Assert.Equal(0x004473A0u, EngineLifecycle.PlayerInterfaceCtor);
         Assert.Equal(0x01231BDCu, EngineLifecycle.PlayerInterfaceVtbl);
         Assert.Equal(0x004457F0u, EngineLifecycle.PlayerInterfacePreprocess);

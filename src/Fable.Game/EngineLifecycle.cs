@@ -447,9 +447,20 @@ public sealed class EngineLifecycle
     /// </summary>
     public const uint PlayerInputPumpFn = PlayerInterface.PumpFn;
     public const uint PlayerInputPollFn = PlayerInterface.PollFn;
+    public const uint PlayerInputFallbackFn = PlayerInterface.FallbackFn;
     public const uint PlayerInterfaceCtor = PlayerInterface.Ctor;
     public const uint PlayerInterfaceVtbl = PlayerInterface.Vtbl;
     public const uint PlayerInterfacePreprocess = PlayerInterface.PreprocessFn;
+    public const uint PlayerListenerVtbl = ActionInputListener.VtblVa;
+    public const uint PlayerListenerAcceptFn = ActionInputListener.AcceptFn;
+    public const uint PlayerListenerApplyFn = ActionInputListener.ApplyFn;
+    public const uint PlayerListenerRegisterFn = PlayerInterface.RegisterThunk;
+    public const uint PlayerListenerFactoryFn = ActionInputListener.FactoryFn;
+    public const uint PlayerEventLookupFn = PlayerInterface.LookupFn;
+    public const uint PlayerApplyFn = PlayerInterface.ApplyFn;
+    public const uint PlayerApplyQueueFn = PlayerInterface.ApplyQueueFn;
+    public const uint PlayerApplyPlayerFn = PlayerInterface.ApplyPlayerFn;
+    public const uint PlayerOwnerCtor = PlayerInterface.OwnerCtor;
     /// <summary>
     /// <c>00435530</c> between BeginScene
     /// and EndScene: player overlay
@@ -1154,9 +1165,14 @@ public sealed class EngineLifecycle
             if (name == "Init Player Interface")
             {
                 Player.Construct();
-                Player.Register(new RecordingInputListener());
                 Note(PlayerInterfaceCtor, "InitGame", "Input",
                     "004473A0 size 0x898 vtbl 01231BDC game+32");
+                Note(PlayerOwnerCtor, "InitGame", "Input",
+                    "0044A3B0 game+28 size 44 +12 empty +24=0");
+                Note(PlayerListenerFactoryFn, "InitGame", "Input",
+                    "00488D20 00687A30 vtbl 0123758C +4");
+                Note(PlayerListenerRegisterFn, "InitGame", "Input",
+                    "00687A70 00A0D2B0 00A0D4F0");
             }
         }
         Note(InitWorldFn, "Init World", "World", "004A67D0 vtbl 012390F0");
@@ -1473,13 +1489,48 @@ public sealed class EngineLifecycle
         Note(PlayerInputPumpFn, "GamePump", "Input",
             "00446A30 [game+32] vtbl+4");
         Note(PlayerInputPollFn, "GamePump", "Input",
-            "00446330 009F4ED0 listeners +32/+16");
+            "00446330 009F4ED0 vtbl+32/00449990/+16");
+        Note(PlayerInputFallbackFn, "GamePump", "Input",
+            "00446220 vtbl+24 [+168]");
         var n = 0;
         while (Player.Pump(Input) && n < 32)
+        {
             n++;
+            if (Player.LastEvent is { } ev)
+                ApplyPlayerEvent(ev);
+        }
+
         if (n > 0)
             Note(PlayerInputPumpFn, "GamePump", "Input",
                 $"delivered {n}");
+    }
+
+    /// <summary>
+    /// <c>00416E78</c> after a
+    /// <c>00446A30</c> hit:
+    /// <c>0041649C</c> unless paused.
+    /// </summary>
+    public void ApplyPlayerEvent(PlayerEvent ev)
+    {
+        if (GameModePaused)
+        {
+            Note(PlayerInterface.ApplyAction2Fn, "GamePump", "Input",
+                "00415FF2 paused");
+            return;
+        }
+
+        Note(PlayerApplyFn, "GamePump", "Input", "0041649C");
+        var hit = Player.ApplyInputEvent(ev, PlayerActionReady);
+        if (hit && PlayerActionReady)
+        {
+            Note(PlayerApplyPlayerFn, "GamePump", "Input",
+                "004AE9A0 +9826 009F1650");
+            Note(PlayerApplyQueueFn, "GamePump", "Input",
+                $"queued {Player.QueuedCount} action {ev.Action}");
+        }
+
+        Note(PlayerInterface.ApplyWorldFn, "GamePump", "Input", "0049E1D0");
+        Note(PlayerInterface.ApplyDisplayFn, "GamePump", "Input", "00434A30");
     }
 
     /// <summary>
