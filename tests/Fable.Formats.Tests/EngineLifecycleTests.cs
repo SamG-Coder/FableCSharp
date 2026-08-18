@@ -329,8 +329,19 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ConstructFromParamsFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InitGuiFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InitQuestsFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LoadQuestsFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ActivateInitialQuestsFn);
         Assert.True(life.PlayerGuiReady);
-        Assert.False(life.QuestsInitDone);
+        Assert.True(life.QuestsInitDone);
+        Assert.Contains("Q_SunnyvaleMaster", life.ActivatedQuests);
+        Assert.Contains("PersonalScriptMain", life.ActivatedQuests);
+        Assert.Contains("CS_PlayCutscene", life.ActivatedQuests);
+        Assert.DoesNotContain(RegionTravel.IntroScriptName, life.ActivatedQuests);
+        Assert.DoesNotContain(RegionTravel.IntroQuest, life.ActivatedQuests);
+        Assert.NotNull(life.Runtime);
+        Assert.Equal(life.ActivatedQuests.Count, life.Runtime.Quests.Count);
+        Assert.Contains(life.Runtime.Quests, q => q.Name == "Q_SunnyvaleMaster" && q.Fiber is not null);
+        Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == RegionTravel.IntroScriptName);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.DoesNotContain(life.RegionThings, t =>
             t.DefinitionType == RegionTravel.KidCreature);
@@ -409,15 +420,21 @@ public sealed class EngineLifecycleTests
             Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
                 "recover-0049F180.txt"),
             """
-            0049F180 after region objects:
-              Init Characters → 00449D90 CREATURE_HERO
-              006B8410 +0x90 jmp 00881210
-              Init GUI 0043A380 PLAYER_GUI_PC [0x13B878C]
-              Init Quests 004B4260 Activate Quest
-                004B00C0 / 00CB5AD0 / 004BB720
-                then 004B2890
-              game+172 quest list PARTIAL
-            Not 00DBDE40 / S_QNOVI.
+            00416ABA Loading world:
+              004A1840 Load Quests
+                004A0D90 AddQuest/AddTestQuest → world+184
+              [0x13B8648]==0 no-save → 0049F180(world)
+              0049F180 Init GUI 0043A380
+              Init Quests 004B4260([world+172])
+            world+172 writer is 00507C30
+            START_INITIAL_QUESTS:
+              Q_SunnyvaleMaster, PersonalScriptMain,
+              PersonalScript_GlobalThings, HeroBoasts,
+              V_HeroDolls, CS_PlayCutscene
+            00416BCF Activate Initial Quests
+              game+90584 empty → 004B4A10 → 004B4260
+            Fibers via 00A447D0 / ScriptScheduler.
+            Not S_QNOVI / 00DBDE40 / Q_NewOakValeIntro.
             """);
         File.WriteAllText(
             Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
@@ -431,6 +448,70 @@ public sealed class EngineLifecycleTests
               Client BindLifecycleFirstRegion builds
               WorldGeometry from those things.
               Not StartOakVale / 00DBDE40.
+            """);
+    }
+
+    [Fact]
+    public void Init_quests_004B4260_activates_wld_initial_list()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        life.EnterGame();
+        Assert.True(life.QuestsInitDone);
+        Assert.Equal(6, life.ActivatedQuests.Count);
+        Assert.Equal(
+            new[]
+            {
+                "Q_SunnyvaleMaster",
+                "PersonalScriptMain",
+                "PersonalScript_GlobalThings",
+                "HeroBoasts",
+                "V_HeroDolls",
+                "CS_PlayCutscene",
+            },
+            life.ActivatedQuests);
+        Assert.Contains(life.World!.InitialQuests, q => q == "Q_SunnyvaleMaster");
+        Assert.NotNull(life.Quests);
+        Assert.Contains(life.Quests.Quests, q => q.Name == "Q_SunnyvaleMaster" && q.Persistent);
+        Assert.NotNull(life.Runtime);
+        Assert.Equal(6, life.Runtime.Quests.Count);
+        Assert.Equal(6, life.Runtime.Scheduler.Fibers.Count);
+        Assert.All(life.Runtime.Quests, q => Assert.NotNull(q.Fiber));
+        Assert.DoesNotContain(life.ActivatedQuests, q => q == RegionTravel.IntroScriptName);
+        Assert.DoesNotContain(life.ActivatedQuests, q => q == RegionTravel.IntroQuest);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LoadQuestsFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.QstParseFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InitQuestsFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ActivateQuestFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ActivateInitialQuestsFn);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+            "traces");
+        Directory.CreateDirectory(dest);
+        life.Trace.Write(Path.Combine(dest, "init-quests-004B4260.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-004B4260.txt"),
+            """
+            No-save writer of [world+172]:
+              00507C30 WLD START_INITIAL_QUESTS
+              Q_SunnyvaleMaster PersonalScriptMain
+              PersonalScript_GlobalThings HeroBoasts
+              V_HeroDolls CS_PlayCutscene
+            00416ABA 004A1840 Load Quests
+              004A0D90 AddQuest → world+184
+            00416ABF [0x13B8648]==0
+              0049F180(ecx=world) Init Quests
+              004B4260([world+172])
+              00CB5AD0 lookup / 00A447D0 fiber
+            00416BCF empty +90584 → 004B4A10
+            Not S_QNOVI / 00DBDE40.
             """);
     }
 
@@ -1009,6 +1090,7 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x01244AECu, EngineLifecycle.WorldMapVtbl);
         Assert.Contains("NewRegion", EngineLifecycle.LoadWldTokens);
         Assert.Contains("ContainsMap", EngineLifecycle.LoadWldTokens);
+        Assert.Contains("START_INITIAL_QUESTS", EngineLifecycle.LoadWldTokens);
         Assert.True(life.World.Maps.Count >= 70);
         var oak = life.World.FindRegionContaining("StartOakValeWest");
         Assert.NotNull(oak);

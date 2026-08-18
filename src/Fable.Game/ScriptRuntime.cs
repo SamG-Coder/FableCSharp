@@ -282,6 +282,23 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// <c>00A447D0</c> create + <c>00A446A0</c> persist slot.
     /// Does not invent the <c>+80</c> writer.
     /// </summary>
+    /// <summary>
+    /// <c>004B4260</c> QuestManager: Activate Quest.
+    /// <c>00CB5AD0</c> name lookup then fiber
+    /// <c>00A447D0</c>. Does not install
+    /// S_QNOVI / <c>00DBDE40</c>.
+    /// </summary>
+    public QuestInstance ActivateQuest(string name, bool persistent = false)
+    {
+        var persist = persistent ? name : null;
+        CreateFiber(name, persist);
+        var quest = new QuestInstance(++_questId, name, persist);
+        var state = Scheduler.Create(name, persist);
+        quest.AttachFiber(state);
+        _quests.Add(quest);
+        return quest;
+    }
+
     public ScriptFiber CreateFiber(string name, string? persistField = null)
     {
         if (persistField is not null && Persist.TypeOf(persistField) == PersistKind.Unread)

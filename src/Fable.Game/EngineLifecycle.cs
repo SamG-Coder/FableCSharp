@@ -4,8 +4,10 @@ using Fable.Core;
 using Fable.Formats.Banks;
 using Fable.Formats.Defs;
 using Fable.Formats.Levels;
+using Fable.Formats.Qst;
 using Fable.Formats.Tng;
 using Fable.Formats.Wld;
+using Fable.Game.Scripting;
 
 namespace Fable.Game;
 
@@ -426,6 +428,20 @@ public sealed class EngineLifecycle
     public const uint InitQuestsFn = 0x004B4260;
     public const uint ActivateQuestFn = 0x00CB5AD0;
     public const uint QuestManagerActivate = 0x004B2890;
+    /// <summary>
+    /// <c>004A1840</c> "Load Quests" during
+    /// Loading world <c>00416ABA</c>. Parses
+    /// <c>AddQuest</c> / <c>AddTestQuest</c>
+    /// into world+184. Then <c>0049F180</c>
+    /// activates <c>[world+172]</c>.
+    /// </summary>
+    public const uint LoadQuestsFn = 0x004A1840;
+    public const uint LoadQuestsSite = 0x00416ABA;
+    public const uint QstParseFn = 0x004A0D90;
+    public const uint ActivateInitialQuestsFn = 0x004B4A10;
+    public const uint ActivateInitialQuestsSite = 0x00416BCF;
+    public const int WorldQuestListOffset = 172;
+    public const int WorldQuestDefListOffset = 184;
     public const uint InitHeroDefFn = 0x00449D90;
     public const uint InitCharacterAsFn = 0x0048A070;
     public const uint ConstructFromParamsFn = 0x006A9DD0;
@@ -517,6 +533,7 @@ public sealed class EngineLifecycle
         "LoadedOnPlayerProximity", "LevelName", "NewRegion", "EndRegion",
         "RegionDef", "EnvironmentDef", "DisplayName", "RegionName",
         "NewDisplayName", "ContainsMap", "SeesMap", "AppearOnWorldMap",
+        "START_INITIAL_QUESTS", "END_INITIAL_QUESTS",
     ];
 
     /// <summary>
@@ -704,6 +721,9 @@ public sealed class EngineLifecycle
     public IReadOnlyList<InsertedThing> InsertedThings => _inserted;
     public bool PlayerGuiReady { get; private set; }
     public bool QuestsInitDone { get; private set; }
+    public QuestFile? Quests { get; private set; }
+    public ScriptRuntime? Runtime { get; private set; }
+    public IReadOnlyList<string> ActivatedQuests => _activatedQuests;
     /// <summary>
     /// Persist <c>PlayerRegionName</c>. Empty on
     /// no-save New Game. Non-empty takes
@@ -737,6 +757,7 @@ public sealed class EngineLifecycle
     private readonly Dictionary<string, List<ThingInstance>> _thingsByMap =
         new(StringComparer.OrdinalIgnoreCase);
     private readonly List<InsertedThing> _inserted = [];
+    private readonly List<string> _activatedQuests = [];
     private GameBin? _defs;
 
     public static int CreateDeviceBehaviorFlags(bool hardwareTnl) =>
@@ -1013,6 +1034,7 @@ public sealed class EngineLifecycle
         LoadGtngFile();
         LoadGlobalThingsFile();
         LoadRegionGraphFile();
+        LoadQuestsAndActivate();
     }
 
     /// <summary>
@@ -1882,7 +1904,6 @@ public sealed class EngineLifecycle
                 "Region Level Files: Activate Topology");
             if (!HeroSpawned)
                 SpawnHeroFromPlayerStart(_regionThings);
-            InitFirstSceneAfterCharacters();
         }
 
         SetRegionAsLoaded(index);
@@ -2032,25 +2053,58 @@ public sealed class EngineLifecycle
     }
 
     /// <summary>
-    /// <c>0049F180</c> after Init Characters:
-    /// Init GUI <c>0043A380</c> <c>PLAYER_GUI_PC</c>
-    /// at <c>[0x13B878C]</c>, then Init Quests
-    /// <c>004B4260</c> "Activate Quest".
-    /// Does not start <c>S_QNOVI</c> /
-    /// <c>00DBDE40</c>. Quest list at
-    /// <c>game+172</c> is still PARTIAL.
+    /// Loading world <c>00416ABA</c>:
+    /// <c>004A1840</c> Load Quests (QST
+    /// <c>004A0D90</c> into world+184), then
+    /// <c>0049F180</c> Init GUI / Init Quests
+    /// <c>004B4260([world+172])</c>.
+    /// No-save <c>[0x13B8648]==0</c>.
+    /// <c>[world+172]</c> is WLD
+    /// <c>START_INITIAL_QUESTS</c> written
+    /// by <c>00507C30</c>. Then
+    /// <c>00416BCF</c> Activate Initial Quests
+    /// when game+90584 is empty.
+    /// Not <c>S_QNOVI</c> / <c>00DBDE40</c>.
     /// </summary>
-    private void InitFirstSceneAfterCharacters()
+    private void LoadQuestsAndActivate()
     {
-        Note(InitGuiFn, "LevelLoader", "UI",
-            "0043A380 Init GUI PLAYER_GUI_PC [0x13B878C]");
-        Note(PlayerManagerGetter, "LevelLoader", "UI", "0044C6B0 PLAYER_GUI_PC");
+        Note(LoadQuestsSite, "Load Quests", "Quest", "00416ABA Loading world");
+        Note(LoadQuestsFn, "Load Quests", "Quest", "004A1840");
+        Note(QstParseFn, "Load Quests", "Quest", "004A0D90 AddQuest/AddTestQuest");
+        if (Install is not null && File.Exists(Install.QuestPath))
+        {
+            Quests = QuestFile.Load(Install.QuestPath);
+            Note(QstParseFn, "Load Quests", "Quest",
+                $"quests={Quests.Quests.Count} {Path.GetFileName(Install.QuestPath)}");
+        }
+
+        Note(InitGuiFn, "Init GUI", "UI",
+            "0043A380 PLAYER_GUI_PC [0x13B878C]");
         PlayerGuiReady = true;
-        Note(InitQuestsFn, "LevelLoader", "Quest",
-            "004B4260 QuestManager: Activate Quest");
-        Note(ActivateQuestFn, "LevelLoader", "Quest",
-            "00CB5AD0 game+172 list UNREAD");
-        QuestsInitDone = false;
+
+        var names = World?.InitialQuests ?? [];
+        Note(InitQuestsFn, "Init Quests", "Quest",
+            $"004B4260 [world+{WorldQuestListOffset}] count={names.Count}");
+        Runtime = ScriptRuntime.Detached();
+        if (Install?.FindCompiledDef("script.bin") is not null)
+            Runtime.Load(ScriptBank.Load(Install), Install);
+
+        foreach (var name in names)
+        {
+            if (name.Length == 0)
+                continue;
+            Note(ActivateQuestFn, "Init Quests", "Quest", "00CB5AD0 " + name);
+            var persistent = Quests?.Quests.Any(q =>
+                q.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && q.Persistent) == true;
+            Runtime.ActivateQuest(name, persistent);
+            _activatedQuests.Add(name);
+        }
+
+        Note(ActivateInitialQuestsSite, "Activate Initial Quests", "Quest",
+            "00416BCF game+90584 empty → 004B4A10");
+        Note(ActivateInitialQuestsFn, "Activate Initial Quests", "Quest",
+            "004B4A10 → 004B4260");
+        QuestsInitDone = true;
     }
 
     public IReadOnlyList<ThingInstance> ThingsForMap(string mapName) =>
