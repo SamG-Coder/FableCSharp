@@ -112,6 +112,25 @@ public sealed class EngineLifecycle : IDisposable
     public const uint FrontendIntern = 0x0042F722;
     public const uint LeaveFrontendSite = 0x0042F2A2;
     /// <summary>
+    /// <c>0042F2AA</c> clears
+    /// <c>[0x1375448]</c> then
+    /// <c>0042EBB6</c> teardown.
+    /// New Game <c>+41!=0</c> skips
+    /// audio stop. Display
+    /// <c>009BE420</c>+<c>009BEEB0</c>.
+    /// </summary>
+    public const uint LeaveFrontendTeardownFn = 0x0042EBB6;
+    public const uint LeaveFrontendPathFn = 0x00404490;
+    public const uint LeaveFrontendRecordFn = 0x004131A0;
+    public const uint LeaveFrontendClearFn = 0x009BE420;
+    public const uint LeaveFrontendAudioVtbl = 72;
+    public const int LeaveFrontendAudioMs = 0x1F4;
+    public const uint GameSingletonVa = 0x013B86A0;
+    public const uint RetailSuccessorVa = 0x013B7D58;
+    public const int GameReadyOffset = 90592;
+    public const uint SkipParticlesVa = 0x013B8648;
+    public const byte SkipParticlesFirstSeen = 0;
+    /// <summary>
     /// <c>00595582</c> singleton at
     /// <c>[0x13B8B5C]</c>. Size <c>0xE0</c>,
     /// ctor <c>005953E2</c>, vtbl
@@ -2054,9 +2073,19 @@ public sealed class EngineLifecycle : IDisposable
             return;
         var ng = System.Diagnostics.Stopwatch.StartNew();
         Note(LeaveFrontendSite, "LeaveFrontend", "Frontend", "Leave frontend");
-        Stage = EngineStage.LeaveFrontend;
+        Note(VideoPlayFlagVa, "LeaveFrontend", "PlayAVI",
+            $"01375448=0 was {DefaultVideoPlayFlag}");
+        Note(RetailBankSwapFlagVa, "LeaveFrontend", "Frontend",
+            $"013B8616 {RetailBankSwapFlagFirstSeen} skip 009A78D0/009A8840");
+        Note(LeaveFrontendPathFn, "LeaveFrontend", "Frontend", "00404490");
+        Note(LeaveFrontendRecordFn, "LeaveFrontend", "Frontend", "004131A0");
         WorldFileName = FinalAlbionWld;
         Note(0x0042F44D, "LeaveFrontend", "World", FinalAlbionWld);
+        Note(LeaveFrontendTeardownFn, "LeaveFrontend", "Frontend",
+            "0042EBB6 +41 skip audio stop");
+        Note(LeaveFrontendClearFn, "LeaveFrontend", "D3D9", "009BE420 clear");
+        Note(PresentFn, "LeaveFrontend", "D3D9", "009BEEB0 Present");
+        Stage = EngineStage.LeaveFrontend;
         Timing.Add("frontend NG", ng.Elapsed.TotalMilliseconds, FinalAlbionWld);
     }
 
@@ -2076,8 +2105,13 @@ public sealed class EngineLifecycle : IDisposable
         Note(InitGameSite, "InitGame", "Game", "Init Game");
         Note(GameModeCtor, "InitGame", "GameMode", "00418DCA size 0x161E8 vtbl 0122F180");
         Note(GameStart, "InitGame", "GameStart", "004184BD vtbl+4");
+        Note(GameSingletonVa, "InitGame", "GameStart",
+            $"013B86A0 game [retail+0] successor 0x{RetailSuccessorVa:X}");
+        Note(0x009E9EF0, "InitGame", "GameStart", "009E9EF0 / 009E9F90 / 00416832");
         foreach (var (name, apply) in InitGameStages)
         {
+            if (name == "Init Conversation Attitude")
+                Note(0x0041863D, "InitGame", "InitGame", "Adding Console Variables");
             Note(apply, name, "InitGame", name);
             if (name == "Init Graphics")
                 OpenTextureBank();
@@ -2093,6 +2127,13 @@ public sealed class EngineLifecycle : IDisposable
                 Note(PlayerListenerRegisterFn, "InitGame", "Input",
                     "00687A70 00A0D2B0 00A0D4F0");
             }
+
+            if (name == "Init World")
+                Note(InitWorldFn, "InitGame", "World",
+                    "00418790 [world+320] from 013B7C90");
+            if (name == "Load Particles")
+                Note(SkipParticlesVa, "InitGame", "InitGame",
+                    $"013B8648={SkipParticlesFirstSeen} run 004174F1");
         }
         Note(InitWorldFn, "Init World", "World", "004A67D0 vtbl 012390F0");
         Note(InitWorldInitFn, "Init World Init", "World", "004A6E30 vtbl+36");
@@ -2106,6 +2147,10 @@ public sealed class EngineLifecycle : IDisposable
         CreatePlayers();
         LoadWorld();
         GameRenderEnabled = true;
+        Note(GameLoadWorldFn, "InitGame", "GameStart",
+            "004188E9 [game].vtbl+32 00416953");
+        Note(GameStart, "InitGame", "GameStart",
+            $"[game+{GameReadyOffset}]=1 90544/90548 QPC");
         Note(GameModeCtorRenderEnable, "InitGame", "GameMode",
             "00418EC6 [game+90593]=1");
         SeedWorldTick();

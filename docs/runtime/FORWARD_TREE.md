@@ -234,11 +234,13 @@ Retail vtbl `01230CA0`: slot 1 start `0042F75E`, slot 2 pump `0042EC7C`.
             └── 0042F2A2 "Leave frontend"  PROVEN
                 ├── [0x1375448]=0
                 ├── [0x13B8394].vtbl+72(500)  optional
-                ├── bank swaps 009A78D0 / 009A8840
+                ├── [0x13B8616]==0 skip 009A78D0/009A8840  PROVEN first-seen
                 ├── 00404490
                 ├── 004131A0  path record
                 ├── "FinalAlbion.wld" → record
-                ├── 0042EBB6  teardown retail bits
+                ├── 0042EBB6  teardown  PROVEN
+                │   ├── +41!=0 skip audio stop
+                │   └── 009BE420 clear + 009BEEB0 Present
                 ├── "Init Game"
                 ├── alloc 0x161E8 → 00418DCA
                 ├── [ebx].vtbl+4  004184BD

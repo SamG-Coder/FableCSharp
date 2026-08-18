@@ -1234,6 +1234,17 @@ public sealed class EngineLifecycleTests
         Assert.Equal(EngineStage.Game, life.Stage);
         Assert.Equal(EngineMode.Game, life.Mode);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameModeCtor);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LeaveFrontendTeardownFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LeaveFrontendClearFn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PresentFn && e.Stage == "LeaveFrontend");
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameSingletonVa);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.SkipParticlesVa);
+        var leavePresent = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.PresentFn && e.Stage == "LeaveFrontend");
+        var ctor = life.Trace.Events.FindIndex(e => e.Va == EngineLifecycle.GameModeCtor);
+        Assert.True(leavePresent >= 0 && ctor > leavePresent,
+            "0042EBB6 Present before 00418DCA");
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.Equal(0x00418DCAu, EngineLifecycle.GameModeCtor);
         Assert.Equal(0x0122F180u, EngineLifecycle.GameModeVtbl);
