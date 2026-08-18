@@ -1083,6 +1083,15 @@ public sealed class WorldRuntime
     /// </summary>
     public readonly Dictionary<string, bool> Pushable =
         new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// <c>00CC10A6</c> always <c>vtbl+2064(actor,0)</c>
+    /// then extras <c>008ADF90</c>. Arg ignored.
+    /// </summary>
+    public readonly Dictionary<string, bool> Damageable =
+        new(StringComparer.OrdinalIgnoreCase);
+    public readonly Dictionary<string, int> DamageableVtbl =
+        new(StringComparer.OrdinalIgnoreCase);
+    public readonly List<string> ExtrasAppended = [];
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
     public float TimeOfDayHours { get; set; }
@@ -1276,6 +1285,19 @@ public sealed class WorldRuntime
     public void SetPushable(string actor, bool pushable)
     {
         Pushable[actor ?? ""] = pushable;
+    }
+
+    /// <summary>
+    /// <c>00CC10A6</c>: no arg parse; always
+    /// <c>vtbl+2064(name,0)</c> then <c>008ADF90</c>.
+    /// DISPROVES IsFalse(arg0) lump.
+    /// </summary>
+    public void SetDamageable(string actor)
+    {
+        var key = actor ?? "";
+        Damageable[key] = false;
+        DamageableVtbl[key] = 2064;
+        ExtrasAppended.Add(key);
     }
 
     /// <summary>

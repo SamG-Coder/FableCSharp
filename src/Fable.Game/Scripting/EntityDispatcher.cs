@@ -367,7 +367,14 @@ public static class EntityDispatcher
                 pushable ? "1" : "0");
         }
 
-        if (Eq(v, "SetDamageable") || Eq(v, "SetAttackable") ||
+        if (Eq(v, "SetDamageable"))
+        {
+            // 00CC10A6: ignores arg; vtbl+2064(actor,0); 008ADF90.
+            ctx.World.SetDamageable(line.Target ?? "");
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "0");
+        }
+
+        if (Eq(v, "SetAttackable") ||
             Eq(v, "SetFree") ||
             Eq(v, "SetAppearanceSeed"))
         {

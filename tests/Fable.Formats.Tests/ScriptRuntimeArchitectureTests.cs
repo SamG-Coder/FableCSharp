@@ -1759,6 +1759,84 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void SetDamageable_ignores_arg_and_is_vtbl_2064()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("sd",
+        [
+            "HERO.SetDamageable FALSE",
+            "GUARD.SetDamageable TRUE",
+            "BANDIT.SetDamageable",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.False(runtime.World.Damageable["HERO"]);
+        Assert.False(runtime.World.Damageable["GUARD"]);
+        Assert.False(runtime.World.Damageable["BANDIT"]);
+        Assert.Equal(2064, runtime.World.DamageableVtbl["HERO"]);
+        Assert.Equal(2064, runtime.World.DamageableVtbl["GUARD"]);
+        Assert.Contains("HERO", runtime.World.ExtrasAppended);
+        Assert.Contains("GUARD", runtime.World.ExtrasAppended);
+        Assert.Equal(0x00CC10A6u, ScriptCommandMap.Find("SetDamageable")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("Killable")!.Value.ApplySite,
+            ScriptCommandMap.Find("SetDamageable")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void SetDamageable_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_WASPBOSS_QUEEN");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.Contains(".SetDamageable", StringComparison.OrdinalIgnoreCase))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("SetDamageable", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-dmg", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".SetDamageable", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.False(runtime.World.Damageable[parsed.Target ?? ""]);
+        Assert.Equal(2064, runtime.World.DamageableVtbl[parsed.Target ?? ""]);
+        Assert.Contains(parsed.Target ?? "", runtime.World.ExtrasAppended);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-dmg.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-setdamageable.txt"),
+            """
+            SetDamageable 00CC1054 / apply 00CC10A6
+              ebx required else 00CC7081
+              NO arg parse — FALSE/TRUE/empty ignored
+              actor vtbl+48; vtbl+2064(actor,0); extras 008ADF90
+              jmp 00CC707C
+              DISPROVES IsFalse(arg0) flag lump
+              not Killable vtbl+2068(actor,flag,1)
+              SetAttackable sibling is vtbl+1832(actor,0)+008ADF90
+            Damage mesh UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void GiveGold_real_script_bank_or_isolated()
     {
         var install = GameInstall.TryLocate();
