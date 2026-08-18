@@ -1,11 +1,11 @@
 TOTAL NATIVE COMMAND TOKENS: 185
 GLOBAL: 124
 ENTITY: 61
-RECOVERED DISPATCH: 124
-RECOVERED RETURN: 124
-RECOVERED APPLY: 60
+RECOVERED DISPATCH: 125
+RECOVERED RETURN: 125
+RECOVERED APPLY: 61
 IMPLEMENTED RUNTIME: 13
-UNREAD: 61
+UNREAD: 60
 # Native command coverage
 
 Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
@@ -184,7 +184,7 @@ Generated from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`.
 | PlayCombatAnim | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
 | PlayAnimation | Entity | Proven | Proven | Proven | Partial | Partial | Partial |
 | PreloadAnim | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
-| SetDrunk | Entity | Unread | Unread | Unread | Unread | Unread | Unread |
+| SetDrunk | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
 | SetScared | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
 | SetBound | Entity | Proven | Proven | Proven | Proven | Partial | Partial |
 | SetPushable | Entity | Proven | Proven | Proven | Proven | Partial | Partial |

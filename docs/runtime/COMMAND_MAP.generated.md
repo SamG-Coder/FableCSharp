@@ -84,6 +84,7 @@
 | HoldInHand | `00CC2175` | `00CC21CB` | item[,IsTrue] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; IsTrue(arg1); actor vtbl+48; vtbl+892(actor,item,flag); leftover +28; jmp 00CC707C; not PutInHeroHands |
 | ModifyHealth | `00CC2258` | `00CC22AE` | amount | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | atof arg0; actor vtbl+48; vtbl+1060(actor,amt,0); leftover +28; jmp 00CC707C; not GiveHeroHealth 1052 |
 | SetScared | `00CC1265` | `00CC12B7` | [IsFalse] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | default 1; IsFalse(arg0)->0; vtbl+1984(actor,flag); jmp 00CC707C; not SetBound 1976 |
+| SetDrunk | `00CC130E` | `00CC1360` | [IsFalse] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | default 1; IsFalse(arg0)->0; vtbl+1988(actor,flag); jmp 00CC707C; not SetScared 1984 |
 | SetBound | `00CC11AB` | `00CC11FD` | IsFalse? | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; default 1; IsFalse->0; vtbl+1976(actor,flag); jmp 00CC707C; not SetScared 1984 |
 | Killable | `00CC1C30` | `00CC1C82` | IsFalse? | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; default 1; IsFalse->0; vtbl+2068(actor,flag,1); jmp 00CC707C; not SetBound 1976 |
 | SetPushable | `00CC10F2` | `00CC1144` | [IsTrue] | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | default 0; IsTrue(arg0)->1; vtbl+3376; jmp 00CC707C; not SetBound IsFalse/1976 |

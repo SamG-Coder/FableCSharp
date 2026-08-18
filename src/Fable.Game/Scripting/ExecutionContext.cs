@@ -1105,6 +1105,12 @@ public sealed class WorldRuntime
     public readonly Dictionary<string, bool> Scared =
         new(StringComparer.OrdinalIgnoreCase);
     /// <summary>
+    /// <c>00CC1360</c> <c>vtbl+1988(actor,!IsFalse)</c>.
+    /// Empty arg stays 1. Not SetScared 1984.
+    /// </summary>
+    public readonly Dictionary<string, bool> Drunk =
+        new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
     /// <c>00CC11FD</c> <c>vtbl+1976(actor,!IsFalse)</c>.
     /// Arg0 required. Not SetScared 1984.
     /// </summary>
@@ -1318,6 +1324,16 @@ public sealed class WorldRuntime
     public void SetScared(string actor, bool scared)
     {
         Scared[actor ?? ""] = scared;
+    }
+
+    /// <summary>
+    /// <c>00CC1360</c>: default 1; IsFalse(arg0) → 0;
+    /// actor <c>vtbl+48</c> then <c>vtbl+1988</c>.
+    /// Drunk gait UNREAD.
+    /// </summary>
+    public void SetDrunk(string actor, bool drunk)
+    {
+        Drunk[actor ?? ""] = drunk;
     }
 
     /// <summary>

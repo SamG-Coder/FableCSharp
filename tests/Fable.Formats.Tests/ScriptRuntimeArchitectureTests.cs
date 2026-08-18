@@ -2055,6 +2055,85 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void SetDrunk_default_on_IsFalse_off_not_SetScared()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("sd",
+        [
+            "DRUNK.SetDrunk FALSE",
+            "PATRON.SetDrunk TRUE",
+            "HERO.SetDrunk",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.False(runtime.World.Drunk["DRUNK"]);
+        Assert.True(runtime.World.Drunk["PATRON"]);
+        Assert.True(runtime.World.Drunk["HERO"]);
+        Assert.Equal(0x00CC1360u, ScriptCommandMap.Find("SetDrunk")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("SetScared")!.Value.ApplySite,
+            ScriptCommandMap.Find("SetDrunk")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void SetDrunk_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".SetDrunk", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "PATRON.SetDrunk TRUE";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("SetDrunk", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-drunk", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".SetDrunk", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal(!ScriptLine.IsFalse(parsed.Arg(0)),
+            runtime.World.Drunk[parsed.Target ?? ""]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-drunk.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-setdrunk.txt"),
+            """
+            SetDrunk 00CC130E / apply 00CC1360
+              ebx required else 00CC7081
+              default flag=1; 00CBEE0C IsFalse(arg0) → 0
+              empty arg stays 1 (no 00403A00 skip)
+              actor vtbl+48; vtbl+1988(actor,flag); jmp 00CC707C
+              not SetScared vtbl+1984
+            Drunk gait UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void AskQuestion_polls_vtbl_156_until_answer()
     {
         var runtime = ScriptRuntime.Detached();

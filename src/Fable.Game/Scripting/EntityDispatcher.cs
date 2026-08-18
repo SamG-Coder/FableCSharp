@@ -335,6 +335,15 @@ public static class EntityDispatcher
                 scared ? "1" : "0");
         }
 
+        if (Eq(v, "SetDrunk"))
+        {
+            // 00CC1360: default 1; IsFalse(arg0) → 0. Empty stays 1.
+            var drunk = !ScriptLine.IsFalse(line.Arg(0));
+            ctx.World.SetDrunk(line.Target ?? "", drunk);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity,
+                drunk ? "1" : "0");
+        }
+
         if (Eq(v, "SetBound"))
         {
             // 00CC11FD: arg0 required; default 1; IsFalse → 0.

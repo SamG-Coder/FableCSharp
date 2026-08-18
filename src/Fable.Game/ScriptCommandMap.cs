@@ -509,6 +509,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "default 1; IsFalse(arg0)->0; vtbl+1984(actor,flag); jmp 00CC707C; not SetBound 1976"),
+        Spec("SetDrunk", 0x00CC130E, 0x00CC1360, "[IsFalse]",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "default 1; IsFalse(arg0)->0; vtbl+1988(actor,flag); jmp 00CC707C; not SetScared 1984"),
         Spec("SetBound", 0x00CC11AB, 0x00CC11FD, "IsFalse?",
             ScriptReturn.CompleteNow, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
