@@ -1192,6 +1192,20 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public const uint QuestManagerPumpFn = 0x004B4490;
     public const uint QuestManagerVa = 0x013B89FC;
+    /// <summary>
+    /// <c>004B2850</c> <c>AddQuest</c>
+    /// push onto <c>[0x13B89FC]+44</c>.
+    /// Every name, TRUE and FALSE.
+    /// Not <c>004A08D0</c>-cleared.
+    /// </summary>
+    public const uint QuestManagerPushFn = 0x004B2850;
+    public const int QuestManagerPlus44Offset = 44;
+    /// <summary>
+    /// <c>004B4260</c> membership gate
+    /// before <c>00CB5AD0</c>. Finds
+    /// the name in QM+44.
+    /// </summary>
+    public const uint QuestActivateGateFn = 0x004B00C0;
     public const uint QuestListPumpFn = 0x00CB8220;
     public const uint QuestListWalkAFn = 0x00CB7C40;
     public const uint QuestListWalkBFn = 0x00CB8170;
@@ -2403,6 +2417,13 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public IReadOnlyList<string> WorldPlus184 => _worldPlus184;
     /// <summary>
+    /// QuestManager <c>+44</c>: every
+    /// <c>AddQuest</c> name via
+    /// <c>004B2850</c>. Gate table for
+    /// <c>004B00C0</c>.
+    /// </summary>
+    public IReadOnlyList<string> QuestManagerPlus44 => _questManagerPlus44;
+    /// <summary>
     /// <c>00CE6CF0</c> names inserted at
     /// <c>0x13BAE44</c> via
     /// <c>008A9DB0</c> / <c>008AE660</c>.
@@ -2505,6 +2526,7 @@ public sealed class EngineLifecycle : IDisposable
     private readonly List<string> _activatedQuests = [];
     private readonly List<string> _worldPlus172 = [];
     private readonly List<string> _worldPlus184 = [];
+    private readonly List<string> _questManagerPlus44 = [];
     private readonly List<string> _gameflowStates = [];
     private readonly List<string> _gameflowWatchers = [];
     private readonly List<uint> _submittedLayers = [];
@@ -3952,6 +3974,9 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public void LoadWorld()
     {
+        _questManagerPlus44.Clear();
+        Note(QuestManagerPushFn, "Loading world", "Quest",
+            $"004B4590 [0x{QuestManagerVa:X}]+{QuestManagerPlus44Offset}=0");
         Note(GameLoadWorldFn, "Loading world", "World",
             "00416953 vtbl+32 [+90588] empty");
         Note(WorldPrepareSite, "Loading world", "World",
@@ -6462,6 +6487,8 @@ public sealed class EngineLifecycle : IDisposable
 
         Note(QstParseFn, "Load Quests", "Quest",
             $"004A0D90 [world+{WorldQuestListOffset}] TRUE count={_worldPlus172.Count}");
+        Note(QuestManagerPushFn, "Load Quests", "Quest",
+            $"004B2850 [QM+{QuestManagerPlus44Offset}] count={_questManagerPlus44.Count}");
     }
 
     /// <summary>
@@ -6476,6 +6503,7 @@ public sealed class EngineLifecycle : IDisposable
             _worldPlus184.Add(quest.Name);
             if (quest.Persistent)
                 _worldPlus172.Add(quest.Name);
+            _questManagerPlus44.Add(quest.Name);
         }
     }
 
@@ -6529,6 +6557,15 @@ public sealed class EngineLifecycle : IDisposable
     private void ActivateNamedQuest(string name, string phase)
     {
         if (name.Length == 0)
+            return;
+        var inTable = name.Equals("NULL", StringComparison.OrdinalIgnoreCase) ||
+            _questManagerPlus44.Exists(n =>
+                n.Equals(name, StringComparison.OrdinalIgnoreCase));
+        Note(QuestActivateGateFn, phase, "Quest",
+            inTable
+                ? $"004B00C0 [QM+{QuestManagerPlus44Offset}] {name}"
+                : $"004B00C0 miss skip 00CB5AD0 {name}");
+        if (!inTable)
             return;
         Runtime ??= ScriptRuntime.Detached();
         if (Install?.FindCompiledDef("script.bin") is not null &&

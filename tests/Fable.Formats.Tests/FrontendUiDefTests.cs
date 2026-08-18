@@ -272,20 +272,49 @@ public sealed class FrontendUiDefTests
         Assert.Equal(26051, textWidget.Font);
         Assert.Equal(face, textWidget.FontFace);
         Assert.Equal(0x53C644E4u, FrontendUiDef.MessageIdCrc);
+        Assert.Equal(228, FrontendUiDef.MessageIdDefOffset);
+        Assert.Equal(0x230364D6u, FrontendUiDef.Plus224Crc);
+        Assert.Equal(224, FrontendUiDef.Plus224DefOffset);
+        Assert.Equal(0x00632500u, FrontendUiDef.PersistTailDwordFn);
+        Assert.NotEqual(FrontendUiDef.Plus224Crc, FrontendUiDef.MessageIdCrc);
         Assert.NotEqual(FableCrc.Hash("Message"), FrontendUiDef.MessageIdCrc);
         Assert.NotEqual(FableCrc.Hash("MessageId"), FrontendUiDef.MessageIdCrc);
+        Assert.NotEqual(FableCrc.Hash("Action"), FrontendUiDef.Plus224Crc);
         var accept = FrontendUiDef.TryParse(bin.FindEntry("UI_ACCEPT_NEW_PROFILE")!)!;
         Assert.Equal(38, accept.Type);
         Assert.Equal(0x126, accept.MessageId);
+        Assert.NotEqual(accept.MessageId, accept.Plus224);
         var newGame = FrontendUiDef.TryParse(bin.FindEntry("UI_FRONTEND_BUTTON_NEW_GAME")!)!;
         Assert.Equal(11, newGame.Type);
         Assert.Equal(15, newGame.MessageId);
+        Assert.NotEqual(newGame.MessageId, newGame.Plus224);
         Assert.Equal(
             0x126,
             FrontendUiDef.ReadPersistI32(
                 bin.FindEntry("UI_ACCEPT_NEW_PROFILE")!.Raw,
                 FrontendUiDef.MessageIdCrc));
+        Assert.True(HasAdjacentPersistI32(
+            bin.FindEntry("UI_ACCEPT_NEW_PROFILE")!.Raw,
+            FrontendUiDef.Plus224Crc,
+            FrontendUiDef.MessageIdCrc));
+        Assert.True(HasAdjacentPersistI32(
+            bin.FindEntry("UI_FRONTEND_BUTTON_NEW_GAME")!.Raw,
+            FrontendUiDef.Plus224Crc,
+            FrontendUiDef.MessageIdCrc));
+        Assert.Equal(228, FrontendInputMap.PersistMessageDefOffset);
         _ = install;
+    }
+
+    private static bool HasAdjacentPersistI32(byte[] raw, uint firstCrc, uint secondCrc)
+    {
+        for (var i = 0; i + 16 <= raw.Length; i++)
+        {
+            if (BitConverter.ToUInt32(raw, i) == firstCrc &&
+                BitConverter.ToUInt32(raw, i + 8) == secondCrc)
+                return true;
+        }
+
+        return false;
     }
 
     [Fact]

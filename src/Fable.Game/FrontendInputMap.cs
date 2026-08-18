@@ -72,7 +72,10 @@ public sealed class FrontendInputMap
     /// <summary>
     /// Persist field copied by
     /// <c>0055B040</c> from def
-    /// <c>+224</c>. Name UNREAD.
+    /// <c>+228</c> (CRC
+    /// <c>0x53C644E4</c>). <c>+224</c>
+    /// is <see cref="FrontendUiDef.Plus224Crc"/>.
+    /// Name UNREAD.
     /// </summary>
     public const uint MessageIdCrc = FrontendUiDef.MessageIdCrc;
     public const uint Type4RecordCtor = 0x00A03C80;
@@ -80,7 +83,7 @@ public sealed class FrontendInputMap
     public const uint Type11ActionFn = 0x0054DBC0;
     public const uint Type38ActionFn = 0x0055AD60;
     public const uint PersistMessageCopyFn = 0x0055B040;
-    public const int PersistMessageDefOffset = 224;
+    public const int PersistMessageDefOffset = FrontendUiDef.MessageIdDefOffset;
     public const int TypeButton = 11;
     public const int TypeAccept = 38;
 
@@ -161,7 +164,7 @@ public sealed class FrontendInputMap
     /// <summary>
     /// First visible stored id: type-10
     /// attach message, else type 11/38
-    /// persist <c>+224</c>.
+    /// persist <c>+228</c>.
     /// </summary>
     public static int? MessageFromWidgets(
         int action, IReadOnlyList<FrontendWidget> widgets)

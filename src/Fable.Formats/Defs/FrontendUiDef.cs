@@ -118,15 +118,34 @@ public sealed class FrontendUiDef
     /// </summary>
     public const uint GraphicIndexCrc = 0x38E36902;
     /// <summary>
+    /// <c>00631C60</c> <c>00632500</c>
+    /// dest <c>+224</c>. First
+    /// <c>0055B040</c> copy (vtbl+284).
+    /// File CRC <c>0x230364D6</c>.
+    /// Not <see cref="MessageIdCrc"/>.
+    /// Name UNREAD.
+    /// </summary>
+    public const uint Plus224Crc = 0x230364D6;
+    public const int Plus224DefOffset = 224;
+    /// <summary>
     /// Persist i32 copied by
     /// <c>0055B040</c> from def
-    /// <c>+224</c> then vtbl+284.
+    /// <c>+228</c> then vtbl+320.
     /// Type 38 <c>UI_ACCEPT_NEW_PROFILE</c>
     /// stores <c>0x126</c>; type 11
     /// <c>UI_FRONTEND_BUTTON_NEW_GAME</c>
     /// stores 15. Name UNREAD.
+    /// <c>+224</c> is
+    /// <see cref="Plus224Crc"/>.
     /// </summary>
     public const uint MessageIdCrc = 0x53C644E4;
+    public const int MessageIdDefOffset = 228;
+    /// <summary>
+    /// <c>00631C60</c> tail i32 helper
+    /// for <c>+196</c>…<c>+256</c>.
+    /// Not <see cref="PersistDwordFn"/>.
+    /// </summary>
+    public const uint PersistTailDwordFn = 0x00632500;
     public const int HeaderBytes = 3;
     public const int StyleRecordBytes = 124;
     public const int StyleGraphicOffset = 60;
@@ -186,9 +205,14 @@ public sealed class FrontendUiDef
     public byte ScaleOriginByte { get; init; }
     /// <summary>
     /// Persist <see cref="MessageIdCrc"/>
-    /// → def <c>+224</c>.
+    /// → def <c>+228</c>.
     /// </summary>
     public int MessageId { get; init; }
+    /// <summary>
+    /// Persist <see cref="Plus224Crc"/>
+    /// → def <c>+224</c>.
+    /// </summary>
+    public int Plus224 { get; init; }
     public IReadOnlyList<uint> UnreadCrcs { get; init; } = [];
     public int UnreadOffset { get; init; }
     public bool Partial { get; init; }
@@ -484,7 +508,7 @@ public sealed class FrontendUiDef
                 continue;
             }
 
-            if (crc == MessageIdCrc && payload + 4 <= raw.Length)
+            if (crc is Plus224Crc or MessageIdCrc && payload + 4 <= raw.Length)
             {
                 cursor = payload + 4;
                 continue;
@@ -523,6 +547,7 @@ public sealed class FrontendUiDef
         var scaleSizeByte = ReadPersistU8(raw, ScaleSizeCrc);
         var scaleOriginByte = ReadPersistU8(raw, ScaleOriginCrc);
         var messageId = ReadPersistI32(raw, MessageIdCrc);
+        var plus224 = ReadPersistI32(raw, Plus224Crc);
 
         return new FrontendUiDef
         {
@@ -554,6 +579,7 @@ public sealed class FrontendUiDef
             ScaleSizeByte = scaleSizeByte,
             ScaleOriginByte = scaleOriginByte,
             MessageId = messageId,
+            Plus224 = plus224,
             UnreadCrcs = unread,
             UnreadOffset = unreadOffset,
             Partial = partial,
@@ -578,9 +604,9 @@ public sealed class FrontendUiDef
     }
 
     /// <summary>
-    /// <c>00431102</c> file form: CRC then
-    /// i32. Used for persist
-    /// <see cref="MessageIdCrc"/>.
+    /// File form: CRC then i32.
+    /// Tail slots <c>+224</c>/<c>+228</c>
+    /// use <see cref="PersistTailDwordFn"/>.
     /// </summary>
     public static int ReadPersistI32(byte[] raw, uint crc)
     {

@@ -1153,6 +1153,18 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Quests.Quests, q =>
             q.Name == "Global_WatchForHeroDeath" && q.Persistent);
         Assert.Contains(life.WorldPlus184, q => q == "Q_NewOakValeIntro");
+        Assert.Equal(life.WorldPlus184, life.QuestManagerPlus44);
+        Assert.Contains(life.QuestManagerPlus44, q => q == "Gameflow");
+        Assert.Contains(life.QuestManagerPlus44, q => q == "Q_NewOakValeIntro");
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.QuestManagerPushFn &&
+            e.Action.Contains("004B2850", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.QuestActivateGateFn &&
+            e.Action.Contains("Q_SunnyvaleMaster", StringComparison.Ordinal));
+        Assert.Equal(0x004B2850u, EngineLifecycle.QuestManagerPushFn);
+        Assert.Equal(0x004B00C0u, EngineLifecycle.QuestActivateGateFn);
+        Assert.Equal(44, EngineLifecycle.QuestManagerPlus44Offset);
         Assert.NotNull(life.Runtime);
         Assert.Equal(10, life.Runtime.Quests.Count);
         Assert.Equal(10, life.Runtime.Scheduler.Fibers.Count);
