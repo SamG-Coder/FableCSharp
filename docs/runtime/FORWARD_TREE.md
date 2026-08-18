@@ -563,6 +563,16 @@ Fiber +41 setter 00CB78D0  PROVEN
 └── no cmp …,0x22. Not a type-0x22 switch.
 0041AFA0 vtbl+92 dest is widget+0x15C, not +16020.
 
+0042E204 Init Engine:
+  00B26340 alloc 0x178 ctor 00B260B0 vtbl 012A0F3C
+  0042FD04 store at retail+88
+0042DF9E 00595222([retail+88], 0)
+  0041AFA0 [012A0F3C+92] = 00B23BC0
+    00B324A0([0x1436E80], widget+0x15C, rec, 0xC0, 0)
+      type [rec]=0x22 → [0x1436E84]+16+0x22*4
+      dest+4=0 first-seen
+      handler vtbl+20 UNREAD (not memcpy +16020)
+
 00CB78D0 not in 012C3000 / 012F72D0 / 012C3688 / 0129B938 / 012C1648 / 012C2748.
 
 004A5A40 type-1 tick  PROVEN (316)

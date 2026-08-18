@@ -200,6 +200,31 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public const int Frontend2dSubmitVtbl = RegionTravel.FadeOverlaySubmitVtbl;
     public const int Frontend2dAltSubmitVtbl = 112;
+    /// <summary>
+    /// <c>0042E204</c> <c>00B26340</c>
+    /// alloc <c>0x178</c> ctor
+    /// <c>00B260B0</c> vtbl
+    /// <c>012A0F3C</c> at retail+88.
+    /// Slot +92 is <c>00B23BC0</c> →
+    /// <c>00B324A0([0x1436E80])</c>.
+    /// Type <c>[rec]=0x22</c> indexes
+    /// <c>[0x1436E84]+16</c>. Dest
+    /// <c>widget+0x15C</c> <c>[+4]=0</c>
+    /// first-seen. Handler
+    /// <c>vtbl+20</c> UNREAD — not a
+    /// memcpy into display +16020.
+    /// </summary>
+    public const uint FrontendEngineInitFn = 0x0042E204;
+    public const uint FrontendEngineEmbedFn = 0x0042FD04;
+    public const uint FrontendEngineAllocFn = 0x00B26340;
+    public const uint FrontendEngineCtorFn = 0x00B260B0;
+    public const uint FrontendEngineVtbl = 0x012A0F3C;
+    public const int FrontendEngineObjectSize = 0x178;
+    public const int FrontendEngineRetailOffset = 88;
+    public const uint FrontendSubmitFn = 0x00B23BC0;
+    public const uint FrontendSubmitDispatchFn = 0x00B324A0;
+    public const uint FrontendSubmitSingletonVa = 0x01436E80;
+    public const uint FrontendSubmitTypeTableVa = 0x01436E84;
     public const int FrontendWidgetReadyOffset = 368;
     public const int FrontendWidgetBlendOffset = 372;
     public const int FrontendWidgetFontOffset = 376;
@@ -1499,6 +1524,10 @@ public sealed class EngineLifecycle : IDisposable
         }
 
         Note(0x0042EF40, "InitEngine", "Engine", "Init Engine");
+        Note(FrontendEngineInitFn, "InitEngine", "Engine",
+            "0042E204 +88 00B26340");
+        Note(FrontendEngineAllocFn, "InitEngine", "Engine",
+            $"00B26340 0x{FrontendEngineObjectSize:X} 00B260B0 012A0F3C");
         Note(0x0042EF6F, "InitFrontend", "Frontend", "Init frontend");
         Note(FrontendIntern, "Frontend", "FRONT_END", "0042F722");
         Stage = EngineStage.Frontend;
@@ -1630,6 +1659,12 @@ public sealed class EngineLifecycle : IDisposable
                 : $"0041BEB0 type 0x{Frontend2dRecordType:X} +{FrontendWidgetBlendOffset}={FrontendWidgetBlend}");
         Note(packer, "Frontend", "UI",
             $"[edx+{Frontend2dSubmitVtbl}] dest +{FrontendWidgetSubmitDestOffset:X} 0x{Frontend2dRecordBytes:X}");
+        Note(FrontendEngineAllocFn, "Frontend", "UI",
+            $"00B26340 size 0x{FrontendEngineObjectSize:X} vtbl 0x{FrontendEngineVtbl:X}");
+        Note(FrontendSubmitFn, "Frontend", "UI",
+            $"00B23BC0 → 00B324A0 [0x{FrontendSubmitSingletonVa:X}] type 0x{Frontend2dRecordType:X}");
+        Note(FrontendSubmitDispatchFn, "Frontend", "UI",
+            "00B324A0 [dest+4]=0 handler vtbl+20 UNREAD");
         Frontend2dLastType = Frontend2dRecordType;
         Frontend2dLastPacker = packer;
         Frontend2dLastSubmitVtbl = Frontend2dSubmitVtbl;

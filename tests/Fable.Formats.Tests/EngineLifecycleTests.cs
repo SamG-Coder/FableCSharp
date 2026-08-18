@@ -242,6 +242,12 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x0041BEB0u, life.Frontend2dLastPacker);
         Assert.Equal(0x22u, life.Frontend2dLastType);
         Assert.Equal(92, life.Frontend2dLastSubmitVtbl);
+        Assert.Equal(0x00B23BC0u, EngineLifecycle.FrontendSubmitFn);
+        Assert.Equal(0x00B324A0u, EngineLifecycle.FrontendSubmitDispatchFn);
+        Assert.Equal(0x012A0F3Cu, EngineLifecycle.FrontendEngineVtbl);
+        Assert.Equal(0x178, EngineLifecycle.FrontendEngineObjectSize);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendSubmitFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendSubmitDispatchFn);
         Assert.False(life.FrontendDisplayFlag);
         Assert.False(life.FrontendDisplayImeRan);
         Assert.False(life.FrontendDisplayCursorRan);
