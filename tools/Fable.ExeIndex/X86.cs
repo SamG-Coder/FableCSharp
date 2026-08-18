@@ -54,9 +54,26 @@ internal static class X86
     public static List<Step> Walk(PeImage pe, int fileOffset, int maxInsns, bool stopOnRet)
     {
         var steps = new List<Step>(maxInsns);
+        var n = 0;
+        WalkRange(pe, fileOffset, pe.Data.Length, step =>
+        {
+            steps.Add(step);
+            n++;
+            return n < maxInsns && !(stopOnRet && step.IsRet);
+        });
+        return steps;
+    }
+
+    /// <summary>
+    /// Linear decode from <paramref name="fileOffset"/> until
+    /// <paramref name="endFile"/>. <paramref name="emit"/> returns false to stop.
+    /// </summary>
+    public static void WalkRange(PeImage pe, int fileOffset, int endFile, Func<Step, bool> emit)
+    {
         var ip = fileOffset;
         var d = pe.Data;
-        for (var n = 0; n < maxInsns && ip + 1 < d.Length; n++)
+        var limit = Math.Min(endFile, d.Length);
+        while (ip + 1 < limit)
         {
             var start = ip;
             var look = ip;
@@ -69,20 +86,21 @@ internal static class X86
                 call = pe.Va(look + 5 + rel);
             }
 
+            Step step;
             if (!TryDecode(pe, ref ip, out var text))
             {
-                steps.Add(new Step(pe.Va(start), $"db 0x{d[start]:X2}", false, null));
+                step = new Step(pe.Va(start), $"db 0x{d[start]:X2}", false, null);
                 ip = start + 1;
-                continue;
+            }
+            else
+            {
+                var ret = text is "ret" or "retn" || text.StartsWith("ret ", StringComparison.Ordinal);
+                step = new Step(pe.Va(start), text, ret, call);
             }
 
-            var ret = text is "ret" or "retn" || text.StartsWith("ret ", StringComparison.Ordinal);
-            steps.Add(new Step(pe.Va(start), text, ret, call));
-            if (stopOnRet && ret)
-                break;
+            if (!emit(step))
+                return;
         }
-
-        return steps;
     }
 
     private static List<string> DisassembleCore(PeImage pe, int fileOffset, int maxInsns, bool stopOnRet)

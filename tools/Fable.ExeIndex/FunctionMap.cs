@@ -627,6 +627,77 @@ internal static class FunctionMap
         return sb.ToString();
     }
 
+    public static List<Node> WalkAllCode(PeImage pe)
+    {
+        var starts = new List<uint>();
+        var data = pe.Data;
+        foreach (var sec in pe.Sections)
+        {
+            if (!pe.InCode((int)sec.FileOffset))
+                continue;
+            var end = Math.Min(data.Length, (int)(sec.FileOffset + sec.FileSize) - 4);
+            for (var i = (int)sec.FileOffset; i < end; i++)
+            {
+                if (X86.IsFramePrologue(data, i))
+                    starts.Add(pe.Va(i));
+            }
+        }
+
+        var nodes = new List<Node>(starts.Count);
+        foreach (var va in starts)
+        {
+            var file = pe.FileOffset(va);
+            if (file < 0)
+                continue;
+            var steps = X86.WalkFunction(pe, file, MaxInsns);
+            var calls = new List<uint>();
+            var strings = new List<string>();
+            foreach (var step in steps)
+            {
+                if (step.DirectCall is { } dest)
+                    calls.Add(dest);
+                CollectQuoted(step.Text, strings);
+            }
+
+            nodes.Add(new Node
+            {
+                Va = va,
+                Depth = 0,
+                Seed = "text",
+                Insns = steps.Count,
+                Calls = calls,
+                Strings = strings,
+            });
+        }
+
+        return nodes;
+    }
+
+    public static string ToE8Tsv(PeImage pe)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("site\tdest");
+        var data = pe.Data;
+        foreach (var sec in pe.Sections)
+        {
+            if (!pe.InCode((int)sec.FileOffset))
+                continue;
+            var end = Math.Min(data.Length, (int)(sec.FileOffset + sec.FileSize) - 5);
+            for (var i = (int)sec.FileOffset; i < end; i++)
+            {
+                if (data[i] != 0xE8)
+                    continue;
+                var rel = BitConverter.ToInt32(data, i + 1);
+                var site = pe.Va(i);
+                var dest = (uint)(site + 5 + rel);
+                sb.Append("0x").Append(site.ToString("X8")).Append('\t')
+                    .Append("0x").Append(dest.ToString("X8")).AppendLine();
+            }
+        }
+
+        return sb.ToString();
+    }
+
     public static IReadOnlyList<uint> ScanRangeStarts(PeImage pe)
     {
         var starts = new HashSet<uint>();

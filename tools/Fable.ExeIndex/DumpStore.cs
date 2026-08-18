@@ -22,6 +22,8 @@ internal sealed class DumpStore
     public const int PlayAviPaceVersion = 1;
     public const int PlayAviPresentVersion = 2;
     public const int PlayAviTimelineVersion = 10;
+    public const int FrontendTraceVersion = 1;
+    public const int TextMapVersion = 2;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
@@ -106,6 +108,11 @@ internal sealed class DumpStore
         var dir = FamilyDir(family);
         var path = Path.Combine(dir, slug + ".md");
         File.WriteAllText(path, markdown);
+    }
+
+    public void WriteRaw(string family, string fileName, string content)
+    {
+        File.WriteAllText(Path.Combine(FamilyDir(family), fileName), content);
     }
 
     public void WriteStub(string fileName, string family, string title)

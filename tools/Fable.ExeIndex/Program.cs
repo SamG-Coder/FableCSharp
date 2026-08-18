@@ -6,7 +6,7 @@ using Fable.Formats.Defs;
 using Fable.Formats.Qst;
 using Fable.Formats.Shaders;
 
-var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "fn" or "trace-render" or "trace-landscape" or "trace-newgame" or "trace-script" or "export-scripts" or "trace-shaders" or "trace-quartz" or "trace-playavi-live" or "trace-playavi-timeline" or "map-newgame" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp" or "scan" or "datascan") ?? "all";
+var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "fn" or "trace-render" or "trace-landscape" or "trace-newgame" or "trace-script" or "export-scripts" or "trace-shaders" or "trace-quartz" or "trace-playavi-live" or "trace-playavi-timeline" or "trace-frontend" or "map-newgame" or "map-text" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp" or "scan" or "datascan") ?? "all";
 var force = args.Any(a => a is "--force" or "-f");
 var install = GameInstall.TryLocate();
 var exePath = args.FirstOrDefault(a =>
@@ -94,12 +94,18 @@ switch (cmd)
     case "trace-playavi-timeline":
         RunTracePlayAviTimeline(pe, store);
         break;
+    case "trace-frontend":
+        RunTraceFrontend(pe, store);
+        break;
     case "trace-playavi-live":
         RunTracePlayAviTimeline(pe, store);
         store.SaveManifest();
         return PlayAviLiveTrace.Run(exePath, outDir, args);
     case "map-newgame":
         RunMapNewGame(pe, store);
+        break;
+    case "map-text":
+        RunMapText(pe, store);
         break;
     case "calls":
         RunCalls(pe, args);
@@ -646,6 +652,72 @@ static void RunFn(PeImage pe, string[] args)
 
     if (steps.Count >= n)
         Console.WriteLine($"truncated at {n} insns");
+}
+
+static void RunTraceFrontend(PeImage pe, DumpStore store)
+{
+    const string family = "frontend-trace";
+    if (!store.ShouldWrite(family, DumpStore.FrontendTraceVersion))
+    {
+        Console.WriteLine($"skip  {family}  v{DumpStore.FrontendTraceVersion} (exe unchanged)");
+        return;
+    }
+
+    var links = new List<IndexLink>
+    {
+        WriteWalkPart(pe, store, family, "retail pump 0042EC7C", 0x0042EC7C, 220),
+        WriteWalkPart(pe, store, family, "bind UI after AVI 0042E98F", 0x0042E98F, 120),
+        WriteWalkPart(pe, store, family, "Init Engine 0042E204", 0x0042E204, 160),
+        WriteWalkPart(pe, store, family, "Init frontend helper 0042DB40", 0x0042DB40, 80),
+        WriteWalkPart(pe, store, family, "Init frontend 005952C3", 0x005952C3, 80),
+        WriteWalkPart(pe, store, family, "UI get 00595582", 0x00595582, 20),
+        WriteWalkPart(pe, store, family, "UI ctor 005953E2", 0x005953E2, 80),
+        WriteWalkPart(pe, store, family, "frontend update 0042DC94", 0x0042DC94, 80),
+        WriteWalkPart(pe, store, family, "frontend pad gate 0042DC63", 0x0042DC63, 20),
+        WriteWalkPart(pe, store, family, "pad singleton 0049BB90", 0x0049BB90, 40),
+        WriteWalkPart(pe, store, family, "pad +8 0049BB50", 0x0049BB50, 8),
+        WriteWalkPart(pe, store, family, "UI tick 00599E3F", 0x00599E3F, 220),
+        WriteWalkPart(pe, store, family, "main menu 0059899A", 0x0059899A, 40),
+        WriteWalkPart(pe, store, family, "menu attach 00595A06", 0x00595A06, 80),
+        WriteWalkPart(pe, store, family, "menu items 00595B24", 0x00595B24, 120),
+        WriteWalkPart(pe, store, family, "menu item add 00595AD9", 0x00595AD9, 80),
+        WriteWalkPart(pe, store, family, "widget factory 0041DB1D", 0x0041DB1D, 40),
+        WriteWalkPart(pe, store, family, "widget construct 0041D21B", 0x0041D21B, 200),
+        WriteWalkPart(pe, store, family, "type0 ctor 0041B800", 0x0041B800, 40),
+        WriteWalkPart(pe, store, family, "base ctor 0052CC50", 0x0052CC50, 20),
+        WriteWalkPart(pe, store, family, "widget zeros 005334A0", 0x005334A0, 120),
+        WriteWalkPart(pe, store, family, "post ctor dest 0041AC20", 0x0041AC20, 80),
+        WriteWalkPart(pe, store, family, "font list 00530EC0", 0x00530EC0, 40),
+        WriteWalkPart(pe, store, family, "def lookup 009AD410", 0x009AD410, 80),
+        WriteWalkPart(pe, store, family, "frontend draw 0042DF9E", 0x0042DF9E, 200),
+        WriteWalkPart(pe, store, family, "widget walk 00595222", 0x00595222, 80),
+        WriteWalkPart(pe, store, family, "widget draw 0041AFA0", 0x0041AFA0, 220),
+        WriteWalkPart(pe, store, family, "dest layout 0041D03C", 0x0041D03C, 40),
+        WriteWalkPart(pe, store, family, "dest compute 0052FFD0", 0x0052FFD0, 160),
+        WriteWalkPart(pe, store, family, "input get 0041E5F2", 0x0041E5F2, 20),
+        WriteWalkPart(pe, store, family, "input ctor 0041E3F6", 0x0041E3F6, 80),
+        WriteWalkPart(pe, store, family, "input +156 set 0041DB84", 0x0041DB84, 80),
+        WriteWalkPart(pe, store, family, "input +156 thunk 0041E61B", 0x0041E61B, 16),
+        WriteWalkPart(pe, store, family, "packer 0041BEB0", 0x0041BEB0, 80),
+        WriteWalkPart(pe, store, family, "submit 00B23BC0", 0x00B23BC0, 40),
+        WriteWalkPart(pe, store, family, "submit dispatch 00B324A0", 0x00B324A0, 120),
+        WriteWalkPart(pe, store, family, "enqueue 009DB700", 0x009DB700, 80),
+        WriteWalkPart(pe, store, family, "flush 2d 009D9C80", 0x009D9C80, 80),
+        WriteWalkPart(pe, store, family, "flush layers 009DA9F0", 0x009DA9F0, 80),
+        WriteWalkPart(pe, store, family, "UI message 0059A238", 0x0059A238, 80),
+        WriteVtblPart(pe, store, family, "widget vtbl 0122F5D4", 0x0122F5D4, 90),
+        WriteVtblPart(pe, store, family, "frontend UI vtbl 012521A8", 0x012521A8, 40),
+        WriteCallsPart(pe, store, family, "calls main menu 0059899A", 0x0059899A),
+        WriteCallsPart(pe, store, family, "calls dest layout 0041D03C", 0x0041D03C),
+        WriteCallsPart(pe, store, family, "calls dest compute 0052FFD0", 0x0052FFD0),
+        WriteCallsPart(pe, store, family, "calls enqueue 009DB700", 0x009DB700),
+        WriteCallsPart(pe, store, family, "calls UI tick 00599E3F", 0x00599E3F),
+    };
+    store.WriteIndex(
+        family, DumpStore.FrontendTraceVersion, "frontend-trace",
+        "Post-AVI frontend: bind, menu attach, dest, enqueue, flush. One file per VA.",
+        links);
+    Console.WriteLine($"trace  {family}/  parts={links.Count}  v{DumpStore.FrontendTraceVersion}");
 }
 
 static void RunTraceRender(PeImage pe, DumpStore store)
@@ -2238,6 +2310,173 @@ static void RunTraceNewGame(PeImage pe, DumpStore store)
         "Click New through first-seen StartOakVale: UI, quest, kid, NewRegion, static maps, tiles, draw.",
         links);
     Console.WriteLine($"trace  {family}/  parts={links.Count}  v{DumpStore.NewGameTraceVersion}");
+}
+
+static void RunMapText(PeImage pe, DumpStore store)
+{
+    const string family = "text-map";
+    if (!store.ShouldWrite(family, DumpStore.TextMapVersion))
+    {
+        Console.WriteLine($"skip  {family}  v{DumpStore.TextMapVersion} (exe unchanged)");
+        return;
+    }
+
+    PeSection? text = null;
+    foreach (var s in pe.Sections)
+    {
+        if (s.Name is ".text" or "CODE")
+        {
+            text = s;
+            break;
+        }
+    }
+
+    if (text is null)
+    {
+        Console.Error.WriteLine("map-text  no .text section");
+        return;
+    }
+
+    var sec = text.Value;
+    var fileStart = (int)sec.FileOffset;
+    var fileEnd = (int)Math.Min((long)sec.FileOffset + sec.FileSize, pe.Data.Length);
+    var dir = store.FamilyDir(family);
+    const uint chunkSize = 0x40000;
+
+    Console.WriteLine($"map-text  linear .text 0x{pe.Va(fileStart):X8}–0x{pe.Va(fileEnd - 1):X8}  {fileEnd - fileStart} bytes");
+
+    using var e8 = new StreamWriter(Path.Combine(dir, "e8.tsv"));
+    using var fns = new StreamWriter(Path.Combine(dir, "functions.tsv"));
+    e8.WriteLine("site\tdest");
+    fns.WriteLine("va\tinsns\tcalls\tstrings");
+
+    var listing = new StringBuilder(1 << 20);
+    uint chunkVa = 0;
+    StreamWriter? listingWriter = null;
+    var chunkFiles = new List<(uint Va, string Name)>();
+    var fnVa = 0u;
+    var fnInsns = 0;
+    var fnCalls = new List<uint>();
+    var fnStrings = new List<string>();
+    var fnCount = 0;
+    var insnCount = 0;
+    var e8Count = 0;
+
+    void FlushFn()
+    {
+        if (fnVa == 0)
+            return;
+        fns.Write("0x");
+        fns.Write(fnVa.ToString("X8"));
+        fns.Write('\t');
+        fns.Write(fnInsns);
+        fns.Write('\t');
+        fns.Write(string.Join(',', fnCalls.Select(c => c.ToString("X8"))));
+        fns.Write('\t');
+        fns.WriteLine(string.Join('|', fnStrings).Replace('\t', ' '));
+        fnCount++;
+        fnVa = 0;
+        fnInsns = 0;
+        fnCalls.Clear();
+        fnStrings.Clear();
+    }
+
+    void FlushChunk()
+    {
+        if (listingWriter is null)
+            return;
+        listingWriter.Write(listing);
+        listing.Clear();
+        listingWriter.Dispose();
+        listingWriter = null;
+    }
+
+    void EnsureChunk(uint va)
+    {
+        var lo = va & ~(chunkSize - 1);
+        if (listingWriter is not null && lo == chunkVa)
+            return;
+        FlushChunk();
+        chunkVa = lo;
+        var name = $"listing-{lo:x8}.txt";
+        listingWriter = new StreamWriter(Path.Combine(dir, name));
+        chunkFiles.Add((lo, name));
+        Console.WriteLine($"map-text  {name}");
+    }
+
+    X86.WalkRange(pe, fileStart, fileEnd, step =>
+    {
+        EnsureChunk(step.Va);
+        listing.Append(step.Va.ToString("X8"));
+        listing.Append("  ");
+        listing.Append(step.Text);
+        listing.Append('\n');
+        if (listing.Length >= 1 << 20)
+        {
+            listingWriter!.Write(listing);
+            listing.Clear();
+        }
+
+        insnCount++;
+        var file = pe.FileOffset(step.Va);
+        if (file >= 0 && X86.IsFramePrologue(pe.Data, file))
+        {
+            FlushFn();
+            fnVa = step.Va;
+        }
+
+        if (fnVa != 0)
+        {
+            fnInsns++;
+            if (step.DirectCall is { } dest)
+                fnCalls.Add(dest);
+            var q0 = step.Text.IndexOf('"');
+            if (q0 >= 0)
+            {
+                var q1 = step.Text.IndexOf('"', q0 + 1);
+                if (q1 > q0 + 1)
+                {
+                    var s = step.Text[(q0 + 1)..q1];
+                    if (s.Length >= 4 && !fnStrings.Contains(s, StringComparer.Ordinal))
+                        fnStrings.Add(s);
+                }
+            }
+        }
+
+        if (step.DirectCall is { } e8Dest)
+        {
+            e8.Write("0x");
+            e8.Write(step.Va.ToString("X8"));
+            e8.Write("\t0x");
+            e8.WriteLine(e8Dest.ToString("X8"));
+            e8Count++;
+        }
+
+        return true;
+    });
+
+    FlushFn();
+    FlushChunk();
+
+    var index = new StringBuilder();
+    index.AppendLine("# text-map");
+    index.AppendLine();
+    index.AppendLine("Linear dump of the whole `.text` section. Grep these files. Do not `fn` one VA.");
+    index.AppendLine();
+    index.AppendLine($"version **{DumpStore.TextMapVersion}** · exe `{pe.Identity}`");
+    index.AppendLine();
+    index.AppendLine($"insns **{insnCount}** · frame prologues **{fnCount}** · E8 **{e8Count}**");
+    index.AppendLine();
+    index.AppendLine("| part | va | file |");
+    index.AppendLine("|---|---|---|");
+    index.AppendLine("| every E8 site→dest | — | [e8.tsv](e8.tsv) |");
+    index.AppendLine("| frame prologues | — | [functions.tsv](functions.tsv) |");
+    foreach (var (va, name) in chunkFiles)
+        index.AppendLine($"| listing 0x{va:X8} | 0x{va:X8} | [{name}]({name}) |");
+    store.WriteRaw(family, "INDEX.md", index.ToString());
+    store.WriteStub(family + ".md", family, "text-map");
+    store.MarkWritten(family, DumpStore.TextMapVersion);
+    Console.WriteLine($"map-text  insns={insnCount}  functions={fnCount}  e8={e8Count}  chunks={chunkFiles.Count}");
 }
 
 static void RunMapNewGame(PeImage pe, DumpStore store)
