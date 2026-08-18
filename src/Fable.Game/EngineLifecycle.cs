@@ -236,6 +236,34 @@ public sealed class EngineLifecycle
     public const uint WorldMapSetLevelLoader = 0x004AF160;
     public const int MapRecordSize = 72;
     public const int MapRecordActiveOffset = 38;
+    /// <summary>
+    /// <c>004FC210</c>: name → native index,
+    /// search from 1. 0 = miss / dummy.
+    /// </summary>
+    public const uint FindRegionByNameFn = 0x004FC210;
+    /// <summary>
+    /// <c>00487C20</c>: <c>004FC210</c> then
+    /// <c>00500540(index,0,1)</c> async.
+    /// Caller <c>00449E60</c> reads persist
+    /// <c>PlayerRegionName</c> (HEADER) —
+    /// continue, not no-save New Game.
+    /// </summary>
+    public const uint LoadRegionByNameFn = 0x00487C20;
+    public const uint LoadRegionByNamePersist = 0x00449E60;
+    /// <summary>
+    /// <c>00501450</c>: if table count &gt; 1,
+    /// <c>00500540(1,0,0)</c> sync. Native
+    /// index 1 is LookoutPoint.
+    /// </summary>
+    public const uint LoadFromFirstRealRegionFn = 0x00501450;
+    /// <summary>
+    /// <c>004FC190</c>: map → region, search
+    /// from 1 via <c>006BBFA0</c> ContainsMap.
+    /// </summary>
+    public const uint MapToRegionFn = 0x004FC190;
+    public const uint RegionContainsMapFn = 0x006BBFA0;
+    public const uint LoadRegionAtMapFn = 0x00502500;
+    public const uint WorldUpdateFn = 0x004A3740;
 
     /// <summary>
     /// <c>00507C30</c> token switch. Same
@@ -308,6 +336,13 @@ public sealed class EngineLifecycle
     public bool GamePumpFirstDone { get; private set; }
     public int GamePumpFrames { get; private set; }
     public bool LevelLoaderReady { get; private set; }
+    public bool FirstRealRegionLoadDone { get; private set; }
+    /// <summary>
+    /// Persist <c>PlayerRegionName</c>. Empty on
+    /// no-save New Game. Non-empty takes
+    /// <c>00487C20</c> instead of <c>00501450</c>.
+    /// </summary>
+    public string? PlayerRegionName { get; set; }
     public IReadOnlyList<int> PendingLoadIndices => _loadQueue;
     public IReadOnlyList<string> ActivatedMaps => _activatedMaps;
     /// <summary>
@@ -630,7 +665,10 @@ public sealed class EngineLifecycle
             return;
         GamePumpFrames++;
         if (GamePumpFirstDone)
+        {
+            EnqueueAfterDummy();
             return;
+        }
 
         Note(GamePump, "GamePump", "Game", "004189C2 vtbl+8");
         Note(GamePumpPlayerFn, "GamePump", "Player", "004AE9C0 game+80568");
@@ -699,6 +737,76 @@ public sealed class EngineLifecycle
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// <c>004FC210</c>. Starts at index 1.
+    /// </summary>
+    public int FindRegionIndexByName(string? name)
+    {
+        if (World is null || string.IsNullOrEmpty(name))
+            return 0;
+        foreach (var region in World.Regions)
+        {
+            if (region.RegionName.Equals(name, StringComparison.OrdinalIgnoreCase))
+                return region.Index;
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// <c>00487C20</c> / <c>004FC210</c>.
+    /// Third arg 1 = async.
+    /// </summary>
+    public void LoadRegionByName(string? name)
+    {
+        Note(LoadRegionByNameFn, "LevelLoader", "Region", "00487C20");
+        var index = FindRegionIndexByName(name);
+        Note(FindRegionByNameFn, "LevelLoader", "Region",
+            $"004FC210 {name ?? "null"} index={index}");
+        if (index == 0)
+            return;
+        RequestLoadRegion(index, sync: false);
+    }
+
+    /// <summary>
+    /// <c>00501450</c>: table count &gt; 1 then
+    /// <c>00500540(1,0,0)</c>. No-save New Game
+    /// after the dummy first pump.
+    /// </summary>
+    public void LoadFromFirstRealRegion()
+    {
+        var count = (World?.Regions.Count ?? 0) + RegionTableDummyCount;
+        Note(LoadFromFirstRealRegionFn, "LevelLoader", "Region",
+            $"00501450 count={count}");
+        if (count <= 1)
+            return;
+        RequestLoadRegion(1, sync: true);
+    }
+
+    /// <summary>
+    /// After dummy <c>004189C2</c>: persist
+    /// name uses <c>00487C20</c>, else
+    /// <c>00501450</c> index 1. Not
+    /// <c>00DBDE40</c>.
+    /// </summary>
+    public void EnqueueAfterDummy()
+    {
+        if (FirstRealRegionLoadDone || UseNamedStart)
+            return;
+        FirstRealRegionLoadDone = true;
+        if (!string.IsNullOrEmpty(PlayerRegionName))
+        {
+            Note(LoadRegionByNamePersist, "LevelLoader", "Region",
+                "00449E60 PlayerRegionName");
+            LoadRegionByName(PlayerRegionName);
+            if (_loadQueue.Count > 0)
+                PumpLevelLoader();
+            return;
+        }
+
+        LoadFromFirstRealRegion();
     }
 
     /// <summary>

@@ -187,9 +187,37 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x004FC8A0u, EngineLifecycle.SetRegionAsLoadedFn);
         Assert.Equal(0x004FCBB0u, EngineLifecycle.ActivateTopologyFn);
         Assert.Equal(188, EngineLifecycle.WorldMapLevelLoaderOffset);
+        Assert.Equal(0x004FC210u, EngineLifecycle.FindRegionByNameFn);
+        Assert.Equal(0x00487C20u, EngineLifecycle.LoadRegionByNameFn);
+        Assert.Equal(0x00449E60u, EngineLifecycle.LoadRegionByNamePersist);
+        Assert.Equal(0x00501450u, EngineLifecycle.LoadFromFirstRealRegionFn);
         Assert.NotEqual(0x00DBDE40u, EngineLifecycle.GamePump);
         Assert.NotEqual(RegionTravel.StartOakValeSetup, EngineLifecycle.GetRegionRecordFn);
         Assert.NotEqual(RegionTravel.StartOakValeSetup, EngineLifecycle.SetRegionAsLoadedFn);
+    }
+
+    [Fact]
+    public void Persist_PlayerRegionName_is_00487C20_not_new_game()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle { PlayerRegionName = "StartOakVale" };
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.True(life.Pump());
+        Assert.Equal(0, life.CurrentRegionIndex);
+        Assert.Null(life.CurrentRegion);
+        Assert.True(life.Pump());
+        Assert.Equal(4, life.CurrentRegionIndex);
+        Assert.Equal("StartOakVale", life.CurrentRegion!.RegionName);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LoadRegionByNameFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FindRegionByNameFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
     }
 
     [Fact]
@@ -314,8 +342,11 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GamePumpUpdate);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.NamedStartFn);
+        Assert.False(life.FirstRealRegionLoadDone);
+        Assert.True(string.IsNullOrEmpty(life.PlayerRegionName));
 
-        life.RequestLoadRegion(1);
+        Assert.True(life.Pump());
+        Assert.True(life.FirstRealRegionLoadDone);
         Assert.Equal(1, life.CurrentRegionIndex);
         Assert.NotNull(life.CurrentRegion);
         Assert.Equal("LookoutPoint", life.CurrentRegion.RegionName);
@@ -323,8 +354,10 @@ public sealed class EngineLifecycleTests
         Assert.Contains("BowerstoneBridge", life.ActivatedMaps);
         Assert.Contains("GuildExterior", life.ActivatedMaps);
         Assert.Empty(life.PendingLoadIndices);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LoadRegionFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.EnqueueLoadJobFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.LoadRegionByNameFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LevelLoaderUpdate);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ActivateTopologyFn);
         Assert.Contains(life.Trace.Events, e =>
@@ -353,6 +386,10 @@ public sealed class EngineLifecycleTests
             Index 0 dummy. Index 1 LookoutPoint.
             Index 4 StartOakVale. First pump does not
             SetRegionAsLoaded.
+            00487C20 is 00449E60 PlayerRegionName
+            persist HEADER (continue), not New Game.
+            00501450 no-save: count>1 then
+            00500540(1,0,0) LookoutPoint.
             00500540 LoadRegion → 006C27A0 job +28=index
             → 006C2120 enqueue [WorldMap+188]
             → 006C2710 / 006C2170 Loading topology

@@ -131,12 +131,16 @@ window.Update += dt =>
     if (life.Stage == EngineStage.Game)
     {
         var first = !life.GamePumpFirstDone;
+        var before = life.CurrentRegion;
         life.Pump();
         if (first && life.GamePumpFirstDone)
             Console.WriteLine(
                 $"Game pump 0x{EngineLifecycle.GamePump:X} vtbl+52 0x{EngineLifecycle.WorldGetMapFn:X} " +
-                $"[{life.CurrentRegionIndex}] {life.CurrentRegion?.RegionName ?? "dummy"} " +
-                $"record+36 null (not 00DBDE40)");
+                $"[{life.CurrentRegionIndex}] dummy record+36 null (not 00DBDE40)");
+        if (before is null && life.CurrentRegion is { } loaded)
+            Console.WriteLine(
+                $"00501450/00487C20 [{life.CurrentRegionIndex}] {loaded.RegionName} " +
+                $"SetRegionAsLoaded 0x{EngineLifecycle.SetRegionAsLoadedFn:X}");
     }
 
     var f2Down = keyboard.IsKeyPressed(Key.F2);
