@@ -14,10 +14,11 @@ or in tests/code, treat it as **UNREAD**.
 `CAM_OVIF_SHOT2`) so `CS_OAKVALE_INTRO_FATHER` can run on a real
 world clock.
 
-Snapshot: **2026-08-18**, master merge `d559ad07`, runtime HEAD
-`48a879ac` (*Runtime: 00CB5AD0 starts WLD factory scripts; client is
-1024x768 Fable window.*).
-Just locked on this path: `efa0e541`, `48a879ac`.
+Snapshot: **2026-08-18**, master merge `9086f1c` (docs PR #22),
+runtime HEAD `1eec3bc` (*Runtime: WaitPlayAnimation plays via vtbl+72
+then leftover vtbl+104.*).
+Just locked on this path: `e7b3c76`, `12e0d75`, `be8545e`, `a708e60`,
+`012dccad`, `6b02b3b`, `666df8f`, `f778853`, `1eec3bc`.
 Master is still proving **boot / world clock**, not animation.
 README’s long-term priority list still starts with animation; that
 list is not the current phase.
@@ -68,15 +69,17 @@ from exe token list `0x012C1500–0x012C2C00` + `ScriptCommandMap`):
 |---|---|
 | Native command tokens | 185 |
 | Recovered dispatch / return | 156 |
-| Recovered apply | 93 |
+| Recovered apply | 95 |
 | Implemented runtime | 13 |
 | UNREAD tokens | 29 |
 
 The 13 **PROVEN** overall runtimes are `FadeOut` / `FadeIn` (global and
 entity), `SetTime`, `WaitFlag`, `SetFlag`, `PlayAVI`, `GamePause`,
 `DoOneFrame`, `CameraPause`, `ScriptFrame`, `DoScriptFrame`.
-`PlayAnimation` apply is still **PARTIAL**. First-seen create does not
-play an anim (`FirstSeenPlaysAnim=false`).
+`PlayAnimation` apply is now **PROVEN**; runtime still **PARTIAL**.
+`FirstSeenPlayAnimationAppliesPose=false`. Clip keyframes unread;
+PALSKIN stays bind pose.
+`WaitPlayAnimation` apply is now **PROVEN**; leftover is vtbl+104.
 
 Do not grind the 29 UNREAD tokens (Crowd\*, debug, `LadyGreyIntro`,
 boss fights, …) as a phase.
@@ -108,10 +111,13 @@ when a ledger or test already records them.
 
 ### Phase 1 in progress — boot / world clock (current master)
 
-Recent commits (`8bccec3` … `48a879ac`) lock the retail pump, not
-`00DBDE40`. Just locked: START_INITIAL_QUESTS / `004B4260`
-(`efa0e541`), `00CB5AD0` factory scripts + 1024×768 window
-(`48a879ac`).
+Recent commits (`8bccec3` … `1eec3bc`) lock the retail pump, not
+`00DBDE40`. Just locked: input dispatch (`e7b3c76`), game Present +
+viewport (`12e0d75`), ScenePasses flush (`be8545e`), Sunnyvale persist
+(`a708e60`), `00416E78` / `00446A30` listeners (`012dccad`),
+`0123758C` / `0041649C` (`6b02b3b`), World.Positions dest
+(`666df8f`), PlayAnimation apply (`f778853`), WaitPlayAnimation
+(`1eec3bc`).
 
 | Item | Status | Evidence |
 |---|---|---|
@@ -148,6 +154,17 @@ Recent commits (`8bccec3` … `48a879ac`) lock the retail pump, not
 | `00403079` / `009C0E50` display defaults 1024×768, title `TEXT_GUI_WINDOW_TITLE` | PROVEN | `48a879ac` / `Window_00403079_defaults_1024x768_and_title`. Client Size = `BackBufferWidth`/`Height`. `DefaultVulkan` 1600×900 DISPROVEN (issue #8 closed). |
 | `004B4260` activates WLD `START_INITIAL_QUESTS` (world+172 from `00507C30`) | PROVEN | `efa0e541` / `Init_quests_004B4260_activates_wld_initial_list` (`QuestsInitDone=true`) |
 | `00CB5AD0` starts `QuestFactoryTable` factory scripts (not `S_QNOVI`) | PROVEN | `48a879ac` / `Activate_quests_00CB5AD0_starts_factory_scripts` |
+| `0042E3EE` type/key events dispatch `0041E5F2` actions 0–5 / 20–21 (not WASD) | PROVEN | `e7b3c76` / `Input_0042E3EE_dispatches_0041E5F2_actions`. `0055CB10` records actions; no recovered player-move listener. Not WASD. New Game is still keyboard N/Enter (does not close #14). |
+| `009BEF80` SetViewport vtbl+188 full backbuffer 1024×768 MinZ 0 MaxZ 1 | PROVEN | `12e0d75` / `Window_00403079_defaults_1024x768_and_title` + `Game_00435530_Presents_009BEEB0_and_pumps_input` |
+| Game `00435530` / `00435F50` Present is the same `009BEEB0` as frontend and PlayAVI | PROVEN | `12e0d75` / `Game_00435530_Presents_009BEEB0_and_pumps_input`. `00417001` does not Present; it calls `00435F70` → `00435530` after WorldFrame>1. Client Draw is that Present, not a second swapchain. |
+| `00435530` flushes ScenePasses via `009DA9F0(1)` DIP vtbl+332 (bits `0x4` → `0x40` → `0x20` → `0x2000`) | PROVEN | `be8545e` / same `Game_00435530` test (`SubmittedLayerBits`). Order BeginScene, Clear, PlayerOverlay `00435000`→`00639E40`, PlayerInterface `00435070`, Flush2D `009D9C80`, FlushLayers `009DA9F0(1)`, EndScene, Present. Overlay/interface still Note. |
+| `00CDC070` binds `Q_SunnyvaleMaster` persist slots via `004045C0` bool / `00410BE0` int | PROVEN | `a708e60` / `Activate_quests_00CB5AD0_starts_factory_scripts`. PersistTable.Sunnyvale length 38, defaults `00CDBA10` zeros. BindBool `004045C0`, BindInt `00410BE0`, SunnyvaleBind `00CDC070`. |
+| `00416E78` vtbl+24 after WorldFrame>1 pumps `[game+32].vtbl+4` `00446A30` player-interface listeners (`0123758C` / `0041649C`) | PROVEN | `012dccad` / `Player_interface_00446A30_pumps_listeners_after_WorldFrame`. Init Player Interface `004473A0` alloc `0x898` vtbl `01231BDC` stored at game+32. Then `004457F0` `[+2196]=0`, poll `00446330` / `009F4ED0`. Skip device 2 / key 15 / type 0. Listeners vtbl+32 accept `00687DB0`, vtbl+16 apply `00687FD0` (`0123758C`). Zero E8 of `00446A30` itself; caller is `00416E78`. After hit: `0041649C` unless paused. Not the retail frontend `0042E3EE` walk. Not `00DBDE40`. |
+| `0123758C` ActionInputListener: accept `00687DB0`, apply `00687FD0`; factory `00488D20`. `RecordingInputListener` is gone | PROVEN | `6b02b3b` / `Player_interface_00446A30_pumps_listeners_after_WorldFrame` |
+| After `00446A30` hit: `0041649C` unless paused; action==2 queues `009F1650`. Default KeyMove3 `DeliveredCount=0` until owner ResultSelect (recovered) | PROVEN | `6b02b3b` / `Player_apply_0041649C_queues_009F1650_on_action_2` |
+| `WorldGeometry.ApplyActorPositions` consumes `006A9960` dest via `World.Positions`. Father still `NOVI_LiveFather` via `00DB86B0`. Not a renderer hack | PROVEN | `666df8f` / `WalkTo_writes_destination_and_entity_task` |
+| `PlayAnimation` apply `004C7470` / `0070D580` (vtbl+72 walk; +68 `00686920` accept; `00662A00` table; `0070C050`+`0070D580` inner) | PROVEN | `f778853` / `PlayAnimation_sets_clip_and_yields_unless_animation_pause` / `PlayAnimation_real_script_bank_line`. Runtime still PARTIAL. Clip sample unread. `FirstSeenPlayAnimationAppliesPose=false`. |
+| `WaitPlayAnimation` `00CC18E0` plays via vtbl+72 (or vtbl+76 if IsTrue arg3) then leftover vtbl+104 | PROVEN | `1eec3bc` / `WaitPlayAnimation_plays_then_polls_vtbl104` |
 | Game pump / first region is `00DBDE40` / StartOakVale setup | DISPROVEN | tests above |
 | No-save writes `[record+36]` | DISPROVEN | `recover-record36` text in `Camera_004164E0_runs_on_install_after_WorldFrame`; null still loads |
 
@@ -180,7 +197,9 @@ the no-save path.
 | `[0x13B8630]` catchup-tick writers | UNREAD | 3 immediate sites; default 0 |
 | `0041714D` when `world+164 != 0` | UNREAD | Default New Game is `world+164==0` |
 | Slot fields beyond `+6296/+6312/+6328` (weights / `+6340/+6352`) | UNREAD | Lerp into `ScriptedCamera` is PROVEN; leftover slot bodies are not |
-| `00435530` display apply | PARTIAL | Thunk `00435F70` is the jmp |
+| `00435530` overlay `00435000` / interface `00435070` bodies | PARTIAL | Present + `009DA9F0` layer bits PROVEN; overlay/interface still Note |
+| `0055CB10` frontend player-move listener | UNREAD | Actions 0–5 / 20–21 recorded; no recovered listener |
+| Game input poll `00446462` / `004963E6` | UNREAD | `e7b3c76` recover note (separate from `00446A30`) |
 | Who writes persist `PlayerRegionName` on New Game | UNREAD | Click/message path is PROVEN; persist HEADER writer is not |
 | `[esi+42]` load/save | UNREAD | `recover-00595582`; `[esi+41]` Leave is PROVEN |
 | Global-things *use* after `004FDBC0` / `.gtg` parse | UNREAD | Load switch is PROVEN; `00521AE0` is per-map TNG, not this apply |
@@ -203,14 +222,15 @@ opcode.” Last persist-vector-0 command:
 
 | Leftover on this fiber | Status | Where |
 |---|---|---|
-| `PlayAnimation` pose (`vtbl+72` / CTC `+68` `00686920` stub; `0070D580` not this path) | PARTIAL | COMMAND_MAP, PARITY 0b |
+| `PlayAnimation` runtime / clip sample (`vtbl+72` `004C7470` walk; +68 `00686920` accept; `00662A00` table; `0070C050`+`0070D580` inner). Apply is **PROVEN**; leftover is clip sample. `FirstSeenPlayAnimationAppliesPose=false` | PARTIAL | COMMAND_MAP, PARITY 0b; `f778853` |
+| `WaitPlayAnimation` leftover vtbl+104 poll (apply `00CC18E0` is **PROVEN**; not unread apply) | PARTIAL | `1eec3bc` / COMMAND_MAP |
 | `Create` `008A9100` / `Remove` `004C9B80` mesh | UNREAD | PARITY 0b “next unread” |
 | Skip-key bodies / vector 1 | UNREAD | first-seen skip does not fire |
 | Who writes `[quest+80]` / `AttackOver` after `vtbl+2584(12)` + `HerosOldHouse` | UNREAD | not a `mov` in `00DBDE00–00DBF000` |
 | `LookToThing` / `LookInDirection` heading bodies | PARTIAL | record + yield / no yaw write |
 | `MuteSounds` apply; `DoCameraPreloading` `vtbl+1560/1568` | PARTIAL | |
 | Dialogue UI (`Speak` / `InteractiveSpeak` / `DialogSpeak`) | PARTIAL | one yield; no invented UI |
-| `SneakTo` / `WalkTo` mesh move (`004C72B0` stub) | PARTIAL | `FirstSeenSneakToAppliesMove=false` |
+| `SneakTo` / `WalkTo` mesh move (`004C72B0` stub) | PARTIAL | `FirstSeenSneakToAppliesMove=false`. Dest via `006A9960` / `World.Positions` is PROVEN (`666df8f`); mesh body is not. |
 | `PlayCombatAnimation` pose | PARTIAL | `vtbl+76` does not read the name |
 | `call [vtbl+8]` resume site; `vtbl+28` yield body; `Main` `00CDD440` | UNREAD | PARITY 0b |
 | `WmvPlayer` never QIs `IBasicAudio` (native `00A3B9D0` does) | PARTIAL | issue #9 |
