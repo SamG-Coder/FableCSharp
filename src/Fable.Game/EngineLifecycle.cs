@@ -69,6 +69,12 @@ public sealed class EngineLifecycle
     public const uint InputDeviceVa = 0x013B8388;
     public const uint InputPollFn = 0x009F4ED0;
     public const uint InputEventFn = 0x00A03B40;
+    public const uint InputActionGetter = EngineInput.Getter;
+    public const uint InputActionCtor = EngineInput.Ctor;
+    public const uint InputActionVtbl = EngineInput.Vtbl;
+    public const uint InputActionApply = EngineInput.ActionApply;
+    public const uint InputBindDefaults = EngineInput.BindDefaults;
+    public const uint InputEventKeyFn = EngineInput.EventKeyFn;
     public const uint CreateDeviceFn = 0x009BF7E0;
     public const int GraphicsObjectSize = 0x2C8;
     public const int IDirect3D9GetDeviceCapsVtbl = 56;
@@ -632,6 +638,12 @@ public sealed class EngineLifecycle
     public int BackBufferHeight { get; private set; }
     public int BackBufferBpp { get; private set; }
     public string WindowTitle { get; private set; } = WindowTitleDefault;
+    /// <summary>
+    /// <c>0041E5F2</c> singleton. Built on
+    /// the first <c>0042E3EE</c> /
+    /// <c>00418289</c> pump.
+    /// </summary>
+    public EngineInput Input { get; } = new();
     public string? WorldFileName { get; private set; }
     public WorldFile? World { get; private set; }
     public RegionGraph? Regions { get; private set; }
@@ -960,6 +972,11 @@ public sealed class EngineLifecycle
             "0042E3EE walk [0x13B8388]");
         Note(InputDeviceVa, "Frontend", "Input", "engine+88 DINPUT8");
         Note(InputPollFn, "Frontend", "Input", "009F4ED0");
+        Note(InputEventFn, "Frontend", "Input",
+            "00A03B40 type [record+40]");
+        Note(InputEventKeyFn, "Frontend", "Input",
+            "00A03B70 key [record+0]");
+        PumpInput();
         Note(FrontendUpdateFn, "Frontend", "UI", "0042DC94");
         Note(FrontendUiTickFn, "Frontend", "UI", "00599E3F");
         Note(FrontendRecordZeroFn, "Frontend", "Render",
@@ -1290,6 +1307,12 @@ public sealed class EngineLifecycle
     public void UpdateGameMode()
     {
         Note(GameUpdateFn, "GamePump", "Update", "vtbl+20 00418289");
+        Input.Construct();
+        Note(InputActionGetter, "GamePump", "Input",
+            "0041E5F2 [0x13B8710] size 0xD0");
+        if (Input.Busy)
+            Note(InputActionGetter, "GamePump", "Input",
+                $"+{EngineInput.BusyOffset} busy");
         if (GameSleepMs > 0)
             Note(SleepIat, "GamePump", "Update", $"Sleep {GameSleepMs}");
         FrontEndQuery = QueryFrontEnd();
@@ -2383,6 +2406,32 @@ public sealed class EngineLifecycle
             "0042E3EE [0x13B8388]");
         CreateDeviceFlags = CreateDeviceSoftwareFlags;
         GraphicsCreated = true;
+    }
+
+    /// <summary>
+    /// Queue one <c>009F4F10</c> record
+    /// for the next <c>0042E3EE</c> pump.
+    /// Type at <c>+40</c>, key at <c>+0</c>.
+    /// </summary>
+    public void QueueInput(int type, int key) => Input.Queue(type, key);
+
+    /// <summary>
+    /// <c>0042E3EE</c>: construct
+    /// <c>0041E5F2</c>, poll queued
+    /// events, <c>0055CB10</c> actions.
+    /// </summary>
+    public void PumpInput()
+    {
+        Input.Construct();
+        Note(InputActionGetter, "Input", "Action",
+            "0041E5F2 [0x13B8710]");
+        Note(InputActionCtor, "Input", "Action",
+            "0041E3F6 vtbl 01230134");
+        Note(InputBindDefaults, "Input", "Action",
+            "0041DF10 keyboard defaults");
+        Input.Pump();
+        Note(InputActionApply, "Input", "Action",
+            $"0055CB10 n={Input.Actions.Count}");
     }
 
     /// <summary>

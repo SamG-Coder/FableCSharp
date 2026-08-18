@@ -556,6 +556,75 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Input_0042E3EE_dispatches_0041E5F2_actions()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.Equal(EngineStage.Frontend, life.Stage);
+        Assert.False(life.Input.Present);
+        life.QueueInput(EngineInput.TypeKey, EngineInput.KeyMove3);
+        Assert.True(life.Pump());
+        Assert.True(life.Input.Present);
+        Assert.Equal(EngineInput.KeyMove3, life.Input.LastKey);
+        Assert.Equal(0x1, life.Input.Mask);
+        Assert.Equal(new[] { 33, 0 }, life.Input.Actions);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InputActionGetter);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InputActionApply);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InputBindDefaults);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+
+        life.QueueInput(EngineInput.TypeKey, EngineInput.KeyMove2);
+        life.Pump();
+        Assert.Equal(new[] { 33, 1 }, life.Input.Actions);
+
+        life.QueueInput(EngineInput.TypeKey, EngineInput.KeyMove0);
+        life.Pump();
+        Assert.Equal(new[] { 33, 2, 20 }, life.Input.Actions);
+
+        life.QueueInput(EngineInput.TypeKey, EngineInput.KeyMove1);
+        life.Pump();
+        Assert.Equal(new[] { 33, 3, 21 }, life.Input.Actions);
+
+        life.QueueInput(EngineInput.TypeKey, EngineInput.KeyDikA);
+        life.Pump();
+        Assert.Equal(new[] { 33, 4 }, life.Input.Actions);
+
+        life.QueueInput(EngineInput.TypeKey, EngineInput.KeyDikB);
+        life.Pump();
+        Assert.Equal(new[] { 33, 5 }, life.Input.Actions);
+
+        Assert.Equal(0x6F, EngineInput.KeyboardDefaults[0].Key);
+        Assert.Equal(0x70, EngineInput.KeyboardDefaults[1].Key);
+        Assert.Equal(0x72, EngineInput.KeyboardDefaults[2].Key);
+        Assert.Equal(0x6D, EngineInput.KeyboardDefaults[3].Key);
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-0042E3EE.txt"),
+            """
+            0042E3EE only caller 0042F0AC (retail frontend).
+            Event type [record+40] 00A03B40
+            Event key  [record+0]  00A03B70
+            Type 1: +192 = key (0042D4F7); 0055CB10(33)
+              111/0x6F slot0 → mask 0x4 → actions 2,20
+              112/0x70 slot1 → mask 0x8 → actions 3,21
+              114/0x72 slot2 → mask 0x2 → action 1
+              109/0x6D slot3 → mask 0x1 → action 0
+              30/DIK_A       → mask 0x100 → action 4
+              48/DIK_B       → mask 0x200 → action 5
+              21/DIK_Y       → mask 0x20000 → action 22
+            0041E5F2 singleton [0x13B8710] size 0xD0
+              ctor 0041E3F6 vtbl 01230134
+              0041DF10(0) keyboard defaults at +36
+              vtbl+0 0055CB10 listener walk
+            00418289 constructs the same singleton.
+            Game poll 00446462 / 004963E6 unread.
+            Not WASD. Not 00DBDE40.
+            """);
+    }
+
+    [Fact]
     public void Activate_quests_00CB5AD0_starts_factory_scripts()
     {
         var install = GameInstall.TryLocate();
@@ -1103,6 +1172,15 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x013B8388u, EngineLifecycle.InputDeviceVa);
         Assert.Equal(0x009F4ED0u, EngineLifecycle.InputPollFn);
         Assert.Equal(0x00A03B40u, EngineLifecycle.InputEventFn);
+        Assert.Equal(0x0041E5F2u, EngineLifecycle.InputActionGetter);
+        Assert.Equal(0x0041E3F6u, EngineLifecycle.InputActionCtor);
+        Assert.Equal(0x01230134u, EngineLifecycle.InputActionVtbl);
+        Assert.Equal(0x0055CB10u, EngineLifecycle.InputActionApply);
+        Assert.Equal(0x0041DF10u, EngineLifecycle.InputBindDefaults);
+        Assert.Equal(0x00A03B70u, EngineLifecycle.InputEventKeyFn);
+        Assert.Equal(0xD0, EngineInput.ObjectSize);
+        Assert.Equal(0x6F, EngineInput.KeyMove0);
+        Assert.Equal(0x1E, EngineInput.KeyDikA);
         Assert.Equal(0x004023F0u, EngineLifecycle.WindowTitleFn);
         Assert.Equal(0x0122D83Cu, EngineLifecycle.WindowTitleVa);
         Assert.Equal("TEXT_GUI_WINDOW_TITLE", EngineLifecycle.WindowTitleId);

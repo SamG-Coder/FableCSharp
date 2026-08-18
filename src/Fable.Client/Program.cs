@@ -55,6 +55,8 @@ var f1WasDown = false;
 var f2WasDown = false;
 var gWasDown = false;
 var nWasDown = false;
+var aWasDown = false;
+var bWasDown = false;
 var wasAvi = false;
 
 window.Load += () =>
@@ -126,6 +128,14 @@ window.Update += dt =>
         }
 
         nWasDown = nDown;
+        var aDown = keyboard.IsKeyPressed(Key.A);
+        if (aDown && !aWasDown)
+            life.QueueInput(EngineInput.TypeKey, EngineInput.KeyDikA);
+        aWasDown = aDown;
+        var bDown = keyboard.IsKeyPressed(Key.B);
+        if (bDown && !bWasDown)
+            life.QueueInput(EngineInput.TypeKey, EngineInput.KeyDikB);
+        bWasDown = bDown;
         renderer?.ClearVideoFrame();
         // 0042DF9E BeginScene/UI/EndScene/009BEEB0.
         // window.Render Draw is that Present.
