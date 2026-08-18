@@ -50,9 +50,13 @@
 
     <p>
       Snapshot: <strong>2026-08-18</strong>, master merge
-      <code>d559ad07</code>, runtime HEAD <code>48a879ac</code>
-      (<em>Runtime: 00CB5AD0 starts WLD factory scripts; client is 1024x768 Fable window.</em>).
-      Just locked on this path: <code>efa0e541</code>, <code>48a879ac</code>.
+      <code>9086f1c</code> (docs PR #22), runtime HEAD
+      <code>1eec3bc</code>
+      (<em>Runtime: WaitPlayAnimation plays via vtbl+72 then leftover vtbl+104.</em>).
+      Just locked on this path: <code>e7b3c76</code>,
+      <code>12e0d75</code>, <code>be8545e</code>, <code>a708e60</code>,
+      <code>012dccad</code>, <code>6b02b3b</code>, <code>666df8f</code>,
+      <code>f778853</code>, <code>1eec3bc</code>.
       Master is still proving <strong>boot / world clock</strong>, not animation.
       README’s long-term priority list still starts with animation; that
       list is not the current phase.
@@ -121,7 +125,7 @@
       <tbody>
         <tr><td>Native command tokens</td><td>185</td></tr>
         <tr><td>Recovered dispatch / return</td><td>156</td></tr>
-        <tr><td>Recovered apply</td><td>93</td></tr>
+        <tr><td>Recovered apply</td><td>95</td></tr>
         <tr><td>Implemented runtime</td><td>13</td></tr>
         <tr><td>UNREAD tokens</td><td>29</td></tr>
       </tbody>
@@ -133,10 +137,13 @@
       <code>PlayAVI</code>, <code>GamePause</code>, <code>DoOneFrame</code>,
       <code>CameraPause</code>, <code>ScriptFrame</code>,
       <code>DoScriptFrame</code>.
-      <code>PlayAnimation</code> apply is still
+      <code>PlayAnimation</code> apply is now
+      <span class="badge PROVEN">PROVEN</span>; runtime still
       <span class="badge PARTIAL">PARTIAL</span>.
-      First-seen create does not play an anim
-      (<code>FirstSeenPlaysAnim=false</code>).
+      <code>FirstSeenPlayAnimationAppliesPose=false</code>.
+      Clip keyframes unread; PALSKIN stays bind pose.
+      <code>WaitPlayAnimation</code> apply is now
+      <span class="badge PROVEN">PROVEN</span>; leftover is vtbl+104.
     </p>
     <p>
       Do not grind the 29 UNREAD tokens (Crowd*, debug,
@@ -223,11 +230,16 @@
 
     <h3>Phase 1 in progress — boot / world clock (current master)</h3>
     <p>
-      Recent commits (<code>8bccec3</code> … <code>48a879ac</code>) lock the
+      Recent commits (<code>8bccec3</code> … <code>1eec3bc</code>) lock the
       retail pump, not <code>00DBDE40</code>. Just locked:
-      START_INITIAL_QUESTS / <code>004B4260</code> (<code>efa0e541</code>),
-      <code>00CB5AD0</code> factory scripts + 1024×768 window
-      (<code>48a879ac</code>).
+      input dispatch (<code>e7b3c76</code>), game Present + viewport
+      (<code>12e0d75</code>), ScenePasses flush (<code>be8545e</code>),
+      Sunnyvale persist (<code>a708e60</code>),
+      <code>00416E78</code> / <code>00446A30</code> listeners
+      (<code>012dccad</code>),
+      <code>0123758C</code> / <code>0041649C</code> (<code>6b02b3b</code>),
+      World.Positions dest (<code>666df8f</code>), PlayAnimation apply
+      (<code>f778853</code>), WaitPlayAnimation (<code>1eec3bc</code>).
     </p>
     <table>
       <thead><tr><th>Item</th><th>Status</th><th>Evidence</th></tr></thead>
@@ -398,6 +410,61 @@
           <td><code>48a879ac</code> / <code>Activate_quests_00CB5AD0_starts_factory_scripts</code></td>
         </tr>
         <tr>
+          <td><code>0042E3EE</code> type/key events dispatch <code>0041E5F2</code> actions 0–5 / 20–21 (not WASD)</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>e7b3c76</code> / <code>Input_0042E3EE_dispatches_0041E5F2_actions</code>. <code>0055CB10</code> records actions; no recovered player-move listener. Not WASD. New Game is still keyboard N/Enter (does not close #14).</td>
+        </tr>
+        <tr>
+          <td><code>009BEF80</code> SetViewport vtbl+188 full backbuffer 1024×768 MinZ 0 MaxZ 1</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>12e0d75</code> / <code>Window_00403079_defaults_1024x768_and_title</code> + <code>Game_00435530_Presents_009BEEB0_and_pumps_input</code></td>
+        </tr>
+        <tr>
+          <td>Game <code>00435530</code> / <code>00435F50</code> Present is the same <code>009BEEB0</code> as frontend and PlayAVI</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>12e0d75</code> / <code>Game_00435530_Presents_009BEEB0_and_pumps_input</code>. <code>00417001</code> does not Present; it calls <code>00435F70</code> → <code>00435530</code> after WorldFrame&gt;1. Client Draw is that Present, not a second swapchain.</td>
+        </tr>
+        <tr>
+          <td><code>00435530</code> flushes ScenePasses via <code>009DA9F0(1)</code> DIP vtbl+332 (bits <code>0x4</code> → <code>0x40</code> → <code>0x20</code> → <code>0x2000</code>)</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>be8545e</code> / same <code>Game_00435530</code> test (<code>SubmittedLayerBits</code>). Order BeginScene, Clear, PlayerOverlay <code>00435000</code>→<code>00639E40</code>, PlayerInterface <code>00435070</code>, Flush2D <code>009D9C80</code>, FlushLayers <code>009DA9F0(1)</code>, EndScene, Present. Overlay/interface still Note.</td>
+        </tr>
+        <tr>
+          <td><code>00CDC070</code> binds <code>Q_SunnyvaleMaster</code> persist slots via <code>004045C0</code> bool / <code>00410BE0</code> int</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>a708e60</code> / <code>Activate_quests_00CB5AD0_starts_factory_scripts</code>. PersistTable.Sunnyvale length 38, defaults <code>00CDBA10</code> zeros. BindBool <code>004045C0</code>, BindInt <code>00410BE0</code>, SunnyvaleBind <code>00CDC070</code>.</td>
+        </tr>
+        <tr>
+          <td><code>00416E78</code> vtbl+24 after WorldFrame&gt;1 pumps <code>[game+32].vtbl+4</code> <code>00446A30</code> player-interface listeners (<code>0123758C</code> / <code>0041649C</code>)</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>012dccad</code> / <code>Player_interface_00446A30_pumps_listeners_after_WorldFrame</code>. Init Player Interface <code>004473A0</code> alloc <code>0x898</code> vtbl <code>01231BDC</code> stored at game+32. Then <code>004457F0</code> <code>[+2196]=0</code>, poll <code>00446330</code> / <code>009F4ED0</code>. Skip device 2 / key 15 / type 0. Listeners vtbl+32 accept <code>00687DB0</code>, vtbl+16 apply <code>00687FD0</code> (<code>0123758C</code>). Zero E8 of <code>00446A30</code> itself; caller is <code>00416E78</code>. After hit: <code>0041649C</code> unless paused. Not the retail frontend <code>0042E3EE</code> walk. Not <code>00DBDE40</code>.</td>
+        </tr>
+        <tr>
+          <td><code>0123758C</code> ActionInputListener: accept <code>00687DB0</code>, apply <code>00687FD0</code>; factory <code>00488D20</code>. <code>RecordingInputListener</code> is gone</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>6b02b3b</code> / <code>Player_interface_00446A30_pumps_listeners_after_WorldFrame</code></td>
+        </tr>
+        <tr>
+          <td>After <code>00446A30</code> hit: <code>0041649C</code> unless paused; action==2 queues <code>009F1650</code>. Default KeyMove3 <code>DeliveredCount=0</code> until owner ResultSelect (recovered)</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>6b02b3b</code> / <code>Player_apply_0041649C_queues_009F1650_on_action_2</code></td>
+        </tr>
+        <tr>
+          <td><code>WorldGeometry.ApplyActorPositions</code> consumes <code>006A9960</code> dest via <code>World.Positions</code>. Father still <code>NOVI_LiveFather</code> via <code>00DB86B0</code>. Not a renderer hack</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>666df8f</code> / <code>WalkTo_writes_destination_and_entity_task</code></td>
+        </tr>
+        <tr>
+          <td><code>PlayAnimation</code> apply <code>004C7470</code> / <code>0070D580</code> (vtbl+72 walk; +68 <code>00686920</code> accept; <code>00662A00</code> table; <code>0070C050</code>+<code>0070D580</code> inner)</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>f778853</code> / <code>PlayAnimation_sets_clip_and_yields_unless_animation_pause</code> / <code>PlayAnimation_real_script_bank_line</code>. Runtime still PARTIAL. Clip sample unread. <code>FirstSeenPlayAnimationAppliesPose=false</code>.</td>
+        </tr>
+        <tr>
+          <td><code>WaitPlayAnimation</code> <code>00CC18E0</code> plays via vtbl+72 (or vtbl+76 if IsTrue arg3) then leftover vtbl+104</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>1eec3bc</code> / <code>WaitPlayAnimation_plays_then_polls_vtbl104</code></td>
+        </tr>
+        <tr>
           <td>Game pump / first region is <code>00DBDE40</code> / StartOakVale setup</td>
           <td><span class="badge DISPROVEN">DISPROVEN</span></td>
           <td>tests above</td>
@@ -463,9 +530,19 @@
           <td>Lerp into <code>ScriptedCamera</code> is PROVEN; leftover slot bodies are not</td>
         </tr>
         <tr>
-          <td><code>00435530</code> display apply</td>
+          <td><code>00435530</code> overlay <code>00435000</code> / interface <code>00435070</code> bodies</td>
           <td><span class="badge PARTIAL">PARTIAL</span></td>
-          <td>Thunk <code>00435F70</code> is the jmp</td>
+          <td>Present + <code>009DA9F0</code> layer bits PROVEN; overlay/interface still Note</td>
+        </tr>
+        <tr>
+          <td><code>0055CB10</code> frontend player-move listener</td>
+          <td><span class="badge UNREAD">UNREAD</span></td>
+          <td>Actions 0–5 / 20–21 recorded; no recovered listener</td>
+        </tr>
+        <tr>
+          <td>Game input poll <code>00446462</code> / <code>004963E6</code></td>
+          <td><span class="badge UNREAD">UNREAD</span></td>
+          <td><code>e7b3c76</code> recover note (separate from <code>00446A30</code>)</td>
         </tr>
         <tr>
           <td>Who writes persist <code>PlayerRegionName</code> on New Game</td>
@@ -519,9 +596,14 @@
       <thead><tr><th>Leftover on this fiber</th><th>Status</th><th>Where</th></tr></thead>
       <tbody>
         <tr>
-          <td><code>PlayAnimation</code> pose (<code>vtbl+72</code> / CTC <code>+68</code> <code>00686920</code> stub; <code>0070D580</code> not this path)</td>
+          <td><code>PlayAnimation</code> runtime / clip sample (<code>vtbl+72</code> <code>004C7470</code> walk; +68 <code>00686920</code> accept; <code>00662A00</code> table; <code>0070C050</code>+<code>0070D580</code> inner). Apply is <span class="badge PROVEN">PROVEN</span>; leftover is clip sample. <code>FirstSeenPlayAnimationAppliesPose=false</code></td>
           <td><span class="badge PARTIAL">PARTIAL</span></td>
-          <td>COMMAND_MAP, PARITY 0b</td>
+          <td>COMMAND_MAP, PARITY 0b; <code>f778853</code></td>
+        </tr>
+        <tr>
+          <td><code>WaitPlayAnimation</code> leftover vtbl+104 poll (apply <code>00CC18E0</code> is <span class="badge PROVEN">PROVEN</span>; not unread apply)</td>
+          <td><span class="badge PARTIAL">PARTIAL</span></td>
+          <td><code>1eec3bc</code> / COMMAND_MAP</td>
         </tr>
         <tr>
           <td><code>Create</code> <code>008A9100</code> / <code>Remove</code> <code>004C9B80</code> mesh</td>
@@ -556,7 +638,7 @@
         <tr>
           <td><code>SneakTo</code> / <code>WalkTo</code> mesh move (<code>004C72B0</code> stub)</td>
           <td><span class="badge PARTIAL">PARTIAL</span></td>
-          <td><code>FirstSeenSneakToAppliesMove=false</code></td>
+          <td><code>FirstSeenSneakToAppliesMove=false</code>. Dest via <code>006A9960</code> / <code>World.Positions</code> is PROVEN (<code>666df8f</code>); mesh body is not.</td>
         </tr>
         <tr>
           <td><code>PlayCombatAnimation</code> pose</td>
@@ -694,7 +776,7 @@
       Ledgers stay source of truth.
       Markdown twin: <a href="README.md">README.md</a>.
       Live:
-      <a href="https://samg-coder.github.io/FableCSharp/status/">samg-coder.github.io/FableCSharp/status/</a>
+      <a href="https://samg-coder.github.io/FableCSharp/docs/status/index.html">https://samg-coder.github.io/FableCSharp/docs/status/index.html</a>
     </footer>
   </div>
 </body>
