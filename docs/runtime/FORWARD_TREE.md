@@ -470,23 +470,33 @@ Called at the **end** of `004184BD`, after Create Players.
 
 ```
 00416953  PROVEN
-├── [world].vtbl+28([game+40])
-├── [game+90588] length via 0099B220
-│   └── >0  "Loading save" → 004A3200   (not no-save)
+├── [world].vtbl+28([game+40])          SLOT (site 00416968)
+├── [game+90588] length via 0099B220    PROVEN helper
+│   └── >0  "Loading save" → 004A3200   UNREAD (not no-save)
 └── else "Loading world"
-    ├── path from +90576 / [0x13B8668] / 0x122EE14
-    ├── 004A1840(world, path)  PROVEN
+    ├── path                             PROVEN
+    │   ├── +90576 via 00415E17          first-seen FinalAlbion.wld
+    │   │   from Leave 0042F44D
+    │   ├── else [0x13B8668]             empty first-seen
+    │   └── else 0x122EE14               UTF-16 updatedscenic.wld
+    │                                    (not first-seen New Game)
+    ├── 004A1840(world, path)            PARTIAL (LoadWorldMap)
     │   ├── "Load Quests" → 004A0D90
     │   ├── 004FDAB0 world map
     │   ├── "Startup WAD"
-    │   ├── 006C20A0 pump until empty
-    │   ├── "Generate Offline Data" if [0x1375446]
+    │   ├── 006C20A0 pump until empty    UNREAD
+    │   ├── "Generate Offline Data" if [0x1375446]  UNREAD
     │   └── "Set Static Map for Engine" vtbl+208
-    ├── [0x13B8648]==0
-    │   ├── 0049F180 Init Characters / GUI
+    ├── [0x13B8648]!=0 editor            UNREAD (not no-save)
+    │   0049DDD0 / 0049D550 / 0049DEC0 / 0049D6B0
+    ├── [0x13B8648]==0                   first-seen
+    │   ├── 0049F180(ecx=world, 0)       PROVEN
+    │   │   ├── "Init Characters" 00449970 / 00487DC0 / 00449D90
+    │   │   ├── "Init GUI" 0043A380 [0x13B8790]
+    │   │   └── "Init Quests" 004B4260([world+172]) / 004B2890
     │   └── "Activate Initial Quests"
-    │       └── +90584 empty → 004B4A10
-    └── 004BBC00
+    │       └── +90584 empty vs 0x122D70E → 004B4A10  PROVEN
+    └── 004BBC00([0x13B8674])            PROVEN ret 4
 ```
 
 WLD token parse `00507C30` is inside that `004A1840` world-map
@@ -502,17 +512,19 @@ path, not inside `005066E0` ctor.
 │   └── else           → 004FE2A0 .gtg
 └── 00509982 / 00506D40 / 00828710  region graph
 
-00416ABA  "Loading world"
-├── 004A1840  Load Quests
-│   └── 004A0D90  AddQuest / AddTestQuest → world+184
-├── 0049F180  Init Characters / Init GUI 0043A380
-└── 004B4260  Init Quests  [world+172] START_INITIAL_QUESTS
-    ├── 00CB5AD0  factory lookup
-    ├── 00CD52D0  registrar
-    └── 00416BCF / 004B4A10  Activate Initial Quests
-        Q_SunnyvaleMaster, PersonalScriptMain,
-        PersonalScript_GlobalThings, HeroBoasts,
-        V_HeroDolls, CS_PlayCutscene
+00416ABA  call 004A1840  (site, not a function)
+00416ABF  [0x13B8648]==0
+00416BCA  call 0049F180
+00416BCF  "Activate Initial Quests" → +90584 empty → 004B4A10
+00416C25  call 004BBC00
+
+004B4260  Init Quests  [world+172] START_INITIAL_QUESTS
+├── 00CB5AD0  factory lookup
+├── 00CD52D0  registrar
+└── names from 00507C30 START_INITIAL_QUESTS:
+    Q_SunnyvaleMaster, PersonalScriptMain,
+    PersonalScript_GlobalThings, HeroBoasts,
+    V_HeroDolls, CS_PlayCutscene
 ```
 
 `Q_NewOakValeIntro` / `00DBDE40` are **not** on this list.
@@ -726,7 +738,7 @@ It is **not** the same load as `Fable.exe`:
 |---|---|---|
 | `009A8150` names only | `RegisterRetailBankTable` names only | MATCH |
 | `0049E620` MESH directory | `MeshBank.Open` directory | MATCH |
-| `004A1840` child list | `LoadWorldMap` then quests immediately | DIVERGE |
+| `004A1840` child list | `LoadWorldMap` WLD/QST/WAD; `0049F180` / `004B4A10` after | MATCH |
 | `00B3EFA0` LEV/STB header | `PeekMapHeader` 48-byte LEV + STB size | MATCH |
 | `009AD410` handle, draw later | `PresentWorld` instances, `expandGeometry: false` | MATCH |
 | Draw | Engine `SubmitCurrentWorld` before `00435530`: `00BDC2D0` AABB on opened patches + primary C3D `Meshes.Get`. | MATCH (patch AABB) |

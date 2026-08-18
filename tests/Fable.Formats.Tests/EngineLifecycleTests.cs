@@ -37,7 +37,21 @@ public sealed class EngineLifecycleTests
         Assert.Equal("MBANK_ALLMESHES", MeshBank.BankName);
         Assert.Equal(0x00416953u, EngineLifecycle.GameLoadWorldFn);
         Assert.Equal(32, EngineLifecycle.GameLoadWorldVtbl);
+        Assert.Equal(28, EngineLifecycle.WorldPrepareVtbl);
+        Assert.Equal(0x00416968u, EngineLifecycle.WorldPrepareSite);
         Assert.Equal(0x004A3200u, EngineLifecycle.LoadSaveFn);
+        Assert.Equal(90576, EngineLifecycle.GameWorldPathOffset);
+        Assert.Equal(90584, EngineLifecycle.GameQuestOverrideOffset);
+        Assert.Equal(90588, EngineLifecycle.GameSaveNameOffset);
+        Assert.Equal(0x00415E17u, EngineLifecycle.GameWorldPathCopyFn);
+        Assert.Equal(0x013B8668u, EngineLifecycle.WorldPathGlobalVa);
+        Assert.Equal(0x0122EE14u, EngineLifecycle.WorldPathDefaultVa);
+        Assert.Equal("updatedscenic.wld", EngineLifecycle.WorldPathDefault);
+        Assert.Equal(0x0122D70Eu, EngineLifecycle.EmptyQuestNameVa);
+        Assert.Equal(0x004BBC00u, EngineLifecycle.AfterLoadWorldFn);
+        Assert.Equal(0x013B8674u, EngineLifecycle.AfterLoadWorldArgVa);
+        Assert.Equal(0x0049F180u, EngineLifecycle.InitCharactersFn);
+        Assert.Equal(0x004B4A10u, EngineLifecycle.ActivateInitialQuestsFn);
         Assert.Equal(0x00BDF010u, EngineLifecycle.AttachPatchFn);
         Assert.Equal(0x00B420F0u, EngineLifecycle.OpenStaticMapsNameTable);
     }
@@ -1311,6 +1325,64 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Pump());
         Assert.Equal(2, life.GameUpdateCount);
         Assert.Equal(2, life.GameRenderCount);
+    }
+
+    [Fact]
+    public void LoadWorld_00416953_no_save_is_004A1840_then_0049F180()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.Null(life.CurrentRegion);
+        Assert.False(life.FirstRealRegionLoadDone);
+        var events = life.Trace.Events;
+        var loadWorld = events.FindIndex(e =>
+            e.Va == EngineLifecycle.GameLoadWorldFn &&
+            e.Action.Contains("00416953", StringComparison.Ordinal));
+        var prepare = events.FindIndex(e => e.Va == EngineLifecycle.WorldPrepareSite);
+        var skipSave = events.FindIndex(e =>
+            e.Va == EngineLifecycle.LoadSaveFn &&
+            e.Action.Contains("skipped", StringComparison.Ordinal));
+        var path = events.FindIndex(e =>
+            e.Va == EngineLifecycle.GameWorldPathCopyFn &&
+            e.Action.Contains("FinalAlbion.wld", StringComparison.Ordinal));
+        var loadMap = events.FindIndex(e => e.Va == EngineLifecycle.LoadQuestsFn);
+        var wad = events.FindIndex(e => e.Va == EngineLifecycle.StartupWadSite);
+        var staticMap = events.FindIndex(e =>
+            e.Va == EngineLifecycle.SetStaticMapForEngineSite);
+        var initChars = events.FindIndex(e =>
+            e.Va == EngineLifecycle.InitCharactersFn &&
+            e.Stage == "Init Characters");
+        var activate = events.FindIndex(e =>
+            e.Va == EngineLifecycle.ActivateInitialQuestsFn);
+        var after = events.FindIndex(e => e.Va == EngineLifecycle.AfterLoadWorldFn);
+        Assert.True(loadWorld >= 0 && prepare > loadWorld, "vtbl+28 after 00416953");
+        Assert.True(skipSave > prepare, "004A3200 skip after vtbl+28");
+        Assert.True(path > skipSave, "+90576 after skip-save");
+        Assert.True(loadMap > path, "004A1840 after path");
+        Assert.True(wad > loadMap && staticMap > wad,
+            "Startup WAD / Set Static Map inside 004A1840");
+        Assert.True(initChars > staticMap, "0049F180 after 004A1840");
+        Assert.True(activate > initChars, "004B4A10 after 0049F180");
+        Assert.True(after > activate, "004BBC00 after 004B4A10");
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.AfterLoadWorldFn &&
+            e.Action.Contains("ret 4", StringComparison.Ordinal));
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.GameWorldPathCopyFn &&
+            e.Action.Contains("updatedscenic.wld", StringComparison.Ordinal));
+        Assert.Equal("FinalAlbion.wld", life.WorldFileName);
+        Assert.NotEqual(EngineLifecycle.WorldPathDefault, life.WorldFileName);
+        Assert.True(life.PlayerGuiReady);
+        Assert.True(life.QuestsInitDone);
+        Assert.Empty(life.ActivatedQuests);
+        Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.NamedStartFn);
+        Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.LoadRegionFn);
     }
 
     [Fact]

@@ -543,16 +543,38 @@ public sealed class EngineLifecycle : IDisposable
     public const uint GameRenderFn = 0x00417001;
     /// <summary>
     /// Game vtbl+32 <c>00416953</c>.
+    /// First insn is <c>[world].vtbl+28([game+40])</c>.
     /// <c>[game+90588]</c> nonempty is
     /// "Loading save" <c>004A3200</c>.
-    /// No-save is empty → "Loading world"
-    /// <c>004A1840</c> then <c>0049F180</c>
-    /// / <c>004B4A10</c>.
+    /// No-save is empty → "Loading world".
+    /// Path is <c>+90576</c> (Leave frontend
+    /// <c>0042F44D</c> / ctor <c>00415E17</c>
+    /// writes <c>FinalAlbion.wld</c>), else
+    /// <c>[0x13B8668]</c>, else UTF-16
+    /// <c>0x122EE14</c> <c>updatedscenic.wld</c>.
+    /// Then <c>004A1840(world, path)</c>.
+    /// <c>[0x13B8648]==0</c> → <c>0049F180(0)</c>
+    /// / Activate Initial Quests /
+    /// <c>004B4A10</c>. Always <c>004BBC00</c>
+    /// (<c>ret 4</c>) with <c>[0x13B8674]</c>.
     /// </summary>
     public const int GameLoadWorldVtbl = 32;
     public const uint GameLoadWorldFn = 0x00416953;
+    public const int WorldPrepareVtbl = 28;
+    public const uint WorldPrepareSite = 0x00416968;
     public const uint LoadSaveFn = 0x004A3200;
+    public const int GameWorldPathOffset = 90576;
+    public const int GameWorldPathAltOffset = 90580;
+    public const int GameQuestOverrideOffset = 90584;
     public const int GameSaveNameOffset = 90588;
+    public const uint GameWorldPathCopyFn = 0x00415E17;
+    public const uint WorldPathGlobalVa = 0x013B8668;
+    public const uint WorldPathAltGlobalVa = 0x013B866C;
+    public const uint WorldPathDefaultVa = 0x0122EE14;
+    public const string WorldPathDefault = "updatedscenic.wld";
+    public const uint EmptyQuestNameVa = 0x0122D70E;
+    public const uint AfterLoadWorldFn = 0x004BBC00;
+    public const uint AfterLoadWorldArgVa = 0x013B8674;
     public const uint StartupWadSite = 0x004A19EB;
     public const uint SetStaticMapForEngineSite = 0x004A1B7D;
     public const uint AttachPatchFn = 0x00BDF010;
@@ -851,8 +873,8 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>004A1840</c> "Load Quests" during
     /// Loading world <c>00416ABA</c>. Parses
     /// <c>AddQuest</c> / <c>AddTestQuest</c>
-    /// into world+184. Then <c>0049F180</c>
-    /// activates <c>[world+172]</c>.
+    /// into world+184. <c>0049F180</c> is
+    /// the next sibling, not a child.
     /// </summary>
     public const uint LoadQuestsFn = 0x004A1840;
     public const uint LoadQuestsSite = 0x00416ABA;
@@ -2161,30 +2183,48 @@ public sealed class EngineLifecycle : IDisposable
 
     /// <summary>
     /// Game vtbl+32 <c>00416953</c>.
-    /// No-save <c>[+90588]</c> empty skips
-    /// <c>004A3200</c> "Loading save".
-    /// Then <c>004A1840</c> WLD / quests /
-    /// Startup WAD / Set Static Map, then
-    /// <c>0049F180</c> / <c>004B4A10</c>.
+    /// <c>[world].vtbl+28([game+40])</c> then
+    /// no-save <c>[+90588]</c> empty skips
+    /// <c>004A3200</c>. Path is <c>+90576</c>
+    /// <c>FinalAlbion.wld</c> from Leave
+    /// frontend, not the <c>0x122EE14</c>
+    /// fallback. <c>004A1840</c> then
+    /// <c>[0x13B8648]==0</c> → <c>0049F180</c>
+    /// / <c>004B4A10</c>, then <c>004BBC00</c>
+    /// <c>ret 4</c>. Not a region load.
     /// </summary>
     public void LoadWorld()
     {
         Note(GameLoadWorldFn, "Loading world", "World",
             "00416953 vtbl+32 [+90588] empty");
+        Note(WorldPrepareSite, "Loading world", "World",
+            $"[world].vtbl+{WorldPrepareVtbl}([game+40])");
         Note(LoadSaveFn, "Loading world", "World",
             "004A3200 Loading save skipped");
         Note(GameLoadWorldFn, "Loading world", "World", "Loading world");
+        Note(GameWorldPathCopyFn, "Loading world", "WLD",
+            $"+{GameWorldPathOffset} {FinalAlbionWld} not {WorldPathDefault}");
         LoadWorldMap();
-        Note(StartupWadSite, "Loading world", "WLD", "Startup WAD");
-        Note(SetStaticMapForEngineSite, "Loading world", "WLD",
-            "Set Static Map for Engine");
+        if (SkipParticlesFirstSeen == 0)
+        {
+            Note(SkipParticlesVa, "Loading world", "World",
+                $"013B8648={SkipParticlesFirstSeen} 0049F180");
+            InitCharactersAndQuests();
+        }
+
+        Note(AfterLoadWorldFn, "Loading world", "World",
+            "004BBC00 ret 4 013B8674");
     }
 
     /// <summary>
     /// <c>004A1840</c> from <c>00416953</c>:
     /// <c>00507C30</c> token-switch parse of
     /// <c>FinalAlbion.wld</c>. Then GTNG,
-    /// global things, region graph, quests.
+    /// global things, region graph, QST
+    /// <c>004A0D90</c> into world+184,
+    /// Startup WAD, Set Static Map.
+    /// <c>0049F180</c> / <c>004B4A10</c> are
+    /// siblings after this call, not children.
     /// <c>005066E0</c> ctor already ran in
     /// Init World Init.
     /// </summary>
@@ -2194,25 +2234,29 @@ public sealed class EngineLifecycle : IDisposable
             "004A1840 Load Quests / WLD / Startup WAD");
         Note(LoadWldFile, "Load .wld file", "WLD", "00507C30 vtbl+12");
         WorldFileName = FinalAlbionWld;
-        if (Install is null)
-            return;
-        if (!File.Exists(Install.WorldPath))
+        if (Install is not null)
         {
-            Note(LoadWldFile, "Load .wld file", "WLD", "missing " + FinalAlbionWld);
-            return;
+            if (!File.Exists(Install.WorldPath))
+                Note(LoadWldFile, "Load .wld file", "WLD", "missing " + FinalAlbionWld);
+            else
+            {
+                World = Timing.Measure("WLD", () => WorldFile.Load(Install.WorldPath),
+                    w => $"maps={w.Maps.Count} regions={w.Regions.Count}");
+                Note(LoadWldFile, "Load .wld file", "WLD",
+                    $"maps={World.Maps.Count} regions={World.Regions.Count} quests={World.InitialQuests.Count}");
+                LoadGtngFile();
+                Timing.Measure("TNG global", () => { LoadGlobalThingsFile(); return GlobalThingMapsLoaded; },
+                    n => $"maps={n} things={GlobalThings?.Things.Count() ?? 0}");
+                Timing.Measure("region graph", () => { LoadRegionGraphFile(); return Regions?.Neighbors.Count ?? 0; },
+                    n => $"nodes={n}");
+                Timing.Measure("quests", () => { LoadQuestDefs(); return Quests?.Quests.Count ?? 0; },
+                    n => $"defs={n}");
+            }
         }
 
-        World = Timing.Measure("WLD", () => WorldFile.Load(Install.WorldPath),
-            w => $"maps={w.Maps.Count} regions={w.Regions.Count}");
-        Note(LoadWldFile, "Load .wld file", "WLD",
-            $"maps={World.Maps.Count} regions={World.Regions.Count} quests={World.InitialQuests.Count}");
-        LoadGtngFile();
-        Timing.Measure("TNG global", () => { LoadGlobalThingsFile(); return GlobalThingMapsLoaded; },
-            n => $"maps={n} things={GlobalThings?.Things.Count() ?? 0}");
-        Timing.Measure("region graph", () => { LoadRegionGraphFile(); return Regions?.Neighbors.Count ?? 0; },
-            n => $"nodes={n}");
-        Timing.Measure("quests", () => { LoadQuestsAndActivate(); return _activatedQuests.Count; },
-            n => $"activated={n}");
+        Note(StartupWadSite, "Loading world", "WLD", "Startup WAD");
+        Note(SetStaticMapForEngineSite, "Loading world", "WLD",
+            "Set Static Map for Engine");
     }
 
     /// <summary>
@@ -3559,23 +3603,14 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
-    /// Loading world <c>00416ABA</c>:
-    /// <c>004A1840</c> Load Quests (QST
-    /// <c>004A0D90</c> into world+184), then
-    /// <c>0049F180</c> Init GUI / Init Quests
-    /// <c>004B4260([world+172])</c>.
-    /// No-save <c>[0x13B8648]==0</c>.
-    /// <c>[world+172]</c> is WLD
-    /// <c>START_INITIAL_QUESTS</c> written
-    /// by <c>00507C30</c>. Then
-    /// <c>00416BCF</c> Activate Initial Quests
-    /// when game+90584 is empty.
-    /// Not <c>S_QNOVI</c> / <c>00DBDE40</c>.
+    /// <c>004A1840</c> child: QST
+    /// <c>004A0D90</c> AddQuest /
+    /// AddTestQuest into world+184.
+    /// Not <c>0049F180</c>.
     /// </summary>
-    private void LoadQuestsAndActivate()
+    private void LoadQuestDefs()
     {
-        Note(LoadQuestsSite, "Load Quests", "Quest", "00416ABA Loading world");
-        Note(LoadQuestsFn, "Load Quests", "Quest", "004A1840");
+        Note(LoadQuestsSite, "Load Quests", "Quest", "00416ABA 004A1840");
         Note(QstParseFn, "Load Quests", "Quest", "004A0D90 AddQuest/AddTestQuest");
         if (Install is not null && File.Exists(Install.QuestPath))
         {
@@ -3583,9 +3618,27 @@ public sealed class EngineLifecycle : IDisposable
             Note(QstParseFn, "Load Quests", "Quest",
                 $"quests={Quests.Quests.Count} {Path.GetFileName(Install.QuestPath)}");
         }
+    }
 
+    /// <summary>
+    /// <c>00416953</c> after <c>004A1840</c>
+    /// when <c>[0x13B8648]==0</c>:
+    /// <c>0049F180(ecx=world, 0)</c> Init
+    /// Characters / Init GUI <c>0043A380</c>
+    /// / Init Quests <c>004B4260([world+172])</c>,
+    /// then Activate Initial Quests
+    /// (<c>+90584</c> empty vs <c>0x122D70E</c>
+    /// → <c>004B4A10</c>). Not a region load
+    /// and not <c>S_QNOVI</c> / <c>00DBDE40</c>.
+    /// </summary>
+    private void InitCharactersAndQuests()
+    {
+        Note(InitCharactersFn, "Init Characters", "Player",
+            "0049F180 push 0 ecx=world");
+        Note(PlayerCreatureBindFn, "Init Characters", "Player",
+            "00449970 / 00487DC0");
         Note(InitGuiFn, "Init GUI", "UI",
-            "0043A380 PLAYER_GUI_PC [0x13B878C]");
+            "0043A380 PLAYER_GUI_PC [0x13B8790]");
         PlayerGuiReady = true;
 
         var names = World?.InitialQuests ?? [];
@@ -3619,10 +3672,11 @@ public sealed class EngineLifecycle : IDisposable
             _activatedQuests.Add(name);
         }
 
+        Note(QuestManagerActivate, "Init Quests", "Quest", "004B2890");
         Note(ActivateInitialQuestsSite, "Activate Initial Quests", "Quest",
-            "00416BCF game+90584 empty → 004B4A10");
+            "00416BCF +90584 empty 0122D70E → 004B4A10");
         Note(ActivateInitialQuestsFn, "Activate Initial Quests", "Quest",
-            "004B4A10 → 004B4260");
+            "004B4A10 [0x13B89FC] → 004B4260");
         QuestsInitDone = true;
     }
 
