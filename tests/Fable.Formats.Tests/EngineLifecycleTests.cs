@@ -1859,6 +1859,11 @@ public sealed class EngineLifecycleTests
             Vector3.TransformNormal(Vector3.UnitY, WorldGeometry.ObjectTransform(life.Hero!)));
         Assert.True((heroFwd - Vector3.UnitX).Length() < 0.05f,
             $"hero forward={heroFwd} expected +X from GuildArrivalHSP");
+        Assert.NotNull(life.Runtime);
+        Assert.Same(life.Hero, life.Runtime.Bindings.Resolve("HERO")?.Thing);
+        Assert.Same(life.Hero, life.Runtime.Bindings.Resolve("Hero")?.Thing);
+        Assert.True((life.Runtime.World.Positions["HERO"] -
+                     RegionTravel.PositionOf(life.Hero!)).Length() < 0.05f);
         life.CloseStaticMapFile();
         Assert.Empty(life.OpenedMapBodies);
         Assert.Equal(0, life.OpenStaticMapsMode);

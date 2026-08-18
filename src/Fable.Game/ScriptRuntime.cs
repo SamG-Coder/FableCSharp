@@ -241,13 +241,52 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
         foreach (var thing in _things)
         {
             Bindings.BindSceneThing(thing);
-            if (thing.DefinitionType is not null &&
-                thing.DefinitionType.Equals(RegionTravel.KidCreature, StringComparison.OrdinalIgnoreCase))
+            if (IsHeroThing(thing) &&
+                (hero is null || PreferHero(thing, hero)))
                 hero = thing;
         }
 
         Bindings.BindHero(hero);
+        if (hero is { PositionX: not null })
+        {
+            var pos = RegionTravel.PositionOf(hero);
+            World.Positions[ScriptBindings.HeroAlias] = pos;
+            if (hero.ScriptName is { Length: > 0 } name)
+                World.Positions[name] = pos;
+        }
         _ = Bindings.DrainChanges();
+    }
+
+    /// <summary>
+    /// No-save Lookout is <c>CREATURE_HERO</c>
+    /// <c>ScriptName=Hero</c>. Kid 4300 is only
+    /// the Oakvale intro Thing.
+    /// </summary>
+    private static bool IsHeroThing(ThingInstance thing)
+    {
+        if (thing.ScriptName is { Length: > 0 } name &&
+            (name.Equals(ScriptBindings.HeroAlias, StringComparison.OrdinalIgnoreCase) ||
+             name.Equals(EngineLifecycle.HeroScriptName, StringComparison.OrdinalIgnoreCase)))
+            return true;
+        return thing.DefinitionType is RegionTravel.AdultCreature
+            or RegionTravel.TweenCreature
+            or RegionTravel.KidCreature;
+    }
+
+    private static bool PreferHero(ThingInstance candidate, ThingInstance current)
+    {
+        static int Rank(ThingInstance t)
+        {
+            if (t.DefinitionType == RegionTravel.AdultCreature)
+                return 3;
+            if (t.DefinitionType == RegionTravel.TweenCreature)
+                return 2;
+            if (t.DefinitionType == RegionTravel.KidCreature)
+                return 1;
+            return 0;
+        }
+
+        return Rank(candidate) > Rank(current);
     }
 
     /// <summary>

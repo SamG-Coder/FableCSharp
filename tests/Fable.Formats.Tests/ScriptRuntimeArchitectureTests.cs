@@ -7442,6 +7442,8 @@ public sealed class ScriptRuntimeArchitectureTests
         interp.RunUntilYield(runtime);
         Assert.True(interp.Yielded);
         Assert.Equal("WALK", runtime.Animation.States["HERO"].Name);
+        Assert.Equal("WALK", runtime.Animation.States["HERO"].ClipKey);
+        Assert.True(runtime.Animation.States["HERO"].InnerApplied);
         Assert.True(runtime.Animation.States["HERO"].Looping);
         Assert.Equal(3, runtime.Animation.States["HERO"].Loops);
         Assert.Equal(0x00CC186Cu, ScriptCommandMap.Find("PlayLoopingAnim")!.Value.ApplySite);

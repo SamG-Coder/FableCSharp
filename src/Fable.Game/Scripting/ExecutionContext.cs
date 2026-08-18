@@ -998,7 +998,18 @@ public sealed class AnimationRuntime
     {
         Plays.Add(new ScriptAnimation(actor, name, f1, f2, f3, f4, f5));
         if (actor is { Length: > 0 })
-            States[actor] = new AnimationState(actor, name, true, f1, f2, f3, f4, f5) { Loops = loops };
+        {
+            EnsureComplex(actor);
+            var accepted = WalkPlay(actor, name);
+            var state = new AnimationState(actor, name, true, f1, f2, f3, f4, f5)
+            {
+                Loops = loops,
+                Walked = true,
+                Plus68Accepted = accepted,
+            };
+            BeginInnerPlay(state, name, 1);
+            States[actor] = state;
+        }
         var task = Tasks.Replace(actor, EntityTaskKind.LoopAnimate, name, null, 0f);
         var op = new PendingOperation(task.Id, "PlayLoopingAnim", actor, name);
         if (actor is { Length: > 0 })

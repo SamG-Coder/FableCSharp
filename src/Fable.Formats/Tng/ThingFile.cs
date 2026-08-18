@@ -189,8 +189,8 @@ public sealed class ThingInstance
     public string? ScriptName { get; init; }
     public ulong? Uid { get; init; }
     public int? Player { get; init; }
-    public float? PositionX { get; init; }
-    public float? PositionY { get; init; }
-    public float? PositionZ { get; init; }
+    public float? PositionX { get; set; }
+    public float? PositionY { get; set; }
+    public float? PositionZ { get; set; }
     public required IReadOnlyDictionary<string, string> Properties { get; init; }
 }

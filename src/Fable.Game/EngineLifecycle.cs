@@ -2637,7 +2637,39 @@ public sealed class EngineLifecycle : IDisposable
             QuestPumpWalked++;
         }
 
+        Runtime?.Update(1f / 30f);
+        WriteHeroFromRuntime();
         QuestPumpRan = true;
+    }
+
+    /// <summary>
+    /// Same Thing scripts, movement, and
+    /// PALSKIN use. Not <c>CREATURE_HERO_CHILD</c>.
+    /// </summary>
+    private void BindRuntimeHero()
+    {
+        if (Runtime is null || Hero is null)
+            return;
+        Runtime.BindScene(_regionThings, null);
+        Runtime.Bindings.BindHero(Hero);
+        if (Hero.PositionX is not null)
+        {
+            var pos = RegionTravel.PositionOf(Hero);
+            Runtime.World.Positions[ScriptBindings.HeroAlias] = pos;
+            Runtime.World.Positions[HeroScriptName] = pos;
+        }
+    }
+
+    private void WriteHeroFromRuntime()
+    {
+        if (Runtime is null || Hero is null)
+            return;
+        if (!Runtime.World.Positions.TryGetValue(HeroScriptName, out var pos) &&
+            !Runtime.World.Positions.TryGetValue(ScriptBindings.HeroAlias, out pos))
+            return;
+        Hero.PositionX = pos.X;
+        Hero.PositionY = pos.Y;
+        Hero.PositionZ = pos.Z;
     }
 
     /// <summary>
@@ -3398,6 +3430,7 @@ public sealed class EngineLifecycle : IDisposable
             _thingsByMap.TryGetValue(mapName, out var mapThings))
             mapThings.Add(Hero);
         HeroSpawned = true;
+        BindRuntimeHero();
         if (source.PositionX is not null && source.PositionY is not null)
         {
             if (!WorldCameraPresent)
