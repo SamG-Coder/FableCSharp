@@ -15,16 +15,19 @@ or in tests/code, treat it as **UNREAD**.
 world clock.
 
 Snapshot: **2026-08-18**, previous snapshot runtime HEAD
-`18ef09b` via PR #31 merge `bfc382ac`,
-runtime HEAD `be3339e` (*Consume 00B314E0 helper camera; cache
-landscape resolve.*).
-Just locked on this path: `204a214`, `52e26bc`, `fab17be`,
-`6493c77`, `d6821b8`, `be3339e`.
+`be3339e` via PR #32 merge `0511a20`,
+runtime HEAD `306e83c` (*Static C3D: one file-local VB per mesh,
+instance W on the draw.*).
+Just locked on this path: `3dba4a1`, `5e57e64`, `63336fd`,
+`676bf63`, `7c93828`, `40037b1`, `cf0ee50`, `a6f939a`,
+`cb22533`, `306e83c`.
 Do not include any later runtime if master moves. Freeze at
-`be3339e`. Docs PR #29 `bedcf919` is iOS Settings chrome only —
-CSS unchanged. Master is still proving **boot / world clock**,
-not animation. README’s long-term priority list still starts
-with animation; that list is not the current phase.
+`306e83c`. Master HEAD may be merge `e0d97cd` — ignore that
+merge; runtime facts stay at `306e83c`. Docs PR #29
+`bedcf919` is iOS Settings chrome only — CSS unchanged.
+Master is still proving **boot / world clock**, not animation.
+README’s long-term priority list still starts with animation;
+that list is not the current phase.
 
 Live site: <https://samg-coder.github.io/FableCSharp/docs/status/index.html>
 ([index.html](index.html) locally; GitHub Pages from `master` `/docs`).
@@ -105,7 +108,7 @@ when a ledger or test already records them.
 | Adult Lookout is not the first-scene camera | PROVEN | [FIRST_SCENE_WORLD_PARITY.md](../render/FIRST_SCENE_WORLD_PARITY.md) |
 | TNG local vs STB WLD; `STB − (MapX, MapY)` meeting space | PROVEN | same |
 | House 6909/6911, kid 4300 bind-pose, landscape strips, sky else-path `0x2000` | PROVEN | contract + world parity |
-| DX9 → Vulkan first-scene submit (layers `0x4` → `0x40` → `0x20` → `0x2000`) | PROVEN / EQUIVALENT | [DX9_VULKAN_PARITY.md](../render/DX9_VULKAN_PARITY.md) |
+| DX9 → Vulkan first-scene submit (layers `0x4` → `0x40` → `0x20` → `0x100` → `0x2000`) | PROVEN / EQUIVALENT | [DX9_VULKAN_PARITY.md](../render/DX9_VULKAN_PARITY.md); `0x100` drain `676bf63` |
 | `T(cam)` on host world-space STB verts | DISPROVEN | world parity; submit uses identity W |
 | Invented `stars.dat` billboards / 1 m landscape fill | DISPROVEN | PARITY / world parity |
 | `S_QNOVI` + `NOVI_LiveFather` → `CS_OAKVALE_INTRO_FATHER` | PROVEN | [COMMAND_MAP.md](../runtime/COMMAND_MAP.md), PARITY |
@@ -116,17 +119,19 @@ when a ledger or test already records them.
 
 ### Phase 1 in progress — boot / world clock (current master)
 
-Recent commits (`9c625bc` … `be3339e`) lock engine submit / host
-Present / frontend flush / camera seed / helper camera, not
-`00DBDE40`. Previous snapshot `18ef09b` via PR #31 `bfc382ac`.
-Just locked: first-seen `006B2CA0` pose, not invented `SeedAt`
-(`204a214`), `004B4490` quest walk + `006B3030` spring without
-invented V0 (`52e26bc`), first-seen `006B3B80` skip + `00CB78D0`
-fiber +41 (`fab17be`), `009DA9F0` empty skip / DIP vtbl+332
-(`6493c77`), vtbl+92 `00B23BC0` / `00B324A0` type 0x22
-(`d6821b8`), `00B314E0` helper camera + cached landscape resolve
-(`be3339e`). Docs PR #29 `bedcf919` is iOS Settings chrome only —
-CSS unchanged.
+Recent commits (`9c625bc` … `306e83c`) lock engine submit / host
+Present / frontend flush / camera seed / helper camera /
+landscape cells / instance W, not `00DBDE40`. Previous snapshot
+`be3339e` via PR #32 `0511a20`.
+Just locked: `00BF4570` persistent cells (`3dba4a1`), static C3D
+file-local verts + `009881F0` World (`5e57e64`), sky `0x2000`
+midday dome (`63336fd`), PALSKIN drain `0x100` (`676bf63`),
+unload region patches / one WAD (`7c93828`), cell DIP `0x40`
+only (`40037b1`), process-lifetime `game.bin` / `meshdata.h`
+(`cf0ee50`), `00A0C130` packer + `00988A50` WVP (`a6f939a`),
+PALSKIN file dest triangles (`cb22533`), one file-local VB per
+mesh (`306e83c`). Docs PR #29 `bedcf919` is iOS Settings chrome
+only — CSS unchanged.
 
 | Item | Status | Evidence |
 |---|---|---|
@@ -166,7 +171,7 @@ CSS unchanged.
 | `0042E3EE` type/key events dispatch `0041E5F2` actions 0–5 / 20–21 (not WASD) | PROVEN | `e7b3c76` / `Input_0042E3EE_dispatches_0041E5F2_actions`. `0055CB10` records actions; no recovered player-move listener. Not WASD. New Game is still keyboard N/Enter (does not close #14). |
 | `009BEF80` SetViewport vtbl+188 full backbuffer 1024×768 MinZ 0 MaxZ 1 | PROVEN | `12e0d75` / `Window_00403079_defaults_1024x768_and_title` + `Game_00435530_Presents_009BEEB0_and_pumps_input` |
 | Game `00435530` / `00435F50` Present is the same `009BEEB0` as frontend and PlayAVI | PROVEN | `12e0d75` / `Game_00435530_Presents_009BEEB0_and_pumps_input`. `00417001` does not Present; it calls `00435F70` → `00435530` after WorldFrame>1. Client Draw is that Present, not a second swapchain. |
-| `00435530` flushes ScenePasses via `009DA9F0(1)` DIP vtbl+332 (bits `0x4` → `0x40` → `0x20` → `0x2000`) | PROVEN | `be8545e` / same `Game_00435530` test (`SubmittedLayerBits`). Order BeginScene, Clear, PlayerOverlay `00435000`→`00639E40`, PlayerInterface `00435070`, Flush2D `009D9C80`, FlushLayers `009DA9F0(1)`, EndScene, Present. Overlay/interface still Note. |
+| `00435530` flushes ScenePasses via `009DA9F0(1)` DIP vtbl+332 (bits `0x4` → `0x40` → `0x20` → `0x100` → `0x2000`) | PROVEN | `be8545e` / `676bf63` / same `Game_00435530` test (`SubmittedLayerBits`). Order BeginScene, Clear, PlayerOverlay `00435000`→`00639E40`, PlayerInterface `00435070`, Flush2D `009D9C80`, FlushLayers `009DA9F0(1)`, EndScene, Present. Overlay/interface still Note. |
 | `00CDC070` binds `Q_SunnyvaleMaster` persist slots via `004045C0` bool / `00410BE0` int | PROVEN | `a708e60` / `Activate_quests_00CB5AD0_starts_factory_scripts`. PersistTable.Sunnyvale length 38, defaults `00CDBA10` zeros. BindBool `004045C0`, BindInt `00410BE0`, SunnyvaleBind `00CDC070`. |
 | `00416E78` vtbl+24 after WorldFrame>1 pumps `[game+32].vtbl+4` `00446A30` player-interface listeners (`0123758C` / `0041649C`) | PROVEN | `012dccad` / `Player_interface_00446A30_pumps_listeners_after_WorldFrame`. Init Player Interface `004473A0` alloc `0x898` vtbl `01231BDC` stored at game+32. Then `004457F0` `[+2196]=0`, poll `00446330` / `009F4ED0`. Skip device 2 / key 15 / type 0. Listeners vtbl+32 accept `00687DB0`, vtbl+16 apply `00687FD0` (`0123758C`). Zero E8 of `00446A30` itself; caller is `00416E78`. After hit: `0041649C` unless paused. Not the retail frontend `0042E3EE` walk. Not `00DBDE40`. |
 | `0123758C` ActionInputListener: accept `00687DB0`, apply `00687FD0`; factory `00488D20`. `RecordingInputListener` is gone | PROVEN | `6b02b3b` / `Player_interface_00446A30_pumps_listeners_after_WorldFrame` |
@@ -177,8 +182,8 @@ CSS unchanged.
 | PlayAVI `00A3B380`/`00A3BC20` unload graph before the next `006286F0` slot | PROVEN | `0ace433` / `PlayAvi_rewrites_xmv_to_installed_wmv_and_blocks` (`WmvPlayer.ReleaseGraphFn`, `PlayerDtorFn`, `GraphReleased`). Does not lock leftover #20 3D Draw. |
 | Client is `IEngineHost`; `Pump` owns AVI, New Game, world submit. Host only queues input and Presents | PROVEN | `d9977fb` / `EngineFrame_constructs_for_host_present` / `Unexpanded_world_is_not_a_geometry_submit` / `Install_banks` `WorldSubmitted` |
 | Engine submit: unique primary C3Ds + primary terrain, no world triangle soup. `SubmittedWorld` stays unexpanded | PROVEN | `f63b741` / `Install_banks_and_startup_videos_exist` (`SubmittedMesh` verts, LookoutPoint) |
-| Engine submit skins PALSKIN C3Ds (`TrianglesForPose` / `00BD2F91`) not static flatten. Hero 4299 is in `SubmittedPalskinMeshIds` | PROVEN | `5cb3435` / `Install_banks_and_startup_videos_exist` + `Kid_c3d` / `Wake_loop_3420`. First-seen dest is bind locals. |
-| Submit before `00435530`. Terrain is `00BDC2D0` AABB then `00BF4570` cells on opened patches | PROVEN | `b062c5d` / `TessellateVisible_uses_00bdc2d0_aabb` / `Install_banks`. Instances stay primary-only. |
+| Engine submit skins PALSKIN C3Ds (`TrianglesForPose` / `00BD2F91`) not static flatten. Hero 4299 is in `SubmittedPalskinMeshIds` | PROVEN | `5cb3435` / `Install_banks_and_startup_videos_exist` + `Kid_c3d` / `Wake_loop_3420`. First-seen dest later file triangles (`cb22533`); no CPU re-skin. |
+| Submit before `00435530`. Terrain is `00BDC2D0` AABB then `00BF4570` cells on opened patches | PROVEN | `b062c5d` / `TessellateVisible_uses_00bdc2d0_aabb` / `Install_banks`. Instances stay primary-only. Later persistent cells (`3dba4a1`); cell DIP `0x40` only (`40037b1`). |
 | Init Graphics opens `GBANK_MAIN_PC`; submitted ids go on `EngineFrame.Textures`. Game Present waits for seed+submit | PROVEN | `991bab2` / `Install_banks` `SubmittedTextures`. Program no longer constructs `TextureLibrary`. |
 | First-seen Lookout green is leftover `c3=(0,0.125,0)` × `mul_x2` × `oT1=(0,0)`, not a missing sampler | PROVEN | `Dx9VulkanShaderConstants.UnlitRgbIsC3Leftover`. Do not invent world UV. |
 | `Q_NewOakValeIntro` / SHOT2 is not first no-save Present. First playable is Lookout `006B3FF0` | PROVEN | `004162B5` dump: +20 then +28. Frontend widgets `00595222` UNREAD (black). |
@@ -193,6 +198,16 @@ CSS unchanged.
 | `009DA9F0(1)` first-seen empty → `009DB6E6` skip DIP. Nonempty would be `00A058C0` then `[device+88].vtbl+332`. No `cmp …,0x22`. Type-0x22 DIP is vtbl+332, not a 0x22 switch. `009D9C80` first 250: dirty-list only. Queue begin +16020. `Frontend2dDipIssued=false` | PROVEN | `6493c77` / `Frontend_present_runs_on_install_after_videos` (`DisplayQueueBeginOffset=16020`, `DrawIndexedPrimitiveVtbl=332`, `DisplayPrimitiveFn=00A058C0`). Does not close #14 |
 | `0042E204` Init Engine: `00B26340` alloc `0x178` ctor `00B260B0` vtbl `012A0F3C` at retail+88. `0041AFA0` `[012A0F3C+92]` = `00B23BC0` → `00B324A0([0x1436E80], widget+0x15C, rec, 0xC0, 0)`. Type `[rec]=0x22` → `[0x1436E84]+16+0x22*4`. dest+4=0 first-seen. Handler vtbl+20 UNREAD (not memcpy +16020) | PROVEN | `d6821b8` / `Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present` (`FrontendSubmitFn=00B23BC0`, `FrontendSubmitDispatchFn=00B324A0`, `FrontendEngineVtbl=012A0F3C`, `FrontendEngineObjectSize=0x178`). Does not close #14 |
 | First-seen WorldCamera +6296 is the ctor axis, not the eye (`IsCtorAxis`). `00B314E0` consumes helper from the hero (look `006B2CA0` V4, up `(0,0,1)` `FirstSeenCameraUp`, FOV 70 from `00A0C130` / `0x3E471B48` turns). Letterbox 1024×768 (`00B30B50` camera +176/+180). AABB-cull neighbour STB before height parse (`00BDC2D0` / `00BF6F80`). `textures.h` resolve cached (`LevelLibrary.LandscapeEnums`). Skip `SetMesh`/`SetTextures` when payload unchanged | PROVEN | `be3339e` / `Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint` / `Install_banks_and_startup_videos_exist` (`RendererHelperBound`, `GameCamera.FirstSeenFovDegrees`) / `CameraProjectionTests` (`ApplyRendererHelper`, `LandscapeFrustum.CameraUpdate=00B314E0`) / `World_submit_is_stable_between_frames` / `BuildFrame_reuses_texture_array` / `Texture_decode_is_cached` / `Lookout_tile_origin_is_region_local` / `MeshBank_does_not_reparse_c3d` / `Native_draw_order_is_begin_layers_end_present`. Does not close #6 or #13 |
+| Landscape `00BF4570` cells as persistent draws. Each STB 16 m tile is one LandscapeCell (cached on LevelLibrary). Submit builds per-cell MeshDraws; landscape and C3D on separate VBs. Concat stays a test rollup. Print LoadTiming on first New Game submit | PROVEN | `3dba4a1` / `Lookout_cells_match_stb_tiles` / `World_submit_is_stable_between_frames` (`SubmittedLandscapeCells`, `LastLoadTiming`). First commit submitted bits `0x4`/`0x40`; cell DIP later `0x40` only (`40037b1`) |
+| Static C3D: preserve native instance transform. C3D verts stay file-local. `MeshDraw.World` is the ObjectTransform 3x4 (`009881F0` wrapper+496). Draw multiplies W*VP. No per-triangle bake | PROVEN | `5e57e64` / `Instance_world_is_009881f0_not_baked_verts` |
+| Sky: submit `0x2000` midday dome on New Game. CEngineSkyRenderer `GRAPHIC_ATMOSPHERIC_SKY_MIDDAY` after static C3D (layer order `0x4`/`0x40`/`0x20`/`0x2000` at this commit). Uses `SkyViewProjection` | PROVEN | `63336fd` / `Install_banks_and_startup_videos_exist` (`PassBit == 0x2000`) / `Native_draw_order_is_begin_layers_end_present` / `ScenePassTests.Registration_is_34_layers_and_walks_landscape_before_sky`. PALSKIN `0x100` later (`676bf63`) |
+| PALSKIN: drain on layer `0x100` before sky. `00B33010` type-0/1 first slots use bit `0x100` (registration index 7), after static `0x20` and before sky `0x2000` | PROVEN | `676bf63` / `Game_00435530_Presents_009BEEB0_and_pumps_input` (`SubmittedLayerBits`) / `Native_draw_order_is_begin_layers_end_present` / `ScenePassTests.Registration_is_34_layers_and_walks_landscape_before_sky` / `Instance_world_is_009881f0_not_baked_verts` (static stays `0x20`) |
+| Resources: unload region patches; one WAD for TNG. `00B40000` / `00B3EF40` release map-slot LEV/STB/cells. Banks and WAD handle stay process-lifetime | PROVEN | `7c93828` / `LevelLibrary_unload_map_drops_region_not_wad` / `Install_banks_and_startup_videos_exist` (`HasCachedCells`, sky `0x2000`) |
+| Landscape: `00BF4570` cell DIP is layer `0x40` only. Bit `0x4` is `00BF71D0` tessellator background, not the stored cell mesh | PROVEN | `40037b1` / `Lookout_cells_match_stb_tiles` (`LayerForeground`; no `LayerBackground`) |
+| Resources: cache `game.bin` and `meshdata.h` at process lifetime. `009AD410`-style: one def table, not a per-map GameBin open | PROVEN | `cf0ee50` / `Install_banks_and_startup_videos_exist` / `LevelLibrary_reuses_lev_and_height_parses`. `LevelLibrary.Defs` / `MeshEnums` |
+| Camera: lock `00A0C130` ctor helper and `00988A50` WVP numbers. `00A0C130` is a packer. GameCamera ctor look is +Z, up `(1,1,1)`. `006B42F0` tail `008857E0` is bank lerp; vtbl+244 is colour-filter. Does not change the consumed first-Present helper (still UNREAD) | PROVEN | `a6f939a` / `CameraMatrixParityTests.GameCamera_ctor_look_default_is_plus_z` / `WorldCamera_tail_is_colour_filter_not_helper` / `GameCamera_ctor_helper_wvp_at_1024x768` / `Projection_numbers_match_009883F0`. Does not close #6 or #13 |
+| PALSKIN: submit file dest triangles, print load timing. `MeshFile.Triangles` already apply `00A9E1E0` × IBM. First-seen does not re-skin on the CPU. Hero 4299 stays on layer `0x100` | PROVEN | `cb22533` / `Palskin_submit_uses_file_triangles_not_repose` / `Install_banks_and_startup_videos_exist` (`SubmittedPalskinMeshIds` 4299) / `World_submit_is_stable_between_frames` (`LastLoadTiming`) |
+| Static C3D: one file-local VB per mesh, instance W on the draw. `00BB2540` copies locals once (shl idx,4, no matrix). `009881F0` owns the 3x4 per instance. Repeated Lookout lamps no longer duplicate the C3D soup | PROVEN | `306e83c` / `Instance_world_is_009881f0_not_baked_verts` (shared verts, distinct Worlds) |
 | `WaitPlayAnimation` `00CC18E0` plays via vtbl+72 (or vtbl+76 if IsTrue arg3) then leftover vtbl+104 | PROVEN | `1eec3bc` / `WaitPlayAnimation_plays_then_polls_vtbl104` |
 | FORWARD_TREE PE→WinMain→no-save New Game. Mesh bank `MBANK_ALLMESHES` at `0049E620` / `00A09F20` / `00A27030` / `004BBFD0`. Engine owns map open/close `00B40000` / `00B42750`. Client must not open a second graphics.big dump | PROVEN | `f0fb184` / `Pe_entry_is_crt_not_new_game` / `Install_banks_and_startup_videos_exist` |
 | Game vtbl+32 `00416953` is Loading world (no-save `[+90588]` empty skips `004A3200` Loading save). Then `004A1840` WLD/quests. `00B3E820` current handle LookoutPoint; `00B41E50` neighbours (PicnicArea); `00B420F0` name table; `00BDF010` neighbour patch. `00B42530` is STB-miss fallback only | PROVEN | `fc8b261` / same install test + `Pe_entry` constants |
@@ -235,7 +250,8 @@ the no-save path.
 | `00B324A0` type-0x22 handler vtbl+20 | UNREAD | `d6821b8` dispatch is PROVEN; dest+4=0 first-seen; not memcpy +16020 |
 | `0041AC20` dest rect from +204/+248 | UNREAD | `c612ad5` packer writes type/size; dest rect leftover |
 | New Game keyboard N/Enter (host stand-in) | leftover #14 | Retail click/message `0059A238` is PROVEN; `00595222` and N/Enter are not that lock |
-| `006B8640` / `008889C0` leftover (do not write V0 first-seen) | UNREAD | `006B2CA0` pose is PROVEN (`204a214`). Host `SeedAt(1.6m)` is DISPROVEN as live New Game. Lookout helper FOV 70 from `00A0C130` (`be3339e`). SHOT2 FOV 72 is intro-view leftover — do not collapse into Lookout. Do not close #6 / #13 |
+| `006B8640` / `008889C0` leftover (do not write V0 first-seen) | UNREAD | `006B2CA0` pose is PROVEN (`204a214`). Host `SeedAt(1.6m)` is DISPROVEN as live New Game. Lookout helper FOV 70 from `00A0C130` (`be3339e`). `00A0C130` is a packer (`a6f939a`); ctor look +Z, up `(1,1,1)`. SHOT2 FOV 72 is intro-view leftover — do not collapse into Lookout. Do not close #6 / #13 |
+| Consumed first-Present helper | UNREAD | `a6f939a` locks ctor packer / `00988A50` WVP / bank lerp `008857E0` / vtbl+244 colour-filter. Does not change the consumed first-Present helper. Do not reopen #6 / #13 |
 | `004978A0` LCG seed for `006B3030` | UNREAD | Spring ran; Weight0/V0 first-seen locked (`52e26bc`). Seed unread |
 | `0055CB10` frontend player-move listener | UNREAD | Actions 0–5 / 20–21 recorded; no recovered listener |
 | Game input poll `00446462` / `004963E6` | UNREAD | `e7b3c76` recover note (separate from `00446A30`) |
@@ -318,7 +334,7 @@ README item 1, *after* a ticking world. First-seen wake lines
 | Animation resource lookup | UNREAD / PARTIAL |
 | Clip first-key sample | in `PaletteForPose` (`00A999B0` / `00AA4680` / `00A4C5E0`); leftover is time interp `00AA0090` |
 | Skeletal pose | UNREAD (`FirstSeenPlayAnimationAppliesPose=false`) |
-| PALSKIN dest beyond bind-pose identity | first-seen dest ≈ identity is PROVEN; play-anim product is not |
+| PALSKIN dest beyond file triangles | first-seen dest is `MeshFile.Triangles` (`00A9E1E0` × IBM, `cb22533`); no CPU re-skin. Play-anim product is not |
 
 ### 5. Later (README order, after first-scene boot)
 
@@ -354,11 +370,14 @@ The boot-first sequence holds. Corrections from the repo:
    New Game *click* is PROVEN; persist `PlayerRegionName` writer is not.
    `006B2CA0` first-seen pose is now PROVEN (`204a214`); invented
    `SeedAt(1.6m)` is not the New Game path. Lookout helper FOV is
-   70 from `00A0C130` (`be3339e`); SHOT2 FOV 72 stays intro-view
-   leftover. `006B8640`/`008889C0` leftover UNREAD. Do not close
-   #6 / #13. Frontend leftover is still `00595222` Note and New
-   Game keyboard N/Enter (#14). `0041AC20` dest rect and
-   `00B324A0` handler vtbl+20 stay UNREAD.
+   70 from `00A0C130` (`be3339e`); `00A0C130` is a packer
+   (`a6f939a`). Consumed first-Present helper stays UNREAD — do
+   not reopen #6 / #13. SHOT2 FOV 72 stays intro-view leftover.
+   `006B8640`/`008889C0` leftover UNREAD. Frontend leftover is
+   still `00595222` Note and New Game keyboard N/Enter (#14).
+   `0041AC20` dest rect and `00B324A0` handler vtbl+20 stay
+   UNREAD. New Game submit now walks `0x4`/`0x40`/`0x20`/`0x100`/
+   `0x2000` (`676bf63`); cell DIP is `0x40` only (`40037b1`).
 2. **GTNG is not an unread file on TLC** — missing skip is PROVEN.
    `00521AE0` loads the current map `.tng`. Remaining UNREAD is
    global-things *use* after `004FDBC0` / `.gtg` parse, plus

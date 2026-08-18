@@ -29,7 +29,7 @@
         <button type="button" class="chip DISPROVEN" data-filter="DISPROVEN" aria-pressed="false">DISPROVEN</button>
         <button type="button" class="chip TEMPORARY" data-filter="TEMPORARY" aria-pressed="false">TEMPORARY</button>
       </div>
-      <p class="hits" id="hits">120 shown</p>
+      <p class="hits" id="hits">158 shown</p>
     </div>
     <header class="doc-intro">
       <p class="kicker">FableCSharp · human overview</p>
@@ -75,15 +75,18 @@
 
     <p>
       Snapshot: <strong>2026-08-18</strong>, previous snapshot runtime HEAD
-      <code>18ef09b</code> via PR #31 merge <code>bfc382ac</code>,
-      runtime HEAD <code>be3339e</code>
-      (<em>Consume 00B314E0 helper camera; cache landscape resolve.</em>).
-      Just locked on this path: <code>204a214</code>,
-      <code>52e26bc</code>, <code>fab17be</code>, <code>6493c77</code>,
-      <code>d6821b8</code>, <code>be3339e</code>.
+      <code>be3339e</code> via PR #32 merge <code>0511a20</code>,
+      runtime HEAD <code>306e83c</code>
+      (<em>Static C3D: one file-local VB per mesh, instance W on the draw.</em>).
+      Just locked on this path: <code>3dba4a1</code>,
+      <code>5e57e64</code>, <code>63336fd</code>, <code>676bf63</code>,
+      <code>7c93828</code>, <code>40037b1</code>, <code>cf0ee50</code>,
+      <code>a6f939a</code>, <code>cb22533</code>, <code>306e83c</code>.
       Do not include any later runtime if master moves. Freeze at
-      <code>be3339e</code>. Docs PR #29 <code>bedcf919</code> is iOS
-      Settings chrome only — CSS unchanged. Master is still proving
+      <code>306e83c</code>. Master HEAD may be merge <code>e0d97cd</code>
+      — ignore that merge; runtime facts stay at <code>306e83c</code>.
+      Docs PR #29 <code>bedcf919</code> is iOS Settings chrome only —
+      CSS unchanged. Master is still proving
       <strong>boot / world clock</strong>, not animation.
       README’s long-term priority list still starts with animation; that
       list is not the current phase.
@@ -224,9 +227,9 @@
           <td>contract + world parity</td>
         </tr>
         <tr>
-          <td>DX9 → Vulkan first-scene submit (layers <code>0x4</code> → <code>0x40</code> → <code>0x20</code> → <code>0x2000</code>)</td>
+          <td>DX9 → Vulkan first-scene submit (layers <code>0x4</code> → <code>0x40</code> → <code>0x20</code> → <code>0x100</code> → <code>0x2000</code>)</td>
           <td><span class="badge PROVEN">PROVEN</span> / EQUIVALENT</td>
-          <td><a href="../render/DX9_VULKAN_PARITY.md">DX9_VULKAN_PARITY.md</a></td>
+          <td><a href="../render/DX9_VULKAN_PARITY.md">DX9_VULKAN_PARITY.md</a>; <code>0x100</code> drain <code>676bf63</code></td>
         </tr>
         <tr>
           <td><code>T(cam)</code> on host world-space STB verts</td>
@@ -269,20 +272,22 @@
 
     <h3>Phase 1 in progress — boot / world clock (current master)</h3>
     <p>
-      Recent commits (<code>9c625bc</code> … <code>be3339e</code>) lock engine
-      submit / host Present / frontend flush / camera seed / helper camera,
-      not <code>00DBDE40</code>. Previous snapshot <code>18ef09b</code> via
-      PR #31 <code>bfc382ac</code>.
-      Just locked: first-seen <code>006B2CA0</code> pose, not invented
-      <code>SeedAt</code> (<code>204a214</code>), <code>004B4490</code>
-      quest walk + <code>006B3030</code> spring without invented V0
-      (<code>52e26bc</code>), first-seen <code>006B3B80</code> skip +
-      <code>00CB78D0</code> fiber +41 (<code>fab17be</code>),
-      <code>009DA9F0</code> empty skip / DIP vtbl+332
-      (<code>6493c77</code>), vtbl+92 <code>00B23BC0</code> /
-      <code>00B324A0</code> type 0x22 (<code>d6821b8</code>),
-      <code>00B314E0</code> helper camera + cached landscape resolve
-      (<code>be3339e</code>). Docs PR #29 <code>bedcf919</code> is iOS
+      Recent commits (<code>9c625bc</code> … <code>306e83c</code>) lock engine
+      submit / host Present / frontend flush / camera seed / helper camera /
+      landscape cells / instance W, not <code>00DBDE40</code>. Previous
+      snapshot <code>be3339e</code> via PR #32 <code>0511a20</code>.
+      Just locked: <code>00BF4570</code> persistent cells
+      (<code>3dba4a1</code>), static C3D file-local verts +
+      <code>009881F0</code> World (<code>5e57e64</code>), sky
+      <code>0x2000</code> midday dome (<code>63336fd</code>), PALSKIN
+      drain <code>0x100</code> (<code>676bf63</code>), unload region
+      patches / one WAD (<code>7c93828</code>), cell DIP
+      <code>0x40</code> only (<code>40037b1</code>), process-lifetime
+      <code>game.bin</code> / <code>meshdata.h</code>
+      (<code>cf0ee50</code>), <code>00A0C130</code> packer +
+      <code>00988A50</code> WVP (<code>a6f939a</code>), PALSKIN file
+      dest triangles (<code>cb22533</code>), one file-local VB per mesh
+      (<code>306e83c</code>). Docs PR #29 <code>bedcf919</code> is iOS
       Settings chrome only — CSS unchanged.
     </p>
     <div class="table-scroll">
@@ -470,9 +475,9 @@
           <td><code>12e0d75</code> / <code>Game_00435530_Presents_009BEEB0_and_pumps_input</code>. <code>00417001</code> does not Present; it calls <code>00435F70</code> → <code>00435530</code> after WorldFrame&gt;1. Client Draw is that Present, not a second swapchain.</td>
         </tr>
         <tr>
-          <td><code>00435530</code> flushes ScenePasses via <code>009DA9F0(1)</code> DIP vtbl+332 (bits <code>0x4</code> → <code>0x40</code> → <code>0x20</code> → <code>0x2000</code>)</td>
+          <td><code>00435530</code> flushes ScenePasses via <code>009DA9F0(1)</code> DIP vtbl+332 (bits <code>0x4</code> → <code>0x40</code> → <code>0x20</code> → <code>0x100</code> → <code>0x2000</code>)</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>be8545e</code> / same <code>Game_00435530</code> test (<code>SubmittedLayerBits</code>). Order BeginScene, Clear, PlayerOverlay <code>00435000</code>→<code>00639E40</code>, PlayerInterface <code>00435070</code>, Flush2D <code>009D9C80</code>, FlushLayers <code>009DA9F0(1)</code>, EndScene, Present. Overlay/interface still Note.</td>
+          <td><code>be8545e</code> / <code>676bf63</code> / same <code>Game_00435530</code> test (<code>SubmittedLayerBits</code>). Order BeginScene, Clear, PlayerOverlay <code>00435000</code>→<code>00639E40</code>, PlayerInterface <code>00435070</code>, Flush2D <code>009D9C80</code>, FlushLayers <code>009DA9F0(1)</code>, EndScene, Present. Overlay/interface still Note.</td>
         </tr>
         <tr>
           <td><code>00CDC070</code> binds <code>Q_SunnyvaleMaster</code> persist slots via <code>004045C0</code> bool / <code>00410BE0</code> int</td>
@@ -527,12 +532,12 @@
         <tr>
           <td>Engine submit skins PALSKIN C3Ds (<code>TrianglesForPose</code> / <code>00BD2F91</code>) not static flatten. Hero 4299 is in <code>SubmittedPalskinMeshIds</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>5cb3435</code> / <code>Install_banks_and_startup_videos_exist</code> + <code>Kid_c3d</code> / <code>Wake_loop_3420</code>. First-seen dest is bind locals.</td>
+          <td><code>5cb3435</code> / <code>Install_banks_and_startup_videos_exist</code> + <code>Kid_c3d</code> / <code>Wake_loop_3420</code>. First-seen dest later file triangles (<code>cb22533</code>); no CPU re-skin.</td>
         </tr>
         <tr>
           <td>Submit before <code>00435530</code>. Terrain is <code>00BDC2D0</code> AABB then <code>00BF4570</code> cells on opened patches</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>b062c5d</code> / <code>TessellateVisible_uses_00bdc2d0_aabb</code> / <code>Install_banks</code>. Instances stay primary-only.</td>
+          <td><code>b062c5d</code> / <code>TessellateVisible_uses_00bdc2d0_aabb</code> / <code>Install_banks</code>. Instances stay primary-only. Later persistent cells (<code>3dba4a1</code>); cell DIP <code>0x40</code> only (<code>40037b1</code>).</td>
         </tr>
         <tr>
           <td>Init Graphics opens <code>GBANK_MAIN_PC</code>; submitted ids go on <code>EngineFrame.Textures</code>. Game Present waits for seed+submit</td>
@@ -603,6 +608,56 @@
           <td>First-seen WorldCamera +6296 is the ctor axis, not the eye (<code>IsCtorAxis</code>). <code>00B314E0</code> consumes helper from the hero (look <code>006B2CA0</code> V4, up <code>(0,0,1)</code> <code>FirstSeenCameraUp</code>, FOV 70 from <code>00A0C130</code> / <code>0x3E471B48</code> turns). Letterbox 1024×768 (<code>00B30B50</code> camera +176/+180). AABB-cull neighbour STB before height parse (<code>00BDC2D0</code> / <code>00BF6F80</code>). <code>textures.h</code> resolve cached (<code>LevelLibrary.LandscapeEnums</code>). Skip <code>SetMesh</code>/<code>SetTextures</code> when payload unchanged</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
           <td><code>be3339e</code> / <code>Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint</code> / <code>Install_banks_and_startup_videos_exist</code> (<code>RendererHelperBound</code>, <code>GameCamera.FirstSeenFovDegrees</code>) / <code>CameraProjectionTests</code> (<code>ApplyRendererHelper</code>, <code>LandscapeFrustum.CameraUpdate=00B314E0</code>) / <code>World_submit_is_stable_between_frames</code> / <code>BuildFrame_reuses_texture_array</code> / <code>Texture_decode_is_cached</code> / <code>Lookout_tile_origin_is_region_local</code> / <code>MeshBank_does_not_reparse_c3d</code> / <code>Native_draw_order_is_begin_layers_end_present</code>. Does not close #6 or #13</td>
+        </tr>
+        <tr>
+          <td>Landscape <code>00BF4570</code> cells as persistent draws. Each STB 16&nbsp;m tile is one LandscapeCell (cached on LevelLibrary). Submit builds per-cell MeshDraws; landscape and C3D on separate VBs. Concat stays a test rollup. Print LoadTiming on first New Game submit</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>3dba4a1</code> / <code>Lookout_cells_match_stb_tiles</code> / <code>World_submit_is_stable_between_frames</code> (<code>SubmittedLandscapeCells</code>, <code>LastLoadTiming</code>). First commit submitted bits <code>0x4</code>/<code>0x40</code>; cell DIP later <code>0x40</code> only (<code>40037b1</code>)</td>
+        </tr>
+        <tr>
+          <td>Static C3D: preserve native instance transform. C3D verts stay file-local. <code>MeshDraw.World</code> is the ObjectTransform 3x4 (<code>009881F0</code> wrapper+496). Draw multiplies W*VP. No per-triangle bake</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>5e57e64</code> / <code>Instance_world_is_009881f0_not_baked_verts</code></td>
+        </tr>
+        <tr>
+          <td>Sky: submit <code>0x2000</code> midday dome on New Game. CEngineSkyRenderer <code>GRAPHIC_ATMOSPHERIC_SKY_MIDDAY</code> after static C3D (layer order <code>0x4</code>/<code>0x40</code>/<code>0x20</code>/<code>0x2000</code> at this commit). Uses <code>SkyViewProjection</code></td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>63336fd</code> / <code>Install_banks_and_startup_videos_exist</code> (<code>PassBit == 0x2000</code>) / <code>Native_draw_order_is_begin_layers_end_present</code> / <code>ScenePassTests.Registration_is_34_layers_and_walks_landscape_before_sky</code>. PALSKIN <code>0x100</code> later (<code>676bf63</code>)</td>
+        </tr>
+        <tr>
+          <td>PALSKIN: drain on layer <code>0x100</code> before sky. <code>00B33010</code> type-0/1 first slots use bit <code>0x100</code> (registration index 7), after static <code>0x20</code> and before sky <code>0x2000</code></td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>676bf63</code> / <code>Game_00435530_Presents_009BEEB0_and_pumps_input</code> (<code>SubmittedLayerBits</code>) / <code>Native_draw_order_is_begin_layers_end_present</code> / <code>ScenePassTests.Registration_is_34_layers_and_walks_landscape_before_sky</code> / <code>Instance_world_is_009881f0_not_baked_verts</code> (static stays <code>0x20</code>)</td>
+        </tr>
+        <tr>
+          <td>Resources: unload region patches; one WAD for TNG. <code>00B40000</code> / <code>00B3EF40</code> release map-slot LEV/STB/cells. Banks and WAD handle stay process-lifetime</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>7c93828</code> / <code>LevelLibrary_unload_map_drops_region_not_wad</code> / <code>Install_banks_and_startup_videos_exist</code> (<code>HasCachedCells</code>, sky <code>0x2000</code>)</td>
+        </tr>
+        <tr>
+          <td>Landscape: <code>00BF4570</code> cell DIP is layer <code>0x40</code> only. Bit <code>0x4</code> is <code>00BF71D0</code> tessellator background, not the stored cell mesh</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>40037b1</code> / <code>Lookout_cells_match_stb_tiles</code> (<code>LayerForeground</code>; no <code>LayerBackground</code>)</td>
+        </tr>
+        <tr>
+          <td>Resources: cache <code>game.bin</code> and <code>meshdata.h</code> at process lifetime. <code>009AD410</code>-style: one def table, not a per-map GameBin open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>cf0ee50</code> / <code>Install_banks_and_startup_videos_exist</code> / <code>LevelLibrary_reuses_lev_and_height_parses</code>. <code>LevelLibrary.Defs</code> / <code>MeshEnums</code></td>
+        </tr>
+        <tr>
+          <td>Camera: lock <code>00A0C130</code> ctor helper and <code>00988A50</code> WVP numbers. <code>00A0C130</code> is a packer. GameCamera ctor look is +Z, up <code>(1,1,1)</code>. <code>006B42F0</code> tail <code>008857E0</code> is bank lerp; vtbl+244 is colour-filter. Does not change the consumed first-Present helper (still UNREAD)</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>a6f939a</code> / <code>CameraMatrixParityTests.GameCamera_ctor_look_default_is_plus_z</code> / <code>WorldCamera_tail_is_colour_filter_not_helper</code> / <code>GameCamera_ctor_helper_wvp_at_1024x768</code> / <code>Projection_numbers_match_009883F0</code>. Does not close #6 or #13</td>
+        </tr>
+        <tr>
+          <td>PALSKIN: submit file dest triangles, print load timing. <code>MeshFile.Triangles</code> already apply <code>00A9E1E0</code> × IBM. First-seen does not re-skin on the CPU. Hero 4299 stays on layer <code>0x100</code></td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>cb22533</code> / <code>Palskin_submit_uses_file_triangles_not_repose</code> / <code>Install_banks_and_startup_videos_exist</code> (<code>SubmittedPalskinMeshIds</code> 4299) / <code>World_submit_is_stable_between_frames</code> (<code>LastLoadTiming</code>)</td>
+        </tr>
+        <tr>
+          <td>Static C3D: one file-local VB per mesh, instance W on the draw. <code>00BB2540</code> copies locals once (shl idx,4, no matrix). <code>009881F0</code> owns the 3x4 per instance. Repeated Lookout lamps no longer duplicate the C3D soup</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>306e83c</code> / <code>Instance_world_is_009881f0_not_baked_verts</code> (shared verts, distinct Worlds)</td>
         </tr>
         <tr>
           <td><code>WaitPlayAnimation</code> <code>00CC18E0</code> plays via vtbl+72 (or vtbl+76 if IsTrue arg3) then leftover vtbl+104</td>
@@ -724,7 +779,12 @@
         <tr>
           <td><code>006B8640</code> / <code>008889C0</code> leftover (do not write V0 first-seen)</td>
           <td><span class="badge UNREAD">UNREAD</span></td>
-          <td><code>006B2CA0</code> pose is PROVEN (<code>204a214</code>). Host <code>SeedAt(1.6m)</code> is DISPROVEN as live New Game. Lookout helper FOV 70 from <code>00A0C130</code> (<code>be3339e</code>). SHOT2 FOV 72 is intro-view leftover — do not collapse into Lookout. Do not close #6 / #13</td>
+          <td><code>006B2CA0</code> pose is PROVEN (<code>204a214</code>). Host <code>SeedAt(1.6m)</code> is DISPROVEN as live New Game. Lookout helper FOV 70 from <code>00A0C130</code> (<code>be3339e</code>). <code>00A0C130</code> is a packer (<code>a6f939a</code>); ctor look +Z, up <code>(1,1,1)</code>. SHOT2 FOV 72 is intro-view leftover — do not collapse into Lookout. Do not close #6 / #13</td>
+        </tr>
+        <tr>
+          <td>Consumed first-Present helper</td>
+          <td><span class="badge UNREAD">UNREAD</span></td>
+          <td><code>a6f939a</code> locks ctor packer / <code>00988A50</code> WVP / bank lerp <code>008857E0</code> / vtbl+244 colour-filter. Does not change the consumed first-Present helper. Do not reopen #6 / #13</td>
         </tr>
         <tr>
           <td><code>004978A0</code> LCG seed for <code>006B3030</code></td>
@@ -924,8 +984,8 @@
           <td><span class="badge UNREAD">UNREAD</span> (<code>FirstSeenPlayAnimationAppliesPose=false</code>)</td>
         </tr>
         <tr>
-          <td>PALSKIN dest beyond bind-pose identity</td>
-          <td>first-seen dest ≈ identity is PROVEN; play-anim product is not</td>
+          <td>PALSKIN dest beyond file triangles</td>
+          <td>first-seen dest is <code>MeshFile.Triangles</code> (<code>00A9E1E0</code> × IBM, <code>cb22533</code>); no CPU re-skin. Play-anim product is not</td>
         </tr>
       </tbody>
     </table>
@@ -969,12 +1029,18 @@
         <code>006B2CA0</code> first-seen pose is now PROVEN
         (<code>204a214</code>); invented <code>SeedAt(1.6m)</code> is
         not the New Game path. Lookout helper FOV is 70 from
-        <code>00A0C130</code> (<code>be3339e</code>); SHOT2 FOV 72
-        stays intro-view leftover. <code>006B8640</code>/<code>008889C0</code>
-        leftover UNREAD. Do not close #6 / #13.
+        <code>00A0C130</code> (<code>be3339e</code>);
+        <code>00A0C130</code> is a packer (<code>a6f939a</code>).
+        Consumed first-Present helper stays UNREAD — do not reopen
+        #6 / #13. SHOT2 FOV 72 stays intro-view leftover.
+        <code>006B8640</code>/<code>008889C0</code> leftover UNREAD.
         Frontend leftover is still <code>00595222</code> Note and New Game
         keyboard N/Enter (#14). <code>0041AC20</code> dest rect and
         <code>00B324A0</code> handler vtbl+20 stay UNREAD.
+        New Game submit now walks
+        <code>0x4</code>/<code>0x40</code>/<code>0x20</code>/<code>0x100</code>/<code>0x2000</code>
+        (<code>676bf63</code>); cell DIP is <code>0x40</code> only
+        (<code>40037b1</code>).
       </li>
       <li>
         <strong>GTNG is not an unread file on TLC</strong> — missing skip is
