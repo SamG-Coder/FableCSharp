@@ -1086,6 +1086,69 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void PutInHeroHands_name_and_null()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var put = new ScriptInterpreter("pih",
+            ["PutInHeroHands OBJECT_TROPHY_JOB_MASK_01,NAME"]);
+        put.RunUntilYield(runtime);
+        Assert.Equal("OBJECT_TROPHY_JOB_MASK_01", runtime.World.HeroHands);
+        var clear = new ScriptInterpreter("pihn", ["PutInHeroHands NULL"]);
+        clear.RunUntilYield(runtime);
+        Assert.Equal("", runtime.World.HeroHands);
+        Assert.Equal(0x00CCFC20u, ScriptCommandMap.Find("PutInHeroHands")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void PutInHeroHands_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_DRAGON_DEATH");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.StartsWith("PutInHeroHands ", StringComparison.OrdinalIgnoreCase))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("PutInHeroHands", parsed.Verb);
+        Assert.True(parsed.Arg(0).Length > 0);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-hands", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("PutInHeroHands ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal(parsed.Arg(0), runtime.World.HeroHands);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-hands.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-putinherohands.txt"),
+            """
+            PutInHeroHands 00CCFBCA / apply 00CCFC20
+              arg0 required; IsNull → vtbl+572 empty string
+              arg1 NAME → vtbl+572(name)
+              else thing resolve vtbl+280/288 then vtbl+568(thing,1,1)
+              jmp 00CD17F8/FD no yield
+            Equip/hold mesh body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void WalkTo_writes_destination_and_entity_task()
     {
         var runtime = ScriptRuntime.Detached();

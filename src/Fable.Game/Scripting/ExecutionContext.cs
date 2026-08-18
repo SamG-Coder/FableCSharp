@@ -1040,6 +1040,11 @@ public sealed class WorldRuntime
     /// </summary>
     public float HeroMorality { get; set; }
     public readonly List<HeroExpression> Expressions = [];
+    /// <summary>
+    /// <c>00CCFC20</c> item currently in the hero's
+    /// hands. Empty after a NULL put.
+    /// </summary>
+    public string HeroHands { get; set; } = "";
 
     /// <summary>
     /// <c>00CC63E5</c>: give <c>count - already</c>

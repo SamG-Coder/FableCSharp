@@ -684,6 +684,29 @@ public static class GlobalDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, item);
         }
 
+        if (Eq(v, "PutInHeroHands"))
+        {
+            var arg0 = line.Arg(0);
+            if (arg0.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            if (ScriptLine.IsNull(arg0))
+            {
+                ctx.World.HeroHands = "";
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "NULL");
+            }
+
+            if (line.Arg(1).Equals("NAME", StringComparison.OrdinalIgnoreCase))
+            {
+                ctx.World.HeroHands = arg0;
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, arg0);
+            }
+
+            var thing = ResolveSoundSource(ctx, arg0);
+            ctx.World.HeroHands = thing?.ScriptName ?? arg0;
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                ctx.World.HeroHands);
+        }
+
         if (Eq(v, "GiveHeroHealth"))
         {
             var token = line.Arg(0);
