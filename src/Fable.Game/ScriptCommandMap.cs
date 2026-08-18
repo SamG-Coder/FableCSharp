@@ -762,6 +762,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "ebx actor; no args; 00CD2770=007E70E0(actor+8)+zero; jmp 00CC7081; not SetFree 1980"),
+        Spec("PreloadAnim", 0x00CC13B8, 0x00CC140E, "[basic|name]",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "ebx actor; empty or BASIC vtbl+2148; else 2144(handle,name); jmp 00CC707C; not PlayAnimation 72"),
         Spec("WaitForUnderRadius", 0x00CC4045, 0x00CC409B, "thing,radius",
             ScriptReturn.YieldAfterOrWait, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

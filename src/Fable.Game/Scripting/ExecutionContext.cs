@@ -781,12 +781,28 @@ public sealed class AnimationRuntime
 {
     public readonly List<ScriptAnimation> Plays = [];
     public readonly List<ScriptCombatAnimation> Combat = [];
+    /// <summary>
+    /// <c>00CC140E</c> empty/basic <c>vtbl+2148</c>
+    /// else <c>vtbl+2144(handle,name)</c>.
+    /// </summary>
+    public readonly List<(string Actor, string Name, int Vtbl)> Preloads = [];
     public readonly Dictionary<string, PendingOperation> ByActor =
         new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, AnimationState> States =
         new(StringComparer.OrdinalIgnoreCase);
     public EntityTaskQueue Tasks { get; } = new();
     private int _next;
+
+    /// <summary>
+    /// <c>00CC140E</c>: empty or BASIC → 2148;
+    /// else 2144(handle,name). Not PlayAnimation 72.
+    /// Clip cache UNREAD.
+    /// </summary>
+    public void Preload(string? actor, string name)
+    {
+        var basic = name.Length == 0 || ScriptLine.TokenMatches(name, "basic");
+        Preloads.Add((actor ?? "", basic ? "basic" : name, basic ? 2148 : 2144));
+    }
 
     public PendingOperation Play(
         string? actor, string name, bool f1, bool f2, bool f3, bool f4, bool f5)

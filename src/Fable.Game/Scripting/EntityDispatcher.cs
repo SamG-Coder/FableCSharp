@@ -106,6 +106,15 @@ public static class EntityDispatcher
         if (Eq(v, "LookAt") || Eq(v, "LookAtNothing"))
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, v);
 
+        if (Eq(v, "PreloadAnim"))
+        {
+            // 00CC140E: vtbl+48; empty or BASIC → 2148;
+            // else 2144(handle,arg0); jmp 00CC707C.
+            ctx.Animation.Preload(line.Target, line.Arg(0));
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity,
+                line.Arg(0).Length == 0 ? "basic" : line.Arg(0));
+        }
+
         if (Eq(v, "PlayAnimation"))
         {
             var name = line.Arg(0);

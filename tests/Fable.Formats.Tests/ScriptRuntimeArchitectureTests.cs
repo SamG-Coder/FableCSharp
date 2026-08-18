@@ -3938,6 +3938,86 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void PreloadAnim_basic_is_2148_named_is_2144()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("pre",
+        [
+            "HERO.PreloadAnim",
+            "HERO.PreloadAnim basic",
+            "GUARD.PreloadAnim CS_WAVE",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(3, runtime.Animation.Preloads.Count);
+        Assert.Equal(2148, runtime.Animation.Preloads[0].Vtbl);
+        Assert.Equal(2148, runtime.Animation.Preloads[1].Vtbl);
+        Assert.Equal(("GUARD", "CS_WAVE", 2144), runtime.Animation.Preloads[2]);
+        Assert.Equal(0x00CC140Eu, ScriptCommandMap.Find("PreloadAnim")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("PlayAnimation")!.Value.ApplySite,
+            ScriptCommandMap.Find("PreloadAnim")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void PreloadAnim_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".PreloadAnim", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "HERO.PreloadAnim CS_WAVE";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("PreloadAnim", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-pre", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".PreloadAnim", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Single(runtime.Animation.Preloads);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-pre.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-preloadanim.txt"),
+            """
+            PreloadAnim 00CC13B8 / apply 00CC140E
+              ebx actor else 00CC7081
+              actor vtbl+48 handle
+              empty or 00BFEBA8 BASIC → vtbl+2148(handle)
+              else vtbl+2144(handle,arg0)
+              jmp 00CC707C
+              not PlayAnimation vtbl+72
+            Clip cache UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();
