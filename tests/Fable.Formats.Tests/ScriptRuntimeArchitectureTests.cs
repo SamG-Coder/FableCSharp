@@ -1837,6 +1837,76 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void SetAttackable_ignores_arg_and_is_vtbl_1832()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("sa",
+        [
+            "HERO.SetAttackable FALSE",
+            "GUARD.SetAttackable TRUE",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.False(runtime.World.Attackable["HERO"]);
+        Assert.False(runtime.World.Attackable["GUARD"]);
+        Assert.Equal(1832, runtime.World.AttackableVtbl["HERO"]);
+        Assert.Equal(0x00CC1008u, ScriptCommandMap.Find("SetAttackable")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("SetDamageable")!.Value.ApplySite,
+            ScriptCommandMap.Find("SetAttackable")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void SetAttackable_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_HAUNTED_CELLAROPENS");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.Contains(".SetAttackable", StringComparison.OrdinalIgnoreCase))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("SetAttackable", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-atk", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".SetAttackable", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.False(runtime.World.Attackable[parsed.Target ?? ""]);
+        Assert.Equal(1832, runtime.World.AttackableVtbl[parsed.Target ?? ""]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-atk.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-setattackable.txt"),
+            """
+            SetAttackable 00CC0FB6 / apply 00CC1008
+              ebx required else 00CC7081
+              NO arg parse — FALSE/TRUE ignored
+              actor vtbl+48; vtbl+1832(actor,0); extras 008ADF90
+              jmp 00CC707C
+              not SetDamageable vtbl+2064
+            Combat lock UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void GiveGold_real_script_bank_or_isolated()
     {
         var install = GameInstall.TryLocate();
