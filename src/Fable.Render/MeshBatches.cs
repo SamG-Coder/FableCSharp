@@ -88,10 +88,9 @@ public static class MeshBatches
             var n = (uint)(cursor - first);
             if (n == 0)
                 continue;
-            draws.Add(new MeshDraw(
-                cell.TextureId, (uint)first, n,
-                cell.TextureId1 == 0 ? cell.TextureId : cell.TextureId1,
-                Fable.Formats.Levels.LandscapeCells.LayerBackground, 0f, false));
+            // 00BF4570 is bit 0x40 only. Bit 0x4
+            // is 00BF71D0 tessellator BG, not
+            // this stored cell mesh.
             draws.Add(new MeshDraw(
                 cell.TextureId, (uint)first, n,
                 cell.TextureId1 == 0 ? cell.TextureId : cell.TextureId1,

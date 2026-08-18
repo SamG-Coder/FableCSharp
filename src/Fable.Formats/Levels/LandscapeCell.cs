@@ -5,10 +5,10 @@ namespace Fable.Formats.Levels;
 
 /// <summary>
 /// One native 16 m landscape cell. <c>00BF4570</c>
-/// draws stored tessellation (VB +56 stride 24,
-/// IB +52) as one DIP. Host keeps the unwound
-/// faces; that is a backend translation of the
-/// stored strip, not <c>TessellatePrimary</c>.
+/// walks cell+8 mesh nodes (VB mesh+56 stride 24,
+/// IB mesh+52). Host keeps the unwound faces as a
+/// backend translation of the stored strip, not
+/// <c>TessellatePrimary</c>.
 /// </summary>
 public readonly record struct LandscapeCell(
     string Map,

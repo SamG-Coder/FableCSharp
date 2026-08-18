@@ -79,9 +79,10 @@ public sealed class LandscapeCellMesh
 }
 
 /// <summary>
-/// One landscape DIP. Same cell buffers are submitted twice:
-/// bit <c>0x4</c> BG then bit <c>0x40</c> FG
-/// (<c>00B6B0B0</c>). Alphablend off. W = I on host STB.
+/// One landscape DIP. Stored cell VB/IB is bit
+/// <c>0x40</c> (<c>00BF4570</c>). Bit <c>0x4</c>
+/// is tessellator BG (<c>00BF71D0</c>), not this
+/// mesh. W = I on host STB.
 /// </summary>
 public readonly record struct LandscapeDraw(LandscapeCellMesh Cell, uint PassBit)
 {
@@ -121,10 +122,11 @@ public readonly record struct LandscapeDraw(LandscapeCellMesh Cell, uint PassBit
     public static LandscapeDraw Foreground(LandscapeCellMesh cell) => new(cell, ForegroundBit);
 
     /// <summary>
-    /// Native walk emits both bits from the same stored VB/IB.
-    /// Host <c>DrawnPasses(Landscape)</c> does the same from one
-    /// triangle list; keep the pair on the cell, not a Concat soup.
+    /// FG cell DIP only. <c>BothPasses</c> used to
+    /// emit the same VB on bit 4; that is
+    /// <c>00BDC060</c> / <c>00BF71D0</c>, not
+    /// <c>00BF4570</c>.
     /// </summary>
     public static LandscapeDraw[] BothPasses(LandscapeCellMesh cell) =>
-        [Background(cell), Foreground(cell)];
+        [Foreground(cell)];
 }

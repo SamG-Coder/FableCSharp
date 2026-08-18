@@ -699,8 +699,9 @@ public sealed class WorldGeometryTests
         Assert.Equal(cells.Count, visible.Count);
         var mesh = MeshBatches.BuildCells(visible);
         Assert.Equal(visible.Sum(c => c.Faces.Count * 3), mesh.Vertices.Length);
-        Assert.Equal(visible.Count * 2, mesh.Draws.Length);
+        Assert.Equal(visible.Count, mesh.Draws.Length);
         Assert.Contains(mesh.Draws, d => d.PassBit == LandscapeCells.LayerForeground);
+        Assert.DoesNotContain(mesh.Draws, d => d.PassBit == LandscapeCells.LayerBackground);
     }
 
     [Fact]
