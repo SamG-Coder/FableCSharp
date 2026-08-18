@@ -119,6 +119,7 @@
 | LookAt | `—` | `—` | target | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | record look |
 | LookAtNothing | `—` | `—` |  | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | clear look |
 | PutInFrontOf | `00CD029F` | `00CD0501` | mover,face,distance | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | same dest as WalkUpToThing; vtbl+1892 teleport; vtbl+1900 look; jmp 00CC864B |
+| TeleportInFrontOf | `00CC4809` | `00CC485F` | thing,distance | CompleteNow | Proven | Proven | Proven | Proven | Partial | Partial | arg0+arg1 required; dest=pos+atof*(vtbl+288+12); vtbl+1892; vtbl+1900; leftover +28; not WalkUpToThing |
 | WalkUpToThing | `00CC2331` | `00CC2538` | thing,distance[,…] | YieldAfterOrWait | Proven | Proven | Proven | Partial | Partial | Partial | dest=pos+atof(arg1)*(vtbl+288+12); actor vtbl+16 speed 1; leftover vtbl+104 |
 | FollowThing | `00CC19F2` | `00CC1AE9` | target[,speed] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | default speed 1.0; actor vtbl+28; yield 00CC0E96 if [ebp+103] |
 | StopFollowingThing | `00CC1B2F` | `00CC1BF4` | [target] | YieldAfter | Proven | Proven | Proven | Partial | Partial | Partial | actor vtbl+32; jmp 00CC568C leftover |

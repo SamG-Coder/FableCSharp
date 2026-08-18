@@ -2134,6 +2134,104 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void TeleportInFrontOf_is_vtbl_1892_not_WalkUpToThing()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "FATHER",
+                PositionX = 0,
+                PositionY = 0,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>
+                {
+                    ["CTCPhysicsStandard.RHSetForwardX"] = "0",
+                    ["CTCPhysicsStandard.RHSetForwardY"] = "1",
+                    ["CTCPhysicsStandard.RHSetForwardZ"] = "0",
+                },
+            },
+        ], null);
+        var interp = new ScriptInterpreter("tif", ["HERO.TeleportInFrontOf FATHER,3"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(3f, runtime.World.Positions["HERO"].Y);
+        Assert.Equal("FATHER", runtime.World.LookTargets["HERO"]);
+        Assert.Equal(0x00CC485Fu, ScriptCommandMap.Find("TeleportInFrontOf")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("WalkUpToThing")!.Value.ApplySite,
+            ScriptCommandMap.Find("TeleportInFrontOf")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("PutInFrontOf")!.Value.ApplySite,
+            ScriptCommandMap.Find("TeleportInFrontOf")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void TeleportInFrontOf_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".TeleportInFrontOf ", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "HERO.TeleportInFrontOf FATHER,2";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("TeleportInFrontOf", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        runtime.World.Positions[parsed.Arg(0)] = new System.Numerics.Vector3(0, 0, 0);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-tif", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".TeleportInFrontOf ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.True(runtime.World.Positions.ContainsKey(parsed.Target ?? ""));
+        Assert.Equal(parsed.Arg(0), runtime.World.LookTargets[parsed.Target ?? ""]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-tif.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-teleportinfrontof.txt"),
+            """
+            TeleportInFrontOf 00CC4809 / apply 00CC485F
+              ebx required; arg0+arg1 00403A00 empty skip
+              resolve arg0 HERO vtbl+280 else vtbl+288
+              dest = pos + atof(arg1)*(vtbl+288+12)
+              vtbl+1892(actor,dest,0,0,0) teleport
+              vtbl+1900(actor,thing,1) look
+              leftover +28 if [ebp+103]; jmp 00CC707C
+              not WalkUpToThing vtbl+16; not PutInFrontOf 00CD0501
+            Nav mesh UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void AskQuestion_polls_vtbl_156_until_answer()
     {
         var runtime = ScriptRuntime.Detached();

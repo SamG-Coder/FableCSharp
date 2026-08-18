@@ -662,6 +662,11 @@ public static class ScriptCommandMap
         Spec("PutInFrontOf", 0x00CD029F, 0x00CD0501, "mover,face,distance",
             ScriptReturn.CompleteNow, CommandParity.ScriptLayer,
             "same dest as WalkUpToThing; vtbl+1892 teleport; vtbl+1900 look; jmp 00CC864B"),
+        Spec("TeleportInFrontOf", 0x00CC4809, 0x00CC485F, "thing,distance",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0+arg1 required; dest=pos+atof*(vtbl+288+12); vtbl+1892; vtbl+1900; leftover +28; not WalkUpToThing"),
         Spec("WalkUpToThing", 0x00CC2331, 0x00CC2538, "thing,distance[,…]",
             ScriptReturn.YieldAfterOrWait, CommandParity.ScriptLayer,
             "dest=pos+atof(arg1)*(vtbl+288+12); actor vtbl+16 speed 1; leftover vtbl+104"),

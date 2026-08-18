@@ -24,6 +24,32 @@ public static class EntityDispatcher
                 $"{line.Target}->{marker}");
         }
 
+        if (Eq(v, "TeleportInFrontOf"))
+        {
+            // 00CC485F: arg0+arg1 required; dest = pos+atof*(vtbl+288+12);
+            // vtbl+1892 teleport; vtbl+1900 look. Not WalkUpToThing.
+            var face = line.Arg(0);
+            if (face.Length == 0 || line.Arg(1).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            if (!ScriptLine.TryFloat(line.Arg(1), out var distance))
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            var thing = ctx.FindThing(face);
+            if (thing is not { PositionX: not null } &&
+                !ctx.World.Positions.TryGetValue(face, out _))
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, face);
+            var pos = thing is { PositionX: not null }
+                ? RegionTravel.PositionOf(thing)
+                : ctx.World.Positions[face];
+            var forward = thing is not null
+                ? RegionTravel.ForwardOf(thing)
+                : System.Numerics.Vector3.UnitY;
+            var dest = RegionTravel.WalkUpToDestination(pos, forward, distance);
+            ctx.World.Teleport(line.Target, face, dest);
+            ctx.World.LookTargets[line.Target ?? ""] = face;
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity,
+                $"{line.Target}@{dest.X:0.##},{dest.Y:0.##}");
+        }
+
         if (Eq(v, "LookToThing"))
         {
             if (line.Arg(0).Length == 0)
