@@ -954,6 +954,14 @@ public sealed class EngineLifecycle : IDisposable
     public int CurrentRegionIndex { get; private set; }
     public WorldRegion? CurrentRegion { get; private set; }
     /// <summary>
+    /// Authored <c>REGION.EnvironmentTheme</c>.
+    /// Not applied to live lighting: first-seen
+    /// is lighting-manager ctor record 0
+    /// (<c>00B482A0</c> / <c>00B46C80</c>).
+    /// </summary>
+    public int AuthoredEnvironmentThemeId { get; private set; }
+    public string? AuthoredEnvironmentTheme { get; private set; }
+    /// <summary>
     /// <c>[record+36] != 0</c>. False after
     /// WLD parse; who writes the pointer is unread.
     /// </summary>
@@ -2800,6 +2808,7 @@ public sealed class EngineLifecycle : IDisposable
         Note(SetRegionAsLoadedFn, "LevelLoader", "Region",
             "SetRegionAsLoaded: Initialise MiniMap");
         ActivateCurrentRegion();
+        BindAuthoredEnvironmentTheme();
         var name = CurrentRegion?.RegionName ?? (index == 0 ? "dummy" : "?");
         Note(SetRegionAsLoadedFn, "LevelLoader", "Region",
             $"index={index} {name}");
@@ -3439,6 +3448,29 @@ public sealed class EngineLifecycle : IDisposable
         Note(InitCharacterAsFn, "LevelLoader", "Player",
             "0048A070 " + CreatureHeroDefName);
         return CreatureHeroDefName;
+    }
+
+    /// <summary>
+    /// Name only. Do not unpack the 269-byte
+    /// TOD blob onto <c>c19/c20/c18</c>.
+    /// </summary>
+    private void BindAuthoredEnvironmentTheme()
+    {
+        AuthoredEnvironmentThemeId = 0;
+        AuthoredEnvironmentTheme = null;
+        var def = CurrentRegion?.RegionDef;
+        if (string.IsNullOrEmpty(def))
+            return;
+        var defs = EnsureDefs();
+        if (defs is null)
+            return;
+        AuthoredEnvironmentThemeId = defs.FindEnvironmentThemeId(def) ?? 0;
+        AuthoredEnvironmentTheme = defs.FindEnvironmentThemeName(def);
+        Note(SetRegionAsLoadedFn, "LevelLoader", "Region",
+            AuthoredEnvironmentTheme is null
+                ? "EnvironmentTheme unread " + def
+                : "EnvironmentTheme " + AuthoredEnvironmentTheme +
+                  " #" + AuthoredEnvironmentThemeId);
     }
 
     private GameBin? EnsureDefs()

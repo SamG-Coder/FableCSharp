@@ -175,6 +175,48 @@ public sealed class GameBin
         return ids;
     }
 
+    /// <summary>
+    /// REGION field. Lookout and Oakvale intro
+    /// both point at <c>ENVIRONMENT_THEME1</c>
+    /// (#2346). That is not
+    /// <c>ENVIRONMENT_OAKVALE</c>. The 269-byte
+    /// TOD record is not the live 112-byte
+    /// lighting/fog record.
+    /// </summary>
+    public const string EnvironmentThemeField = "EnvironmentTheme";
+    public const string LookoutRegionDefName = "REGION_LOOKOUT_POINT";
+    public const string FirstSeenEnvironmentThemeName = "ENVIRONMENT_THEME1";
+    public const string OakvaleEnvironmentName = "ENVIRONMENT_OAKVALE";
+    public const int FirstSeenEnvironmentThemeId = 2346;
+    public const int EnvironmentThemeRecordBytes = 269;
+    public const int LightingRecordBytes = 112;
+
+    public int? FindEnvironmentThemeId(string regionDef)
+    {
+        var entry = FindEntry(regionDef);
+        if (entry is null)
+            return null;
+        var crc = FableCrc.Hash(EnvironmentThemeField);
+        for (var i = 0; i + 8 <= entry.Raw.Length; i++)
+        {
+            if (BitConverter.ToUInt32(entry.Raw, i) != crc)
+                continue;
+            var id = BitConverter.ToInt32(entry.Raw, i + 4);
+            if (id is > 0 and < 20_000)
+                return id;
+        }
+
+        return null;
+    }
+
+    public string? FindEnvironmentThemeName(string regionDef)
+    {
+        var id = FindEnvironmentThemeId(regionDef);
+        if (id is null || (uint)id.Value >= (uint)Entries.Count)
+            return null;
+        return Entries[id.Value].InstanceName;
+    }
+
     public const string MultiStaticMeshDefType = "CMultiStaticMeshDef";
     public const uint MultiStaticMeshesFieldCrc = 0x0CDCCB01;
     public const uint MultiStaticMeshFieldCrc = 0x60194A74;

@@ -54,6 +54,18 @@ public sealed class GameBinFormatTests
         Assert.Equal(5331, bin.FindMeshId("OBJECT_WALL_SMALL_POST_01"));
         Assert.Equal(7828, bin.FindMeshId("OBJECT_BRIGHTWOOD_MEDIUMROCK_01"));
         Assert.Equal(4978, bin.FindMeshId("OBJECT_STREETLAMP_LIT_SINGLE_01"));
+        Assert.Equal(GameBin.FirstSeenEnvironmentThemeId,
+            bin.FindEnvironmentThemeId(GameBin.LookoutRegionDefName));
+        Assert.Equal(GameBin.FirstSeenEnvironmentThemeName,
+            bin.FindEnvironmentThemeName(GameBin.LookoutRegionDefName));
+        Assert.Equal(GameBin.FirstSeenEnvironmentThemeName,
+            bin.FindEnvironmentThemeName("REGION_OAK_VALE_INTRO"));
+        Assert.NotEqual(GameBin.OakvaleEnvironmentName,
+            bin.FindEnvironmentThemeName(GameBin.LookoutRegionDefName));
+        Assert.Equal(FableCrc.Hash(GameBin.EnvironmentThemeField),
+            FableCrc.Hash("EnvironmentTheme"));
+        Assert.Equal(269, GameBin.EnvironmentThemeRecordBytes);
+        Assert.Equal(112, GameBin.LightingRecordBytes);
         Assert.Equal(7168, bin.FindMeshId("OBJECT_OK_PILLAR_COLLAPSED_01"));
         Assert.Equal(3977, bin.FindMeshId("OBJECT_DEGRADABLE_THORN_VINES_01"));
         Assert.Equal(5149, bin.FindMeshId("CREATURE_BS_VILLAGER_MALE"));

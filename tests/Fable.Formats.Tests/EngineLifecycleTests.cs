@@ -1,4 +1,6 @@
 using Fable.Core;
+using Fable.Formats;
+using Fable.Formats.Defs;
 using Fable.Formats.Levels;
 using Fable.Formats.Scene;
 using Fable.Game;
@@ -1845,6 +1847,13 @@ public sealed class EngineLifecycleTests
         Assert.True(life.SubmitElapsedMs > 0);
         Assert.True(life.Levels!.HasCachedCells("LookoutPoint"));
         Assert.Contains(life.SubmittedMesh!.Draws, d => d.PassBit == 0x2000);
+        Assert.Equal(GameBin.FirstSeenEnvironmentThemeId, life.AuthoredEnvironmentThemeId);
+        Assert.Equal(GameBin.FirstSeenEnvironmentThemeName, life.AuthoredEnvironmentTheme);
+        Assert.NotEqual(GameBin.OakvaleEnvironmentName, life.AuthoredEnvironmentTheme);
+        Assert.Equal(0, WorldShading.FirstSeenPackedLightCount);
+        Assert.Equal(7, life.SubmittedWorld!.Instances.Count(i =>
+            i.MeshId == 4978 &&
+            i.Map.Equals("LookoutPoint", StringComparison.OrdinalIgnoreCase)));
         life.CloseStaticMapFile();
         Assert.Empty(life.OpenedMapBodies);
         Assert.Equal(0, life.OpenStaticMapsMode);
