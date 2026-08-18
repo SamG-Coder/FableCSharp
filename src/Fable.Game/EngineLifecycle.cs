@@ -1,7 +1,5 @@
 using System.Numerics;
-using System.Text;
 using Fable.Core;
-using Fable.Formats.Banks;
 using Fable.Formats.Defs;
 using Fable.Formats.Levels;
 using Fable.Formats.Qst;
@@ -1417,7 +1415,9 @@ public sealed class EngineLifecycle : IDisposable
             Draws = MeshBatches.SortByPass(combined.Draws),
         };
         SubmittedLandscapeCells = cells.Count;
-        SubmittedMesh = MeshBatches.Concat(land, objects);
+        // Sky is 00B662F0 bit 0x2000 on the
+        // object family, not land soup.
+        SubmittedMesh = MeshBatches.Concat(land, combined);
         timing.Measure("Textures", () => { BindSubmittedTextures(); return _submittedTextures.Count; },
             n => $"n={n}");
         WorldSubmitted = SubmittedMesh.Vertices.Length > 0;
@@ -1999,37 +1999,28 @@ public sealed class EngineLifecycle : IDisposable
         Note(LoadGlobalThingsPerMap, "Loading global things", "WLD", "004FDBC0");
         if (World is null)
             return;
-        BbbArchive? wad = null;
-        if (File.Exists(Install.WadPath))
-            wad = BbbArchive.Open(Install.WadPath);
-        try
+        EnsureLevels();
+        var loaded = new List<ThingInstance>();
+        foreach (var map in World.Maps)
         {
-            var loaded = new List<ThingInstance>();
-            foreach (var map in World.Maps)
-            {
-                if (!map.LoadedOnPlayerProximity)
-                    continue;
-                var tng = TryLoadMapTng(map, wad);
-                if (tng is null)
-                    continue;
-                loaded.AddRange(tng.Things);
-                GlobalThingMapsLoaded++;
-            }
-
-            if (loaded.Count == 0)
-            {
-                Note(LoadGlobalThingsMapFile, "Load global things", "WLD", "no proximity tng");
-                return;
-            }
-
-            GlobalThings = new ThingFile { Version = 2, Sections = [new ThingSection { Name = "GLOBAL", Things = loaded }] };
-            Note(LoadGlobalThingsMapFile, "Load global things", "WLD",
-                $"maps={GlobalThingMapsLoaded} things={loaded.Count}");
+            if (!map.LoadedOnPlayerProximity)
+                continue;
+            var tng = _levels?.TryLoadThings(map.ScriptName);
+            if (tng is null)
+                continue;
+            loaded.AddRange(tng.Things);
+            GlobalThingMapsLoaded++;
         }
-        finally
+
+        if (loaded.Count == 0)
         {
-            wad?.Dispose();
+            Note(LoadGlobalThingsMapFile, "Load global things", "WLD", "no proximity tng");
+            return;
         }
+
+        GlobalThings = new ThingFile { Version = 2, Sections = [new ThingSection { Name = "GLOBAL", Things = loaded }] };
+        Note(LoadGlobalThingsMapFile, "Load global things", "WLD",
+            $"maps={GlobalThingMapsLoaded} things={loaded.Count}");
     }
 
     /// <summary>
@@ -2822,15 +2813,24 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>00B3EF40</c> each list slot from
     /// index 1, then water <c>00B6DB80</c>.
     /// </summary>
-    public void CloseStaticMapFile()
+    public void CloseStaticMapFile(string? keepMap = null)
     {
         Note(CloseStaticMapFileFn, "StaticMap", "WLD",
             "00B40000 CloseStaticMapFile");
         if (_openedBodies.Count == 0 && OpenStaticMapsMode == 0)
             return;
-        for (var i = 1; i < _openedBodies.Count; i++)
-            Note(CloseStaticMapFn, "StaticMap", "WLD",
-                "00B3EF40 " + _openedBodies[i].Name);
+        for (var i = 0; i < _openedBodies.Count; i++)
+        {
+            var name = _openedBodies[i].Name;
+            if (i >= 1)
+                Note(CloseStaticMapFn, "StaticMap", "WLD",
+                    "00B3EF40 " + name);
+            var keep = keepMap is not null &&
+                name.Equals(keepMap, StringComparison.OrdinalIgnoreCase);
+            if (!keep)
+                _levels?.UnloadMap(name);
+        }
+
         _openedBodies.Clear();
         _neighbourStaticMaps.Clear();
         CurrentStaticMapName = null;
@@ -2940,7 +2940,16 @@ public sealed class EngineLifecycle : IDisposable
     {
         Note(SetStaticMapFileForUseFn, "StaticMap", "WLD",
             "SetStaticMapFileForUse: CloseStaticMapFile");
-        CloseStaticMapFile();
+        string? keep = null;
+        if (CurrentRegion is not null)
+        {
+            keep = CurrentRegion.ContainsMaps.FirstOrDefault(m =>
+                       m.Equals(CurrentRegion.RegionName, StringComparison.OrdinalIgnoreCase))
+                   ?? CurrentRegion.ContainsMaps.FirstOrDefault()
+                   ?? CurrentRegion.RegionName;
+        }
+
+        CloseStaticMapFile(keep);
         Note(SetStaticMapFileForUseFn, "StaticMap", "WLD",
             "SetStaticMapFileForUse: EnablePoolAllocation");
         Note(SetStaticMapFileForUseFn, "StaticMap", "WLD",
@@ -3073,28 +3082,19 @@ public sealed class EngineLifecycle : IDisposable
         {
             Timing.Measure("region TNG", () =>
             {
-                BbbArchive? wad = null;
-                if (Install is not null && File.Exists(Install.WadPath))
-                    wad = BbbArchive.Open(Install.WadPath);
-                try
+                EnsureLevels();
+                foreach (var map in region.ContainsMaps)
                 {
-                    foreach (var map in region.ContainsMaps)
-                    {
-                        Note(LevelLoaderApply, "LevelLoader", "Region", "Loading topology " + map);
-                        if (!_activatedMaps.Exists(m =>
-                                m.Equals(map, StringComparison.OrdinalIgnoreCase)))
-                            _activatedMaps.Add(map);
-                        Note(ActivateTopologyFn, "LevelLoader", "Region",
-                            $"004FCBB0 {map} +38=1");
-                        Note(SetMapLoadingFlagFn, "LevelLoader", "Region",
-                            $"004FCFE0 {map} +39");
-                        Note(LevelLoaderApply, "LevelLoader", "Region", "Loading objects " + map);
-                        LoadRegionMapThings(map, wad);
-                    }
-                }
-                finally
-                {
-                    wad?.Dispose();
+                    Note(LevelLoaderApply, "LevelLoader", "Region", "Loading topology " + map);
+                    if (!_activatedMaps.Exists(m =>
+                            m.Equals(map, StringComparison.OrdinalIgnoreCase)))
+                        _activatedMaps.Add(map);
+                    Note(ActivateTopologyFn, "LevelLoader", "Region",
+                        $"004FCBB0 {map} +38=1");
+                    Note(SetMapLoadingFlagFn, "LevelLoader", "Region",
+                        $"004FCFE0 {map} +39");
+                    Note(LevelLoaderApply, "LevelLoader", "Region", "Loading objects " + map);
+                    LoadRegionMapThings(map);
                 }
 
                 return RegionThingMapsLoaded;
@@ -3113,7 +3113,7 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>00522720</c> then <c>00521AE0</c>
     /// Thing Manager: Load From File.
     /// </summary>
-    private void LoadRegionMapThings(string mapName, BbbArchive? wad)
+    private void LoadRegionMapThings(string mapName)
     {
         Note(LoadThingsForMapFn, "LevelLoader", "Thing", "00522720 " + mapName);
         Note(ThingManagerLoadFileFn, "LevelLoader", "Thing",
@@ -3129,7 +3129,9 @@ public sealed class EngineLifecycle : IDisposable
             return;
         }
 
-        var tng = TryLoadMapTng(map, wad);
+        EnsureLevels();
+        var tng = _levels?.TryLoadThings(map.ScriptName)
+                  ?? _levels?.TryLoadThings(map.FileStem);
         if (tng is null)
         {
             Note(ThingManagerLoadFileFn, "LevelLoader", "Thing", "missing " + mapName);
@@ -3448,20 +3450,9 @@ public sealed class EngineLifecycle : IDisposable
         return _defs;
     }
 
-    private ThingFile? TryLoadMapTng(WorldMap map, BbbArchive? wad)
-    {
-        if (Install is null)
-            return null;
-        var stem = map.FileStem;
-        var loose = Path.Combine(Install.LooseLevelsDirectory, stem + TngExtension);
-        if (File.Exists(loose))
-            return ThingFile.Load(loose);
-        if (wad is null)
-            return null;
-        var entry = wad.Find(stem + TngExtension)
-                    ?? wad.Find(map.LevelName.Replace(".lev", TngExtension, StringComparison.OrdinalIgnoreCase));
-        return entry is null ? null : ThingFile.Parse(Encoding.ASCII.GetString(wad.Read(entry)));
-    }
+    private ThingFile? TryLoadMapTng(WorldMap map) =>
+        _levels?.TryLoadThings(map.ScriptName)
+        ?? _levels?.TryLoadThings(map.FileStem);
 
     /// <summary>
     /// <c>00509982</c> → <c>00506D40</c> with the

@@ -568,6 +568,31 @@ public sealed class LevFormatTests
     }
 
     [Fact]
+    public void LevelLibrary_unload_map_drops_region_not_wad()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var levels = new LevelLibrary(install);
+        var a = levels.LoadCompiledLev("LookoutPoint");
+        var cells = levels.LoadCells("LookoutPoint");
+        var things = levels.TryLoadThings("LookoutPoint");
+        Assert.NotNull(a);
+        Assert.NotEmpty(cells);
+        Assert.NotNull(things);
+        Assert.True(levels.HasCachedCells("LookoutPoint"));
+        Assert.True(levels.HasCachedThings("LookoutPoint"));
+        levels.UnloadMap("LookoutPoint");
+        Assert.False(levels.HasCachedCells("LookoutPoint"));
+        Assert.True(levels.HasCachedThings("LookoutPoint"));
+        levels.UnloadThings("LookoutPoint");
+        Assert.False(levels.HasCachedThings("LookoutPoint"));
+        var b = levels.LoadCompiledLev("LookoutPoint");
+        Assert.NotNull(b);
+        Assert.NotSame(a, b);
+        Assert.Equal(a.GridWidth, b.GridWidth);
+    }
+
+    [Fact]
     public void Fine_lookout_mesh_is_128_by_128_interpolated_from_coarse()
     {
         var install = GameInstall.TryLocate();

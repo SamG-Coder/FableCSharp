@@ -200,6 +200,46 @@ public sealed class LevelLibrary : IDisposable
         return built;
     }
 
+    /// <summary>
+    /// <c>00B3EF40</c> map-slot release:
+    /// LEV / STB / stored cells. TNG stays
+    /// with the Thing Manager. Banks and the
+    /// WAD/STB handles stay process-lifetime
+    /// (<c>00B40000</c> does not close
+    /// <c>MBANK_ALLMESHES</c>).
+    /// </summary>
+    public void UnloadMap(string region)
+    {
+        foreach (var key in Aliases(region))
+        {
+            _levs.Remove(key);
+            _heights.Remove(key);
+            _cells.Remove(key);
+        }
+    }
+
+    public void UnloadThings(string region)
+    {
+        foreach (var key in Aliases(region))
+            _things.Remove(key);
+    }
+
+    public bool HasCachedCells(string region) => _cells.ContainsKey(region);
+
+    public bool HasCachedThings(string region) => _things.ContainsKey(region);
+
+    private IEnumerable<string> Aliases(string region)
+    {
+        yield return region;
+        var map = World.FindMap(region);
+        if (map is null)
+            yield break;
+        if (!map.ScriptName.Equals(region, StringComparison.OrdinalIgnoreCase))
+            yield return map.ScriptName;
+        if (!map.FileStem.Equals(region, StringComparison.OrdinalIgnoreCase))
+            yield return map.FileStem;
+    }
+
     public void Dispose()
     {
         _things.Clear();

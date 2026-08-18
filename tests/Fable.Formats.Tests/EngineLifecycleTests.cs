@@ -1843,9 +1843,13 @@ public sealed class EngineLifecycleTests
         Assert.Equal(GameCamera.FirstSeenFovDegrees, life.Camera.FovDegrees);
         Assert.Same(life.SubmittedWorld, life.BuildFrame().World);
         Assert.True(life.SubmitElapsedMs > 0);
+        Assert.True(life.Levels!.HasCachedCells("LookoutPoint"));
+        Assert.Contains(life.SubmittedMesh!.Draws, d => d.PassBit == 0x2000);
         life.CloseStaticMapFile();
         Assert.Empty(life.OpenedMapBodies);
         Assert.Equal(0, life.OpenStaticMapsMode);
+        Assert.False(life.Levels.HasCachedCells("LookoutPoint"));
+        Assert.False(life.Levels.HasCachedCells("PicnicArea"));
         var dest = Path.Combine(
             @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
             "traces");
