@@ -48,9 +48,12 @@
     </div>
 
     <p>
-      Snapshot: <strong>2026-08-18</strong>, tip <code>c3be891</code>
-      (<em>Runtime: 0041707E interpolates when catchup ticks are 0</em>).
-      Master is proving <strong>boot / world clock</strong>, not animation.
+      Snapshot: <strong>2026-08-18</strong>, master merge
+      <code>63b03cc</code>, runtime HEAD <code>1ebece6</code>
+      (<em>Runtime: 006C2170 Loading objects is 00521AE0 map TNG.</em>).
+      Just locked on this path: <code>6e1ff8e</code>, <code>64a2e14</code>,
+      <code>0d8f5e5</code>, <code>1ebece6</code>.
+      Master is still proving <strong>boot / world clock</strong>, not animation.
       README’s long-term priority list still starts with animation; that
       list is not the current phase.
     </p>
@@ -220,8 +223,11 @@
 
     <h3>Phase 1 in progress — boot / world clock (current master)</h3>
     <p>
-      Recent commits (<code>8bccec3</code> … <code>c3be891</code>) lock the
-      retail pump, not <code>00DBDE40</code>.
+      Recent commits (<code>8bccec3</code> … <code>1ebece6</code>) lock the
+      retail pump, not <code>00DBDE40</code>. Just locked: world+24 lerp
+      (<code>6e1ff8e</code>), frontend New Game message (<code>64a2e14</code>),
+      frontend Present (<code>0d8f5e5</code>), map TNG load
+      (<code>1ebece6</code>).
     </p>
     <table>
       <thead><tr><th>Item</th><th>Status</th><th>Evidence</th></tr></thead>
@@ -312,6 +318,36 @@
           <td><code>c3be891</code></td>
         </tr>
         <tr>
+          <td><code>006B4900</code> world+24 slots; <code>006B42F0</code> lerps <code>+6296/+6312/+6328</code> into <code>ScriptedCamera</code></td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>6e1ff8e</code> / <code>World_camera_006B4900_slots_lerp_into_ScriptedCamera</code></td>
+        </tr>
+        <tr>
+          <td>Frontend New Game click: <code>0059A238</code> msg 15 → <code>[retail+41]=1</code> → Leave <code>0042F2A2</code></td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>64a2e14</code> / <code>Frontend_00595582_new_game_message_leaves_without_RequestNewGame</code></td>
+        </tr>
+        <tr>
+          <td>Menu built at <code>00595B24</code> (<code>UI_TEXT_NEW_GAME</code> id=0); not <code>00DBDE40</code></td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td>same</td>
+        </tr>
+        <tr>
+          <td>Frontend frame <code>0042EC7C</code>: input <code>0042E3EE</code> → fill → draw <code>0042DF9E</code> (BeginScene / UI vtbl+8 / EndScene / Present)</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>0d8f5e5</code> / <code>Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present</code></td>
+        </tr>
+        <tr>
+          <td>Same Present as PlayAVI (<code>009BEEB0</code>); extra <code>.wmv</code> after draw skipped (<code>00595A03</code> always 0)</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td>same</td>
+        </tr>
+        <tr>
+          <td><code>006C2170</code> Loading objects → <code>00522720</code> / <code>00521AE0</code> current-map <code>.tng</code> (LookoutPoint on no-save)</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>1ebece6</code> / <code>Loading_objects_00521AE0_loads_LookoutPoint_tng</code></td>
+        </tr>
+        <tr>
           <td>Game pump / first region is <code>00DBDE40</code> / StartOakVale setup</td>
           <td><span class="badge DISPROVEN">DISPROVEN</span></td>
           <td>tests above</td>
@@ -331,8 +367,14 @@
       First-scene <em>view</em> is still <code>StartOakValeWest</code>
       (PARITY / first-scene contract). Persist name
       <code>StartOakVale</code> is index <strong>4</strong>.
-      Who writes <code>PlayerRegionName</code> on a retail New Game click
-      is <span class="badge UNREAD">UNREAD</span>.
+      The retail New Game <em>click/message</em> is now
+      <span class="badge PROVEN">PROVEN</span>
+      (<code>0059A238</code> / <code>[retail+41]</code>).
+      Who writes persist <code>PlayerRegionName</code> is still
+      <span class="badge UNREAD">UNREAD</span>.
+      <code>[esi+42]</code> load/save is
+      <span class="badge UNREAD">UNREAD</span>.
+      <code>00521AE0</code> is per-map TNG, not global-things apply.
     </div>
 
     <h2 id="left">What’s left</h2>
@@ -362,9 +404,9 @@
           <td>Default New Game is <code>world+164==0</code></td>
         </tr>
         <tr>
-          <td><code>006B42F0</code> camera-manager lerp slots</td>
-          <td><span class="badge PARTIAL">PARTIAL</span></td>
-          <td><code>+3084/+6188/+6296</code></td>
+          <td>Slot fields beyond <code>+6296/+6312/+6328</code> (weights / <code>+6340/+6352</code>)</td>
+          <td><span class="badge UNREAD">UNREAD</span></td>
+          <td>Lerp into <code>ScriptedCamera</code> is PROVEN; leftover slot bodies are not</td>
         </tr>
         <tr>
           <td><code>00435530</code> display apply</td>
@@ -372,9 +414,19 @@
           <td>Thunk <code>00435F70</code> is the jmp</td>
         </tr>
         <tr>
+          <td>Who writes persist <code>PlayerRegionName</code> on New Game</td>
+          <td><span class="badge UNREAD">UNREAD</span></td>
+          <td>Click/message path is PROVEN; persist HEADER writer is not</td>
+        </tr>
+        <tr>
+          <td><code>[esi+42]</code> load/save</td>
+          <td><span class="badge UNREAD">UNREAD</span></td>
+          <td><code>recover-00595582</code>; <code>[esi+41]</code> Leave is PROVEN</td>
+        </tr>
+        <tr>
           <td>Global-things <em>use</em> after <code>004FDBC0</code> / <code>.gtg</code> parse</td>
           <td><span class="badge UNREAD">UNREAD</span></td>
-          <td>Load switch is PROVEN; apply into the world is not</td>
+          <td>Load switch is PROVEN; <code>00521AE0</code> is per-map TNG, not this apply</td>
         </tr>
         <tr>
           <td>GTNG file body</td>
@@ -547,10 +599,14 @@
       <li>
         <strong>No-save first real region is LookoutPoint</strong>, not Oakvale.
         Oakvale is persist-name index 4 or the first-scene <em>view</em> contract.
+        New Game <em>click</em> is PROVEN; persist <code>PlayerRegionName</code>
+        writer is not.
       </li>
       <li>
         <strong>GTNG is not an unread file on TLC</strong> — missing skip is
-        PROVEN. Remaining UNREAD is global-things <em>use</em>, plus
+        PROVEN. <code>00521AE0</code> loads the current map <code>.tng</code>.
+        Remaining UNREAD is global-things <em>use</em> after
+        <code>004FDBC0</code> / <code>.gtg</code> parse, plus
         <code>[record+36]</code> and catchup-tick writers.
       </li>
       <li>

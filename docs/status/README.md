@@ -14,10 +14,12 @@ or in tests/code, treat it as **UNREAD**.
 `CAM_OVIF_SHOT2`) so `CS_OAKVALE_INTRO_FATHER` can run on a real
 world clock.
 
-Snapshot: **2026-08-18**, tip `c3be891` (*Runtime: 0041707E interpolates
-when catchup ticks are 0*). Master is proving **boot / world clock**,
-not animation. README’s long-term priority list still starts with
-animation; that list is not the current phase.
+Snapshot: **2026-08-18**, master merge `63b03cc`, runtime HEAD
+`1ebece6` (*Runtime: 006C2170 Loading objects is 00521AE0 map TNG.*).
+Just locked on this path: `6e1ff8e`, `64a2e14`, `0d8f5e5`, `1ebece6`.
+Master is still proving **boot / world clock**, not animation.
+README’s long-term priority list still starts with animation; that
+list is not the current phase.
 
 Open the same content as a page: [index.html](index.html)
 (local file, or GitHub Pages under `/status/` if Pages is `/docs`).
@@ -105,8 +107,10 @@ when a ledger or test already records them.
 
 ### Phase 1 in progress — boot / world clock (current master)
 
-Recent commits (`8bccec3` … `c3be891`) lock the retail pump, not
-`00DBDE40`.
+Recent commits (`8bccec3` … `1ebece6`) lock the retail pump, not
+`00DBDE40`. Just locked: world+24 lerp (`6e1ff8e`), frontend New Game
+message (`64a2e14`), frontend Present (`0d8f5e5`), map TNG load
+(`1ebece6`).
 
 | Item | Status | Evidence |
 |---|---|---|
@@ -127,6 +131,12 @@ Recent commits (`8bccec3` … `c3be891`) lock the retail pump, not
 | `WorldFrame` inc at `004A5E10` via `0049DFB0` type-1 (`00629270` / `004A5A40`) | PROVEN | `ced722f` / `WorldFrame_004A5E10_unblocks_004164E0` |
 | Camera body `004164E0` steps `arg/15` when `[0x13B8630]>0` | PROVEN | `6d7545a` |
 | `0041707E` interpolates when catchup ticks are 0 (default New Game) | PROVEN | `c3be891` |
+| `006B4900` world+24 slots; `006B42F0` lerps `+6296/+6312/+6328` into `ScriptedCamera` | PROVEN | `6e1ff8e` / `World_camera_006B4900_slots_lerp_into_ScriptedCamera` |
+| Frontend New Game click: `0059A238` msg 15 → `[retail+41]=1` → Leave `0042F2A2` | PROVEN | `64a2e14` / `Frontend_00595582_new_game_message_leaves_without_RequestNewGame` |
+| Menu built at `00595B24` (`UI_TEXT_NEW_GAME` id=0); not `00DBDE40` | PROVEN | same |
+| Frontend frame `0042EC7C`: input `0042E3EE` → fill → draw `0042DF9E` (BeginScene / UI vtbl+8 / EndScene / Present) | PROVEN | `0d8f5e5` / `Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present` |
+| Same Present as PlayAVI (`009BEEB0`); extra `.wmv` after draw skipped (`00595A03` always 0) | PROVEN | same |
+| `006C2170` Loading objects → `00522720` / `00521AE0` current-map `.tng` (LookoutPoint on no-save) | PROVEN | `1ebece6` / `Loading_objects_00521AE0_loads_LookoutPoint_tng` |
 | Game pump / first region is `00DBDE40` / StartOakVale setup | DISPROVEN | tests above |
 | No-save writes `[record+36]` | DISPROVEN | `recover-record36` text in `Camera_004164E0_runs_on_install_after_WorldFrame`; null still loads |
 
@@ -134,8 +144,10 @@ Recent commits (`8bccec3` … `c3be891`) lock the retail pump, not
 `WorldMap+156` is the *index field*. No-save New Game’s first real
 write is **1 = LookoutPoint**. First-scene *view* is still
 `StartOakValeWest` (PARITY / first-scene contract). Persist name
-`StartOakVale` is index **4**. Who writes `PlayerRegionName` on a
-retail New Game click is **UNREAD**.
+`StartOakVale` is index **4**. The retail New Game *click/message*
+is now **PROVEN** (`0059A238` / `[retail+41]`). Who writes persist
+`PlayerRegionName` is still **UNREAD**. `[esi+42]` load/save is
+**UNREAD**. `00521AE0` is per-map TNG, not global-things apply.
 
 ---
 
@@ -153,9 +165,11 @@ the no-save path.
 | First non-null `[NewRegion record+36]` writer | UNREAD | Null is the native no-save state |
 | `[0x13B8630]` catchup-tick writers | UNREAD | 3 immediate sites; default 0 |
 | `0041714D` when `world+164 != 0` | UNREAD | Default New Game is `world+164==0` |
-| `006B42F0` camera-manager lerp slots | PARTIAL | `+3084/+6188/+6296` |
+| Slot fields beyond `+6296/+6312/+6328` (weights / `+6340/+6352`) | UNREAD | Lerp into `ScriptedCamera` is PROVEN; leftover slot bodies are not |
 | `00435530` display apply | PARTIAL | Thunk `00435F70` is the jmp |
-| Global-things *use* after `004FDBC0` / `.gtg` parse | UNREAD | Load switch is PROVEN; apply into the world is not |
+| Who writes persist `PlayerRegionName` on New Game | UNREAD | Click/message path is PROVEN; persist HEADER writer is not |
+| `[esi+42]` load/save | UNREAD | `recover-00595582`; `[esi+41]` Leave is PROVEN |
+| Global-things *use* after `004FDBC0` / `.gtg` parse | UNREAD | Load switch is PROVEN; `00521AE0` is per-map TNG, not this apply |
 | GTNG file body | N/A on TLC | Missing skip is PROVEN |
 | MiniMap `0082BA00` / villages `005064C0` bodies | UNREAD | Named from `SetRegionAsLoaded`; not claimed as runtime |
 | Wire persist-Oakvale (or a proven New Game region write) to `FirstSceneWorld` | UNREAD | Host first-scene lists are a separate reconstructed path |
@@ -251,9 +265,11 @@ The boot-first sequence holds. Corrections from the repo:
 
 1. **No-save first real region is LookoutPoint**, not Oakvale.
    Oakvale is persist-name index 4 or the first-scene *view* contract.
+   New Game *click* is PROVEN; persist `PlayerRegionName` writer is not.
 2. **GTNG is not an unread file on TLC** — missing skip is PROVEN.
-   Remaining UNREAD is global-things *use*, plus `[record+36]` and
-   catchup-tick writers.
+   `00521AE0` loads the current map `.tng`. Remaining UNREAD is
+   global-things *use* after `004FDBC0` / `.gtg` parse, plus
+   `[record+36]` and catchup-tick writers.
 3. **Intro opcodes are already walked.** Phase 2 is apply/runtime
    leftovers on that fiber, not “finish UNREAD tokens.”
 4. **README animation-first is the long-term engine list**, not
