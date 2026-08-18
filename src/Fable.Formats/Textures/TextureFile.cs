@@ -69,7 +69,10 @@ public sealed class TextureFile
         var top = TopMipSize(header.Width, header.Height, compression);
         var payload = data;
         var lower = Array.Empty<byte>();
-        if (compression is TextureCompression.Dxt1 or TextureCompression.Dxt3 or TextureCompression.Dxt5 && LooksCompressed(data))
+        var framed = compression is TextureCompression.Dxt1 or TextureCompression.Dxt3
+                or TextureCompression.Dxt5
+            || (compression is TextureCompression.Rgba8 && data.Length < top);
+        if (framed && LooksCompressed(data))
         {
             var cursor = 0;
             payload = Lzo.DecompressFramed(data, ref cursor, top, out var produced);

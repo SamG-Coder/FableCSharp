@@ -812,6 +812,16 @@ public sealed class EngineLifecycleTests
         var frame = life.BuildFrame();
         Assert.NotNull(frame.FrontendRgba);
         Assert.True(frame.FrontendWidth > 0);
+        Assert.Contains(life.FrontendWidgets, w =>
+            w.TextureName == FrontendSpriteBank.TitleLeft);
+        Assert.Contains(life.FrontendWidgets, w =>
+            w.TextureName == FrontendSpriteBank.TitleRight);
+        var title = life.FrontendWidgets.First(w => w.Name == "UI_TITLE_01");
+        Assert.True(title.DestX1 - title.DestX0 >= 256);
+        Assert.True(title.DestY1 - title.DestY0 >= 128);
+        Assert.Contains(life.FrontendWidgets, w =>
+            w.Name.Contains("FORREST_1_1", StringComparison.Ordinal) &&
+            w.TextureName == "FORREST_1_1");
     }
 
     [Fact]

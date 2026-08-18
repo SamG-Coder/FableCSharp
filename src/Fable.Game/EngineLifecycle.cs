@@ -6,6 +6,7 @@ using Fable.Formats.Levels;
 using Fable.Formats.Text;
 using Fable.Formats.Qst;
 using Fable.Formats.Scene;
+using Fable.Formats.Textures;
 using Fable.Formats.Tng;
 using Fable.Formats.Meshes;
 using Fable.Formats.Wld;
@@ -2178,6 +2179,7 @@ public sealed class EngineLifecycle : IDisposable
     public int FrontendPresentHeight { get; private set; }
     public IReadOnlyList<FrontendWidget> FrontendWidgets => _frontendWidgets;
     private readonly List<FrontendWidget> _frontendWidgets = [];
+    private FrontendSpriteBank? _frontendSprites;
     /// <summary>
     /// First-seen <c>005955AB</c> is
     /// empty (same enumerator
@@ -6525,10 +6527,12 @@ public sealed class EngineLifecycle : IDisposable
         FrontendChildCount = 0;
         FrontendRootType = 0;
         FrontendPressStartLabel = null;
+        if (Install is not null && _frontendSprites is null)
+            _frontendSprites = new FrontendSpriteBank(Install);
         var root = FrontendDefs?.FindEntry(FrontendPressStartMenu);
         var parsed = root is null ? null : FrontendUiDef.TryParse(root);
         FrontendRootType = parsed?.Type ?? 0;
-        AddFrontendWidget(parsed, FrontendPressStartMenu);
+        AddFrontendWidget(parsed, FrontendPressStartMenu, parent: null);
         if (parsed is null || FrontendDefs is null)
             return;
         foreach (var index in parsed.ChildIndices)
@@ -6538,13 +6542,13 @@ public sealed class EngineLifecycle : IDisposable
             var child = FrontendUiDef.TryParse(FrontendDefs.Entries[index]);
             if (child is null)
                 continue;
-            AttachFrontendChild(child);
+            AttachFrontendChild(child, FrontendPressStartMenu);
         }
     }
 
-    private void AttachFrontendChild(FrontendUiDef def)
+    private void AttachFrontendChild(FrontendUiDef def, string parent)
     {
-        AddFrontendWidget(def, def.InstanceName);
+        AddFrontendWidget(def, def.InstanceName, parent);
         FrontendChildCount++;
         Note(FrontendPressStartCtorFn, "Frontend", "UI",
             $"005331A0 child {def.InstanceName} type {def.Type}");
@@ -6557,11 +6561,11 @@ public sealed class EngineLifecycle : IDisposable
             var nested = FrontendUiDef.TryParse(FrontendDefs.Entries[index]);
             if (nested is null)
                 continue;
-            AttachFrontendChild(nested);
+            AttachFrontendChild(nested, def.InstanceName);
         }
     }
 
-    private void AddFrontendWidget(FrontendUiDef? def, string name)
+    private void AddFrontendWidget(FrontendUiDef? def, string name, string? parent)
     {
         var text = def?.TextTag;
         string? body = null;
@@ -6573,12 +6577,15 @@ public sealed class EngineLifecycle : IDisposable
                 FrontendPressStartLabel = body ?? text;
         }
 
+        var texture = FrontendSpriteBank.BankNameForWidget(name);
         _frontendWidgets.Add(new FrontendWidget(
             name,
             def?.Type ?? 0,
             0, 0, 0, 0,
             text,
-            body));
+            body,
+            parent,
+            texture));
     }
 
     private void ApplyFrontendScaleInit()
@@ -6603,23 +6610,34 @@ public sealed class EngineLifecycle : IDisposable
             var originY = parsed?.PositionY ?? 0;
             var sizeW = parsed is { Width: > 0 } ? (int)parsed.Width : 0;
             var sizeH = parsed is { Height: > 0 } ? (int)parsed.Height : 0;
+            var tex = widget.TextureName is null
+                ? null
+                : _frontendSprites?.TryLoad(widget.TextureName);
+            if (tex is not null)
+            {
+                if (sizeW == 0)
+                    sizeW = tex.Width;
+                if (sizeH == 0)
+                    sizeH = tex.Height;
+            }
+
             var label = widget.Text ?? widget.TextTag;
             if (sizeW == 0 && !string.IsNullOrEmpty(label))
                 sizeW = label.Length * 8;
             if (sizeH == 0 && !string.IsNullOrEmpty(label))
                 sizeH = 16;
-            if (sizeW == 0 && sizeH == 0 && widget.Type == 0 &&
-                (widget.Name.Contains("_BG_", StringComparison.Ordinal) ||
-                 widget.Name.Contains("TITLE_0", StringComparison.Ordinal)))
+            if (widget.ParentName is { } parentName)
             {
-                sizeW = 256;
-                sizeH = 256;
+                var parent = _frontendWidgets.Find(w => w.Name == parentName);
+                originX += parent.DestX0;
+                originY += parent.DestY0;
             }
+
             var dest = FrontendWidgetDest(
                 sizeW, sizeH, 0, 0,
                 originX, originY,
                 FrontendScaleX, FrontendScaleY,
-                center: sizeW > 0 && originX != 0);
+                center: false);
             _frontendWidgets[i] = widget with
             {
                 DestX0 = dest.X0,
@@ -6669,11 +6687,13 @@ public sealed class EngineLifecycle : IDisposable
             var y1 = (int)MathF.Round(widget.DestY1);
             if (x1 <= x0 || y1 <= y0)
                 continue;
-            var text = widget.Text ?? widget.TextTag;
-            if (!string.IsNullOrEmpty(text))
-                BlitFrontendText(rgba, width, height, x0, y0, text);
-            else
-                FillFrontendRect(rgba, width, height, x0, y0, x1, y1, 255, 255, 255, 180);
+            if (widget.TextureName is null)
+                continue;
+            if (widget.TextureName.StartsWith("FORREST_", StringComparison.Ordinal) &&
+                !widget.TextureName.Contains("_1_", StringComparison.Ordinal))
+                continue;
+            if (_frontendSprites?.TryLoad(widget.TextureName) is { } tex)
+                BlitFrontendTexture(rgba, width, height, x0, y0, tex);
         }
 
         FrontendPresentRgba = rgba;
@@ -6681,38 +6701,40 @@ public sealed class EngineLifecycle : IDisposable
         FrontendPresentHeight = height;
     }
 
-    private static void FillFrontendRect(
-        byte[] rgba, int width, int height,
-        int x0, int y0, int x1, int y1,
-        byte r, byte g, byte b, byte a)
+    private static void BlitFrontendTexture(
+        byte[] rgba, int width, int height, int x0, int y0, TextureFile tex)
     {
-        x0 = Math.Clamp(x0, 0, width);
-        y0 = Math.Clamp(y0, 0, height);
-        x1 = Math.Clamp(x1, 0, width);
-        y1 = Math.Clamp(y1, 0, height);
-        for (var y = y0; y < y1; y++)
+        for (var y = 0; y < tex.Height; y++)
         {
-            var row = y * width * 4;
-            for (var x = x0; x < x1; x++)
+            var dy = y0 + y;
+            if ((uint)dy >= (uint)height)
+                continue;
+            var row = dy * width * 4;
+            for (var x = 0; x < tex.Width; x++)
             {
-                var o = row + x * 4;
-                rgba[o] = r;
-                rgba[o + 1] = g;
-                rgba[o + 2] = b;
-                rgba[o + 3] = a;
-            }
-        }
-    }
+                var dx = x0 + x;
+                if ((uint)dx >= (uint)width)
+                    continue;
+                var s = (y * tex.Width + x) * 4;
+                var a = tex.Rgba[s + 3];
+                if (a == 0)
+                    continue;
+                var d = row + dx * 4;
+                if (a == 255)
+                {
+                    rgba[d] = tex.Rgba[s];
+                    rgba[d + 1] = tex.Rgba[s + 1];
+                    rgba[d + 2] = tex.Rgba[s + 2];
+                    rgba[d + 3] = 255;
+                    continue;
+                }
 
-    private static void BlitFrontendText(
-        byte[] rgba, int width, int height, int x, int y, string text)
-    {
-        FillFrontendRect(rgba, width, height, x, y, x + text.Length * 8, y + 16, 0, 0, 0, 160);
-        var cx = x + 1;
-        foreach (var ch in text)
-        {
-            FillFrontendRect(rgba, width, height, cx, y + 2, cx + 6, y + 14, 255, 255, 255, 255);
-            cx += 8;
+                var ia = 255 - a;
+                rgba[d] = (byte)((tex.Rgba[s] * a + rgba[d] * ia) / 255);
+                rgba[d + 1] = (byte)((tex.Rgba[s + 1] * a + rgba[d + 1] * ia) / 255);
+                rgba[d + 2] = (byte)((tex.Rgba[s + 2] * a + rgba[d + 2] * ia) / 255);
+                rgba[d + 3] = 255;
+            }
         }
     }
 
@@ -6773,6 +6795,8 @@ public sealed class EngineLifecycle : IDisposable
         _levels = null;
         Textures?.Dispose();
         Textures = null;
+        _frontendSprites?.Dispose();
+        _frontendSprites = null;
         Meshes.Dispose();
     }
 

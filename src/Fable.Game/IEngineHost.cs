@@ -58,4 +58,6 @@ public readonly record struct FrontendWidget(
     float DestX1,
     float DestY1,
     string? TextTag,
-    string? Text);
+    string? Text,
+    string? ParentName = null,
+    string? TextureName = null);
