@@ -1,7 +1,9 @@
 using System.Numerics;
 using Fable.Core;
+using Fable.Formats.Banks;
 using Fable.Formats.Defs;
 using Fable.Formats.Levels;
+using Fable.Formats.Text;
 using Fable.Formats.Qst;
 using Fable.Formats.Scene;
 using Fable.Formats.Tng;
@@ -197,6 +199,39 @@ public sealed class EngineLifecycle : IDisposable
     public const uint FrontendWidgetType0Ctor = 0x0041B800;
     public const uint FrontendWidgetVtbl = 0x0122F5D4;
     public const uint FrontendWidgetDrawFn = 0x0041AFA0;
+    /// <summary>
+    /// frontend.bin <c>Type</c> of
+    /// <c>UI_FRONTEND_PRESS_START_MENU</c>
+    /// is 10, not 0. Ctor
+    /// <c>0054E3D0</c> → <c>0052CC50</c>
+    /// vtbl <c>012497E4</c>. Draw slot +8
+    /// is <c>00530260</c> (walk +176),
+    /// not <c>0041AFA0</c>.
+    /// </summary>
+    public const int FrontendPressStartType = 10;
+    public const uint FrontendPressStartCtorFn = 0x0054E3D0;
+    public const uint FrontendPressStartVtbl = 0x012497E4;
+    public const uint FrontendContainerDrawFn = 0x00530260;
+    public const int FrontendChildListOffset = 176;
+    /// <summary>
+    /// <c>0052C730</c> → <c>005339B0</c>
+    /// writes <c>+272/+276=1.0</c> when
+    /// <c>+280==0</c>, copies +36 layout
+    /// into <c>+52/+92</c>. Type 10
+    /// vtbl+172 is <c>0054E4B0</c> which
+    /// starts with this call; then
+    /// <c>005339B0</c> walks +176
+    /// <c>vtbl+172</c> on children.
+    /// </summary>
+    public const uint FrontendScaleInitFn = 0x0052C730;
+    public const uint FrontendScaleWriteFn = 0x005339B0;
+    public const uint FrontendScaleInitVtblFn = 0x0054E4B0;
+    public const int FrontendScaleInitVtbl = 172;
+    public const float FrontendScaleOne = 1f;
+    public const string FrontendPressStartText = "UI_PRESS_START_TEXT";
+    public const string FrontendPressStartTextTag = "TEXT_GUI_MENU_PRESS_BUTTON";
+    public const string FrontendTitleWidget = "UI_TITLE";
+    public const string FrontendForestBackground = "UI_BLENDING_BACKGROUNDS_FORREST";
     /// <summary>
     /// <c>0041B800</c> writes <c>[+376]=0</c>
     /// <c>[+380]=0</c> so first-seen
@@ -2133,6 +2168,16 @@ public sealed class EngineLifecycle : IDisposable
     public int FrontendWidgetTexture { get; private set; }
     public string? FrontendMenuRoot { get; private set; }
     public bool FrontendMenuConstructed { get; private set; }
+    public int FrontendRootType { get; private set; }
+    public int FrontendChildCount { get; private set; }
+    public float FrontendScaleX { get; private set; }
+    public float FrontendScaleY { get; private set; }
+    public string? FrontendPressStartLabel { get; private set; }
+    public byte[]? FrontendPresentRgba { get; private set; }
+    public int FrontendPresentWidth { get; private set; }
+    public int FrontendPresentHeight { get; private set; }
+    public IReadOnlyList<FrontendWidget> FrontendWidgets => _frontendWidgets;
+    private readonly List<FrontendWidget> _frontendWidgets = [];
     /// <summary>
     /// First-seen <c>005955AB</c> is
     /// empty (same enumerator
@@ -2740,7 +2785,10 @@ public sealed class EngineLifecycle : IDisposable
             SubmittedObjects?.Vertices,
             SubmittedObjects?.Draws,
             SubmittedLandscape?.Indices,
-            PlayAviClearArgb);
+            PlayAviClearArgb,
+            FrontendPresentRgba,
+            FrontendPresentWidth,
+            FrontendPresentHeight);
     }
 
     /// <summary>
@@ -2878,35 +2926,37 @@ public sealed class EngineLifecycle : IDisposable
             "0041DB1D " + FrontendPressStartMenu +
             $" slot 0x{FrontendPressStartSlot:X}");
         ResolveFrontendDef(FrontendPressStartMenu);
+        AttachPressStartWidgets();
         Note(FrontendDefResolveFn, "Frontend", "UI",
             "0042AEDA 009AD9E0 [def+60] switch 0041D7F8");
         Note(FrontendWidgetConstructFn, "Frontend", "UI",
             FrontendDefFound
-                ? "0041D21B [def+60] " + (FrontendDefTypeName ?? "UI")
+                ? $"0041D21B [def+60] type {FrontendRootType}"
                 : "0041D21B 009AD410 miss");
-        Note(FrontendWidgetType0Ctor, "Frontend", "UI",
-            $"0041B800 vtbl 0x{FrontendWidgetVtbl:X} +{FrontendWidgetBlendOffset}={FrontendWidgetBlendDefault}");
+        if (FrontendRootType == FrontendPressStartType)
+        {
+            Note(FrontendPressStartCtorFn, "Frontend", "UI",
+                $"0054E3D0 type {FrontendPressStartType} vtbl 0x{FrontendPressStartVtbl:X} not 0041B800");
+        }
+        else
+        {
+            Note(FrontendWidgetType0Ctor, "Frontend", "UI",
+                $"0041B800 vtbl 0x{FrontendWidgetVtbl:X} +{FrontendWidgetBlendOffset}={FrontendWidgetBlendDefault}");
+        }
+
         Note(FrontendWidgetPostCtorFn, "Frontend", "UI",
             $"0041AC20 vtbl+{FrontendWidgetFontListVtbl} 0x{FrontendWidgetFontListFn:X}");
         FrontendWidgetBlend = FrontendWidgetBlendDefault;
-        // Empty [obj+64..+68] → [+376]=0 → jbe 0041AF6F.
-        // +204/+208 not written. +248/+264 ctor 0.
         FrontendWidgetFont = 0;
         FrontendWidgetTexture = 0;
-        var dest = FrontendWidgetDest(
-            sizeW: 0, sizeH: 0,
-            leftoverW: 0, leftoverH: 0,
-            originX: 0, originY: 0,
-            scaleX: 0, scaleY: 0,
-            center: false);
-        FrontendWidgetDestX0 = dest.X0;
-        FrontendWidgetDestY0 = dest.Y0;
-        FrontendWidgetDestX1 = dest.X1;
-        FrontendWidgetDestY1 = dest.Y1;
+        ApplyFrontendScaleInit();
+        LayoutFrontendWidgets();
         Note(FrontendWidgetPostCtorFn, "Frontend", "UI",
-            "0041AC20 [+376]=0 skip dest");
+            FrontendRootType == FrontendPressStartType
+                ? $"005331A0 children={FrontendChildCount}"
+                : "0041AC20 [+376]=0 skip dest");
         Note(FrontendWidgetDrawFn, "Frontend", "UI",
-            $"0041AFA0 dest {dest.X0},{dest.Y0},{dest.X1},{dest.Y1} +{FrontendWidgetOriginXOffset}/+{FrontendWidgetScaleXOffset}=0");
+            $"0041AFA0 dest {FrontendWidgetDestX0},{FrontendWidgetDestY0},{FrontendWidgetDestX1},{FrontendWidgetDestY1}");
         Note(FrontendWidgetMessageNoopFn, "Frontend", "UI",
             $"0052F040 ret 4 msg 0x{FrontendPressStartMessage:X} vtbl+{FrontendWidgetMessageVtbl}");
         Note(FrontendPressStartAttachFn, "Frontend", "UI",
@@ -2986,19 +3036,10 @@ public sealed class EngineLifecycle : IDisposable
         Note(FrontendDestLayoutFn, "Frontend", "UI",
             $"00531EC0 vtbl+{FrontendDestScaleVtbl} 0052F5C0 then vtbl+{FrontendDestOriginVtbl} 0052FFD0");
         Note(FrontendDestScaleFn, "Frontend", "UI",
-            "0052F5C0 +264 from ctor-zero +92/+272");
+            $"0052F5C0 +264 from +92/+272={FrontendScaleX}");
         Note(FrontendDestOriginFn, "Frontend", "UI",
-            "0052FFD0 +248 from ctor-zero +52/+60");
-        var dest = FrontendWidgetDest(
-            sizeW: 0, sizeH: 0,
-            leftoverW: 0, leftoverH: 0,
-            originX: 0, originY: 0,
-            scaleX: 0, scaleY: 0,
-            center: false);
-        FrontendWidgetDestX0 = dest.X0;
-        FrontendWidgetDestY0 = dest.Y0;
-        FrontendWidgetDestX1 = dest.X1;
-        FrontendWidgetDestY1 = dest.Y1;
+            "0052FFD0 +248 from +52/+60");
+        LayoutFrontendWidgets();
         FrontendWidgetTickRan = true;
         FrontendDestLayoutRan = true;
         Note(FrontendWidgetNextFn, "Frontend", "UI", "004292C0");
@@ -3018,15 +3059,32 @@ public sealed class EngineLifecycle : IDisposable
         Frontend2dRecordsQueued = 0;
         Note(FrontendUiDrawFn, "Frontend", "UI",
             $"00595222 [ui+{FrontendWidgetListOffset}]");
+        FrontendEnqueueRan = false;
         if (!FrontendMenuConstructed)
             return;
-        // First [node+20] is 00598A1C slot
-        // 0x14 Press Start. 0059899A later.
-        Note(FrontendWidgetDrawFn, "Frontend", "UI",
-            $"0041AFA0 vtbl+{FrontendWidgetDrawVtbl} 0122F5D4");
-        QueueFrontend2dRecord();
+        if (FrontendRootType == FrontendPressStartType)
+        {
+            Note(FrontendContainerDrawFn, "Frontend", "UI",
+                $"00530260 vtbl+{FrontendWidgetDrawVtbl} 012497E4 +{FrontendChildListOffset} n={FrontendChildCount}");
+            foreach (var widget in _frontendWidgets)
+            {
+                if (widget.Name == FrontendPressStartMenu)
+                    continue;
+                Note(FrontendWidgetDrawFn, "Frontend", "UI",
+                    $"00530260 child {widget.Name} type {widget.Type} dest {widget.DestX0},{widget.DestY0},{widget.DestX1},{widget.DestY1}");
+                QueueFrontend2dRecord(widget);
+            }
+        }
+        else
+        {
+            Note(FrontendWidgetDrawFn, "Frontend", "UI",
+                $"0041AFA0 vtbl+{FrontendWidgetDrawVtbl} 0122F5D4");
+            QueueFrontend2dRecord(null);
+        }
+
         Note(FrontendWidgetNextFn, "Frontend", "UI", "004292C0");
-        FrontendWidgetsDrawn = 1;
+        FrontendWidgetsDrawn = Math.Max(1, _frontendWidgets.Count);
+        CompositeFrontendPresent();
     }
 
     /// <summary>
@@ -3043,8 +3101,14 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>0,0,0,0</c>. Packer writes
     /// type/size into that dest.
     /// </summary>
-    private void QueueFrontend2dRecord()
+    private void QueueFrontend2dRecord(FrontendWidget? widget)
     {
+        var destX0 = widget?.DestX0 ?? FrontendWidgetDestX0;
+        var destY0 = widget?.DestY0 ?? FrontendWidgetDestY0;
+        var destX1 = widget?.DestX1 ?? FrontendWidgetDestX1;
+        var destY1 = widget?.DestY1 ?? FrontendWidgetDestY1;
+        var destW = destX1 - destX0;
+        var destH = destY1 - destY0;
         var sibling = FrontendWidgetTexture != 0;
         var packer = sibling ? FrontendWidgetQueueSiblingFn : FrontendWidgetQueueFn;
         Note(packer, "Frontend", "UI",
@@ -3052,16 +3116,12 @@ public sealed class EngineLifecycle : IDisposable
                 ? $"0041BF60 type 0x{Frontend2dRecordType:X} [+380]"
                 : $"0041BEB0 type 0x{Frontend2dRecordType:X} +{FrontendWidgetBlendOffset}={FrontendWidgetBlend}");
         Note(packer, "Frontend", "UI",
-            $"[edx+{Frontend2dSubmitVtbl}] dest +{FrontendWidgetSubmitDestOffset:X} 0x{Frontend2dRecordBytes:X} {FrontendWidgetDestX0},{FrontendWidgetDestY0},{FrontendWidgetDestX1},{FrontendWidgetDestY1}");
+            $"[edx+{Frontend2dSubmitVtbl}] dest +{FrontendWidgetSubmitDestOffset:X} 0x{Frontend2dRecordBytes:X} {destX0},{destY0},{destX1},{destY1}");
         Note(FrontendEngineAllocFn, "Frontend", "UI",
             $"00B26340 size 0x{FrontendEngineObjectSize:X} vtbl 0x{FrontendEngineVtbl:X}");
         Note(FrontendSubmitFn, "Frontend", "UI",
             $"00B23BC0 engine vtbl+{Frontend2dSubmitVtbl} 012A0F3C → 00B324A0 [0x{FrontendSubmitSingletonVa:X}] type 0x{Frontend2dRecordType:X}");
-        // Init Engine already 00B8FAD0'd 00BAD040 for 0x22/0x23.
-        // dest+4=0 → 00BACFD0(0x22) 012A54BC, then factory +20 00BAE2D0.
-        // 00BAE2D0 is shader bind, not 009DB700.
-        FrontendEnqueueRan = false;
-        if (FrontendFrameCount == 0)
+        if (FrontendFrameCount == 0 && destW <= 0 && destH <= 0)
         {
             Note(FrontendSpriteFactoryFn, "Frontend", "UI",
                 $"00BACFD0 type 0x{FrontendSpriteType:X} vtbl 0x{FrontendSpriteInstanceVtbl:X}");
@@ -3070,15 +3130,22 @@ public sealed class EngineLifecycle : IDisposable
             Note(FrontendSubmitDispatchFn, "Frontend", "UI",
                 $"00B324A0 type 0x{Frontend2dRecordType:X} dest+4=0 00BACFD0+00BAE2D0");
         }
-        else
+        else if (destW <= 0 && destH <= 0)
         {
-            // dest+4 set. 00BAD8A0 copies record.
-            // First-seen [rec+32]==0 and [rec+64]==0 → 00BADB36 ret 8.
             FrontendInstanceSubmitRan = true;
             Note(FrontendSpriteInstanceSubmitFn, "Frontend", "UI",
                 "00BAD8A0 [rec+32]=0 [rec+64]=0 00BADB36 ret 8 no 009DB700");
             Note(FrontendSubmitDispatchFn, "Frontend", "UI",
                 $"00B324A0 dest+4 set 00BAD8A0 vtbl+20 0x{FrontendSpriteInstanceVtbl:X}");
+        }
+        else
+        {
+            FrontendEnqueueRan = true;
+            FrontendInstanceSubmitRan = true;
+            Note(FrontendSpriteInstanceSubmitFn, "Frontend", "UI",
+                $"00BAD8A0 dest {destX0},{destY0},{destX1},{destY1} 009DB700 +16020");
+            Note(FrontendSubmitDispatchFn, "Frontend", "UI",
+                $"00B324A0 dest nonempty 00BAD8A0 enqueue 0x{FrontendSpriteInstanceVtbl:X}");
         }
         Frontend2dLastType = Frontend2dRecordType;
         Frontend2dLastPacker = packer;
@@ -3126,7 +3193,7 @@ public sealed class EngineLifecycle : IDisposable
             "009D9C80 [0x13CB508]+10248 bump");
         Note(DisplayFlush2dFn, "Frontend", "D3D9",
             "009D9C80 dirty-list no type 0x22 in 009D9C80-009DB000");
-        var shouldDip = DisplayFlushShouldDip(0, 0);
+        var shouldDip = FrontendEnqueueRan || DisplayFlushShouldDip(0, 0);
         Note(DisplayFlushLayersFn, "Frontend", "D3D9",
             shouldDip
                 ? $"009DA9F0({DisplayFlushLayersArg}) [+{DisplayQueueBeginOffset}] DIP vtbl+{DrawIndexedPrimitiveVtbl}"
@@ -6450,6 +6517,203 @@ public sealed class EngineLifecycle : IDisposable
             return;
         FrontendDefFound = true;
         FrontendDefTypeName = hit.TypeName;
+    }
+
+    private void AttachPressStartWidgets()
+    {
+        _frontendWidgets.Clear();
+        FrontendChildCount = 0;
+        FrontendRootType = 0;
+        FrontendPressStartLabel = null;
+        var root = FrontendDefs?.FindEntry(FrontendPressStartMenu);
+        var parsed = root is null ? null : FrontendUiDef.TryParse(root);
+        FrontendRootType = parsed?.Type ?? 0;
+        AddFrontendWidget(parsed, FrontendPressStartMenu);
+        if (parsed is null || FrontendDefs is null)
+            return;
+        foreach (var index in parsed.ChildIndices)
+        {
+            if ((uint)index >= (uint)FrontendDefs.Entries.Count)
+                continue;
+            var child = FrontendUiDef.TryParse(FrontendDefs.Entries[index]);
+            if (child is null)
+                continue;
+            AttachFrontendChild(child);
+        }
+    }
+
+    private void AttachFrontendChild(FrontendUiDef def)
+    {
+        AddFrontendWidget(def, def.InstanceName);
+        FrontendChildCount++;
+        Note(FrontendPressStartCtorFn, "Frontend", "UI",
+            $"005331A0 child {def.InstanceName} type {def.Type}");
+        if (FrontendDefs is null)
+            return;
+        foreach (var index in def.ChildIndices)
+        {
+            if ((uint)index >= (uint)FrontendDefs.Entries.Count)
+                continue;
+            var nested = FrontendUiDef.TryParse(FrontendDefs.Entries[index]);
+            if (nested is null)
+                continue;
+            AttachFrontendChild(nested);
+        }
+    }
+
+    private void AddFrontendWidget(FrontendUiDef? def, string name)
+    {
+        var text = def?.TextTag;
+        string? body = null;
+        if (!string.IsNullOrEmpty(text))
+        {
+            body = LookupFrontendText(text);
+            if (name == FrontendPressStartText ||
+                text == FrontendPressStartTextTag)
+                FrontendPressStartLabel = body ?? text;
+        }
+
+        _frontendWidgets.Add(new FrontendWidget(
+            name,
+            def?.Type ?? 0,
+            0, 0, 0, 0,
+            text,
+            body));
+    }
+
+    private void ApplyFrontendScaleInit()
+    {
+        Note(FrontendScaleInitVtblFn, "Frontend", "UI",
+            $"0054E4B0 vtbl+{FrontendScaleInitVtbl} 0052C730");
+        Note(FrontendScaleInitFn, "Frontend", "UI", "0052C730");
+        Note(FrontendScaleWriteFn, "Frontend", "UI",
+            "005339B0 +280=0 +272/+276=1.0 +144..+147=0xFF");
+        FrontendScaleX = FrontendScaleOne;
+        FrontendScaleY = FrontendScaleOne;
+    }
+
+    private void LayoutFrontendWidgets()
+    {
+        for (var i = 0; i < _frontendWidgets.Count; i++)
+        {
+            var widget = _frontendWidgets[i];
+            var def = FrontendDefs?.FindEntry(widget.Name);
+            var parsed = def is null ? null : FrontendUiDef.TryParse(def);
+            var originX = parsed?.PositionX ?? 0;
+            var originY = parsed?.PositionY ?? 0;
+            var sizeW = parsed is { Width: > 0 } ? (int)parsed.Width : 0;
+            var sizeH = parsed is { Height: > 0 } ? (int)parsed.Height : 0;
+            var label = widget.Text ?? widget.TextTag;
+            if (sizeW == 0 && !string.IsNullOrEmpty(label))
+                sizeW = label.Length * 8;
+            if (sizeH == 0 && !string.IsNullOrEmpty(label))
+                sizeH = 16;
+            if (sizeW == 0 && sizeH == 0 && widget.Type == 0 &&
+                (widget.Name.Contains("_BG_", StringComparison.Ordinal) ||
+                 widget.Name.Contains("TITLE_0", StringComparison.Ordinal)))
+            {
+                sizeW = 256;
+                sizeH = 256;
+            }
+            var dest = FrontendWidgetDest(
+                sizeW, sizeH, 0, 0,
+                originX, originY,
+                FrontendScaleX, FrontendScaleY,
+                center: sizeW > 0 && originX != 0);
+            _frontendWidgets[i] = widget with
+            {
+                DestX0 = dest.X0,
+                DestY0 = dest.Y0,
+                DestX1 = dest.X1,
+                DestY1 = dest.Y1,
+            };
+            if (widget.Name == FrontendPressStartMenu)
+            {
+                FrontendWidgetDestX0 = dest.X0;
+                FrontendWidgetDestY0 = dest.Y0;
+                FrontendWidgetDestX1 = dest.X1;
+                FrontendWidgetDestY1 = dest.Y1;
+            }
+        }
+    }
+
+    private string? LookupFrontendText(string id)
+    {
+        if (Runtime?.LookupText(id) is { } hit)
+            return hit;
+        if (Install is null || !File.Exists(Install.TextBigPath))
+            return null;
+        using var big = BigArchive.Open(Install.TextBigPath);
+        foreach (var bank in big.SubBanks)
+        {
+            foreach (var entry in big.ReadEntries(bank))
+            {
+                if (entry.Name.Equals(id, StringComparison.OrdinalIgnoreCase))
+                    return TextPayload.ReadUtf16(big.Read(entry));
+            }
+        }
+
+        return null;
+    }
+
+    private void CompositeFrontendPresent()
+    {
+        var width = DisplayDefaultWidth;
+        var height = DisplayDefaultHeight;
+        var rgba = new byte[width * height * 4];
+        foreach (var widget in _frontendWidgets)
+        {
+            var x0 = (int)MathF.Round(widget.DestX0);
+            var y0 = (int)MathF.Round(widget.DestY0);
+            var x1 = (int)MathF.Round(widget.DestX1);
+            var y1 = (int)MathF.Round(widget.DestY1);
+            if (x1 <= x0 || y1 <= y0)
+                continue;
+            var text = widget.Text ?? widget.TextTag;
+            if (!string.IsNullOrEmpty(text))
+                BlitFrontendText(rgba, width, height, x0, y0, text);
+            else
+                FillFrontendRect(rgba, width, height, x0, y0, x1, y1, 255, 255, 255, 180);
+        }
+
+        FrontendPresentRgba = rgba;
+        FrontendPresentWidth = width;
+        FrontendPresentHeight = height;
+    }
+
+    private static void FillFrontendRect(
+        byte[] rgba, int width, int height,
+        int x0, int y0, int x1, int y1,
+        byte r, byte g, byte b, byte a)
+    {
+        x0 = Math.Clamp(x0, 0, width);
+        y0 = Math.Clamp(y0, 0, height);
+        x1 = Math.Clamp(x1, 0, width);
+        y1 = Math.Clamp(y1, 0, height);
+        for (var y = y0; y < y1; y++)
+        {
+            var row = y * width * 4;
+            for (var x = x0; x < x1; x++)
+            {
+                var o = row + x * 4;
+                rgba[o] = r;
+                rgba[o + 1] = g;
+                rgba[o + 2] = b;
+                rgba[o + 3] = a;
+            }
+        }
+    }
+
+    private static void BlitFrontendText(
+        byte[] rgba, int width, int height, int x, int y, string text)
+    {
+        FillFrontendRect(rgba, width, height, x, y, x + text.Length * 8, y + 16, 0, 0, 0, 160);
+        var cx = x + 1;
+        foreach (var ch in text)
+        {
+            FillFrontendRect(rgba, width, height, cx, y + 2, cx + 6, y + 14, 255, 255, 255, 255);
+            cx += 8;
+        }
     }
 
     private GameBin? EnsureDefs()

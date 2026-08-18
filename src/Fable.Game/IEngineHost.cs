@@ -45,4 +45,17 @@ public readonly record struct EngineFrame(
     Fable.Render.MeshVertex[]? ObjectVertices = null,
     Fable.Render.MeshDraw[]? ObjectDraws = null,
     ushort[]? Indices = null,
-    uint AviClearArgb = 0xFF000000);
+    uint AviClearArgb = 0xFF000000,
+    byte[]? FrontendRgba = null,
+    int FrontendWidth = 0,
+    int FrontendHeight = 0);
+
+public readonly record struct FrontendWidget(
+    string Name,
+    int Type,
+    float DestX0,
+    float DestY0,
+    float DestX1,
+    float DestY1,
+    string? TextTag,
+    string? Text);

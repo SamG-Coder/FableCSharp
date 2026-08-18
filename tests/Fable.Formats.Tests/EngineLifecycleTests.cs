@@ -734,45 +734,84 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.BeginSceneFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayFlush2dFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayFlushLayersFn);
-        Assert.Equal(1, life.FrontendWidgetsDrawn);
-        Assert.Equal(1, life.Frontend2dRecordsQueued);
+        Assert.True(life.FrontendWidgetsDrawn >= 1);
+        Assert.True(life.Frontend2dRecordsQueued >= 1);
         Assert.Equal(0x0041BEB0u, life.Frontend2dLastPacker);
         Assert.Equal(0, life.FrontendWidgetFont);
         Assert.Contains(life.Trace.Events, e =>
-            e.Va == EngineLifecycle.FrontendWidgetPostCtorFn &&
-            e.Action.Contains("skip dest", StringComparison.Ordinal));
-        Assert.Equal(0f, life.FrontendWidgetDestX0);
-        Assert.Equal(0f, life.FrontendWidgetDestY0);
-        Assert.Equal(0f, life.FrontendWidgetDestX1);
-        Assert.Equal(0f, life.FrontendWidgetDestY1);
+            e.Va == EngineLifecycle.FrontendPressStartCtorFn &&
+            e.Action.Contains("0054E3D0", StringComparison.Ordinal));
+        Assert.Equal(EngineLifecycle.FrontendPressStartType, life.FrontendRootType);
+        Assert.True(life.FrontendChildCount >= 6);
+        Assert.Contains(life.FrontendWidgets, w => w.Name == EngineLifecycle.FrontendPressStartText);
+        Assert.Contains(life.FrontendWidgets, w =>
+            w.TextTag == EngineLifecycle.FrontendPressStartTextTag);
         Assert.True(life.FrontendDefFound);
         Assert.Equal("UI", life.FrontendDefTypeName);
         Assert.True(life.FrontendType22HandlerRegistered);
         Assert.True(life.FrontendWidgetTickRan);
         Assert.True(life.FrontendDestLayoutRan);
-        Assert.False(life.FrontendEnqueueRan);
-        Assert.False(life.Frontend2dDipIssued);
+        Assert.True(life.FrontendEnqueueRan);
+        Assert.True(life.Frontend2dDipIssued);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.DisplayFlush2dFn &&
             e.Action.Contains("0x13BC800", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.DisplayFlush2dFn &&
-            e.Action.Contains("no type 0x22", StringComparison.Ordinal));
-        Assert.Contains(life.Trace.Events, e =>
-            e.Va == EngineLifecycle.DisplayFlush2dFn &&
             e.Action.Contains("009D9C80-009DB000", StringComparison.Ordinal));
-        Assert.False(life.Frontend2dDipIssued);
+        Assert.True(life.Frontend2dDipIssued);
         Assert.Equal(16020, EngineLifecycle.DisplayQueueBeginOffset);
         Assert.Equal(332, EngineLifecycle.DrawIndexedPrimitiveVtbl);
         Assert.Equal(0x00A058C0u, EngineLifecycle.DisplayPrimitiveFn);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.DisplayFlushLayersFn &&
-            e.Action.Contains("skip DIP", StringComparison.Ordinal));
+            e.Action.Contains("DIP vtbl+", StringComparison.Ordinal));
         Assert.False(life.FrontendDisplayFlag);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendWidgetDrawFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendWidgetFactoryFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendWidgetQueueFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Frontend_PRESS_START_is_type_10_with_text_child()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.Equal(EngineStage.Frontend, life.Stage);
+        Assert.Equal(10, life.FrontendRootType);
+        Assert.Equal(0x0054E3D0u, EngineLifecycle.FrontendPressStartCtorFn);
+        Assert.Equal(0x00530260u, EngineLifecycle.FrontendContainerDrawFn);
+        Assert.Equal(0x0052C730u, EngineLifecycle.FrontendScaleInitFn);
+        Assert.Equal(0x005339B0u, EngineLifecycle.FrontendScaleWriteFn);
+        Assert.Equal(1f, life.FrontendScaleX);
+        Assert.True(life.FrontendChildCount >= 6);
+        Assert.Contains(life.FrontendWidgets, w => w.Name == "UI_TITLE");
+        Assert.Contains(life.FrontendWidgets, w => w.Name == "UI_BLENDING_BACKGROUNDS_FORREST");
+        Assert.Contains(life.FrontendWidgets, w => w.Name == "UI_PRESS_START_TEXT");
+        var text = Assert.Single(life.FrontendWidgets, w => w.Name == "UI_PRESS_START_TEXT");
+        Assert.Equal("TEXT_GUI_MENU_PRESS_BUTTON", text.TextTag);
+        Assert.Equal(6, text.Type);
+        Assert.True(life.Pump());
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendContainerDrawFn &&
+            e.Action.Contains("00530260", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendScaleWriteFn &&
+            e.Action.Contains("005339B0", StringComparison.Ordinal));
+        var drawn = life.FrontendWidgets.First(w => w.Name == "UI_PRESS_START_TEXT");
+        Assert.True(drawn.DestX1 > drawn.DestX0, $"text dest {drawn.DestX0},{drawn.DestY0},{drawn.DestX1},{drawn.DestY1}");
+        Assert.True(life.FrontendEnqueueRan);
+        Assert.True(life.Frontend2dDipIssued);
+        Assert.NotNull(life.FrontendPresentRgba);
+        Assert.Equal(EngineLifecycle.DisplayDefaultWidth, life.FrontendPresentWidth);
+        var frame = life.BuildFrame();
+        Assert.NotNull(frame.FrontendRgba);
+        Assert.True(frame.FrontendWidth > 0);
     }
 
     [Fact]

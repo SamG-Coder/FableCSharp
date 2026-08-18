@@ -85,6 +85,19 @@ public sealed class SilkEngineHost : IEngineHost
                 VulkanLineRenderer.NoteReceived(frame.AviSerial);
                 renderer.SetPlayAviPump(true);
             }
+            else if (frame.FrontendRgba is { Length: > 0 } ui &&
+                     frame.FrontendWidth > 0 && frame.FrontendHeight > 0)
+            {
+                _aviWidth = frame.FrontendWidth;
+                _aviHeight = frame.FrontendHeight;
+                renderer.VideoClearColor =
+                    Dx9VulkanColor.FromD3dArgb(0xFF000000);
+                renderer.SetVideoFrame(
+                    frame.FrontendWidth, frame.FrontendHeight, ui,
+                    new Vector4(0, 0, 1, 1),
+                    frame.AviSerial);
+                renderer.SetPlayAviPump(false);
+            }
             else
             {
                 _aviWidth = 0;

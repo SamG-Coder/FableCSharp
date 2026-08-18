@@ -191,15 +191,19 @@ Retail vtbl `01230CA0`: slot 1 start `0042F75E`, slot 2 pump `0042EC7C`.
 │   └── 00598A1C(pump+324==0)  PROVEN
 │       ├── skip UI_FRONTEND_MEDIA_PLAYER_ERROR
 │       ├── 0041DB1D "UI_FRONTEND_PRESS_START_MENU" slot 0x14
-│       ├── 009AD410 / 0041D21B / 0041B800 / 0041AC20
+│       ├── 009AD410 / 0041D21B [def+60] Type=10  PROVEN
+│       ├── 0054E3D0 → 0052CC50 vtbl 012497E4  (not 0041B800)
+│       ├── 005331A0 Children 6: FOREST / TITLE / SWAP(TEXT) /
+│       │     LIST / LEGAL / MOUSE  PROVEN frontend.bin
+│       │     UI_PRESS_START_TEXT Type=6 TEXT_GUI_MENU_PRESS_BUTTON
+│       ├── 0054E4B0 vtbl+172 → 0052C730 → 005339B0
+│       │     +272/+276=1.0; +52/+92 from PositionX/Y  PROVEN
 │       ├── more named slots (profiles/options/…)
 │       └── msg 0xE5 → [slot 0x14].vtbl+284 0052F040 ret 4  PROVEN
 │       0059899A / MAIN_MENU is later, not first-seen
-│       0041AFA0 → engine vtbl+92 00B23BC0 → 00B324A0 type 0x22
-│         handler 00BAD040 (after Init Engine)
-│         dest+4=0 → 00BACFD0 012A54BC + factory 00BAE2D0
-│         later dest+4 set → 00BAD8A0; [rec+32]=0 [rec+64]=0 ret
-│         neither calls 009DB700  PROVEN
+│       draw vtbl+8 is 00530260 walk +176  (not 0041AFA0)
+│       child dest nonempty → 00BAD8A0 009DB700  PROVEN
+│       root dest Width=0 stays 0,0,0,0  PROVEN
 ├── "Init Engine"   0042E204
 │   └── 00B26340 → 00B4AC10 → 00BAD040 VSHADER_2D_SPRITE
 │       00B4ABB0 → 00B8FAD0 types 0x22/0x23  PROVEN
@@ -1006,7 +1010,7 @@ Walk these **from their parent above**, not by string.
 | `00B40000` | `00BDC4F0` / `00BDDD50` | patch destroy |
 | `006C2170` | unload of previous ContainsMaps | region change |
 | `004B4260` | each initial-quest factory run | not Oakvale intro |
-| `00435530` empty dest | `00501450` caller / next type-1 | 0 E8/imm of `00501450` |
+| PRESS_START type 10 draw | native 0xE5 poster / font `009FE620` | `00530260` children PROVEN; glyph raster PARTIAL |
 | `004167DA` | first call of `[engine+240]` | store-only; 0 `calldisp +240` on engine |
 | `00435530` empty dest | next type-1 resume / `00CB8220` parked | `00501450` still 0 E8/imm |
 
