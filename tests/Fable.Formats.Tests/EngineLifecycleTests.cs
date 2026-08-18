@@ -410,6 +410,16 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x178, EngineLifecycle.FrontendEngineObjectSize);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendSubmitFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendSubmitDispatchFn);
+        Assert.False(life.FrontendType22HandlerRegistered);
+        Assert.False(life.FrontendEnqueueRan);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendSubmitDispatchFn &&
+            e.Action.Contains("00B325FA", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendWidgetMessageNoopFn &&
+            e.Action.Contains("ret 4", StringComparison.Ordinal));
+        Assert.Equal(0x00B23BC0u, EngineLifecycle.FrontendSubmitFn);
+        Assert.Equal(0x0052F040u, EngineLifecycle.FrontendWidgetMessageNoopFn);
         Assert.False(life.FrontendDisplayFlag);
         Assert.False(life.FrontendDisplayImeRan);
         Assert.False(life.FrontendDisplayCursorRan);
@@ -524,6 +534,11 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0f, life.FrontendWidgetDestY0);
         Assert.Equal(0f, life.FrontendWidgetDestX1);
         Assert.Equal(0f, life.FrontendWidgetDestY1);
+        Assert.True(life.FrontendDefFound);
+        Assert.Equal("UI", life.FrontendDefTypeName);
+        Assert.False(life.FrontendType22HandlerRegistered);
+        Assert.False(life.FrontendEnqueueRan);
+        Assert.False(life.Frontend2dDipIssued);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.DisplayFlush2dFn &&
             e.Action.Contains("0x13BC800", StringComparison.Ordinal));

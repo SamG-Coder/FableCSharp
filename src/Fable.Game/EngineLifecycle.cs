@@ -267,6 +267,27 @@ public sealed class EngineLifecycle : IDisposable
     public const uint FrontendSubmitDispatchFn = 0x00B324A0;
     public const uint FrontendSubmitSingletonVa = 0x01436E80;
     public const uint FrontendSubmitTypeTableVa = 0x01436E84;
+    /// <summary>
+    /// <c>012A0F3C+92</c> is
+    /// <c>00B23BC0</c>. <c>00B8FAA0</c>
+    /// zeros the type table;
+    /// <c>00B8FAD0</c> only registrant
+    /// is <c>00B482A0</c> types
+    /// <c>0xF</c>/<c>0x10</c>.
+    /// Type <c>0x22</c> slot stays 0.
+    /// </summary>
+    public const uint FrontendTypeTableCtorFn = 0x00B8FAA0;
+    public const uint FrontendTypeTableRegisterFn = 0x00B8FAD0;
+    public const uint FrontendTypeListFn = 0x00B48220;
+    public const uint FrontendTypeFactoryFn = 0x00B44EB0;
+    public const uint FrontendTypeSubmitStubFn = 0x00B4A450;
+    public const int FrontendTypeListA = 0xF;
+    public const int FrontendTypeListB = 0x10;
+    public const uint FrontendWidgetMessageNoopFn = 0x0052F040;
+    public const uint FrontendDefResolveFn = 0x0042AEDA;
+    public const uint FrontendDefLookupFallbackFn = 0x009E5170;
+    public const uint FrontendConstructSwitchVa = 0x0041D7F8;
+    public const string FrontendBinFile = "frontend.bin";
     public const int FrontendWidgetReadyOffset = 368;
     public const int FrontendWidgetBlendOffset = 372;
     public const int FrontendWidgetFontOffset = 376;
@@ -1874,6 +1895,11 @@ public sealed class EngineLifecycle : IDisposable
     public int FrontendWidgetTexture { get; private set; }
     public string? FrontendMenuRoot { get; private set; }
     public bool FrontendMenuConstructed { get; private set; }
+    public GameBin? FrontendDefs { get; private set; }
+    public bool FrontendDefFound { get; private set; }
+    public string? FrontendDefTypeName { get; private set; }
+    public bool FrontendType22HandlerRegistered { get; private set; }
+    public bool FrontendEnqueueRan { get; private set; }
     public IReadOnlyList<string> FrontendMenuLabels =>
         FrontendMenuItems.Select(i => i.Label).ToList();
     public IReadOnlyList<int> GameTickTypes => _tickTypes;
@@ -2528,10 +2554,13 @@ public sealed class EngineLifecycle : IDisposable
         Note(FrontendWidgetFactoryFn, "Frontend", "UI",
             "0041DB1D " + FrontendPressStartMenu +
             $" slot 0x{FrontendPressStartSlot:X}");
-        Note(MeshBank.DefLookupFn, "Frontend", "UI",
-            "009AD410 " + FrontendPressStartMenu);
+        ResolveFrontendDef(FrontendPressStartMenu);
+        Note(FrontendDefResolveFn, "Frontend", "UI",
+            "0042AEDA 009AD9E0 [def+60] switch 0041D7F8");
         Note(FrontendWidgetConstructFn, "Frontend", "UI",
-            "0041D21B [def+60] type0 0041B800");
+            FrontendDefFound
+                ? "0041D21B [def+60] " + (FrontendDefTypeName ?? "UI")
+                : "0041D21B 009AD410 miss");
         Note(FrontendWidgetType0Ctor, "Frontend", "UI",
             $"0041B800 vtbl 0x{FrontendWidgetVtbl:X} +{FrontendWidgetBlendOffset}={FrontendWidgetBlendDefault}");
         Note(FrontendWidgetPostCtorFn, "Frontend", "UI",
@@ -2555,6 +2584,8 @@ public sealed class EngineLifecycle : IDisposable
             "0041AC20 [+376]=0 skip dest");
         Note(FrontendWidgetDrawFn, "Frontend", "UI",
             $"0041AFA0 dest {dest.X0},{dest.Y0},{dest.X1},{dest.Y1} +{FrontendWidgetOriginXOffset}/+{FrontendWidgetScaleXOffset}=0");
+        Note(FrontendWidgetMessageNoopFn, "Frontend", "UI",
+            $"0052F040 ret 4 msg 0x{FrontendPressStartMessage:X} vtbl+{FrontendWidgetMessageVtbl}");
         Note(FrontendPressStartAttachFn, "Frontend", "UI",
             $"00598A1C msg 0x{FrontendPressStartMessage:X} vtbl+{FrontendWidgetMessageVtbl} slot 0x{FrontendPressStartSlot:X}");
         FrontendMenuRoot = FrontendPressStartMenu;
@@ -2653,9 +2684,15 @@ public sealed class EngineLifecycle : IDisposable
         Note(FrontendEngineAllocFn, "Frontend", "UI",
             $"00B26340 size 0x{FrontendEngineObjectSize:X} vtbl 0x{FrontendEngineVtbl:X}");
         Note(FrontendSubmitFn, "Frontend", "UI",
-            $"00B23BC0 → 00B324A0 [0x{FrontendSubmitSingletonVa:X}] type 0x{Frontend2dRecordType:X}");
+            $"00B23BC0 engine vtbl+{Frontend2dSubmitVtbl} 012A0F3C → 00B324A0 [0x{FrontendSubmitSingletonVa:X}] type 0x{Frontend2dRecordType:X}");
+        // 00B8FAD0 only registers 00B48220 types 0xF/0x10.
+        // [table+0x22*4+16]=0. dest+4=0 → 00B325FA, no 009DB700.
+        FrontendType22HandlerRegistered = false;
+        FrontendEnqueueRan = false;
+        Note(FrontendTypeTableRegisterFn, "Frontend", "UI",
+            $"00B8FAD0 types 0x{FrontendTypeListA:X}/0x{FrontendTypeListB:X} not 0x{Frontend2dRecordType:X}");
         Note(FrontendSubmitDispatchFn, "Frontend", "UI",
-            "00B324A0 [dest+4]=0 handler vtbl+20 UNREAD");
+            $"00B324A0 type 0x{Frontend2dRecordType:X} handler=0 dest+4=0 00B325FA no 009DB700");
         Frontend2dLastType = Frontend2dRecordType;
         Frontend2dLastPacker = packer;
         Frontend2dLastSubmitVtbl = Frontend2dSubmitVtbl;
@@ -5233,6 +5270,36 @@ public sealed class EngineLifecycle : IDisposable
                 ? "EnvironmentTheme unread " + def
                 : "EnvironmentTheme " + AuthoredEnvironmentTheme +
                   " #" + AuthoredEnvironmentThemeId);
+    }
+
+    /// <summary>
+    /// <c>009AD410</c> / <c>009E5170</c> on
+    /// the frontend GameBin. First-seen
+    /// <c>0041DB1D</c> uses
+    /// <c>0044C6B0</c> when
+    /// <c>[input+100]==0</c>.
+    /// </summary>
+    private void ResolveFrontendDef(string name)
+    {
+        FrontendDefFound = false;
+        FrontendDefTypeName = null;
+        if (Install is not null && FrontendDefs is null)
+        {
+            var namesPath = Install.FindCompiledDef("names.bin");
+            var fePath = Install.FindCompiledDef(FrontendBinFile);
+            if (namesPath is not null && fePath is not null)
+                FrontendDefs = GameBin.Load(fePath, NamesBin.Load(namesPath));
+        }
+
+        var hit = FrontendDefs?.FindEntry(name) ?? EnsureDefs()?.FindEntry(name);
+        Note(MeshBank.DefLookupFn, "Frontend", "UI",
+            hit is null
+                ? "009AD410 miss " + name
+                : "009AD410 " + name + " " + (hit.TypeName ?? "?"));
+        if (hit is null)
+            return;
+        FrontendDefFound = true;
+        FrontendDefTypeName = hit.TypeName;
     }
 
     private GameBin? EnsureDefs()

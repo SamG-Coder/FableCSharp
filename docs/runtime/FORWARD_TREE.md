@@ -193,8 +193,11 @@ Retail vtbl `01230CA0`: slot 1 start `0042F75E`, slot 2 pump `0042EC7C`.
 │       ├── 0041DB1D "UI_FRONTEND_PRESS_START_MENU" slot 0x14
 │       ├── 009AD410 / 0041D21B / 0041B800 / 0041AC20
 │       ├── more named slots (profiles/options/…)
-│       └── msg 0xE5 → [slot 0x14].vtbl+284  PROVEN
+│       └── msg 0xE5 → [slot 0x14].vtbl+284 0052F040 ret 4  PROVEN
 │       0059899A / MAIN_MENU is later, not first-seen
+│       0041AFA0 → engine vtbl+92 00B23BC0 → 00B324A0 type 0x22
+│         00B8FAD0 only types 0xF/0x10; [table+0x98]=0
+│         dest+4=0 → 00B325FA, no 009DB700  PROVEN
 ├── "Init Engine"   0042E204
 ├── "Init frontend"
 │   ├── alloc 16 → 0042DB40 vtbl 01230C34  PROVEN
