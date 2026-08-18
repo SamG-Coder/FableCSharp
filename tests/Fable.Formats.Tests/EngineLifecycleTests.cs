@@ -1892,6 +1892,51 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x00CDD360u, EngineLifecycle.SunnyvaleMainTick);
         Assert.Equal(0x006872B0u, EngineLifecycle.EventNodeFireFn);
         Assert.Equal(0x0049D870u, EngineLifecycle.EventTickReadFn);
+        Assert.True(life.EnvironmentTicked);
+        Assert.True(life.EnvironmentTime > 0f);
+        Assert.True(life.BulletTimeTicked);
+        Assert.True(life.ConversationTicked);
+        Assert.Equal(0, life.ConversationWalked);
+        Assert.True(life.ThingManagerFlushed);
+        Assert.Equal(0, life.ThingManagerFlushedCount);
+        Assert.True(life.OpinionTicked);
+        Assert.True(life.PlayerGuiTicked);
+        Assert.True(life.AtmosTicked);
+        Assert.True(life.SpeechGainTicked);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.EnvironmentTickFn &&
+            e.Action.Contains("006BB990", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.BulletTimeTickFn &&
+            e.Action.Contains("ret", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.ConversationTickFn &&
+            e.Action.Contains("empty", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.ThingManagerFlushFn &&
+            e.Action.Contains("empty", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.OpinionTickFn &&
+            e.Action.Contains("miss", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.SpeechGainTickFn &&
+            e.Action.Contains("empty", StringComparison.Ordinal));
+        var env = life.Trace.Events.FindIndex(e => e.Va == EngineLifecycle.EnvironmentTickFn);
+        var cam = life.Trace.Events.FindIndex(e => e.Va == EngineLifecycle.WorldTickCameraSeedSite);
+        var frame = life.Trace.Events.FindIndex(e => e.Va == EngineLifecycle.WorldFrameIncSite);
+        var speech = life.Trace.Events.FindIndex(e => e.Va == EngineLifecycle.SpeechGainTickFn);
+        Assert.True(env >= 0 && cam > env, "006BB990 before 006B3FF0");
+        Assert.True(frame > cam, "004A5E10 after 006B3FF0");
+        Assert.True(speech > frame, "006E37D0 after WorldFrame inc");
+        Assert.Equal(0x006BB990u, EngineLifecycle.EnvironmentTickFn);
+        Assert.Equal(15, EngineLifecycle.EnvironmentDayDivisor);
+        Assert.Equal(0x004C5E90u, EngineLifecycle.BulletTimeTickFn);
+        Assert.Equal(0x006E60F0u, EngineLifecycle.ConversationTickFn);
+        Assert.Equal(0x0051F070u, EngineLifecycle.ThingManagerFlushFn);
+        Assert.Equal(0x006BDC60u, EngineLifecycle.OpinionTickFn);
+        Assert.Equal(0x0043A080u, EngineLifecycle.PlayerGuiTickFn);
+        Assert.Equal(0x006B2260u, EngineLifecycle.AtmosTickFn);
+        Assert.Equal(0x006E37D0u, EngineLifecycle.SpeechGainTickFn);
         Assert.Equal(0, life.GameflowState);
         Assert.Equal(EngineLifecycle.GameflowWaitQuest, life.GameflowYieldQuest);
         Assert.Contains(EngineLifecycle.WatcherCoreReminder, life.GameflowWatchers);

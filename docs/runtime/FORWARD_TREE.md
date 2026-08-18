@@ -896,7 +896,21 @@ Fiber +41 setter 00CB78D0  PROVEN
 │   vtbl+204 00B23550 [+8]=0 (ctor)
 │   skip vtbl+36 00B24030
 │   push ebx is 00640320 arg, not 00436FB0
-└── 004A5DF3 006B3FF0 then 004A5E10
+├── 006BB990  [world+28]  PROVEN
+│   006BBC30 +33=0 +24=0
+│   dt=1/[0x1375550]=1/15
+│   +8/+28 += dt*+16
+├── 006B3FF0 then
+│   004C5E90 ret  PROVEN
+│   006E60F0 [world+124] empty  PROVEN
+│   0051F070 [world+80]+72=0 empty  PROVEN
+│   004A5E10 inc WorldFrame
+│   006BDC60 00487DC0 miss  PROVEN
+│   0043A080 [world+164]=0
+│   006B2260 [0x13B8394]!=0
+│   MARKER_POSITIONAL_ATMOS dummy miss
+│   006E37D0 [0x13BABA0] empty  PROVEN
+└── no 00501450
 009D9C80 first 250: dirty-list only. No type 0x22.
 
 0041726D → 0049DFB0 type-1 → 00629270 / 004A5A40
@@ -953,7 +967,7 @@ Walk these **from their parent above**, not by string.
 | `00CB8220` parked trio | next type-1 resume / `0049D870` | `0049D870` after `006E7410` vtbl+8 returns |
 | `004167DA` | first call of `[engine+240]` | store-only; 0 `calldisp +240` on engine |
 | `00CE7670` parked | who activates `Q_NewOakValeIntro` | not this yield |
-| `004A5A40` | after `00640320` skip: `006BB990` then `006B3FF0` | already seed-proven; next unread callee on this slice |
+| `004A5A40` after `006E37D0` | next type-1 / `00416E78` WorldFrame>1 | `00501450` still 0 E8/imm |
 
 After every successful walk: add the node here, then implement
 only that node's semantic equivalent on `EngineLifecycle`.

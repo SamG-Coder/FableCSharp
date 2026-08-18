@@ -1529,6 +1529,25 @@ public sealed class EngineLifecycle : IDisposable
     public const uint DisplayListenerVa = 0x013BA854;
     public const uint DisplayListenerVtbl = 0x01231584;
     public const uint DisplayListenerPumpFn = 0x00640320;
+    public const uint EnvironmentTickFn = 0x006BB990;
+    public const uint EnvironmentCtor = 0x006BBC30;
+    public const int EnvironmentPlus33Offset = 33;
+    public const int EnvironmentPlus33FirstSeen = 0;
+    public const int EnvironmentPlus24Offset = 24;
+    public const int EnvironmentPlus24FirstSeen = 0;
+    public const int EnvironmentDayDivisor = 15;
+    public const uint EnvironmentDayDivisorVa = 0x01375550;
+    public const uint BulletTimeTickFn = 0x004C5E90;
+    public const uint ConversationTickFn = 0x006E60F0;
+    public const uint ConversationCtor = 0x006E6150;
+    public const uint ThingManagerFlushFn = 0x0051F070;
+    public const uint ThingManagerCtor = 0x00523540;
+    public const uint OpinionTickFn = 0x006BDC60;
+    public const uint PlayerGuiTickFn = 0x0043A080;
+    public const uint AtmosTickFn = 0x006B2260;
+    public const uint AtmosGateVa = 0x013B8394;
+    public const uint SpeechGainTickFn = 0x006E37D0;
+    public const uint SpeechGainListVa = 0x013BABA0;
     public const uint DisplayListenerInsertFn = 0x006404D0;
     public const uint DisplayObjectAllocFn = 0x00B26340;
     public const uint DisplayObjectCtor = 0x00B260B0;
@@ -2147,6 +2166,17 @@ public sealed class EngineLifecycle : IDisposable
     public int EventPumpWalked { get; private set; }
     public int PlayerSlotTicks { get; private set; }
     public bool DisplayListenerPumped { get; private set; }
+    public bool EnvironmentTicked { get; private set; }
+    public float EnvironmentTime { get; private set; }
+    public bool BulletTimeTicked { get; private set; }
+    public bool ConversationTicked { get; private set; }
+    public int ConversationWalked { get; private set; }
+    public bool ThingManagerFlushed { get; private set; }
+    public int ThingManagerFlushedCount { get; private set; }
+    public bool OpinionTicked { get; private set; }
+    public bool PlayerGuiTicked { get; private set; }
+    public bool AtmosTicked { get; private set; }
+    public bool SpeechGainTicked { get; private set; }
     public bool DisplayActiveApplyRan { get; private set; }
     public bool FollowSpringRan { get; private set; }
     public bool SubjectFillNoted { get; private set; }
@@ -4571,9 +4601,17 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>004498C0</c>/<c>00488AB0</c>
     /// <c>00A01B50</c> miss, then
     /// <c>00640320</c> <c>[+8]=0</c>
-    /// skip, then
+    /// skip, then <c>006BB990</c>
+    /// <c>1/[0x1375550]</c>, then
     /// <c>004A5DF3 006B3FF0</c>,
-    /// then <c>004A5E10</c>.
+    /// <c>004C5E90</c> ret,
+    /// <c>006E60F0</c> empty,
+    /// <c>0051F070</c> empty,
+    /// <c>004A5E10</c>,
+    /// <c>006BDC60</c> miss,
+    /// <c>0043A080</c>,
+    /// <c>006B2260</c>,
+    /// <c>006E37D0</c> empty.
     /// No <c>00501450</c>.
     /// </summary>
     public void TickWorld()
@@ -4584,6 +4622,7 @@ public sealed class EngineLifecycle : IDisposable
         PumpEvents();
         PumpPlayerSlots();
         PumpDisplayListeners();
+        TickEnvironment();
         if (!WorldCameraPresent)
         {
             WorldCamera.Construct();
@@ -4598,9 +4637,16 @@ public sealed class EngineLifecycle : IDisposable
             WorldCamera.SeedHero();
         }
 
+        TickBulletTime();
+        TickConversations();
+        FlushThingManager();
         WorldFrame++;
         Note(WorldFrameIncSite, "GamePump", "World",
             $"004A5E10 inc WorldFrame={WorldFrame}");
+        TickOpinion();
+        TickPlayerGui();
+        TickAtmos();
+        TickSpeechGain();
     }
 
     /// <summary>
@@ -4909,6 +4955,114 @@ public sealed class EngineLifecycle : IDisposable
             $"vtbl+204 [+{DisplayPlus8Offset}]={DisplayPlus8FirstSeen} skip 00B24030");
         DisplayListenerPumped = true;
         DisplayActiveApplyRan = false;
+    }
+
+    /// <summary>
+    /// <c>006BB990</c> first-seen:
+    /// ctor <c>+33=0</c> <c>+24=0</c>
+    /// so <c>dt*(1/dayLen)</c> adds
+    /// into <c>+8</c> and <c>+28</c>.
+    /// dt is <c>1/[0x1375550]</c>
+    /// (<c>15</c>).
+    /// </summary>
+    public void TickEnvironment()
+    {
+        Note(EnvironmentCtor, "GamePump", "World",
+            $"006BBC30 +{EnvironmentPlus33Offset}={EnvironmentPlus33FirstSeen} +{EnvironmentPlus24Offset}={EnvironmentPlus24FirstSeen}");
+        Note(EnvironmentTickFn, "GamePump", "World",
+            $"006BB990 1/[0x{EnvironmentDayDivisorVa:X}]={EnvironmentDayDivisor}");
+        EnvironmentTime += 1f / EnvironmentDayDivisor;
+        EnvironmentTicked = true;
+    }
+
+    /// <summary>
+    /// <c>004C5E90</c> is <c>ret</c>.
+    /// </summary>
+    public void TickBulletTime()
+    {
+        Note(BulletTimeTickFn, "GamePump", "World", "004C5E90 ret");
+        BulletTimeTicked = true;
+    }
+
+    /// <summary>
+    /// <c>006E60F0</c> first-seen:
+    /// <c>006E6150</c> <c>[node+8]=self</c>
+    /// so the walk is empty.
+    /// </summary>
+    public void TickConversations()
+    {
+        Note(ConversationCtor, "GamePump", "World",
+            "006E6150 [+8]=self");
+        Note(ConversationTickFn, "GamePump", "World",
+            "006E60F0 empty");
+        ConversationWalked = 0;
+        ConversationTicked = true;
+    }
+
+    /// <summary>
+    /// <c>0051F070</c> first-seen:
+    /// <c>00523540</c> <c>+72=+76=0</c>.
+    /// </summary>
+    public void FlushThingManager()
+    {
+        Note(ThingManagerCtor, "GamePump", "World",
+            "00523540 +72=+76=0");
+        Note(ThingManagerFlushFn, "GamePump", "World",
+            "0051F070 empty");
+        ThingManagerFlushedCount = 0;
+        ThingManagerFlushed = true;
+    }
+
+    /// <summary>
+    /// <c>006BDC60</c> first-seen:
+    /// <c>+48=0</c> skip
+    /// <c>006BD900</c>;
+    /// <c>00487DC0</c> 0 → ret.
+    /// </summary>
+    public void TickOpinion()
+    {
+        Note(OpinionTickFn, "GamePump", "World",
+            "006BDC60 00487DC0 miss");
+        Note(PlayerCreatureThingFn, "GamePump", "World",
+            "00487DC0 skip SOUND_THEME");
+        OpinionTicked = true;
+    }
+
+    /// <summary>
+    /// <c>0043A080</c>
+    /// <c>[world+164]=0</c>.
+    /// </summary>
+    public void TickPlayerGui()
+    {
+        Note(PlayerGuiTickFn, "GamePump", "UI",
+            "0043A080 +164=0");
+        PlayerGuiTicked = true;
+    }
+
+    /// <summary>
+    /// <c>006B2260</c>
+    /// <c>[0x13B8394]!=0</c>.
+    /// Dummy has no
+    /// <c>MARKER_POSITIONAL_ATMOS</c>
+    /// instance.
+    /// </summary>
+    public void TickAtmos()
+    {
+        Note(AtmosTickFn, "GamePump", "World",
+            $"006B2260 [0x{AtmosGateVa:X}] MARKER_POSITIONAL_ATMOS");
+        AtmosTicked = true;
+    }
+
+    /// <summary>
+    /// <c>006E37D0</c> first-seen:
+    /// <c>[0x13BABA0]</c> circular
+    /// empty.
+    /// </summary>
+    public void TickSpeechGain()
+    {
+        Note(SpeechGainTickFn, "GamePump", "World",
+            $"006E37D0 [0x{SpeechGainListVa:X}] empty");
+        SpeechGainTicked = true;
     }
 
     /// <summary>
