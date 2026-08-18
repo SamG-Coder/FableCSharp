@@ -29,7 +29,7 @@
         <button type="button" class="chip DISPROVEN" data-filter="DISPROVEN" aria-pressed="false">DISPROVEN</button>
         <button type="button" class="chip TEMPORARY" data-filter="TEMPORARY" aria-pressed="false">TEMPORARY</button>
       </div>
-      <p class="hits" id="hits">158 shown</p>
+      <p class="hits" id="hits">168 shown</p>
     </div>
     <header class="doc-intro">
       <p class="kicker">FableCSharp · human overview</p>
@@ -75,16 +75,18 @@
 
     <p>
       Snapshot: <strong>2026-08-18</strong>, previous snapshot runtime HEAD
-      <code>be3339e</code> via PR #32 merge <code>0511a20</code>,
-      runtime HEAD <code>306e83c</code>
-      (<em>Static C3D: one file-local VB per mesh, instance W on the draw.</em>).
-      Just locked on this path: <code>3dba4a1</code>,
-      <code>5e57e64</code>, <code>63336fd</code>, <code>676bf63</code>,
-      <code>7c93828</code>, <code>40037b1</code>, <code>cf0ee50</code>,
-      <code>a6f939a</code>, <code>cb22533</code>, <code>306e83c</code>.
+      <code>306e83c</code> via PR #33 merge <code>4e8ec58</code>,
+      runtime HEAD <code>98c4acc</code>
+      (<em>PlayAVI: native 00628B79 dest and
+      clear leftover frames.</em>).
+      Just locked on this path: <code>4429113</code>,
+      <code>f4a1efc</code>, <code>ff808b1</code>, <code>8bfbf39</code>,
+      <code>27cb7ee</code>, <code>d7615a6</code>, <code>35f3d20</code>,
+      <code>98c4acc</code>.
       Do not include any later runtime if master moves. Freeze at
-      <code>306e83c</code>. Master HEAD may be merge <code>e0d97cd</code>
-      — ignore that merge; runtime facts stay at <code>306e83c</code>.
+      <code>98c4acc</code>. Ignore merges <code>e0d97cd</code> and
+      <code>e2fca3d</code>. Ignore docs commits <code>d5ed2e9</code> /
+      <code>4e8ec58</code>.
       Docs PR #29 <code>bedcf919</code> is iOS Settings chrome only —
       CSS unchanged. Master is still proving
       <strong>boot / world clock</strong>, not animation.
@@ -272,22 +274,19 @@
 
     <h3>Phase 1 in progress — boot / world clock (current master)</h3>
     <p>
-      Recent commits (<code>9c625bc</code> … <code>306e83c</code>) lock engine
+      Recent commits (<code>9c625bc</code> … <code>98c4acc</code>) lock engine
       submit / host Present / frontend flush / camera seed / helper camera /
       landscape cells / instance W, not <code>00DBDE40</code>. Previous
-      snapshot <code>be3339e</code> via PR #32 <code>0511a20</code>.
-      Just locked: <code>00BF4570</code> persistent cells
-      (<code>3dba4a1</code>), static C3D file-local verts +
-      <code>009881F0</code> World (<code>5e57e64</code>), sky
-      <code>0x2000</code> midday dome (<code>63336fd</code>), PALSKIN
-      drain <code>0x100</code> (<code>676bf63</code>), unload region
-      patches / one WAD (<code>7c93828</code>), cell DIP
-      <code>0x40</code> only (<code>40037b1</code>), process-lifetime
-      <code>game.bin</code> / <code>meshdata.h</code>
-      (<code>cf0ee50</code>), <code>00A0C130</code> packer +
-      <code>00988A50</code> WVP (<code>a6f939a</code>), PALSKIN file
-      dest triangles (<code>cb22533</code>), one file-local VB per mesh
-      (<code>306e83c</code>). Docs PR #29 <code>bedcf919</code> is iOS
+      snapshot <code>306e83c</code> via PR #33 <code>4e8ec58</code>.
+      Just locked: REGION.EnvironmentTheme name (<code>4429113</code>),
+      PALSKIN <code>0x80</code>/<code>0x200</code> after sky
+      (<code>f4a1efc</code>), GuildArrivalHSP RHSet axes
+      (<code>ff808b1</code>), skip unused 1&nbsp;m height grid
+      (<code>8bfbf39</code>), adult Hero Thing bind
+      (<code>27cb7ee</code>), INNER_SKY no oFog
+      (<code>d7615a6</code>), INDEX16 strip DrawIndexed
+      (<code>35f3d20</code>), PlayAVI <code>00628B79</code> dest
+      (<code>98c4acc</code>). Docs PR #29 <code>bedcf919</code> is iOS
       Settings chrome only — CSS unchanged.
     </p>
     <div class="table-scroll">
@@ -410,7 +409,7 @@
           <td><code>1ebece6</code> / <code>Loading_objects_00521AE0_loads_LookoutPoint_tng</code></td>
         </tr>
         <tr>
-          <td><code>0051FD80</code> Load Single Thing: no-save LookoutPoint TNG has no PlayerCreature; <code>HOLY_SITE_PLAYER_START</code> <code>GuildArrivalHSP</code> → <code>00489D40</code> / <code>006AC910</code> inserts PlayerCreature at that pose</td>
+          <td><code>0051FD80</code> Load Single Thing: no-save LookoutPoint TNG has no PlayerCreature; <code>HOLY_SITE_PLAYER_START</code> <code>GuildArrivalHSP</code> → <code>00489D40</code> / <code>006AC910</code> inserts PlayerCreature at that pose. RHSet axes later (<code>ff808b1</code>); closed #18</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
           <td><code>8f89aad</code> / <code>Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint</code> (refined by <code>e0e0511</code>)</td>
         </tr>
@@ -625,7 +624,7 @@
           <td><code>63336fd</code> / <code>Install_banks_and_startup_videos_exist</code> (<code>PassBit == 0x2000</code>) / <code>Native_draw_order_is_begin_layers_end_present</code> / <code>ScenePassTests.Registration_is_34_layers_and_walks_landscape_before_sky</code>. PALSKIN <code>0x100</code> later (<code>676bf63</code>)</td>
         </tr>
         <tr>
-          <td>PALSKIN: drain on layer <code>0x100</code> before sky. <code>00B33010</code> type-0/1 first slots use bit <code>0x100</code> (registration index 7), after static <code>0x20</code> and before sky <code>0x2000</code></td>
+          <td>PALSKIN: drain on layer <code>0x100</code> before sky. <code>00B33010</code> type-0/1 first slots use bit <code>0x100</code> (registration index 7), after static <code>0x20</code> and before sky <code>0x2000</code>. <code>0x80</code>/<code>0x200</code> after sky later (<code>f4a1efc</code>)</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
           <td><code>676bf63</code> / <code>Game_00435530_Presents_009BEEB0_and_pumps_input</code> (<code>SubmittedLayerBits</code>) / <code>Native_draw_order_is_begin_layers_end_present</code> / <code>ScenePassTests.Registration_is_34_layers_and_walks_landscape_before_sky</code> / <code>Instance_world_is_009881f0_not_baked_verts</code> (static stays <code>0x20</code>)</td>
         </tr>
@@ -658,6 +657,46 @@
           <td>Static C3D: one file-local VB per mesh, instance W on the draw. <code>00BB2540</code> copies locals once (shl idx,4, no matrix). <code>009881F0</code> owns the 3x4 per instance. Repeated Lookout lamps no longer duplicate the C3D soup</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
           <td><code>306e83c</code> / <code>Instance_world_is_009881f0_not_baked_verts</code> (shared verts, distinct Worlds)</td>
+        </tr>
+        <tr>
+          <td>Environment: bind <code>REGION.EnvironmentTheme</code> name, not lighting. Lookout RegionDef is <code>ENVIRONMENT_THEME1</code> #2346 (same as Oakvale intro), not <code>ENVIRONMENT_OAKVALE</code>. Live first-seen lights stay <code>00B482A0</code> record 0 (c19/c20/c35, fog 1000/2000, packed count 0). Seven Lookout streetlamps are C3D 4978, not 2LIGHTS</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>4429113</code> / <code>Install_banks_and_startup_videos_exist</code> / <code>GameBinFormatTests</code> (<code>AuthoredEnvironmentTheme</code>, <code>FirstSeenPackedLightCount</code>)</td>
+        </tr>
+        <tr>
+          <td>Scene: drain PALSKIN <code>0x80</code>/<code>0x200</code> after sky. <code>00B33010</code> walks slots 8+10 on bit <code>0x100</code>, then sky <code>0x2000</code>, then slot 14 on <code>0x80</code> and Flag1 slot 9 on <code>0x200</code>. Static <code>0x18</code> stays slot 0 on <code>0x20</code>. PALSKIN geometry still submits on <code>0x100</code> until type1/Flag1 routing is wired (leftover research, not a new issue)</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>f4a1efc</code> / <code>Dx9VulkanParityTests</code> / <code>EngineLifecycleTests</code> / <code>ScenePassTests</code> / <code>WorldPipelineTests</code></td>
+        </tr>
+        <tr>
+          <td>Hero: copy GuildArrivalHSP RHSet axes on <code>006AC910</code> spawn. Lookout start marker faces +X / +Z. Closed #18. Exist set 465/465; primary C3Ds 193/193</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>ff808b1</code> / <code>Install_banks_and_startup_videos_exist</code> (hero ObjectTransform forward +X)</td>
+        </tr>
+        <tr>
+          <td>Resources: skip unused 1&nbsp;m height grid on <code>00BF4570</code> cell load. Native draw is stored STB tiles, not bilinear FineHeights. LevelLibrary reuses WLD already parsed at Init World. Open/Present records primary Graphic handles only</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>8bfbf39</code></td>
+        </tr>
+        <tr>
+          <td>PALSKIN: bind adult Hero as the script/move/draw Thing. BindScene no longer only accepts <code>CREATURE_HERO_CHILD</code>. <code>006AC910</code> spawn binds HERO/Hero and seeds <code>World.Positions</code>. PlayLoopingAnim <code>00CC186C</code> now ApplyInner so ClipKey is set. Thing XYZ writable so WalkTo writes back. c38 dest upload is later GPU path (do not file). Does not close #19</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>27cb7ee</code> / <code>Install_banks_and_startup_videos_exist</code> (Resolve HERO/Hero same as life.Hero) / <code>PlayLoopingAnim_is_vtbl80_not_PlayAnimation</code> (<code>ClipKey</code>, <code>InnerApplied</code>)</td>
+        </tr>
+        <tr>
+          <td>Render: INNER_SKY does not write oFog. <code>VSHADER_INNER_SKY</code> is dp4 oPos + mov oD0, v1. D3D default oFog is 1. Applying 1000/2000 land plane to the 6500 dome made native brightness path black. Land leftover c3 unchanged. No invented ambient or extra x2</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>d7615a6</code> / <code>GpuTextureTests</code> / <code>ShaderFormatTests</code> / <code>WorldGeometryTests</code></td>
+        </tr>
+        <tr>
+          <td>Landscape: INDEX16 strip on the <code>00BFE050</code> mesh, DrawIndexed. <code>00BF4570</code> DIPs mesh+52/+56 (vtbl+328, type 5, prims+2), not the 72-byte cell. Bit <code>0x4</code> is still <code>00BF71D0</code>, not this IB. Host unwinds strip to a list; verts unique per cell. W = I on region-local STB</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>35f3d20</code> / <code>WorldGeometryTests</code></td>
+        </tr>
+        <tr>
+          <td>PlayAVI: native <code>00628B79</code> dest and clear leftover frames. Scale to viewport width, center leftover height. Recreate video image when height changes so 640×400/480/360 do not share leftover rows. Clear one frame between startup videos. Closed #11. Does not close #20</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>98c4acc</code> / <code>PlayAVI_00628B79_resizes_to_viewport_width_and_centers</code> / <code>PlayAvi_rewrites_xmv_to_installed_wmv_and_blocks</code></td>
         </tr>
         <tr>
           <td><code>WaitPlayAnimation</code> <code>00CC18E0</code> plays via vtbl+72 (or vtbl+76 if IsTrue arg3) then leftover vtbl+104</td>
@@ -831,6 +870,16 @@
           <td><span class="badge UNREAD">UNREAD</span></td>
           <td>Host first-scene lists are a separate reconstructed path</td>
         </tr>
+        <tr>
+          <td>PALSKIN type1/Flag1 routing (slot 14 <code>0x80</code> / Flag1 slot 9 <code>0x200</code>)</td>
+          <td><span class="badge UNREAD">UNREAD</span></td>
+          <td>leftover research (<code>f4a1efc</code>); geometry still submits on <code>0x100</code>. Not a new issue</td>
+        </tr>
+        <tr>
+          <td>PALSKIN c38 dest upload</td>
+          <td>later</td>
+          <td><code>27cb7ee</code> — later GPU path; do not file</td>
+        </tr>
       </tbody>
     </table>
     </div>
@@ -897,7 +946,7 @@
         <tr>
           <td><code>SneakTo</code> / <code>WalkTo</code> mesh move (<code>004C72B0</code> stub)</td>
           <td><span class="badge PARTIAL">PARTIAL</span></td>
-          <td><code>FirstSeenSneakToAppliesMove=false</code>. Dest via <code>006A9960</code> / <code>World.Positions</code> is PROVEN (<code>666df8f</code>); mesh body is not.</td>
+          <td><code>FirstSeenSneakToAppliesMove=false</code>. Dest via <code>006A9960</code> / <code>World.Positions</code> is PROVEN (<code>666df8f</code>); Thing XYZ writable so WalkTo writes back (<code>27cb7ee</code>); mesh body is not.</td>
         </tr>
         <tr>
           <td><code>PlayCombatAnimation</code> pose</td>
@@ -925,7 +974,9 @@
     <p>
       <code>DoScriptFrame</code> / <code>PlayAVI</code> / cameras / fades are
       <span class="badge PROVEN">PROVEN</span> at the script layer.
-      PlayAVI dest vs 1600×900 (#8) is closed. Unload
+      PlayAVI dest vs 1600×900 (#8) is closed. Native
+      <code>00628B79</code> dest + recreate-on-height (#11) is closed
+      (<code>98c4acc</code>). Unload
       <code>00A3B380</code>/<code>00A3BC20</code> before the next slot is now
       recovered (<code>0ace433</code>); leftover #20 is still 3D Draw during
       startup PlayAVI. <code>IBasicAudio</code> (#9) stays a
@@ -956,8 +1007,9 @@
       (LINEAR/REPEAT, MaxLod=1, Z test+write on) stay classified.
       PlayAVI <em>script</em> apply is PROVEN; dest vs
       <code>Silk.WindowOptions.DefaultVulkan</code> 1600×900 (#8) is closed.
-      Unload-before-next-slot is recovered; leftover #20 is 3D Draw
-      during startup PlayAVI. <code>IBasicAudio</code> (#9) stays a PARTIAL leftover.
+      Native <code>00628B79</code> dest + recreate-on-height (#11) is closed
+      (<code>98c4acc</code>). Unload-before-next-slot is recovered; leftover #20 is
+      3D Draw during startup PlayAVI. <code>IBasicAudio</code> (#9) stays a PARTIAL leftover.
       Steam timing is PARITY Open item 0, not a first-scene 3D invent.
     </p>
 
@@ -985,7 +1037,7 @@
         </tr>
         <tr>
           <td>PALSKIN dest beyond file triangles</td>
-          <td>first-seen dest is <code>MeshFile.Triangles</code> (<code>00A9E1E0</code> × IBM, <code>cb22533</code>); no CPU re-skin. Play-anim product is not</td>
+          <td>first-seen dest is <code>MeshFile.Triangles</code> (<code>00A9E1E0</code> × IBM, <code>cb22533</code>); no CPU re-skin. Play-anim product is not. Type1/Flag1 routing stays UNREAD (<code>f4a1efc</code>). c38 dest upload is later GPU path (<code>27cb7ee</code>; do not file)</td>
         </tr>
       </tbody>
     </table>
@@ -1041,6 +1093,12 @@
         <code>0x4</code>/<code>0x40</code>/<code>0x20</code>/<code>0x100</code>/<code>0x2000</code>
         (<code>676bf63</code>); cell DIP is <code>0x40</code> only
         (<code>40037b1</code>).
+        #11 closed (<code>98c4acc</code> recreate-on-height +
+        <code>00628B79</code> dest). #18 closed
+        (<code>ff808b1</code> RHSet +X). Lookout EnvironmentTheme is
+        <code>ENVIRONMENT_THEME1</code> #2346, not
+        <code>ENVIRONMENT_OAKVALE</code>. Do not collapse Oakvale intro
+        view into Lookout.
       </li>
       <li>
         <strong>GTNG is not an unread file on TLC</strong> — missing skip is
