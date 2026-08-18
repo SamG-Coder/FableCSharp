@@ -1673,6 +1673,14 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.PeekMessageFn &&
             e.Action.Contains("empty", StringComparison.Ordinal));
+        var peek = life.Trace.Events.FindIndex(e => e.Va == EngineLifecycle.PeekMessageFn);
+        var focus = life.Trace.Events.FindIndex(e => e.Va == EngineLifecycle.InputFocusFn);
+        var coop = life.Trace.Events.FindIndex(e => e.Va == EngineLifecycle.TestCooperativeLevelFn);
+        Assert.True(peek >= 0 && focus > peek && coop > focus,
+            "009F4E20 after empty PeekMessage before 009C00C0");
+        Assert.True(life.EnginePlus88);
+        Assert.False(life.EnginePlus124);
+        Assert.Equal(1, life.EnginePlus9);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.TestCooperativeLevelFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.EngineQuitStoreSite);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.GamePumpLeaveFn);
@@ -1714,6 +1722,42 @@ public sealed class EngineLifecycleTests
         Assert.Equal(2, EngineLifecycle.WmDestroy);
         Assert.Equal(0x004175E5u, EngineLifecycle.GamePumpLeaveFn);
         Assert.Equal(0x009C00C0u, EngineLifecycle.TestCooperativeLevelFn);
+        Assert.Equal(0x009F4E20u, EngineLifecycle.InputFocusFn);
+        Assert.Equal(5, EngineLifecycle.EngineOptionsFlagsFirstSeen);
+        Assert.Equal(0, EngineLifecycle.EngineOptionsFlagFirstSeen);
+        Assert.Equal(88, EngineLifecycle.EnginePlus88Offset);
+        Assert.Equal(124, EngineLifecycle.EnginePlus124Offset);
+    }
+
+    [Fact]
+    public void First_pump_009F4E20_is_after_empty_PeekMessage()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.True(life.EnginePlus88);
+        Assert.False(life.EnginePlus124);
+        Assert.Equal(1, life.EnginePlus9);
+        Assert.Equal(5, EngineLifecycle.EngineOptionsFlagsFirstSeen);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.InputFocusFn);
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        var events = life.Trace.Events;
+        var peek = events.FindIndex(e => e.Va == EngineLifecycle.PeekMessageFn);
+        var focus = events.FindIndex(e => e.Va == EngineLifecycle.InputFocusFn);
+        var coop = events.FindIndex(e => e.Va == EngineLifecycle.TestCooperativeLevelFn);
+        Assert.True(peek >= 0 && focus > peek, "009F4E20 after 009A4F20");
+        Assert.True(coop > focus, "009C00C0 after 009F4E20");
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.InputFocusFn &&
+            e.Action.Contains("+88", StringComparison.Ordinal));
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.CreateInputFn);
+        Assert.DoesNotContain(events, e =>
+            e.Va == 0x00A3EB20u);
     }
 
     [Fact]

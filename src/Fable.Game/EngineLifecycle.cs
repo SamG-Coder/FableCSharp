@@ -558,6 +558,28 @@ public sealed class EngineLifecycle : IDisposable
     public const uint PeekMessageIat = 0x01440370;
     public const uint DefWindowProcIat = 0x0144037C;
     public const uint TestCooperativeLevelFn = 0x009C00C0;
+    /// <summary>
+    /// After empty PeekMessage:
+    /// <c>009F4E20([engine+88], [engine+9])</c>.
+    /// <c>00403079</c> <c>[opt+20]=5</c>
+    /// when <c>[0x1375449]==0</c> (no
+    /// writer) so bit 0x01 creates
+    /// input and bit 0x10 does not
+    /// create <c>+124</c>.
+    /// </summary>
+    public const uint InputFocusFn = 0x009F4E20;
+    public const int EnginePlus88Offset = 88;
+    public const int EnginePlus124Offset = 124;
+    public const int EnginePlus9Offset = 9;
+    public const int EnginePlus9AfterSetup = 1;
+    public const uint EngineOptionsFlagVa = 0x01375449;
+    public const int EngineOptionsFlagFirstSeen = 0;
+    public const int EngineOptionsFlagsOffset = 20;
+    public const int EngineOptionsFlagsFirstSeen = 5;
+    public const int EngineOptionsInputBit = 0x01;
+    public const int EngineOptionsSoundBit = 0x10;
+    public const uint CreateInputFn = 0x00A60050;
+    public const uint StoreInputFn = 0x009A7180;
     public const uint EngineWndProc = 0x009A5B60;
     public const uint EngineWndProcJumpTable = 0x009A5F7C;
     public const uint EngineQuitStoreSite = 0x009A5BEA;
@@ -1419,6 +1441,19 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public int EnginePlus8 { get; private set; }
     public bool GamePumpLeft { get; private set; }
+    /// <summary>
+    /// <c>[engine+88]</c> after
+    /// <c>009A6610</c> bit 0x01.
+    /// </summary>
+    public bool EnginePlus88 { get; private set; }
+    /// <summary>
+    /// <c>[engine+9]</c>. <c>009A6610</c>
+    /// writes 1. Focus compare after
+    /// PeekMessage is PARTIAL (IAT
+    /// <c>0x1440378</c>).
+    /// </summary>
+    public int EnginePlus9 { get; private set; }
+    public bool EnginePlus124 { get; private set; }
     /// <summary>
     /// <c>004AE9D0</c> <c>+9836</c> =
     /// <c>[game+72]</c>.
@@ -2860,6 +2895,12 @@ public sealed class EngineLifecycle : IDisposable
         Note(EngineMessagePumpFn, "GamePump", "Engine", "009A6370");
         Note(PeekMessageFn, "GamePump", "Engine",
             "009A4F20 PeekMessage first-seen empty");
+        if (EnginePlus88)
+        {
+            Note(InputFocusFn, "GamePump", "Input",
+                $"009F4E20 +{EnginePlus88Offset} arg={EnginePlus9}");
+        }
+
         Note(TestCooperativeLevelFn, "GamePump", "Engine", "009C00C0");
         Note(EngineWndProc, "GamePump", "Engine",
             $"009A5B60 table 0x{EngineWndProcJumpTable:X}");
@@ -4745,6 +4786,15 @@ public sealed class EngineLifecycle : IDisposable
             "004023F0 " + WindowTitleId);
         Note(InputDeviceVa, "Setup library", "Input",
             "0042E3EE [0x13B8388]");
+        Note(EngineOptionsFlagVa, "Setup library", "Engine",
+            $"01375449={EngineOptionsFlagFirstSeen} [opt+{EngineOptionsFlagsOffset}]={EngineOptionsFlagsFirstSeen}");
+        Note(CreateInputFn, "Setup library", "Input",
+            "00A60050 / 009A7180 engine+88");
+        EnginePlus88 = true;
+        EnginePlus124 = false;
+        EnginePlus9 = EnginePlus9AfterSetup;
+        Note(SetupLibrary, "Setup library", "Engine",
+            $"[engine+{EnginePlus9Offset}]=1 +{EnginePlus124Offset}=0");
         CreateDeviceFlags = CreateDeviceSoftwareFlags;
         GraphicsCreated = true;
     }

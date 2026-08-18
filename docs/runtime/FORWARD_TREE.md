@@ -386,7 +386,14 @@ then inner loop until [game+8]  PROVEN
 ├── 0098E1B0  ret
 ├── 00416231  dt − [game+96]
 ├── 009A6460  PROVEN
-│   ├── 009A6370  PeekMessage 009A4F20 + 009C00C0
+│   ├── 009A6370  PROVEN
+│   │   ├── 009E24B0  (prefix)
+│   │   ├── 009A4F20  PeekMessage first-seen empty
+│   │   ├── 009F4E20([engine+88], [engine+9])  PROVEN
+│   │   │   opt+20=5 ([0x1375449]==0, no writer)
+│   │   │   bit 0x01 → 00A60050/009A7180 +88
+│   │   │   bit 0x10 off → +124=0, no 00A3EB20
+│   │   ├── 009C00C0  TestCooperativeLevel
 │   │   └── WndProc 009A5B60  table 0x9A5F7C
 │   │       WM_DESTROY (2) → 009A5BEA [engine+8]=1  PROVEN
 │   ├── [engine+8]==0 → 1 (first-seen; no WM_DESTROY)
