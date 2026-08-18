@@ -200,6 +200,10 @@ public sealed class EngineLifecycleTests
                 EngineLifecycle.FrontendDrawFn or
                 EngineLifecycle.BeginSceneFn or
                 EngineLifecycle.FrontendUiDrawFn or
+                EngineLifecycle.FrontendWidgetNextFn or
+                EngineLifecycle.DisplayFlush2dFn or
+                EngineLifecycle.DisplayFlushLayersFn or
+                EngineLifecycle.FrontendDisplayHelperFn or
                 EngineLifecycle.EndSceneFn or
                 EngineLifecycle.PresentFn)
             .Select(e => e.Va)
@@ -210,11 +214,17 @@ public sealed class EngineLifecycleTests
         Assert.Contains(EngineLifecycle.BeginSceneFn, vas);
         Assert.Contains(EngineLifecycle.EndSceneFn, vas);
         Assert.Contains(EngineLifecycle.PresentFn, vas);
+        Assert.Equal(EngineLifecycle.FrontendMenuItems.Length, life.FrontendWidgetsDrawn);
+        Assert.Equal(2, life.FrontendFlushCount);
+        Assert.Equal(84, EngineLifecycle.FrontendWidgetListOffset);
+        Assert.Equal(8, EngineLifecycle.FrontendWidgetDrawVtbl);
+        Assert.Equal(0x004292C0u, EngineLifecycle.FrontendWidgetNextFn);
         var begin = Array.IndexOf(vas, EngineLifecycle.BeginSceneFn);
         var ui = Array.IndexOf(vas, EngineLifecycle.FrontendUiDrawFn);
+        var flush = Array.IndexOf(vas, EngineLifecycle.DisplayFlush2dFn);
         var end = Array.IndexOf(vas, EngineLifecycle.EndSceneFn);
         var present = Array.IndexOf(vas, EngineLifecycle.PresentFn);
-        Assert.True(begin >= 0 && begin < ui && ui < end && end < present);
+        Assert.True(begin >= 0 && begin < ui && ui < flush && flush < end && end < present);
         Assert.Equal(RegionTravel.PlayAviPresent, EngineLifecycle.PresentFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         var dest = Path.Combine(
@@ -234,7 +244,10 @@ public sealed class EngineLifecycleTests
               0042DF9E draw:
                 009D8CF0 clear
                 009BEF20 BeginScene
-                00595582 / 00595222 UI vtbl+8
+                00595582 / 00595222 [ui+84] vtbl+8
+                009D9C80 / 009DA9F0(1)
+                00404A80 / 00404C00
+                009D9C80 / 009DA9F0(1)
                 009BEF50 EndScene
                 009BEEB0 IDirect3DDevice9::Present
             Same Present as PlayAVI. Vulkan Draw is
@@ -258,6 +271,9 @@ public sealed class EngineLifecycleTests
         Assert.Equal(1, life.FrontendPresentCount);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PresentFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.BeginSceneFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayFlush2dFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayFlushLayersFn);
+        Assert.Equal(EngineLifecycle.FrontendMenuItems.Length, life.FrontendWidgetsDrawn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
     }
 

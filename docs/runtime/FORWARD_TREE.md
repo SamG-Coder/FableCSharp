@@ -201,7 +201,10 @@ Retail vtbl `01230CA0`: slot 1 start `0042F75E`, slot 2 pump `0042EC7C`.
     ├── 0042DC94  update
     ├── 0042FA30  zero 112-byte record
     ├── 0042DBFA  fill
-    ├── 0042DF9E  BeginScene / 00595222 UI / EndScene / 009BEEB0
+    ├── 0042DF9E  009D8CF0 / 009BEF20 / 00595582 / 00595222
+    │              [ui+84] vtbl+8 / 009D9C80 / 009DA9F0(1)
+    │              00404A80 / 00404C00 / 009D9C80 / 009DA9F0(1)
+    │              009BEF50 / 009BEEB0
     └── exit
         ├── [esi+42] != 0   LOAD
         │   └── alloc 0x1E60 → 00496070 → [eax+4]

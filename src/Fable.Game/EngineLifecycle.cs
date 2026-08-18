@@ -151,6 +151,22 @@ public sealed class EngineLifecycle : IDisposable
     public const uint FrontendRecordFillFn = 0x0042DBFA;
     public const uint FrontendDrawFn = 0x0042DF9E;
     public const uint FrontendUiDrawFn = 0x00595222;
+    /// <summary>
+    /// <c>00595222</c>: circular list at
+    /// <c>[ui+84]</c>. Each <c>[node+20]</c>
+    /// <c>vtbl+8</c>. Next is <c>004292C0</c>.
+    /// </summary>
+    public const uint FrontendWidgetNextFn = 0x004292C0;
+    public const int FrontendWidgetListOffset = 84;
+    public const int FrontendWidgetSlotOffset = 20;
+    public const int FrontendWidgetDrawVtbl = 8;
+    /// <summary>
+    /// <c>0042DF9E</c> after the widget walk:
+    /// <c>009D9C80</c> / <c>009DA9F0(1)</c>
+    /// twice, then EndScene / Present.
+    /// </summary>
+    public const uint FrontendDisplayHelperFn = 0x00404A80;
+    public const uint FrontendDisplayHelper2Fn = 0x00404C00;
     public const uint FrontendUiTickFn = 0x00599E3F;
     public const uint BeginSceneFn = RegionTravel.PlayAviBeginScene;
     public const uint EndSceneFn = RegionTravel.PlayAviEndScene;
@@ -895,6 +911,8 @@ public sealed class EngineLifecycle : IDisposable
     public bool RetailNewGameFlag { get; private set; }
     public int FrontendFrameCount { get; private set; }
     public int FrontendPresentCount { get; private set; }
+    public int FrontendWidgetsDrawn { get; private set; }
+    public int FrontendFlushCount { get; private set; }
     public IReadOnlyList<string> FrontendMenuLabels =>
         FrontendMenuItems.Select(i => i.Label).ToList();
     public IReadOnlyList<int> GameTickTypes => _tickTypes;
@@ -1386,11 +1404,49 @@ public sealed class EngineLifecycle : IDisposable
         Note(ClearColorFn, "Frontend", "D3D9", "009D8CF0 clear");
         Note(BeginSceneFn, "Frontend", "D3D9", "009BEF20 BeginScene");
         Note(FrontendUiGet, "Frontend", "UI", "00595582");
-        Note(FrontendUiDrawFn, "Frontend", "UI", "00595222 vtbl+8 walk");
+        DrawFrontendWidgets();
+        Note(InputActionGetter, "Frontend", "Input", "0041E5F2");
+        FlushFrontendDisplay();
+        Note(FrontendDisplayHelperFn, "Frontend", "D3D9", "00404A80");
+        Note(FrontendDisplayHelper2Fn, "Frontend", "D3D9", "00404C00");
+        FlushFrontendDisplay();
         Note(EndSceneFn, "Frontend", "D3D9", "009BEF50 EndScene");
         Note(PresentFn, "Frontend", "D3D9", "009BEEB0 Present");
         FrontendFrameCount++;
         FrontendPresentCount++;
+    }
+
+    /// <summary>
+    /// <c>00595222</c> list at <c>[ui+84]</c>.
+    /// Each <c>[node+20]</c> <c>vtbl+8</c>.
+    /// No invented quads — widget DIP is
+    /// still that vtbl body (UNREAD).
+    /// </summary>
+    private void DrawFrontendWidgets()
+    {
+        FrontendWidgetsDrawn = 0;
+        Note(FrontendUiDrawFn, "Frontend", "UI",
+            $"00595222 [ui+{FrontendWidgetListOffset}]");
+        foreach (var (label, id) in FrontendMenuItems)
+        {
+            Note(FrontendUiDrawFn, "Frontend", "UI",
+                $"vtbl+{FrontendWidgetDrawVtbl} {label} id={id}");
+            Note(FrontendWidgetNextFn, "Frontend", "UI", "004292C0");
+            FrontendWidgetsDrawn++;
+        }
+    }
+
+    /// <summary>
+    /// <c>0042DF9E</c> <c>009D9C80</c> then
+    /// <c>009DA9F0(1)</c>. Same helpers as
+    /// game <c>00435530</c>.
+    /// </summary>
+    private void FlushFrontendDisplay()
+    {
+        Note(DisplayFlush2dFn, "Frontend", "D3D9", "009D9C80 flush DIP");
+        Note(DisplayFlushLayersFn, "Frontend", "D3D9",
+            $"009DA9F0({DisplayFlushLayersArg})");
+        FrontendFlushCount++;
     }
 
     /// <summary>
