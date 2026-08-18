@@ -188,6 +188,14 @@ public sealed class EngineLifecycle
     public const int CreatePlayerSlotCount = 5;
     public const int CreatePlayerActiveCount = 4;
     public const uint PlayerObjectInit = 0x004AE940;
+    /// <summary>
+    /// <c>0099A350</c>: <c>al=1</c>,
+    /// <c>[ecx+4]=1</c>. <c>004AE940</c>
+    /// therefore always writes
+    /// <c>[player+9826]=1</c> /
+    /// <c>[player+9824]=1</c>.
+    /// </summary>
+    public const uint PlayerObjectInitPredicate = 0x0099A350;
     public const uint LoadRegionGraph = 0x00509982;
     public const uint LoadRegionGraphFn = 0x00506D40;
     public const uint InitRegionGraphFn = 0x00828710;
@@ -581,8 +589,9 @@ public sealed class EngineLifecycle
     /// </summary>
     public bool GameRenderEnabled { get; private set; }
     /// <summary>
-    /// <c>[player+9826]</c>. Default 0 →
-    /// <c>004AEBA0</c> returns 0.
+    /// <c>[player+9826]</c>. <c>004AE940</c>
+    /// sets 1 because <c>0099A350</c>
+    /// always returns 1.
     /// </summary>
     public bool PlayerActionReady { get; set; }
     public bool GameModePaused { get; set; }
@@ -1078,7 +1087,12 @@ public sealed class EngineLifecycle
         PlayerSlotsCreated = CreatePlayerSlotCount;
         PlayerActiveCount = CreatePlayerActiveCount;
         Note(PlayerObjectInit, "Create Players", "Player", "004AE940 game+80568");
+        Note(PlayerObjectInitPredicate, "Create Players", "Player",
+            "0099A350 al=1 [ecx+4]=1");
+        PlayerActionReady = true;
         PlayerObjectReady = true;
+        Note(PlayerObjectInit, "Create Players", "Player",
+            $"+{PlayerActionFlagOffset}=1 +9824=1");
         Note(ThingTypeRegistrarFn, "Create Players", "Thing",
             "00522A20 PlayerCreature CREATURE 0052B880");
         Note(CreatePlayersFn, "Create Players", "Player",
