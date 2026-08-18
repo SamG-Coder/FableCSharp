@@ -282,6 +282,81 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.Equal("LookoutPoint", life.CurrentRegion!.RegionName);
+        Assert.Contains(life.RegionThings, t =>
+            t.DefinitionType == RegionTravel.PlayerStartType &&
+            t.ScriptName == EngineLifecycle.GuildArrivalHsp);
+        Assert.True(life.HeroSpawned);
+        Assert.NotNull(life.Hero);
+        Assert.Equal(EngineLifecycle.PlayerCreatureName, life.Hero.DefinitionType);
+        Assert.Equal(EngineLifecycle.HeroScriptName, life.Hero.ScriptName);
+        var start = life.RegionThings.First(t =>
+            t.DefinitionType == RegionTravel.PlayerStartType &&
+            t.ScriptName == EngineLifecycle.GuildArrivalHsp);
+        Assert.Equal(start.PositionX, life.Hero.PositionX);
+        Assert.Equal(start.PositionY, life.Hero.PositionY);
+        Assert.Equal(start.PositionZ, life.Hero.PositionZ);
+        Assert.Contains(life.RegionThings, t => ReferenceEquals(t, life.Hero));
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LoadSingleThingFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.NewThingParseFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.AllocateClassFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.HolySiteFactoryFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerCreatureCreateFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CreateCharacterFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ActivateAfterLoadingFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerCreatureFactoryFn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(life.RegionThings, t =>
+            t.DefinitionType == RegionTravel.KidCreature);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+            "traces");
+        Directory.CreateDirectory(dest);
+        life.Trace.Write(Path.Combine(dest, "load-single-thing-0051FD80.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-0051FD80.txt"),
+            """
+            00521AE0 → 00520D00 NewThing loop
+              "Loading entities from script"
+              0051FD80 Load Single Thing (ret 8)
+            0051FD80:
+              parse type; 00528760 def lookup
+              [world+258] && "PlayerCreature":
+                [0x13B86A0]+28 → 00449970
+                004498C0 walk slots match [slot+40]
+                00487DC0 add ecx,44; jmp 00A01B50
+                Initial Activate vtbl+36/+40
+              else:
+                Allocate Class 00A371C0
+                  factory table (00522A20)
+                  PlayerCreature/CREATURE 0052B880
+                  Holy Site/HOLY_SITE 0052AC90
+                Construct Thing vtbl+64 / +16
+                Initial Activate vtbl+32
+            0051E5A0 Activate After Loading
+              walk [manager+24]; 004C8CF0 / 004AFA60
+            LookoutPoint TNG has no PlayerCreature.
+            Start marker HOLY_SITE_PLAYER_START
+            GuildArrivalHSP. Hero via 00489D40 /
+            006AC910 at that pose. Not 00DBDE40 /
+            CREATURE_HERO_CHILD / StartOakVale.
+            """);
+    }
+
+    [Fact]
     public void New_game_is_leave_frontend_then_FinalAlbion_wld()
     {
         var life = new EngineLifecycle();

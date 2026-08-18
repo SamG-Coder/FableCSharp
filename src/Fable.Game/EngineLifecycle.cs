@@ -393,6 +393,28 @@ public sealed class EngineLifecycle
     /// </summary>
     public const uint LoadThingsForMapFn = 0x00522720;
     public const uint ThingManagerLoadFileFn = 0x00521AE0;
+    /// <summary>
+    /// <c>0051FD80</c> Load Single Thing.
+    /// <c>PlayerCreature</c> binds
+    /// <c>00449970</c> / <c>00487DC0</c>
+    /// then <c>006AC910</c> create and
+    /// <c>0051E5A0</c> Activate After Loading.
+    /// </summary>
+    public const uint LoadSingleThingFn = 0x0051FD80;
+    public const uint NewThingParseFn = 0x00520D00;
+    public const uint ActivateAfterLoadingFn = 0x0051E5A0;
+    public const uint AllocateClassFn = 0x00A371C0;
+    public const uint PlayerCreatureCreateFn = 0x006AC910;
+    public const uint PlayerCreatureBindFn = 0x00449970;
+    public const uint PlayerCreatureThingFn = 0x00487DC0;
+    public const uint PlayerSlotWalkFn = 0x004498C0;
+    public const uint PlayerCreatureFactoryFn = 0x0052B880;
+    public const uint HolySiteFactoryFn = 0x0052AC90;
+    public const uint CreateCharacterFn = 0x00489D40;
+    public const uint ThingTypeRegistrarFn = 0x00522A20;
+    public const string PlayerCreatureName = "PlayerCreature";
+    public const string HeroScriptName = "Hero";
+    public const string GuildArrivalHsp = "GuildArrivalHSP";
     public const uint BuildLoadJobFn = 0x006C27A0;
     public const uint EnqueueLoadJobFn = 0x006C2120;
     public const uint LevelLoaderUpdate = 0x006C2710;
@@ -642,6 +664,8 @@ public sealed class EngineLifecycle
     public bool FirstRealRegionLoadDone { get; private set; }
     public int RegionThingMapsLoaded { get; private set; }
     public IReadOnlyList<ThingInstance> RegionThings => _regionThings;
+    public ThingInstance? Hero { get; private set; }
+    public bool HeroSpawned { get; private set; }
     /// <summary>
     /// Persist <c>PlayerRegionName</c>. Empty on
     /// no-save New Game. Non-empty takes
@@ -1055,6 +1079,8 @@ public sealed class EngineLifecycle
         PlayerActiveCount = CreatePlayerActiveCount;
         Note(PlayerObjectInit, "Create Players", "Player", "004AE940 game+80568");
         PlayerObjectReady = true;
+        Note(ThingTypeRegistrarFn, "Create Players", "Thing",
+            "00522A20 PlayerCreature CREATURE 0052B880");
         Note(CreatePlayersFn, "Create Players", "Player",
             $"slots={PlayerSlotsCreated} active={PlayerActiveCount}");
     }
@@ -1807,6 +1833,8 @@ public sealed class EngineLifecycle
 
             Note(LevelLoaderApply, "LevelLoader", "Region",
                 "Region Level Files: Activate Topology");
+            if (!HeroSpawned)
+                SpawnHeroFromPlayerStart(_regionThings);
         }
 
         SetRegionAsLoaded(index);
@@ -1839,11 +1867,135 @@ public sealed class EngineLifecycle
             return;
         }
 
-        var count = tng.Things.Count();
-        _regionThings.AddRange(tng.Things);
+        var loaded = tng.Things.ToList();
+        _regionThings.AddRange(loaded);
         RegionThingMapsLoaded++;
         Note(ThingManagerLoadFileFn, "LevelLoader", "Thing",
-            $"things={count} {mapName}");
+            $"things={loaded.Count} {mapName}");
+        Note(NewThingParseFn, "LevelLoader", "Thing",
+            "00520D00 NewThing Loading entities from script");
+        foreach (var thing in loaded)
+            LoadSingleThing(thing);
+        ActivateAfterLoading();
+    }
+
+    /// <summary>
+    /// <c>0051FD80</c> Load Single Thing.
+    /// <c>PlayerCreature</c> + <c>[world+258]</c>
+    /// binds <c>00449970</c> / <c>00487DC0</c>
+    /// (<c>player+44</c> → <c>00A01B50</c>).
+    /// Else <c>00A371C0</c> Allocate Class
+    /// (factory <c>0052B880</c> /
+    /// <c>0052AC90</c>), Construct, Initial
+    /// Activate vtbl+32 or +36/+40.
+    /// </summary>
+    private void LoadSingleThing(ThingInstance thing)
+    {
+        Note(LoadSingleThingFn, "LevelLoader", "Thing",
+            "Load Single Thing 1");
+        Note(LoadSingleThingFn, "LevelLoader", "Thing",
+            "Load Single Thing 2 " + (thing.DefinitionType ?? "NULL"));
+        if (string.Equals(thing.DefinitionType, PlayerCreatureName,
+                StringComparison.Ordinal))
+        {
+            BindPlayerCreature(thing);
+        }
+        else
+        {
+            Note(AllocateClassFn, "LevelLoader", "Thing",
+                "Load Single Thing: Allocate Class");
+            if (string.Equals(thing.DefinitionType, RegionTravel.PlayerStartType,
+                    StringComparison.Ordinal))
+                Note(HolySiteFactoryFn, "LevelLoader", "Thing",
+                    "0052AC90 HOLY_SITE " + (thing.ScriptName ?? ""));
+            Note(LoadSingleThingFn, "LevelLoader", "Thing",
+                "Load Single Thing: Construct Thing");
+            Note(LoadSingleThingFn, "LevelLoader", "Thing",
+                "Load Single Thing: Initial Activate vtbl+32");
+        }
+
+        Note(LoadSingleThingFn, "LevelLoader", "Thing",
+            "Load Single Thing 3");
+    }
+
+    private void BindPlayerCreature(ThingInstance thing)
+    {
+        Note(PlayerCreatureBindFn, "LevelLoader", "Player",
+            "00449970 [0x13B86A0]+28");
+        Note(PlayerSlotWalkFn, "LevelLoader", "Player",
+            "004498C0 match [slot+40]");
+        Note(PlayerCreatureThingFn, "LevelLoader", "Player",
+            "00487DC0 +44 jmp 00A01B50");
+        SpawnHero(thing, bindExisting: true);
+        Note(LoadSingleThingFn, "LevelLoader", "Thing",
+            "Load Single Thing: Initial Activate vtbl+36/+40");
+    }
+
+    private void ActivateAfterLoading()
+    {
+        Note(ActivateAfterLoadingFn, "LevelLoader", "Thing",
+            "0051E5A0 Activate After Loading");
+    }
+
+    /// <summary>
+    /// No-save LookoutPoint has no
+    /// <c>PlayerCreature</c> NewThing. Native
+    /// start marker is <c>HOLY_SITE_PLAYER_START</c>
+    /// <c>GuildArrivalHSP</c>. Create is
+    /// <c>006AC910</c> (CPlayer
+    /// <c>00489D40</c> / factory
+    /// <c>0052B880</c>), not <c>00DBDE40</c>.
+    /// </summary>
+    private void SpawnHeroFromPlayerStart(IReadOnlyList<ThingInstance> things)
+    {
+        var starts = things
+            .Where(t => string.Equals(
+                t.DefinitionType, RegionTravel.PlayerStartType,
+                StringComparison.Ordinal))
+            .ToList();
+        var start = starts.FirstOrDefault(t =>
+                        string.Equals(t.ScriptName, GuildArrivalHsp,
+                            StringComparison.OrdinalIgnoreCase))
+                    ?? starts.FirstOrDefault(t => t.PositionX is not null);
+        if (start is null)
+        {
+            Note(PlayerCreatureCreateFn, "LevelLoader", "Player",
+                "no HOLY_SITE_PLAYER_START");
+            return;
+        }
+
+        Note(CreateCharacterFn, "LevelLoader", "Player",
+            "00489D40 " + (start.ScriptName ?? ""));
+        SpawnHero(start, bindExisting: false);
+    }
+
+    private void SpawnHero(ThingInstance source, bool bindExisting)
+    {
+        if (HeroSpawned)
+            return;
+        Note(PlayerCreatureFactoryFn, "LevelLoader", "Player",
+            "0052B880 PlayerCreature CREATURE");
+        Note(PlayerCreatureCreateFn, "LevelLoader", "Player",
+            bindExisting
+                ? "006AC910 bind " + (source.ScriptName ?? PlayerCreatureName)
+                : "006AC910 Create " + (source.ScriptName ?? GuildArrivalHsp));
+        Hero = new ThingInstance
+        {
+            Kind = "NewThing",
+            Section = source.Section,
+            DefinitionType = PlayerCreatureName,
+            ScriptName = HeroScriptName,
+            PositionX = source.PositionX,
+            PositionY = source.PositionY,
+            PositionZ = source.PositionZ,
+            Properties = new Dictionary<string, string>
+            {
+                ["DefinitionType"] = PlayerCreatureName,
+                ["ScriptName"] = HeroScriptName,
+            },
+        };
+        _regionThings.Add(Hero);
+        HeroSpawned = true;
     }
 
     private ThingFile? TryLoadMapTng(WorldMap map, BbbArchive? wad)
