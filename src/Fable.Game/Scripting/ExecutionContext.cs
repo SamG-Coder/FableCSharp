@@ -1057,6 +1057,12 @@ public sealed class WorldRuntime
     /// </summary>
     public readonly Dictionary<string, float> Health =
         new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// <c>00CC12B7</c> <c>vtbl+1984(actor,!IsFalse)</c>.
+    /// Empty arg stays 1. Not SetBound 1976.
+    /// </summary>
+    public readonly Dictionary<string, bool> Scared =
+        new(StringComparer.OrdinalIgnoreCase);
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
     public float TimeOfDayHours { get; set; }
@@ -1210,6 +1216,16 @@ public sealed class WorldRuntime
         current += amount;
         Health[key] = current;
         return current;
+    }
+
+    /// <summary>
+    /// <c>00CC12B7</c>: default 1; IsFalse(arg0) → 0;
+    /// actor <c>vtbl+48</c> then <c>vtbl+1984</c>.
+    /// AI reaction UNREAD.
+    /// </summary>
+    public void SetScared(string actor, bool scared)
+    {
+        Scared[actor ?? ""] = scared;
     }
 
     /// <summary>

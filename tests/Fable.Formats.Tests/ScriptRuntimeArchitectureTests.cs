@@ -1437,6 +1437,78 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void SetScared_default_on_IsFalse_off_not_SetBound()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("ss",
+        [
+            "TRADERS.SetScared FALSE",
+            "FISH.SetScared TRUE",
+            "FARMER.SetScared",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.False(runtime.World.Scared["TRADERS"]);
+        Assert.True(runtime.World.Scared["FISH"]);
+        Assert.True(runtime.World.Scared["FARMER"]);
+        Assert.Equal(0x00CC12B7u, ScriptCommandMap.Find("SetScared")!.Value.ApplySite);
+        Assert.False(ScriptCommandMap.Find("SetBound") is { ApplySite: 0x00CC12B7 });
+    }
+
+    [Fact]
+    public void SetScared_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_DARKWOOD_TRADER_INFECTED_SCARED")
+                  ?? bank.Find("CS_FISHCOMP_HIT2")
+                  ?? bank.Find("CS_ORCHARD_EVIL_OUTRO");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.Contains(".SetScared", StringComparison.OrdinalIgnoreCase))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("SetScared", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-scared", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".SetScared", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal(!ScriptLine.IsFalse(parsed.Arg(0)),
+            runtime.World.Scared[parsed.Target ?? ""]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-scared.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-setscared.txt"),
+            """
+            SetScared 00CC1265 / apply 00CC12B7
+              ebx required else 00CC7081
+              default flag=1; 00CBEE0C IsFalse(arg0) → 0
+              empty arg stays 1 (no 00403A00 skip)
+              actor vtbl+48; vtbl+1984(actor,flag); jmp 00CC707C
+              SetBound is vtbl+1976 and requires arg0
+              Killable is vtbl+2068(actor,flag,1)
+            AI reaction UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void GiveGold_real_script_bank_or_isolated()
     {
         var install = GameInstall.TryLocate();

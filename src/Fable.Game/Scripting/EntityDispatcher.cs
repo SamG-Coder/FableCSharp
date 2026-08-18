@@ -326,7 +326,16 @@ public static class EntityDispatcher
                 now.ToString("0.###"));
         }
 
-        if (Eq(v, "SetScared") || Eq(v, "SetBound") ||
+        if (Eq(v, "SetScared"))
+        {
+            // 00CC12B7: default 1; IsFalse(arg0) → 0. Empty stays 1.
+            var scared = !ScriptLine.IsFalse(line.Arg(0));
+            ctx.World.SetScared(line.Target ?? "", scared);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity,
+                scared ? "1" : "0");
+        }
+
+        if (Eq(v, "SetBound") ||
             Eq(v, "SetPushable") || Eq(v, "SetDamageable") || Eq(v, "SetAttackable") ||
             Eq(v, "SetFree") || Eq(v, "Killable") ||
             Eq(v, "SetAppearanceSeed"))
