@@ -83,6 +83,24 @@ public sealed class EngineInput
     public int PendingCount => _queue.Count;
 
     /// <summary>
+    /// <c>009F4ED0</c> / <c>009F4F10</c>
+    /// one record for <c>00446330</c>.
+    /// </summary>
+    public bool TryDequeue(out int type, out int key)
+    {
+        if (_queue.Count == 0)
+        {
+            type = 0;
+            key = 0;
+            return false;
+        }
+
+        (type, key) = _queue[0];
+        _queue.RemoveAt(0);
+        return true;
+    }
+
+    /// <summary>
     /// One <c>0042E3EE</c> poll:
     /// <c>and [ebp-4],0</c>, apply queued
     /// events, then mask → <c>0055CB10</c>.

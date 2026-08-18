@@ -677,8 +677,7 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Input.Present);
         life.QueueInput(EngineInput.TypeKey, EngineInput.KeyMove3);
         life.Pump();
-        Assert.Equal(EngineInput.KeyMove3, life.Input.LastKey);
-        Assert.Equal(new[] { 33, 0 }, life.Input.Actions);
+        Assert.Equal((EngineInput.TypeKey, EngineInput.KeyMove3), life.Player.Delivered[^1]);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         File.WriteAllText(
             Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
@@ -705,9 +704,63 @@ public sealed class EngineLifecycleTests
               00B25950 bits 0x4,0x40,0x20,0x2000
             Client Draw is that Present, not a
             second swapchain.
-            00446A30 player poll UNREAD (0 E8).
-            Game uses 00418289 + EngineInput.Pump.
+            00416E78 [game+32].vtbl+4 00446A30
+            after WorldFrame>1. Not 0042E3EE.
             Not 00DBDE40.
+            """);
+    }
+
+    [Fact]
+    public void Player_interface_00446A30_pumps_listeners_after_WorldFrame()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        life.EnterGame();
+        Assert.True(life.Player.Present);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerInterfaceCtor);
+        var n = 0;
+        while (n < 8 && life.WorldFrame <= 1)
+        {
+            Assert.True(life.Pump());
+            n++;
+        }
+
+        Assert.True(life.WorldFrame >= 2);
+        life.QueueInput(EngineInput.TypeKey, EngineInput.KeyMove3);
+        life.Pump();
+        Assert.True(life.Player.PumpCalls >= 1);
+        Assert.Equal(1, life.Player.DeliveredCount);
+        Assert.Equal((EngineInput.TypeKey, EngineInput.KeyMove3), life.Player.Delivered[0]);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerInputPumpFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerInputPollFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerInterfacePreprocess);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GameVtbl24Fn);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-00446A30.txt"),
+            """
+            Init Player Interface 004473A0
+              alloc 0x898; vtbl 01231BDC
+              store 004193C4 at game+32
+              [+1948] disable; [+2196] fallback
+            00416E78 vtbl+24 after WorldFrame>1:
+              004457F0 [+2196]=0
+              [game+32].vtbl+4 = 00446A30
+            00446A30 (0 E8):
+              00446330 009F4ED0 poll
+              skip device+32==2 && key==15
+              skip type==0
+              listeners at +4:
+                vtbl+32 accept
+                vtbl+16 apply
+              miss → 00446220 vtbl+24
+            Not 0042E3EE. Not 00DBDE40.
             """);
     }
 
@@ -1285,6 +1338,12 @@ public sealed class EngineLifecycleTests
         Assert.Equal(188, EngineLifecycle.SetViewportVtbl);
         Assert.Equal(0x00446A30u, EngineLifecycle.PlayerInputPumpFn);
         Assert.Equal(0x00446330u, EngineLifecycle.PlayerInputPollFn);
+        Assert.Equal(0x004473A0u, EngineLifecycle.PlayerInterfaceCtor);
+        Assert.Equal(0x01231BDCu, EngineLifecycle.PlayerInterfaceVtbl);
+        Assert.Equal(0x004457F0u, EngineLifecycle.PlayerInterfacePreprocess);
+        Assert.Equal(0x898, PlayerInterface.ObjectSize);
+        Assert.Equal(32, PlayerInterface.GameOffset);
+        Assert.Equal(4, PlayerInterface.PumpVtbl);
         Assert.Equal(0x00435000u, EngineLifecycle.DisplayPlayerOverlayFn);
         Assert.Equal(0x00639E40u, EngineLifecycle.DisplayPlayerOverlayApply);
         Assert.Equal(0x00435070u, EngineLifecycle.DisplayPlayerInterfaceFn);

@@ -439,11 +439,17 @@ public sealed class EngineLifecycle
     /// Player-manager poll
     /// <c>00446A30</c> → <c>00446330</c>
     /// / <c>009F4ED0</c>. Zero <c>E8</c>
-    /// callers; not the retail
-    /// <c>0042E3EE</c> walk. UNREAD.
+    /// callers; game vtbl+24
+    /// <c>00416E78</c> calls
+    /// <c>[game+32].vtbl+4</c>.
+    /// Not the retail
+    /// <c>0042E3EE</c> walk.
     /// </summary>
-    public const uint PlayerInputPumpFn = 0x00446A30;
-    public const uint PlayerInputPollFn = 0x00446330;
+    public const uint PlayerInputPumpFn = PlayerInterface.PumpFn;
+    public const uint PlayerInputPollFn = PlayerInterface.PollFn;
+    public const uint PlayerInterfaceCtor = PlayerInterface.Ctor;
+    public const uint PlayerInterfaceVtbl = PlayerInterface.Vtbl;
+    public const uint PlayerInterfacePreprocess = PlayerInterface.PreprocessFn;
     /// <summary>
     /// <c>00435530</c> between BeginScene
     /// and EndScene: player overlay
@@ -723,6 +729,10 @@ public sealed class EngineLifecycle
     /// <c>00418289</c> pump.
     /// </summary>
     public EngineInput Input { get; } = new();
+    /// <summary>
+    /// <c>004473A0</c> at <c>game+32</c>.
+    /// </summary>
+    public PlayerInterface Player { get; } = new();
     public string? WorldFileName { get; private set; }
     public WorldFile? World { get; private set; }
     public RegionGraph? Regions { get; private set; }
@@ -1139,7 +1149,16 @@ public sealed class EngineLifecycle
         Note(GameModeCtor, "InitGame", "GameMode", "00418DCA size 0x161E8 vtbl 0122F180");
         Note(GameStart, "InitGame", "GameStart", "004184BD vtbl+4");
         foreach (var (name, apply) in InitGameStages)
+        {
             Note(apply, name, "InitGame", name);
+            if (name == "Init Player Interface")
+            {
+                Player.Construct();
+                Player.Register(new RecordingInputListener());
+                Note(PlayerInterfaceCtor, "InitGame", "Input",
+                    "004473A0 size 0x898 vtbl 01231BDC game+32");
+            }
+        }
         Note(InitWorldFn, "Init World", "World", "004A67D0 vtbl 012390F0");
         Note(InitWorldInitFn, "Init World Init", "World", "004A6E30 vtbl+36");
         foreach (var (name, apply) in InitWorldInitStages)
@@ -1390,7 +1409,6 @@ public sealed class EngineLifecycle
         Input.Construct();
         Note(InputActionGetter, "GamePump", "Input",
             "0041E5F2 [0x13B8710] size 0xD0");
-        PumpInput();
         if (Input.Busy)
             Note(InputActionGetter, "GamePump", "Input",
                 $"+{EngineInput.BusyOffset} busy");
@@ -1422,6 +1440,7 @@ public sealed class EngineLifecycle
                 Note(GameUpdateWorldFn, "GamePump", "World", "0049D9E0 ret");
                 WorldUpdateRan = true;
                 Note(GameVtbl24Fn, "GamePump", "Update", "vtbl+24 00416E78");
+                PumpPlayerInterface();
                 GameVtbl24Ran = true;
                 Note(ClearGamePlus68Fn, "GamePump", "Update", "00416047 [game+68]=0");
                 AdvanceGameTicks();
@@ -1432,6 +1451,35 @@ public sealed class EngineLifecycle
             $"0049D870 [0x13B89BC]={WorldFrame}");
         Note(WorldFrameCopyVa, "GamePump", "World", "0x13B7D70");
         GameUpdateCount++;
+    }
+
+    /// <summary>
+    /// <c>00416E78</c> after
+    /// <c>WorldFrame&gt;1</c>:
+    /// <c>004457F0</c> then
+    /// <c>[game+32].vtbl+4</c>
+    /// <c>00446A30</c> until it
+    /// returns 0.
+    /// </summary>
+    public void PumpPlayerInterface()
+    {
+        if (!Player.Present)
+            return;
+        if (WorldFrame <= 1)
+            return;
+        Player.Preprocess();
+        Note(PlayerInterfacePreprocess, "GamePump", "Input",
+            "004457F0 [+2196]=0");
+        Note(PlayerInputPumpFn, "GamePump", "Input",
+            "00446A30 [game+32] vtbl+4");
+        Note(PlayerInputPollFn, "GamePump", "Input",
+            "00446330 009F4ED0 listeners +32/+16");
+        var n = 0;
+        while (Player.Pump(Input) && n < 32)
+            n++;
+        if (n > 0)
+            Note(PlayerInputPumpFn, "GamePump", "Input",
+                $"delivered {n}");
     }
 
     /// <summary>
