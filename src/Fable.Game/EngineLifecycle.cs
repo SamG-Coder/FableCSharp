@@ -4863,8 +4863,7 @@ public sealed class EngineLifecycle : IDisposable
             TickBarrowGuards();
         }
         else if (GameflowYieldQuest is { })
-            Note(FiberYieldFn, "GamePump", "Quest",
-                "009D8650 parked " + GameflowYieldQuest);
+            ResumeGameflowWait();
         Note(QuestListWalkBFn, "GamePump", "Quest",
             "00CB8170 [+8]=0 empty");
     }
@@ -4908,6 +4907,37 @@ public sealed class EngineLifecycle : IDisposable
             "009D8650 wait " + GameflowWaitQuest);
         GameflowState = 0;
         GameflowYieldQuest = GameflowWaitQuest;
+        QuestPumpWalked++;
+    }
+
+    /// <summary>
+    /// Later type-1 <c>00CB7950</c>:
+    /// <c>+40=0</c> <c>+44=0</c>
+    /// <c>00F35A00=1</c> <c>+41=0</c>
+    /// → <c>vtbl+4</c> <c>00A44880</c>
+    /// → <c>00A44660</c> resume.
+    /// <c>00CE7670</c> is still in the
+    /// <c>00893610</c> wait;
+    /// quest miss → <c>00CB7940</c>
+    /// / <c>006E7410</c> yield.
+    /// Does not re-attach Core/Barrow
+    /// or re-run tattoo/card.
+    /// Host skip-<c>00A44880</c> when
+    /// parked is DISPROVEN.
+    /// </summary>
+    private void ResumeGameflowWait()
+    {
+        Note(QuestFiberAttachFn, "GamePump", "Quest",
+            "00CB7950 Main +41=0 vtbl+4 resume");
+        Note(FiberTickFn, "GamePump", "Quest", "00A44880");
+        Note(FiberResumeFn, "GamePump", "Quest",
+            "00A44660 009D87F0 resume");
+        Note(QuestIsActiveFn, "GamePump", "Quest",
+            "00893610 " + GameflowWaitQuest + " 0");
+        Note(GameflowYieldThunk, "GamePump", "Quest",
+            "006E7410 vtbl+8 00A44840 009D8650");
+        Note(FiberYieldFn, "GamePump", "Quest",
+            "009D8650 wait " + GameflowWaitQuest);
         QuestPumpWalked++;
     }
 

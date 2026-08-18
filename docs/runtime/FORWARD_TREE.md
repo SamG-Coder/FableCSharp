@@ -872,6 +872,12 @@ Fiber +41 setter 00CB78D0  PROVEN
 │   │   nodes. 00CB8170 [+8]=0 empty
 │   │   [esi+56] tail-insert: Sunnyvale
 │   │   00CDD360 first; Gameflow last
+│   │   later type-1  PROVEN
+│   │   00CB7950 +40=0 +44=0 +41=0
+│   │   00A44880 00A44660 009D87F0
+│   │   00893610 still 0 → yield
+│   │   no re-attach Core/Barrow
+│   │   no Oakvale activate
 │   │   0049D870 after resume, not now
 │   │   not 00501450. 004167DA store only.
 │   └── 00449970 / 00487DC0  PROVEN miss
@@ -999,9 +1005,8 @@ Walk these **from their parent above**, not by string.
 | `00B40000` | `00BDC4F0` / `00BDDD50` | patch destroy |
 | `006C2170` | unload of previous ContainsMaps | region change |
 | `004B4260` | each initial-quest factory run | not Oakvale intro |
-| `00CB8220` parked trio | next type-1 resume / `0049D870` | `0049D870` after `006E7410` vtbl+8 returns |
+| `00CE7670` wait | who activates `Q_NewOakValeIntro` | resume re-checks `00893610` still 0 |
 | `004167DA` | first call of `[engine+240]` | store-only; 0 `calldisp +240` on engine |
-| `00CE7670` parked | who activates `Q_NewOakValeIntro` | not this yield |
 | `00435530` empty dest | next type-1 resume / `00CB8220` parked | `00501450` still 0 E8/imm |
 
 After every successful walk: add the node here, then implement

@@ -1997,6 +1997,55 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Type1_resume_00CB8220_is_00A44880_then_00893610_yield()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.True(life.Pump(0.25f));
+        Assert.Equal(EngineLifecycle.GameflowWaitQuest, life.GameflowYieldQuest);
+        Assert.Equal(1, life.Trace.Events.Count(e =>
+            e.Va == EngineLifecycle.GiveNamedObjectFn));
+        Assert.True(life.Pump(0.25f));
+        Assert.True(life.QuestPumpRan);
+        Assert.True(life.QuestPumpWalked >= 1);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.QuestFiberAttachFn &&
+            e.Action.Contains("resume", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FiberTickFn &&
+            e.Action.Contains("00A44880", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FiberResumeFn &&
+            e.Action.Contains("009D87F0", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.QuestIsActiveFn &&
+            e.Action.Contains(EngineLifecycle.GameflowWaitQuest, StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FiberYieldFn &&
+            e.Action.Contains(EngineLifecycle.GameflowWaitQuest, StringComparison.Ordinal));
+        Assert.Equal(1, life.Trace.Events.Count(e =>
+            e.Va == EngineLifecycle.GiveNamedObjectFn));
+        Assert.Equal(1, life.GameflowWatchers.Count(w => w == EngineLifecycle.WatcherCoreReminder));
+        Assert.Equal(1, life.GameflowWatchers.Count(w => w == EngineLifecycle.WatcherBarrowGuards));
+        Assert.DoesNotContain(life.ActivatedQuests, q => q == EngineLifecycle.GameflowWaitQuest);
+        Assert.DoesNotContain(life.Runtime!.Quests, q => q.Name == EngineLifecycle.GameflowWaitQuest);
+        Assert.Equal(EngineLifecycle.GameflowWaitQuest, life.GameflowYieldQuest);
+        Assert.Equal(0, life.GameflowState);
+        Assert.Equal(0x00A44880u, EngineLifecycle.FiberTickFn);
+        Assert.Equal(0x00A44660u, EngineLifecycle.FiberResumeFn);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
+        Assert.Null(life.CurrentRegion);
+    }
+
+    [Fact]
     public void After_WorldFrame_gt_1_00416E78_is_004457F0_then_00446A30()
     {
         var install = GameInstall.TryLocate();
