@@ -1318,6 +1318,14 @@ public sealed class WorldRuntime
     public readonly Dictionary<string, int> SetFreeVtbl =
         new(StringComparer.OrdinalIgnoreCase);
     /// <summary>
+    /// <c>00CC4663</c> <c>00CD2770</c> drops
+    /// <c>actor+8</c> then zeros it. Not SetFree.
+    /// </summary>
+    public readonly HashSet<string> Released =
+        new(StringComparer.OrdinalIgnoreCase);
+    public readonly Dictionary<string, uint> ReleaseFn =
+        new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
     /// <c>00CC4B7E</c> <c>vtbl+1916(actor,atoi)</c>.
     /// Signed seed. Not a boolean flag.
     /// </summary>
@@ -1630,6 +1638,22 @@ public sealed class WorldRuntime
         var key = actor ?? "";
         Freed.Add(key);
         SetFreeVtbl[key] = 1980;
+    }
+
+    /// <summary>
+    /// <c>00CC4663</c>: unary <c>00CD2770</c>
+    /// teardown of <c>actor+8</c> then
+    /// <c>and [actor+8],0</c>. Drops the
+    /// AILevel bind slot. Not SetFree 1980.
+    /// Slot object dtor UNREAD.
+    /// </summary>
+    public void Release(string actor)
+    {
+        var key = actor ?? "";
+        Released.Add(key);
+        ReleaseFn[key] = 0x00CD2770;
+        AILevels.Remove(key);
+        AILevelVtbl.Remove(key);
     }
 
     /// <summary>

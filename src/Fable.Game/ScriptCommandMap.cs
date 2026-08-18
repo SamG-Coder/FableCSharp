@@ -757,6 +757,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "arg0 required; 00CBEB7E skip; vtbl+48; leftover poll 004AAF60->vtbl+236; jmp 00CC707C; not WaitPlayAnimation"),
+        Spec("Release", 0x00CC4610, 0x00CC4663, "",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "ebx actor; no args; 00CD2770=007E70E0(actor+8)+zero; jmp 00CC7081; not SetFree 1980"),
         Spec("FollowThing", 0x00CC19F2, 0x00CC1AE9, "target[,speed]",
             ScriptReturn.YieldAfter, CommandParity.ScriptLayer,
             "default speed 1.0; actor vtbl+28; yield 00CC0E96 if [ebp+103]"),

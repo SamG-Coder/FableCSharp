@@ -509,6 +509,14 @@ public static class EntityDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "vtbl+1980");
         }
 
+        if (Eq(v, "Release"))
+        {
+            // 00CC4663: ebx required; 00CD2770(actor);
+            // 007E70E0(actor+8) then and [actor+8],0.
+            ctx.World.Release(line.Target ?? "");
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "00CD2770");
+        }
+
         if (Eq(v, "SetAppearanceSeed"))
         {
             // 00CC4B7E: atoi(arg0); 004AB130; vtbl+1916(actor,seed).

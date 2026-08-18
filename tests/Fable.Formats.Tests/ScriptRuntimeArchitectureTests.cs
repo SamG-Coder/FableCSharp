@@ -3658,6 +3658,92 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void Release_drops_actor_slot_not_SetFree()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("rel",
+        [
+            "GUARD.AILevel HIGH",
+            "GUARD.Release",
+            "BANDIT.Release",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Contains("GUARD", runtime.World.Released);
+        Assert.Contains("BANDIT", runtime.World.Released);
+        Assert.False(runtime.World.AILevels.ContainsKey("GUARD"));
+        Assert.Equal(0x00CD2770u, runtime.World.ReleaseFn["GUARD"]);
+        Assert.DoesNotContain("GUARD", runtime.World.Freed);
+        Assert.Equal(0x00CC4663u, ScriptCommandMap.Find("Release")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("SetFree")!.Value.ApplySite,
+            ScriptCommandMap.Find("Release")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void Release_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".Release", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal) &&
+                    !raw.Contains("Remove", StringComparison.OrdinalIgnoreCase))
+                {
+                    var parsedTry = ScriptLine.Parse(raw);
+                    if (parsedTry.Verb.Equals("Release", StringComparison.OrdinalIgnoreCase))
+                    {
+                        line = raw;
+                        hit = entry;
+                        break;
+                    }
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "GUARD.Release";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("Release", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-rel", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".Release", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Contains(parsed.Target ?? "", runtime.World.Released);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-rel.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-release.txt"),
+            """
+            Release 00CC4610 / apply 00CC4663
+              ebx actor else 00CC7081
+              no args
+              00CD2770(actor): 007E70E0(actor+8) refcount drop
+              then and [actor+8],0
+              jmp 00CC7081
+              not SetFree vtbl+1980; not Remove
+            Slot object dtor UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();
