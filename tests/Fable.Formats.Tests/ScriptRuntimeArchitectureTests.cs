@@ -2435,6 +2435,93 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void TeleportThing_uses_marker_004AA980_not_SetHomePosThing()
+    {
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(
+        [
+            new ThingInstance
+            {
+                Kind = "CTC",
+                Section = "Thing",
+                DefinitionType = "Marker",
+                ScriptName = "MK_MI_LADY1",
+                PositionX = 5,
+                PositionY = 6,
+                PositionZ = 0,
+                Properties = new Dictionary<string, string>(),
+            },
+        ], null);
+        var interp = new ScriptInterpreter("tt",
+            ["TeleportThing LadyGrey,MK_MI_LADY1"]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal(5f, runtime.World.Positions["LadyGrey"].X);
+        Assert.Equal(6f, runtime.World.Positions["LadyGrey"].Y);
+        Assert.Equal(0x00CC7E7Fu, ScriptCommandMap.Find("TeleportThing")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("SetHomePosThing")!.Value.ApplySite,
+            ScriptCommandMap.Find("TeleportThing")!.Value.ApplySite);
+        var empty = new ScriptInterpreter("tt0", ["TeleportThing LadyGrey"]);
+        empty.RunUntilYield(runtime);
+        Assert.True(empty.Finished);
+        Assert.Equal(5f, runtime.World.Positions["LadyGrey"].X);
+    }
+
+    [Fact]
+    public void TeleportThing_real_script_bank_line()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        var hit = bank.Find("CS_MAYOREXPOSE_INTRO")
+                  ?? bank.Find("CS_OAKVALEINTRO_BRATHIT")
+                  ?? bank.Find("CS_DRAGON_DEATH");
+        Assert.NotNull(hit);
+        string? line = null;
+        foreach (var raw in hit.Commands.Count > 0
+                     ? hit.Commands
+                     : ScriptBank.ExtractCommands(hit.Raw))
+        {
+            if (raw.StartsWith("TeleportThing ", StringComparison.OrdinalIgnoreCase))
+            {
+                line = raw;
+                break;
+            }
+        }
+
+        Assert.False(string.IsNullOrEmpty(line));
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("TeleportThing", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        runtime.World.Positions[parsed.Arg(1)] = new System.Numerics.Vector3(3, 4, 0);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-tpth", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.StartsWith("TeleportThing ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.True(runtime.World.Positions.ContainsKey(parsed.Arg(0)));
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-tpth.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-teleportthing.txt"),
+            """
+            TeleportThing 00CC7E2C / apply 00CC7E7F
+              arg0+arg1 00403A00 empty skip 00CC8464
+              resolve each: HERO vtbl+280 else vtbl+288
+              004AB130 both; IsFalse(arg2)->0 else 1
+              004AAA40 yaw; 004AA980 marker pos
+              vtbl+1892(thing,pos,yaw,flag,0); jmp 00CC8231
+              not SetHomePosThing 004AA9A0
+            Yaw 004AAA40 body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void AskQuestion_polls_vtbl_156_until_answer()
     {
         var runtime = ScriptRuntime.Detached();

@@ -677,6 +677,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "arg0 required; HERO vtbl+280 else 288; 004AA9A0; vtbl+1892; DISPROVES HomePos write; jmp 00CC8231"),
+        Spec("TeleportThing", 0x00CC7E2C, 0x00CC7E7F, "thing,marker[,IsFalse]",
+            ScriptReturn.CompleteNow, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0+arg1 required; IsFalse(arg2)->0 else 1; 004AA980+004AAA40; vtbl+1892; not SetHomePosThing 004AA9A0"),
         Spec("WalkUpToThing", 0x00CC2331, 0x00CC2538, "thing,distance[,…]",
             ScriptReturn.YieldAfterOrWait, CommandParity.ScriptLayer,
             "dest=pos+atof(arg1)*(vtbl+288+12); actor vtbl+16 speed 1; leftover vtbl+104"),

@@ -202,6 +202,27 @@ public static class GlobalDispatcher
                 $"{name}@{pos.X:0.##},{pos.Y:0.##}");
         }
 
+        if (Eq(v, "TeleportThing"))
+        {
+            // 00CC7E7F: thing+marker required; IsFalse(arg2)->0 else 1;
+            // 004AA980 marker pos; 004AAA40 yaw; vtbl+1892.
+            var name = line.Arg(0);
+            var marker = line.Arg(1);
+            if (name.Length == 0 || marker.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            var thing = ctx.FindThing(marker);
+            Vector3? dest = thing is { PositionX: not null }
+                ? RegionTravel.PositionOf(thing)
+                : ctx.World.Positions.TryGetValue(marker, out var stored)
+                    ? stored
+                    : null;
+            if (dest is not { } pos)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global, "");
+            ctx.World.Teleport(name, marker, pos);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Global,
+                $"{name}->{marker}");
+        }
+
         if (Eq(v, "DrawThing"))
         {
             var name = line.Arg(0);
