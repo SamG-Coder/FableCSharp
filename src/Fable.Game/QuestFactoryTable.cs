@@ -50,6 +50,16 @@ public static class QuestFactoryTable
     public const uint GameflowWatcherCtor = 0x00CDD450;
     public const uint GameflowWatcherAttach = 0x00CB7E50;
     public const uint SharedRunReuse = 0x004AFA10;
+    /// <summary>
+    /// <c>00CD9A12</c> bind: empty
+    /// script <c>0x122D70E</c>, factory
+    /// <c>00EE90A0</c>, run <c>ebx</c>
+    /// (not <c>00CDBD20</c>), persist
+    /// <c>bl</c>.
+    /// </summary>
+    public const uint WatchForHeroDeathFactory = 0x00EE90A0;
+    public const uint WatchForHeroDeathBind = 0x00CD9A12;
+    public const string WatchForHeroDeathName = "Global_WatchForHeroDeath";
     public const uint ScriptStateLookup = 0x008A9DB0;
     public const uint ScriptStateInsert = 0x008AE660;
     public const uint ScriptStateMapVa = 0x013BAE44;
@@ -164,6 +174,13 @@ public static class QuestFactoryTable
             "size 100 vtbl 012C3FA4; flag 0 → 004AFA10 " +
             "reuse 00CDBD20; 00CB7900 vtbl+12 00CE6CF0 " +
             "then vtbl+4 00CE75B0 Main 00CDD450/00CB7E50"),
+        new(WatchForHeroDeathName, null,
+            WatchForHeroDeathFactory, 0, 0,
+            0, 0, false,
+            BindingKind.ProvenGeneric,
+            "00CD9A12 Global_WatchForHeroDeath empty " +
+            "0x122D70E; factory 00EE90A0 run ebx not " +
+            "00CDBD20 persist bl; 00CB5C90"),
     ];
 
     public static QuestNameFactory? Find(string questName)

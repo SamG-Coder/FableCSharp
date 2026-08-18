@@ -85,12 +85,14 @@ public sealed class FrontendInputMap
     public const int TypeAccept = 38;
 
     /// <summary>
-    /// Type 4 is built by
-    /// <c>00A03C80</c> (<c>+40=4</c>).
-    /// It is not a DIK. Return (28) is
-    /// type 1 action 33.
+    /// Type 4 is LMB down
+    /// (<c>00A03C80</c>, device 3,
+    /// <c>00AB5420</c> code 1). Not a
+    /// DIK. Return (28) is type 1
+    /// action 33.
     /// </summary>
-    public const bool DikPosterUnread = true;
+    public const bool DikPosterUnread = false;
+    public const int Type4Device = 3;
 
     private readonly Queue<int> _messages = new();
 

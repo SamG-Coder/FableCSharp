@@ -27,11 +27,28 @@ public sealed class EngineInput
     public const int TypeKey = 1;
     /// <summary>
     /// <c>0042E3EE</c> <c>[record+40]==4</c>
-    /// → action 26. No DIK compare.
+    /// → action 26. LMB down
+    /// (<c>00A03C80</c>, device 3).
+    /// Not a DIK.
     /// </summary>
     public const int Type4 = 4;
+    /// <summary>
+    /// LMB up (<c>00A03D60</c>) →
+    /// action 28.
+    /// </summary>
+    public const int Type6 = 6;
+    /// <summary>
+    /// RMB down (<c>00A03D90</c>) →
+    /// action 35.
+    /// </summary>
+    public const int Type7 = 7;
     public const int Type10 = 10;
+    /// <summary>
+    /// Mouse move (<c>00A03FB0</c>),
+    /// not the Press Start click.
+    /// </summary>
     public const int TypeMouse = 13;
+    public const int Type4Device = 3;
     public const int TypeAnalog = 17;
     public const int ActionFromKey = 33;
     public const int ActionType4 = 26;

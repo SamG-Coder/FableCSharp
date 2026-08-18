@@ -21,6 +21,12 @@ public sealed class FrontendInputTests
         Assert.Equal(
             "UI_FRONTEND_MAIN_MENU_NO_LIVEAWARE_NO_CONTINUE",
             FrontendMessages.MainMenuNoContinue);
+        Assert.Equal(4, FrontendInputMap.Type4);
+        Assert.Equal(26, FrontendInputMap.ActionType4);
+        Assert.Equal(3, FrontendInputMap.Type4Device);
+        Assert.Equal(0x00A03C80u, FrontendInputMap.Type4RecordCtor);
+        Assert.Equal(0x00AB5420u, FrontendInputMap.Type4TranslateFn);
+        Assert.False(FrontendInputMap.DikPosterUnread);
         Assert.Equal(0x0059A238u, FrontendMessages.UiMessageFn);
         Assert.Equal(0x00599D5Cu, FrontendMessages.PressStartAcceptFn);
         Assert.Equal(0x00595845u, FrontendMessages.NoProfileFn);
@@ -266,7 +272,7 @@ public sealed class FrontendInputTests
             FrontendInputMap.TypeKey, dikReturn, FrontendMessages.NewProfileMenu));
         Assert.Null(FrontendInputMap.MessageFromAction(
             FrontendInputMap.ActionFromKey, FrontendMessages.MainMenuNoContinue));
-        Assert.True(FrontendInputMap.DikPosterUnread);
+        Assert.False(FrontendInputMap.DikPosterUnread);
     }
 
     [Fact]

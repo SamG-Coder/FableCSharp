@@ -26,6 +26,30 @@ public sealed class QuestFile
 
         return new QuestFile { Quests = quests };
     }
+
+    /// <summary>
+    /// <c>004A0D90</c> flag 0 append:
+    /// concatenate <paramref name="other"/>
+    /// after this file's <c>AddQuest</c>
+    /// rows. Does not clear.
+    /// </summary>
+    public QuestFile Append(QuestFile other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        var quests = new List<QuestEntry>(Quests.Count + other.Quests.Count);
+        quests.AddRange(Quests);
+        quests.AddRange(other.Quests);
+        return new QuestFile { Quests = quests };
+    }
+
+    public IEnumerable<string> PersistentNames()
+    {
+        foreach (var quest in Quests)
+        {
+            if (quest.Persistent)
+                yield return quest.Name;
+        }
+    }
 }
 
 public sealed class QuestEntry

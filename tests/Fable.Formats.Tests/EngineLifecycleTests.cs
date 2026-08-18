@@ -401,6 +401,9 @@ public sealed class EngineLifecycleTests
             life.FinishStartupVideo();
         Assert.Equal(4, EngineInput.Type4);
         Assert.Equal(26, EngineInput.ActionType4);
+        Assert.Equal(3, EngineInput.Type4Device);
+        Assert.Equal(6, EngineInput.Type6);
+        Assert.Equal(7, EngineInput.Type7);
         life.QueueInput(EngineInput.Type4, 0);
         Assert.True(life.Pump());
         Assert.Equal(
@@ -1086,11 +1089,9 @@ public sealed class EngineLifecycleTests
               [0x13B8648]==0 no-save → 0049F180(world)
               0049F180 Init GUI 0043A380
               Init Quests 004B4260([world+172])
-            world+172 writer is 00507C30
-            START_INITIAL_QUESTS:
-              Q_SunnyvaleMaster, PersonalScriptMain,
-              PersonalScript_GlobalThings, HeroBoasts,
-              V_HeroDolls, CS_PlayCutscene
+            world+172 writer is 004A0D90 AddQuest TRUE
+            (FinalAlbion.qst then GlobalQuests.qst).
+            00507C30 has no START_INITIAL_QUESTS case.
             00416BCF Activate Initial Quests
               game+90584 empty → 004B4A10 → 004B4260
             Fibers via 00A447D0 / ScriptScheduler.
@@ -1127,23 +1128,40 @@ public sealed class EngineLifecycleTests
             new[]
             {
                 "Q_SunnyvaleMaster",
+                "ChapterAndSceneManager",
                 "PersonalScriptMain",
                 "PersonalScript_GlobalThings",
+                "NPCDeath",
                 "HeroBoasts",
                 "V_HeroDolls",
                 "CS_PlayCutscene",
+                "Global_WatchForHeroDeath",
             },
-            life.ActivatedQuests.Take(6));
-        Assert.Equal("Gameflow", life.ActivatedQuests[6]);
-        Assert.Equal(7, life.ActivatedQuests.Count);
+            life.WorldPlus172);
+        Assert.Equal(life.WorldPlus172, life.ActivatedQuests.Take(9));
+        Assert.Equal("Gameflow", life.ActivatedQuests[9]);
+        Assert.Equal(10, life.ActivatedQuests.Count);
+        Assert.DoesNotContain("Q_NewOakValeIntro", life.WorldPlus172);
+        Assert.DoesNotContain("Q_NewOakValeIntro", life.ActivatedQuests);
         Assert.Contains(life.World!.InitialQuests, q => q == "Q_SunnyvaleMaster");
+        Assert.Equal(6, life.World.InitialQuests.Count);
+        Assert.DoesNotContain(life.World.InitialQuests, q => q == "ChapterAndSceneManager");
+        Assert.DoesNotContain(life.World.InitialQuests, q => q == "NPCDeath");
+        Assert.DoesNotContain(life.World.InitialQuests, q => q == "Global_WatchForHeroDeath");
         Assert.NotNull(life.Quests);
         Assert.Contains(life.Quests.Quests, q => q.Name == "Q_SunnyvaleMaster" && q.Persistent);
+        Assert.Contains(life.Quests.Quests, q =>
+            q.Name == "Global_WatchForHeroDeath" && q.Persistent);
+        Assert.Contains(life.WorldPlus184, q => q == "Q_NewOakValeIntro");
         Assert.NotNull(life.Runtime);
-        Assert.Equal(7, life.Runtime.Quests.Count);
-        Assert.Equal(7, life.Runtime.Scheduler.Fibers.Count);
+        Assert.Equal(10, life.Runtime.Quests.Count);
+        Assert.Equal(10, life.Runtime.Scheduler.Fibers.Count);
         Assert.All(life.Runtime.Quests, q => Assert.NotNull(q.Fiber));
-        Assert.All(life.Runtime.Quests, q => Assert.True(q.Started));
+        Assert.All(
+            life.Runtime.Quests.Where(q => QuestFactoryTable.Find(q.Name) is not null),
+            q => Assert.True(q.Started));
+        Assert.False(life.Runtime.Quests.Single(q => q.Name == "ChapterAndSceneManager").Started);
+        Assert.False(life.Runtime.Quests.Single(q => q.Name == "NPCDeath").Started);
         Assert.Equal(
             QuestFactoryTable.GameflowFactory,
             life.Runtime.Quests.Single(q => q.Name == "Gameflow").Factory);
@@ -1173,17 +1191,22 @@ public sealed class EngineLifecycleTests
                 "recover-004B4260.txt"),
             """
             No-save writer of [world+172]:
-              00507C30 WLD START_INITIAL_QUESTS
-              Q_SunnyvaleMaster PersonalScriptMain
-              PersonalScript_GlobalThings HeroBoasts
-              V_HeroDolls CS_PlayCutscene
+              004A0D90 AddQuest TRUE (flag 1 then 0)
+              FinalAlbion.qst then GlobalQuests.qst
+              Q_SunnyvaleMaster ChapterAndSceneManager
+              PersonalScriptMain PersonalScript_GlobalThings
+              NPCDeath HeroBoasts V_HeroDolls
+              CS_PlayCutscene Global_WatchForHeroDeath
+            00507C30 has no START_INITIAL_QUESTS case
             00416ABA 004A1840 Load Quests
-              004A0D90 AddQuest → world+184
+              004A08D0 flag 1 clear +184/+172/+196
+              004A0D90 AddQuest → +184; TRUE → +172
             00416ABF [0x13B8648]==0
               0049F180(ecx=world) Init Quests
               004B4260([world+172])
               00CB5AD0 lookup / 00A447D0 fiber
             00416BCF empty +90584 → 004B4A10
+            user.ini Gameflow is later, not +172
             Not S_QNOVI / 00DBDE40.
             """);
     }
@@ -1590,7 +1613,13 @@ public sealed class EngineLifecycleTests
         Assert.True(play.Started);
         Assert.Equal(QuestFactoryTable.PlayCutsceneFactory, play.Factory);
         Assert.Null(play.ScriptName);
-        Assert.All(life.Runtime.Quests, q => Assert.True(q.Started));
+        Assert.All(
+            life.Runtime.Quests.Where(q => QuestFactoryTable.Find(q.Name) is not null),
+            q => Assert.True(q.Started));
+        var watch = life.Runtime.Quests.Single(q =>
+            q.Name == QuestFactoryTable.WatchForHeroDeathName);
+        Assert.True(watch.Started);
+        Assert.Equal(QuestFactoryTable.WatchForHeroDeathFactory, watch.Factory);
         var gameflow = life.Runtime.Quests.Single(q => q.Name == "Gameflow");
         Assert.Equal(QuestFactoryTable.GameflowFactory, gameflow.Factory);
         Assert.Equal(QuestFactoryTable.GameflowScript, gameflow.ScriptName);
@@ -2036,9 +2065,9 @@ public sealed class EngineLifecycleTests
         Assert.False(life.QuestPumpRan);
         Assert.True(life.Pump(0.1f));
         Assert.True(life.QuestPumpRan);
-        Assert.Equal(9, life.QuestPumpWalked);
-        Assert.Equal(7, life.EventPosts);
-        Assert.Equal(7, life.EventPumpWalked);
+        Assert.Equal(12, life.QuestPumpWalked);
+        Assert.Equal(10, life.EventPosts);
+        Assert.Equal(10, life.EventPumpWalked);
         Assert.Equal(50, EngineLifecycle.EventPostDelay);
         Assert.Equal(55, EngineLifecycle.EventPostKind);
         Assert.Contains(life.Trace.Events, e =>
@@ -2223,6 +2252,9 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Pump());
         Assert.True(life.Pump(0.25f));
         Assert.Contains(life.World!.InitialQuests, q => q == "Q_SunnyvaleMaster");
+        Assert.DoesNotContain(life.WorldPlus172, q => q == "Q_NewOakValeIntro");
+        Assert.DoesNotContain(life.ActivatedQuests, q => q == "Q_NewOakValeIntro");
+        Assert.Contains(life.WorldPlus172, q => q == "Global_WatchForHeroDeath");
         Assert.DoesNotContain(life.World.InitialQuests, q =>
             q == EngineLifecycle.GameflowWaitQuest);
         Assert.DoesNotContain(life.ActivatedQuests, q =>

@@ -102,6 +102,26 @@ public sealed class TlcInstallTests
         Assert.Contains(quests.Quests, quest => quest.Name == "Q_NewOakValeIntro");
         Assert.Contains(quests.Quests, quest => quest.Name == "Q_GuildTraining");
         Assert.True(quests.Quests.Count > 50);
+        var persistent = quests.PersistentNames().ToArray();
+        Assert.Equal(
+            new[]
+            {
+                "Q_SunnyvaleMaster",
+                "ChapterAndSceneManager",
+                "PersonalScriptMain",
+                "PersonalScript_GlobalThings",
+                "NPCDeath",
+                "HeroBoasts",
+                "V_HeroDolls",
+                "CS_PlayCutscene",
+            },
+            persistent);
+        var global = QuestFile.Load(RequireInstall().GlobalQuestPath);
+        var merged = quests.Append(global);
+        Assert.Equal(
+            persistent.Concat(["Global_WatchForHeroDeath"]),
+            merged.PersistentNames());
+        Assert.Contains(merged.Quests, q => q.Name == "Q_NewOakValeIntro" && !q.Persistent);
     }
 
     [Fact]

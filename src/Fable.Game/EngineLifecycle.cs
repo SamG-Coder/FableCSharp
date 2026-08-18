@@ -1705,6 +1705,15 @@ public sealed class EngineLifecycle : IDisposable
     public const uint LoadQuestsFn = 0x004A1840;
     public const uint LoadQuestsSite = 0x00416ABA;
     public const uint QstParseFn = 0x004A0D90;
+    /// <summary>
+    /// <c>004A0D90</c> flag 1:
+    /// <c>004A08D0</c> clears
+    /// world+184 / +172 / +196
+    /// before parse.
+    /// </summary>
+    public const uint QstClearFn = 0x004A08D0;
+    public const int QstParseFlagClear = 1;
+    public const int QstParseFlagAppend = 0;
     public const uint ActivateInitialQuestsFn = 0x004B4A10;
     public const uint ActivateInitialQuestsSite = 0x00416BCF;
     /// <summary>
@@ -2380,6 +2389,20 @@ public sealed class EngineLifecycle : IDisposable
     public ScriptRuntime? Runtime { get; private set; }
     public IReadOnlyList<string> ActivatedQuests => _activatedQuests;
     /// <summary>
+    /// <c>CWorld+172</c>: <c>AddQuest</c>
+    /// TRUE names from
+    /// <c>FinalAlbion.qst</c> then
+    /// <c>GlobalQuests.qst</c>. Not WLD
+    /// <c>START_INITIAL_QUESTS</c>.
+    /// </summary>
+    public IReadOnlyList<string> WorldPlus172 => _worldPlus172;
+    /// <summary>
+    /// <c>CWorld+184</c>: every
+    /// <c>AddQuest</c> name (TRUE and
+    /// FALSE) from both QST files.
+    /// </summary>
+    public IReadOnlyList<string> WorldPlus184 => _worldPlus184;
+    /// <summary>
     /// <c>00CE6CF0</c> names inserted at
     /// <c>0x13BAE44</c> via
     /// <c>008A9DB0</c> / <c>008AE660</c>.
@@ -2480,6 +2503,8 @@ public sealed class EngineLifecycle : IDisposable
         new(StringComparer.OrdinalIgnoreCase);
     private readonly List<InsertedThing> _inserted = [];
     private readonly List<string> _activatedQuests = [];
+    private readonly List<string> _worldPlus172 = [];
+    private readonly List<string> _worldPlus184 = [];
     private readonly List<string> _gameflowStates = [];
     private readonly List<string> _gameflowWatchers = [];
     private readonly List<uint> _submittedLayers = [];
@@ -6409,20 +6434,49 @@ public sealed class EngineLifecycle : IDisposable
             $"004A113B AddTestQuest [world+{WorldAddTestQuestOffset}] store not 004B4A10");
         Note(StartNewQuestParseFn, "Load Quests", "Quest",
             "004B5080 START_NEW_QUEST save parse 0 E8 no-save");
+        _worldPlus172.Clear();
+        _worldPlus184.Clear();
+        Quests = null;
         if (Install is not null && File.Exists(Install.QuestPath))
         {
+            Note(QstClearFn, "Load Quests", "Quest",
+                $"004A08D0 flag {QstParseFlagClear} clear +184/+172/+{WorldAddTestQuestOffset}");
             Quests = QuestFile.Load(Install.QuestPath);
+            StoreAddQuestNames(Quests);
             Note(QstParseFn, "Load Quests", "Quest",
                 $"quests={Quests.Quests.Count} {Path.GetFileName(Install.QuestPath)}");
         }
 
         Note(GlobalQuestsVa, "Load Quests", "Quest", GlobalQuestsName);
         if (Install is not null && File.Exists(Install.GlobalQuestPath))
+        {
+            var global = QuestFile.Load(Install.GlobalQuestPath);
+            StoreAddQuestNames(global);
+            Quests = Quests is null ? global : Quests.Append(global);
             Note(QstParseFn, "Load Quests", "Quest",
                 "004A0D90 " + Path.GetFileName(Install.GlobalQuestPath));
+        }
         else
             Note(FileExistsFn, "Load Quests", "Quest",
                 "00999230 miss " + GlobalQuestsName);
+
+        Note(QstParseFn, "Load Quests", "Quest",
+            $"004A0D90 [world+{WorldQuestListOffset}] TRUE count={_worldPlus172.Count}");
+    }
+
+    /// <summary>
+    /// <c>004A0D90</c> <c>AddQuest</c>:
+    /// name → world+184; TRUE →
+    /// world+172. Not activate.
+    /// </summary>
+    private void StoreAddQuestNames(QuestFile file)
+    {
+        foreach (var quest in file.Quests)
+        {
+            _worldPlus184.Add(quest.Name);
+            if (quest.Persistent)
+                _worldPlus172.Add(quest.Name);
+        }
     }
 
     /// <summary>
@@ -6446,9 +6500,9 @@ public sealed class EngineLifecycle : IDisposable
             "0043A380 PLAYER_GUI_PC [0x13B8790]");
         PlayerGuiReady = true;
 
-        var names = World?.InitialQuests ?? [];
+        var names = _worldPlus172;
         Note(InitQuestsFn, "Init Quests", "Quest",
-            $"004B4260 [world+{WorldQuestListOffset}] count={names.Count}");
+            $"004B4260 [world+{WorldQuestListOffset}] QST TRUE count={names.Count} not WLD START_INITIAL_QUESTS");
         Runtime = ScriptRuntime.Detached();
         if (Install?.FindCompiledDef("script.bin") is not null)
             Runtime.Load(ScriptBank.Load(Install), Install);

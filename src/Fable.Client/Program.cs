@@ -40,6 +40,7 @@ IMouse? mouse = null;
 Vector2 lastMouse = Vector2.Zero;
 var looking = false;
 var f2WasDown = false;
+var lmbWasDown = false;
 var debugFly = false;
 var debugCam = new FlyCamera();
 
@@ -96,6 +97,14 @@ window.Update += dt =>
     }
 
     f2WasDown = f2Down;
+    if (mouse is not null)
+    {
+        var lmbDown = mouse.IsButtonPressed(MouseButton.Left);
+        if (lmbDown && !lmbWasDown)
+            life.QueueInput(EngineInput.Type4, 0);
+        lmbWasDown = lmbDown;
+    }
+
     looking = debugFly && mouse is not null && mouse.IsButtonPressed(MouseButton.Right);
     if (mouse is not null)
         mouse.Cursor.CursorMode = looking ? CursorMode.Disabled : CursorMode.Normal;
