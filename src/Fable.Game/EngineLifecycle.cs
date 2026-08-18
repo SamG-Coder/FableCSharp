@@ -207,6 +207,35 @@ public sealed class EngineLifecycle
     public const uint GamePumpUpdate = 0x004162B5;
     public const uint GamePumpMemlog = 0x00415E85;
     public const uint GamePumpQuitQuery = 0x009A6460;
+    /// <summary>
+    /// <c>005066E0</c> inserts one ctor-zeroed
+    /// 88-byte slot before WLD appends.
+    /// Native index 0 is that dummy.
+    /// <c>NewRegion N</c> lands at index N.
+    /// </summary>
+    public const int RegionTableDummyCount = 1;
+    /// <summary>
+    /// <c>00500540</c>: index → record
+    /// (<c>+36</c> optional), build job,
+    /// <c>006C27A0</c> / <c>006C2120</c>.
+    /// Null <c>+36</c> still continues
+    /// (<c>005009BE</c>).
+    /// </summary>
+    public const uint LoadRegionFn = 0x00500540;
+    public const uint BuildLoadJobFn = 0x006C27A0;
+    public const uint EnqueueLoadJobFn = 0x006C2120;
+    public const uint LevelLoaderUpdate = 0x006C2710;
+    public const uint LevelLoaderApply = 0x006C2170;
+    public const uint LevelLoaderHasWork = 0x006C20A0;
+    public const uint SetRegionAsLoadedFn = 0x004FC8A0;
+    public const uint ActivateTopologyFn = 0x004FCBB0;
+    public const uint SetMapLoadingFlagFn = 0x004FCFE0;
+    public const uint PostRegionLoadVillages = 0x005064C0;
+    public const uint InitMiniMapFn = 0x0082BA00;
+    public const int WorldMapLevelLoaderOffset = 188;
+    public const uint WorldMapSetLevelLoader = 0x004AF160;
+    public const int MapRecordSize = 72;
+    public const int MapRecordActiveOffset = 38;
 
     /// <summary>
     /// <c>00507C30</c> token switch. Same
@@ -266,8 +295,8 @@ public sealed class EngineLifecycle
     public int PlayerActiveCount { get; private set; }
     public bool PlayerObjectReady { get; private set; }
     /// <summary>
-    /// <c>WorldMap+156</c>. Ctor 0 → first
-    /// appended NewRegion (LookoutPoint).
+    /// <c>WorldMap+156</c>. Ctor 0 is the
+    /// dummy slot, not LookoutPoint.
     /// </summary>
     public int CurrentRegionIndex { get; private set; }
     public WorldRegion? CurrentRegion { get; private set; }
@@ -278,6 +307,9 @@ public sealed class EngineLifecycle
     public bool RegionObjectPresent { get; private set; }
     public bool GamePumpFirstDone { get; private set; }
     public int GamePumpFrames { get; private set; }
+    public bool LevelLoaderReady { get; private set; }
+    public IReadOnlyList<int> PendingLoadIndices => _loadQueue;
+    public IReadOnlyList<string> ActivatedMaps => _activatedMaps;
     /// <summary>
     /// <c>0x13B85F6</c> / <c>0x13B85F5</c>.
     /// Default false matches BSS 0.
@@ -289,6 +321,8 @@ public sealed class EngineLifecycle
 
     private readonly List<string> _completed = [];
     private readonly List<string> _banks = [];
+    private readonly List<int> _loadQueue = [];
+    private readonly List<string> _activatedMaps = [];
 
     public static int CreateDeviceBehaviorFlags(bool hardwareTnl) =>
         hardwareTnl ? CreateDeviceHardwareFlags : CreateDeviceSoftwareFlags;
@@ -622,30 +656,145 @@ public sealed class EngineLifecycle
     }
 
     /// <summary>
-    /// Table index is append order, not the
+    /// Native table index is the
     /// <c>NewRegion N</c> token. Index 0 is
+    /// the <c>005066E0</c> dummy, not
     /// LookoutPoint. <c>[record+36]</c> is
     /// still null after parse.
     /// </summary>
     public void ActivateCurrentRegion()
     {
-        if (World is null ||
-            CurrentRegionIndex < 0 ||
-            CurrentRegionIndex >= World.Regions.Count)
+        CurrentRegion = RegionAtNativeIndex(CurrentRegionIndex);
+        RegionObjectPresent = false;
+        if (CurrentRegionIndex == 0)
         {
-            CurrentRegion = null;
-            RegionObjectPresent = false;
+            Note(GetRegionRecordFn, "GamePump", "Region",
+                "index=0 dummy 005066E0 record+36 null");
+            Note(RegionRecordCtor, "GamePump", "Region",
+                "006BC410 +36 zero; touch skipped");
+            return;
+        }
+
+        if (CurrentRegion is null)
+        {
             Note(GetRegionRecordFn, "GamePump", "Region",
                 $"index={CurrentRegionIndex} no record");
             return;
         }
 
-        CurrentRegion = World.Regions[CurrentRegionIndex];
-        RegionObjectPresent = false;
         Note(GetRegionRecordFn, "GamePump", "Region",
             $"index={CurrentRegionIndex} {CurrentRegion.RegionName} record+36 null");
         Note(RegionRecordCtor, "GamePump", "Region",
             "006BC410 +36 zero; touch skipped");
+    }
+
+    public WorldRegion? RegionAtNativeIndex(int index)
+    {
+        if (World is null || index <= 0)
+            return null;
+        foreach (var region in World.Regions)
+        {
+            if (region.Index == index)
+                return region;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// <c>00500540</c> then <c>006C27A0</c> /
+    /// <c>006C2120</c>. Does not invent
+    /// StartOakVale. <c>sync</c> is the third
+    /// arg: 0 pumps <c>006C2710</c> until empty.
+    /// </summary>
+    public void RequestLoadRegion(int index, bool sync = true)
+    {
+        EnsureLevelLoader();
+        Note(LoadRegionFn, "LevelLoader", "Region",
+            $"00500540 index={index} record+36 unread");
+        var region = RegionAtNativeIndex(index);
+        if (index != 0 && region is null)
+        {
+            Note(LoadRegionFn, "LevelLoader", "Region",
+                $"index={index} missing");
+            return;
+        }
+
+        Note(BuildLoadJobFn, "LevelLoader", "Region",
+            $"006C27A0 maps={region?.ContainsMaps.Count ?? 0} +28={index}");
+        _loadQueue.Add(index);
+        Note(EnqueueLoadJobFn, "LevelLoader", "Region",
+            $"006C2120 queue={_loadQueue.Count}");
+        if (sync)
+            PumpLevelLoader();
+    }
+
+    /// <summary>
+    /// <c>006C2710</c> "Level loader update".
+    /// </summary>
+    public void PumpLevelLoader()
+    {
+        Note(LevelLoaderUpdate, "LevelLoader", "Region", "006C2710 Level loader update");
+        while (_loadQueue.Count > 0)
+        {
+            Note(LevelLoaderHasWork, "LevelLoader", "Region", "006C20A0 nonempty");
+            ApplyLoadJob(_loadQueue[0]);
+            _loadQueue.RemoveAt(0);
+        }
+    }
+
+    /// <summary>
+    /// <c>004FC8A0</c> writes
+    /// <c>WorldMap+156</c> then Initialise MiniMap.
+    /// </summary>
+    public void SetRegionAsLoaded(int index)
+    {
+        CurrentRegionIndex = index;
+        Note(SetRegionAsLoadedFn, "LevelLoader", "Region",
+            "SetRegionAsLoaded: Initialise MiniMap");
+        ActivateCurrentRegion();
+        var name = CurrentRegion?.RegionName ?? (index == 0 ? "dummy" : "?");
+        Note(SetRegionAsLoadedFn, "LevelLoader", "Region",
+            $"index={index} {name}");
+        Note(InitMiniMapFn, "LevelLoader", "Region", "0082BA00 Initialise MiniMap");
+        Note(PostRegionLoadVillages, "LevelLoader", "Region",
+            "005064C0 Post Region Load Villages");
+    }
+
+    private void EnsureLevelLoader()
+    {
+        if (LevelLoaderReady)
+            return;
+        Note(WorldMapSetLevelLoader, "LevelLoader", "Region",
+            "004AF160 [WorldMap+188] CLevelLoader");
+        LevelLoaderReady = true;
+    }
+
+    private void ApplyLoadJob(int index)
+    {
+        var region = RegionAtNativeIndex(index);
+        Note(LevelLoaderApply, "LevelLoader", "Region",
+            $"006C2170 index={index} {region?.RegionName ?? (index == 0 ? "dummy" : "?")}");
+        if (region is not null)
+        {
+            foreach (var map in region.ContainsMaps)
+            {
+                Note(LevelLoaderApply, "LevelLoader", "Region", "Loading topology " + map);
+                if (!_activatedMaps.Exists(m =>
+                        m.Equals(map, StringComparison.OrdinalIgnoreCase)))
+                    _activatedMaps.Add(map);
+                Note(ActivateTopologyFn, "LevelLoader", "Region",
+                    $"004FCBB0 {map} +38=1");
+                Note(SetMapLoadingFlagFn, "LevelLoader", "Region",
+                    $"004FCFE0 {map} +39");
+                Note(LevelLoaderApply, "LevelLoader", "Region", "Loading objects " + map);
+            }
+
+            Note(LevelLoaderApply, "LevelLoader", "Region",
+                "Region Level Files: Activate Topology");
+        }
+
+        SetRegionAsLoaded(index);
     }
 
     private ThingFile? TryLoadMapTng(WorldMap map, BbbArchive? wad)

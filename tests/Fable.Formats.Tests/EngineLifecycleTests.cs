@@ -179,8 +179,17 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0, EngineLifecycle.DefaultNamedStartFlag);
         Assert.Equal(0x00416268u, EngineLifecycle.NamedStartFn);
         Assert.Equal(0x004162B5u, EngineLifecycle.GamePumpUpdate);
+        Assert.Equal(1, EngineLifecycle.RegionTableDummyCount);
+        Assert.Equal(0x00500540u, EngineLifecycle.LoadRegionFn);
+        Assert.Equal(0x006C2120u, EngineLifecycle.EnqueueLoadJobFn);
+        Assert.Equal(0x006C2710u, EngineLifecycle.LevelLoaderUpdate);
+        Assert.Equal(0x006C2170u, EngineLifecycle.LevelLoaderApply);
+        Assert.Equal(0x004FC8A0u, EngineLifecycle.SetRegionAsLoadedFn);
+        Assert.Equal(0x004FCBB0u, EngineLifecycle.ActivateTopologyFn);
+        Assert.Equal(188, EngineLifecycle.WorldMapLevelLoaderOffset);
         Assert.NotEqual(0x00DBDE40u, EngineLifecycle.GamePump);
         Assert.NotEqual(RegionTravel.StartOakValeSetup, EngineLifecycle.GetRegionRecordFn);
+        Assert.NotEqual(RegionTravel.StartOakValeSetup, EngineLifecycle.SetRegionAsLoadedFn);
     }
 
     [Fact]
@@ -284,22 +293,45 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Pump());
         Assert.True(life.GamePumpFirstDone);
         Assert.Equal(0, life.CurrentRegionIndex);
-        Assert.NotNull(life.CurrentRegion);
-        Assert.Equal("LookoutPoint", life.CurrentRegion.RegionName);
-        Assert.Equal(1, life.CurrentRegion.Index);
-        Assert.Contains("LookoutPoint", life.CurrentRegion.ContainsMaps);
-        Assert.NotEqual("StartOakVale", life.CurrentRegion.RegionName);
+        Assert.Null(life.CurrentRegion);
+        Assert.Equal(1, life.World.Regions[0].Index);
+        Assert.Equal("LookoutPoint", life.World.Regions[0].RegionName);
+        Assert.Equal(4, life.World.Regions[3].Index);
         Assert.Equal("StartOakVale", life.World.Regions[3].RegionName);
+        Assert.Same(life.World.Regions[0], life.RegionAtNativeIndex(1));
+        Assert.Same(life.World.Regions[3], life.RegionAtNativeIndex(4));
+        Assert.Null(life.RegionAtNativeIndex(0));
         Assert.False(life.RegionObjectPresent);
+        Assert.Empty(life.ActivatedMaps);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GamePump);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.WorldGetMapFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GetCurrentRegionIndexFn);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.GetRegionRecordFn &&
-            e.Action.Contains("LookoutPoint", StringComparison.Ordinal));
+            e.Action.Contains("dummy", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.SetRegionAsLoadedFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.GamePumpUpdate);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.NamedStartFn);
+
+        life.RequestLoadRegion(1);
+        Assert.Equal(1, life.CurrentRegionIndex);
+        Assert.NotNull(life.CurrentRegion);
+        Assert.Equal("LookoutPoint", life.CurrentRegion.RegionName);
+        Assert.Contains("LookoutPoint", life.ActivatedMaps);
+        Assert.Contains("BowerstoneBridge", life.ActivatedMaps);
+        Assert.Contains("GuildExterior", life.ActivatedMaps);
+        Assert.Empty(life.PendingLoadIndices);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LoadRegionFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.EnqueueLoadJobFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.LevelLoaderUpdate);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ActivateTopologyFn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.SetRegionAsLoadedFn &&
+            e.Action.Contains("LookoutPoint", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.NotEqual("StartOakVale", life.CurrentRegion.RegionName);
         var dest = Path.Combine(
             @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
             "traces");
@@ -316,13 +348,17 @@ public sealed class EngineLifecycleTests
               004FB150 [WorldMap+156] current region index (ctor 0)
               004FC180 [WorldMap+44] + index*88
               [record+36] refcount touch; 006BC410 zeros it
-            Flags 0x13B85F6 / 0x13B85F5 default 0 skip
-              00416268 / 0041627F named start.
-            0x13B8628 default 0 skip 009BFF10.
-            First appended NewRegion is LookoutPoint
-            (NewRegion 1). StartOakVale is NewRegion 4
-            = table index 3. Not 00DBDE40.
-            004162B5 inner update unread.
+            005066E0 inserts dummy 88-byte slot 0 before WLD
+            append. NewRegion N is native index N.
+            Index 0 dummy. Index 1 LookoutPoint.
+            Index 4 StartOakVale. First pump does not
+            SetRegionAsLoaded.
+            00500540 LoadRegion → 006C27A0 job +28=index
+            → 006C2120 enqueue [WorldMap+188]
+            → 006C2710 / 006C2170 Loading topology
+            → 004FCBB0 +38=1 → 004FC8A0 writes +156.
+            [record+36] writer unread; null still loads.
+            Not 00DBDE40.
             """);
         File.WriteAllText(
             Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",

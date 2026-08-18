@@ -130,12 +130,13 @@ window.Update += dt =>
 
     if (life.Stage == EngineStage.Game)
     {
-        var before = life.CurrentRegion;
+        var first = !life.GamePumpFirstDone;
         life.Pump();
-        if (before is null && life.CurrentRegion is { } now)
+        if (first && life.GamePumpFirstDone)
             Console.WriteLine(
                 $"Game pump 0x{EngineLifecycle.GamePump:X} vtbl+52 0x{EngineLifecycle.WorldGetMapFn:X} " +
-                $"[{life.CurrentRegionIndex}] {now.RegionName} record+36 null (not 00DBDE40)");
+                $"[{life.CurrentRegionIndex}] {life.CurrentRegion?.RegionName ?? "dummy"} " +
+                $"record+36 null (not 00DBDE40)");
     }
 
     var f2Down = keyboard.IsKeyPressed(Key.F2);
