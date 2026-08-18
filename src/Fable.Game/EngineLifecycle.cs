@@ -1,3 +1,4 @@
+using System.Numerics;
 using System.Text;
 using Fable.Core;
 using Fable.Formats.Banks;
@@ -676,6 +677,12 @@ public sealed class EngineLifecycle
     public ThingInstance? Hero { get; private set; }
     public bool HeroSpawned { get; private set; }
     /// <summary>
+    /// Map that owns <see cref="Hero"/> —
+    /// LookoutPoint <c>GuildArrivalHSP</c>
+    /// on no-save, not StartOakVale.
+    /// </summary>
+    public string? FirstSceneMapName { get; private set; }
+    /// <summary>
     /// Persist <c>PlayerRegionName</c>. Empty on
     /// no-save New Game. Non-empty takes
     /// <c>00487C20</c> instead of <c>00501450</c>.
@@ -705,6 +712,8 @@ public sealed class EngineLifecycle
     private readonly List<OpenedStaticMapBody> _openedBodies = [];
     private readonly List<int> _tickTypes = [];
     private readonly List<ThingInstance> _regionThings = [];
+    private readonly Dictionary<string, List<ThingInstance>> _thingsByMap =
+        new(StringComparer.OrdinalIgnoreCase);
 
     public static int CreateDeviceBehaviorFlags(bool hardwareTnl) =>
         hardwareTnl ? CreateDeviceHardwareFlags : CreateDeviceSoftwareFlags;
@@ -1883,6 +1892,7 @@ public sealed class EngineLifecycle
 
         var loaded = tng.Things.ToList();
         _regionThings.AddRange(loaded);
+        _thingsByMap[mapName] = loaded;
         RegionThingMapsLoaded++;
         Note(ThingManagerLoadFileFn, "LevelLoader", "Thing",
             $"things={loaded.Count} {mapName}");
@@ -1980,8 +1990,20 @@ public sealed class EngineLifecycle
 
         Note(CreateCharacterFn, "LevelLoader", "Player",
             "00489D40 " + (start.ScriptName ?? ""));
+        foreach (var (mapName, list) in _thingsByMap)
+        {
+            if (!list.Contains(start))
+                continue;
+            FirstSceneMapName = mapName;
+            break;
+        }
+
+        FirstSceneMapName ??= CurrentRegion?.RegionName;
         SpawnHero(start, bindExisting: false);
     }
+
+    public IReadOnlyList<ThingInstance> ThingsForMap(string mapName) =>
+        _thingsByMap.TryGetValue(mapName, out var list) ? list : [];
 
     private void SpawnHero(ThingInstance source, bool bindExisting)
     {
@@ -2009,7 +2031,20 @@ public sealed class EngineLifecycle
             },
         };
         _regionThings.Add(Hero);
+        if (FirstSceneMapName is { } mapName &&
+            _thingsByMap.TryGetValue(mapName, out var mapThings))
+            mapThings.Add(Hero);
         HeroSpawned = true;
+        if (source.PositionX is not null && source.PositionY is not null)
+        {
+            var feet = RegionTravel.PositionOf(source);
+            var forward = RegionTravel.ForwardOf(source);
+            var eye = feet + Vector3.UnitZ * 1.6f;
+            WorldCamera.SeedAt(eye, eye + forward * 8f, Vector3.UnitZ);
+            ApplyWorldCamera(1f);
+            Note(WorldCameraSeedFn, "LevelLoader", "Camera",
+                "006B3FF0 seed hero " + (FirstSceneMapName ?? ""));
+        }
     }
 
     private ThingFile? TryLoadMapTng(WorldMap map, BbbArchive? wad)

@@ -357,6 +357,29 @@ public sealed class EngineLifecycleTests
         Assert.True(life.PlayerActionReady);
         Assert.True(life.WorldUpdateRan);
         Assert.True(life.WorldFrame >= 2);
+        Assert.Equal("LookoutPoint", life.FirstSceneMapName);
+        Assert.Contains(life.ThingsForMap("LookoutPoint"), t =>
+            t.DefinitionType == RegionTravel.PlayerStartType &&
+            t.ScriptName == EngineLifecycle.GuildArrivalHsp);
+        Assert.Contains(life.ThingsForMap("LookoutPoint"), t =>
+            ReferenceEquals(t, life.Hero));
+        Assert.NotEqual(WorldCamera.DefaultAxisX, life.WorldCamera.SlotA.V0.X);
+        Assert.True((life.Camera.Position - new System.Numerics.Vector3(
+            start.PositionX!.Value, start.PositionY!.Value, start.PositionZ ?? 0f)).Length() < 20f);
+        Assert.DoesNotContain("StartOakVale", life.FirstSceneMapName);
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-first-scene.txt"),
+            """
+            After 0051FD80 + 004AE940:
+              FirstSceneMap LookoutPoint
+              ThingsForMap includes GuildArrivalHSP + Hero
+              006B3FF0 SeedAt hero eye, both slots
+              006B42F0 lerp t=0 stays on hero
+              Client BindLifecycleFirstRegion builds
+              WorldGeometry from those things.
+              Not StartOakVale / 00DBDE40.
+            """);
     }
 
     [Fact]
@@ -699,6 +722,13 @@ public sealed class EngineLifecycleTests
         Assert.Equal(new System.Numerics.Vector3(1f, 0f, 0f), at1.V0);
         var mid = cam.Blend(0.5f);
         Assert.Equal(0.5f, mid.V0.X);
+        cam.SeedAt(
+            new System.Numerics.Vector3(4f, 5f, 6f),
+            new System.Numerics.Vector3(7f, 8f, 9f),
+            System.Numerics.Vector3.UnitZ);
+        Assert.Equal(new System.Numerics.Vector3(4f, 5f, 6f), cam.SlotA.V0);
+        Assert.Equal(new System.Numerics.Vector3(4f, 5f, 6f), cam.SlotB.V0);
+        Assert.Equal(new System.Numerics.Vector3(4f, 5f, 6f), cam.Blend(0f).V0);
         cam.WriteTarget(
             new System.Numerics.Vector3(10f, 20f, 30f),
             new System.Numerics.Vector3(11f, 21f, 31f),

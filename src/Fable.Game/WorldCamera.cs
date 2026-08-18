@@ -75,6 +75,25 @@ public sealed class WorldCamera
     }
 
     /// <summary>
+    /// <c>006B3FF0</c> when <c>+68==0</c>:
+    /// both slots take the current subject
+    /// so a later <c>006B42F0</c> lerp at
+    /// t=0 stays on the hero.
+    /// </summary>
+    public void SeedAt(Vector3 position, Vector3 lookAt, Vector3 up)
+    {
+        var slot = SlotA with
+        {
+            V0 = position,
+            V1 = lookAt,
+            V2 = up.LengthSquared() > 1e-8f ? Vector3.Normalize(up) : Vector3.UnitZ,
+        };
+        SlotA = slot;
+        SlotB = slot;
+        Seeded = true;
+    }
+
+    /// <summary>
     /// Push the current target into B and
     /// write a new A. Used when a named
     /// camera bind arrives.

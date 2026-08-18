@@ -140,9 +140,12 @@ window.Update += dt =>
                 $"Game pump 0x{EngineLifecycle.GamePump:X} vtbl+52 0x{EngineLifecycle.WorldGetMapFn:X} " +
                 $"[{life.CurrentRegionIndex}] dummy record+36 null (not 00DBDE40)");
         if (before is null && life.CurrentRegion is { } loaded)
+        {
             Console.WriteLine(
                 $"00501450/00487C20 [{life.CurrentRegionIndex}] {loaded.RegionName} " +
                 $"SetRegionAsLoaded 0x{EngineLifecycle.SetRegionAsLoadedFn:X}");
+            BindLifecycleFirstRegion();
+        }
     }
 
     var f2Down = keyboard.IsKeyPressed(Key.F2);
@@ -243,12 +246,15 @@ window.Render += _ =>
     }
     else
     {
+        var cam = life.Stage == EngineStage.Game && life.HeroSpawned
+            ? life.Camera
+            : gameCam;
         var fogPlane = Fable.Formats.WorldShading.LinearFogPlane(
-            gameCam.Position, gameCam.Forward);
+            cam.Position, cam.Forward);
         renderer.Draw(
-            gameCam.ViewProjection(aspect), gameCam.Position, fogPlane,
-            gameCam.SkyViewProjection(aspect),
-            gameCam.HostLandscapeViewProjection(aspect));
+            cam.ViewProjection(aspect), cam.Position, fogPlane,
+            cam.SkyViewProjection(aspect),
+            cam.HostLandscapeViewProjection(aspect));
     }
 };
 
@@ -290,6 +296,42 @@ void CopyGameToDebug()
     debugCam.Position = gameCam.Position;
     debugCam.FovDegrees = gameCam.FovDegrees;
     debugCam.LookAt(gameCam.LookAt);
+}
+
+void BindLifecycleFirstRegion()
+{
+    var mapName = life.FirstSceneMapName;
+    if (mapName is null || life.Hero is null)
+        return;
+    if (mapName.Contains("StartOakVale", StringComparison.OrdinalIgnoreCase))
+        return;
+    var mapThings = life.ThingsForMap(mapName).ToList();
+    if (mapThings.Count == 0)
+        return;
+
+    region = mapName;
+    things = new ThingFile
+    {
+        Version = 2,
+        Sections = [new ThingSection { Name = mapName, Things = mapThings }],
+    };
+    scene = GizmoScene.FromMarkers(mapName, mapThings
+        .Where(t => t.PositionX is not null)
+        .Select(t => new SceneMarker(
+            new Vector3(t.PositionX!.Value, t.PositionY!.Value, t.PositionZ!.Value),
+            t.DefinitionType ?? t.Kind)));
+    gameCam.Bind(
+        life.Hero.ScriptName ?? EngineLifecycle.HeroScriptName,
+        life.Camera.Position, life.Camera.LookAt, life.Camera.Up,
+        life.Camera.FovDegrees);
+    world = WorldGeometry.Build(install, mapName, mapThings);
+    map = levels.World.FindMap(mapName);
+    exits = RegionTravel.ActiveExits(mapThings);
+    BindWorldToRenderer();
+    Console.WriteLine(
+        $"first scene {mapName} hero " +
+        $"{life.Hero.PositionX:0.0},{life.Hero.PositionY:0.0},{life.Hero.PositionZ:0.0} " +
+        $"things={mapThings.Count} meshes={world.MeshInstances} not 00DBDE40");
 }
 
 void EnterRegion(string next, RegionExit? arrivedFromExit)
