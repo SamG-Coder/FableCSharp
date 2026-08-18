@@ -1259,6 +1259,35 @@ public sealed class EngineLifecycle : IDisposable
     public const int ScriptManagerPlus60Offset = 60;
     public const int GuiPlus246Offset = 246;
     public const int GuiPlus246FirstSeen = 0;
+    /// <summary>
+    /// <c>004A5D99 006874B0([world+96])</c>.
+    /// <c>world+96</c> is Init Event
+    /// Manager <c>00687510</c> from
+    /// <c>004A6E30</c> at <c>004A727A</c>
+    /// (alloc 8, <c>004ADF80</c>).
+    /// Ctor <c>[this+4]</c> is an empty
+    /// circular sentinel (alloc 96,
+    /// <c>+0=+4=self</c>).
+    /// <c>006874B0</c> <c>cmp [head],head</c>
+    /// so first-seen returns. No
+    /// <c>0049D870</c>, no node
+    /// <c>vtbl+0</c>, no <c>00BFEA14</c>.
+    /// <c>00687540</c> would insert, but
+    /// first-seen <c>004B2890</c> walks
+    /// empty <c>[quest+112]</c> (ctor
+    /// sentinel; <c>004B4260</c> uses
+    /// <c>+156</c> / a local vector).
+    /// Not <c>00501450</c>.
+    /// Next site is the 4×
+    /// <c>004498C0</c> slot loop then
+    /// <c>00436FB0</c>.
+    /// </summary>
+    public const uint EventManagerPumpFn = 0x006874B0;
+    public const uint EventManagerCtor = 0x00687510;
+    public const uint EventManagerPostFn = 0x00687540;
+    public const uint EventNodeFreeFn = 0x00BFEA14;
+    public const int WorldEventManagerOffset = 96;
+    public const int EventManagerPlus4Offset = 4;
     public const int PlayerThingPlus145Offset = 145;
     public const int PlayerThingPlus142Offset = 142;
     public const uint PlayerCreatureFactoryFn = 0x0052B880;
@@ -1816,6 +1845,8 @@ public sealed class EngineLifecycle : IDisposable
     public int QuestVtbl24Calls { get; private set; }
     public bool ScriptPumpRan { get; private set; }
     public int ScriptPumpWalked { get; private set; }
+    public bool EventPumpRan { get; private set; }
+    public int EventPumpWalked { get; private set; }
     public bool FollowSpringRan { get; private set; }
     public bool SubjectFillNoted { get; private set; }
     public QuestFile? Quests { get; private set; }
@@ -3893,6 +3924,8 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>004B4490</c>, then
     /// <c>006E75C0</c> empty
     /// <c>[script+60]</c>, then
+    /// <c>006874B0</c> empty
+    /// <c>[event+4]</c>, then
     /// <c>004A5DF3 006B3FF0</c>,
     /// then <c>004A5E10</c>.
     /// No <c>00501450</c>.
@@ -3902,6 +3935,7 @@ public sealed class EngineLifecycle : IDisposable
         Note(WorldTickFn, "GamePump", "World", "004A5A40");
         PumpQuests();
         PumpScripts();
+        PumpEvents();
         if (!WorldCameraPresent)
         {
             WorldCamera.Construct();
@@ -3976,6 +4010,25 @@ public sealed class EngineLifecycle : IDisposable
             "0059299D skip +60 empty");
         ScriptPumpWalked = 0;
         ScriptPumpRan = true;
+    }
+
+    /// <summary>
+    /// <c>006874B0</c> first-seen:
+    /// <c>[this+4]</c> sentinel
+    /// <c>next==head</c>.
+    /// </summary>
+    public void PumpEvents()
+    {
+        Note(EventManagerPumpFn, "GamePump", "Event",
+            $"006874B0 [world+{WorldEventManagerOffset}]");
+        Note(EventManagerCtor, "GamePump", "Event",
+            "00687510 [+4] empty circular");
+        Note(EventManagerPostFn, "GamePump", "Event",
+            "00687540 skip 004B2890 [quest+112] empty");
+        Note(EventNodeFreeFn, "GamePump", "Event",
+            "00BFEA14 skip");
+        EventPumpWalked = 0;
+        EventPumpRan = true;
     }
 
     /// <summary>

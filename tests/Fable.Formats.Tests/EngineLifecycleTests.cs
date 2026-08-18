@@ -1642,6 +1642,21 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0, life.QuestPumpWalked);
         Assert.True(life.ScriptPumpRan);
         Assert.Equal(0, life.ScriptPumpWalked);
+        Assert.True(life.EventPumpRan);
+        Assert.Equal(0, life.EventPumpWalked);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.EventManagerPumpFn &&
+            e.Action.Contains("[world+96]", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.EventManagerCtor &&
+            e.Action.Contains("empty", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.EventManagerPostFn &&
+            e.Action.Contains("skip", StringComparison.Ordinal));
+        Assert.Equal(0x006874B0u, EngineLifecycle.EventManagerPumpFn);
+        Assert.Equal(0x00687510u, EngineLifecycle.EventManagerCtor);
+        Assert.Equal(0x00687540u, EngineLifecycle.EventManagerPostFn);
+        Assert.Equal(96, EngineLifecycle.WorldEventManagerOffset);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.QuestListPumpFn &&
             e.Action.Contains("skip", StringComparison.Ordinal));

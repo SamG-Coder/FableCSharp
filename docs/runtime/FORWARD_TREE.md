@@ -435,6 +435,7 @@ then inner loop until [game+8]  PROVEN
 │   │             flag walk 00629270 → 004A5A40  PROVEN
 │   │               [world+248]=0 [world+260]=0
 │   │               004B4490 then 006E75C0 empty
+│   │               then 006874B0 empty [event+4]
 │   │               then 004A5DF3 006B3FF0
 │   │               004A5E10 inc WorldFrame
 │   │               no 00501450 / 00500540 / 006C27A0
@@ -810,7 +811,19 @@ Fiber +41 setter 00CB78D0  PROVEN
 │   first-seen writer). 0%15==0.
 │   [this+60] empty circular → skip
 │   0059299D. Not 00501450.
-├── 006874B0  [world+96]  UNREAD
+├── 006874B0  [world+96]  PROVEN empty
+│   world+96 = Init Event Manager
+│   00687510 (alloc 8 @ 004A7270,
+│   004ADF80). [this+4] sentinel
+│   next==prev==self. 006874B0
+│   cmp [head],head → ret.
+│   00687540 insert not first-seen:
+│   004B2890 [quest+112] ctor empty
+│   (004B4260 writes +156 / local
+│   vector). Not 00501450.
+│   Only E8 of 006874B0 is 004A5D99.
+├── 004498C0 ×4 [world+12]  PARTIAL
+│   then 00436FB0 / 00640320  UNREAD
 └── 004A5DF3 006B3FF0 then 004A5E10
 009D9C80 first 250: dirty-list only. No type 0x22.
 
@@ -865,7 +878,7 @@ Walk these **from their parent above**, not by string.
 | `00B40000` | `00BDC4F0` / `00BDDD50` | patch destroy |
 | `006C2170` | unload of previous ContainsMaps | region change |
 | `004B4260` | each initial-quest factory run | not Oakvale intro |
-| `004A5A40` | `006874B0([world+96])` | after first-seen empty `006E75C0` |
+| `004A5A40` | `00436FB0` / `00640320` after 4× `004498C0` | after first-seen empty `006874B0` |
 
 After every successful walk: add the node here, then implement
 only that node's semantic equivalent on `EngineLifecycle`.
