@@ -858,6 +858,8 @@ Fiber +41 setter 00CB78D0  PROVEN
 │   │   004B0FC0 trader 0; vtbl+1136
 │   │   004AF610 0; yield. +41=0 keeps
 │   │   nodes. 00CB8170 [+8]=0 empty
+│   │   [esi+56] tail-insert: Sunnyvale
+│   │   00CDD360 first; Gameflow last
 │   │   0049D870 after resume, not now
 │   │   not 00501450. 004167DA store only.
 │   └── 00449970 / 00487DC0  PROVEN miss
@@ -875,17 +877,12 @@ Fiber +41 setter 00CB78D0  PROVEN
 │   first-seen writer). 0%15==0.
 │   [this+60] empty circular → skip
 │   0059299D. Not 00501450.
-├── 006874B0  [world+96]  PROVEN empty
-│   world+96 = Init Event Manager
-│   00687510 (alloc 8 @ 004A7270,
-│   004ADF80). [this+4] sentinel
-│   next==prev==self. 006874B0
-│   cmp [head],head → ret.
-│   00687540 insert not first-seen:
-│   004B2890 [quest+112] ctor empty
-│   (004B4260 writes +156 / local
-│   vector). Not 00501450.
-│   Only E8 of 006874B0 is 004A5D99.
+├── 006874B0  [world+96]  PROVEN skip
+│   004B3CE0 00687540(55,50) ×N
+│   [node+64]=50; 0049D870 WorldFrame
+│   004A5E10 inc AFTER this call
+│   50>=0 skip 006872B0
+│   empty DISPROVEN with quests
 ├── 004498C0 ×4 [world+12]  PROVEN
 │   world+12 = ctor [arg+8] player manager
 │   +40=index, +4=1 (0048A210 0099A350)

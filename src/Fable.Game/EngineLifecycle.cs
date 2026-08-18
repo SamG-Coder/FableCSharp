@@ -1136,6 +1136,14 @@ public sealed class EngineLifecycle : IDisposable
     public const uint QuestNameActiveBody = 0x004AF610;
     public const string TraderConflictEvil = "Q_TraderConflictEvil";
     public const string TraderConflictGood = "Q_TraderConflictGood";
+    public const uint EventNodeVtbl = 0x0125BE8C;
+    public const uint EventNodeFireFn = 0x006872B0;
+    public const uint EventTickReadFn = 0x0049D870;
+    public const int EventPostKind = 55;
+    public const int EventPostDelay = 50;
+    public const uint SunnyvaleMainTick = 0x00CDD360;
+    public const uint HeroBoastsTick = 0x00CE1AF0;
+    public const uint PersonalMainTick = 0x00CDDCB0;
     public const uint QuestSubjectFillFn = 0x008884D0;
     public const uint WorldTickTableVa = 0x013B9288;
     public const uint WorldTickSlot1FnVa = 0x013B92C8;
@@ -2154,6 +2162,7 @@ public sealed class EngineLifecycle : IDisposable
     public IReadOnlyList<string> GameflowWatchers => _gameflowWatchers;
     public int GameflowState { get; private set; }
     public string? GameflowYieldQuest { get; private set; }
+    public int EventPosts { get; private set; }
     /// <summary>
     /// Persist <c>PlayerRegionName</c>. Empty on
     /// no-save New Game. Non-empty takes
@@ -4647,10 +4656,18 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     private void PumpQuestList()
     {
+        QuestPumpWalked = 0;
         Note(QuestListPumpFn, "GamePump", "Quest",
             "00CB8220 00CB7C40 then 00CB8170");
         Note(QuestListWalkAFn, "GamePump", "Quest",
             $"00CB7C40 count={_gameflowWatchers.Count}");
+        foreach (var name in _activatedQuests)
+        {
+            if (name == "Gameflow")
+                continue;
+            TickNamedQuestMain(name);
+        }
+
         if (_gameflowWatchers.Contains(WatcherMain) &&
             GameflowYieldQuest is null)
         {
@@ -4663,8 +4680,6 @@ public sealed class EngineLifecycle : IDisposable
                 "009D8650 parked " + GameflowYieldQuest);
         Note(QuestListWalkBFn, "GamePump", "Quest",
             "00CB8170 [+8]=0 empty");
-        if (GameflowYieldQuest is { } && QuestPumpWalked < 3)
-            QuestPumpWalked = 3;
     }
 
     /// <summary>
@@ -4706,7 +4721,7 @@ public sealed class EngineLifecycle : IDisposable
             "009D8650 wait " + GameflowWaitQuest);
         GameflowState = 0;
         GameflowYieldQuest = GameflowWaitQuest;
-        QuestPumpWalked = 1;
+        QuestPumpWalked++;
     }
 
     /// <summary>
@@ -4755,6 +4770,38 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
+    /// <c>004B4490</c> walks
+    /// <c>[esi+56]</c> tail-insert
+    /// order: WLD list first.
+    /// Sunnyvale <c>00CDD360</c>
+    /// <c>vtbl+28</c> yield.
+    /// HeroBoasts <c>00CE1AF0</c>
+    /// empty then yield.
+    /// Personal <c>00CDDCB0</c>
+    /// <c>vtbl+72</c> empty.
+    /// </summary>
+    private void TickNamedQuestMain(string name)
+    {
+        Note(QuestListPumpFn, "GamePump", "Quest",
+            "00CB8220 " + name);
+        if (name == "Q_SunnyvaleMaster")
+            Note(SunnyvaleMainTick, "GamePump", "Quest",
+                "00CDD360 vtbl+28 006E7410 yield");
+        else if (name == "HeroBoasts")
+            Note(HeroBoastsTick, "GamePump", "Quest",
+                "00CE1AF0 empty 00CE1C24 yield");
+        else if (name.StartsWith("PersonalScript", StringComparison.Ordinal))
+            Note(PersonalMainTick, "GamePump", "Quest",
+                "00CDDCB0 vtbl+72 0089AC10 empty");
+        else
+            Note(QuestFiberAttachFn, "GamePump", "Quest",
+                "00CB7950 " + name + " Main");
+        Note(FiberYieldFn, "GamePump", "Quest",
+            "009D8650 " + name);
+        QuestPumpWalked++;
+    }
+
+    /// <summary>
     /// <c>006E75C0</c> first-seen:
     /// flag=1, <c>vtbl+1580</c> 0,
     /// <c>vtbl+1544</c> 0,
@@ -4779,20 +4826,43 @@ public sealed class EngineLifecycle : IDisposable
 
     /// <summary>
     /// <c>006874B0</c> first-seen:
-    /// <c>[this+4]</c> sentinel
-    /// <c>next==head</c>.
+    /// <c>004B3CE0</c> posted
+    /// <c>00687540(55,50)</c> per
+    /// construct. <c>[node+64]=50</c>.
+    /// <c>0049D870</c> is
+    /// <c>[0x13B89BC]</c> WorldFrame
+    /// (inc is <c>004A5E10</c>
+    /// after this call) so
+    /// construct+50 &gt;= now; skip
+    /// <c>006872B0</c>. Empty-list
+    /// is DISPROVEN when quests
+    /// constructed.
     /// </summary>
     public void PumpEvents()
     {
         Note(EventManagerPumpFn, "GamePump", "Event",
             $"006874B0 [world+{WorldEventManagerOffset}]");
-        Note(EventManagerCtor, "GamePump", "Event",
-            "00687510 [+4] empty circular");
-        Note(EventManagerPostFn, "GamePump", "Event",
-            "00687540 skip 004B2890 [quest+112] empty");
-        Note(EventNodeFreeFn, "GamePump", "Event",
-            "00BFEA14 skip");
-        EventPumpWalked = 0;
+        if (EventPosts == 0)
+        {
+            Note(EventManagerCtor, "GamePump", "Event",
+                "00687510 [+4] empty circular");
+            Note(EventManagerPostFn, "GamePump", "Event",
+                "00687540 skip empty");
+            Note(EventNodeFreeFn, "GamePump", "Event",
+                "00BFEA14 skip");
+            EventPumpWalked = 0;
+        }
+        else
+        {
+            Note(EventManagerPostFn, "GamePump", "Event",
+                $"00687540 count={EventPosts} kind={EventPostKind} delay={EventPostDelay}");
+            Note(EventTickReadFn, "GamePump", "Event",
+                $"0049D870 [0x{WorldFrameVa:X}]={WorldFrame}");
+            Note(EventNodeFireFn, "GamePump", "Event",
+                $"006872B0 skip {WorldFrame}+{EventPostDelay}>{WorldFrame}");
+            EventPumpWalked = EventPosts;
+        }
+
         EventPumpRan = true;
     }
 
@@ -5780,6 +5850,9 @@ public sealed class EngineLifecycle : IDisposable
             q.Name.Equals(name, StringComparison.OrdinalIgnoreCase) && q.Persistent) == true;
         Runtime.ActivateQuest(name, persistent);
         _activatedQuests.Add(name);
+        EventPosts++;
+        Note(EventManagerPostFn, phase, "Event",
+            $"00687540 kind={EventPostKind} delay={EventPostDelay}");
     }
 
     /// <summary>

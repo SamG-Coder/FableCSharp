@@ -1871,7 +1871,27 @@ public sealed class EngineLifecycleTests
         Assert.False(life.QuestPumpRan);
         Assert.True(life.Pump(0.1f));
         Assert.True(life.QuestPumpRan);
-        Assert.Equal(3, life.QuestPumpWalked);
+        Assert.Equal(9, life.QuestPumpWalked);
+        Assert.Equal(7, life.EventPosts);
+        Assert.Equal(7, life.EventPumpWalked);
+        Assert.Equal(50, EngineLifecycle.EventPostDelay);
+        Assert.Equal(55, EngineLifecycle.EventPostKind);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.SunnyvaleMainTick &&
+            e.Action.Contains("00CDD360", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.HeroBoastsTick);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PersonalMainTick);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.EventNodeFireFn &&
+            e.Action.Contains("skip", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.EventTickReadFn &&
+            e.Action.Contains("13B89BC", StringComparison.Ordinal));
+        Assert.Equal(0x00CDD360u, EngineLifecycle.SunnyvaleMainTick);
+        Assert.Equal(0x006872B0u, EngineLifecycle.EventNodeFireFn);
+        Assert.Equal(0x0049D870u, EngineLifecycle.EventTickReadFn);
         Assert.Equal(0, life.GameflowState);
         Assert.Equal(EngineLifecycle.GameflowWaitQuest, life.GameflowYieldQuest);
         Assert.Contains(EngineLifecycle.WatcherCoreReminder, life.GameflowWatchers);
