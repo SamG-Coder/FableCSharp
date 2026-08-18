@@ -434,7 +434,8 @@ then inner loop until [game+8]  PROVEN
 │   │             0049DFB0 first walk skip type 1
 │   │             flag walk 00629270 → 004A5A40  PROVEN
 │   │               [world+248]=0 [world+260]=0
-│   │               004B4490 then 004A5DF3 006B3FF0
+│   │               004B4490 then 006E75C0 empty
+│   │               then 004A5DF3 006B3FF0
 │   │               004A5E10 inc WorldFrame
 │   │               no 00501450 / 00500540 / 006C27A0
 │   │             00434A60  PROVEN type1 [0x13B92F8]=0 skip
@@ -797,6 +798,19 @@ Fiber +41 setter 00CB78D0  PROVEN
 │   └── 00449970 / 00487DC0  PROVEN miss
 │       0044BC10 00A01B10 +48=0
 │       00A01B50 0 → skip 004AFCA0
+├── 006E75C0  [world+56] flag  PROVEN
+│   world+56 = Init Scripts 006E7740
+│   from world vtbl+28 004A6550 @ 004A6646
+│   vtbl 0x1260F0C
+│   flag=1: [thing+84]=0 (00523540),
+│   00419680(004C60F0 +4/+12=0)=0
+│   vtbl+1580 0088E9E0 [this+44]=0
+│   vtbl+1544 00892270 [0x13B8790]+246=0
+│   (0049166E [gui+24]+222=0; no later
+│   first-seen writer). 0%15==0.
+│   [this+60] empty circular → skip
+│   0059299D. Not 00501450.
+├── 006874B0  [world+96]  UNREAD
 └── 004A5DF3 006B3FF0 then 004A5E10
 009D9C80 first 250: dirty-list only. No type 0x22.
 
@@ -851,6 +865,7 @@ Walk these **from their parent above**, not by string.
 | `00B40000` | `00BDC4F0` / `00BDDD50` | patch destroy |
 | `006C2170` | unload of previous ContainsMaps | region change |
 | `004B4260` | each initial-quest factory run | not Oakvale intro |
+| `004A5A40` | `006874B0([world+96])` | after first-seen empty `006E75C0` |
 
 After every successful walk: add the node here, then implement
 only that node's semantic equivalent on `EngineLifecycle`.

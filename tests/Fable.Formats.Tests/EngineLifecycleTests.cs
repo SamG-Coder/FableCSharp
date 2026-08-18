@@ -1640,9 +1640,26 @@ public sealed class EngineLifecycleTests
         Assert.True(life.WorldCamera.Seeded);
         Assert.True(life.QuestPumpRan);
         Assert.Equal(0, life.QuestPumpWalked);
+        Assert.True(life.ScriptPumpRan);
+        Assert.Equal(0, life.ScriptPumpWalked);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.QuestListPumpFn &&
             e.Action.Contains("skip", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.ScriptManagerPumpFn &&
+            e.Action.Contains("flag=1", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.ScriptGuiGateFn &&
+            e.Action.Contains("+246=0", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.ScriptListIterFn &&
+            e.Action.Contains("skip", StringComparison.Ordinal));
+        Assert.Equal(0x006E75C0u, EngineLifecycle.ScriptManagerPumpFn);
+        Assert.Equal(0x006E7740u, EngineLifecycle.ScriptManagerCtor);
+        Assert.Equal(0x00892270u, EngineLifecycle.ScriptGuiGateFn);
+        Assert.Equal(0x013B8790u, EngineLifecycle.PlayerGuiInstanceVa);
+        Assert.Equal(0, EngineLifecycle.GuiPlus246FirstSeen);
+        Assert.Equal(0, EngineLifecycle.ScriptManagerPlus44FirstSeen);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerCreatureBindFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerCreatureThingFn);
         Assert.Contains(life.Trace.Events, e =>

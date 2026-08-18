@@ -1222,6 +1222,43 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>004AFCA0</c> is skipped.
     /// </summary>
     public const uint QuestPlayerSyncFn = 0x004AFCA0;
+    /// <summary>
+    /// <c>004A5D91 006E75C0([world+56], flag)</c>.
+    /// <c>world+56</c> is Init Scripts
+    /// <c>006E7740</c> from world vtbl+28
+    /// <c>004A6550</c> at <c>004A6646</c>.
+    /// First-seen flag=1
+    /// (<c>[thing+84]=0</c>,
+    /// <c>00419680</c> on
+    /// <c>004C60F0</c> <c>+4/+12=0</c>).
+    /// <c>vtbl+1580</c> <c>0088E9E0</c>
+    /// <c>[this+44]=0</c>.
+    /// <c>vtbl+1544</c> <c>00892270</c>
+    /// <c>[0x13B8790]+246=0</c>
+    /// (<c>0049166E</c> <c>[+24]+222</c>).
+    /// <c>WorldFrame % [0x1375550]</c>
+    /// is <c>0%15==0</c> then
+    /// <c>[this+60]</c> empty so
+    /// <c>0059299D</c> is skipped.
+    /// Not <c>00501450</c>.
+    /// Next site is
+    /// <c>006874B0([world+96])</c>.
+    /// </summary>
+    public const uint ScriptManagerPumpFn = 0x006E75C0;
+    public const uint ScriptManagerCtor = 0x006E7740;
+    public const uint ScriptManagerVtbl = 0x01260F0C;
+    public const uint InitScriptsParentFn = 0x004A6550;
+    public const uint ScriptPausedGateFn = 0x0088E9E0;
+    public const uint ScriptGuiGateFn = 0x00892270;
+    public const uint ScriptListIterFn = 0x0059299D;
+    public const uint GuiPlus24Ctor = 0x0049166E;
+    public const uint PlayerGuiInstanceVa = 0x013B8790;
+    public const int WorldScriptManagerOffset = 56;
+    public const int ScriptManagerPlus44Offset = 44;
+    public const int ScriptManagerPlus44FirstSeen = 0;
+    public const int ScriptManagerPlus60Offset = 60;
+    public const int GuiPlus246Offset = 246;
+    public const int GuiPlus246FirstSeen = 0;
     public const int PlayerThingPlus145Offset = 145;
     public const int PlayerThingPlus142Offset = 142;
     public const uint PlayerCreatureFactoryFn = 0x0052B880;
@@ -1777,6 +1814,8 @@ public sealed class EngineLifecycle : IDisposable
     public bool QuestPumpRan { get; private set; }
     public int QuestPumpWalked { get; private set; }
     public int QuestVtbl24Calls { get; private set; }
+    public bool ScriptPumpRan { get; private set; }
+    public int ScriptPumpWalked { get; private set; }
     public bool FollowSpringRan { get; private set; }
     public bool SubjectFillNoted { get; private set; }
     public QuestFile? Quests { get; private set; }
@@ -3852,6 +3891,8 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>[world+248]==0</c>,
     /// <c>[world+260]==0</c>,
     /// <c>004B4490</c>, then
+    /// <c>006E75C0</c> empty
+    /// <c>[script+60]</c>, then
     /// <c>004A5DF3 006B3FF0</c>,
     /// then <c>004A5E10</c>.
     /// No <c>00501450</c>.
@@ -3860,6 +3901,7 @@ public sealed class EngineLifecycle : IDisposable
     {
         Note(WorldTickFn, "GamePump", "World", "004A5A40");
         PumpQuests();
+        PumpScripts();
         if (!WorldCameraPresent)
         {
             WorldCamera.Construct();
@@ -3911,6 +3953,29 @@ public sealed class EngineLifecycle : IDisposable
         QuestPumpWalked = 0;
         QuestVtbl24Calls = 0;
         QuestPumpRan = true;
+    }
+
+    /// <summary>
+    /// <c>006E75C0</c> first-seen:
+    /// flag=1, <c>vtbl+1580</c> 0,
+    /// <c>vtbl+1544</c> 0,
+    /// <c>0%15==0</c>,
+    /// <c>[this+60]</c> empty.
+    /// </summary>
+    public void PumpScripts()
+    {
+        Note(ScriptManagerPumpFn, "GamePump", "Script",
+            $"006E75C0 [world+{WorldScriptManagerOffset}] flag=1");
+        Note(InitScriptsParentFn, "GamePump", "Script",
+            "004A6550 Init Scripts 006E7740");
+        Note(ScriptPausedGateFn, "GamePump", "Script",
+            $"vtbl+1580 [+{ScriptManagerPlus44Offset}]={ScriptManagerPlus44FirstSeen}");
+        Note(ScriptGuiGateFn, "GamePump", "Script",
+            $"vtbl+1544 [0x{PlayerGuiInstanceVa:X}]+{GuiPlus246Offset}={GuiPlus246FirstSeen}");
+        Note(ScriptListIterFn, "GamePump", "Script",
+            "0059299D skip +60 empty");
+        ScriptPumpWalked = 0;
+        ScriptPumpRan = true;
     }
 
     /// <summary>
