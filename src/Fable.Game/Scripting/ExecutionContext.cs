@@ -1069,6 +1069,14 @@ public sealed class WorldRuntime
     /// </summary>
     public readonly Dictionary<string, bool> Bound =
         new(StringComparer.OrdinalIgnoreCase);
+    /// <summary>
+    /// <c>00CC1C82</c> <c>vtbl+2068(actor,!IsFalse,1)</c>.
+    /// Arg0 required. Extra imm 1. Not SetBound 1976.
+    /// </summary>
+    public readonly Dictionary<string, bool> Killable =
+        new(StringComparer.OrdinalIgnoreCase);
+    public readonly Dictionary<string, int> KillableExtra =
+        new(StringComparer.OrdinalIgnoreCase);
     public bool ExtrasHidden { get; private set; }
     public string ExtraMode { get; private set; } = "";
     public float TimeOfDayHours { get; set; }
@@ -1241,6 +1249,18 @@ public sealed class WorldRuntime
     public void SetBound(string actor, bool bound)
     {
         Bound[actor ?? ""] = bound;
+    }
+
+    /// <summary>
+    /// <c>00CC1C82</c>: arg0 required; default 1;
+    /// IsFalse → 0; <c>vtbl+2068(actor,flag,1)</c>.
+    /// Death/AI body UNREAD.
+    /// </summary>
+    public void SetKillable(string actor, bool killable)
+    {
+        var key = actor ?? "";
+        Killable[key] = killable;
+        KillableExtra[key] = 1;
     }
 
     /// <summary>

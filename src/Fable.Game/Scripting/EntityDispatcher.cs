@@ -346,8 +346,20 @@ public static class EntityDispatcher
                 bound ? "1" : "0");
         }
 
+        if (Eq(v, "Killable"))
+        {
+            // 00CC1C82: arg0 required; default 1; IsFalse → 0;
+            // vtbl+2068(actor,flag,1).
+            if (line.Arg(0).Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            var killable = !ScriptLine.IsFalse(line.Arg(0));
+            ctx.World.SetKillable(line.Target ?? "", killable);
+            return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity,
+                killable ? "1" : "0");
+        }
+
         if (Eq(v, "SetPushable") || Eq(v, "SetDamageable") || Eq(v, "SetAttackable") ||
-            Eq(v, "SetFree") || Eq(v, "Killable") ||
+            Eq(v, "SetFree") ||
             Eq(v, "SetAppearanceSeed"))
         {
             ctx.World.Flags[$"{line.Target}.{v}"] = line.Arg(0);

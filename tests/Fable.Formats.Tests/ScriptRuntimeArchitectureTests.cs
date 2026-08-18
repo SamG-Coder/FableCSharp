@@ -1585,6 +1585,94 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void Killable_requires_arg_and_is_vtbl_2068()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("k",
+        [
+            "GUARD.Killable TRUE",
+            "GUARD.Killable FALSE",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.False(runtime.World.Killable["GUARD"]);
+        Assert.Equal(1, runtime.World.KillableExtra["GUARD"]);
+        var empty = new ScriptInterpreter("k0", ["GUARD.Killable"]);
+        empty.RunUntilYield(runtime);
+        Assert.True(empty.Finished);
+        Assert.False(runtime.World.Killable["GUARD"]);
+        var on = new ScriptInterpreter("k1", ["BANDIT.Killable TRUE"]);
+        on.RunUntilYield(runtime);
+        Assert.True(runtime.World.Killable["BANDIT"]);
+        Assert.Equal(1, runtime.World.KillableExtra["BANDIT"]);
+        Assert.Equal(0x00CC1C82u, ScriptCommandMap.Find("Killable")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("SetBound")!.Value.ApplySite,
+            ScriptCommandMap.Find("Killable")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void Killable_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".Killable ", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "GUARD.Killable FALSE";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("Killable", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-kill", [line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".Killable ", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal(!ScriptLine.IsFalse(parsed.Arg(0)),
+            runtime.World.Killable[parsed.Target ?? ""]);
+        Assert.Equal(1, runtime.World.KillableExtra[parsed.Target ?? ""]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-kill.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-killable.txt"),
+            """
+            Killable 00CC1C30 / apply 00CC1C82
+              ebx required else 00CC7081
+              arg0 00403A00 empty skip 00CC7081
+              default flag=1; 00CBEE0C IsFalse → 0
+              actor vtbl+48; push 1; vtbl+2068(actor,flag,1)
+              jmp 00CC707C
+              not SetBound vtbl+1976; not SetScared 1984
+              SetPushable is IsTrue default 0 vtbl+3376
+            Death/AI body UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void GiveGold_real_script_bank_or_isolated()
     {
         var install = GameInstall.TryLocate();
