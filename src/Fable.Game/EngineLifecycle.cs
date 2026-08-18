@@ -1,6 +1,7 @@
 using System.Text;
 using Fable.Core;
 using Fable.Formats.Banks;
+using Fable.Formats.Levels;
 using Fable.Formats.Tng;
 using Fable.Formats.Wld;
 
@@ -272,9 +273,20 @@ public sealed class EngineLifecycle
     public const uint SetStaticMapFileForUseFn = 0x00B428E0;
     public const uint OpenStaticMapsFn = 0x00B42750;
     public const uint OpenStaticMapFn = 0x00B42530;
+    public const uint ParseMapHeaderFn = 0x00B3EFA0;
+    public const uint CloseStaticMapFn = 0x00B3EF40;
+    public const uint CreateBackgroundPatchFn = 0x00BE03A0;
+    public const uint BuildCurrentPatchFn = 0x00BDD0E0;
     public const int OpenStaticMapsModeOffset = 424;
     public const int OpenStaticMapsUseMode = 1;
     public const int OpenStaticMapsListMode = 2;
+    /// <summary>
+    /// Compiled WAD <c>.lev</c> header. STB
+    /// runtime copy is parsed by
+    /// <see cref="LevHeightField"/>.
+    /// </summary>
+    public const int LevHeaderVersion = LevFile.Version;
+    public const uint LevHeaderConstant = LevFile.FormatConstant;
 
     /// <summary>
     /// <c>00507C30</c> token switch. Same
@@ -358,6 +370,9 @@ public sealed class EngineLifecycle
     public IReadOnlyList<string> ActivatedMaps => _activatedMaps;
     public int OpenStaticMapsMode { get; private set; }
     public IReadOnlyList<string> OpenedStaticMaps => _openedStaticMaps;
+    public IReadOnlyList<OpenedStaticMapBody> OpenedMapBodies => _openedBodies;
+    public LevFile? CurrentCompiledLev { get; private set; }
+    public LevHeightField? CurrentHeightField { get; private set; }
     /// <summary>
     /// <c>0x13B85F6</c> / <c>0x13B85F5</c>.
     /// Default false matches BSS 0.
@@ -372,6 +387,7 @@ public sealed class EngineLifecycle
     private readonly List<int> _loadQueue = [];
     private readonly List<string> _activatedMaps = [];
     private readonly List<string> _openedStaticMaps = [];
+    private readonly List<OpenedStaticMapBody> _openedBodies = [];
 
     public static int CreateDeviceBehaviorFlags(bool hardwareTnl) =>
         hardwareTnl ? CreateDeviceHardwareFlags : CreateDeviceSoftwareFlags;
@@ -901,6 +917,9 @@ public sealed class EngineLifecycle
         Note(OpenStaticMapsFn, "StaticMap", "WLD",
             $"00B42750 mode={OpenStaticMapsMode} [+424]");
         _openedStaticMaps.Clear();
+        _openedBodies.Clear();
+        CurrentCompiledLev = null;
+        CurrentHeightField = null;
         if (Install is null || World is null || CurrentRegion is null)
             return;
 
@@ -909,14 +928,97 @@ public sealed class EngineLifecycle
                       ?? CurrentRegion.ContainsMaps.FirstOrDefault()
                       ?? CurrentRegion.RegionName;
         foreach (var map in WorldGeometry.StaticMapsAround(World, Install, primary))
-        {
             _openedStaticMaps.Add(map.ScriptName);
-            Note(OpenStaticMapFn, "StaticMap", "WLD",
-                "SetStaticMapFileForUse: OpenStaticMap " + map.ScriptName);
-        }
 
         Note(OpenStaticMapsFn, "StaticMap", "WLD",
             $"opened={_openedStaticMaps.Count} primary={primary}");
+        OpenStaticMap(primary);
+    }
+
+    /// <summary>
+    /// <c>00B42530</c>: STB name lookup
+    /// <c>009CCDC0</c>, blob copy, header
+    /// <c>00B3EFA0</c>, version words, then
+    /// mode-1 patch <c>00BE03A0</c> /
+    /// <c>00BDD0E0</c>. Compiled WAD
+    /// <c>.lev</c> is <see cref="LevFile"/>;
+    /// STB runtime copy is
+    /// <see cref="LevHeightField"/>.
+    /// </summary>
+    public void OpenStaticMap(string name)
+    {
+        Note(OpenStaticMapFn, "StaticMap", "WLD", "00B42530 " + name);
+        Note(CloseStaticMapFn, "StaticMap", "WLD", "00B3EF40");
+        if (Install is null || World is null)
+            return;
+
+        BbbArchive? wad = null;
+        StbArchive? stb = null;
+        try
+        {
+            if (File.Exists(Install.WadPath))
+                wad = BbbArchive.Open(Install.WadPath);
+            if (File.Exists(Install.RuntimeStbPath))
+                stb = StbArchive.Open(Install.RuntimeStbPath);
+
+            var map = World.FindMap(name);
+            var stem = map?.FileStem ?? name;
+            var stbEntry = stb?.FindLev(stem) ?? stb?.FindLev(name);
+            var stbBytes = stbEntry is null ? null : stb!.Read(stbEntry);
+            Note(OpenStaticMapFn, "StaticMap", "WLD",
+                stbBytes is null
+                    ? "009CCDC0 miss " + name
+                    : $"009CCDC0 stb={stbBytes.Length} {name}");
+
+            var compiledEntry = wad?.Find(stem + ".lev")
+                                ?? wad?.Find(name + ".lev")
+                                ?? (map is null
+                                    ? null
+                                    : wad?.Find(map.LevelName));
+            LevFile? compiled = null;
+            if (compiledEntry is not null)
+                compiled = LevFile.Parse(wad!.Read(compiledEntry));
+
+            var version = compiled is null ? 0 : LevFile.Version;
+            var constant = compiled is null ? 0u : LevFile.FormatConstant;
+            Note(ParseMapHeaderFn, "StaticMap", "WLD",
+                $"00B3EFA0 version={version} constant=0x{constant:X}");
+
+            LevHeightField? height = null;
+            if (stbBytes is not null && map is not null)
+            {
+                var width = compiled?.GridWidth ?? 128;
+                var heightCells = compiled?.GridHeight ?? 128;
+                height = LevHeightField.Parse(stbBytes, map.MapX, map.MapY, width, heightCells);
+            }
+
+            if (OpenStaticMapsMode == OpenStaticMapsUseMode)
+            {
+                Note(CreateBackgroundPatchFn, "StaticMap", "WLD", "00BE03A0");
+                Note(BuildCurrentPatchFn, "StaticMap", "WLD", "00BDD0E0");
+            }
+
+            var body = new OpenedStaticMapBody(
+                name,
+                stbBytes?.Length ?? 0,
+                compiled?.Raw.Length ?? 0,
+                compiled?.GridWidth ?? height?.FineWidth ?? 0,
+                compiled?.GridHeight ?? height?.FineHeight ?? 0,
+                height?.SampleCount ?? 0,
+                compiled is null ? version : LevFile.Version,
+                constant);
+            _openedBodies.Add(body);
+            CurrentCompiledLev = compiled;
+            CurrentHeightField = height;
+            Note(OpenStaticMapFn, "StaticMap", "WLD",
+                $"body {name} lev={body.CompiledSize} stb={body.StbSize} " +
+                $"{body.GridWidth}x{body.GridHeight} samples={body.HeightSamples}");
+        }
+        finally
+        {
+            wad?.Dispose();
+            stb?.Dispose();
+        }
     }
 
     private void EnsureLevelLoader()
@@ -1088,3 +1190,17 @@ public readonly record struct StartupVideo(
     int Height,
     uint Rgba,
     uint Callback);
+
+/// <summary>
+/// One <c>00B42530</c> open: compiled WAD
+/// <c>.lev</c> plus STB height field.
+/// </summary>
+public readonly record struct OpenedStaticMapBody(
+    string Name,
+    int StbSize,
+    int CompiledSize,
+    int GridWidth,
+    int GridHeight,
+    int HeightSamples,
+    int HeaderVersion,
+    uint HeaderConstant);

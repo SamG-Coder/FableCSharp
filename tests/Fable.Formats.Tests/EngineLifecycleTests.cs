@@ -196,6 +196,12 @@ public sealed class EngineLifecycleTests
         Assert.Equal(1, EngineLifecycle.OpenStaticMapsUseMode);
         Assert.Equal(2, EngineLifecycle.OpenStaticMapsListMode);
         Assert.Equal(424, EngineLifecycle.OpenStaticMapsModeOffset);
+        Assert.Equal(0x00B3EFA0u, EngineLifecycle.ParseMapHeaderFn);
+        Assert.Equal(0x00B3EF40u, EngineLifecycle.CloseStaticMapFn);
+        Assert.Equal(0x00BE03A0u, EngineLifecycle.CreateBackgroundPatchFn);
+        Assert.Equal(0x00BDD0E0u, EngineLifecycle.BuildCurrentPatchFn);
+        Assert.Equal(25, EngineLifecycle.LevHeaderVersion);
+        Assert.Equal(0x1904u, EngineLifecycle.LevHeaderConstant);
         Assert.NotEqual(0x00DBDE40u, EngineLifecycle.GamePump);
         Assert.NotEqual(RegionTravel.StartOakValeSetup, EngineLifecycle.GetRegionRecordFn);
         Assert.NotEqual(RegionTravel.StartOakValeSetup, EngineLifecycle.SetRegionAsLoadedFn);
@@ -374,6 +380,20 @@ public sealed class EngineLifecycleTests
         Assert.Contains("LookoutPoint", life.OpenedStaticMaps);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.OpenStaticMapsFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.SetStaticMapFileForUseFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ParseMapHeaderFn);
+        Assert.Contains(life.OpenedMapBodies, b => b.Name == "LookoutPoint");
+        var body = life.OpenedMapBodies.Single(b => b.Name == "LookoutPoint");
+        Assert.Equal(25, body.HeaderVersion);
+        Assert.Equal(0x1904u, body.HeaderConstant);
+        Assert.True(body.CompiledSize > 1000, $"lev={body.CompiledSize}");
+        Assert.True(body.StbSize > 1000, $"stb={body.StbSize}");
+        Assert.True(body.GridWidth >= 64, $"w={body.GridWidth}");
+        Assert.True(body.HeightSamples > 0, $"samples={body.HeightSamples}");
+        Assert.NotNull(life.CurrentCompiledLev);
+        Assert.Equal(body.GridWidth, life.CurrentCompiledLev.GridWidth);
+        Assert.Equal(body.GridHeight, life.CurrentCompiledLev.GridHeight);
+        Assert.NotNull(life.CurrentHeightField);
+        Assert.True(life.CurrentHeightField.SampleCount > 0);
         var dest = Path.Combine(
             @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
             "traces");
