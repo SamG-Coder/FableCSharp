@@ -1408,6 +1408,14 @@ public sealed class WorldRuntime
     /// </summary>
     public bool HideBodies { get; private set; }
     public int HideBodiesVtbl { get; private set; }
+    /// <summary>
+    /// <c>00CC1EE1</c> <c>vtbl+2388(actor,target)</c>.
+    /// Not AILevel 32.
+    /// </summary>
+    public readonly Dictionary<string, string> FightTargets =
+        new(StringComparer.OrdinalIgnoreCase);
+    public readonly Dictionary<string, int> FightVtbl =
+        new(StringComparer.OrdinalIgnoreCase);
     public readonly HashSet<string> Released =
         new(StringComparer.OrdinalIgnoreCase);
     public readonly Dictionary<string, uint> ReleaseFn =
@@ -1752,6 +1760,18 @@ public sealed class WorldRuntime
     /// <c>00CC5F4E</c>: empty/IsTrue → 1604(1);
     /// else 1604(0). Body mesh UNREAD.
     /// </summary>
+    /// <summary>
+    /// <c>00CC1E7B</c>: 00CD2770 slot drop;
+    /// vtbl+32(handle,actor,0); vtbl+2388(actor,target).
+    /// Combat brain UNREAD.
+    /// </summary>
+    public void FightWith(string actor, string target)
+    {
+        var key = actor ?? "";
+        FightTargets[key] = target ?? "";
+        FightVtbl[key] = 2388;
+    }
+
     public void SetHideBodies(bool hide)
     {
         HideBodies = hide;

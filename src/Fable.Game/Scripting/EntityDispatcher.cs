@@ -582,6 +582,20 @@ public static class EntityDispatcher
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "vtbl+1980");
         }
 
+        if (Eq(v, "FightWith"))
+        {
+            // 00CC1D41: arg0 required; 00CD2770; vtbl+32(0);
+            // vtbl+2388(actor,target); leftover if yield.
+            var target = line.Arg(0);
+            if (target.Length == 0)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
+            ctx.World.FightWith(line.Target ?? "", target);
+            if (!ctx.Cutscene.YieldEnable)
+                return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, target);
+            return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Entity,
+                "FightWith vtbl+2388", target);
+        }
+
         if (Eq(v, "Release"))
         {
             // 00CC4663: ebx required; 00CD2770(actor);

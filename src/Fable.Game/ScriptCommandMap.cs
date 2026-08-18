@@ -357,6 +357,11 @@ public static class ScriptCommandMap
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
                 CommandStatus.Proven, CommandStatus.Partial),
             "vtbl+52(text,mode,0,1); leftover vtbl+104; random=1 norepeat=2 sequence=3"),
+        Spec("FightWith", 0x00CC1CEA, 0x00CC1D41, "target",
+            ScriptReturn.YieldAfter, new CommandParity(
+                CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,
+                CommandStatus.Proven, CommandStatus.Partial),
+            "arg0 required; 00CD3187; 00CD2770; vtbl+32(0); vtbl+2388(actor,target); leftover; not AILevel 32"),
         Spec("DataSpeak", 0x00CC293A, 0x00CC2991, "a,b[,DATA|prefix][,mode]",
             ScriptReturn.YieldAfter, new CommandParity(
                 CommandStatus.Proven, CommandStatus.Proven, CommandStatus.Proven,

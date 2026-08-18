@@ -40,6 +40,7 @@
 | StartTimeCode | `00CD1373` | `—` |  | CompleteNow | Proven | Proven | Proven | Partial | Partial | Partial | and [0x13B83C8],0; leftover increment not a pose clock |
 | GamePause | `00CC88D1` | `—` | seconds | WaitScaledFrames | Proven | Proven | Proven | Proven | Proven | Proven | atof * [0x124E640]=15; CLOCK path UNREAD |
 | Speak | `00CC25FD` | `00CC27EA` | listener,text[,hold][,mode] | YieldAfter | Proven | Proven | Proven | Proven | Partial | Partial | vtbl+52(text,mode,0,1); leftover vtbl+104; random=1 norepeat=2 sequence=3 |
+| FightWith | `00CC1CEA` | `00CC1D41` | target | YieldAfter | Proven | Proven | Proven | Proven | Partial | Partial | arg0 required; 00CD3187; 00CD2770; vtbl+32(0); vtbl+2388(actor,target); leftover; not AILevel 32 |
 | DataSpeak | `00CC293A` | `00CC2991` | a,b[,DATA|prefix][,mode] | YieldAfter | Proven | Proven | Proven | Proven | Partial | Partial | arg0+arg1 required; concat key; DATA 004AA900 name; mode random1 norepeat2 sequence3; vtbl+52 leftover 104; not Speak listener |
 | InteractiveSpeakGroup | `00CC2C76` | `00CC2CCD` | listener,prefix,count | YieldAfterOrWait | Proven | Proven | Proven | Proven | Partial | Partial | arg0+1+2 required; vtbl+1456(1,1); 1460; atoi; prefix_10*i via 1464; leftover x count; not InteractiveSpeak |
 | InteractiveSpeak | `00CC2EAA` | `00CC2F50` | listener,prompt[,wait] | YieldAfterUnlessWait | Proven | Proven | Proven | Partial | Partial | Partial | vtbl+1456 handle; TRUE leftover 1472; FALSE one vtbl+28 |

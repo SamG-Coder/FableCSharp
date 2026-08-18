@@ -4312,6 +4312,86 @@ public sealed class ScriptRuntimeArchitectureTests
     }
 
     [Fact]
+    public void FightWith_is_vtbl_2388_not_AILevel()
+    {
+        var runtime = ScriptRuntime.Detached();
+        var interp = new ScriptInterpreter("fw",
+        [
+            "ScriptFrame FALSE",
+            "GUARD.FightWith HERO",
+            "BANDIT.FightWith",
+        ]);
+        interp.RunUntilYield(runtime);
+        Assert.True(interp.Finished);
+        Assert.Equal("HERO", runtime.World.FightTargets["GUARD"]);
+        Assert.Equal(2388, runtime.World.FightVtbl["GUARD"]);
+        Assert.False(runtime.World.FightTargets.ContainsKey("BANDIT"));
+        Assert.Equal(0x00CC1D41u, ScriptCommandMap.Find("FightWith")!.Value.ApplySite);
+        Assert.NotEqual(
+            ScriptCommandMap.Find("AILevel")!.Value.ApplySite,
+            ScriptCommandMap.Find("FightWith")!.Value.ApplySite);
+    }
+
+    [Fact]
+    public void FightWith_real_script_bank_or_isolated()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var bank = ScriptBank.Load(install);
+        string? line = null;
+        ScriptDef? hit = null;
+        foreach (var entry in bank.Entries)
+        {
+            foreach (var raw in entry.Commands.Count > 0
+                         ? entry.Commands
+                         : ScriptBank.ExtractCommands(entry.Raw))
+            {
+                if (raw.Contains(".FightWith", StringComparison.OrdinalIgnoreCase) &&
+                    !raw.Contains('$', StringComparison.Ordinal))
+                {
+                    line = raw;
+                    hit = entry;
+                    break;
+                }
+            }
+
+            if (line is not null)
+                break;
+        }
+
+        line ??= "GUARD.FightWith HERO";
+        hit ??= bank.Entries[0];
+        var parsed = ScriptLine.Parse(line);
+        Assert.Equal("FightWith", parsed.Verb);
+        var runtime = ScriptRuntime.Detached();
+        runtime.Load(bank, install);
+        var isolated = new ScriptInterpreter(hit.InstanceName + "-fw",
+            ["ScriptFrame FALSE", line]);
+        isolated.RunUntilYield(runtime);
+        Assert.Contains(isolated.Executed, l =>
+            l.Contains(".FightWith", StringComparison.OrdinalIgnoreCase));
+        Assert.True(isolated.Finished);
+        Assert.Equal(parsed.Arg(0), runtime.World.FightTargets[parsed.Target ?? ""]);
+        var dest = Path.Combine(
+            @"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer", "traces");
+        Directory.CreateDirectory(dest);
+        runtime.Trace.Write(Path.Combine(dest, hit.InstanceName + "-fw.txt"));
+        File.WriteAllText(
+            Path.Combine(@"C:\Users\samue\AppData\Local\Temp\grok-goal-c0c5431552c1\implementer",
+                "recover-fightwith.txt"),
+            """
+            FightWith 00CC1CEA / apply 00CC1D41
+              ebx actor; arg0 required
+              00CD3187 table; resolve target 280/288
+              00CD2770 slot drop; vtbl+32(handle,actor,0)
+              vtbl+2388(actor,target); leftover if yield
+              jmp cleanup
+              not AILevel HIGH/MEDIUM/4
+            Combat brain UNREAD (Runtime PARTIAL)
+            """);
+    }
+
+    [Fact]
     public void SlideTeleport_lerps_count_steps_vtbl_1892()
     {
         var runtime = ScriptRuntime.Detached();
