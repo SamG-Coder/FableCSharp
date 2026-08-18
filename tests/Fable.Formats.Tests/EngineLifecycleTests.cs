@@ -2116,6 +2116,74 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void After_004AEA70_eq_1_00417001_is_00435F70_Present()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.True(life.Pump(0.25f));
+        Assert.True(life.Pump(0.25f));
+        Assert.Equal(2, life.WorldFrame);
+        Assert.True(life.DisplayPresentSkipped);
+        Assert.Equal(0, life.GamePresentCount);
+        var n = 0;
+        while (n < 8 && life.GamePresentCount == 0)
+        {
+            Assert.True(life.Pump());
+            n++;
+        }
+
+        Assert.Equal(5, n);
+        Assert.Equal(7, life.WorldFrame);
+        Assert.Equal(7, life.PlayerBindSlot0);
+        Assert.Equal(1, life.GamePresentCount);
+        Assert.False(life.DisplayPresentSkipped);
+        Assert.True(life.GamePlus90594);
+        Assert.Equal(5, life.GamePlus90596);
+        Assert.True(life.CameraInterpolationRan);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PlayerReadyQueryFn &&
+            e.Action.Contains("004AEA70 0041674A", StringComparison.Ordinal) &&
+            e.Action.Contains("<=1 → 1", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DisplayApplyThunk &&
+            e.Action.Contains("00435F70 jmp 00435530", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DisplayApplyBodyFn &&
+            e.Action.Contains("00435530 +232=0 skip 00434CD0", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.BeginSceneFn && e.Stage == "GamePump");
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.ClearColorFn && e.Stage == "GamePump");
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DisplayFlush2dFn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DisplayFlushLayersFn &&
+            e.Action.Contains("009DA9F0(1)", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.EndSceneFn && e.Stage == "GamePump");
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PresentFn && e.Stage == "GamePump");
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.GamePresentSite);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.CameraBodyFn);
+        Assert.Equal(0x00435F70u, EngineLifecycle.DisplayApplyThunk);
+        Assert.Equal(0x00435530u, EngineLifecycle.DisplayApplyBodyFn);
+        Assert.Equal(0x009BEEB0u, EngineLifecycle.PresentFn);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
+        Assert.Null(life.CurrentRegion);
+        Assert.False(life.WorldSubmitted);
+    }
+
+    [Fact]
     public void First_pump_004189C2_is_0040D2A0_then_00B239A0_not_a_region()
     {
         var life = new EngineLifecycle();

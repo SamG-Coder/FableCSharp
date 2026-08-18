@@ -515,6 +515,7 @@ then inner loop until [game+8]  PROVEN
 │       │   [0x13B8630]=0 → 0041707E
 │       │   0049E080 / 006B42F0
 │       │   004AEA70=0 [0x13B8688]=0 skip 00435F70
+│       ├── later 004AEA70=1  PROVEN 00435F70 / 009BEEB0
 │       └── always [0x13B7D6C]=[display+104]  PROVEN
 │           004350D0 first-seen +104=0
 ├── 00416202  PROVEN
@@ -951,15 +952,18 @@ Fiber +41 setter 00CB78D0  PROVEN
 │   ├── [0x13B8688]=0 no writer
 │   └── 004AEA70=0 skip 00435F70 / [+90594]  PROVEN
 │       inc [game+90596]
+├── later 004AEA70=1  PROVEN
+│   └── 00435F70 jmp 00435530
+│       push 1 / [+90552]=1
+│       +232=0 skip 00434CD0
+│       009BEF20 BeginScene
+│       009D8CF0 clear
+│       00435000 / 00435070
+│       009D9C80 / 009DA9F0(1)
+│       009BEF50 EndScene
+│       009BEEB0 Present
+│       no region / no 00501450
 └── else           → 004164E0 catchup
-    └── 00435530
-        009BEF20 BeginScene
-        009D8CF0 clear
-        00435000 / 00435070 overlays
-        009D9C80 2D flush
-        009DA9F0(1) layers  0x4 / 0x40 / 0x20 / 0x2000
-        009BEF50 EndScene
-        009BEEB0 Present     ← client Draw is this Present
 ```
 
 ---
@@ -992,7 +996,7 @@ Walk these **from their parent above**, not by string.
 | `00CB8220` parked trio | next type-1 resume / `0049D870` | `0049D870` after `006E7410` vtbl+8 returns |
 | `004167DA` | first call of `[engine+240]` | store-only; 0 `calldisp +240` on engine |
 | `00CE7670` parked | who activates `Q_NewOakValeIntro` | not this yield |
-| `0041707E` after `004AEA70=0` | later frame `004AEA70=1` → `00435F70` / next type-1 | `00501450` still 0 E8/imm |
+| `00435F70` after first Present | `00435000`/`009DA9F0` dest empty / next type-1 | `00501450` still 0 E8/imm |
 
 After every successful walk: add the node here, then implement
 only that node's semantic equivalent on `EngineLifecycle`.

@@ -2408,8 +2408,12 @@ public sealed class EngineLifecycle : IDisposable
         {
             if (GamePumpFirstDone)
                 FrameDtNow += dt;
+            var presents = GamePresentCount;
             PumpGame();
-            if (WorldSubmitted && WorldCamera.Seeded)
+            // 00435F70 / 009BEEB0 after 004AEA70=1.
+            // Maps open / WorldSubmitted is not
+            // a native gate on this frame.
+            if (GamePresentCount > presents)
                 PresentToHost();
             return true;
         }
@@ -4513,8 +4517,9 @@ public sealed class EngineLifecycle : IDisposable
     public void ApplyDisplayCamera()
     {
         Note(DisplayApplyThunk, "GamePump", "Display",
-            "00435F70 jmp 00435530");
-        Note(DisplayApplyBodyFn, "GamePump", "Display", "00435530");
+            "00435F70 jmp 00435530 push 1 +90552=1");
+        Note(DisplayApplyBodyFn, "GamePump", "Display",
+            "00435530 +232=0 skip 00434CD0");
         Note(BeginSceneFn, "GamePump", "D3D9", "009BEF20 BeginScene");
         Note(ClearColorFn, "GamePump", "D3D9", "009D8CF0 clear");
         Note(DisplayPlayerOverlayFn, "GamePump", "Display",
