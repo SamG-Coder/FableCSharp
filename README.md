@@ -42,6 +42,8 @@ See the detailed ledgers under `docs/`, especially:
 -   `docs/render/DX9_VULKAN_PARITY.md`
 -   the first-scene/world render-contract documentation
 
+Skimmable done-vs-left overview: [`docs/status/`](docs/status/README.md) ([HTML](docs/status/index.html)); ledgers above stay authoritative.
+
 ## Intent
 
 This project exists for **compatibility, preservation, technical
