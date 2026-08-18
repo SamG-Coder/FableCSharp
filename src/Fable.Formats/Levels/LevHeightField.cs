@@ -35,10 +35,34 @@ public sealed class LevHeightField
     public required int SampleCount { get; init; }
     public required int FineWidth { get; init; }
     public required int FineHeight { get; init; }
-    public required float[,] FineHeights { get; init; }
-    public required int FineSampleCount { get; init; }
     public required int TileCount { get; init; }
     public required LevTileMesh Tiles { get; init; }
+
+    private float[,]? _fineHeights;
+    private int _fineSampleCount;
+
+    /// <summary>
+    /// 1 m bilinear + tile stamp. Native
+    /// <c>00BF4570</c> draws stored tiles,
+    /// not this grid. Built on first read.
+    /// </summary>
+    public float[,] FineHeights
+    {
+        get
+        {
+            EnsureFine();
+            return _fineHeights!;
+        }
+    }
+
+    public int FineSampleCount
+    {
+        get
+        {
+            EnsureFine();
+            return _fineSampleCount;
+        }
+    }
 
     public static LevHeightField Parse(byte[] stbLev, float mapX, float mapY, int localWidth, int localHeight)
     {
@@ -63,16 +87,7 @@ public sealed class LevHeightField
 
         FillMissing(heights, filled, cellsX, cellsY);
 
-        var fineWidth = localWidth;
-        var fineHeight = localHeight;
-        var fine = new float[fineWidth + 1, fineHeight + 1];
-        for (var y = 0; y <= fineHeight; y++)
-        for (var x = 0; x <= fineWidth; x++)
-            fine[x, y] = SampleBilinear(heights, cellsX, cellsY, x / SampleSpacing, y / SampleSpacing);
-
         var tiles = LevTileMesh.Parse(stbLev, mapX, mapY, cellsX, cellsY);
-        var stamped = tiles.StampOnto(fine, mapX, mapY, fineWidth, fineHeight);
-
         return new LevHeightField
         {
             CellsX = cellsX,
@@ -81,13 +96,23 @@ public sealed class LevHeightField
             OriginY = mapY,
             Heights = heights,
             SampleCount = samples,
-            FineWidth = fineWidth,
-            FineHeight = fineHeight,
-            FineHeights = fine,
-            FineSampleCount = stamped,
+            FineWidth = localWidth,
+            FineHeight = localHeight,
             TileCount = tiles.Tiles.Count,
             Tiles = tiles,
         };
+    }
+
+    private void EnsureFine()
+    {
+        if (_fineHeights is not null)
+            return;
+        var fine = new float[FineWidth + 1, FineHeight + 1];
+        for (var y = 0; y <= FineHeight; y++)
+        for (var x = 0; x <= FineWidth; x++)
+            fine[x, y] = SampleBilinear(Heights, CellsX, CellsY, x / SampleSpacing, y / SampleSpacing);
+        _fineSampleCount = Tiles.StampOnto(fine, OriginX, OriginY, FineWidth, FineHeight);
+        _fineHeights = fine;
     }
 
     public IReadOnlyList<MeshTriangle> ToTileTriangles(

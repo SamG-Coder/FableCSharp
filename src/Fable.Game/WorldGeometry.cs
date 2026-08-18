@@ -80,16 +80,21 @@ public sealed class WorldGeometry
             if (expandGeometry)
                 AddTerrain(levels, map.ScriptName, dx, dy, triangles, landscapeEnums, landscapePlanes);
 
-            IReadOnlyList<ThingInstance> mapThings;
-            if (IsPrimary(map, region))
-                mapThings = primaryThings;
-            else if (thingsByMap is not null)
-                mapThings = thingsByMap.TryGetValue(map.ScriptName, out var listed) ? listed : [];
-            else
-                mapThings = levels.TryLoadThings(map.ScriptName)?.Things.ToList() ?? [];
-            AddInstances(
-                mapThings, map.ScriptName, dx, dy, defs, enums, meshes, triangles, instanceList,
-                ref instances, ref missing, missingDefs, expandGeometry);
+            // First-seen 0x20 is primary Graphic only.
+            // Neighbour TNG stays a handle until draw.
+            if (expandGeometry || IsPrimary(map, region))
+            {
+                IReadOnlyList<ThingInstance> mapThings;
+                if (IsPrimary(map, region))
+                    mapThings = primaryThings;
+                else if (thingsByMap is not null)
+                    mapThings = thingsByMap.TryGetValue(map.ScriptName, out var listed) ? listed : [];
+                else
+                    mapThings = levels.TryLoadThings(map.ScriptName)?.Things.ToList() ?? [];
+                AddInstances(
+                    mapThings, map.ScriptName, dx, dy, defs, enums, meshes, triangles, instanceList,
+                    ref instances, ref missing, missingDefs, expandGeometry);
+            }
 
             // OpenStaticMaps still opens Sees/Contains maps when they emit
             // no landscape tris (sea/water cells are not landscape FG).

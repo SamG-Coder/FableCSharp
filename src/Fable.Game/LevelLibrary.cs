@@ -86,10 +86,10 @@ public sealed class LevelLibrary : IDisposable
         }
     }
 
-    public LevelLibrary(GameInstall install)
+    public LevelLibrary(GameInstall install, WorldFile? world = null)
     {
         Install = install;
-        World = WorldFile.Load(install.WorldPath);
+        World = world ?? WorldFile.Load(install.WorldPath);
         _wad = File.Exists(install.WadPath) ? BbbArchive.Open(install.WadPath) : null;
         _stb = File.Exists(install.RuntimeStbPath) ? StbArchive.Open(install.RuntimeStbPath) : null;
     }

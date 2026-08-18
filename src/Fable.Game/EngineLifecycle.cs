@@ -3565,7 +3565,7 @@ public sealed class EngineLifecycle : IDisposable
     {
         if (_levels is not null || Install is null)
             return;
-        _levels = new LevelLibrary(Install);
+        _levels = new LevelLibrary(Install, World);
     }
 
     private void RegisterRetailBankTable(GameInstall? install)
