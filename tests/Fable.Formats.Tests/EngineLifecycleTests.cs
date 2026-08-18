@@ -1524,6 +1524,11 @@ public sealed class EngineLifecycleTests
         Assert.True(enter > fade && leave > enter, "009F2660/009F26B0 after fade");
         Assert.True(innerDt > leave && update > innerDt,
             "009F8BA0 then 004162B5 after first-pump tail");
+        Assert.True(life.InputRecordStored);
+        Assert.Contains(events, e => e.Va == EngineLifecycle.InputStoreRecordFn);
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.GameVtbl24Fn &&
+            e.Action.Contains("skip 004457F0", StringComparison.Ordinal));
         Assert.Contains(events, e =>
             e.Va == EngineLifecycle.DisplayEngineFadeFn &&
             e.Action.Contains("20", StringComparison.Ordinal));

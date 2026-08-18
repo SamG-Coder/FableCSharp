@@ -702,6 +702,22 @@ public sealed class EngineLifecycle : IDisposable
     public const int PlayerActionFlagOffset = 9826;
     public const uint GameVtbl24Fn = 0x00416E78;
     public const int GameVtbl24 = 24;
+    /// <summary>
+    /// <c>00416E78</c> prefix before
+    /// <c>WorldFrame&gt;1</c>:
+    /// <c>[world+52].vtbl+4</c>,
+    /// <c>00416392</c>, <c>009F4A90</c>
+    /// writes <c>[0x13B8388]+60</c> (16
+    /// bytes) and <c>+92=[game+72]</c>,
+    /// then input <c>vtbl+8</c>.
+    /// </summary>
+    public const int WorldPlus52Offset = 52;
+    public const int WorldPlus52Vtbl = 4;
+    public const uint InputStoreRecordFn = 0x009F4A90;
+    public const int InputRecordOffset = 60;
+    public const int InputRecordSize = 16;
+    public const int InputGamePlus72Offset = 92;
+    public const int InputVtbl8 = 8;
     public const uint ClearGamePlus68Fn = 0x00416047;
     public const uint WorldFrameGetter = 0x0049D870;
     public const uint WorldFrameVa = 0x013B89BC;
@@ -1335,6 +1351,7 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>[+80] &gt;= [+72]</c>.
     /// </summary>
     public int GamePlus72 { get; set; }
+    public bool InputRecordStored { get; private set; }
     public int GamePlus76 { get; private set; }
     public int GamePlus80 { get; set; }
     public int GamePlus104 { get; private set; }
@@ -2837,18 +2854,32 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
-    /// <c>00416E78</c> after
-    /// <c>WorldFrame&gt;1</c>:
-    /// <c>004457F0</c> then
-    /// <c>[game+32].vtbl+4</c>
-    /// <c>00446A30</c> until it
-    /// returns 0.
+    /// <c>00416E78</c>: prefix always
+    /// (<c>[world+52].vtbl+4</c>,
+    /// <c>00416392</c>, <c>009F4A90</c>,
+    /// input <c>vtbl+8</c>).
+    /// <c>004457F0</c> / <c>00446A30</c>
+    /// only after <c>WorldFrame&gt;1</c>.
     /// </summary>
     public void PumpPlayerInterface()
     {
-        if (!Player.Present)
-            return;
+        Note(GameVtbl24Fn, "GamePump", "Update",
+            $"[world+{WorldPlus52Offset}].vtbl+{WorldPlus52Vtbl}");
+        Note(WorldThingCountFn, "GamePump", "Update",
+            $"00416392 +{GamePlus90394Offset}=0 → 0049E200");
+        Note(InputStoreRecordFn, "GamePump", "Input",
+            $"009F4A90 [0x13B8388]+{InputRecordOffset}/+{InputGamePlus72Offset}=[game+72]");
+        Note(InputDeviceVa, "GamePump", "Input",
+            $"[0x13B8388] vtbl+{InputVtbl8}");
+        InputRecordStored = true;
         if (WorldFrame <= 1)
+        {
+            Note(GameVtbl24Fn, "GamePump", "Update",
+                "WorldFrame<=1 skip 004457F0");
+            return;
+        }
+
+        if (!Player.Present)
             return;
         Player.Preprocess();
         Note(PlayerInterfacePreprocess, "GamePump", "Input",

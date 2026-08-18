@@ -392,7 +392,12 @@ then inner loop until [game+8]  PROVEN
 ├── 004162B5  GamePumpUpdate  SLOT
 │   ├── 009A57B0  gate [engine+148]==GetTickCount
 │   ├── [game].vtbl+20  00418289  update
-│   ├── [game].vtbl+24  00416E78  player 00446A30 after WorldFrame>1
+│   ├── [game].vtbl+24  00416E78  PROVEN prefix even if WorldFrame<=1
+│   │   ├── [world+52].vtbl+4 + 00BFEA70
+│   │   ├── 00416392 → 0049E200
+│   │   ├── 009F4A90 [0x13B8388]+60 / +92=[game+72]
+│   │   ├── [0x13B8388].vtbl+8
+│   │   └── WorldFrame<=1 skip 004457F0 / 00446A30
 │   └── [game].vtbl+28  00417001  render
 │       └── 00435530  BeginScene / layers / EndScene / 009BEEB0
 ├── 00416202 / 00415E85

@@ -150,6 +150,7 @@ only — CSS unchanged.
 | `00501450` E8/E9/imm/vtbl | UNREAD | 0 hits; not `004162B5` / `00418289` / `004189C2` (`0049D9E0` is `ret`) |
 | Host seeds type-1 tick on InitGame | DISPROVEN | first-seen `game+164` empty; `0041726D` skips |
 | Inner loop `009F8BA0` before `004162B5` | PROVEN | `[game+52]==0`; IAT `0x14404B4`; `+90556` |
+| `00416E78` skipped when `WorldFrame<=1` | DISPROVEN | prefix always runs; only `004457F0` is gated |
 | Persist `PlayerRegionName` `00487C20` / `00449E60` loads named region (e.g. `StartOakVale` = 4) | PROVEN | `Persist_PlayerRegionName_is_00487C20_not_new_game` |
 | `SetRegionAsLoaded` `004FC8A0` writes `+156`, then `00B42750` mode 1 | DISPROVEN | `004FC8A0` is MiniMap only. `00B428E0` is `004A1840` vtbl+208 |
 | `004FC8A0` calls `005064C0` / `00B428E0` | DISPROVEN | `004FC8A0` is `+156`/`00437CE0`/`0082BA00`. `005064C0` is vtbl+88 before it. `SetRegionAsLoaded_004FC8A0_is_minimap_after_005064C0` |
