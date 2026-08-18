@@ -20,6 +20,10 @@ var options = WindowOptions.DefaultVulkan with
 {
     Title = life.WindowTitle,
     Size = new Vector2D<int>(life.BackBufferWidth, life.BackBufferHeight),
+    WindowState = life.DeviceWindowed
+        ? WindowState.Normal
+        : WindowState.Fullscreen,
+    WindowBorder = WindowBorder.Fixed,
     VSync = true,
 };
 

@@ -34,8 +34,21 @@ public sealed class FrontendUiDef
     public const uint Unknown6B10Crc = 0x6B1015E4;
     public const uint UnknownF81FCrc = 0xF81F10A8;
     public const uint StatesCrc = 0x87ACD3D8;
-    public const uint UnknownE78ECrc = 0xE78E700E;
-    public const uint Unknown9089Crc = 0x90894098;
+    /// <summary>
+    /// <c>FableCrc("ZoomX")</c>. First style
+    /// scale, default 1. <c>0052F440</c>
+    /// copies it to layout <c>+16</c> →
+    /// widget <c>+92</c>.
+    /// </summary>
+    public const uint ZoomXCrc = 0xE78E700E;
+    /// <summary>
+    /// <c>FableCrc("ZoomY")</c>. First style
+    /// scale, default 1. Layout <c>+20</c> →
+    /// widget <c>+96</c>.
+    /// </summary>
+    public const uint ZoomYCrc = 0x90894098;
+    public const uint UnknownE78ECrc = ZoomXCrc;
+    public const uint Unknown9089Crc = ZoomYCrc;
     public const uint ColourRCrc = 0x79902E65;
     public const uint ColourGCrc = 0x144DCA8E;
     public const uint ColourBCrc = 0x64273E01;
@@ -43,10 +56,44 @@ public sealed class FrontendUiDef
     public const uint UnknownF97DCrc = 0xF97D3844;
     public const uint UnknownA5F8Crc = 0xA5F8D969;
     /// <summary>
-    /// Nested persist after the first style
-    /// prefix. Reader stops. PARTIAL.
+    /// CUIStateDef persist <c>00625630</c>
+    /// <c>+120</c> u8. Not a nested object.
     /// </summary>
     public const uint UnreadNestedCrc = 0x56A59976;
+    /// <summary>
+    /// Style <c>+64</c> after
+    /// <see cref="UnreadNestedCrc"/>.
+    /// </summary>
+    public const uint StylePlus64Crc = 0xF8D265DA;
+    /// <summary>
+    /// Style <c>+108</c> i32 vector after
+    /// <see cref="StylePlus64Crc"/>.
+    /// </summary>
+    public const uint StylePlus108Crc = 0x2085F2AB;
+    /// <summary>
+    /// <c>005331A0</c> def <c>+188</c> →
+    /// widget <c>+302</c> bit 1. Persist u8.
+    /// Name UNREAD.
+    /// </summary>
+    public const uint CentreCrc = 0x64D3430E;
+    /// <summary>
+    /// <c>005331A0</c> def <c>+191</c> →
+    /// widget <c>+300</c> bit 6. Persist u8.
+    /// Name UNREAD.
+    /// </summary>
+    public const uint AbsoluteCrc = 0x38BBD87F;
+    /// <summary>
+    /// <c>005331A0</c> def <c>+520</c> →
+    /// widget <c>+302</c> bit 6 remap size.
+    /// Persist u8 <c>0043314A</c>. Name UNREAD.
+    /// </summary>
+    public const uint ScaleSizeCrc = 0xC50CA371;
+    /// <summary>
+    /// <c>005331A0</c> def <c>+521</c> →
+    /// widget <c>+302</c> bit 7 remap origin.
+    /// Persist u8 <c>0043314A</c>. Name UNREAD.
+    /// </summary>
+    public const uint ScaleOriginCrc = 0xB466D948;
     /// <summary>
     /// <c>FableCrc("GraphicIndex")</c>. Persist i32 is
     /// <c>GBANK_FRONT_END_PC</c> <c>BankEntry.Id</c>.
@@ -79,6 +126,36 @@ public sealed class FrontendUiDef
     public float ColourG { get; init; }
     public float ColourB { get; init; }
     public float ColourA { get; init; }
+    public float ZoomX { get; init; } = 1f;
+    public float ZoomY { get; init; } = 1f;
+    /// <summary>
+    /// <c>005331A0</c> <c>+302</c> bit 1 from
+    /// def <c>+188</c> / <see cref="CentreCrc"/>.
+    /// </summary>
+    public bool Center { get; init; }
+    /// <summary>
+    /// <c>005331A0</c> <c>+300</c> bit 6 from
+    /// def <c>+191</c> / <see cref="AbsoluteCrc"/>.
+    /// </summary>
+    public bool Absolute { get; init; }
+    /// <summary>
+    /// <c>005331A0</c> <c>+302</c> bit 7 from
+    /// def <c>+521</c> / <see cref="ScaleOriginCrc"/>.
+    /// </summary>
+    public bool ScaleOriginToViewport { get; init; }
+    /// <summary>
+    /// <c>005331A0</c> <c>+302</c> bit 6 from
+    /// def <c>+520</c> / <see cref="ScaleSizeCrc"/>.
+    /// </summary>
+    public bool ScaleSizeToViewport { get; init; }
+    /// <summary>
+    /// Raw persist u8 at def <c>+520</c>.
+    /// </summary>
+    public byte ScaleSizeByte { get; init; }
+    /// <summary>
+    /// Raw persist u8 at def <c>+521</c>.
+    /// </summary>
+    public byte ScaleOriginByte { get; init; }
     public IReadOnlyList<uint> UnreadCrcs { get; init; } = [];
     public int UnreadOffset { get; init; }
     public bool Partial { get; init; }
@@ -114,6 +191,10 @@ public sealed class FrontendUiDef
         var colourG = 0f;
         var colourB = 0f;
         var colourA = 0f;
+        var zoomX = 1f;
+        var zoomY = 1f;
+        var haveZoomX = false;
+        var haveZoomY = false;
         var unread = new List<uint>();
         var unreadOffset = raw.Length;
         var partial = false;
@@ -284,14 +365,28 @@ public sealed class FrontendUiDef
                 continue;
             }
 
-            if (crc == UnknownE78ECrc && payload + 4 <= raw.Length)
+            if (crc == ZoomXCrc && payload + 4 <= raw.Length)
             {
+                var value = BitConverter.ToSingle(raw, payload);
+                if (float.IsFinite(value) && !haveZoomX)
+                {
+                    zoomX = value;
+                    haveZoomX = true;
+                }
+
                 cursor = payload + 4;
                 continue;
             }
 
-            if (crc == Unknown9089Crc && payload + 4 <= raw.Length)
+            if (crc == ZoomYCrc && payload + 4 <= raw.Length)
             {
+                var value = BitConverter.ToSingle(raw, payload);
+                if (float.IsFinite(value) && !haveZoomY)
+                {
+                    zoomY = value;
+                    haveZoomY = true;
+                }
+
                 cursor = payload + 4;
                 continue;
             }
@@ -344,11 +439,44 @@ public sealed class FrontendUiDef
                 continue;
             }
 
+            if (crc == UnreadNestedCrc && payload < raw.Length)
+            {
+                cursor = payload + 1;
+                continue;
+            }
+
+            if (crc == StylePlus64Crc && payload + 4 <= raw.Length)
+            {
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc == StylePlus108Crc && payload + 4 <= raw.Length)
+            {
+                var n = BitConverter.ToInt32(raw, payload);
+                cursor = payload + 4;
+                if (n is >= 0 and <= 256)
+                    cursor += n * 4;
+                continue;
+            }
+
+            if (crc is CentreCrc or AbsoluteCrc or ScaleSizeCrc or ScaleOriginCrc
+                && payload < raw.Length)
+            {
+                cursor = payload + 1;
+                continue;
+            }
+
             unread.Add(crc);
             unreadOffset = cursor;
             partial = true;
             break;
         }
+
+        var centreByte = ReadPersistU8(raw, CentreCrc);
+        var absoluteByte = ReadPersistU8(raw, AbsoluteCrc);
+        var scaleSizeByte = ReadPersistU8(raw, ScaleSizeCrc);
+        var scaleOriginByte = ReadPersistU8(raw, ScaleOriginCrc);
 
         return new FrontendUiDef
         {
@@ -371,10 +499,35 @@ public sealed class FrontendUiDef
             ColourG = colourG,
             ColourB = colourB,
             ColourA = colourA,
+            ZoomX = zoomX,
+            ZoomY = zoomY,
+            Center = centreByte != 0,
+            Absolute = absoluteByte != 0,
+            ScaleSizeToViewport = scaleSizeByte != 0,
+            ScaleOriginToViewport = scaleOriginByte != 0,
+            ScaleSizeByte = scaleSizeByte,
+            ScaleOriginByte = scaleOriginByte,
             UnreadCrcs = unread,
             UnreadOffset = unreadOffset,
             Partial = partial,
         };
+    }
+
+    /// <summary>
+    /// <c>0043314A</c> file form: CRC then one
+    /// byte. <c>00403EB0</c> <c>setne</c> so any
+    /// nonzero is 1. Each Press Start flag CRC
+    /// occurs once per widget.
+    /// </summary>
+    public static byte ReadPersistU8(byte[] raw, uint crc)
+    {
+        for (var i = 0; i + 5 <= raw.Length; i++)
+        {
+            if (BitConverter.ToUInt32(raw, i) == crc)
+                return raw[i + 4];
+        }
+
+        return 0;
     }
 
     private static string? ReadUtf16(byte[] raw, ref int cursor)

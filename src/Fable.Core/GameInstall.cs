@@ -31,6 +31,7 @@ public sealed class GameInstall
     public string SoundDirectory => Path.Combine(DataRoot, "Sound");
     public string BonesDirectory => Path.Combine(DataRoot, "Bones");
     public string TextBigPath => Path.Combine(DataRoot, "lang", "English", "text.big");
+    public string FontsBigPath => Path.Combine(DataRoot, "lang", "English", "fonts.big");
     public string ShadersBigPath => Path.Combine(DataRoot, "shaders", "pc", "shaders.big");
     public string StarsPath => Path.Combine(DataRoot, "Misc", "stars.dat");
     public string StartingRegionGraphPath =>

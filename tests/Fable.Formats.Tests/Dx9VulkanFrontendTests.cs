@@ -1,5 +1,8 @@
 using System.Runtime.InteropServices;
+using Fable.Core;
 using Fable.Formats.Scene;
+using Fable.Formats.Textures;
+using Fable.Game;
 using Fable.Render;
 using Fable.Render.Parity.Dx9Vulkan;
 using Silk.NET.Vulkan;
@@ -142,11 +145,16 @@ public sealed class Dx9VulkanFrontendTests
     {
         Assert.Equal("VSHADER_2D_SPRITE", Dx9VulkanFrontend.VertexShaderName);
         Assert.Equal("SHADERS_POINT_SPRITE1", Dx9VulkanFrontend.VertexShaderBank);
-        Assert.Equal("PSHADER_2D_TEXTURE_DIFFUSE", Dx9VulkanFrontend.PixelShaderName);
+        Assert.Equal("PSHADER_2D_CLOCK_SPRITE", Dx9VulkanFrontend.PixelShaderName);
+        Assert.Equal("PIXEL_SHADERS", Dx9VulkanFrontend.PixelShaderBank);
+        Assert.True(Dx9VulkanFrontend.PixelShaderC0TemporaryWhite);
+        Assert.Equal(32, Dx9VulkanFrontend.PixelShaderC0Slot);
         Assert.Equal(0x00BAD040u, Dx9VulkanFrontend.HandlerCtorFn);
         Assert.Equal(0x00BAE2D0u, Dx9VulkanFrontend.SpriteSubmitFn);
         Assert.Equal(0x00A058C0u, Dx9VulkanFrontend.StateFlushFn);
         Assert.Equal(0x009DB700u, Dx9VulkanFrontend.EnqueueFn);
+        Assert.Equal(164, Dx9VulkanFrontend.HandlerBlendOffset);
+        Assert.False(Dx9VulkanFrontend.AppliesScissor);
     }
 
     [Fact]
@@ -170,12 +178,42 @@ public sealed class Dx9VulkanFrontendTests
         Assert.True(draw.BlendEnable);
         Assert.Equal(4u, draw.VertexCount);
         Assert.Equal(6u, draw.IndexCount);
+        Assert.Equal(new ushort[] { 0, 1, 2, 1, 3, 2 }, batch.Indices);
         Assert.Equal(1024, batch.ViewportWidth);
         Assert.Equal(768, batch.ViewportHeight);
 
         Assert.Equal(0f, rec.V0);
         Assert.True(batch.Vertices[0].Uv.Y <= batch.Vertices[2].Uv.Y);
         Assert.True(batch.Vertices[0].Position.Y < batch.Vertices[2].Position.Y);
+    }
+
+    [Fact]
+    public void Sprite_uv_corners_are_tl_tr_bl_br()
+    {
+        var rec = new FrontendDx9DrawRecord(
+            10, 20, 110, 70,
+            0.1f, 0.2f, 0.8f, 0.9f,
+            0xFFFFFFFF, 0, 2);
+        var verts = Dx9VulkanFrontend.BuildDx9Quad(rec);
+        Assert.Equal(4, verts.Length);
+        Assert.Equal(10f, verts[0].X);
+        Assert.Equal(20f, verts[0].Y);
+        Assert.Equal(0.1f, verts[0].U);
+        Assert.Equal(0.2f, verts[0].V);
+        Assert.Equal(110f, verts[1].X);
+        Assert.Equal(20f, verts[1].Y);
+        Assert.Equal(0.8f, verts[1].U);
+        Assert.Equal(0.2f, verts[1].V);
+        Assert.Equal(10f, verts[2].X);
+        Assert.Equal(70f, verts[2].Y);
+        Assert.Equal(0.1f, verts[2].U);
+        Assert.Equal(0.9f, verts[2].V);
+        Assert.Equal(110f, verts[3].X);
+        Assert.Equal(70f, verts[3].Y);
+        Assert.Equal(0.8f, verts[3].U);
+        Assert.Equal(0.9f, verts[3].V);
+        Assert.Equal(32, Dx9VulkanFrontend.VertexStride);
+        Assert.Equal(4, Dx9VulkanFrontend.D3dptTriangleList);
     }
 
     [Fact]
@@ -201,5 +239,119 @@ public sealed class Dx9VulkanFrontendTests
         Assert.Equal(0f, verts[0].V);
         Assert.Equal(1f, verts[3].V);
         Assert.Equal(0x80FFFFFFu, verts[0].DiffuseArgb);
+        Assert.Equal(Dx9VulkanFrontend.QuadTl, 0);
+        Assert.Equal(Dx9VulkanFrontend.QuadTr, 1);
+        Assert.Equal(Dx9VulkanFrontend.QuadBl, 2);
+        Assert.Equal(Dx9VulkanFrontend.QuadBr, 3);
+        Assert.Equal(rec.U0, verts[Dx9VulkanFrontend.QuadTl].U);
+        Assert.Equal(rec.V0, verts[Dx9VulkanFrontend.QuadTl].V);
+        Assert.Equal(rec.U1, verts[Dx9VulkanFrontend.QuadTr].U);
+        Assert.Equal(rec.V0, verts[Dx9VulkanFrontend.QuadTr].V);
+        Assert.Equal(rec.U0, verts[Dx9VulkanFrontend.QuadBl].U);
+        Assert.Equal(rec.V1, verts[Dx9VulkanFrontend.QuadBl].V);
+        Assert.Equal(rec.U1, verts[Dx9VulkanFrontend.QuadBr].U);
+        Assert.Equal(rec.V1, verts[Dx9VulkanFrontend.QuadBr].V);
+        Assert.Equal(new ushort[] { 0, 1, 2, 1, 3, 2 }, Dx9VulkanFrontend.QuadIndices);
+        Assert.Equal(0x00BB0970u, Dx9VulkanFrontend.QuadFillFn);
+        Assert.False(Dx9VulkanFrontend.FlipsUvV);
+    }
+
+    [Fact]
+    public void Title_and_forest_frame_uv_is_full_texture()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var sprites = new FrontendSpriteBank(install);
+        foreach (var name in new[]
+                 {
+                     FrontendSpriteBank.TitleLeft,
+                     "FORREST_1_1",
+                 })
+        {
+            var tex = sprites.TryLoad(name);
+            Assert.NotNull(tex);
+            Assert.Equal(tex.Width, tex.FrameWidth);
+            Assert.Equal(tex.Height, tex.FrameHeight);
+            var frame = tex.FrameUv();
+            Assert.Equal(0f, frame.U0);
+            Assert.Equal(0f, frame.V0);
+            Assert.Equal(1f, frame.U1);
+            Assert.Equal(1f, frame.V1);
+            var submitted = FrontendDx9Submit.SubmittedSpriteUv(0, 0, 0, 0,
+                frame.U0, frame.V0, frame.U1, frame.V1);
+            Assert.Equal((0f, 0f, 1f, 1f), submitted);
+            var rec = new FrontendDx9DrawRecord(
+                0, 0, tex.Width, tex.Height,
+                submitted.U0, submitted.V0, submitted.U1, submitted.V1,
+                0xFFFFFFFFu, 0, 2);
+            var verts = Dx9VulkanFrontend.BuildDx9Quad(rec);
+            Assert.Equal(0f, verts[0].U);
+            Assert.Equal(0f, verts[0].V);
+            Assert.Equal(1f, verts[1].U);
+            Assert.Equal(0f, verts[1].V);
+            Assert.Equal(0f, verts[2].U);
+            Assert.Equal(1f, verts[2].V);
+            Assert.Equal(1f, verts[3].U);
+            Assert.Equal(1f, verts[3].V);
+            Assert.True(verts[0].Y < verts[2].Y);
+            Assert.False(TextureFile.FirstSeenDecodeFlipsVertical);
+            Assert.True(TextureFile.DecodeRowZeroIsTop);
+        }
+    }
+
+    [Fact]
+    public void Glyph_type_27_emits_six_28_byte_semantics()
+    {
+        var rec = new FrontendDx9DrawRecord(
+            10.5f, 20.5f, 18.5f, 42.5f,
+            0.1f, 0.2f, 0.3f, 0.4f,
+            0xFFFFFFFF, 0, 2,
+            RecordType: 0x27,
+            VertexStride: 28,
+            NativeUsedBytes: 28,
+            AppliesHalfPixel: true);
+        var batch = Dx9VulkanFrontend.BuildBatch([rec], [GpuTexture.White()]);
+        Assert.False(batch.IsEmpty);
+        Assert.Equal(6, batch.Vertices.Length);
+        Assert.Empty(batch.Indices);
+        Assert.Single(batch.Draws);
+        var draw = batch.Draws[0];
+        Assert.Equal(0x27, rec.RecordType);
+        Assert.Equal(28, rec.VertexStride);
+        Assert.Equal(28, rec.NativeUsedBytes);
+        Assert.True(rec.AppliesHalfPixel);
+        Assert.Equal(4, draw.D3dPrimitiveType);
+        Assert.Equal(6u, draw.VertexCount);
+        Assert.Equal(0u, draw.IndexCount);
+        Assert.Equal(5, draw.D3dSrcBlend);
+        Assert.Equal(6, draw.D3dDestBlend);
+        Assert.Equal(0x00AB7C20u, Dx9VulkanFrontend.GlyphDrawFn);
+        Assert.Equal(0x0054EF00u, Dx9VulkanFrontend.Type6DrawFn);
+        Assert.Equal(324, Dx9VulkanFrontend.DrawPrimitiveVtbl);
+        var list = Dx9VulkanFrontend.BuildDx9GlyphList(rec);
+        Assert.Equal(6, list.Length);
+        Assert.Equal(rec.U0, list[0].U);
+        Assert.Equal(rec.V0, list[0].V);
+        Assert.Equal(rec.U1, list[1].U);
+        Assert.Equal(rec.V0, list[1].V);
+        Assert.Equal(rec.U0, list[2].U);
+        Assert.Equal(rec.V1, list[2].V);
+        Assert.Equal(rec.U1, list[4].U);
+        Assert.Equal(rec.V1, list[4].V);
+        Assert.Equal(28u, FrontendDx9Vertex.NativeUsedBytes);
+    }
+
+    [Fact]
+    public void Clock_sprite_ps_is_texture_times_white()
+    {
+        Assert.Contains("vec4 c0 = vec4(1.0)", LineShaders.FrontendFragment, StringComparison.Ordinal);
+        Assert.Contains("texture(sprite, fragUv) * c0", LineShaders.FrontendFragment, StringComparison.Ordinal);
+        Assert.DoesNotContain(
+            "texture(sprite, fragUv) * fragColor",
+            LineShaders.FrontendFragment,
+            StringComparison.Ordinal);
+        Assert.Equal("PSHADER_2D_CLOCK_SPRITE", Dx9VulkanFrontend.PixelShaderName);
+        Assert.True(Dx9VulkanFrontend.PixelShaderC0TemporaryWhite);
+        Assert.False(Dx9VulkanFrontend.AppliesScissor);
     }
 }

@@ -41,8 +41,27 @@ public static class Dx9VulkanFrontend
 
     public const string VertexShaderName = "VSHADER_2D_SPRITE";
     public const string VertexShaderBank = "SHADERS_POINT_SPRITE1";
-    public const string PixelShaderName = "PSHADER_2D_TEXTURE_DIFFUSE";
+    // 00BAD040 binds PSHADER_2D_CLOCK_SPRITE
+    // (mul r0, t0, c0). PSHADER_2D_TEXTURE_DIFFUSE
+    // is a different bank program.
+    public const string PixelShaderName = "PSHADER_2D_CLOCK_SPRITE";
     public const string PixelShaderBank = "PIXEL_SHADERS";
+    public const string PixelShaderAdditive = "PSHADER_2D_CLOCK_SPRITE_ADDITIVE";
+    // c0 at [dev+972]+32. 00BAE2D0 writes a
+    // byte scale, then device+913 overwrites
+    // (1,1,1,1). Vertex diffuse is UNREAD by
+    // this PS. TEMPORARY identity.
+    public const bool PixelShaderC0TemporaryWhite = true;
+    public const int PixelShaderC0Slot = 32;
+
+    public const uint GlyphRecordType = 0x27;
+    public const int GlyphRecordBytes = 64;
+    public const int GlyphVertexStride = 28;
+    public const int GlyphVertsPerQuad = 6;
+    public const uint GlyphDrawFn = 0x00AB7C20;
+    public const uint GlyphPrimitiveFn = 0x00A0ABE0;
+    public const uint Type6DrawFn = 0x0054EF00;
+    public const int DrawPrimitiveVtbl = 324;
 
     // VSHADER_2D_SPRITE (shaders.big):
     //   mov oPos, v0
@@ -96,7 +115,9 @@ public static class Dx9VulkanFrontend
     public const float ViewportMaxZ = 1f;
     public const int SetViewportVtbl = 188;
 
-    // 00BAE2D0 [ebp+312] after sub 3:
+    // Type 0x22 00BAF4B9: [arg+164] after
+    // sub 3. Type 35 path uses handler+312
+    // (ebp=this). Frontend sprites are 0x22.
     //   ==3 → SRC/DST [0x1396F6C]=2 ONE
     //   ==4 → SRC [0x1396F6C]=2 ONE,
     //         DST [0x1396F74]=4 INVSRCCOLOR
@@ -104,7 +125,7 @@ public static class Dx9VulkanFrontend
     //          DST [0x1396F7C]=6 INVSRCALPHA
     // Widget ctor default +372=2 takes
     // the else branch. +10424 alphablend=1.
-    public const int HandlerBlendOffset = 312;
+    public const int HandlerBlendOffset = 164;
     public const int WidgetBlendDefault = 2;
     public const int HandlerBlendAdditive = 3;
     public const int HandlerBlendInvSrcColor = 4;
@@ -122,11 +143,25 @@ public static class Dx9VulkanFrontend
     public const float HudNdcBias = 1f;
     public const bool AppliesHalfPixelOffset = false;
 
-    // 009DC870 2D dest has v=0 at dest
-    // top (video shader comment). No UV
-    // V flip for frontend sprites.
+    // 00BB0970 / 009FC810: V=0 is the
+    // frame top (DX9 tex top). Rec
+    // +68..+80 is an offset; first-seen
+    // 0,0,0,0 leaves the frame quad.
+    // 00BB0EE4 miss default maps to
+    // verts (0,0),(1,0),(0,1),(1,1).
+    // No 1-v. Persist FlipU/V absent.
     public const bool UvVZeroAtDestTop = true;
     public const bool FlipsUvV = false;
+    public const float TextureFullU0 = 0f;
+    public const float TextureFullV0 = 0f;
+    public const float TextureFullU1 = 1f;
+    public const float TextureFullV1 = 1f;
+    public const uint QuadFillFn = 0x00BB0970;
+    public const uint TextureUvFn = 0x009FC810;
+    public const int QuadTl = 0;
+    public const int QuadTr = 1;
+    public const int QuadBl = 2;
+    public const int QuadBr = 3;
 
     // Scissor / ALPHATESTENABLE first-seen
     // writes UNREAD. Do not invent.
@@ -256,6 +291,18 @@ public static class Dx9VulkanFrontend
         int vpX, int vpY, int vpW, int vpH) =>
         Dx9ClipToVulkanNdc(DestPixelToDx9Clip(x, y, z, vpX, vpY, vpW, vpH));
 
+    /// <summary>
+    /// <c>00BB0970</c> fills four verts at
+    /// draw+24, stride 32. <c>00BAE2D0</c>
+    /// DIPUP reads that buffer (arg+24,
+    /// NumVertices 4, PrimitiveCount 2).
+    /// Order TL TR BL BR:
+    /// v0 (x0,y0,u0,v0), v1 (x1,y0,u1,v0),
+    /// v2 (x0,y1,u0,v1), v3 (x1,y1,u1,v1).
+    /// <paramref name="rec"/> UVs are
+    /// submitted corners (frame + rec
+    /// offset), not packer 0,0,0,0.
+    /// </summary>
     public static FrontendDx9Vertex[] BuildDx9Quad(FrontendDx9DrawRecord rec)
     {
         var argb = rec.DiffuseArgb == 0 ? 0xFFFFFFFFu : rec.DiffuseArgb;
@@ -269,9 +316,23 @@ public static class Dx9VulkanFrontend
     }
 
     /// <summary>
+    /// Type 0x27 00AB7C20: 6 verts × 28 used
+    /// bytes, RHW 1.0, dest already −0.5.
+    /// Triangle list TL-TR-BL / TR-BR-BL.
+    /// Packed into stride-32
+    /// <see cref="FrontendDx9Vertex"/>.
+    /// </summary>
+    public static FrontendDx9Vertex[] BuildDx9GlyphList(FrontendDx9DrawRecord rec)
+    {
+        var quad = BuildDx9Quad(rec);
+        return [quad[0], quad[1], quad[2], quad[1], quad[3], quad[2]];
+    }
+
+    /// <summary>
     /// INDEX16 list for one dest quad.
-    /// 00A0AEA0 prim 4. Winding TL-TR-BL
-    /// / TR-BR-BL in dest space.
+    /// <c>00BAD040</c> handler+44 words
+    /// 0,1,2,1,3,2. <c>00A0AEA0</c> prim
+    /// 4. Winding TL-TR-BL / TR-BR-BL.
     /// </summary>
     public static readonly ushort[] QuadIndices = [0, 1, 2, 1, 3, 2];
 
@@ -288,12 +349,13 @@ public static class Dx9VulkanFrontend
         FrontendDx9DrawRecord rec, uint firstVertex, uint firstIndex)
     {
         var (src, dst) = BlendFromHandlerMode(rec.HandlerBlendMode);
+        var glyph = rec.RecordType == (int)GlyphRecordType;
         return new FrontendDraw(
             rec.TextureId,
             firstVertex,
-            4,
+            glyph ? (uint)GlyphVertsPerQuad : 4,
             firstIndex,
-            (uint)QuadIndices.Length,
+            glyph ? 0u : (uint)QuadIndices.Length,
             src,
             dst,
             BlendEnable: true,
@@ -302,10 +364,13 @@ public static class Dx9VulkanFrontend
 
     /// <summary>
     /// Vulkan-ready vertex / index /
-    /// blend from one type <c>0x22</c>
-    /// dest record. Empty dest
+    /// blend from one dest record. Empty dest
     /// (<c>00BAD8A0</c> / first-seen
     /// 0,0,0,0) yields no primitives.
+    /// Type 0x27 uses DrawPrimitive 6 verts.
+    /// Type 0x22 uses DIPUP 4 verts + INDEX16.
+    /// Indices are 0-based per draw; the
+    /// command buffer adds FirstVertex.
     /// </summary>
     public static void AppendRecord(
         FrontendDx9DrawRecord rec,
@@ -318,11 +383,19 @@ public static class Dx9VulkanFrontend
             return;
         var firstVertex = (uint)vertices.Count;
         var firstIndex = (uint)indices.Count;
-        foreach (var dx9 in BuildDx9Quad(rec))
-            vertices.Add(ToGpuVertex(dx9, vpX, vpY, vpW, vpH));
-        var @base = (ushort)firstVertex;
-        foreach (var i in QuadIndices)
-            indices.Add((ushort)(@base + i));
+        if (rec.RecordType == (int)GlyphRecordType)
+        {
+            foreach (var dx9 in BuildDx9GlyphList(rec))
+                vertices.Add(ToGpuVertex(dx9, vpX, vpY, vpW, vpH));
+        }
+        else
+        {
+            foreach (var dx9 in BuildDx9Quad(rec))
+                vertices.Add(ToGpuVertex(dx9, vpX, vpY, vpW, vpH));
+            foreach (var i in QuadIndices)
+                indices.Add(i);
+        }
+
         draws.Add(BuildDraw(rec, firstVertex, firstIndex));
     }
 

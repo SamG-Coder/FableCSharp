@@ -2260,12 +2260,18 @@ public sealed class EngineLifecycle : IDisposable
     public float FrontendScaleX { get; private set; }
     public float FrontendScaleY { get; private set; }
     public string? FrontendPressStartLabel { get; private set; }
+    /// <summary>
+    /// TEMPORARY CPU blit dump of dest quads.
+    /// Not the Present path. Present is
+    /// <see cref="FrontendBatch"/>.
+    /// </summary>
     public byte[]? FrontendPresentRgba { get; private set; }
     public int FrontendPresentWidth { get; private set; }
     public int FrontendPresentHeight { get; private set; }
     public FrontendSubmitBatch? FrontendBatch { get; private set; }
     public IReadOnlyList<FrontendWidget> FrontendWidgets => _frontendWidgets;
     private readonly List<FrontendWidget> _frontendWidgets = [];
+    private readonly List<int> _frontendSubmitCounts = [];
     private FrontendSpriteBank? _frontendSprites;
     private FontBank? _frontendFonts;
     /// <summary>
@@ -3184,25 +3190,51 @@ public sealed class EngineLifecycle : IDisposable
         {
             Note(FrontendContainerDrawFn, "Frontend", "UI",
                 $"00530260 vtbl+{FrontendWidgetDrawVtbl} 012497E4 +{FrontendChildListOffset} n={FrontendChildCount}");
-            foreach (var widget in _frontendWidgets)
-            {
-                if (widget.Name == FrontendPressStartMenu)
-                    continue;
-                Note(FrontendWidgetDrawFn, "Frontend", "UI",
-                    $"00530260 child {widget.Name} type {widget.Type} dest {widget.DestX0},{widget.DestY0},{widget.DestX1},{widget.DestY1}");
-                QueueFrontend2dRecord(widget);
-            }
+            var drawn = 0;
+            foreach (var root in FrontendWidgetFactory.ChildrenOf(_frontendWidgets, null))
+                DrawContainerWalk(root, ref drawn);
+            FrontendWidgetsDrawn = Math.Max(1, drawn);
         }
         else
         {
             Note(FrontendWidgetDrawFn, "Frontend", "UI",
                 $"0041AFA0 vtbl+{FrontendWidgetDrawVtbl} 0122F5D4");
             QueueFrontend2dRecord(null);
+            FrontendWidgetsDrawn = Math.Max(1, _frontendWidgets.Count);
         }
 
         Note(FrontendWidgetNextFn, "Frontend", "UI", "004292C0");
-        FrontendWidgetsDrawn = Math.Max(1, _frontendWidgets.Count);
         CompositeFrontendPresent();
+    }
+
+    /// <summary>
+    /// <c>00530260</c> <c>vtbl+8</c>: walk
+    /// <c>+176</c>. Skip when
+    /// <c>vtbl+420</c> (<c>+302</c> bit 0)
+    /// or the child is not visible.
+    /// Type 5/10/12/18 recurse; leaves
+    /// call <c>0041AFA0</c> /
+    /// <c>0054EF00</c>.
+    /// </summary>
+    private void DrawContainerWalk(int index, ref int drawn)
+    {
+        if ((uint)index >= (uint)_frontendWidgets.Count)
+            return;
+        var widget = _frontendWidgets[index];
+        if (!widget.Visible || widget.Clip)
+            return;
+        drawn++;
+        if (FrontendWidgetType.DrawsChildList(widget.Type))
+        {
+            foreach (var child in FrontendWidgetFactory.ChildrenOf(
+                _frontendWidgets, widget.Name))
+                DrawContainerWalk(child, ref drawn);
+            return;
+        }
+
+        Note(FrontendWidgetDrawFn, "Frontend", "UI",
+            $"00530260 child {widget.Name} type {widget.Type} dest {widget.DestX0},{widget.DestY0},{widget.DestX1},{widget.DestY1}");
+        QueueFrontend2dRecord(widget);
     }
 
     /// <summary>
@@ -3261,9 +3293,9 @@ public sealed class EngineLifecycle : IDisposable
             FrontendEnqueueRan = true;
             FrontendInstanceSubmitRan = true;
             Note(FrontendSpriteInstanceSubmitFn, "Frontend", "UI",
-                $"00BAD8A0 dest {destX0},{destY0},{destX1},{destY1} 009DB700 +16020");
+                $"00BAD8A0 dest {destX0},{destY0},{destX1},{destY1} 00BAE2D0 no 009DB700");
             Note(FrontendSubmitDispatchFn, "Frontend", "UI",
-                $"00B324A0 dest nonempty 00BAD8A0 enqueue 0x{FrontendSpriteInstanceVtbl:X}");
+                $"00B324A0 dest nonempty 00BAD8A0 00BAE2D0 0x{FrontendSpriteInstanceVtbl:X}");
         }
         Frontend2dLastType = Frontend2dRecordType;
         Frontend2dLastPacker = packer;
@@ -6793,23 +6825,17 @@ public sealed class EngineLifecycle : IDisposable
             var persistH = widget.PersistHeight > 0 ? (int)widget.PersistHeight : 0;
             var leftoverW = 0f;
             var leftoverH = 0f;
-            var tex = widget.TextureName is null
-                ? null
-                : _frontendSprites?.TryLoad(widget.TextureName);
-            if (tex is not null)
+            // 0041AC20 leftover +204/+208 only when
+            // +376 = first style GraphicIndex != 0,
+            // via bank vtbl+84/+88 (frame w/h).
+            if (widget.GraphicId != 0 &&
+                widget.TextureName is { } leftoverName &&
+                _frontendSprites?.TryLoad(leftoverName) is { } leftoverTex)
             {
-                leftoverW = tex.Width;
-                leftoverH = tex.Height;
+                leftoverW = leftoverTex.FrameWidth > 0 ? leftoverTex.FrameWidth : leftoverTex.Width;
+                leftoverH = leftoverTex.FrameHeight > 0 ? leftoverTex.FrameHeight : leftoverTex.Height;
             }
 
-            var label = widget.Text ?? widget.TextTag;
-            var face = widget.Type == FrontendWidgetType.Text
-                ? _frontendFonts?.TryLoad(FrontendUiFontFace)
-                : null;
-            if (leftoverW == 0 && !string.IsNullOrEmpty(label) && face is not null)
-                leftoverW = face.MeasureWidth(label);
-            if (leftoverH == 0 && !string.IsNullOrEmpty(label) && face is not null)
-                leftoverH = face.LineHeight;
             FrontendDest? parentDest = null;
             if (widget.ParentName is { } parentName &&
                 dests.TryGetValue(parentName, out var parent))
@@ -6817,11 +6843,16 @@ public sealed class EngineLifecycle : IDisposable
             var layout = new FrontendWidgetLayout(
                 widget.PersistX,
                 widget.PersistY,
+                PersistScaleX: widget.PersistScaleX,
+                PersistScaleY: widget.PersistScaleY,
                 PersistWidth: persistW,
                 PersistHeight: persistH,
                 LeftoverW: leftoverW,
                 LeftoverH: leftoverH,
-                Center: false);
+                Center: widget.Center,
+                Absolute: widget.Absolute,
+                ScaleOriginToViewport: widget.ScaleOriginToViewport,
+                ScaleSizeToViewport: widget.ScaleSizeToViewport);
             var dest = FrontendLayout.Compute(layout, parentDest, viewport);
             dests[widget.Name] = dest;
             _frontendWidgets[i] = widget with
@@ -6862,60 +6893,155 @@ public sealed class EngineLifecycle : IDisposable
         return null;
     }
 
+    /// <summary>
+    /// Present is <see cref="FrontendBatch"/>
+    /// (<c>00BAE2D0</c> / <c>00AB7C20</c> →
+    /// Vulkan). CPU blit into
+    /// <see cref="FrontendPresentRgba"/> is a
+    /// TEMPORARY test dump only.
+    /// </summary>
     private void CompositeFrontendPresent()
     {
         var width = BackBufferWidth > 0 ? BackBufferWidth : DisplayDefaultWidth;
         var height = BackBufferHeight > 0 ? BackBufferHeight : DisplayDefaultHeight;
+        var (records, textures) = CollectFrontendRecords();
+        FrontendBatch = Dx9VulkanFrontend.BuildBatch(records, textures, 0, 0, width, height);
+        DumpFrontendPresentRgba(records, textures, width, height);
+    }
+
+    private (List<FrontendDx9DrawRecord> Records, List<GpuTexture> Textures)
+        CollectFrontendRecords()
+    {
         var records = new List<FrontendDx9DrawRecord>();
         var textures = new List<GpuTexture>();
         var textureIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        foreach (var widget in _frontendWidgets)
+        _frontendSubmitCounts.Clear();
+        for (var i = 0; i < _frontendWidgets.Count; i++)
         {
-            if (widget.DestX1 <= widget.DestX0 || widget.DestY1 <= widget.DestY0)
-                continue;
-            if (widget.TextureName is { } texName &&
-                _frontendSprites?.TryLoad(texName) is { } tex)
+            var widget = _frontendWidgets[i];
+            var u0 = widget.U0;
+            var v0 = widget.V0;
+            var u1 = widget.U1;
+            var v1 = widget.V1;
+            var haveUv = false;
+            var glyphs = 0;
+            var colour = widget.Colour;
+            var recordStart = records.Count;
+            if (widget.Visible && !widget.Clip &&
+                widget.DestX1 > widget.DestX0 && widget.DestY1 > widget.DestY0)
             {
-                if (!textureIndex.TryGetValue(texName, out var id))
+                if (widget.TextureName is { } texName &&
+                    _frontendSprites?.TryLoad(texName) is { } tex)
                 {
-                    id = textures.Count;
-                    textureIndex[texName] = id;
-                    textures.Add(new GpuTexture(id, tex.Width, tex.Height, tex.Rgba));
-                }
+                    if (!textureIndex.TryGetValue(texName, out var id))
+                    {
+                        id = textures.Count;
+                        textureIndex[texName] = id;
+                        textures.Add(new GpuTexture(id, tex.Width, tex.Height, tex.Rgba));
+                    }
 
-                records.Add(new FrontendDx9DrawRecord(
-                    widget.DestX0, widget.DestY0, widget.DestX1, widget.DestY1,
-                    0f, 0f, 1f, 1f, 0xFFFFFFFFu, id,
-                    Dx9VulkanFrontend.WidgetBlendDefault));
+                    var frame = tex.FrameUv();
+                    var uv = FrontendDx9Submit.SubmittedSpriteUv(
+                        0f, 0f, 0f, 0f,
+                        frame.U0, frame.V0, frame.U1, frame.V1);
+                    records.Add(new FrontendDx9DrawRecord(
+                        widget.DestX0, widget.DestY0, widget.DestX1, widget.DestY1,
+                        uv.U0, uv.V0, uv.U1, uv.V1, colour, id,
+                        Dx9VulkanFrontend.WidgetBlendDefault,
+                        (int)Dx9VulkanFrontend.RecordType,
+                        Dx9VulkanFrontend.VertexStride,
+                        (int)FrontendDx9Vertex.NativeUsedBytes));
+                    u0 = uv.U0;
+                    v0 = uv.V0;
+                    u1 = uv.U1;
+                    v1 = uv.V1;
+                    haveUv = true;
+                }
             }
 
-            if (widget.Type == FrontendWidgetType.Text &&
+            if (widget.Visible && !widget.Clip &&
+                widget.Type == FrontendWidgetType.Text &&
                 !string.IsNullOrEmpty(widget.Text))
             {
                 var face = _frontendFonts?.TryLoad(FrontendUiFontFace);
-                if (face is null)
-                    continue;
-                const string atlasKey = FontFile.UiFace;
-                if (!textureIndex.TryGetValue(atlasKey, out var atlasId))
+                if (face is not null)
                 {
-                    atlasId = textures.Count;
-                    textureIndex[atlasKey] = atlasId;
-                    textures.Add(new GpuTexture(atlasId, face.UvWidth, face.UvHeight, face.Atlas));
-                }
+                    const string atlasKey = FontFile.UiFace;
+                    if (!textureIndex.TryGetValue(atlasKey, out var atlasId))
+                    {
+                        atlasId = textures.Count;
+                        textureIndex[atlasKey] = atlasId;
+                        textures.Add(new GpuTexture(
+                            atlasId, face.UvWidth, face.UvHeight, face.Atlas));
+                    }
 
-                foreach (var glyph in FrontendTextDraw.Layout(
-                    face, widget.Text, widget.DestX0, widget.DestY0))
-                {
-                    records.Add(new FrontendDx9DrawRecord(
-                        glyph.DestX0, glyph.DestY0, glyph.DestX1, glyph.DestY1,
-                        glyph.U0, glyph.V0, glyph.U1, glyph.V1,
-                        glyph.Color, atlasId,
-                        Dx9VulkanFrontend.WidgetBlendDefault));
+                    var leftoverW = MathF.Max(0f, widget.DestX1 - widget.DestX0);
+                    var (penX, penY) = FrontendTextDraw.Type6Pen(
+                        widget.DestX0, widget.DestY0, leftoverW, 1f,
+                        FrontendTextDraw.AlignLeft);
+                    foreach (var glyph in FrontendTextDraw.Layout(
+                        face, widget.Text, penX, penY, colour))
+                    {
+                        records.Add(new FrontendDx9DrawRecord(
+                            glyph.DestX0, glyph.DestY0, glyph.DestX1, glyph.DestY1,
+                            glyph.U0, glyph.V0, glyph.U1, glyph.V1,
+                            glyph.Color, atlasId,
+                            Dx9VulkanFrontend.WidgetBlendDefault,
+                            FrontendTextDraw.Type6RecordType,
+                            FrontendTextDraw.VertexStride,
+                            FrontendTextDraw.VertexStride,
+                            AppliesHalfPixel: true));
+                        if (!haveUv)
+                        {
+                            u0 = glyph.U0;
+                            v0 = glyph.V0;
+                            u1 = glyph.U1;
+                            v1 = glyph.V1;
+                            haveUv = true;
+                        }
+                        else
+                        {
+                            if (glyph.U0 < u0)
+                                u0 = glyph.U0;
+                            if (glyph.V0 < v0)
+                                v0 = glyph.V0;
+                            if (glyph.U1 > u1)
+                                u1 = glyph.U1;
+                            if (glyph.V1 > v1)
+                                v1 = glyph.V1;
+                        }
+
+                        glyphs++;
+                    }
                 }
             }
+
+            _frontendWidgets[i] = widget with
+            {
+                U0 = haveUv ? u0 : widget.U0,
+                V0 = haveUv ? v0 : widget.V0,
+                U1 = haveUv ? u1 : widget.U1,
+                V1 = haveUv ? v1 : widget.V1,
+                GlyphCount = glyphs,
+                DrawOrder = i,
+            };
+            _frontendSubmitCounts.Add(records.Count - recordStart);
         }
 
-        FrontendBatch = Dx9VulkanFrontend.BuildBatch(records, textures, 0, 0, width, height);
+        return (records, textures);
+    }
+
+    /// <summary>
+    /// TEMPORARY test dump. Present must not
+    /// use this bitmap; host Present is
+    /// <see cref="FrontendBatch"/>.
+    /// </summary>
+    private void DumpFrontendPresentRgba(
+        List<FrontendDx9DrawRecord> records,
+        List<GpuTexture> textures,
+        int width,
+        int height)
+    {
         var rgba = new byte[width * height * 4];
         foreach (var rec in records)
         {
@@ -6928,6 +7054,48 @@ public sealed class EngineLifecycle : IDisposable
         FrontendPresentRgba = rgba;
         FrontendPresentWidth = width;
         FrontendPresentHeight = height;
+    }
+
+    /// <summary>
+    /// One row per constructed widget after
+    /// dest layout and batch submit.
+    /// UVs come from <see cref="FrontendBatch"/>
+    /// when that widget produced draws.
+    /// </summary>
+    public IReadOnlyList<FrontendFrameDumpRow> DumpFrontendFrame()
+    {
+        var rows = new List<FrontendFrameDumpRow>(_frontendWidgets.Count);
+        var byName = new Dictionary<string, FrontendWidget>(
+            _frontendWidgets.Count, StringComparer.Ordinal);
+        foreach (var widget in _frontendWidgets)
+            byName[widget.Name] = widget;
+        var face = _frontendFonts?.TryLoad(FrontendUiFontFace);
+        var batch = FrontendBatch;
+        var drawCursor = 0;
+        for (var i = 0; i < _frontendWidgets.Count; i++)
+        {
+            var widget = _frontendWidgets[i];
+            FrontendWidget? parent = null;
+            if (widget.ParentName is { } parentName &&
+                byName.TryGetValue(parentName, out var found))
+                parent = found;
+            var submitted = i < _frontendSubmitCounts.Count
+                ? _frontendSubmitCounts[i]
+                : FrontendFrameDump.SubmittedDraws(widget);
+            rows.Add(FrontendFrameDump.Row(
+                widget, parent, batch, drawCursor, submitted, face));
+            drawCursor += submitted;
+        }
+
+        return rows;
+    }
+
+    public string WriteFrontendFrameDump(string path)
+    {
+        var rows = DumpFrontendFrame();
+        var draws = FrontendBatch?.Draws.Length ?? 0;
+        FrontendFrameDump.Write(path, rows, draws);
+        return path;
     }
 
     private static void BlitFrontendQuad(

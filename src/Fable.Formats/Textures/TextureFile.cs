@@ -17,6 +17,17 @@ public sealed class TextureFile
     public required string Name { get; init; }
     public required int Width { get; init; }
     public required int Height { get; init; }
+    /// <summary>
+    /// Bank info <c>+6</c>. <c>00BAD8A0</c>
+    /// dest size. Same as
+    /// <see cref="Width"/> on first-seen
+    /// Press Start sprites.
+    /// </summary>
+    public int FrameWidth { get; init; }
+    /// <summary>
+    /// Bank info <c>+8</c>.
+    /// </summary>
+    public int FrameHeight { get; init; }
     public required int FormatCode { get; init; }
     public required TextureCompression Compression { get; init; }
     public required byte[] Rgba { get; init; }
@@ -56,8 +67,13 @@ public sealed class TextureFile
     /// frame size at <c>+6/+8</c> when
     /// rec+56 is set. CreateTexture uses
     /// wrapper <c>+92/+96</c>, not these
-    /// offsets. UV origin / flip in the
-    /// leftover bytes are UNREAD.
+    /// offsets. <c>+10</c> is not a UV
+    /// flip. Frame origin X/Y is not in
+    /// this header; <c>009FC810</c>
+    /// wrapper +16/+18 first-seen 0.
+    /// DXT/RGBA y=0 is the image top
+    /// (DX9 LockRect / DXT block row 0).
+    /// Decode does not flip.
     /// </summary>
     public const int HeaderBytes = 34;
     public const int HeaderWidthOffset = 0;
@@ -67,6 +83,11 @@ public sealed class TextureFile
     public const int HeaderFormatCodeOffset = 12;
     public const int HeaderUnused4Offset = 4;
     public const int HeaderLevelsOffset = 10;
+    public const bool DecodeRowZeroIsTop = true;
+    public const bool FirstSeenDxtMatchesDx9RowOrder = true;
+    public const bool FirstSeenDecodeFlipsVertical = false;
+    public const bool HeaderLevelsIsUvFlip = false;
+    public const bool FrameOriginInHeader = false;
 
     public static TextureHeader ReadHeader(ReadOnlySpan<byte> info)
     {
@@ -117,6 +138,8 @@ public sealed class TextureFile
             Name = name,
             Width = header.Width,
             Height = header.Height,
+            FrameWidth = header.FrameWidth,
+            FrameHeight = header.FrameHeight,
             FormatCode = header.FormatCode,
             Compression = compression,
             Rgba = rgba,
@@ -125,6 +148,26 @@ public sealed class TextureFile
             LowerMips = lower,
         };
     }
+
+    /// <summary>
+    /// <c>009FC810</c> frame UV. Origin is
+    /// wrapper +16/+18 (not in the 34-byte
+    /// info). First-seen 0,0. Size is info
+    /// <c>+6/+8</c> over Width/Height.
+    /// V=0 is the frame top. No <c>1-v</c>.
+    /// Full-frame files (frame==size) are
+    /// 0,0,1,1.
+    /// </summary>
+    public static (float U0, float V0, float U1, float V1) FrameUv(
+        int width, int height, int frameWidth, int frameHeight)
+    {
+        var u1 = width <= 0 ? 1f : (float)Math.Max(frameWidth, 0) / width;
+        var v1 = height <= 0 ? 1f : (float)Math.Max(frameHeight, 0) / height;
+        return (0f, 0f, u1, v1);
+    }
+
+    public (float U0, float V0, float U1, float V1) FrameUv() =>
+        FrameUv(Width, Height, FrameWidth, FrameHeight);
 
     public static int TopMipSize(int width, int height, TextureCompression compression)
     {

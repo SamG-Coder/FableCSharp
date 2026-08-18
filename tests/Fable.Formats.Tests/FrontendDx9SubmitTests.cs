@@ -209,6 +209,32 @@ public sealed class FrontendDx9SubmitTests
     }
 
     [Fact]
+    public void Rec_uv_zero_submits_texture_full_quad()
+    {
+        Assert.Equal(68, FrontendDx9Submit.SpriteRecU0Offset);
+        Assert.Equal(117, FrontendDx9Submit.SpriteInstanceU0Offset);
+        Assert.Equal(0x00BB0970u, FrontendDx9Submit.QuadFillFn);
+        Assert.Equal(0x009FC810u, FrontendDx9Submit.TextureUvFn);
+        Assert.False(FrontendDx9Submit.FlipsUvV);
+        Assert.True(FrontendDx9Submit.UvVZeroAtDestTop);
+        Assert.False(FrontendDx9Submit.PersistFlipU);
+        Assert.False(FrontendDx9Submit.AppliesHalfPixelOffset);
+        Assert.True(FrontendDx9Submit.RecUvDegenerate(0, 0, 0, 0));
+        Assert.False(FrontendDx9Submit.RecUvDegenerate(0, 0, 1, 1));
+        var rec = FrontendDx9Submit.NonemptyDest(10, 20, 110, 70);
+        Assert.Equal(0f, rec.U0);
+        Assert.Equal(0f, rec.V1);
+        var uv = FrontendDx9Submit.SubmittedSpriteUv(rec.U0, rec.V0, rec.U1, rec.V1);
+        Assert.Equal(0f, uv.U0);
+        Assert.Equal(0f, uv.V0);
+        Assert.Equal(1f, uv.U1);
+        Assert.Equal(1f, uv.V1);
+        Assert.Equal(new ushort[] { 0, 1, 2, 1, 3, 2 }, FrontendDx9Submit.QuadIndices);
+        Assert.Equal(Dx9VulkanFrontend.QuadTl, FrontendDx9Submit.QuadTl);
+        Assert.Equal(Dx9FrontendState.TextureFullU1, FrontendDx9Submit.TextureFullU1);
+    }
+
+    [Fact]
     public void Vshader_2d_sprite_listing_is_mov_opos_v0()
     {
         var install = GameInstall.TryLocate();

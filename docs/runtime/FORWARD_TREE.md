@@ -116,7 +116,13 @@ Named stages are **push string then work**. Order is the file order.
 00402510  bootstrap  PROVEN
 ├── "Parse Command Line"          00402521
 │   ├── 00403B10
-│   └── 00997510 / 009974F0
+│   ├── 00997510 / 009974F0
+│   └── [0x137548F]!=0 → 00413C50  PROVEN PE=1
+│       ├── 009ED190 BindKey / RunScript
+│       ├── default_userst.ini 00999230 then 009EC890
+│       └── [0x1375444]!=0 → userst.ini 00414C66 009EC890
+│           SetFullscreen → [0x137544A] (009BF7E0 [ebx+28])
+│           SetResolution → [0x137545C]/[0x1375460]/bpp
 ├── "Setup Basic install files"   004025B3
 │   ├── 00404440
 │   └── 009D5240
@@ -133,9 +139,15 @@ Named stages are **push string then work**. Order is the file order.
 │       PARTICLE_FRONTEND / PARTICLE_FRONTEND_PC
 ├── "Setup library"               00403079
 │   ├── [0x137545C] / [0x1375460]  display 1024×768
+│   ├── [0x137544A] fullscreen byte → opt+16 → 009BF7E0 [ebx+28]
+│   │     sete [ebp+572] Windowed=!flag  PROVEN
+│   ├── [0x1375468] Z depth 32 (not the window flag)
 │   ├── 004023F0  TEXT_GUI_WINDOW_TITLE
 │   ├── 009A4EC0  engine singleton
-│   └── 009A6610  Setup library (CreateDevice lives under here)
+│   └── 009A6610  Setup library
+│       ├── [opt+20] bit 0x04 → 009A64B0 CreateWindowExW style 0xCA0000
+│       ├── 009A6A00 pack opt+92 → 009C0E50 clamp min 32
+│       └── 009BF7E0 CreateDevice  (not a d3d9 wrapper)
 ├── "End basic init"              00403354
 │   ├── 00418C3B                  if [0x1375459]
 │   ├── 004022B0  ProbeGraphics   if Setup library returned 1
@@ -1010,7 +1022,7 @@ Walk these **from their parent above**, not by string.
 | `00B40000` | `00BDC4F0` / `00BDDD50` | patch destroy |
 | `006C2170` | unload of previous ContainsMaps | region change |
 | `004B4260` | each initial-quest factory run | not Oakvale intro |
-| PRESS_START type 10 draw | native 0xE5 poster / font `009FE620` | `00530260` children PROVEN; glyph raster PARTIAL |
+| PRESS_START type 10 draw | native 0xE5 poster | `00530260` children PROVEN; type-6 `0054EF00` + `ENG_ARIAL_16` atlas PROVEN; glyph metric names PARTIAL |
 | `004167DA` | first call of `[engine+240]` | store-only; 0 `calldisp +240` on engine |
 | `00435530` empty dest | next type-1 resume / `00CB8220` parked | `00501450` still 0 E8/imm |
 

@@ -130,30 +130,51 @@ public sealed class FontFile
 
     public FontGlyph? Glyph(char ch) => GlyphAt(ch);
 
+    /// <summary><c>00AB7A10</c> page slot: <c>ch >> 6</c>.</summary>
+    public static int PageIndex(int ch) => ch >> 6;
+
+    /// <summary><c>00AB7A10</c> in-page index before subtracting first.</summary>
+    public static int SlotIndex(int ch) => ch & 63;
+
+    /// <summary>
+    /// <c>00AB7A10</c> / <c>00AB7C20</c>: page =
+    /// <c>ch >> 6</c>, index = <c>(ch &amp; 63) - first</c>,
+    /// then stride 24.
+    /// </summary>
     public FontGlyph? GlyphAt(int ch)
     {
         if (ch < MinChar || ch > MaxChar)
             return null;
-        var page = Pages[ch >> 6];
+        var page = Pages[PageIndex(ch)];
         if (page.Glyphs.Count == 0)
             return null;
-        var i = (ch & 63) - page.First;
+        var i = SlotIndex(ch) - page.First;
         if ((uint)i >= (uint)page.Glyphs.Count)
             return null;
         return page.Glyphs[i];
     }
 
-    public int MeasureWidth(string text)
+    /// <summary>
+    /// <c>00AB7B00</c> out+0 / out+4. Width is the
+    /// max line of <c>BearingX + AdvanceTail</c>.
+    /// Height is <c>CellHeight+1</c> per line;
+    /// empty string is 0×0.
+    /// </summary>
+    public (int Width, int Height) Measure(string text)
     {
         var width = 0;
         var line = 0;
+        var lines = 0;
+        var any = false;
         foreach (var ch in text)
         {
+            any = true;
             if (ch == '\n')
             {
                 if (line > width)
                     width = line;
                 line = 0;
+                lines++;
                 continue;
             }
 
@@ -161,8 +182,12 @@ public sealed class FontFile
                 line += glyph.Advance;
         }
 
-        return line > width ? line : width;
+        if (line > width)
+            width = line;
+        return any ? (width, (lines + 1) * LineHeight) : (0, 0);
     }
+
+    public int MeasureWidth(string text) => Measure(text).Width;
 
     /// <summary>
     /// File UV is <c>pixel / (atlas-1)</c>.

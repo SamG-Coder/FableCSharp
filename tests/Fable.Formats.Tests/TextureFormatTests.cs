@@ -37,6 +37,29 @@ public sealed class TextureFormatTests
     }
 
     [Fact]
+    public void Dxt_block_row_zero_is_image_top()
+    {
+        Assert.True(TextureFile.DecodeRowZeroIsTop);
+        Assert.True(TextureFile.FirstSeenDxtMatchesDx9RowOrder);
+        Assert.False(TextureFile.FirstSeenDecodeFlipsVertical);
+        Assert.False(TextureFile.HeaderLevelsIsUvFlip);
+        var block = new byte[] { 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x55, 0x55, 0x55 };
+        var rgba = Dxt.Decode(block, 4, 4, DxtKind.Dxt1);
+        Assert.Equal(255, rgba[0]);
+        Assert.Equal(255, rgba[1]);
+        Assert.Equal(255, rgba[2]);
+        Assert.Equal(0, rgba[4 * 4]);
+        Assert.Equal(0, rgba[4 * 4 + 1]);
+        Assert.Equal(0, rgba[4 * 4 + 2]);
+        var full = TextureFile.FrameUv(256, 256, 256, 256);
+        Assert.Equal((0f, 0f, 1f, 1f), full);
+        var half = TextureFile.FrameUv(256, 256, 128, 256);
+        Assert.Equal(0.5f, half.U1);
+        Assert.Equal(1f, half.V1);
+        Assert.Equal(0f, half.V0);
+    }
+
+    [Fact]
     public void Format_31_24bit_tga_is_dxt1_and_32_is_dxt5()
     {
         Assert.Equal(TextureCompression.Dxt1, TextureFile.Classify(0, 31, 512, 512, 1000));

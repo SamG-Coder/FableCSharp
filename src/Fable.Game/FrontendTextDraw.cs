@@ -27,9 +27,21 @@ public static class FrontendTextDraw
     public const int TrianglesPerGlyph = 2;
     public const int D3dPrimitiveTriangleList = 4;
     public const float HalfPixel = 0.5f;
+    public const uint HalfPixelVa = 0x0122F59C;
+    public const uint OneVa = 0x0122DED8;
+    public const uint Type6PadVa = 0x0122DCDC;
+    public const float Type6OriginPad = 2f;
+    public const uint Type6AlignFn = 0x0054FFF0;
+    public const int AlignLeft = 0;
+    public const int AlignCentre = 1;
+    public const int AlignRight = 2;
+    public const int Flag302CentreBit = 0x10;
+    public const int Flag302RightBit = 0x20;
+    public const int WidgetColourOffset = 148;
     public const uint DefaultColor = 0xFFFFFFFFu;
     public const string PressButtonTag = "TEXT_GUI_MENU_PRESS_BUTTON";
     public const string PressButtonBank = "TEXT_ENGLISH_MAIN";
+    public const string PressButtonText = "Press Left Mouse Button To Continue";
 
     public readonly record struct GlyphQuad(
         char Character,
@@ -45,7 +57,67 @@ public static class FrontendTextDraw
         int AtlasX0,
         int AtlasY0,
         int AtlasX1,
-        int AtlasY1);
+        int AtlasY1,
+        int GlyphIndex,
+        int Width,
+        int Advance);
+
+    public readonly record struct GlyphVertex(
+        float X,
+        float Y,
+        float U,
+        float V);
+
+    /// <summary>
+    /// <c>0054FFF0</c>: bit4 → centre (1), else
+    /// <c>(flag302 >> 4) &amp; 2</c> (bit5 → right).
+    /// First-seen <c>+302</c> bits 4/5 stay 0 → left.
+    /// </summary>
+    public static int AlignFromFlag302(byte flag302)
+    {
+        if ((flag302 & Flag302CentreBit) != 0)
+            return AlignCentre;
+        return (flag302 >> 4) & AlignRight;
+    }
+
+    /// <summary>
+    /// <c>0054EF00</c> leftover <c>+204</c> × scale.
+    /// Centre also × <c>[0x122F59C]=0.5</c>, then
+    /// <c>fsubr</c> from origin X.
+    /// </summary>
+    public static float Type6AlignedX(
+        float originX, float leftover204, float scale, int align)
+    {
+        if (align == AlignCentre)
+            return originX - leftover204 * scale * HalfPixel;
+        if (align == AlignRight)
+            return originX - leftover204 * scale;
+        return originX;
+    }
+
+    /// <summary>
+    /// Type-6 pen before <c>00AB7C20</c>: aligned X/Y
+    /// plus <c>[0x122DCDC]=2</c>.
+    /// </summary>
+    public static (float X, float Y) Type6Pen(
+        float originX, float originY, float leftover204, float scale, int align) =>
+        (Type6AlignedX(originX, leftover204, scale, align) + Type6OriginPad,
+            originY + Type6OriginPad);
+
+    /// <summary>
+    /// <c>00AB7C20</c> 6-vert list. U0/V0 is dest
+    /// top-left (X0,Y0); U1/V1 is dest bottom-right.
+    /// Order: BL, TL, BR, TR, BR, TL.
+    /// </summary>
+    public static GlyphVertex[] NativeVerts(in GlyphQuad q) =>
+    [
+        new(q.DestX0, q.DestY1, q.U0, q.V1),
+        new(q.DestX0, q.DestY0, q.U0, q.V0),
+        new(q.DestX1, q.DestY1, q.U1, q.V1),
+        new(q.DestX1, q.DestY0, q.U1, q.V0),
+        new(q.DestX1, q.DestY1, q.U1, q.V1),
+        new(q.DestX0, q.DestY0, q.U0, q.V0),
+    ];
 
     /// <summary>
     /// <c>00AB7C20</c> layout. Pen += bearing, dest
@@ -66,8 +138,7 @@ public static class FrontendTextDraw
         var quads = new List<GlyphQuad>(text.Length);
         var penX = x;
         var penY = y;
-        var lineHeight = font.LineHeight * scale;
-        var glyphHeight = lineHeight;
+        var glyphHeight = font.LineHeight * scale;
         foreach (var ch in text)
         {
             if (ch == '\n')
@@ -99,7 +170,10 @@ public static class FrontendTextDraw
                 ax0,
                 ay0,
                 ax1,
-                ay1));
+                ay1,
+                ch,
+                glyph.Width,
+                glyph.Advance));
             penX += glyph.Advance * scale;
         }
 

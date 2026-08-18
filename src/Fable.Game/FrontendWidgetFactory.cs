@@ -29,7 +29,75 @@ public static class FrontendWidgetFactory
         if (parsed is null)
             return widgets;
         AttachChildren(widgets, defs, parsed, rootName, sprites, lookupText);
+        ApplyFirstSeenState(widgets);
         return widgets;
+    }
+
+    /// <summary>
+    /// <c>0052C730</c> writes
+    /// <c>+324/+328/+332=0</c>. Type 18
+    /// keeps persist child 0. Type 5/10/12
+    /// keep every +176 child. Visibility
+    /// and enabled inherit from the parent.
+    /// </summary>
+    public static void ApplyFirstSeenState(List<FrontendWidget> widgets)
+    {
+        for (var i = 0; i < widgets.Count; i++)
+        {
+            var widget = widgets[i];
+            widgets[i] = widget with
+            {
+                Visible = true,
+                Enabled = true,
+                Clip = false,
+                ActiveChild = FrontendWidgetType.FirstSeenState,
+            };
+        }
+
+        for (var i = 0; i < widgets.Count; i++)
+        {
+            if (!FrontendWidgetType.SelectsChild(widgets[i].Type))
+                continue;
+            var kids = ChildrenOf(widgets, widgets[i].Name);
+            var active = FrontendWidgetType.FirstSeenState;
+            widgets[i] = widgets[i] with { ActiveChild = active };
+            for (var k = 0; k < kids.Count; k++)
+            {
+                if (k == active)
+                    continue;
+                var child = kids[k];
+                widgets[child] = widgets[child] with { Visible = false };
+            }
+        }
+
+        var byName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < widgets.Count; i++)
+            byName.TryAdd(widgets[i].Name, i);
+        for (var i = 0; i < widgets.Count; i++)
+        {
+            if (widgets[i].ParentName is not { } parentName ||
+                !byName.TryGetValue(parentName, out var parent))
+                continue;
+            var inherit = widgets[parent];
+            widgets[i] = widgets[i] with
+            {
+                Visible = widgets[i].Visible && inherit.Visible && !inherit.Clip,
+                Enabled = widgets[i].Enabled && inherit.Enabled,
+                Clip = widgets[i].Clip || inherit.Clip,
+            };
+        }
+    }
+
+    public static List<int> ChildrenOf(IReadOnlyList<FrontendWidget> widgets, string? parent)
+    {
+        var kids = new List<int>();
+        for (var i = 0; i < widgets.Count; i++)
+        {
+            if (string.Equals(widgets[i].ParentName, parent, StringComparison.Ordinal))
+                kids.Add(i);
+        }
+
+        return kids;
     }
 
     private static void AttachChildren(
@@ -78,6 +146,21 @@ public static class FrontendWidgetFactory
             def?.Width ?? 0,
             def?.Height ?? 0,
             def?.PositionX ?? 0,
-            def?.PositionY ?? 0));
+            def?.PositionY ?? 0,
+            PersistScaleX: def?.ZoomX ?? 1f,
+            PersistScaleY: def?.ZoomY ?? 1f,
+            Center: def?.Center ?? false,
+            Absolute: def?.Absolute ?? false,
+            ScaleOriginToViewport: def?.ScaleOriginToViewport ?? false,
+            ScaleSizeToViewport: def?.ScaleSizeToViewport ?? false,
+            Visible: true,
+            Enabled: true,
+            Clip: false,
+            ActiveChild: FrontendWidgetType.FirstSeenState,
+            Colour: FrontendFrameDump.PackPersistColour(
+                def?.ColourR ?? 0f,
+                def?.ColourG ?? 0f,
+                def?.ColourB ?? 0f,
+                def?.ColourA ?? 0f)));
     }
 }

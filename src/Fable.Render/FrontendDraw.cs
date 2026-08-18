@@ -22,10 +22,12 @@ public readonly record struct FrontendDraw(
     int D3dPrimitiveType);
 
 /// <summary>
-/// Native-equivalent type <c>0x22</c> draw
-/// after dest layout. Positions are dest
-/// pixels (widget +12 / instance+72), not
-/// a hardcoded Press Start rect.
+/// Native dest+UV record after layout.
+/// Type <c>0x22</c> sprites: dest rec+12 /
+/// instance+72, stride 32, DIPUP prim 4.
+/// Type <c>0x27</c> glyphs: 00AB7C20 6×28-byte
+/// verts packed into <see cref="FrontendDx9Vertex"/>
+/// (28 used, 4 pad).
 /// </summary>
 public readonly record struct FrontendDx9DrawRecord(
     float DestX0,
@@ -39,7 +41,10 @@ public readonly record struct FrontendDx9DrawRecord(
     uint DiffuseArgb,
     int TextureId,
     int HandlerBlendMode,
-    int RecordType = 0x22);
+    int RecordType = 0x22,
+    int VertexStride = 32,
+    int NativeUsedBytes = 28,
+    bool AppliesHalfPixel = false);
 
 /// <summary>
 /// Display VB stride <c>32</c>
@@ -94,11 +99,10 @@ public readonly struct FrontendGpuVertex(Vector4 position, Vector4 color, Vector
 }
 
 /// <summary>
-/// Optional <c>EngineFrame</c> payload.
-/// Main agent adds the field; this type
-/// does not rewrite <c>IEngineHost.cs</c>.
+/// Present payload for <c>009BEEB0</c>.
 /// Replaces <c>FrontendRgba</c> /
-/// <c>SetVideoFrame</c>.
+/// <c>SetVideoFrame</c>. CPU blit dump is
+/// not this path.
 /// </summary>
 public readonly record struct FrontendSubmitBatch(
     FrontendGpuVertex[] Vertices,

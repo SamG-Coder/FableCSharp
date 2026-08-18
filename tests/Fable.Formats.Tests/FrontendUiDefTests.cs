@@ -35,6 +35,11 @@ public sealed class FrontendUiDefTests
         Assert.Equal(FableCrc.Hash("ColourG"), FrontendUiDef.ColourGCrc);
         Assert.Equal(FableCrc.Hash("ColourB"), FrontendUiDef.ColourBCrc);
         Assert.Equal(FableCrc.Hash("ColourA"), FrontendUiDef.ColourACrc);
+        Assert.Equal(FableCrc.Hash("ZoomX"), FrontendUiDef.ZoomXCrc);
+        Assert.Equal(0xE78E700Eu, FrontendUiDef.ZoomXCrc);
+        Assert.Equal(FableCrc.Hash("ZoomY"), FrontendUiDef.ZoomYCrc);
+        Assert.Equal(0x90894098u, FrontendUiDef.ZoomYCrc);
+        Assert.NotEqual(FableCrc.Hash("ScaleX"), FrontendUiDef.ZoomXCrc);
         Assert.NotEqual(FableCrc.Hash("TextTag"), FrontendUiDef.TextTagCrc);
         Assert.NotEqual(FableCrc.Hash("Graphic"), FrontendUiDef.GraphicIndexCrc);
         Assert.NotEqual(FableCrc.Hash("Texture"), FrontendUiDef.GraphicIndexCrc);
@@ -72,6 +77,12 @@ public sealed class FrontendUiDefTests
         Assert.Equal("TEXT_GUI_MENU_PRESS_BUTTON", text.TextTag);
         Assert.Equal(320f, text.PositionX);
         Assert.Equal(240f, text.PositionY);
+        Assert.Equal(1f, text.ZoomX);
+        Assert.Equal(1f, text.ZoomY);
+        Assert.False(text.Center);
+        Assert.False(text.Absolute);
+        Assert.False(text.ScaleOriginToViewport);
+        Assert.False(text.ScaleSizeToViewport);
         var title = FrontendUiDef.TryParse(bin.FindEntry("UI_TITLE")!);
         Assert.NotNull(title);
         Assert.Equal(5, title.Type);
@@ -105,13 +116,50 @@ public sealed class FrontendUiDefTests
         Assert.Equal(362, mouse.GraphicBankId);
         Assert.Equal(0, text.GraphicBankId);
         Assert.Equal(0, root.GraphicBankId);
-        Assert.True(title01.Partial);
-        Assert.Equal(FrontendUiDef.UnreadNestedCrc, title01.UnreadCrcs[0]);
         var raw = bin.FindEntry("UI_TITLE_01")!.Raw;
         var crcOff = IndexOfU32(raw, FrontendUiDef.GraphicIndexCrc);
         Assert.True(crcOff >= 0);
         Assert.Equal(3, BitConverter.ToInt32(raw, crcOff + 4));
         Assert.Equal(3, title01.GraphicBankId);
+        Assert.Equal(0xC50CA371u, FrontendUiDef.ScaleSizeCrc);
+        Assert.Equal(0xB466D948u, FrontendUiDef.ScaleOriginCrc);
+        Assert.Equal(0x64D3430Eu, FrontendUiDef.CentreCrc);
+        Assert.Equal(0x38BBD87Fu, FrontendUiDef.AbsoluteCrc);
+        Assert.NotEqual(FrontendUiDef.UnreadNestedCrc,
+            title01.UnreadCrcs.Count == 0 ? 0 : title01.UnreadCrcs[0]);
+        var titleLayerOff = IndexOfU32(raw, FrontendUiDef.LayerCrc);
+        Assert.True(titleLayerOff > crcOff);
+    }
+
+    [Fact]
+    public void Press_Start_remap_bits_come_from_def_520_521()
+    {
+        var (_, _, bin) = LoadFrontend();
+        var root = FrontendUiDef.TryParse(bin.FindEntry("UI_FRONTEND_PRESS_START_MENU")!)!;
+        var title = FrontendUiDef.TryParse(bin.FindEntry("UI_TITLE")!)!;
+        var title01 = FrontendUiDef.TryParse(bin.FindEntry("UI_TITLE_01")!)!;
+        var title02 = FrontendUiDef.TryParse(bin.FindEntry("UI_TITLE_02")!)!;
+        var forest = FrontendUiDef.TryParse(bin.FindEntry("UI_BLENDING_BACKGROUNDS_FORREST")!)!;
+        var forestTile = FrontendUiDef.TryParse(bin.FindEntry("UI_FRONTEND_BG_FORREST_1_1")!)!;
+        var text = FrontendUiDef.TryParse(bin.FindEntry("UI_PRESS_START_TEXT")!)!;
+        var mouse = FrontendUiDef.TryParse(bin.FindEntry("UI_MOUSE_POINTER")!)!;
+        Assert.Equal(1, root.ScaleSizeByte);
+        Assert.Equal(0, root.ScaleOriginByte);
+        Assert.True(root.ScaleSizeToViewport);
+        Assert.False(root.ScaleOriginToViewport);
+        foreach (var child in new[] { title, title01, title02, forest, forestTile, text, mouse })
+        {
+            Assert.Equal(0, child.ScaleSizeByte);
+            Assert.Equal(0, child.ScaleOriginByte);
+            Assert.False(child.ScaleSizeToViewport);
+            Assert.False(child.ScaleOriginToViewport);
+        }
+
+        Assert.False(title.Center);
+        Assert.True(mouse.Absolute);
+        var raw = bin.FindEntry("UI_FRONTEND_PRESS_START_MENU")!.Raw;
+        Assert.Equal(1, FrontendUiDef.ReadPersistU8(raw, FrontendUiDef.ScaleSizeCrc));
+        Assert.Equal(0, FrontendUiDef.ReadPersistU8(raw, FrontendUiDef.ScaleOriginCrc));
     }
 
     [Fact]
@@ -164,6 +212,31 @@ public sealed class FrontendUiDefTests
         Assert.Equal(10, profile[0].Type);
         Assert.Contains(profile, w => w.Name == "UI_TEXT_NEW_PROFILE_MENU_TITLE" && w.Type == 6);
         Assert.Contains(profile, w => w.TextTag == "TEXT_GUI_MENU_NEW_PROFILE");
+        var forest1 = Assert.Single(press, w => w.Name == "BLENDING_BG_FORREST_1");
+        var forest2 = Assert.Single(press, w => w.Name == "BLENDING_BG_FORREST_2");
+        var sunbeam1 = Assert.Single(press, w => w.Name == "BLENDING_BG_FORREST_SUNBEAM_1");
+        var sunbeam2 = Assert.Single(press, w => w.Name == "BLENDING_BG_FORREST_SUNBEAM_2");
+        var swap = Assert.Single(press, w => w.Name == "UI_SWAPPING_FORREST");
+        Assert.Equal(0, swap.ActiveChild);
+        Assert.True(forest1.Visible);
+        Assert.True(forest1.Enabled);
+        Assert.False(forest1.Clip);
+        Assert.False(forest2.Visible);
+        Assert.True(sunbeam1.Visible);
+        Assert.False(sunbeam2.Visible);
+        Assert.Contains(press, w => w.Name == "UI_TITLE_01" && w.Visible);
+        Assert.Contains(press, w => w.Name == "UI_TITLE_02" && w.Visible);
+        Assert.Contains(press, w => w.Name == "UI_PRESS_START_TEXT" && w.Visible);
+        Assert.Contains(press, w => w.Name == "UI_FRONTEND_LIST_PRESS_START_MENU" && w.Visible);
+        Assert.Contains(press, w => w.Name == "UI_LEGAL_TEXT" && w.Visible);
+        Assert.Contains(press, w => w.Name == "UI_MOUSE_POINTER" && w.Visible);
+        Assert.Contains(press, w =>
+            w.Name == "UI_FRONTEND_BG_FORREST_1_1" && w.Visible);
+        Assert.Contains(press, w =>
+            w.Name == "UI_FRONTEND_BG_FORREST_2_1" && !w.Visible);
+        Assert.True(FrontendWidgetType.DrawsChildList(10));
+        Assert.True(FrontendWidgetType.SelectsChild(18));
+        Assert.False(FrontendWidgetType.SelectsChild(5));
     }
 
     [Fact]

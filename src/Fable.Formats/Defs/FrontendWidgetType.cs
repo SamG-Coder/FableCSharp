@@ -17,6 +17,27 @@ public static class FrontendWidgetType
     public const uint JumpTableVa = 0x0041D7F8;
     public const uint DefLookupFn = 0x009AD410;
     public const uint ChildAttachFn = 0x005331A0;
+    /// <summary>
+    /// Type 5/10/18 <c>vtbl+8</c>. Walks
+    /// <c>+176</c> then <c>+188</c>.
+    /// </summary>
+    public const uint ContainerDrawFn = 0x00530260;
+    /// <summary>
+    /// <c>vtbl+192</c>. Writes
+    /// <c>+332</c> and forwards
+    /// <c>vtbl+188</c> to own
+    /// <c>+176</c> children.
+    /// </summary>
+    public const uint SelectStateFn = 0x0052CF40;
+    /// <summary>
+    /// <c>0052C730</c> after
+    /// <c>005339B0</c>:
+    /// <c>+324/+328/+332=0</c>.
+    /// </summary>
+    public const int FirstSeenState = 0;
+    public const int ChildListOffset = 176;
+    public const int ChildListEndOffset = 180;
+    public const int StateOffset = 332;
     public const int TypeOffset = 60;
     public const int MaxType = 43;
 
@@ -78,6 +99,21 @@ public static class FrontendWidgetType
 
     public static bool IsContainer(int type) =>
         type is Group or Menu or List or Swap or TableType;
+
+    /// <summary>
+    /// <c>vtbl+8 == 00530260</c> on
+    /// type 5 / 10 / 12 / 18.
+    /// </summary>
+    public static bool DrawsChildList(int type) =>
+        type is Group or Menu or List or Swap;
+
+    /// <summary>
+    /// Type 18 <c>CSwappingStateComponent</c>.
+    /// First-seen <c>+332=0</c> keeps
+    /// persist child 0.
+    /// </summary>
+    public static bool SelectsChild(int type) =>
+        type == Swap;
 
     public static bool TryConstruct(int type) =>
         type != Unused && Info(type).Ctor != 0;

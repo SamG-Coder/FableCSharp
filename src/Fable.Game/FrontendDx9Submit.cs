@@ -47,6 +47,35 @@ public static class FrontendDx9Submit
     public const uint SpriteHandlerVtbl = 0x012A5664;
     public const int SpriteInstanceBytes = 0x8C;
     public const int SpriteDestCopyOffset = 72;
+    public const int SpriteRecU0Offset = 68;
+    public const int SpriteRecV0Offset = 72;
+    public const int SpriteRecU1Offset = 76;
+    public const int SpriteRecV1Offset = 80;
+    public const int SpriteInstanceU0Offset = 117;
+    public const int SpriteInstanceV0Offset = 121;
+    public const int SpriteInstanceU1Offset = 125;
+    public const int SpriteInstanceV1Offset = 129;
+    public const int SpriteInstanceUvValidOffset = 133;
+    public const uint QuadFillFn = 0x00BB0970;
+    public const uint TextureUvFn = 0x009FC810;
+    public const uint HandlerIndexInitFn = 0x00BAD040;
+    public const uint UvEpsilonVa = 0x0129BA3C;
+    public const float UvEpsilon = 0.0001f;
+    public const uint TextureUvBiasVa = 0x0129C81C;
+    public const float TextureUvOriginScale = 1f / 32768f;
+    public const bool UvVZeroAtDestTop = true;
+    public const bool FlipsUvV = false;
+    public const bool AppliesHalfPixelOffset = false;
+    public const bool PersistFlipU = false;
+    public const bool PersistFlipV = false;
+    public const float TextureFullU0 = 0f;
+    public const float TextureFullV0 = 0f;
+    public const float TextureFullU1 = 1f;
+    public const float TextureFullV1 = 1f;
+    public const int QuadTl = 0;
+    public const int QuadTr = 1;
+    public const int QuadBl = 2;
+    public const int QuadBr = 3;
 
     public const uint GlyphRecordType = 0x27;
     public const int GlyphRecordBytes = 64;
@@ -172,6 +201,51 @@ public static class FrontendDx9Submit
 
     public static bool DisplayFlushShouldDip(int begin, int end) =>
         DisplayQueueCount(begin, end) != 0;
+
+    /// <summary>
+    /// <c>00BAD8A0</c> treats both UV
+    /// corners as unused when each
+    /// length² ≤ <c>0x129BA3C</c>².
+    /// First-seen packer writes 0,0,0,0.
+    /// </summary>
+    public static bool RecUvDegenerate(float u0, float v0, float u1, float v1)
+    {
+        var eps2 = UvEpsilon * UvEpsilon;
+        return u0 * u0 + v0 * v0 <= eps2 && u1 * u1 + v1 * v1 <= eps2;
+    }
+
+    /// <summary>
+    /// Submitted corner UV after
+    /// <c>00BB0970</c>. Rec +68..+80 is
+    /// an offset added to the texture
+    /// frame quad from <c>009FC810</c>.
+    /// Degenerate rec (first-seen 0,0,0,0)
+    /// leaves the frame UV. Texture-miss
+    /// default <c>00BB0EE4</c> is
+    /// 0,0,1,1 on TL-TR-BL-BR.
+    /// No <c>1-v</c>. No persist FlipU/V.
+    /// </summary>
+    public static (float U0, float V0, float U1, float V1) SubmittedSpriteUv(
+        float recU0, float recV0, float recU1, float recV1,
+        float frameU0 = TextureFullU0,
+        float frameV0 = TextureFullV0,
+        float frameU1 = TextureFullU1,
+        float frameV1 = TextureFullV1)
+    {
+        if (RecUvDegenerate(recU0, recV0, recU1, recV1))
+            return (frameU0, frameV0, frameU1, frameV1);
+        return (
+            frameU0 + recU0,
+            frameV0 + recV0,
+            frameU1 + recU0,
+            frameV1 + recV0);
+    }
+
+    /// <summary>
+    /// <c>00BAD040</c> INDEX16 at
+    /// handler+44: 0,1,2,1,3,2.
+    /// </summary>
+    public static readonly ushort[] QuadIndices = [0, 1, 2, 1, 3, 2];
 }
 
 /// <summary>
@@ -213,7 +287,12 @@ public readonly record struct FrontendDx9SpriteRecord
     /// <summary>RHW written into sprite verts. UNREAD (00BAE2D0 +24 fill).</summary>
     public float? Rhw { get; init; }
 
-    /// <summary>Half-pixel on sprite dest. UNREAD (no 0.5 in 00BAD8A0 / 00BAE2D0).</summary>
+    /// <summary>
+    /// Half-pixel on sprite dest. No 0.5
+    /// in <c>00BAD8A0</c> / <c>00BAE2D0</c>.
+    /// <c>00BB0970</c> uses 0.5 as half
+    /// dest size, not a UV write.
+    /// </summary>
     public float? HalfPixel { get; init; }
 
     /// <summary>Sampler MAG/MIN/ADDRESS. UNREAD first-seen SetSamplerState.</summary>

@@ -110,9 +110,14 @@ internal static class LineShaders
         """;
 
     /// <summary>
-    /// <c>PSHADER_2D_TEXTURE_DIFFUSE</c>
-    /// sample * diffuse. UV v=0 at dest top
-    /// (<c>Dx9VulkanFrontend.UvVZeroAtDestTop</c>).
+    /// <c>PSHADER_2D_CLOCK_SPRITE</c>
+    /// <c>mul r0, t0, c0</c>. c0 is a PS
+    /// constant, not vertex diffuse
+    /// (<c>mov oD0, v1</c> is UNREAD by this
+    /// PS). First-seen c0 is (1,1,1,1) when
+    /// device+913; otherwise a byte scale at
+    /// [dev+972]+32. TEMPORARY: texture*white.
+    /// UV v=0 at dest top.
     /// </summary>
     public const string FrontendFragment = """
         #version 450
@@ -121,7 +126,8 @@ internal static class LineShaders
         layout(location = 0) out vec4 outColor;
         layout(set = 0, binding = 0) uniform sampler2D sprite;
         void main() {
-            outColor = texture(sprite, fragUv) * fragColor;
+            vec4 c0 = vec4(1.0);
+            outColor = texture(sprite, fragUv) * c0;
         }
         """;
 

@@ -96,6 +96,36 @@ public sealed class FrontendLayoutTests
     }
 
     [Fact]
+    public void Forest_tile_without_remap_stays_in_authored_640_space()
+    {
+        var tile = new FrontendWidgetLayout(
+            PositionX: 512f,
+            PositionY: 0f,
+            LeftoverW: 128f,
+            LeftoverH: 256f);
+        var dest = FrontendLayout.Compute(tile, parent: null, FirstSeen);
+        Assert.Equal(512f, dest.X0);
+        Assert.Equal(640f, dest.X1);
+        Assert.Equal(256f, dest.Y1);
+    }
+
+    [Fact]
+    public void Forest_tile_with_native_remap_bits_fills_1024_viewport()
+    {
+        var tile = new FrontendWidgetLayout(
+            PositionX: 512f,
+            PositionY: 0f,
+            LeftoverW: 128f,
+            LeftoverH: 256f,
+            ScaleOriginToViewport: true,
+            ScaleSizeToViewport: true);
+        var dest = FrontendLayout.Compute(tile, parent: null, FirstSeen);
+        Assert.Equal(819f, dest.X0);
+        Assert.Equal(1024f, dest.X1);
+        Assert.Equal(410f, dest.Y1);
+    }
+
+    [Fact]
     public void Persist_remap_flags_scale_authored_640_480_to_viewport()
     {
         var remapped = new FrontendWidgetLayout(
@@ -193,6 +223,58 @@ public sealed class FrontendLayoutTests
         Assert.Equal(240f, textDest.OriginY);
     }
 
+    [Fact]
+    public void Press_Start_root_remapSize_scales_child_origin_to_viewport()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var names = NamesBin.Load(install.FindCompiledDef("names.bin")!);
+        var bin = GameBin.Load(install.FindCompiledDef("frontend.bin")!, names);
+        var rootDef = FrontendUiDef.TryParse(bin.FindEntry("UI_FRONTEND_PRESS_START_MENU")!)!;
+        var titleDef = FrontendUiDef.TryParse(bin.FindEntry("UI_TITLE")!)!;
+        var textDef = FrontendUiDef.TryParse(bin.FindEntry("UI_PRESS_START_TEXT")!)!;
+        Assert.True(rootDef.ScaleSizeToViewport);
+        Assert.False(rootDef.ScaleOriginToViewport);
+        Assert.False(titleDef.ScaleSizeToViewport);
+        Assert.False(titleDef.ScaleOriginToViewport);
+
+        var root = FrontendLayout.Compute(
+            new FrontendWidgetLayout(
+                rootDef.PositionX, rootDef.PositionY,
+                ScaleSizeToViewport: rootDef.ScaleSizeToViewport,
+                ScaleOriginToViewport: rootDef.ScaleOriginToViewport),
+            parent: null,
+            FirstSeen);
+        Assert.Equal(0f, root.X0);
+        Assert.Equal(0f, root.X1);
+        Assert.Equal(0f, root.OriginX);
+        var scaledOne = FrontendLayout.ApplyResolutionScale(1f, 1f, FirstSeen);
+        Assert.Equal(scaledOne.X, root.ScaleX);
+        Assert.Equal(scaledOne.Y, root.ScaleY);
+
+        var title = FrontendLayout.Compute(
+            new FrontendWidgetLayout(
+                titleDef.PositionX, titleDef.PositionY,
+                LeftoverW: 256f, LeftoverH: 128f,
+                ScaleSizeToViewport: titleDef.ScaleSizeToViewport,
+                ScaleOriginToViewport: titleDef.ScaleOriginToViewport),
+            root,
+            FirstSeen);
+        Assert.Equal(70f * scaledOne.X, title.OriginX);
+        Assert.Equal(30f * scaledOne.Y, title.OriginY);
+
+        var text = FrontendLayout.Compute(
+            new FrontendWidgetLayout(
+                textDef.PositionX, textDef.PositionY,
+                LeftoverW: 16f, LeftoverH: 16f,
+                ScaleSizeToViewport: textDef.ScaleSizeToViewport,
+                ScaleOriginToViewport: textDef.ScaleOriginToViewport),
+            root,
+            FirstSeen);
+        Assert.Equal(320f * scaledOne.X, text.OriginX);
+        Assert.Equal(240f * scaledOne.Y, text.OriginY);
+    }
+
     private static (float X, float Y) FirstPos(byte[] raw)
     {
         float x = 0f;
@@ -216,6 +298,78 @@ public sealed class FrontendLayoutTests
 
         return (x, y);
     }
+
+    [Fact]
+    public void Press_Start_first_seen_dest_table_matches_0041AFA0()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var names = NamesBin.Load(install.FindCompiledDef("names.bin")!);
+        var bin = GameBin.Load(install.FindCompiledDef("frontend.bin")!, names);
+        using var sprites = new FrontendSpriteBank(install);
+        var widgets = FrontendWidgetFactory.Build(bin, "UI_FRONTEND_PRESS_START_MENU", sprites);
+        var viewport = FrontendLayout.FirstSeenFrontend(1024f, 768f);
+        var dests = new Dictionary<string, FrontendDest>(StringComparer.OrdinalIgnoreCase);
+        foreach (var widget in widgets)
+        {
+            var leftoverW = 0f;
+            var leftoverH = 0f;
+            if (widget.GraphicId != 0 &&
+                widget.TextureName is { } texName &&
+                sprites.TryLoad(texName) is { } tex)
+            {
+                leftoverW = tex.FrameWidth;
+                leftoverH = tex.FrameHeight;
+            }
+
+            dests.TryGetValue(widget.ParentName ?? "", out var parent);
+            FrontendDest? parentDest = widget.ParentName is null ? null : parent;
+            dests[widget.Name] = FrontendLayout.Compute(
+                new FrontendWidgetLayout(
+                    widget.PersistX,
+                    widget.PersistY,
+                    PersistScaleX: widget.PersistScaleX,
+                    PersistScaleY: widget.PersistScaleY,
+                    PersistWidth: widget.PersistWidth > 0 ? (int)widget.PersistWidth : 0,
+                    PersistHeight: widget.PersistHeight > 0 ? (int)widget.PersistHeight : 0,
+                    LeftoverW: leftoverW,
+                    LeftoverH: leftoverH,
+                    Center: widget.Center,
+                    Absolute: widget.Absolute,
+                    ScaleOriginToViewport: widget.ScaleOriginToViewport,
+                    ScaleSizeToViewport: widget.ScaleSizeToViewport),
+                parentDest,
+                viewport);
+        }
+
+        Assert.Equal((0f, 0f, 0f, 0f), Rect(dests["UI_FRONTEND_PRESS_START_MENU"]));
+        Assert.Equal((0f, 0f, 0f, 0f), Rect(dests["UI_BLENDING_BACKGROUNDS_FORREST"]));
+        Assert.Equal((0f, 0f, 410f, 410f), Rect(dests["UI_FRONTEND_BG_FORREST_1_1"]));
+        Assert.Equal((410f, 0f, 819f, 410f), Rect(dests["UI_FRONTEND_BG_FORREST_1_2"]));
+        Assert.Equal((819f, 0f, 1024f, 410f), Rect(dests["UI_FRONTEND_BG_FORREST_1_3"]));
+        Assert.Equal((0f, 410f, 410f, 819f), Rect(dests["UI_FRONTEND_BG_FORREST_1_4"]));
+        Assert.Equal((112f, 48f, 112f, 48f), Rect(dests["UI_TITLE"]));
+        Assert.Equal((112f, 48f, 522f, 253f), Rect(dests["UI_TITLE_01"]));
+        Assert.Equal((522f, 48f, 931f, 253f), Rect(dests["UI_TITLE_02"]));
+        Assert.Equal((512f, 384f, 512f, 384f), Rect(dests["UI_PRESS_START_TEXT"]));
+        Assert.Equal((512f, 544f, 512f, 544f), Rect(dests["UI_LEGAL_TEXT"]));
+        Assert.Equal((0f, 0f, 32f, 32f), Rect(dests["UI_MOUSE_POINTER"]));
+        Assert.Equal(
+            FrontendLayout.ApplyResolutionScale(1f, 1f, viewport).X,
+            dests["UI_TITLE_01"].ScaleX);
+        Assert.False(widgets.First(w => w.Name == "UI_TITLE_01").Center);
+        Assert.False(widgets.First(w => w.Name == "UI_TITLE_01").ScaleOriginToViewport);
+        var title01 = FrontendUiDef.TryParse(bin.FindEntry("UI_TITLE_01")!)!;
+        Assert.Equal(1f, title01.ZoomX);
+        Assert.Equal(3, title01.GraphicBankId);
+        var titleTex = sprites.TryLoad(FrontendSpriteBank.TitleLeft)!;
+        Assert.Equal(titleTex.Width, titleTex.FrameWidth);
+        Assert.Equal(256, titleTex.FrameWidth);
+        Assert.Equal(128, titleTex.FrameHeight);
+    }
+
+    private static (float X0, float Y0, float X1, float Y1) Rect(FrontendDest dest) =>
+        (dest.X0, dest.Y0, dest.X1, dest.Y1);
 
     [Fact]
     public void Y_increases_down_with_no_flip()

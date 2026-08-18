@@ -799,7 +799,7 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x00530260u, EngineLifecycle.FrontendContainerDrawFn);
         Assert.Equal(0x0052C730u, EngineLifecycle.FrontendScaleInitFn);
         Assert.Equal(0x005339B0u, EngineLifecycle.FrontendScaleWriteFn);
-        Assert.Equal(1f, life.FrontendScaleX);
+        Assert.Equal(1024f / 640f, life.FrontendScaleX);
         Assert.True(life.FrontendChildCount >= 6);
         Assert.Contains(life.FrontendWidgets, w => w.Name == "UI_TITLE");
         Assert.Contains(life.FrontendWidgets, w => w.Name == "UI_BLENDING_BACKGROUNDS_FORREST");
@@ -815,13 +815,21 @@ public sealed class EngineLifecycleTests
             e.Va == EngineLifecycle.FrontendScaleWriteFn &&
             e.Action.Contains("005339B0", StringComparison.Ordinal));
         var drawn = life.FrontendWidgets.First(w => w.Name == "UI_PRESS_START_TEXT");
-        Assert.True(drawn.DestX1 > drawn.DestX0, $"text dest {drawn.DestX0},{drawn.DestY0},{drawn.DestX1},{drawn.DestY1}");
+        Assert.Equal(512f, drawn.DestX0);
+        Assert.Equal(384f, drawn.DestY0);
+        Assert.Equal(512f, drawn.DestX1);
+        Assert.Equal(384f, drawn.DestY1);
         Assert.False(string.IsNullOrEmpty(drawn.Text));
         Assert.Equal(0x0054F5C0u, EngineLifecycle.FrontendTextCtorFn);
         Assert.Equal(0x0054EF00u, EngineLifecycle.FrontendTextDrawFn);
         Assert.Equal(FontFile.UiFace, EngineLifecycle.FrontendUiFontFace);
         Assert.True(life.FrontendEnqueueRan);
         Assert.True(life.Frontend2dDipIssued);
+        Assert.NotNull(life.FrontendBatch);
+        Assert.False(life.FrontendBatch.Value.IsEmpty);
+        Assert.Equal(4, life.FrontendBatch.Value.Draws[0].D3dPrimitiveType);
+        Assert.Equal(5, life.FrontendBatch.Value.Draws[0].D3dSrcBlend);
+        Assert.Equal(6, life.FrontendBatch.Value.Draws[0].D3dDestBlend);
         Assert.NotNull(life.FrontendPresentRgba);
         Assert.Equal(EngineLifecycle.DisplayDefaultWidth, life.FrontendPresentWidth);
         Assert.Contains(life.FrontendPresentRgba, b => b == 255);
@@ -830,6 +838,8 @@ public sealed class EngineLifecycleTests
             life.FrontendPresentWidth, life.FrontendPresentHeight,
             life.FrontendPresentRgba);
         var frame = life.BuildFrame();
+        Assert.NotNull(frame.FrontendBatch);
+        Assert.False(frame.FrontendBatch.Value.IsEmpty);
         Assert.NotNull(frame.FrontendRgba);
         Assert.True(frame.FrontendWidth > 0);
         Assert.Contains(life.FrontendWidgets, w =>
@@ -837,8 +847,10 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.FrontendWidgets, w =>
             w.TextureName == FrontendSpriteBank.TitleRight);
         var title = life.FrontendWidgets.First(w => w.Name == "UI_TITLE_01");
-        Assert.True(title.DestX1 - title.DestX0 >= 256);
-        Assert.True(title.DestY1 - title.DestY0 >= 128);
+        Assert.Equal(112f, title.DestX0);
+        Assert.Equal(48f, title.DestY0);
+        Assert.Equal(522f, title.DestX1);
+        Assert.Equal(253f, title.DestY1);
         Assert.Contains(life.FrontendWidgets, w =>
             w.Name.Contains("FORREST_1_1", StringComparison.Ordinal) &&
             w.TextureName == "FORREST_1_1");

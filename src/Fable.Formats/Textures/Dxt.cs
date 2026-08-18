@@ -5,6 +5,13 @@ internal static class Dxt
     public static byte[] Decode(ReadOnlySpan<byte> blocks, int width, int height, bool dxt5) =>
         Decode(blocks, width, height, dxt5 ? DxtKind.Dxt5 : DxtKind.Dxt1);
 
+    /// <summary>
+    /// DX9 DXT (CreateTexture <c>009BE8B0</c>
+    /// FourCC) stores block row 0 as the
+    /// image top. y=0 here is that row.
+    /// Not flipped relative to a DX9
+    /// LockRect sample.
+    /// </summary>
     public static byte[] Decode(ReadOnlySpan<byte> blocks, int width, int height, DxtKind kind)
     {
         var rgba = new byte[width * height * 4];
