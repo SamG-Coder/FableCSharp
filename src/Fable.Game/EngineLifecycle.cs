@@ -967,6 +967,25 @@ public sealed class EngineLifecycle : IDisposable
     public const int TenthDefClassSize = 38;
     public const string TenthDefClassName = "CVillageMemberDef";
     /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CVillageMemberDef</c>:
+    /// <c>004F02DD</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F02E4</c>
+    /// <c>CBuyableHouseDef</c>
+    /// factory <c>0x4E0148</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>004DDB2C</c>
+    /// size 76 vtbl <c>0124131C</c>.
+    /// Not intervening CTC rows.
+    /// </summary>
+    public const uint EleventhDefClassSite = 0x004F02DD;
+    public const uint EleventhDefClassFactory = 0x004E0148;
+    public const uint EleventhDefClassCtor = 0x004DDB2C;
+    public const uint EleventhDefClassVtbl = 0x0124131C;
+    public const int EleventhDefClassSize = 76;
+    public const string EleventhDefClassName = "CBuyableHouseDef";
+    /// <summary>
     /// <c>00416005</c> parent
     /// <c>push 1</c>:
     /// <c>0044C6B0</c>
@@ -2395,6 +2414,8 @@ public sealed class EngineLifecycle : IDisposable
     public string? NinthDefClass { get; private set; }
     public bool TenthDefClassRegistered { get; private set; }
     public string? TenthDefClass { get; private set; }
+    public bool EleventhDefClassRegistered { get; private set; }
+    public string? EleventhDefClass { get; private set; }
     /// <summary>
     /// After <c>00416005</c>
     /// <c>0044C72B</c> /
@@ -4906,22 +4927,39 @@ public sealed class EngineLifecycle : IDisposable
             NinthDefClass = NinthDefClassName;
             NinthDefClassRegistered = true;
         }
-        if (TenthDefClassRegistered)
+        if (!TenthDefClassRegistered)
+        {
+            Note(TenthDefClassSite, "Init Thing Components", "Defs",
+                $"004F0227 0044C6B0 {TenthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {TenthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {TenthDefClassName}");
+            Note(TenthDefClassFactory, "Init Thing Components", "Defs",
+                $"004DA7AD 0044C0C0 size {TenthDefClassSize} vtbl 0x{TenthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {TenthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            TenthDefClass = TenthDefClassName;
+            TenthDefClassRegistered = true;
+        }
+        if (EleventhDefClassRegistered)
             return;
-        Note(TenthDefClassSite, "Init Thing Components", "Defs",
-            $"004F0227 0044C6B0 {TenthDefClassName}");
+        Note(EleventhDefClassSite, "Init Thing Components", "Defs",
+            $"004F02DD 0044C6B0 {EleventhDefClassName}");
         Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
-            $"0042DAE0 {TenthDefClassName}");
+            $"0042DAE0 {EleventhDefClassName}");
         Note(AddDefClassFn, "Init Thing Components", "Defs",
-            $"009B0AC0 Add Def Class {TenthDefClassName}");
-        Note(TenthDefClassFactory, "Init Thing Components", "Defs",
-            $"004DA7AD 0044C0C0 size {TenthDefClassSize} vtbl 0x{TenthDefClassVtbl:X}");
+            $"009B0AC0 Add Def Class {EleventhDefClassName}");
+        Note(EleventhDefClassFactory, "Init Thing Components", "Defs",
+            $"004E0148 004DDB2C size {EleventhDefClassSize} vtbl 0x{EleventhDefClassVtbl:X}");
         Note(LoadDefFn, "Init Thing Components", "Defs",
-            $"009AD6E0 {TenthDefClassName}");
+            $"009AD6E0 {EleventhDefClassName}");
         Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
             $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
-        TenthDefClass = TenthDefClassName;
-        TenthDefClassRegistered = true;
+        EleventhDefClass = EleventhDefClassName;
+        EleventhDefClassRegistered = true;
     }
 
     /// <summary>
