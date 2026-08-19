@@ -2307,17 +2307,24 @@ public sealed class EngineLifecycle : IDisposable
     public int FrontendPresentHeight { get; private set; }
     public FrontendSubmitBatch? FrontendBatch { get; private set; }
     public IReadOnlyList<FrontendWidget> FrontendWidgets => _frontendWidgets;
-    private readonly List<FrontendWidget> _frontendWidgets = [];
+    private List<FrontendWidget> _frontendWidgets = [];
     /// <summary>
     /// <c>[ui+84]</c> slot id →
-    /// root widget. Native keeps
-    /// keys <c>0x14</c> / <c>0x17</c>
-    /// across <c>00596763</c>.
+    /// widget tree. Native
+    /// <c>00595222</c> /
+    /// <c>0059A0C4</c> walk every
+    /// non-null value in key order.
     /// Current
     /// <see cref="_frontendWidgets"/>
-    /// is the switched screen only.
+    /// is the switched screen
+    /// (input).
     /// </summary>
-    private readonly Dictionary<int, FrontendWidget> _frontendSlotRoots = [];
+    private readonly Dictionary<int, List<FrontendWidget>> _frontendSlotTrees = [];
+    /// <summary>
+    /// <c>[ui+84]</c> keys walked
+    /// last tick/draw, in-order.
+    /// </summary>
+    public IReadOnlyList<int> FrontendResidentSlots { get; private set; } = [];
     private readonly List<int> _frontendSubmitCounts = [];
     private FrontendSpriteBank? _frontendSprites;
     private FontBank? _frontendFonts;
@@ -3233,7 +3240,8 @@ public sealed class EngineLifecycle : IDisposable
             $"0052F5C0 +264 from +92/+272={FrontendScaleX}");
         Note(FrontendDestOriginFn, "Frontend", "UI",
             "0052FFD0 +248 from +52/+60");
-        LayoutFrontendWidgets();
+        foreach (var tree in ResidentSlotTrees())
+            LayoutFrontendWidgets(tree);
         FrontendWidgetTickRan = true;
         FrontendDestLayoutRan = true;
         Note(FrontendWidgetNextFn, "Frontend", "UI", "004292C0");
@@ -3256,22 +3264,23 @@ public sealed class EngineLifecycle : IDisposable
         FrontendEnqueueRan = false;
         if (!FrontendMenuConstructed)
             return;
-        if (FrontendWidgetType.DrawsChildList(FrontendRootType))
+        var drawn = 0;
+        var any = false;
+        foreach (var tree in ResidentSlotTrees())
         {
-            Note(FrontendContainerDrawFn, "Frontend", "UI",
-                $"00530260 vtbl+{FrontendWidgetDrawVtbl} +{FrontendChildListOffset} n={FrontendChildCount}");
-            var drawn = 0;
-            foreach (var root in FrontendWidgetFactory.ChildrenOf(_frontendWidgets, null))
-                DrawContainerWalk(root, ref drawn);
-            FrontendWidgetsDrawn = Math.Max(1, drawn);
+            any = true;
+            DrawSlotTree(tree, ref drawn);
         }
-        else
+
+        if (!any)
         {
             Note(FrontendWidgetDrawFn, "Frontend", "UI",
                 $"0041AFA0 vtbl+{FrontendWidgetDrawVtbl} 0122F5D4");
             QueueFrontend2dRecord(null);
-            FrontendWidgetsDrawn = Math.Max(1, _frontendWidgets.Count);
+            drawn = 1;
         }
+
+        FrontendWidgetsDrawn = Math.Max(1, drawn);
 
         Note(FrontendWidgetNextFn, "Frontend", "UI", "004292C0");
         CompositeFrontendPresent();
@@ -3286,19 +3295,40 @@ public sealed class EngineLifecycle : IDisposable
     /// call <c>0041AFA0</c> /
     /// <c>0054EF00</c>.
     /// </summary>
-    private void DrawContainerWalk(int index, ref int drawn)
+    private void DrawSlotTree(IReadOnlyList<FrontendWidget> tree, ref int drawn)
     {
-        if ((uint)index >= (uint)_frontendWidgets.Count)
+        if (tree.Count == 0)
             return;
-        var widget = _frontendWidgets[index];
+        var rootType = tree[0].Type;
+        if (FrontendWidgetType.DrawsChildList(rootType))
+        {
+            Note(FrontendContainerDrawFn, "Frontend", "UI",
+                $"00530260 vtbl+{FrontendWidgetDrawVtbl} +{FrontendChildListOffset} n={Math.Max(0, tree.Count - 1)}");
+            foreach (var root in FrontendWidgetFactory.ChildrenOf(tree, null))
+                DrawContainerWalk(tree, root, ref drawn);
+            return;
+        }
+
+        Note(FrontendWidgetDrawFn, "Frontend", "UI",
+            $"0041AFA0 vtbl+{FrontendWidgetDrawVtbl} 0122F5D4");
+        QueueFrontend2dRecord(null);
+        drawn = Math.Max(drawn, tree.Count);
+    }
+
+    private void DrawContainerWalk(
+        IReadOnlyList<FrontendWidget> tree, int index, ref int drawn)
+    {
+        if ((uint)index >= (uint)tree.Count)
+            return;
+        var widget = tree[index];
         if (!widget.Visible || widget.Clip)
             return;
         drawn++;
         if (FrontendWidgetType.DrawsChildList(widget.Type))
         {
             foreach (var child in FrontendWidgetFactory.ChildrenOf(
-                _frontendWidgets, widget.Name))
-                DrawContainerWalk(child, ref drawn);
+                tree, widget.Name))
+                DrawContainerWalk(tree, child, ref drawn);
             return;
         }
 
@@ -6895,7 +6925,7 @@ public sealed class EngineLifecycle : IDisposable
             $"0059B5D7 [ui+{FrontendWidgetListOffset}] slot 0x{slot:X} node+{FrontendWidgetSlotOffset}");
         if (_frontendWidgets.Count == 0)
             return;
-        _frontendSlotRoots[slot] = _frontendWidgets[0];
+        _frontendSlotTrees[slot] = _frontendWidgets;
     }
 
     /// <summary>
@@ -6915,17 +6945,49 @@ public sealed class EngineLifecycle : IDisposable
             $"00598EE6 slot 0x{FrontendPressStartSlot:X} vtbl+{FrontendInputMap.WidgetMessageVtbl} {FrontendInputMap.Type10StoreMsgFn:X} +{FrontendInputMap.Type10StoredMsgOffset} 0x{FrontendPressStartMessage:X}");
         Note(FrontendSlotLookupFn, "Frontend", "UI",
             $"0059B5D7 slot 0x{FrontendPressStartSlot:X} vtbl+{FrontendInputMap.WidgetMessageVtbl} {FrontendInputMap.Type10StoreMsgFn:X}");
-        if (!_frontendSlotRoots.TryGetValue(FrontendPressStartSlot, out var widget))
+        if (!_frontendSlotTrees.TryGetValue(FrontendPressStartSlot, out var tree) ||
+            tree.Count == 0)
             return;
-        widget = widget with { MessageId = FrontendPressStartMessage };
-        _frontendSlotRoots[FrontendPressStartSlot] = widget;
-        if (_frontendWidgets.Count > 0 &&
-            _frontendWidgets[0].Name == widget.Name)
-            _frontendWidgets[0] = widget;
+        tree[0] = tree[0] with { MessageId = FrontendPressStartMessage };
     }
 
-    public bool TryGetFrontendSlot(int slot, out FrontendWidget widget) =>
-        _frontendSlotRoots.TryGetValue(slot, out widget);
+    public bool TryGetFrontendSlot(int slot, out FrontendWidget widget)
+    {
+        if (_frontendSlotTrees.TryGetValue(slot, out var tree) &&
+            tree.Count > 0)
+        {
+            widget = tree[0];
+            return true;
+        }
+
+        widget = default;
+        return false;
+    }
+
+    private IEnumerable<List<FrontendWidget>> ResidentSlotTrees()
+    {
+        if (_frontendSlotTrees.Count == 0)
+        {
+            if (_frontendWidgets.Count > 0)
+            {
+                FrontendResidentSlots = [];
+                yield return _frontendWidgets;
+            }
+            else
+                FrontendResidentSlots = [];
+            yield break;
+        }
+
+        var keys = _frontendSlotTrees.Keys.OrderBy(key => key).ToArray();
+        FrontendResidentSlots = keys;
+        foreach (var key in keys)
+        {
+            var tree = _frontendSlotTrees[key];
+            if (tree.Count == 0)
+                continue;
+            yield return tree;
+        }
+    }
 
     /// <summary>
     /// Action 26 <c>[inner+364]=1</c> on
@@ -6961,7 +7023,7 @@ public sealed class EngineLifecycle : IDisposable
             _frontendSprites = new FrontendSpriteBank(Install);
         if (Install is not null && _frontendFonts is null)
             _frontendFonts = new FontBank(Install);
-        _frontendWidgets.Clear();
+        _frontendWidgets = [];
         FrontendChildCount = 0;
         FrontendRootType = 0;
         if (FrontendDefs is null)
@@ -7008,15 +7070,18 @@ public sealed class EngineLifecycle : IDisposable
         FrontendScaleY = FrontendScaleOne;
     }
 
-    private void LayoutFrontendWidgets()
+    private void LayoutFrontendWidgets() =>
+        LayoutFrontendWidgets(_frontendWidgets);
+
+    private void LayoutFrontendWidgets(List<FrontendWidget> widgets)
     {
         var width = BackBufferWidth > 0 ? BackBufferWidth : DisplayDefaultWidth;
         var height = BackBufferHeight > 0 ? BackBufferHeight : DisplayDefaultHeight;
         var viewport = FrontendLayout.FirstSeenFrontend(width, height);
         var dests = new Dictionary<string, FrontendDest>(StringComparer.OrdinalIgnoreCase);
-        for (var i = 0; i < _frontendWidgets.Count; i++)
+        for (var i = 0; i < widgets.Count; i++)
         {
-            var widget = _frontendWidgets[i];
+            var widget = widgets[i];
             var persistW = widget.PersistWidth > 0 ? (int)widget.PersistWidth : 0;
             var persistH = widget.PersistHeight > 0 ? (int)widget.PersistHeight : 0;
             var leftoverW = 0f;
@@ -7051,14 +7116,14 @@ public sealed class EngineLifecycle : IDisposable
                 ScaleSizeToViewport: widget.ScaleSizeToViewport);
             var dest = FrontendLayout.Compute(layout, parentDest, viewport);
             dests[widget.Name] = dest;
-            _frontendWidgets[i] = widget with
+            widgets[i] = widget with
             {
                 DestX0 = dest.X0,
                 DestY0 = dest.Y0,
                 DestX1 = dest.X1,
                 DestY1 = dest.Y1,
             };
-            if (i == 0)
+            if (i == 0 && ReferenceEquals(widgets, _frontendWidgets))
             {
                 FrontendWidgetDestX0 = dest.X0;
                 FrontendWidgetDestY0 = dest.Y0;
@@ -7112,9 +7177,11 @@ public sealed class EngineLifecycle : IDisposable
         var textures = new List<GpuTexture>();
         var textureIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         _frontendSubmitCounts.Clear();
-        for (var i = 0; i < _frontendWidgets.Count; i++)
+        foreach (var tree in ResidentSlotTrees())
         {
-            var widget = _frontendWidgets[i];
+        for (var i = 0; i < tree.Count; i++)
+        {
+            var widget = tree[i];
             var u0 = widget.U0;
             var v0 = widget.V0;
             var u1 = widget.U1;
@@ -7214,7 +7281,7 @@ public sealed class EngineLifecycle : IDisposable
                 }
             }
 
-            _frontendWidgets[i] = widget with
+            tree[i] = widget with
             {
                 U0 = haveUv ? u0 : widget.U0,
                 V0 = haveUv ? v0 : widget.V0,
@@ -7224,6 +7291,7 @@ public sealed class EngineLifecycle : IDisposable
                 DrawOrder = i,
             };
             _frontendSubmitCounts.Add(records.Count - recordStart);
+        }
         }
 
         return (records, textures);

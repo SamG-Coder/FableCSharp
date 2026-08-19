@@ -450,6 +450,47 @@ public sealed class EngineLifecycleTests
         Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, profile.Name);
         Assert.Equal(10, profile.Type);
         Assert.Equal(0, profile.MessageId);
+        Assert.Equal(
+            new[]
+            {
+                EngineLifecycle.FrontendPressStartSlot,
+                EngineLifecycle.FrontendNewProfileSlot,
+            },
+            life.FrontendResidentSlots);
+    }
+
+    [Fact]
+    public void Frontend_tick_and_draw_walk_resident_ui84_slots()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.True(life.Pump());
+        Assert.Equal(
+            new[] { EngineLifecycle.FrontendPressStartSlot },
+            life.FrontendResidentSlots);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendUiDrawFn &&
+            e.Action.Contains("[ui+84]", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendUiTickFn &&
+            e.Action.Contains("[ui+84]", StringComparison.Ordinal));
+        life.DispatchFrontendMessage(EngineLifecycle.FrontendPressStartMessage);
+        Assert.True(life.Pump());
+        Assert.Equal(
+            new[]
+            {
+                EngineLifecycle.FrontendPressStartSlot,
+                EngineLifecycle.FrontendNewProfileSlot,
+            },
+            life.FrontendResidentSlots);
+        Assert.Equal(
+            EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        Assert.DoesNotContain(life.FrontendWidgets, w =>
+            w.Name == EngineLifecycle.FrontendPressStartMenu);
     }
 
     [Fact]
@@ -482,6 +523,14 @@ public sealed class EngineLifecycleTests
         Assert.Equal(EngineLifecycle.FrontendMainMenuNoContinue, menu.Name);
         Assert.Equal(10, menu.Type);
         Assert.Equal(0, menu.MessageId);
+        Assert.Equal(
+            new[]
+            {
+                EngineLifecycle.FrontendMainMenuSlot,
+                EngineLifecycle.FrontendPressStartSlot,
+                EngineLifecycle.FrontendNewProfileSlot,
+            },
+            life.FrontendResidentSlots);
         Assert.DoesNotContain(life.FrontendWidgets, w =>
             w.Type == 10 &&
             w.MessageId == EngineLifecycle.FrontendPressStartMessage);
