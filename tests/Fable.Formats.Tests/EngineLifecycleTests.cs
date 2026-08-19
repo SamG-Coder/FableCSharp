@@ -679,6 +679,62 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Player_Manager_0041732A_stores_44byte_owner_at_game_plus28()
+    {
+        Assert.Equal(0x0041732Au, EngineLifecycle.InitPlayerManagerFn);
+        Assert.Equal(0x0044A3B0u, EngineLifecycle.PlayerOwnerCtor);
+        Assert.Equal(0x004193A0u, EngineLifecycle.PlayerOwnerStoreFn);
+        Assert.Equal(0x01231CD0u, EngineLifecycle.PlayerOwnerVtbl);
+        Assert.Equal(44, EngineLifecycle.PlayerOwnerSize);
+        Assert.Equal(28, EngineLifecycle.PlayerOwnerOffset);
+        Assert.Equal(
+            new[]
+            {
+                "hero_swap_1.tng",
+                "hero_swap_2.tng",
+                "hero_swap_3.tng",
+                "hero_swap_4.tng",
+            },
+            EngineLifecycle.PlayerOwnerHeroSwapNames);
+        Assert.NotEqual(EngineLifecycle.CreatePlayersFn, EngineLifecycle.InitPlayerManagerFn);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.False(life.PlayerOwnerPresent);
+        Assert.Empty(life.PlayerOwnerHeroSwap);
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.True(life.PlayerOwnerPresent);
+        Assert.Equal(EngineLifecycle.PlayerOwnerHeroSwapNames, life.PlayerOwnerHeroSwap);
+        var once = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ConversationAttitudeOnceVa);
+        var getter = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.PlayerManagerGetter &&
+            e.Stage == "Init Player Manager");
+        var ctor = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.PlayerOwnerCtor);
+        var store = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.PlayerOwnerStoreFn);
+        var iface = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.PlayerInterfaceCtor);
+        var create = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.PlayerManagerGetter &&
+            e.Stage == "Create Players");
+        Assert.True(once >= 0 && getter > once);
+        Assert.True(ctor > getter && store > ctor);
+        Assert.True(iface > store, "0044A3B0 before 004473A0");
+        Assert.True(create > iface, "0044C6B0 getter later Create Players");
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.PlayerOwnerCtor &&
+            e.Stage == "InitGame" &&
+            e.Action.Contains("0044A3B0", StringComparison.Ordinal) &&
+            e.Action.Contains("+24=0", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Init_World_004A67D0_runs_inside_0041735A_before_00417418()
     {
         var life = new EngineLifecycle();

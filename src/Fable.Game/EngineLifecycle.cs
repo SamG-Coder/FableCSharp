@@ -721,7 +721,7 @@ public sealed class EngineLifecycle : IDisposable
         ("Init Fonts", FontFile.InitFontsFn),
         ("Init Subtitled Message", InitSubtitledMessageFn),
         ("Init Conversation Attitude", InitConversationAttitudeFn),
-        ("Init Player Manager", 0x0041732A),
+        ("Init Player Manager", InitPlayerManagerFn),
         ("Init Player Interface", 0x004473A0),
         ("Init World", 0x0041735A),
         ("Init Display Engine", 0x00417418),
@@ -1536,6 +1536,18 @@ public sealed class EngineLifecycle : IDisposable
     public const uint PlayerApplyQueueFn = PlayerInterface.ApplyQueueFn;
     public const uint PlayerApplyPlayerFn = PlayerInterface.ApplyPlayerFn;
     public const uint PlayerOwnerCtor = PlayerInterface.OwnerCtor;
+    public const uint InitPlayerManagerFn = 0x0041732A;
+    public const uint PlayerOwnerStoreFn = 0x004193A0;
+    public const uint PlayerOwnerVtbl = PlayerInterface.OwnerVtbl;
+    public const int PlayerOwnerSize = PlayerInterface.OwnerSize;
+    public const int PlayerOwnerOffset = PlayerInterface.OwnerOffset;
+    public static readonly string[] PlayerOwnerHeroSwapNames =
+    [
+        "hero_swap_1.tng",
+        "hero_swap_2.tng",
+        "hero_swap_3.tng",
+        "hero_swap_4.tng",
+    ];
     /// <summary>
     /// <c>00435530</c> between BeginScene
     /// and EndScene: player overlay
@@ -2444,6 +2456,18 @@ public sealed class EngineLifecycle : IDisposable
     /// Not a spoken line.
     /// </summary>
     public bool ConversationAttitudesBound { get; private set; }
+    /// <summary>
+    /// <c>[game+28]</c> after
+    /// <c>0041732A</c>
+    /// <c>00BFEA1A(44)</c>
+    /// <c>0044A3B0</c>
+    /// <c>004193A0</c>.
+    /// Not Create Players.
+    /// </summary>
+    public bool PlayerOwnerPresent { get; private set; }
+    public IReadOnlyList<string> PlayerOwnerHeroSwap =>
+        _playerOwnerHeroSwap;
+    private string[] _playerOwnerHeroSwap = [];
     public IReadOnlyList<string> ConversationAttitudeTable0 =>
         _conversationAttitudeTable0;
     public IReadOnlyList<string> ConversationAttitudeTable1 =>
@@ -3926,6 +3950,8 @@ public sealed class EngineLifecycle : IDisposable
             }
             if (name == "Init Conversation Attitude")
                 BindConversationAttitudes();
+            if (name == "Init Player Manager")
+                ApplyPlayerOwner();
             if (name == "Init Display Engine")
             {
                 DisplayPlus232 = DisplayPlus232Ctor;
@@ -3937,8 +3963,6 @@ public sealed class EngineLifecycle : IDisposable
                 Player.Construct();
                 Note(PlayerInterfaceCtor, "InitGame", "Input",
                     "004473A0 size 0x898 vtbl 01231BDC game+32");
-                Note(PlayerOwnerCtor, "InitGame", "Input",
-                    "0044A3B0 game+28 size 44 +12 empty +24=0");
                 Note(PlayerListenerFactoryFn, "InitGame", "Input",
                     "00488D20 00687A30 vtbl 0123758C +4");
                 Note(PlayerListenerRegisterFn, "InitGame", "Input",
@@ -4428,6 +4452,29 @@ public sealed class EngineLifecycle : IDisposable
         _conversationAttitudeTable1 = ConversationAttitudeNames1;
         _conversationAttitudeTable2 = ConversationAttitudeNames2;
         ConversationAttitudesBound = true;
+    }
+
+    /// <summary>
+    /// <c>0041732A</c>:
+    /// <c>00BFEA1A(44)</c>
+    /// <c>0044C6B0</c>
+    /// <c>0044A3B0</c>
+    /// <c>004193A0</c>
+    /// <c>[game+28]</c>.
+    /// Not Create Players.
+    /// </summary>
+    private void ApplyPlayerOwner()
+    {
+        if (PlayerOwnerPresent)
+            return;
+        Note(PlayerManagerGetter, "Init Player Manager", "Player",
+            "0044C6B0 [0x13B879C]");
+        Note(PlayerOwnerCtor, "Init Player Manager", "Player",
+            $"0044A3B0 vtbl 0x{PlayerOwnerVtbl:X} size {PlayerOwnerSize} [game+{PlayerOwnerOffset}]");
+        Note(PlayerOwnerStoreFn, "Init Player Manager", "Player",
+            $"004193A0 [game+{PlayerOwnerOffset}]");
+        _playerOwnerHeroSwap = PlayerOwnerHeroSwapNames;
+        PlayerOwnerPresent = true;
     }
 
     private void EnsurePlayerManagerSingleton()
