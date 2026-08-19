@@ -785,9 +785,14 @@
           <td>CTC row, not Add Def Class (<code>100e5cf</code> / <code>Init_Thing_Components_004EE632_adds_CSmokeGeneratorDef</code>)</td>
         </tr>
         <tr>
-          <td>Add CTimeAppearanceFadeDef after CSmokeGeneratorDef. Site <code>004EE6FD</code> (<code>0044C6B0</code>), dest <code>009B0AC0</code> at <code>004EE704</code>, factory <code>004D84C8</code> size 56 vtbl <code>0123B7CC</code>, name <code>CTimeAppearanceFadeDef</code>. Host Note-only + <code>FourthDefClassRegistered</code>. MATCH is Notes+flag, not a live object</td>
+          <td>Add CTimeAppearanceFadeDef after CSmokeGeneratorDef. Site <code>004EE6FD</code> (<code>0044C6B0</code>), dest <code>009B0AC0</code> at <code>004EE704</code>, factory <code>004D84C8</code> size 56 vtbl <code>0123B7CC</code>, name <code>CTimeAppearanceFadeDef</code>. Host Note-only + <code>FourthDefClassRegistered</code>. MATCH is Notes+flag, not a live 56-byte object</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
           <td><code>1a4c51d</code> / <code>Init_Thing_Components_004EE704_adds_CTimeAppearanceFadeDef</code></td>
+        </tr>
+        <tr>
+          <td><code>CTCTimeAppearanceFade</code> <code>004EE64E</code> is the next <code>009B0AC0</code> / Add Def Class</td>
+          <td><span class="badge DISPROVEN">DISPROVEN</span></td>
+          <td>CTC row, not Add Def Class (<code>1a4c51d</code> / <code>Init_Thing_Components_004EE704_adds_CTimeAppearanceFadeDef</code>)</td>
         </tr>
         <tr>
           <td><code>[node+20]</code> is <code>0041DB1D</code>/<code>0041D21B</code> type0 <code>0041B800</code> vtbl <code>0122F5D4</code>; draw <code>0041AFA0</code> not <code>0052D900</code></td>
@@ -1189,7 +1194,7 @@
         <tr>
           <td>Init Thing Components further Add Def Class</td>
           <td>leftover Note-only</td>
-          <td>Thing Components now Notes Add Def Class for CHeroMorphDef then CHighlightItemDef / CSmokeGeneratorDef / CTimeAppearanceFadeDef (<code>b7f4c34</code> / <code>acfe46f</code> / <code>100e5cf</code> / <code>1a4c51d</code>). MATCH is Notes+flag, not live constructed. LoadDef field walk stays PARTIAL. Next leftover is <code>CCreatureNavigationDef</code> <code>004EE932</code>. Do not invent a live object.</td>
+          <td>Thing Components now Notes Add Def Class for CHeroMorphDef then CHighlightItemDef / CSmokeGeneratorDef / CTimeAppearanceFadeDef (<code>b7f4c34</code> / <code>acfe46f</code> / <code>100e5cf</code> / <code>1a4c51d</code>). MATCH is Notes+flag, not live constructed. LoadDef field walk stays PARTIAL. Do not invent a live object.</td>
         </tr>
         <tr>
           <td>Init Player Interface leftover <code>Register(ActionInputListener)</code> / <code>00488D20</code> notes</td>
