@@ -2282,7 +2282,6 @@ public sealed class EngineLifecycle : IDisposable
     public int FrontendChildCount { get; private set; }
     public float FrontendScaleX { get; private set; }
     public float FrontendScaleY { get; private set; }
-    public string? FrontendPressStartLabel { get; private set; }
     /// <summary>
     /// TEMPORARY CPU blit dump of dest quads.
     /// Not the Present path. Present is
@@ -3232,10 +3231,10 @@ public sealed class EngineLifecycle : IDisposable
         FrontendEnqueueRan = false;
         if (!FrontendMenuConstructed)
             return;
-        if (FrontendRootType == FrontendPressStartType)
+        if (FrontendWidgetType.DrawsChildList(FrontendRootType))
         {
             Note(FrontendContainerDrawFn, "Frontend", "UI",
-                $"00530260 vtbl+{FrontendWidgetDrawVtbl} 012497E4 +{FrontendChildListOffset} n={FrontendChildCount}");
+                $"00530260 vtbl+{FrontendWidgetDrawVtbl} +{FrontendChildListOffset} n={FrontendChildCount}");
             var drawn = 0;
             foreach (var root in FrontendWidgetFactory.ChildrenOf(_frontendWidgets, null))
                 DrawContainerWalk(root, ref drawn);
@@ -6866,7 +6865,7 @@ public sealed class EngineLifecycle : IDisposable
     private void WriteType10AttachMessage()
     {
         Note(FrontendInputMap.AttachWriteE5, "Frontend", "UI",
-            $"00598EE6 +{FrontendInputMap.Type10StoredMsgOffset} 0x{FrontendPressStartMessage:X}");
+            $"00598EE6 slot 0x{FrontendPressStartSlot:X} vtbl+{FrontendInputMap.WidgetMessageVtbl} {FrontendInputMap.Type10StoreMsgFn:X} +{FrontendInputMap.Type10StoredMsgOffset} 0x{FrontendPressStartMessage:X}");
         if (_frontendWidgets.Count == 0)
             return;
         var root = _frontendWidgets[0];
@@ -6915,7 +6914,6 @@ public sealed class EngineLifecycle : IDisposable
         _frontendWidgets.Clear();
         FrontendChildCount = 0;
         FrontendRootType = 0;
-        FrontendPressStartLabel = null;
         if (FrontendDefs is null)
         {
             ResolveFrontendDef(rootName);
@@ -6937,16 +6935,11 @@ public sealed class EngineLifecycle : IDisposable
         if (_frontendWidgets.Count > 0)
             FrontendRootType = _frontendWidgets[0].Type;
         FrontendChildCount = Math.Max(0, _frontendWidgets.Count - 1);
-        var text = _frontendWidgets.Find(w =>
-            w.Name == FrontendPressStartText ||
-            w.TextTag == FrontendPressStartTextTag);
-        if (text.Name is not null)
-            FrontendPressStartLabel = text.Text ?? text.TextTag;
         foreach (var widget in _frontendWidgets)
         {
             if (widget.Name == rootName)
                 continue;
-            Note(FrontendPressStartCtorFn, "Frontend", "UI",
+            Note(FrontendWidgetType.ChildAttachFn, "Frontend", "UI",
                 $"005331A0 child {widget.Name} type {widget.Type}");
         }
     }

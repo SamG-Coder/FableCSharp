@@ -482,6 +482,10 @@ public sealed class EngineLifecycleTests
             EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
         Assert.Equal("Default", life.FrontendEditBoxName);
         Assert.False(life.RetailNewGameFlag);
+        Assert.True(FrontendWidgetType.DrawsChildList(life.FrontendRootType));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendContainerDrawFn &&
+            e.Action.Contains("00530260", StringComparison.Ordinal));
         life.QueueInput(EngineInput.TypeKey, RegionTravel.PlayAviSkipReturn);
         Assert.True(life.Pump());
         Assert.Equal(
@@ -859,6 +863,9 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.FrontendContainerDrawFn &&
             e.Action.Contains("00530260", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == FrontendInputMap.AttachWriteE5 &&
+            e.Action.Contains("slot 0x14", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.FrontendScaleWriteFn &&
             e.Action.Contains("005339B0", StringComparison.Ordinal));
