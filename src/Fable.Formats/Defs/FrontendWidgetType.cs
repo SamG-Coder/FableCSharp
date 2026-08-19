@@ -155,6 +155,21 @@ public static class FrontendWidgetType
         (colour >> 24) == 0;
 
     /// <summary>
+    /// Tick <c>0052C7E0</c> looks up
+    /// style <c>+328</c> via
+    /// <c>vtbl+540</c>. Dword0 bits
+    /// <c>0x10</c> force
+    /// <c>+144..+147=0xFF</c>,
+    /// <c>0x20</c> zero dest size,
+    /// <c>0x40</c> scale 1. Persist
+    /// style-6 dword0 is UNREAD.
+    /// </summary>
+    public const uint StyleTickFn = 0x0052C7E0;
+    public const int StyleFlagsForceOpaque = 0x10;
+    public const int StyleFlagsZeroDest = 0x20;
+    public const int StyleFlagsUnitScale = 0x40;
+
+    /// <summary>
     /// <c>vtbl+8 == 00530260</c> on
     /// type 5 / 10 / 12 / 16 / 18.
     /// </summary>

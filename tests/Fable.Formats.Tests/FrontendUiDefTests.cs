@@ -255,6 +255,10 @@ public sealed class FrontendUiDefTests
         Assert.Equal(0x0054EF00u, FrontendWidgetType.Type6PresentFn);
         Assert.False(FrontendWidgetType.LeafDipSkipped(0xFFFFFFFFu));
         Assert.True(FrontendWidgetType.LeafDipSkipped(0x00FFFFFFu));
+        Assert.Equal(0x0052C7E0u, FrontendWidgetType.StyleTickFn);
+        Assert.Equal(0x10, FrontendWidgetType.StyleFlagsForceOpaque);
+        Assert.Equal(0x20, FrontendWidgetType.StyleFlagsZeroDest);
+        Assert.Equal(0x40, FrontendWidgetType.StyleFlagsUnitScale);
         Assert.True(FrontendWidgetType.SelectsChild(18));
         Assert.True(FrontendWidgetType.SelectsChild(16));
         Assert.False(FrontendWidgetType.SelectsChild(5));

@@ -1481,6 +1481,34 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Thing_Components_004F0869_adds_CClockDef()
+    {
+        Assert.Equal(0x004F0862u, EngineLifecycle.SeventeenthDefClassSite);
+        Assert.Equal(0x004E4477u, EngineLifecycle.SeventeenthDefClassFactory);
+        Assert.Equal(0x004E380Eu, EngineLifecycle.SeventeenthDefClassCtor);
+        Assert.Equal(0x01242C34u, EngineLifecycle.SeventeenthDefClassVtbl);
+        Assert.Equal(56, EngineLifecycle.SeventeenthDefClassSize);
+        Assert.Equal("CClockDef", EngineLifecycle.SeventeenthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SixteenthDefClassRegistered);
+        Assert.True(life.SeventeenthDefClassRegistered);
+        Assert.Equal("CClockDef", life.SeventeenthDefClass);
+        var sixteenth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixteenthDefClassFactory);
+        var seventeenth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventeenthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(sixteenth >= 0 && seventeenth > sixteenth && defs > seventeenth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Init_Definition_Manager_00416005_resets_plus88_via_vtbl8()
     {
         Assert.Equal(0x00416005u, EngineLifecycle.InitDefinitionManagerFn);
