@@ -15,21 +15,22 @@ or in tests/code, treat it as **UNREAD**.
 world clock.
 
 Snapshot: **2026-08-19**, previous snapshot runtime HEAD
-`b8a2b21` via PR #40 merge `fb7299d`,
-runtime HEAD `4a03969` (*Init Fonts ENG_ARIAL_18,
-0xE0 singleton, Init Subtitled misc_def_types.h,
-STANDARD_TALK/CONVERSATION, player owner at game+28.*).
-Just locked: 5 runtime commits since `b8a2b21`. Headline
-locks: Init Fonts ENG_ARIAL_18 at game+90444 (`9901d3b`);
-0xE0 `[0x13B879C]` singleton before Thing Components
-(`6ae001f`); Init Subtitled `misc_def_types.h` into
-`[0x13B8A54]` (`540e30c`); STANDARD_TALK/CONVERSATION
-names at Init Conversation Attitude (`fe6c09c`);
-player owner at game+28 (`4a03969`).
-Ignore snapshot merge `fb7299d` / docs `cc4ab63`. Ignore
+`4a03969` via PR #41 merge `de7109a`,
+runtime HEAD `1a4c51d` (*CHeroMorphDef against +40,
+definition manager vtbl+8 Notes, CHighlightItemDef,
+CSmokeGeneratorDef, CTimeAppearanceFadeDef.*).
+Just locked: 5 runtime commits since `4a03969`. Headline
+locks: CHeroMorphDef against the live +40 cap
+(`b7f4c34`); PrepareDefinitionManager Notes `0044C6B0` /
+`0044C72B [vtbl+8]` / `009ACB10` / `009E5250`
+(`587baae`); CHighlightItemDef after CHeroMorphDef
+(`acfe46f`); CSmokeGeneratorDef after CHighlightItemDef
+(`100e5cf`); CTimeAppearanceFadeDef after
+CSmokeGeneratorDef (`1a4c51d`).
+Ignore snapshot merge `de7109a` / docs `9bdc135`. Ignore
 proofs-only adds. Docs PR #29
 `bedcf919` is iOS Settings chrome only — CSS unchanged.
-Freeze at `4a03969`. Do not include any later runtime if
+Freeze at `1a4c51d`. Do not include any later runtime if
 master moves. Master is still proving **boot / world
 clock**, not animation.
 README’s long-term priority list still starts with animation;
@@ -125,16 +126,19 @@ when a ledger or test already records them.
 
 ### Phase 1 in progress — boot / world clock (current master)
 
-Recent commits (`9901d3b` … `4a03969`) lock Init Fonts /
-0xE0 singleton / Subtitled register / Conversation
-Attitude names / player owner at game+28, not
-`00DBDE40`. Previous snapshot `b8a2b21` via PR #40
-`fb7299d`. Just locked this batch: Init Fonts
-ENG_ARIAL_18 at game+90444, 0xE0 `[0x13B879C]`
-singleton before Thing Components, Init Subtitled
-`misc_def_types.h` into `[0x13B8A54]`, STANDARD_TALK/
-CONVERSATION names at Init Conversation Attitude,
-player owner at game+28 during Init Player Manager.
+Recent commits (`b7f4c34` … `1a4c51d`) lock Init Thing
+Components Add Def Class Notes for CHeroMorphDef then
+CHighlightItemDef / CSmokeGeneratorDef /
+CTimeAppearanceFadeDef, plus definition-manager host
+Notes + `DefinitionManagerPrepared`, not `00DBDE40`.
+Previous snapshot `4a03969` via PR #41 `de7109a`.
+Just locked this batch: CHeroMorphDef against the live
++40 cap, PrepareDefinitionManager Notes `0044C6B0` /
+`0044C72B [vtbl+8]` / `009ACB10` / `009E5250`,
+CHighlightItemDef, CSmokeGeneratorDef,
+CTimeAppearanceFadeDef. MATCH is Notes+flag, not live
+constructed objects. dest `0044C72B` as
+`[01232C24+8]` is not rdata-locked (leave #42 open).
 CSS unchanged.
 
 | Item | Status | Evidence |
@@ -227,10 +231,15 @@ CSS unchanged.
 | Ensure the 0xE0 `[0x13B879C]` singleton before Thing Components. `0044C6B6` is a present-check; first-seen miss constructs `0044C6C2` / `0044C71F`. Init frontend `005952C3` applies vtbl+192(5) to Press Start | PROVEN | `6ae001f` / `Init_Game_0044C6B6_ensures_0xE0_singleton_before_Thing_Components` |
 | `0044C6B0` is the 0xE0 singleton ctor | DISPROVEN | `0044C6B0` remains the later getter (`6ae001f`) |
 | Register `Data\Defs\misc_def_types.h` into `[0x13B8A54]` at Init Subtitled. `004CDB10` via `00A39010`. Not Speak. `00A38E50` payload UNREAD | PROVEN | `540e30c` / `Init_Subtitled_004CDB10_registers_00A39010_at_13B8A54` |
-| Bind STANDARD_TALK and CONVERSATION names at Init Conversation Attitude. `004CD670` via `0099EFE0` (18/12/12). Not Speak. `004EE23F` leftover (Init Thing Components still Note-only) | PROVEN | `fe6c09c` / `Init_Conversation_004CD670_binds_STANDARD_TALK_tables` |
+| Bind STANDARD_TALK and CONVERSATION names at Init Conversation Attitude. `004CD670` via `0099EFE0` (18/12/12). Not Speak. Later Thing Components Notes Add Def Class for CHeroMorphDef then CHighlightItemDef / CSmokeGeneratorDef / CTimeAppearanceFadeDef; MATCH is Notes+flag, not live constructed | PROVEN | `fe6c09c` / `Init_Conversation_004CD670_binds_STANDARD_TALK_tables` |
 | Store the 44-byte player owner at `game+28` during Init Player Manager. `0041732A`: `00BFEA1A(44)` / `0044C6B0` / `0044A3B0` vtbl `01231CD0` size 44 / `004193A0` `[game+28]`. Not Create Players (`004166A8`). Hero swap names `hero_swap_1.tng`…`_4.tng` belong on this owner | PROVEN | `4a03969` / `Init_Player_Manager_0041732A_stores_44byte_owner_at_game_plus28` |
 | Host ctor note of `0044A3B0` under Init Player Interface | DISPROVEN | moved to Init Player Manager (`4a03969`) |
 | `+24=0` write on the player owner | DISPROVEN | `4a03969` / same owner test |
+| Add CHeroMorphDef against the live +40 cap during Init Thing Components. `004EE337` / `0044C6B0` / `009B0AC0` / factory `004E4219` / `009AD6E0` / `009FC4F0` `[this+40]=0x80000`. Host Note-only + `FirstDefClassRegistered`. MATCH is Notes+flag, not a live object. LoadDef field walk stays PARTIAL. Do not invent `00A38E50` | PROVEN | `b7f4c34` / `Init_Thing_Components_004EE23F_adds_CHeroMorphDef_against_plus40` |
+| Prepare the definition manager via vtbl+8 `0044C72B` and `009ACB10`. Host `PrepareDefinitionManager()` Notes `0044C6B0` / `0044C72B [vtbl+8]` / `009ACB10` / `009E5250` and sets `DefinitionManagerPrepared`. dest `0044C72B` as `[01232C24+8]` is not rdata-locked (sibling `proofs/00416005-def-manager` dest UNREAD). Leave #42 open. Do not call dest PROVEN. Not a `game.bin` parse. Different object from later Subtitled `[0x13B8A54]` | PROVEN | `587baae` / `Init_Definition_Manager_00416005_resets_plus88_via_vtbl8` |
+| Add CHighlightItemDef after CHeroMorphDef during Init Thing Components. Site `004EE565` / dest `009B0AC0` / factory `004D8671` size 72 vtbl `0123BD14`. Note-only + `SecondDefClassRegistered`. MATCH is Notes+flag, not a 72-byte object | PROVEN | `acfe46f` / `Init_Thing_Components_004EE565_adds_CHighlightItemDef` |
+| Add CSmokeGeneratorDef after CHighlightItemDef. Site `004EE62B` / dest `009B0AC0` / factory `004DA82B` size 48 vtbl `0123E924`. Note-only + `ThirdDefClassRegistered`. MATCH is Notes+flag, not a 48-byte object. Not `CTCSmokeGenerator` | PROVEN | `100e5cf` / `Init_Thing_Components_004EE632_adds_CSmokeGeneratorDef` |
+| Add CTimeAppearanceFadeDef after CSmokeGeneratorDef. Site `004EE6FD` / dest `009B0AC0` / factory `004D84C8` size 56 vtbl `0123B7CC`. Note-only + `FourthDefClassRegistered`. MATCH is Notes+flag, not a 56-byte object. Not `CTCTimeAppearanceFade` | PROVEN | `1a4c51d` / `Init_Thing_Components_004EE704_adds_CTimeAppearanceFadeDef` |
 | `[node+20]` is `0041DB1D`/`0041D21B` type0 `0041B800` vtbl `0122F5D4`; draw `0041AFA0` not `0052D900` | DISPROVEN | PRESS_START Type=10. Type 0 is `UI_FRONTEND_BUTTON`. |
 | `00A09F20` miss: `[bank].vtbl+4` is `009D56C0` Open Bank File Async then `009A7F80` on `[0x13CA79C]` | PROVEN | `bbee903` / `Pe_entry_is_crt_not_new_game` / `Install_banks_and_startup_videos_exist` (`MeshBank.OpenVtbl4`) |
 | `00404C00` first-seen `[0x13B7CD8+8]==0` skip; `0041AFA0` packs `0041BEB0` type `0x22` (not sibling `0041BF60`) dest `[edx+92]` `this+0x15C` size `0xC0` | PROVEN | `c612ad5` / same frontend test (`Frontend2dLastPacker=0041BEB0`, `FrontendDisplayFlag=false`). Dest leftover `+204/+208` only when `GraphicIndex != 0` (`1a08cc0`). leave #14 open. |
@@ -328,8 +337,8 @@ the no-save path.
 | Wire persist-Oakvale (or a proven New Game region write) to `FirstSceneWorld` | UNREAD | Host first-scene lists are a separate reconstructed path |
 | PALSKIN type1/Flag1 routing (slot 14 `0x80` / Flag1 slot 9 `0x200`) | UNREAD | leftover research (`f4a1efc`); geometry still submits on `0x100`. Not a new issue |
 | PALSKIN c38 dest upload | later | `27cb7ee` — later GPU path; do not file |
-| Init Definition Manager `00416005` | host Note-only | `[0x13B879C]` `[vtbl+8]` + `009ACB10`. Proofs-only this commit; not locked. Different object from later Subtitled `[0x13B8A54]`. Do not invent a `game.bin` parser. |
-| Init Thing Components `004EE23F` | leftover Note-only | `fe6c09c` — still Note-only. Do not file as locked. |
+| Init Definition Manager dest `[01232C24+8]` | dest UNREAD | Host Notes `0044C6B0` / `0044C72B [vtbl+8]` / `009ACB10` / `009E5250` + `DefinitionManagerPrepared` are locked (`587baae` / `Init_Definition_Manager_00416005_resets_plus88_via_vtbl8`). dest `0044C72B` as `[01232C24+8]` is not rdata-locked (sibling `proofs/00416005-def-manager` dest UNREAD). Leave #42 open. Do not call dest PROVEN. Different object from later Subtitled `[0x13B8A54]`. Do not invent a `game.bin` parser. |
+| Init Thing Components further Add Def Class | leftover Note-only | Thing Components now Notes Add Def Class for CHeroMorphDef then CHighlightItemDef / CSmokeGeneratorDef / CTimeAppearanceFadeDef (`b7f4c34` / `acfe46f` / `100e5cf` / `1a4c51d`). MATCH is Notes+flag, not live constructed. LoadDef field walk stays PARTIAL. Next leftover is `CCreatureNavigationDef` `004EE932`. Do not invent a live object. |
 | Init Player Interface leftover `Register(ActionInputListener)` / `00488D20` notes | leftover | Not a function; factory is Create Players. Host ctor note of `0044A3B0` under Init Player Interface is DISPROVEN (moved to Init Player Manager, `4a03969`). Do not file a new issue. |
 
 No-save `WorldFrame` now ticks after Create Players (`+9826=1`).
@@ -458,16 +467,18 @@ The boot-first sequence holds. Corrections from the repo:
    switch (`84a8350`). `+332` via SelectState(6) is not
    a `+302` hide (`b8a2b21`). Init World `004A67D0` /
    `004A6E30` run inside `0041735A` before `00417418`.
-   Recent commits `9901d3b` … `4a03969` lock Init Fonts
-   ENG_ARIAL_18 / 0xE0 singleton / Subtitled register /
-   Conversation Attitude names / player owner at
-   game+28. Init Definition Manager `00416005` is still
-   host Note-only (proofs-only; different object from
-   later Subtitled `[0x13B8A54]`). Init Thing Components
-   still Note-only (`004EE23F`). Init Player Interface
-   still leftover Register(ActionInputListener) /
-   `00488D20` notes. Host ctor note of `0044A3B0` under
-   Init Player Interface is DISPROVEN (moved).
+   Recent commits `b7f4c34` … `1a4c51d` lock Init Thing
+   Components Add Def Class Notes for CHeroMorphDef then
+   CHighlightItemDef / CSmokeGeneratorDef /
+   CTimeAppearanceFadeDef, plus definition-manager host
+   Notes + `DefinitionManagerPrepared`. MATCH is
+   Notes+flag, not live constructed. dest `0044C72B` as
+   `[01232C24+8]` is not rdata-locked (leave #42 open).
+   Different object from later Subtitled `[0x13B8A54]`.
+   Init Player Interface still leftover
+   Register(ActionInputListener) / `00488D20` notes.
+   Host ctor note of `0044A3B0` under Init Player
+   Interface is DISPROVEN (moved).
    Host LMB edge queues Type4 (`5dcc1fc`). Host queues LMB-up
    as type 6 (`48133e9`). Dest leftover GraphicIndex path +
    calculator tests still feed 16×16; host still Notes
