@@ -8348,7 +8348,7 @@ public sealed class EngineLifecycle : IDisposable
             {
                 var cellCount = 0;
                 var firstCapW = 0f;
-                var lastCapW = 0f;
+                var rightCapW = 0f;
                 for (var c = 0; c < widgets.Count; c++)
                 {
                     if (widgets[c].ParentIndex != widget.ParentIndex)
@@ -8356,7 +8356,8 @@ public sealed class EngineLifecycle : IDisposable
                     var cap = WidgetLeftover(widgets[c]).W;
                     if (cellCount == 0)
                         firstCapW = cap;
-                    lastCapW = cap;
+                    else if (cellCount == 1)
+                        rightCapW = cap;
                     cellCount++;
                 }
 
@@ -8371,7 +8372,7 @@ public sealed class EngineLifecycle : IDisposable
                     leftoverH,
                     table.Plus96,
                     firstCapW,
-                    lastCapW);
+                    rightCapW);
                 dest = new FrontendDest(
                     placed.X0, placed.Y0,
                     tableDest.ScaleX, tableDest.ScaleY,
@@ -8477,15 +8478,96 @@ public sealed class EngineLifecycle : IDisposable
     {
         for (var i = 0; i < widgets.Count; i++)
         {
-            var rect = FrontendHitTest.HitRect(widgets, i);
-            widgets[i] = widgets[i] with
+            var widget = widgets[i];
+            float x0 = widget.DestX0;
+            float y0 = widget.DestY0;
+            float x1 = widget.DestX1;
+            float y1 = widget.DestY1;
+            if (x1 <= x0 || y1 <= y0)
+                TryChromeHit(widgets, i, ref x0, ref y0, ref x1, ref y1);
+            widgets[i] = widget with
             {
-                HitX0 = rect.X0,
-                HitY0 = rect.Y0,
-                HitX1 = rect.X1,
-                HitY1 = rect.Y1,
+                HitX0 = x0,
+                HitY0 = y0,
+                HitX1 = x1,
+                HitY1 = y1,
             };
         }
+    }
+
+    /// <summary>
+    /// <c>0055B8F0</c> AABB is dest
+    /// origin plus dest size. Type
+    /// 16/37 <c>0041AFA0</c> dest is a
+    /// point; size comes from the
+    /// packed type-2 leftover in the
+    /// same list row (rightmost table).
+    /// Draw dest stays the point.
+    /// </summary>
+    private static void TryChromeHit(
+        List<FrontendWidget> widgets,
+        int index,
+        ref float x0,
+        ref float y0,
+        ref float x1,
+        ref float y1)
+    {
+        var widget = widgets[index];
+        if (widget.Type != FrontendWidgetType.TextSlider &&
+            widget.Type != FrontendWidgetType.EditBox)
+            return;
+        var row = index;
+        while ((uint)row < (uint)widgets.Count)
+        {
+            var parent = widgets[row].ParentIndex;
+            if (parent < 0)
+                break;
+            if (widgets[parent].Type == FrontendWidgetType.List)
+                break;
+            row = parent;
+        }
+
+        var bestX0 = float.NegativeInfinity;
+        var bestW = 0f;
+        var bestH = 0f;
+        for (var c = 0; c < widgets.Count; c++)
+        {
+            if (widgets[c].Type != FrontendWidgetType.TableType)
+                continue;
+            var walk = c;
+            var under = false;
+            while ((uint)walk < (uint)widgets.Count)
+            {
+                if (walk == row)
+                {
+                    under = true;
+                    break;
+                }
+
+                walk = widgets[walk].ParentIndex;
+                if (walk < 0)
+                    break;
+            }
+
+            if (!under)
+                continue;
+            var w = widgets[c].DestX1 - widgets[c].DestX0;
+            var h = widgets[c].DestY1 - widgets[c].DestY0;
+            if (w <= 0f || h <= 0f)
+                continue;
+            if (widgets[c].DestX0 < bestX0)
+                continue;
+            bestX0 = widgets[c].DestX0;
+            bestW = w;
+            bestH = h;
+        }
+
+        if (bestW <= 0f || bestH <= 0f)
+            return;
+        x0 = widget.DestX0;
+        y0 = widget.DestY0;
+        x1 = x0 + bestW;
+        y1 = y0 + bestH;
     }
 
     private string? LookupFrontendText(string id)
@@ -8519,9 +8601,8 @@ public sealed class EngineLifecycle : IDisposable
         var width = BackBufferWidth > 0 ? BackBufferWidth : DisplayDefaultWidth;
         var height = BackBufferHeight > 0 ? BackBufferHeight : DisplayDefaultHeight;
         var (records, textures) = CollectFrontendRecords();
-        var present = SpritesThenGlyphs(records);
-        FrontendBatch = Dx9VulkanFrontend.BuildBatch(present, textures, 0, 0, width, height);
-        DumpFrontendPresentRgba(present, textures, width, height);
+        FrontendBatch = Dx9VulkanFrontend.BuildBatch(records, textures, 0, 0, width, height);
+        DumpFrontendPresentRgba(records, textures, width, height);
     }
 
     private (List<FrontendDx9DrawRecord> Records, List<GpuTexture> Textures)
@@ -8533,6 +8614,8 @@ public sealed class EngineLifecycle : IDisposable
         _frontendSubmitCounts.Clear();
         foreach (var tree in ResidentSlotTrees())
         {
+        var slot = new List<FrontendDx9DrawRecord>();
+        var slotCounts = new List<int>(tree.Count);
         for (var i = 0; i < tree.Count; i++)
         {
             var widget = tree[i];
@@ -8543,7 +8626,7 @@ public sealed class EngineLifecycle : IDisposable
             var haveUv = false;
             var glyphs = 0;
             var colour = widget.Colour;
-            var recordStart = records.Count;
+            var recordStart = slot.Count;
             if (FrontendWidgetFactory.IsPresented(tree, i) &&
                 !FrontendWidgetType.LeafDipSkipped(colour) &&
                 widget.DestX1 > widget.DestX0 && widget.DestY1 > widget.DestY0)
@@ -8562,7 +8645,7 @@ public sealed class EngineLifecycle : IDisposable
                     var uv = FrontendDx9Submit.SubmittedSpriteUv(
                         0f, 0f, 0f, 0f,
                         frame.U0, frame.V0, frame.U1, frame.V1);
-                    records.Add(new FrontendDx9DrawRecord(
+                    slot.Add(new FrontendDx9DrawRecord(
                         widget.DestX0, widget.DestY0, widget.DestX1, widget.DestY1,
                         uv.U0, uv.V0, uv.U1, uv.V1, colour, id,
                         Dx9VulkanFrontend.WidgetBlendDefault,
@@ -8607,7 +8690,7 @@ public sealed class EngineLifecycle : IDisposable
                     foreach (var glyph in FrontendTextDraw.Layout(
                         face, widget.Text, penX, penY, colour))
                     {
-                        records.Add(new FrontendDx9DrawRecord(
+                        slot.Add(new FrontendDx9DrawRecord(
                             glyph.DestX0, glyph.DestY0, glyph.DestX1, glyph.DestY1,
                             glyph.U0, glyph.V0, glyph.U1, glyph.V1,
                             glyph.Color, atlasId,
@@ -8650,18 +8733,23 @@ public sealed class EngineLifecycle : IDisposable
                 GlyphCount = glyphs,
                 DrawOrder = i,
             };
-            _frontendSubmitCounts.Add(records.Count - recordStart);
+            slotCounts.Add(slot.Count - recordStart);
         }
+
+        foreach (var rec in SpritesThenGlyphs(slot))
+            records.Add(rec);
+        foreach (var count in slotCounts)
+            _frontendSubmitCounts.Add(count);
         }
 
         return (records, textures);
     }
 
     /// <summary>
-    /// <c>0054EF00</c> glyph records flush
-    /// after <c>0041AFA0</c> sprite dests
-    /// so type-6 text is not covered by
-    /// a later opaque cell.
+    /// Per slot: <c>0054EF00</c> glyphs
+    /// after that slot's <c>0041AFA0</c>
+    /// sprites. Not a global flush
+    /// across <c>[ui+84]</c> trees.
     /// </summary>
     private static List<FrontendDx9DrawRecord> SpritesThenGlyphs(
         List<FrontendDx9DrawRecord> records)

@@ -85,10 +85,13 @@ public sealed class FrontendFrameDumpTests
         Assert.True(rows.Select(w => w.DestY0).Distinct().Count() >= 4);
         foreach (var widget in life.FrontendWidgets)
         {
-            Assert.Equal(widget.DestX0, widget.HitX0);
-            Assert.Equal(widget.DestY0, widget.HitY0);
-            Assert.Equal(widget.DestX1, widget.HitX1);
-            Assert.Equal(widget.DestY1, widget.HitY1);
+            if (widget.DestX1 > widget.DestX0 && widget.DestY1 > widget.DestY0)
+            {
+                Assert.Equal(widget.DestX0, widget.HitX0);
+                Assert.Equal(widget.DestY0, widget.HitY0);
+                Assert.Equal(widget.DestX1, widget.HitX1);
+                Assert.Equal(widget.DestY1, widget.HitY1);
+            }
         }
 
         life.SetFrontendPointer(12f, 12f);

@@ -197,6 +197,13 @@ public sealed class FrontendUiDef
     /// </summary>
     public IReadOnlyList<int> SpriteDefIndices { get; init; } = [];
     /// <summary>
+    /// Persist Sprites pair key.
+    /// New Profile LEFT is
+    /// <c>(0,L) (1,R) (4,M)</c>:
+    /// 0/1 caps, 4 stretch.
+    /// </summary>
+    public IReadOnlyList<int> SpriteKeys { get; init; } = [];
+    /// <summary>
     /// Persist <see cref="Plus96Crc"/> /
     /// def <c>+96</c>. Bit 0 = place
     /// type-2 cells along X.
@@ -289,6 +296,7 @@ public sealed class FrontendUiDef
         var haveGraphic = false;
         var sprites = 0;
         var spriteDefs = new List<int>();
+        var spriteKeys = new List<int>();
         var plus96 = 0;
         var plus326 = 0f;
         var plus322 = 0f;
@@ -443,13 +451,30 @@ public sealed class FrontendUiDef
                 sprites = BitConverter.ToInt32(raw, payload);
                 cursor = payload + 4;
                 spriteDefs.Clear();
+                spriteKeys.Clear();
                 if (sprites is > 0 and <= 64)
                 {
                     for (var i = 0; i < sprites && cursor + 8 <= raw.Length; i++)
                     {
+                        spriteKeys.Add(BitConverter.ToInt32(raw, cursor));
                         cursor += 4;
                         spriteDefs.Add(BitConverter.ToInt32(raw, cursor));
                         cursor += 4;
+                    }
+
+                    for (var a = 0; a < spriteKeys.Count; a++)
+                    {
+                        var best = a;
+                        for (var b = a + 1; b < spriteKeys.Count; b++)
+                        {
+                            if (spriteKeys[b] < spriteKeys[best])
+                                best = b;
+                        }
+
+                        if (best == a)
+                            continue;
+                        (spriteKeys[a], spriteKeys[best]) = (spriteKeys[best], spriteKeys[a]);
+                        (spriteDefs[a], spriteDefs[best]) = (spriteDefs[best], spriteDefs[a]);
                     }
                 }
                 else if (sprites != 0)
@@ -655,6 +680,7 @@ public sealed class FrontendUiDef
             GraphicBankId = graphic,
             Sprites = sprites,
             SpriteDefIndices = spriteDefs,
+            SpriteKeys = spriteKeys,
             Plus96 = plus96,
             Plus326 = plus326,
             Plus322 = plus322,

@@ -380,13 +380,12 @@ public static class FrontendLayout
     /// <summary>
     /// <c>00551EA0</c> when def+96 bit 0:
     /// place clones along X from the
-    /// parent origin. First and last
-    /// cap leftover is taken once from
-    /// the first/last template; the
-    /// middle cell (n==3) fills the
-    /// leftover budget so the three
-    /// cells tile the parent bar.
-    /// Height is the cell leftover H.
+    /// parent origin. Persist Sprites
+    /// keys <c>0,1,4</c> pair as left
+    /// cap, right cap, stretch tile.
+    /// Index 0/1 keep those leftover
+    /// widths; remaining cells fill
+    /// the leftover budget.
     /// </summary>
     public static (float X0, float Y0, float X1, float Y1) PlaceTableCell(
         int index,
@@ -426,13 +425,13 @@ public static class FrontendLayout
             }
             else if (index == 1)
             {
-                x0 = originX + leftW;
-                width = midW;
+                x0 = originX + leftoverW - rightW;
+                width = rightW;
             }
             else
             {
-                x0 = originX + leftW + midW;
-                width = rightW;
+                x0 = originX + leftW;
+                width = midW;
             }
 
             return (Snap(x0), Snap(originY), Snap(x0 + width), Snap(originY + height));

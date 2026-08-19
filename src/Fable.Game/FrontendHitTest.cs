@@ -30,17 +30,20 @@ public static class FrontendHitTest
     /// <summary>
     /// <c>0055B8F0</c> uses dest origin
     /// (<c>vtbl+488</c>) plus dest size
-    /// (<c>vtbl+492</c>). Draw dest and
-    /// hit dest are the same rectangle.
-    /// Point dests do not invent a
-    /// leftover union.
+    /// (<c>vtbl+492</c>). Draw dest stays
+    /// a point when leftover is 0; hit
+    /// size is that leftover when the
+    /// type-16/37 row packed a type-2.
     /// </summary>
     public static (float X0, float Y0, float X1, float Y1) HitRect(
         IReadOnlyList<FrontendWidget> tree, int index)
     {
         if ((uint)index >= (uint)tree.Count)
             return (0f, 0f, 0f, 0f);
-        return DestRect(tree[index]);
+        var widget = tree[index];
+        if (widget.HitX1 > widget.HitX0 && widget.HitY1 > widget.HitY0)
+            return (widget.HitX0, widget.HitY0, widget.HitX1, widget.HitY1);
+        return DestRect(widget);
     }
 
     /// <summary>

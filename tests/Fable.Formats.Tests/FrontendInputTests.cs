@@ -362,6 +362,13 @@ public sealed class FrontendInputTests
         Assert.Null(FrontendHitTest.HitIndex(life.FrontendWidgets, 96f, 304f));
         Assert.Equal(before, life.FrontendWidgets[slider].ActiveChild);
 
+        life.SetFrontendPointer(700f, 300f);
+        life.QueueInput(FrontendInputMap.Type4, 0);
+        life.QueueInput(FrontendInputMap.Type6, 0);
+        Assert.True(life.Pump());
+        Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        Assert.NotEqual(before, life.FrontendWidgets[slider].ActiveChild);
+
         var knob = IndexOf(life, "UI_SLIDER_CAMERA_SENSITIVITY");
         ClickIndex(life, knob);
         Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);

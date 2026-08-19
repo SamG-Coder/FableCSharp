@@ -348,19 +348,48 @@ public sealed class FrontendLayoutTests
         Assert.Equal(3, left.SpriteDefIndices.Count);
         Assert.Equal("UI_OPTIONS_TEXT_SLOT_L", bin.Entries[left.SpriteDefIndices[0]].InstanceName);
         Assert.Equal("UI_OPTIONS_TEXT_SLOT_M", bin.Entries[left.SpriteDefIndices[2]].InstanceName);
+        var leftEntry = bin.FindEntry("UI_BUTTON_OPTIONS_LEFT")!;
+        var leftRaw = leftEntry.Raw;
+        var spriteOff = -1;
+        for (var i = 0; i + 8 <= leftRaw.Length; i++)
+        {
+            if (BitConverter.ToUInt32(leftRaw, i) != FrontendUiDef.SpritesCrc)
+                continue;
+            spriteOff = i;
+            break;
+        }
+
+        Assert.True(spriteOff >= 0);
+        var n = BitConverter.ToInt32(leftRaw, spriteOff + 4);
+        sb.Append("LEFT sprite pairs n=").Append(n);
+        var p = spriteOff + 8;
+        for (var i = 0; i < n && p + 8 <= leftRaw.Length; i++, p += 8)
+        {
+            var key = BitConverter.ToInt32(leftRaw, p);
+            var def = BitConverter.ToInt32(leftRaw, p + 4);
+            var child = (uint)def < (uint)bin.Entries.Count
+                ? bin.Entries[def].InstanceName
+                : "?";
+            sb.Append(" (").Append(key).Append(',').Append(child).Append(')');
+        }
+
+        sb.AppendLine();
+        File.WriteAllText(scratch, sb.ToString());
         var editText = FrontendUiDef.TryParse(bin.FindEntry("UI_SCOREBOARD_EDITBOX_TEXT_FE")!)!;
         Assert.True(string.IsNullOrEmpty(editText.TextTag));
+        Assert.Equal(new[] { 0, 1, 4 }, left.SpriteKeys);
         var first = FrontendLayout.PlaceTableCell(
-            0, 3, 64f, 240f, 288f, 32f, 64f, 32f, plus96: 1, firstCapW: 64f, lastCapW: 8f);
+            0, 3, 64f, 240f, 288f, 32f, 64f, 32f, plus96: 1, firstCapW: 64f, lastCapW: 64f);
+        var right = FrontendLayout.PlaceTableCell(
+            1, 3, 64f, 240f, 288f, 32f, 64f, 32f, plus96: 1, firstCapW: 64f, lastCapW: 64f);
         var mid = FrontendLayout.PlaceTableCell(
-            1, 3, 64f, 240f, 288f, 32f, 160f, 32f, plus96: 1, firstCapW: 64f, lastCapW: 8f);
-        var last = FrontendLayout.PlaceTableCell(
-            2, 3, 64f, 240f, 288f, 32f, 8f, 32f, plus96: 1, firstCapW: 64f, lastCapW: 8f);
+            2, 3, 64f, 240f, 288f, 32f, 8f, 32f, plus96: 1, firstCapW: 64f, lastCapW: 64f);
         Assert.Equal(64f, first.X0);
         Assert.Equal(128f, first.X1);
+        Assert.Equal(288f, right.X0);
+        Assert.Equal(352f, right.X1);
         Assert.Equal(first.X1, mid.X0);
-        Assert.Equal(mid.X1, last.X0);
-        Assert.Equal(352f, last.X1);
+        Assert.Equal(mid.X1, right.X0);
     }
 
     [Fact]
@@ -415,17 +444,28 @@ public sealed class FrontendLayoutTests
             "sprites=" + string.Join(",", left.SpriteDefIndices) +
             " n=" + left.Sprites + " partial=" + left.Partial);
         Assert.Equal((180f, 0f), FrontendLayout.Type2Leftover(left.Width, left.Height));
-        var cells = life.FrontendWidgets
-            .Where(w => w.ParentName == "UI_BUTTON_OPTIONS_LEFT" &&
-                        w.DestY0 == 240f)
-            .ToList();
-        Assert.True(cells.Count >= 3, "left cells=" + cells.Count);
-        Assert.Equal(cells[0].DestX1, cells[1].DestX0);
-        Assert.Equal(cells[1].DestX1, cells[2].DestX0);
-        var table = life.FrontendWidgets.First(w =>
-            w.Name == "UI_BUTTON_OPTIONS_LEFT" && w.DestY0 == 240f);
-        Assert.Equal(table.DestX0, cells[0].DestX0);
-        Assert.Equal(table.DestX1, cells[2].DestX1);
+        var tableIndex = -1;
+        for (var i = 0; i < life.FrontendWidgets.Count; i++)
+        {
+            if (life.FrontendWidgets[i].Name == "UI_BUTTON_OPTIONS_LEFT" &&
+                life.FrontendWidgets[i].DestY0 == 240f)
+            {
+                tableIndex = i;
+                break;
+            }
+        }
+
+        Assert.True(tableIndex >= 0);
+        var table = life.FrontendWidgets[tableIndex];
+        var kids = FrontendWidgetFactory.ChildrenOf(life.FrontendWidgets, tableIndex);
+        Assert.True(kids.Count >= 3, "left cells=" + kids.Count);
+        var capL = life.FrontendWidgets[kids[0]];
+        var capR = life.FrontendWidgets[kids[1]];
+        var stretch = life.FrontendWidgets[kids[2]];
+        Assert.Equal(table.DestX0, capL.DestX0);
+        Assert.Equal(capL.DestX1, stretch.DestX0);
+        Assert.Equal(stretch.DestX1, capR.DestX0);
+        Assert.Equal(table.DestX1, capR.DestX1);
     }
 
     [Fact]
@@ -450,10 +490,20 @@ public sealed class FrontendLayoutTests
         Assert.Equal(cancelDest.DestY1, cancelDest.HitY1);
         foreach (var widget in life.FrontendWidgets)
         {
-            Assert.Equal(widget.DestX0, widget.HitX0);
-            Assert.Equal(widget.DestY0, widget.HitY0);
-            Assert.Equal(widget.DestX1, widget.HitX1);
-            Assert.Equal(widget.DestY1, widget.HitY1);
+            if (widget.DestX1 > widget.DestX0 && widget.DestY1 > widget.DestY0)
+            {
+                Assert.Equal(widget.DestX0, widget.HitX0);
+                Assert.Equal(widget.DestY0, widget.HitY0);
+                Assert.Equal(widget.DestX1, widget.HitX1);
+                Assert.Equal(widget.DestY1, widget.HitY1);
+                continue;
+            }
+
+            if (widget.Type is FrontendWidgetType.TextSlider or FrontendWidgetType.EditBox)
+            {
+                Assert.True(widget.HitX1 > widget.HitX0 && widget.HitY1 > widget.HitY0,
+                    widget.Name + " hit empty");
+            }
         }
 
         Assert.NotEqual(ax, cx);
@@ -474,6 +524,18 @@ public sealed class FrontendLayoutTests
         var slider = IndexOf(life, "UI_OPTIONS_CONTROL_METHOD_TEXT_SLIDER");
         var before = life.FrontendWidgets[slider].ActiveChild;
         Assert.Null(FrontendHitTest.HitIndex(life.FrontendWidgets, 96f, 304f));
+        Assert.Equal(
+            slider,
+            FrontendHitTest.HitIndex(life.FrontendWidgets, 700f, 300f));
+        var edit = IndexOf(life, "UI_NEW_PROFILE_EDIT_BOX");
+        var editHit = FrontendHitTest.HitRect(life.FrontendWidgets, edit);
+        Assert.True(editHit.X1 > editHit.X0 && editHit.Y1 > editHit.Y0);
+        Assert.Equal(
+            edit,
+            FrontendHitTest.HitIndex(
+                life.FrontendWidgets,
+                (editHit.X0 + editHit.X1) * 0.5f,
+                (editHit.Y0 + editHit.Y1) * 0.5f));
         var knob = IndexOf(life, "UI_SLIDER_CAMERA_SENSITIVITY");
         Assert.Equal(
             knob,
