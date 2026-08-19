@@ -15,24 +15,22 @@ or in tests/code, treat it as **UNREAD**.
 world clock.
 
 Snapshot: **2026-08-19**, previous snapshot runtime HEAD
-`8cd110a` via PR #35 merge `313e573`,
-runtime HEAD `c180b8c` (*frontend.bin widget tree, dest
-inherit, type-4 0xE5, stored MessageId 0x126/15.*).
-Just locked: 5 runtime commits since `8cd110a`. Headline
-locks: frontend.bin widget tree + DX9-to-Vulkan submit
-(`0d77c2c`); dest inherit type-10 remap; leftover size
-only GraphicIndex; type-6 dest zero-size (`1a08cc0`);
-type-4 Press Start 0xE5; Return is not accept (`db36334`);
-stored MessageId 0x126/15; type-4 action 26 posts them;
-no lifecycle inject (`c180b8c`). `e79f7b4` is unused-usings
-cleanup of `0d77c2c`. Ignore merge `f2aebf57`. Ignore docs
-`fb46116` / snapshot `313e573` / `09684a0`. Ignore
-gitignore `d1a9f91`. Ignore tools/_frontend `fa5c1a2`.
-Ignore proofs-only adds. Docs PR #29 `bedcf919` is iOS
-Settings chrome only — CSS unchanged. Freeze at
-`c180b8c`. Do not include any later runtime if master
-moves. Master is still proving **boot / world clock**,
-not animation.
+`c180b8c` via PR #38 merge `86bee1ad`,
+runtime HEAD `48133e9` (*QST TRUE activate + host LMB
+Type4, MessageId persist +228, action 26 +224 empty
+first-seen vs +228 MessageId, 0xE5 invent gone, LMB-up
+type 6 action 28.*).
+Just locked: 5 runtime commits since `c180b8c`. Headline
+locks: QST TRUE activate + host LMB Type4 (`5dcc1fc`);
+MessageId persist +228 (`f38f9f9`); action 26 +224 empty
+first-seen vs +228 MessageId (`9e94ef9`); 0xE5 invent
+gone; type-10 attach 00598A1C (`61e430f`); LMB-up type 6
+action 28 posts +228 after arm (`48133e9`). Ignore
+snapshot merge `86bee1ad` / `62ae998`. Ignore proofs-only
+adds. Docs PR #29 `bedcf919` is iOS Settings chrome only
+— CSS unchanged. Freeze at `48133e9`. Do not include any
+later runtime if master moves (e.g. `7adf621`). Master is
+still proving **boot / world clock**, not animation.
 README’s long-term priority list still starts with animation;
 that list is not the current phase.
 
@@ -126,12 +124,13 @@ when a ledger or test already records them.
 
 ### Phase 1 in progress — boot / world clock (current master)
 
-Recent commits (`0d77c2c` … `c180b8c`) lock frontend.bin widget
-tree / dest inherit / type-4 Press Start / stored MessageId, not
-`00DBDE40`. Previous snapshot `8cd110a` via PR #35 `313e573`.
-Just locked this batch: frontend.bin widget tree + DX9-to-Vulkan
-submit, dest inherit type-10 remap, type-4 0xE5, stored
-MessageId 0x126/15 via action 26. CSS unchanged.
+Recent commits (`5dcc1fc` … `48133e9`) lock QST TRUE activate
+/ host LMB Type4 / MessageId +228 / action 26 empty +224 /
+0xE5 invent gone / LMB-up type 6, not `00DBDE40`. Previous
+snapshot `c180b8c` via PR #38 `86bee1ad`. Just locked this
+batch: QST AddQuest TRUE as world+172, MessageId persist +228,
+action 26 +224 empty first-seen, type-10 attach 00598A1C, LMB-up
+type 6 action 28 posts +228 after arm. CSS unchanged.
 
 | Item | Status | Evidence |
 |---|---|---|
@@ -163,9 +162,9 @@ MessageId 0x126/15 via action 26. CSS unchanged.
 | Camera body `004164E0` steps `arg/15` when `[0x13B8630]>0` | PROVEN | `6d7545a` |
 | `0041707E` interpolates when catchup ticks are 0 (default New Game) | PROVEN | `c3be891` |
 | `006B4900` world+24 slots; `006B42F0` lerps `+6296/+6312/+6328` into `ScriptedCamera` | PROVEN | `6e1ff8e` / `World_camera_006B4900_slots_lerp_into_ScriptedCamera` |
-| Leave Press Start: `0059A238` msg `0xE5` → `00599D5C` empty `005955AB` → `00595845` → `00596917` slot `0x17` `NEW_PROFILE` | PROVEN | `Frontend_0059A238_msg_E5_empty_005955AB_is_00595845_then_00596917`. Type-4 posts `0xE5` on Press Start (`db36334`). Host Return quarantined as accept. Return→msg 15 from Press Start DISPROVEN. Native `0xE5` is attach `00598EE6` → widget+352, not persist +224 — leftover #37. |
-| New Profile accept: `00851770` seeds `0x122DE80` "Default"; msg `0x126` → `00851920` → `0059697A` `MAIN_MENU_NO_CONTINUE` | PROVEN | `Frontend_00851770_seeds_Default_then_0x126_is_0059697A_main_menu`. Persist CRC `0x53C644E4` as MessageId (def+224 via `0055B040`): type-38 `UI_ACCEPT_NEW_PROFILE` stores `0x126` (`c180b8c`). Action 26 posts the stored id. |
-| Frontend New Game click: `0059A238` msg 15 → `[retail+41]=1` → Leave `0042F2A2` | PROVEN | `64a2e14` / `Frontend_00595582_new_game_message_leaves_without_RequestNewGame`. Type-11 `UI_FRONTEND_BUTTON_NEW_GAME` stores 15 (`c180b8c`). Action 26 posts it. |
+| Leave Press Start: `0059A238` msg `0xE5` → `00599D5C` empty `005955AB` → `00595845` → `00596917` slot `0x17` `NEW_PROFILE` | PROVEN | `Frontend_0059A238_msg_E5_empty_005955AB_is_00595845_then_00596917`. Type-4 posts type-10 +352 (`48133e9`). Host LMB edge queues Type4 (`5dcc1fc`). Host Return quarantined as accept. Return→msg 15 from Press Start DISPROVEN. Type-10 `0xE5` is only `00598A1C` attach write (`00598EE6` is the mov inside it) → widget+352 (`61e430f`). leftover #37 remaining half: action 26 empty +224 vs LMB-up +228. |
+| New Profile accept: `00851770` seeds `0x122DE80` "Default"; msg `0x126` → `00851920` → `0059697A` `MAIN_MENU_NO_CONTINUE` | PROVEN | `Frontend_00851770_seeds_Default_then_0x126_is_0059697A_main_menu`. Persist CRC `0x53C644E4` as MessageId (def+228 via `0055B040` / `00632500`): type-38 `UI_ACCEPT_NEW_PROFILE` stores `0x126` (`f38f9f9`). Action 26 posts widget+372 from def+224 (0 first-seen). LMB-up action 28 posts +228 after arm (`48133e9`). |
+| Frontend New Game click: `0059A238` msg 15 → `[retail+41]=1` → Leave `0042F2A2` | PROVEN | `64a2e14` / `Frontend_00595582_new_game_message_leaves_without_RequestNewGame`. Type-11 `UI_FRONTEND_BUTTON_NEW_GAME` stores 15 at +228 (`f38f9f9`). Action 26 posts empty +224 first-seen (`9e94ef9`). LMB-up action 28 posts +228 after arm (`48133e9`). |
 | Menu built at `00595B24` (`UI_TEXT_NEW_GAME` id=0); not `00DBDE40` | PROVEN | same |
 | Frontend frame `0042EC7C`: input `0042E3EE` → fill → draw `0042DF9E` (BeginScene / UI vtbl+8 / EndScene / Present) | PROVEN | `0d8f5e5` / `Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present` |
 | Same Present as PlayAVI (`009BEEB0`); extra `.wmv` after draw skipped (`00595A03` always 0) | PROVEN | same |
@@ -179,9 +178,9 @@ MessageId 0x126/15 via action 26. CSS unchanged.
 | `0049F180` after characters: Init GUI `0043A380` `PLAYER_GUI_PC` | PROVEN | `21491ac` / same test (`PlayerGuiReady`); bind still #17 / PARTIAL (Note-only) |
 | `00403079` / `009C0E50` display defaults 1024×768, title `TEXT_GUI_WINDOW_TITLE` | PROVEN | `48a879ac` / `Window_00403079_defaults_1024x768_and_title`. Client Size = `BackBufferWidth`/`Height`. `DefaultVulkan` 1600×900 DISPROVEN (issue #8 done). |
 | `00413C50` `userst.ini` `SetFullscreen` / `009A64B0` style `0xCA0000` / `009BF7E0` `Windowed=![0x137544A]` | PROVEN (name→byte PARTIAL) | `Userst_00413C50_SetFullscreen_false_is_009BF7E0_windowed`. d3d9 `ForceWindowedMode` wrapper is not authority. |
-| `004B4260` activates WLD `START_INITIAL_QUESTS` (world+172 from `00507C30`) | PROVEN | `efa0e541` / `Init_quests_004B4260_activates_wld_initial_list` (`QuestsInitDone=true`) |
-| `00CB5AD0` starts `QuestFactoryTable` factory scripts (not `S_QNOVI`) | PROVEN | `48a879ac` / `Activate_quests_00CB5AD0_starts_factory_scripts` |
-| `0042E3EE` type/key events dispatch `0041E5F2` actions 0–5 / 20–21 (not WASD) | PROVEN | `e7b3c76` / `Input_0042E3EE_dispatches_0041E5F2_actions`. `0055CB10` records actions; no recovered player-move listener. Not WASD. New Game is still keyboard N/Enter (leave #14 open). |
+| `004B4260` activates QST AddQuest TRUE as world+172 (FinalAlbion then GlobalQuests, not WLD `START_INITIAL_QUESTS`) | PROVEN | `5dcc1fc` / `Init_quests_004B4260_activates_wld_initial_list` (`QuestsInitDone=true`). `00507C30` has no START_INITIAL_QUESTS case. |
+| `00CB5AD0` starts `QuestFactoryTable` factory scripts (not `S_QNOVI`) | PROVEN | `48a879ac` / `Activate_quests_00CB5AD0_starts_factory_scripts`. QM+44 (`004B2850` / `004B00C0`) gates activate before `00CB5AD0` (`f38f9f9`). |
+| `0042E3EE` type/key events dispatch `0041E5F2` actions 0–5 / 20–21 (not WASD) | PROVEN | `e7b3c76` / `Input_0042E3EE_dispatches_0041E5F2_actions`. `0055CB10` records actions; no recovered player-move listener. Not WASD. Host LMB edge queues Type4 (`5dcc1fc`). New Game keyboard N/Enter leftover still stands (leave #14 open). |
 | `009BEF80` SetViewport vtbl+188 full backbuffer 1024×768 MinZ 0 MaxZ 1 | PROVEN | `12e0d75` / `Window_00403079_defaults_1024x768_and_title` + `Game_00435530_Presents_009BEEB0_and_pumps_input` |
 | Game `00435530` / `00435F50` Present is the same `009BEEB0` as frontend and PlayAVI | PROVEN | `12e0d75` / `Game_00435530_Presents_009BEEB0_and_pumps_input`. `00417001` does not Present; it calls `00435F70` → `00435530` after WorldFrame>1. Client Draw is that Present, not a second swapchain. |
 | `00435530` flushes ScenePasses via `009DA9F0(1)` DIP vtbl+332 (bits `0x4` → `0x40` → `0x20` → `0x100` → `0x2000`) | PROVEN | `be8545e` / `676bf63` / same `Game_00435530` test (`SubmittedLayerBits`). Order BeginScene, Clear, PlayerOverlay `00435000`→`00639E40`, PlayerInterface `00435070`, Flush2D `009D9C80`, FlushLayers `009DA9F0(1)`, EndScene, Present. Overlay/interface still Note. |
@@ -203,10 +202,15 @@ MessageId 0x126/15 via action 26. CSS unchanged.
 | `0042DF9E` walks `[ui+84]` vtbl+8, then `009D9C80`/`009DA9F0(1)` twice. `00404A80` is getter `0x13B7CD8` | PROVEN | `5657176` / `6607c1e` / `Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present` (`FrontendFlushCount=2`, `FrontendDisplayHelperFn`, `FrontendDisplaySingletonVa`). New Game still keyboard N/Enter (leave #14 open). |
 | PRESS_START is type 10 `0054E3D0` vtbl `012497E4`; draw `00530260` +176; `005339B0` +272=1; `UI_PRESS_START_TEXT` `TEXT_GUI_MENU_PRESS_BUTTON` | PROVEN | `Frontend_PRESS_START_is_type_10_with_text_child`. Type-0 `0041B800` / dest-always-0 / `0041AFA0` as the menu draw is DISPROVEN. |
 | Press Start sprites are `frontend.big` `FRONTEND_TITLE_01/02_SPRITE` + `FORREST_1_*` + mouse | PROVEN | decoded via `TextureFile` (Rgba8 framed LZO); title 256×128 gold logo; forest DXT1 oak grove |
-| `frontend.bin` drives widget tree, dest, sprites and DX9-to-Vulkan submit | PROVEN | `0d77c2c`. `e79f7b4` drops unused usings from `FrontendWidgetFactory` (cleanup of `0d77c2c`). Present `0042DF9E` / `00595222` still Note-only. Host never queues Type4. leave #14 and #20 open. |
+| `frontend.bin` drives widget tree, dest, sprites and DX9-to-Vulkan submit | PROVEN | `0d77c2c`. `e79f7b4` drops unused usings from `FrontendWidgetFactory` (cleanup of `0d77c2c`). Present `0042DF9E` / `00595222` still Note-only. Host LMB edge queues Type4 (`5dcc1fc`). Host queues LMB-up as type 6 (`48133e9`). leave #14 and #20 open. |
 | Press Start dest inherits type-10 remap scale. Leftover `+204/+208` only when `GraphicIndex != 0`. Type-6 dest is zero-size at remapped origin. Nonempty dest is `00BAE2D0` not `009DB700`. Host still Notes `009DA9F0` DIP | PROVEN / leftover #36 | `1a08cc0`. Calculator tests still feed 16×16. leave #36 open. |
 | Type-4 posts `0xE5` on Press Start. Host Return quarantined as accept. `0x126`/15 were still injected at this SHA. CUIDef persist `00631C60` +189/+190 u8s consumed so Absolute stays aligned. Type-6 Font 26051 is a names.bin offset that resolves to `ENG_ARIAL_24`, not the `0054F4B0` `ENG_ARIAL_16` helper | PROVEN | `db36334` |
-| Persist CRC `0x53C644E4` as MessageId (def+224 via `0055B040`). Type-38 `UI_ACCEPT_NEW_PROFILE` stores `0x126`; type-11 `UI_FRONTEND_BUTTON_NEW_GAME` stores 15. Type 4 is `00A03C80` (+40=4), not a DIK. Action 26 posts stored id. Lifecycle no longer injects `0x126`/15 | PROVEN | `c180b8c` / `Type4_drives_lifecycle_0xE5_then_0x126_then_15` |
+| Persist CRC `0x53C644E4` as MessageId (def+224 via `0055B040`). Type-38 `UI_ACCEPT_NEW_PROFILE` stores `0x126`; type-11 `UI_FRONTEND_BUTTON_NEW_GAME` stores 15. Type 4 is `00A03C80` (+40=4), not a DIK. Action 26 posts stored id. Lifecycle no longer injects `0x126`/15 | PROVEN | `c180b8c` / `Type4_drives_lifecycle_0xE5_then_0x126_then_15`. Later `f38f9f9` moves MessageId to persist +228. |
+| QST AddQuest TRUE as world+172 (FinalAlbion then GlobalQuests, not WLD `START_INITIAL_QUESTS`). Host LMB edge queues Type4. `DikPosterUnread=false` | PROVEN | `5dcc1fc` |
+| MessageId is persist +228 / `0x53C644E4` (`00632500`), not +224 (`0x230364D6`). QM+44 (`004B2850` / `004B00C0`) gates activate before `00CB5AD0` | PROVEN | `f38f9f9` |
+| Action 26 posts widget+372 from def+224 (0 first-seen on Accept/New Game). `0x53C644E4` at +228 still holds `0x126`/15. Widgets carry Plus224 | PROVEN | `9e94ef9` |
+| Type 11/38 +228 via `0055ACF0`. Type-10 `0xE5` is only the `00598A1C` attach write (`00598EE6` is the mov inside it). Empty widget lists no longer invent `0xE5`. Press Start name-check invent gone | PROVEN | `61e430f` / `Frontend_press_start_type4_without_widgets_does_not_invent_0xE5` |
+| Type 11/38 +228 on LMB-up action 28 after action 26 arms. Type 4 still posts type-10 +352. Type 6 (`00A03D60`) is action 28 / vtbl+588 / `0055ACF0`. Host queues LMB-up as type 6. Unarmed +228 lists stay silent | PROVEN | `48133e9` |
 | `[node+20]` is `0041DB1D`/`0041D21B` type0 `0041B800` vtbl `0122F5D4`; draw `0041AFA0` not `0052D900` | DISPROVEN | PRESS_START Type=10. Type 0 is `UI_FRONTEND_BUTTON`. |
 | `00A09F20` miss: `[bank].vtbl+4` is `009D56C0` Open Bank File Async then `009A7F80` on `[0x13CA79C]` | PROVEN | `bbee903` / `Pe_entry_is_crt_not_new_game` / `Install_banks_and_startup_videos_exist` (`MeshBank.OpenVtbl4`) |
 | `00404C00` first-seen `[0x13B7CD8+8]==0` skip; `0041AFA0` packs `0041BEB0` type `0x22` (not sibling `0041BF60`) dest `[edx+92]` `this+0x15C` size `0xC0` | PROVEN | `c612ad5` / same frontend test (`Frontend2dLastPacker=0041BEB0`, `FrontendDisplayFlag=false`). Dest leftover `+204/+208` only when `GraphicIndex != 0` (`1a08cc0`). leave #14 open. |
@@ -290,8 +294,8 @@ the no-save path.
 | Frontend `00595222` widget DIP body | DISPROVEN as DIP | Walk only (`[ui+84]` → `0041AFA0`). Present `0042DF9E` / `00595222` still Note-only. Host still Notes `009DA9F0` DIP. leave #14 open. |
 | `00B324A0` type-0x22 handler vtbl+20 | PARTIAL | dest+4=0 only while dest is 0. Nonempty dest is `00BAE2D0` not `009DB700` (`1a08cc0`). Host still Notes `009DA9F0` DIP. Type-6 Font 26051 is a names.bin offset that resolves to `ENG_ARIAL_24`, not the `0054F4B0` `ENG_ARIAL_16` helper (`db36334`). leave #36 open. |
 | `0041AC20` dest rect from +204/+248 | PROVEN first-seen 0,0,0,0 | Leftover `+204/+208` only when `GraphicIndex != 0` (`1a08cc0`). Type-6 dest is zero-size at remapped origin. Calculator tests still feed 16×16. leave #36 open. |
-| New Game keyboard N/Enter (host stand-in) | PARTIAL | Host Return quarantined as accept (`db36334`). Host never queues Type4. `DispatchFrontendMessage(15)` is `0059A238` vtbl+32. Enter still queues that message. leave #14 open. |
-| Press Start `0xE5` host fill / action-26 poster | PARTIAL | Host fills `0xE5` when persist MessageId is 0. Action 26 posts first-visible type-10/11/38, not the action-target widget. Native `0xE5` is `00598EE6` → widget+352, not persist +224 (`0055B040`). issue #37. Stored 0x126/15 on type-38/11 is recovered. |
+| New Game keyboard N/Enter (host stand-in) | PARTIAL | Host Return quarantined as accept (`db36334`). Host LMB edge queues Type4 (`5dcc1fc`). Host queues LMB-up as type 6 (`48133e9`). `DispatchFrontendMessage(15)` is `0059A238` vtbl+32. Enter still queues that message. Present `0042DF9E` / `00595222` still Note-only. leave #14 open. |
+| Press Start `0xE5` / action-26 +224 vs LMB-up +228 | PARTIAL | `0xE5` host fill is gone (`61e430f`). Empty widget lists no longer invent `0xE5` (`Frontend_press_start_type4_without_widgets_does_not_invent_0xE5`). Type-10 `0xE5` is only the `00598A1C` attach write (`00598EE6` is the mov inside it). Remaining half at this freeze: action 26 native posts empty +224; C# LMB-up posts +228 via `0055ACF0` after arm. leave #37 open. |
 | `006B8640` / `008889C0` leftover (do not write V0 first-seen) | UNREAD | `006B2CA0` pose is PROVEN (`204a214`). Host `SeedAt(1.6m)` is DISPROVEN as live New Game. Lookout helper FOV 70 from `00A0C130` (`be3339e`). `00A0C130` is a packer (`a6f939a`); ctor look +Z, up `(1,1,1)`. SHOT2 FOV 72 is intro-view leftover — do not collapse into Lookout. Do not reopen #6 / #13 |
 | Consumed first-Present helper | UNREAD | `a6f939a` locks ctor packer / `00988A50` WVP / bank lerp `008857E0` / vtbl+244 colour-filter. Does not change the consumed first-Present helper. Do not reopen #6 / #13 |
 | `004978A0` LCG seed for `006B3030` | UNREAD | Spring ran; Weight0/V0 first-seen locked (`52e26bc`). Seed unread |
@@ -422,12 +426,15 @@ The boot-first sequence holds. Corrections from the repo:
    not reopen #6 / #13. SHOT2 FOV 72 stays intro-view leftover.
    `006B8640`/`008889C0` leftover UNREAD. Frontend leftover is
    still `00595222` Note-only and New Game keyboard N/Enter
-   (#14). Host never queues Type4. Dest leftover GraphicIndex
-   path + calculator tests still feed 16×16; host still Notes
-   `009DA9F0` DIP (#36). Press Start `0xE5` is a host fill when
-   persist MessageId is 0; action 26 posts first-visible
-   type-10/11/38 (#37). PlayAVI still 3D Draw (#20). leave #14
-   and #20 open. New Game submit now walks `0x4`/`0x40`/`0x20`/`0x100`/
+   (#14). Present `0042DF9E` / `00595222` still Note-only.
+   Host LMB edge queues Type4 (`5dcc1fc`). Host queues LMB-up
+   as type 6 (`48133e9`). Dest leftover GraphicIndex path +
+   calculator tests still feed 16×16; host still Notes
+   `009DA9F0` DIP (#36). leave #36 open. `0xE5` host fill is
+   gone (`61e430f`). Remaining #37 half: action 26 native
+   posts empty +224; C# LMB-up posts +228 via `0055ACF0`
+   after arm. leave #37 open. PlayAVI still 3D Draw (#20).
+   leave #14 and #20 open. New Game submit now walks `0x4`/`0x40`/`0x20`/`0x100`/
    `0x2000` (`676bf63`); cell DIP is `0x40` only (`40037b1`).
    #11 done (`98c4acc` recreate-on-height + `00628B79` dest).
    #18 done (`ff808b1` RHSet +X). Lookout EnvironmentTheme is
