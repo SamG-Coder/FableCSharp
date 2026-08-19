@@ -775,12 +775,17 @@
           <td><code>acfe46f</code> / <code>Init_Thing_Components_004EE565_adds_CHighlightItemDef</code></td>
         </tr>
         <tr>
-          <td>Add CSmokeGeneratorDef after CHighlightItemDef. Site <code>004EE62B</code> / dest <code>009B0AC0</code> / factory <code>004DA82B</code> size 48 vtbl <code>0123E924</code>. Note-only + <code>ThirdDefClassRegistered</code>. MATCH is Notes+flag, not a 48-byte object. Not <code>CTCSmokeGenerator</code></td>
+          <td>Add CSmokeGeneratorDef after CHighlightItemDef. Site <code>004EE62B</code> (<code>0044C6B0</code>), dest <code>009B0AC0</code> at <code>004EE632</code>, factory <code>004DA82B</code> size 48 vtbl <code>0123E924</code>, name <code>CSmokeGeneratorDef</code>. Host Note-only + <code>ThirdDefClassRegistered</code>. MATCH is Notes+flag, not a live 48-byte object</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
           <td><code>100e5cf</code> / <code>Init_Thing_Components_004EE632_adds_CSmokeGeneratorDef</code></td>
         </tr>
         <tr>
-          <td>Add CTimeAppearanceFadeDef after CSmokeGeneratorDef. Site <code>004EE6FD</code> / dest <code>009B0AC0</code> / factory <code>004D84C8</code> size 56 vtbl <code>0123B7CC</code>. Note-only + <code>FourthDefClassRegistered</code>. MATCH is Notes+flag, not a 56-byte object. Not <code>CTCTimeAppearanceFade</code></td>
+          <td><code>CTCSmokeGenerator</code> <code>004EE588</code> is the next <code>009B0AC0</code> / Add Def Class</td>
+          <td><span class="badge DISPROVEN">DISPROVEN</span></td>
+          <td>CTC row, not Add Def Class (<code>100e5cf</code> / <code>Init_Thing_Components_004EE632_adds_CSmokeGeneratorDef</code>)</td>
+        </tr>
+        <tr>
+          <td>Add CTimeAppearanceFadeDef after CSmokeGeneratorDef. Site <code>004EE6FD</code> (<code>0044C6B0</code>), dest <code>009B0AC0</code> at <code>004EE704</code>, factory <code>004D84C8</code> size 56 vtbl <code>0123B7CC</code>, name <code>CTimeAppearanceFadeDef</code>. Host Note-only + <code>FourthDefClassRegistered</code>. MATCH is Notes+flag, not a live object</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
           <td><code>1a4c51d</code> / <code>Init_Thing_Components_004EE704_adds_CTimeAppearanceFadeDef</code></td>
         </tr>
