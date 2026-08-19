@@ -1037,6 +1037,52 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Thing_Components_004EF244_adds_CInventoryItemDef()
+    {
+        Assert.Equal(0x004EF23Du, EngineLifecycle.SixthDefClassSite);
+        Assert.Equal(0x0044F644u, EngineLifecycle.SixthDefClassFactory);
+        Assert.Equal(0x0044C108u, EngineLifecycle.SixthDefClassCtor);
+        Assert.Equal(0x01231DBCu, EngineLifecycle.SixthDefClassVtbl);
+        Assert.Equal(112, EngineLifecycle.SixthDefClassSize);
+        Assert.Equal("CInventoryItemDef", EngineLifecycle.SixthDefClassName);
+        Assert.NotEqual(EngineLifecycle.FifthDefClassName, EngineLifecycle.SixthDefClassName);
+        Assert.NotEqual(EngineLifecycle.FifthDefClassFactory, EngineLifecycle.SixthDefClassFactory);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.False(life.SixthDefClassRegistered);
+        Assert.Null(life.SixthDefClass);
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.True(life.FifthDefClassRegistered);
+        Assert.Equal(EngineLifecycle.FifthDefClassName, life.FifthDefClass);
+        Assert.True(life.SixthDefClassRegistered);
+        Assert.Equal(EngineLifecycle.SixthDefClassName, life.SixthDefClass);
+        var fifthFactory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FifthDefClassFactory);
+        var sixthSite = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixthDefClassSite);
+        var sixthAdd = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.AddDefClassFn &&
+            e.Action.Contains(EngineLifecycle.SixthDefClassName, StringComparison.Ordinal));
+        var sixthFactory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixthDefClassFactory);
+        var sixthLoad = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.LoadDefFn);
+        var sixthBudget = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.LoadDefBudgetFn);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fifthFactory >= 0 && sixthSite > fifthFactory);
+        Assert.True(sixthAdd > sixthSite && sixthFactory > sixthAdd);
+        Assert.True(sixthLoad > sixthFactory && sixthBudget > sixthLoad);
+        Assert.True(defs > sixthBudget, "CInventoryItemDef before Init Definition Manager");
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Init_Definition_Manager_00416005_resets_plus88_via_vtbl8()
     {
         Assert.Equal(0x00416005u, EngineLifecycle.InitDefinitionManagerFn);
