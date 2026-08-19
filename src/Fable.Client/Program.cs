@@ -1,4 +1,5 @@
 using System.Numerics;
+using Fable.Client;
 using Fable.Core;
 using Fable.Game;
 using Fable.Render;
@@ -14,23 +15,20 @@ if (install is null)
 }
 
 using var life = new EngineLifecycle();
-life.Bootstrap(install);
-// Host convenience for capture. Native skip is
-// DIK Escape/Space/Return/F4 (0042E3EE).
-if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("FABLE_SKIP_STARTUP_AVI")))
-{
-    while (life.Stage == EngineStage.StartupVideos)
-        life.FinishStartupVideo();
-    Console.WriteLine("FABLE_SKIP_STARTUP_AVI skipped PlayAVI to " + life.Stage);
-}
-
+life.BootstrapUntilGraphics(install);
+// FABLE_FORCE_WINDOWED is host convenience.
+// Parity follows life.DeviceWindowed from
+// PE / userst.ini SetFullscreen.
+var forceWindowed = !string.IsNullOrEmpty(
+    Environment.GetEnvironmentVariable("FABLE_FORCE_WINDOWED"));
 var options = WindowOptions.DefaultVulkan with
 {
     Title = life.WindowTitle,
     Size = new Vector2D<int>(life.BackBufferWidth, life.BackBufferHeight),
-    WindowState = life.DeviceWindowed
-        ? WindowState.Normal
-        : WindowState.Fullscreen,
+    WindowState = EngineLifecycle.HostExclusiveWindow(
+        life.DeviceWindowed, forceWindowed)
+        ? WindowState.Fullscreen
+        : WindowState.Normal,
     WindowBorder = WindowBorder.Fixed,
     VSync = true,
 };
@@ -58,6 +56,17 @@ window.Load += () =>
         throw new NotSupportedException("This window backend cannot create a Vulkan surface.");
 
     host.Renderer = new VulkanLineRenderer(window);
+    life.Device = new VulkanDx9Device { Renderer = host.Renderer };
+    life.CompleteRetailLoop();
+    // After Device: skip AVI still issues
+    // 0042EFF7 Clear+Present.
+    if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("FABLE_SKIP_STARTUP_AVI")))
+    {
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Console.WriteLine("FABLE_SKIP_STARTUP_AVI skipped PlayAVI to " + life.Stage);
+    }
+
     input = window.CreateInput();
     mouse = input.Mice.Count > 0 ? input.Mice[0] : null;
     if (mouse is not null)
@@ -81,18 +90,8 @@ window.Update += dt =>
     if (keyboard is null)
         return;
 
-    if (keyboard.IsKeyPressed(Key.Escape))
-        life.QueueInput(EngineInput.TypeKey, RegionTravel.PlayAviSkipEscape);
-    if (keyboard.IsKeyPressed(Key.Space))
-        life.QueueInput(EngineInput.TypeKey, RegionTravel.PlayAviSkipSpace);
-    if (keyboard.IsKeyPressed(Key.Enter))
-        life.QueueInput(EngineInput.TypeKey, RegionTravel.PlayAviSkipReturn);
-    if (keyboard.IsKeyPressed(Key.F4))
-        life.QueueInput(EngineInput.TypeKey, RegionTravel.PlayAviSkipF4);
-    if (keyboard.IsKeyPressed(Key.A))
-        life.QueueInput(EngineInput.TypeKey, EngineInput.KeyDikA);
-    if (keyboard.IsKeyPressed(Key.B))
-        life.QueueInput(EngineInput.TypeKey, EngineInput.KeyDikB);
+    if (!debugFly)
+        SilkNativeInput.QueueKeys(life, keyboard);
 
     var f2Down = keyboard.IsKeyPressed(Key.F2);
     if (f2Down && !f2WasDown)
@@ -114,20 +113,15 @@ window.Update += dt =>
         // 0055BF10 reads input+184 vtbl+64
         // as dest pixels. 009BEF80 viewport
         // is the created window size.
-        var destW = life.BackBufferWidth > 0 ? life.BackBufferWidth : 1024;
-        var destH = life.BackBufferHeight > 0 ? life.BackBufferHeight : 768;
-        var srcW = Math.Max(1, window.Size.X);
-        var srcH = Math.Max(1, window.Size.Y);
-        if (srcW == destW && srcH == destH)
-            life.SetFrontendPointer(pos.X, pos.Y);
-        else
-            life.SetFrontendPointer(pos.X / srcW * destW, pos.Y / srcH * destH);
-        if (moved)
-            life.QueueInput(EngineInput.TypeMouse, 0);
-        if (lmbDown && !lmbWasDown)
-            life.QueueInput(EngineInput.Type4, 0);
-        if (!lmbDown && lmbWasDown)
-            life.QueueInput(EngineInput.Type6, 0);
+        if (!debugFly)
+            SilkNativeInput.QueuePointer(
+                life,
+                new Vector2D<float>(pos.X, pos.Y),
+                moved,
+                lmbDown,
+                lmbWasDown,
+                window.Size.X,
+                window.Size.Y);
         lmbWasDown = lmbDown;
     }
 
@@ -167,6 +161,8 @@ window.Render += _ =>
             debugCam.SkyViewProjection(aspect),
             debugCam.HostLandscapeViewProjection(aspect));
     }
+    else if (life.Dx9OwnsFrontendPresent)
+        return;
     else
         host.Draw(aspect);
 };

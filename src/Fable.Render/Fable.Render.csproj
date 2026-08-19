@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Fable.Core\Fable.Core.csproj" />
+    <ProjectReference Include="..\Fable.Dx9\Fable.Dx9.csproj" />
     <ProjectReference Include="..\Fable.Formats\Fable.Formats.csproj" />
   </ItemGroup>
   <ItemGroup>

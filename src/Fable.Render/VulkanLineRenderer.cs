@@ -381,6 +381,32 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     /// </summary>
     public Vector4 VideoClearColor { get; set; } =
         new(0f, 0f, 0f, 1f);
+    private bool _dx9PresentFrame;
+    /// <summary>
+    /// Native <c>009BEEB0</c> count on
+    /// the DX9 device path.
+    /// </summary>
+    public int SwapchainPresentCount { get; private set; }
+
+    public void SetDx9ClearColor(Vector4 color) => VideoClearColor = color;
+
+    /// <summary>
+    /// One swapchain Present for a
+    /// migrated DX9 frame. Clear only
+    /// until DIP arguments are proven.
+    /// </summary>
+    public void PresentDx9()
+    {
+        _dx9PresentFrame = true;
+        try
+        {
+            Draw(default);
+        }
+        finally
+        {
+            _dx9PresentFrame = false;
+        }
+    }
 
     /// <summary>
     /// <c>006286F0</c> owns the pump: WaitEx then
@@ -477,6 +503,8 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             PImageIndices = &imageIndex,
         };
         var presentResult = _khrSwapchain.QueuePresent(_presentQueue, in present);
+        if (_dx9PresentFrame)
+            SwapchainPresentCount++;
         if (_playAviPump || _videoReady)
         {
             PlayAviTimeline.Note(
@@ -1224,7 +1252,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         Check(_vk.BeginCommandBuffer(commandBuffer, in begin));
         RecordVideoCopy(commandBuffer);
 
-        var clear = _playAviPump || _videoReady
+        var clear = _playAviPump || _videoReady || _dx9PresentFrame
             ? VideoClearColor
             : Parity.Dx9Vulkan.Dx9VulkanColor.FirstSeenClear;
         var clears = stackalloc ClearValue[]
@@ -1260,9 +1288,9 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         // and host gizmos are 00435530.
         var playAviOnly = _playAviPump ||
             (_videoReady && _videoPipeline.Handle != 0 && _videoTexture.Set.Handle != 0);
-        var frontendOnly = _frontendReady && !playAviOnly;
+        var frontendOnly = _frontendReady && !playAviOnly && !_dx9PresentFrame;
 
-        if (!playAviOnly && !frontendOnly &&
+        if (!playAviOnly && !frontendOnly && !_dx9PresentFrame &&
             ((_meshCount > 0 && _meshBuffer.Handle != 0) ||
              (_objectCount > 0 && _objectBuffer.Handle != 0)))
         {
@@ -1287,7 +1315,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             DrawMeshBatches(commandBuffer);
         }
 
-        if (!playAviOnly && !frontendOnly &&
+        if (!playAviOnly && !frontendOnly && !_dx9PresentFrame &&
             ShowGizmos && _vertexCount > 0 && _vertexBuffer.Handle != 0)
         {
             _vk.CmdBindPipeline(commandBuffer, PipelineBindPoint.Graphics, _linePipeline);

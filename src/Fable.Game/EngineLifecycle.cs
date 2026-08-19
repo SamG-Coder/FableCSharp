@@ -1,5 +1,6 @@
 using System.Numerics;
 using Fable.Core;
+using Fable.Dx9;
 using Fable.Formats.Banks;
 using Fable.Formats.Defs;
 using Fable.Formats.Fonts;
@@ -3209,6 +3210,12 @@ public sealed class EngineLifecycle : IDisposable
     public IReadOnlyList<string> RegisteredBanks => _banks;
     public GameInstall? Install { get; private set; }
     public IEngineHost? Host { get; private set; }
+    /// <summary>
+    /// Neutral DX9 device. Migrated
+    /// Present issues here, not
+    /// <c>Dx9Vulkan*</c>.
+    /// </summary>
+    public IDirect3DDevice9? Device { get; set; }
     public WmvPlayer? StartupAvi { get; private set; }
     /// <summary>
     /// Live <c>[0x13961E0]</c> from the
@@ -3249,6 +3256,7 @@ public sealed class EngineLifecycle : IDisposable
 
     public void AttachHost(IEngineHost host) => Host = host;
 
+    private bool _retailLoopStarted;
     private readonly List<string> _completed = [];
     private readonly List<string> _banks = [];
     private readonly List<int> _loadQueue = [];
@@ -3291,12 +3299,66 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public void Bootstrap(GameInstall? install)
     {
+        BootstrapUntilGraphics(install);
+        CompleteRetailLoop();
+    }
+
+    /// <summary>
+    /// CRT through Setup library
+    /// <c>009A6610</c> options. Window
+    /// size / <see cref="DeviceWindowed"/>
+    /// are ready. CreateDevice /
+    /// Present wait for
+    /// <see cref="Device"/>.
+    /// </summary>
+    public void BootstrapUntilGraphics(GameInstall? install)
+    {
         var boot = System.Diagnostics.Stopwatch.StartNew();
         Install = install;
         RunCrtStartup();
         RunWinMain();
         Timing.Add("bootstrap", boot.Elapsed.TotalMilliseconds, Stage.ToString());
     }
+
+    /// <summary>
+    /// <c>004022B0</c> / <c>00412F90</c>
+    /// after the host attached
+    /// <see cref="Device"/>.
+    /// </summary>
+    public void CompleteRetailLoop()
+    {
+        if (_retailLoopStarted)
+            return;
+        _retailLoopStarted = true;
+        Note(ProbeGraphics, "ProbeGraphics", "D3D9", "004022B0 bpp 16/24/32");
+        Note(RunModes, "RunModes", "ModeLoop", "00412F90 retail 0042EA8F");
+        Mode = EngineMode.RetailFrontend;
+        Stage = PlayStartupVideos
+            ? EngineStage.StartupVideos
+            : EngineStage.Frontend;
+        StartupVideoIndex = 0;
+        if (Stage == EngineStage.StartupVideos)
+            ApplyPlayAviSlot(StartupVideos[0]);
+        else
+            Note(FrontendIntern, "Frontend", "FRONT_END", "skip videos");
+    }
+
+    /// <summary>
+    /// Native exclusive is D3D
+    /// <c>![0x137544A]</c>. Host OS
+    /// fullscreen follows that unless
+    /// <paramref name="forceWindowed"/>.
+    /// </summary>
+    public static bool HostExclusiveWindow(bool deviceWindowed, bool forceWindowed) =>
+        !forceWindowed && !deviceWindowed;
+
+    /// <summary>
+    /// Migrated frontend Present is
+    /// <see cref="Device"/>, not
+    /// <see cref="IEngineHost.Present"/>.
+    /// </summary>
+    public bool Dx9OwnsFrontendPresent =>
+        Device is not null && Stage == EngineStage.Frontend;
 
     /// <summary>
     /// Listing <c>00401067</c> MSVCR71
@@ -3382,18 +3444,6 @@ public sealed class EngineLifecycle : IDisposable
 
             _completed.Add(name);
         }
-
-        Note(ProbeGraphics, "ProbeGraphics", "D3D9", "004022B0 bpp 16/24/32");
-        Note(RunModes, "RunModes", "ModeLoop", "00412F90 retail 0042EA8F");
-        Mode = EngineMode.RetailFrontend;
-        Stage = PlayStartupVideos
-            ? EngineStage.StartupVideos
-            : EngineStage.Frontend;
-        StartupVideoIndex = 0;
-        if (Stage == EngineStage.StartupVideos)
-            ApplyPlayAviSlot(StartupVideos[0]);
-        else
-            Note(FrontendIntern, "Frontend", "FRONT_END", "skip videos");
     }
 
     /// <summary>
@@ -3432,7 +3482,8 @@ public sealed class EngineLifecycle : IDisposable
                 EnterGame();
             }
 
-            PresentToHost();
+            if (!Dx9OwnsFrontendPresent)
+                PresentToHost();
             return true;
         }
 
@@ -3840,6 +3891,7 @@ public sealed class EngineLifecycle : IDisposable
             $"0042DB40 size {FrontendHelperSize} vtbl 0x{FrontendHelperVtbl:X}");
         Note(ClearColorFn, "InitFrontend", "D3D9", "009D8CF0 clear");
         Note(PresentFn, "InitFrontend", "D3D9", "009BEEB0 Present");
+        IssueAfterAviPresent();
         Note(RetailAudioFadeFn, "InitFrontend", "Audio", "0042DED5 0");
         Note(FrontendUiShowFn, "InitFrontend", "Frontend", "005952C3");
         Note(RetailFadeClockStartFn, "InitFrontend", "Frontend", "0062F800");
@@ -3995,8 +4047,54 @@ public sealed class EngineLifecycle : IDisposable
         FlushFrontendDisplay();
         Note(EndSceneFn, "Frontend", "D3D9", "009BEF50 EndScene");
         Note(PresentFn, "Frontend", "D3D9", "009BEEB0 Present");
+        IssueFrontendFramePresent();
         FrontendFrameCount++;
         FrontendPresentCount++;
+    }
+
+    /// <summary>
+    /// <c>0042EFF7</c> <c>009D8CF0</c>
+    /// flags 0 → 7, color
+    /// <c>0xFF000000</c>, then
+    /// <c>009BEEB0</c>. No BeginScene.
+    /// </summary>
+    private void IssueAfterAviPresent()
+    {
+        var device = Device;
+        if (device is null)
+            return;
+        device.Clear(
+            Dx9Clear.WhenArgZero,
+            FrontendDx9Submit.FrontendFrame().ClearColorArgb,
+            1f,
+            0);
+        device.Present();
+    }
+
+    /// <summary>
+    /// <c>0042DF9E</c>: <c>009D8CF0</c>
+    /// then <c>009BEF20</c> vtbl+164
+    /// BeginScene, empty
+    /// <c>009DA9F0</c> skip DIP,
+    /// <c>009BEF50</c>, <c>009BEEB0</c>.
+    /// </summary>
+    private void IssueFrontendFramePresent()
+    {
+        var device = Device;
+        if (device is null)
+            return;
+        var frame = FrontendDx9Submit.FrontendFrame();
+        device.Clear(Dx9Clear.WhenArgZero, frame.ClearColorArgb, 1f, 0);
+        device.BeginScene();
+        // 00595222 walks [ui+84]; first
+        // node slot 0 is null. Leaves
+        // call 0041AFA0 dest 0,0,0,0.
+        // 00BAE2D0 runs (CallsDraw) but
+        // 009DA9F0 DIP args for a zero
+        // dest are UNREAD. Do not emit
+        // DrawIndexedPrimitive(0,…).
+        device.EndScene();
+        device.Present();
     }
 
     /// <summary>
@@ -8941,6 +9039,12 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     private void CompositeFrontendPresent()
     {
+        if (Device is not null)
+        {
+            FrontendBatch = null;
+            return;
+        }
+
         var width = BackBufferWidth > 0 ? BackBufferWidth : DisplayDefaultWidth;
         var height = BackBufferHeight > 0 ? BackBufferHeight : DisplayDefaultHeight;
         var (records, textures) = CollectFrontendRecords();

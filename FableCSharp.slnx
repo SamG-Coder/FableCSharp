@@ -2,6 +2,7 @@
   <Folder Name="/src/">
     <Project Path="src/Fable.Client/Fable.Client.csproj" />
     <Project Path="src/Fable.Core/Fable.Core.csproj" />
+    <Project Path="src/Fable.Dx9/Fable.Dx9.csproj" />
     <Project Path="src/Fable.Formats/Fable.Formats.csproj" />
     <Project Path="src/Fable.Game/Fable.Game.csproj" />
     <Project Path="src/Fable.Render/Fable.Render.csproj" />

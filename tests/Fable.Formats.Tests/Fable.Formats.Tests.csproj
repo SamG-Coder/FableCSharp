@@ -19,7 +19,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Fable.Client\Fable.Client.csproj" />
     <ProjectReference Include="..\..\src\Fable.Core\Fable.Core.csproj" />
+    <ProjectReference Include="..\..\src\Fable.Dx9\Fable.Dx9.csproj" />
     <ProjectReference Include="..\..\src\Fable.Formats\Fable.Formats.csproj" />
     <ProjectReference Include="..\..\src\Fable.Game\Fable.Game.csproj" />
     <ProjectReference Include="..\..\src\Fable.Render\Fable.Render.csproj" />
