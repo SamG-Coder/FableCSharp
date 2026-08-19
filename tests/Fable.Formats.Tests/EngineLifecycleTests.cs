@@ -1328,6 +1328,47 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Thing_Components_004F039A_adds_CBuyHouseDef()
+    {
+        Assert.Equal(0x004F0393u, EngineLifecycle.TwelfthDefClassSite);
+        Assert.Equal(0x004D7B5Bu, EngineLifecycle.TwelfthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.TwelfthDefClassCtor);
+        Assert.Equal(0x0123A61Cu, EngineLifecycle.TwelfthDefClassVtbl);
+        Assert.Equal(38, EngineLifecycle.TwelfthDefClassSize);
+        Assert.Equal("CBuyHouseDef", EngineLifecycle.TwelfthDefClassName);
+        Assert.NotEqual(EngineLifecycle.EleventhDefClassName, EngineLifecycle.TwelfthDefClassName);
+        Assert.NotEqual(EngineLifecycle.EleventhDefClassFactory, EngineLifecycle.TwelfthDefClassFactory);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.False(life.TwelfthDefClassRegistered);
+        Assert.Null(life.TwelfthDefClass);
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.True(life.EleventhDefClassRegistered);
+        Assert.Equal(EngineLifecycle.EleventhDefClassName, life.EleventhDefClass);
+        Assert.True(life.TwelfthDefClassRegistered);
+        Assert.Equal(EngineLifecycle.TwelfthDefClassName, life.TwelfthDefClass);
+        var eleventhFactory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EleventhDefClassFactory);
+        var twelfthSite = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwelfthDefClassSite);
+        var twelfthAdd = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.AddDefClassFn &&
+            e.Action.Contains(EngineLifecycle.TwelfthDefClassName, StringComparison.Ordinal));
+        var twelfthFactory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwelfthDefClassFactory);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(eleventhFactory >= 0 && twelfthSite > eleventhFactory);
+        Assert.True(twelfthAdd > twelfthSite && twelfthFactory > twelfthAdd);
+        Assert.True(defs > twelfthFactory, "CBuyHouseDef before Init Definition Manager");
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Init_Definition_Manager_00416005_resets_plus88_via_vtbl8()
     {
         Assert.Equal(0x00416005u, EngineLifecycle.InitDefinitionManagerFn);
@@ -1958,6 +1999,73 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.FrontendWidgets, w =>
             w.Name.Contains("FORREST_1_1", StringComparison.Ordinal) &&
             w.TextureName == "FORREST_1_1");
+    }
+
+    [Fact]
+    public void Frontend_dumps_press_start_new_profile_main_menu_after_avi_skip()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.Equal(EngineStage.Frontend, life.Stage);
+        Assert.True(life.Pump());
+        Assert.Equal(EngineLifecycle.FrontendPressStartMenu, life.FrontendMenuRoot);
+        Assert.NotNull(life.FrontendBatch);
+        Assert.False(life.FrontendBatch.Value.IsEmpty);
+        Assert.Equal(4, life.FrontendBatch.Value.Draws[0].D3dPrimitiveType);
+        Assert.Equal(5, life.FrontendBatch.Value.Draws[0].D3dSrcBlend);
+        Assert.Equal(6, life.FrontendBatch.Value.Draws[0].D3dDestBlend);
+        var pressText = life.FrontendWidgets.First(w => w.Name == "UI_PRESS_START_TEXT");
+        Assert.Equal((512f, 384f, 512f, 384f),
+            (pressText.DestX0, pressText.DestY0, pressText.DestX1, pressText.DestY1));
+        var title = life.FrontendWidgets.First(w => w.Name == "UI_TITLE_01");
+        Assert.Equal((112f, 48f, 522f, 253f),
+            (title.DestX0, title.DestY0, title.DestX1, title.DestY1));
+        WriteScreenDump(life, "press-start");
+
+        life.QueueInput(EngineInput.Type4, 0);
+        life.QueueInput(EngineInput.Type6, 0);
+        Assert.True(life.Pump());
+        Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        Assert.Equal("Default", life.FrontendEditBoxName);
+        Assert.Contains(life.FrontendWidgets, w => w.Name == "UI_ACCEPT_NEW_PROFILE");
+        Assert.NotNull(life.FrontendBatch);
+        Assert.False(life.FrontendBatch.Value.IsEmpty);
+        WriteScreenDump(life, "new-profile");
+
+        life.QueueInput(EngineInput.Type4, 0);
+        life.QueueInput(EngineInput.Type6, 0);
+        Assert.True(life.Pump());
+        Assert.Equal(EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
+        Assert.Contains(life.FrontendWidgets, w =>
+            w.Name == "UI_FRONTEND_BUTTON_NEW_GAME" &&
+            w.MessageId == FrontendMessages.NewGame);
+        Assert.NotNull(life.FrontendBatch);
+        Assert.False(life.FrontendBatch.Value.IsEmpty);
+        WriteScreenDump(life, "main-menu");
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    private static void WriteScreenDump(EngineLifecycle life, string name)
+    {
+        Assert.NotNull(life.FrontendPresentRgba);
+        ExportDir.WriteRgbaBmp(
+            ExportDir.PathFor("frontend", name + ".bmp"),
+            life.FrontendPresentWidth, life.FrontendPresentHeight,
+            life.FrontendPresentRgba);
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine($"screen={life.FrontendMenuRoot} stage={life.Stage} batch={!life.FrontendBatch!.Value.IsEmpty}");
+        foreach (var w in life.FrontendWidgets)
+        {
+            sb.AppendLine(
+                $"{w.Name}\tt={w.Type}\tdest={w.DestX0},{w.DestY0},{w.DestX1},{w.DestY1}\t" +
+                $"g={w.GraphicId}\t+204={w.Leftover204}\ttex={w.TextureName}\tmsg={w.MessageId}");
+        }
+
+        File.WriteAllText(ExportDir.PathFor("frontend", name + "-dests.txt"), sb.ToString());
     }
 
     [Fact]

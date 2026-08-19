@@ -15,6 +15,14 @@ if (install is null)
 
 using var life = new EngineLifecycle();
 life.Bootstrap(install);
+// Host convenience for capture. Native skip is
+// DIK Escape/Space/Return/F4 (0042E3EE).
+if (!string.IsNullOrEmpty(Environment.GetEnvironmentVariable("FABLE_SKIP_STARTUP_AVI")))
+{
+    while (life.Stage == EngineStage.StartupVideos)
+        life.FinishStartupVideo();
+    Console.WriteLine("FABLE_SKIP_STARTUP_AVI skipped PlayAVI to " + life.Stage);
+}
 
 var options = WindowOptions.DefaultVulkan with
 {
