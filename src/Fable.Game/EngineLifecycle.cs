@@ -236,6 +236,14 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public const uint FrontendProfileBindFn = 0x005958F5;
     public const uint FrontendPressStartAttachFn = 0x00598A1C;
+    /// <summary>
+    /// <c>0042F015</c>
+    /// <c>005952C3</c>
+    /// <c>vtbl+192</c>(5) on
+    /// <c>[ui+32].back()</c>
+    /// after Press Start bind.
+    /// </summary>
+    public const uint FrontendInitSelectFn = 0x005952C3;
     public const uint FrontendMainMenuFn = 0x0059899A;
     public const uint FrontendMenuAttachFn = 0x00595A06;
     public const uint FrontendWidgetFactoryFn = 0x0041DB1D;
@@ -679,6 +687,20 @@ public sealed class EngineLifecycle : IDisposable
     public const string GtgExtension = ".gtg";
     public const string TngExtension = ".tng";
     public const uint PlayerManagerGetter = 0x0044C6B0;
+    /// <summary>
+    /// <c>0044C6B6</c> is
+    /// <c>[0x13B879C]!=0</c>.
+    /// First-seen 0 →
+    /// <c>00BFEA1A(0xE0)</c>
+    /// <c>0044C6C2</c>
+    /// <c>0044C71F</c>.
+    /// </summary>
+    public const uint PlayerManagerPresentFn = 0x0044C6B6;
+    public const uint PlayerManagerCtorFn = 0x0044C6C2;
+    public const uint PlayerManagerStoreFn = 0x0044C71F;
+    public const uint PlayerManagerVtbl = 0x01232C24;
+    public const int PlayerManagerSize = 0xE0;
+    public const int PlayerManagerPlus40 = 0x80000;
     public const uint PlayerManagerVa = 0x013B879C;
     public const uint PlayerManagerApply = 0x0044A530;
     public const uint CreatePlayerSlotFn = 0x0044A1A0;
@@ -2046,6 +2068,13 @@ public sealed class EngineLifecycle : IDisposable
     public int PlayerActiveCount { get; private set; }
     public bool PlayerObjectReady { get; private set; }
     /// <summary>
+    /// <c>[0x13B879C]</c> after
+    /// <c>0044C6B6</c> miss →
+    /// <c>0044C6C2</c> /
+    /// <c>0044C71F</c>.
+    /// </summary>
+    public bool PlayerManagerPresent { get; private set; }
+    /// <summary>
     /// <c>WorldMap+156</c>. Ctor 0 is the
     /// dummy slot, not LookoutPoint.
     /// </summary>
@@ -3151,6 +3180,9 @@ public sealed class EngineLifecycle : IDisposable
             $" slot 0x{FrontendPressStartSlot:X}");
         ResolveFrontendDef(FrontendPressStartMenu);
         AttachPressStartWidgets();
+        Note(FrontendInitSelectFn, "Frontend", "UI",
+            "005952C3 vtbl+192(5) [ui+32].back()");
+        SelectFrontendState(FrontendPressStartSlot, 5);
         Note(FrontendDefResolveFn, "Frontend", "UI",
             "0042AEDA 009AD9E0 [def+60] switch 0041D7F8");
         Note(FrontendWidgetConstructFn, "Frontend", "UI",
@@ -3745,6 +3777,7 @@ public sealed class EngineLifecycle : IDisposable
         Note(0x009E9EF0, "InitGame", "GameStart", "009E9EF0 / 009E9F90 / 00416832");
         Note(IniConsoleCommandsFn, "InitGame", "Ini",
             "009ED190 BindKey/RunScript");
+        EnsurePlayerManagerSingleton();
         foreach (var (name, apply) in InitGameStages)
         {
             if (name == "Init Conversation Attitude")
@@ -4233,6 +4266,28 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>[+24]=4</c>, then <c>004AE940</c> at
     /// game+80568. Not hero_swap_*.tng (0044A3B0).
     /// </summary>
+    /// <summary>
+    /// <c>0041852D</c>
+    /// <c>0044C6B6</c>. First-seen
+    /// miss constructs
+    /// <c>0xE0</c> /
+    /// <c>0044C6C2</c> /
+    /// <c>0044C71F</c> before
+    /// Thing Components.
+    /// </summary>
+    private void EnsurePlayerManagerSingleton()
+    {
+        Note(PlayerManagerPresentFn, "InitGame", "Player",
+            $"0044C6B6 [0x{PlayerManagerVa:X}]");
+        if (PlayerManagerPresent)
+            return;
+        Note(PlayerManagerCtorFn, "InitGame", "Player",
+            $"0044C6C2 vtbl 0x{PlayerManagerVtbl:X} size 0x{PlayerManagerSize:X} +40=0x{PlayerManagerPlus40:X}");
+        Note(PlayerManagerStoreFn, "InitGame", "Player",
+            $"0044C71F 00450142 [0x{PlayerManagerVa:X}]");
+        PlayerManagerPresent = true;
+    }
+
     public void CreatePlayers()
     {
         Note(PlayerManagerGetter, "Create Players", "Player", "0044C6B0 [0x13B879C]");

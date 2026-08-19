@@ -428,6 +428,11 @@ public sealed class EngineLifecycleTests
         Assert.Equal(EngineLifecycle.FrontendPressStartMenu, slot.Name);
         Assert.Equal(10, slot.Type);
         Assert.Equal(EngineLifecycle.FrontendPressStartMessage, slot.MessageId);
+        Assert.Equal(5, slot.State);
+        Assert.Equal(0x005952C3u, EngineLifecycle.FrontendInitSelectFn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendInitSelectFn &&
+            e.Action.Contains("vtbl+192(5)", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.FrontendSlotLookupFn &&
             e.Action.Contains("slot 0x14", StringComparison.Ordinal));
@@ -601,6 +606,41 @@ public sealed class EngineLifecycleTests
         Assert.True(worldCtor >= 0 && worldInit > worldCtor);
         Assert.True(display > worldInit, "004A6E30 before 00417418");
         Assert.True(particles > display, "00417418 before 004174F1");
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Game_0044C6B6_ensures_0xE0_singleton_before_Thing_Components()
+    {
+        Assert.Equal(0x0044C6B6u, EngineLifecycle.PlayerManagerPresentFn);
+        Assert.Equal(0x0044C6C2u, EngineLifecycle.PlayerManagerCtorFn);
+        Assert.Equal(0x0044C71Fu, EngineLifecycle.PlayerManagerStoreFn);
+        Assert.Equal(0x01232C24u, EngineLifecycle.PlayerManagerVtbl);
+        Assert.Equal(0xE0, EngineLifecycle.PlayerManagerSize);
+        Assert.Equal(0x80000, EngineLifecycle.PlayerManagerPlus40);
+        Assert.NotEqual(EngineLifecycle.PlayerManagerGetter, EngineLifecycle.PlayerManagerPresentFn);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.False(life.PlayerManagerPresent);
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.PlayerManagerPresent);
+        var present = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.PlayerManagerPresentFn);
+        var ctor = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.PlayerManagerCtorFn);
+        var store = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.PlayerManagerStoreFn);
+        var things = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Thing Components");
+        var getter = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.PlayerManagerGetter &&
+            e.Stage == "Create Players");
+        Assert.True(present >= 0 && ctor > present && store > ctor);
+        Assert.True(things > store, "0044C71F before Init Thing Components");
+        Assert.True(getter > things, "0044C6B0 getter is later Create Players");
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
     }
 
