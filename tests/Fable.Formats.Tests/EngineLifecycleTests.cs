@@ -842,6 +842,54 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Thing_Components_004EE565_adds_CHighlightItemDef()
+    {
+        Assert.Equal(0x004EE565u, EngineLifecycle.SecondDefClassSite);
+        Assert.Equal(0x004D8671u, EngineLifecycle.SecondDefClassFactory);
+        Assert.Equal(0x0123BD14u, EngineLifecycle.SecondDefClassVtbl);
+        Assert.Equal(72, EngineLifecycle.SecondDefClassSize);
+        Assert.Equal("CHighlightItemDef", EngineLifecycle.SecondDefClassName);
+        Assert.NotEqual(EngineLifecycle.FirstDefClassName, EngineLifecycle.SecondDefClassName);
+        Assert.NotEqual(EngineLifecycle.FirstDefClassFactory, EngineLifecycle.SecondDefClassFactory);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.False(life.SecondDefClassRegistered);
+        Assert.Null(life.SecondDefClass);
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.True(life.FirstDefClassRegistered);
+        Assert.Equal(EngineLifecycle.FirstDefClassName, life.FirstDefClass);
+        Assert.True(life.SecondDefClassRegistered);
+        Assert.Equal(EngineLifecycle.SecondDefClassName, life.SecondDefClass);
+        var firstFactory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FirstDefClassFactory);
+        var secondSite = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SecondDefClassSite);
+        var secondAdd = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.AddDefClassFn &&
+            e.Action.Contains(EngineLifecycle.SecondDefClassName, StringComparison.Ordinal));
+        var secondFactory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SecondDefClassFactory);
+        var secondLoad = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.LoadDefFn);
+        var secondBudget = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.LoadDefBudgetFn);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(firstFactory >= 0 && secondSite > firstFactory);
+        Assert.True(secondAdd > secondSite && secondFactory > secondAdd);
+        Assert.True(secondLoad > secondFactory && secondBudget > secondLoad);
+        Assert.True(defs > secondBudget, "CHighlightItemDef before Init Definition Manager");
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.AddDefClassFn &&
+            e.Action.Contains("CTCSimpleAppearanceMorph", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Init_Definition_Manager_00416005_resets_plus88_via_vtbl8()
     {
         Assert.Equal(0x00416005u, EngineLifecycle.InitDefinitionManagerFn);

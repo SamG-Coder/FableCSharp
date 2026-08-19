@@ -808,6 +808,22 @@ public sealed class EngineLifecycle : IDisposable
     public const uint FirstDefClassFactory = 0x004E4219;
     public const string FirstDefClassName = "CHeroMorphDef";
     /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CHeroMorphDef</c>:
+    /// <c>004EE565</c>
+    /// <c>0044C6B0</c>
+    /// <c>004EE56C</c>
+    /// <c>CHighlightItemDef</c>
+    /// factory <c>0x4D8671</c>
+    /// size 72 vtbl <c>0123BD14</c>.
+    /// Not a CTC row.
+    /// </summary>
+    public const uint SecondDefClassSite = 0x004EE565;
+    public const uint SecondDefClassFactory = 0x004D8671;
+    public const uint SecondDefClassVtbl = 0x0123BD14;
+    public const int SecondDefClassSize = 72;
+    public const string SecondDefClassName = "CHighlightItemDef";
+    /// <summary>
     /// <c>00416005</c> parent
     /// <c>push 1</c>:
     /// <c>0044C6B0</c>
@@ -2218,6 +2234,8 @@ public sealed class EngineLifecycle : IDisposable
     public int PlayerManagerPlus40Cap { get; private set; }
     public bool FirstDefClassRegistered { get; private set; }
     public string? FirstDefClass { get; private set; }
+    public bool SecondDefClassRegistered { get; private set; }
+    public string? SecondDefClass { get; private set; }
     /// <summary>
     /// After <c>00416005</c>
     /// <c>0044C72B</c> /
@@ -4555,20 +4573,35 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     private void AddFirstDefClass()
     {
-        if (FirstDefClassRegistered)
+        if (!FirstDefClassRegistered)
+        {
+            Note(PlayerManagerGetter, "Init Thing Components", "Defs",
+                "0044C6B0 [0x13B879C]");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FirstDefClassName}");
+            Note(FirstDefClassFactory, "Init Thing Components", "Defs",
+                $"004E4219 {FirstDefClassName}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                "009AD6E0 CDefinitionManager::LoadDef");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FirstDefClass = FirstDefClassName;
+            FirstDefClassRegistered = true;
+        }
+        if (SecondDefClassRegistered)
             return;
-        Note(PlayerManagerGetter, "Init Thing Components", "Defs",
-            "0044C6B0 [0x13B879C]");
+        Note(SecondDefClassSite, "Init Thing Components", "Defs",
+            $"004EE565 0044C6B0 {SecondDefClassName}");
         Note(AddDefClassFn, "Init Thing Components", "Defs",
-            $"009B0AC0 Add Def Class {FirstDefClassName}");
-        Note(FirstDefClassFactory, "Init Thing Components", "Defs",
-            $"004E4219 {FirstDefClassName}");
+            $"009B0AC0 Add Def Class {SecondDefClassName}");
+        Note(SecondDefClassFactory, "Init Thing Components", "Defs",
+            $"004D8671 size {SecondDefClassSize} vtbl 0x{SecondDefClassVtbl:X}");
         Note(LoadDefFn, "Init Thing Components", "Defs",
-            "009AD6E0 CDefinitionManager::LoadDef");
+            $"009AD6E0 {SecondDefClassName}");
         Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
             $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
-        FirstDefClass = FirstDefClassName;
-        FirstDefClassRegistered = true;
+        SecondDefClass = SecondDefClassName;
+        SecondDefClassRegistered = true;
     }
 
     /// <summary>
