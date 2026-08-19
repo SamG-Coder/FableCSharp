@@ -9,6 +9,10 @@ internal sealed class PeImage
     public required uint SizeOfImage { get; init; }
     public required IReadOnlyList<PeSection> Sections { get; init; }
     public required IReadOnlyList<string> Imports { get; init; }
+    public IReadOnlyDictionary<uint, string> Iat { get; init; } = new Dictionary<uint, string>();
+
+    /// <summary>MSVC switch maps: <c>jmp [disp32+reg*4]</c> and <c>movzx</c> index tables.</summary>
+    internal SwitchMap? SwitchMap { get; set; }
 
     /// <summary>Identity for dump-cache: stamp + image size + file length.</summary>
     public string Identity => $"{TimeDateStamp:X8}-{SizeOfImage:X8}-{Data.Length}";
@@ -55,6 +59,7 @@ internal sealed class PeImage
             SizeOfImage = sizeOfImage,
             Sections = sections,
             Imports = ReadImports(data, sections, importRva),
+            Iat = ReadIat(data, sections, importRva, imageBase),
         };
     }
 
@@ -112,6 +117,54 @@ internal sealed class PeImage
         }
 
         return names;
+    }
+
+    private static Dictionary<uint, string> ReadIat(byte[] data, List<PeSection> sections, uint importRva, uint imageBase)
+    {
+        var iat = new Dictionary<uint, string>();
+        if (importRva == 0)
+            return iat;
+        var off = RvaToFile(sections, importRva);
+        if (off < 0)
+            return iat;
+        for (var desc = 0; desc < 256; desc++)
+        {
+            var b = off + desc * 20;
+            if (b + 20 > data.Length)
+                break;
+            var oft = BitConverter.ToUInt32(data, b);
+            var nameRva = BitConverter.ToUInt32(data, b + 12);
+            var ft = BitConverter.ToUInt32(data, b + 16);
+            if (oft == 0 && ft == 0 && nameRva == 0)
+                break;
+            var dllOff = RvaToFile(sections, nameRva);
+            var dll = dllOff >= 0 ? ReadCString(data, dllOff) : "?";
+            var thunkRva = oft != 0 ? oft : ft;
+            var thunkOff = RvaToFile(sections, thunkRva);
+            if (thunkOff < 0 || ft == 0)
+                continue;
+            for (var slot = 0; slot < 4096; slot++)
+            {
+                var eoff = thunkOff + slot * 4;
+                if (eoff + 4 > data.Length)
+                    break;
+                var entry = BitConverter.ToUInt32(data, eoff);
+                if (entry == 0)
+                    break;
+                string name;
+                if ((entry & 0x80000000) != 0)
+                    name = $"#{entry & 0xFFFF}";
+                else
+                {
+                    var nOff = RvaToFile(sections, entry);
+                    name = nOff >= 0 && nOff + 2 < data.Length ? ReadCString(data, nOff + 2) : "?";
+                }
+
+                iat[imageBase + ft + (uint)slot * 4] = dll + "!" + name;
+            }
+        }
+
+        return iat;
     }
 
     private static int RvaToFile(List<PeSection> sections, uint rva)
@@ -199,6 +252,17 @@ internal sealed class PeImage
 
         return list;
     }
+}
+
+/// <summary>MSVC switch pointer / index tables recovered from <c>.text</c>.</summary>
+internal sealed class SwitchMap
+{
+    public HashSet<uint> PointerTables { get; } = [];
+    public HashSet<uint> ByteTables { get; } = [];
+    public HashSet<uint> WordTables { get; } = [];
+    public List<(string Kind, uint Site, uint Table)> Hits { get; } = [];
+    public List<(uint Table, int Index, uint Dest)> PtrEntries { get; } = [];
+    public List<(uint Table, int Index, int Value)> IndexEntries { get; } = [];
 }
 
 internal readonly record struct PeSection(

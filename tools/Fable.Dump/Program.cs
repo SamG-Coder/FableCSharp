@@ -1,3 +1,4 @@
+using System.Text;
 using Fable.Core;
 using Fable.Formats.Banks;
 using Fable.Formats.Defs;
@@ -84,6 +85,9 @@ switch (command)
     case "bin":
         DumpGameBin(install, rest.FirstOrDefault());
         break;
+    case "bins":
+        DumpCompiledBins(install, rest.FirstOrDefault());
+        break;
     case "scene":
         DumpScene(install, rest.FirstOrDefault() ?? "LookoutPoint");
         break;
@@ -116,6 +120,7 @@ static void PrintUsage()
           lev [region]         inspect a compiled .lev
           tex [id|name]        decode a textures.big image
           bin [name]           compiled game.bin def / mesh id
+          bins [out-dir]       dump every CompiledDefs .bin (frontend/script/game/names)
           scene [region]       tile/object coverage vs AABB neighbours
 
         FABLE_PATH overrides the default Steam TLC install.
@@ -661,4 +666,309 @@ static void DumpScene(GameInstall install, string region)
     Console.WriteLine($"missing Graphic types={misses.Count}");
     foreach (var pair in misses.OrderByDescending(p => p.Value).Take(20))
         Console.WriteLine($"  {pair.Value,4} {pair.Key}");
+}
+
+static void DumpCompiledBins(GameInstall install, string? outOverride)
+{
+    var repo = FindRepoRoot();
+    var dest = string.IsNullOrWhiteSpace(outOverride)
+        ? Path.Combine(repo ?? Directory.GetCurrentDirectory(), "assembly", "compiled-defs")
+        : Path.GetFullPath(outOverride);
+    Directory.CreateDirectory(dest);
+
+    var namesPath = install.FindCompiledDef("names.bin");
+    if (namesPath is null)
+    {
+        Console.Error.WriteLine("names.bin not found.");
+        return;
+    }
+
+    var names = NamesBin.Load(namesPath);
+    DumpNamesBin(dest, namesPath, names);
+
+    foreach (var fileName in new[] { "frontend.bin", "script.bin", "game.bin" })
+    {
+        var path = install.FindCompiledDef(fileName);
+        if (path is null)
+        {
+            Console.Error.WriteLine($"{fileName} missing");
+            continue;
+        }
+
+        var bin = GameBin.Load(path, names);
+        var family = Path.GetFileNameWithoutExtension(fileName);
+        DumpGameBinFamily(dest, family, path, bin, parseFrontend: fileName == "frontend.bin", parseScript: fileName == "script.bin");
+    }
+
+    DumpLooseBins(dest, install);
+    WriteCompiledDefsIndex(dest, install, names);
+    Console.WriteLine($"bins  {dest}");
+}
+
+static string? FindRepoRoot()
+{
+    foreach (var start in new[] { AppContext.BaseDirectory, Directory.GetCurrentDirectory() })
+    {
+        for (var dir = new DirectoryInfo(start); dir is not null; dir = dir.Parent)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "FableCSharp.slnx")))
+                return dir.FullName;
+        }
+    }
+
+    return null;
+}
+
+static void DumpNamesBin(string dest, string path, NamesBin names)
+{
+    var sb = new StringBuilder();
+    sb.AppendLine("offset\tcrc\tname");
+    foreach (var entry in names.Entries)
+        sb.Append("0x").Append(entry.Offset.ToString("X8")).Append('\t')
+            .Append("0x").Append(entry.Hash.ToString("X8")).Append('\t')
+            .Append(entry.Name.Replace('\t', ' ')).AppendLine();
+    File.WriteAllText(Path.Combine(dest, "names.tsv"), sb.ToString());
+    Console.WriteLine($"bins  names.bin entries={names.Entries.Count} from {path}");
+}
+
+static void DumpGameBinFamily(
+    string dest,
+    string family,
+    string path,
+    GameBin bin,
+    bool parseFrontend,
+    bool parseScript)
+{
+    var dir = Path.Combine(dest, family);
+    Directory.CreateDirectory(dir);
+    var tsv = new StringBuilder();
+    tsv.AppendLine("index\ttype\tinstance\tsource\tmesh\traw\tsubdefs\tstrings");
+    var index = new StringBuilder();
+    index.AppendLine($"# {family}.bin");
+    index.AppendLine();
+    index.AppendLine($"file `{path}` · entries **{bin.Entries.Count}** · chunks **{bin.Chunks.Count}** · useNames **{bin.UseNamesBin}** · plat `0x{bin.PlatformIndicator:X8}`.");
+    index.AppendLine();
+    index.AppendLine("| type | count |");
+    index.AppendLine("|---|---|");
+    foreach (var group in bin.Entries.GroupBy(e => e.TypeName ?? "?").OrderByDescending(g => g.Count()))
+        index.AppendLine($"| `{group.Key}` | {group.Count()} |");
+    index.AppendLine();
+    index.AppendLine("[entries.tsv](entries.tsv)");
+    index.AppendLine();
+
+    var writeParts = parseFrontend || parseScript;
+    if (writeParts)
+        index.AppendLine("| # | instance | type | raw | file |");
+    if (writeParts)
+        index.AppendLine("|---|---|---|---|---|");
+
+    foreach (var entry in bin.Entries)
+    {
+        var type = entry.TypeName ?? "";
+        var inst = entry.InstanceName ?? "";
+        var strings = ExtractAscii(entry.Raw);
+        tsv.Append(entry.Index).Append('\t')
+            .Append(type.Replace('\t', ' ')).Append('\t')
+            .Append(inst.Replace('\t', ' ')).Append('\t')
+            .Append((entry.SourceName ?? "").Replace('\t', ' ')).Append('\t')
+            .Append(entry.MeshId?.ToString() ?? "").Append('\t')
+            .Append(entry.Raw.Length).Append('\t')
+            .Append(entry.SubDefs.Count).Append('\t')
+            .Append(string.Join('|', strings.Take(12)).Replace('\t', ' ')).AppendLine();
+
+        if (!writeParts)
+            continue;
+
+        var slug = Slug($"{entry.Index:D4}-{inst}");
+        var body = new StringBuilder();
+        body.AppendLine($"# {inst}");
+        body.AppendLine();
+        body.AppendLine($"type `{type}` · index **{entry.Index}** · raw **{entry.Raw.Length}** · source `{entry.SourceName}` · mesh `{entry.MeshId}`.");
+        body.AppendLine();
+        if (entry.SubDefs.Count > 0)
+        {
+            body.AppendLine("subdefs:");
+            foreach (var sub in entry.SubDefs)
+            {
+                var child = (uint)sub.DefIndex < (uint)bin.Entries.Count ? bin.Entries[sub.DefIndex] : null;
+                body.AppendLine($"- crc `0x{sub.NameCrc:X8}` idx **{sub.DefIndex}** → `{child?.TypeName}` `{child?.InstanceName}`");
+            }
+
+            body.AppendLine();
+        }
+
+        if (parseFrontend && FrontendUiDef.TryParse(entry) is { } ui)
+        {
+            body.AppendLine("## UI persist");
+            body.AppendLine();
+            body.AppendLine($"- type **{ui.Type}** layer **{ui.Layer}**");
+            body.AppendLine($"- size {ui.Width}×{ui.Height} pos ({ui.PositionX},{ui.PositionY}) angle {ui.Angle}");
+            body.AppendLine($"- zoom ({ui.ZoomX},{ui.ZoomY}) centre **{ui.Center}** absolute **{ui.Absolute}**");
+            body.AppendLine($"- graphic `{ui.GraphicId}` bank `{ui.GraphicBankId}` sprites **{ui.Sprites}** states **{ui.States}**");
+            body.AppendLine($"- font `{ui.Font}` text `{ui.TextTag}` message **{ui.MessageId}**");
+            body.AppendLine($"- colour ({ui.ColourR},{ui.ColourG},{ui.ColourB},{ui.ColourA}) haveA **{ui.HaveColourA}**");
+            body.AppendLine($"- plus96 **{ui.Plus96}** plus224 **{ui.Plus224}** plus322 **{ui.Plus322}** plus326 **{ui.Plus326}**");
+            body.AppendLine($"- plus392 **{ui.Plus392}** plus504 **{ui.Plus504}** plus508 **{ui.Plus508}**");
+            body.AppendLine($"- scale size **{ui.ScaleSizeToViewport}**/{ui.ScaleSizeByte} origin **{ui.ScaleOriginToViewport}**/{ui.ScaleOriginByte}");
+            body.AppendLine($"- partial **{ui.Partial}** unreadOffset **{ui.UnreadOffset}**");
+            if (ui.ChildIndices.Count > 0)
+                body.AppendLine("- children: " + string.Join(", ", ui.ChildIndices.Select(i => $"`{i}`")));
+            if (ui.SpriteDefIndices.Count > 0)
+                body.AppendLine("- sprite defs: " + string.Join(", ", ui.SpriteDefIndices.Zip(ui.SpriteKeys, (d, k) => $"`{k}:{d}`")));
+            if (ui.UnreadCrcs.Count > 0)
+                body.AppendLine("- unread crcs: " + string.Join(", ", ui.UnreadCrcs.Select(c => $"`0x{c:X8}`")));
+            body.AppendLine();
+        }
+
+        if (parseScript)
+        {
+            var script = ScriptBank.FromEntry(entry);
+            if (script.CommandsLayoutProven)
+            {
+                body.AppendLine("## cutscene vectors");
+                body.AppendLine();
+                for (var v = 0; v < script.Vectors.Count; v++)
+                {
+                    body.AppendLine($"### vector {v} ({script.Vectors[v].Count})");
+                    body.AppendLine();
+                    foreach (var line in script.Vectors[v])
+                        body.AppendLine($"- `{line}`");
+                    body.AppendLine();
+                }
+            }
+        }
+
+        if (strings.Count > 0)
+        {
+            body.AppendLine("## strings");
+            body.AppendLine();
+            foreach (var s in strings)
+                body.AppendLine($"- `{s}`");
+            body.AppendLine();
+        }
+
+        body.AppendLine("## raw");
+        body.AppendLine();
+        body.AppendLine("```");
+        body.Append(HexDump(entry.Raw));
+        body.AppendLine("```");
+        File.WriteAllText(Path.Combine(dir, slug + ".md"), body.ToString());
+        index.AppendLine($"| {entry.Index} | `{inst}` | `{type}` | {entry.Raw.Length} | [{slug}.md]({slug}.md) |");
+    }
+
+    File.WriteAllText(Path.Combine(dir, "entries.tsv"), tsv.ToString());
+    File.WriteAllText(Path.Combine(dir, "INDEX.md"), index.ToString());
+    Console.WriteLine($"bins  {family}.bin entries={bin.Entries.Count} parts={(writeParts ? bin.Entries.Count : 0)}");
+}
+
+static void DumpLooseBins(string dest, GameInstall install)
+{
+    var other = Path.Combine(dest, "other");
+    Directory.CreateDirectory(other);
+    var roots = new[]
+    {
+        Path.Combine(install.DataRoot, "CompiledDefs"),
+        Path.Combine(install.DataRoot, "Defs"),
+        Path.Combine(install.DataRoot, "Misc"),
+    };
+    var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var known in new[] { "frontend.bin", "script.bin", "game.bin", "names.bin" })
+        seen.Add(known);
+
+    var list = new StringBuilder();
+    list.AppendLine("# other .bin");
+    list.AppendLine();
+    foreach (var root in roots)
+    {
+        if (!Directory.Exists(root))
+            continue;
+        foreach (var file in Directory.EnumerateFiles(root, "*.bin"))
+        {
+            var name = Path.GetFileName(file);
+            if (!seen.Add(name))
+                continue;
+            var bytes = File.ReadAllBytes(file);
+            var slug = Slug(Path.GetFileNameWithoutExtension(name));
+            var body = new StringBuilder();
+            body.AppendLine($"# {name}");
+            body.AppendLine();
+            body.AppendLine($"path `{file}` · bytes **{bytes.Length}**.");
+            body.AppendLine();
+            body.AppendLine("```");
+            body.Append(HexDump(bytes, max: 4096));
+            body.AppendLine("```");
+            File.WriteAllText(Path.Combine(other, slug + ".md"), body.ToString());
+            list.AppendLine($"- [{name}]({slug}.md) **{bytes.Length}** `{file}`");
+            Console.WriteLine($"bins  other {name} {bytes.Length}");
+        }
+    }
+
+    File.WriteAllText(Path.Combine(other, "INDEX.md"), list.ToString());
+}
+
+static void WriteCompiledDefsIndex(string dest, GameInstall install, NamesBin names)
+{
+    var sb = new StringBuilder();
+    sb.AppendLine("# compiled-defs");
+    sb.AppendLine();
+    sb.AppendLine($"install `{install.Root}` · names **{names.Entries.Count}**.");
+    sb.AppendLine();
+    sb.AppendLine("- [names.tsv](names.tsv)");
+    sb.AppendLine("- [frontend/INDEX.md](frontend/INDEX.md)");
+    sb.AppendLine("- [script/INDEX.md](script/INDEX.md)");
+    sb.AppendLine("- [game/INDEX.md](game/INDEX.md)");
+    sb.AppendLine("- [other/INDEX.md](other/INDEX.md)");
+    File.WriteAllText(Path.Combine(dest, "INDEX.md"), sb.ToString());
+}
+
+static List<string> ExtractAscii(byte[] raw)
+{
+    var list = new List<string>();
+    var i = 0;
+    while (i < raw.Length)
+    {
+        if (raw[i] is < 32 or > 126)
+        {
+            i++;
+            continue;
+        }
+
+        var start = i;
+        while (i < raw.Length && raw[i] is >= 32 and <= 126)
+            i++;
+        if (i - start >= 4)
+            list.Add(System.Text.Encoding.ASCII.GetString(raw, start, i - start));
+    }
+
+    return list;
+}
+
+static string HexDump(byte[] raw, int max = int.MaxValue)
+{
+    var n = Math.Min(raw.Length, max);
+    var sb = new StringBuilder((n / 16 + 1) * 72);
+    for (var i = 0; i < n; i += 16)
+    {
+        sb.Append($"{i:X4}  ");
+        for (var j = 0; j < 16 && i + j < n; j++)
+            sb.Append($"{raw[i + j]:X2} ");
+        sb.AppendLine();
+    }
+
+    if (n < raw.Length)
+        sb.AppendLine($"… {raw.Length - n} more bytes");
+    return sb.ToString();
+}
+
+static string Slug(string name)
+{
+    var chars = name.ToCharArray();
+    for (var i = 0; i < chars.Length; i++)
+    {
+        if (chars[i] is < '0' or > 'z' || (chars[i] > '9' && chars[i] < 'A') || (chars[i] > 'Z' && chars[i] < 'a'))
+            chars[i] = chars[i] is '-' or '_' or '.' ? chars[i] : '-';
+    }
+
+    var s = new string(chars).Trim('-');
+    return s.Length == 0 ? "unnamed" : s.Length > 80 ? s[..80] : s;
 }

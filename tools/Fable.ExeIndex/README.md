@@ -6,10 +6,19 @@ section packets an agent can rewrite as C-like pseudocode.
 The x86 decoder must consume a full instruction. Unknown `0F` / `F6` / x87 used
 to emit `db` and then a fake `ret`. It now covers 0F (jcc/movzx/setcc/imul),
 F6/F7, ADC/SBB `10–1D`, C0/C1/D0–D3 shifts, D8–DF x87, A0–A3 moffs, and 66/F2/F3
-prefixes. `00DBDE40` (`sbb bl, bl`) needs ADC/SBB or the new-game setup looks like
-a 12-instruction stub. `map-newgame` walks real prologues in New Game code
-ranges (`WalkFunction` stops at INT3 / next `push ebp`) and does not BFS into
+prefixes. Two-byte opcodes with **no ModR/M** (`cpuid` `0F A2`, `rdtsc` `0F 31`,
+`bswap` `0F C8–CF`, `push/pop fs/gs`) must not steal the next instruction.
+SSE packed ops print `xmm0–7`. MSVC `jmp [disp32+reg*4]` tables dump as `dd`;
+nearby `movzx` index maps dump as `db`/`dw`. `map-text` also writes `switch.tsv`,
+`switch-ptrs.tsv`, and `switch-index.tsv` for grep.
+`00A5B850` is `push ebx; mov eax, 1; cpuid; test edx, 0x2000000`. `00DBDE40`
+(`sbb bl, bl`) needs ADC/SBB or the new-game setup looks like a 12-instruction
+stub. `map-newgame` walks real prologues in New Game code ranges
+(`WalkFunction` stops at INT3 / next function start) and does not BFS into
 CRT or later-town callees.
+
+Full-exe dumps live in gitignored `assembly/` (text-map + compiled defs).
+Re-dump with `--force --out assembly/exe map-text` and `Fable.Dump bins`.
 
 ```
 dotnet run --project tools/Fable.ExeIndex -- all
@@ -25,7 +34,7 @@ dotnet run --project tools/Fable.ExeIndex -- map-newgame
 dotnet run --project tools/Fable.ExeIndex -- map-text
 ```
 
-`map-text` dumps the **entire** `.text` once (linear listing + `e8.tsv` + `functions.tsv`) under `out/01-sections/text-map/`. Grep that tree. Do not call `fn` per VA.
+`map-text` dumps the **entire** `.text` once (linear listing with raw bytes + `e8.tsv` + `calls.tsv` / `calls-by-dest.tsv` + `ff.tsv` + `abs.tsv` + `disp.tsv` + `branches.tsv` + `crc.tsv` + `iat-sites.tsv` + `functions.tsv` + switch TSVs) under `out/01-sections/text-map/`. `index` adds `iat.tsv`, `vtbl.tsv`, `xrefs-by-string.tsv`. Grep that tree. Do not call `fn` per VA.
 
 `fn` / `disasm` / `calls` accept a PE32 `.dll` as well as `Fable.exe`. `trace-quartz` loads `C:\Windows\SysWOW64\quartz.dll` (the same 32-bit FilterGraph Fable PlayAVI uses) and dumps the RenderFile walk after QueryPinInfo / EnumMediaTypes. Do not copy that graph-builder into the game.
 

@@ -2369,8 +2369,23 @@ static void RunMapText(PeImage pe, DumpStore store)
 
     using var e8 = new StreamWriter(Path.Combine(dir, "e8.tsv"));
     using var fns = new StreamWriter(Path.Combine(dir, "functions.tsv"));
+    using var calls = new StreamWriter(Path.Combine(dir, "calls.tsv"));
+    using var ff = new StreamWriter(Path.Combine(dir, "ff.tsv"));
+    using var abs = new StreamWriter(Path.Combine(dir, "abs.tsv"));
+    using var disp = new StreamWriter(Path.Combine(dir, "disp.tsv"));
+    using var branches = new StreamWriter(Path.Combine(dir, "branches.tsv"));
+    using var crc = new StreamWriter(Path.Combine(dir, "crc.tsv"));
+    using var iatSites = new StreamWriter(Path.Combine(dir, "iat-sites.tsv"));
     e8.WriteLine("site\tdest");
     fns.WriteLine("va\tinsns\tcalls\tstrings");
+    calls.WriteLine("site\tdest\tfn");
+    ff.WriteLine("site\tkind\tmem\tdisp\tfn");
+    abs.WriteLine("site\tva\tfn");
+    disp.WriteLine("site\tdisp\ttext\tfn");
+    branches.WriteLine("site\top\tdest\tfn");
+    crc.WriteLine("site\tvalue\tfn");
+    iatSites.WriteLine("site\tslot\timport\tfn");
+    var callPairs = new List<(uint Dest, uint Site, uint Fn)>();
 
     var listing = new StringBuilder(1 << 20);
     uint chunkVa = 0;
@@ -2431,6 +2446,9 @@ static void RunMapText(PeImage pe, DumpStore store)
         EnsureChunk(step.Va);
         listing.Append(step.Va.ToString("X8"));
         listing.Append("  ");
+        var hex = step.Bytes ?? "";
+        listing.Append(hex.Length <= 24 ? hex.PadRight(24) : hex);
+        listing.Append("  ");
         listing.Append(step.Text);
         listing.Append('\n');
         if (listing.Length >= 1 << 20)
@@ -2472,6 +2490,87 @@ static void RunMapText(PeImage pe, DumpStore store)
             e8.Write("\t0x");
             e8.WriteLine(e8Dest.ToString("X8"));
             e8Count++;
+            calls.Write("0x");
+            calls.Write(step.Va.ToString("X8"));
+            calls.Write("\t0x");
+            calls.Write(e8Dest.ToString("X8"));
+            calls.Write("\t0x");
+            calls.WriteLine(fnVa.ToString("X8"));
+            callPairs.Add((e8Dest, step.Va, fnVa));
+        }
+        else if (GrepFacts.TryRelTarget(step.Text, out var relDest))
+        {
+            var sp = step.Text.IndexOf(' ');
+            var op = sp > 0 ? step.Text[..sp] : step.Text;
+            branches.Write("0x");
+            branches.Write(step.Va.ToString("X8"));
+            branches.Write('\t');
+            branches.Write(op);
+            branches.Write("\t0x");
+            branches.Write(relDest.ToString("X8"));
+            branches.Write("\t0x");
+            branches.WriteLine(fnVa.ToString("X8"));
+        }
+
+        if (GrepFacts.TryFf(step.Text, out var ffKind, out var ffMem))
+        {
+            GrepFacts.TryDisp(step.Text, out var ffDisp);
+            ff.Write("0x");
+            ff.Write(step.Va.ToString("X8"));
+            ff.Write('\t');
+            ff.Write(ffKind);
+            ff.Write('\t');
+            ff.Write(ffMem);
+            ff.Write('\t');
+            ff.Write(ffDisp);
+            ff.Write("\t0x");
+            ff.WriteLine(fnVa.ToString("X8"));
+        }
+
+        if (GrepFacts.TryDisp(step.Text, out var dispVal))
+        {
+            disp.Write("0x");
+            disp.Write(step.Va.ToString("X8"));
+            disp.Write('\t');
+            disp.Write(dispVal);
+            disp.Write('\t');
+            disp.Write(step.Text.Replace('\t', ' '));
+            disp.Write("\t0x");
+            disp.WriteLine(fnVa.ToString("X8"));
+        }
+
+        foreach (var val in GrepFacts.AbsValues(step.Text))
+        {
+            var inImage = pe.FileOffset(val) >= 0;
+            if (inImage)
+            {
+                abs.Write("0x");
+                abs.Write(step.Va.ToString("X8"));
+                abs.Write("\t0x");
+                abs.Write(val.ToString("X8"));
+                abs.Write("\t0x");
+                abs.WriteLine(fnVa.ToString("X8"));
+                if (pe.Iat.TryGetValue(val, out var importName))
+                {
+                    iatSites.Write("0x");
+                    iatSites.Write(step.Va.ToString("X8"));
+                    iatSites.Write("\t0x");
+                    iatSites.Write(val.ToString("X8"));
+                    iatSites.Write('\t');
+                    iatSites.Write(importName);
+                    iatSites.Write("\t0x");
+                    iatSites.WriteLine(fnVa.ToString("X8"));
+                }
+            }
+            else if (val >= 0x10000)
+            {
+                crc.Write("0x");
+                crc.Write(step.Va.ToString("X8"));
+                crc.Write("\t0x");
+                crc.Write(val.ToString("X"));
+                crc.Write("\t0x");
+                crc.WriteLine(fnVa.ToString("X8"));
+            }
         }
 
         return true;
@@ -2480,6 +2579,40 @@ static void RunMapText(PeImage pe, DumpStore store)
     FlushFn();
     FlushChunk();
 
+    callPairs.Sort((a, b) =>
+    {
+        var c = a.Dest.CompareTo(b.Dest);
+        return c != 0 ? c : a.Site.CompareTo(b.Site);
+    });
+    using (var byDest = new StreamWriter(Path.Combine(dir, "calls-by-dest.tsv")))
+    {
+        byDest.WriteLine("dest\tsite\tfn");
+        foreach (var (dest, site, fn) in callPairs)
+            byDest.WriteLine($"0x{dest:X8}\t0x{site:X8}\t0x{fn:X8}");
+    }
+
+    var switches = X86.GetSwitchMap(pe);
+    using (var sw = new StreamWriter(Path.Combine(dir, "switch.tsv")))
+    {
+        sw.WriteLine("kind\tsite\ttable");
+        foreach (var (kind, site, table) in switches.Hits.OrderBy(h => h.Table).ThenBy(h => h.Site))
+            sw.WriteLine($"{kind}\t0x{site:X8}\t0x{table:X8}");
+    }
+
+    using (var sw = new StreamWriter(Path.Combine(dir, "switch-ptrs.tsv")))
+    {
+        sw.WriteLine("table\ti\tdest");
+        foreach (var (table, i, dest) in switches.PtrEntries)
+            sw.WriteLine($"0x{table:X8}\t{i}\t0x{dest:X8}");
+    }
+
+    using (var sw = new StreamWriter(Path.Combine(dir, "switch-index.tsv")))
+    {
+        sw.WriteLine("table\ti\tvalue");
+        foreach (var (table, i, value) in switches.IndexEntries)
+            sw.WriteLine($"0x{table:X8}\t{i}\t{value}");
+    }
+
     var index = new StringBuilder();
     index.AppendLine("# text-map");
     index.AppendLine();
@@ -2487,18 +2620,29 @@ static void RunMapText(PeImage pe, DumpStore store)
     index.AppendLine();
     index.AppendLine($"version **{DumpStore.TextMapVersion}** · exe `{pe.Identity}`");
     index.AppendLine();
-    index.AppendLine($"insns **{insnCount}** · frame prologues **{fnCount}** · E8 **{e8Count}**");
+    index.AppendLine($"insns **{insnCount}** · function starts **{fnCount}** · E8 **{e8Count}** · switch maps **{switches.Hits.Count}**");
     index.AppendLine();
     index.AppendLine("| part | va | file |");
     index.AppendLine("|---|---|---|");
     index.AppendLine("| every E8 site→dest | — | [e8.tsv](e8.tsv) |");
-    index.AppendLine("| frame prologues | — | [functions.tsv](functions.tsv) |");
+    index.AppendLine("| E8 site dest fn | — | [calls.tsv](calls.tsv) |");
+    index.AppendLine("| E8 dest→sites | — | [calls-by-dest.tsv](calls-by-dest.tsv) |");
+    index.AppendLine("| function starts | — | [functions.tsv](functions.tsv) |");
+    index.AppendLine("| switch sites | — | [switch.tsv](switch.tsv) |");
+    index.AppendLine("| switch pointer entries | — | [switch-ptrs.tsv](switch-ptrs.tsv) |");
+    index.AppendLine("| switch index bytes/words | — | [switch-index.tsv](switch-index.tsv) |");
+    index.AppendLine("| FF call/jmp mem | — | [ff.tsv](ff.tsv) |");
+    index.AppendLine("| abs VA operands | — | [abs.tsv](abs.tsv) |");
+    index.AppendLine("| [reg±disp] | — | [disp.tsv](disp.tsv) |");
+    index.AppendLine("| jcc/jmp/loop dest | — | [branches.tsv](branches.tsv) |");
+    index.AppendLine("| non-image u32 imm | — | [crc.tsv](crc.tsv) |");
+    index.AppendLine("| IAT call/jmp sites | — | [iat-sites.tsv](iat-sites.tsv) |");
     foreach (var (va, name) in chunkFiles)
         index.AppendLine($"| listing 0x{va:X8} | 0x{va:X8} | [{name}]({name}) |");
     store.WriteRaw(family, "INDEX.md", index.ToString());
     store.WriteStub(family + ".md", family, "text-map");
     store.MarkWritten(family, DumpStore.TextMapVersion);
-    Console.WriteLine($"map-text  insns={insnCount}  functions={fnCount}  e8={e8Count}  chunks={chunkFiles.Count}");
+    Console.WriteLine($"map-text  insns={insnCount}  functions={fnCount}  e8={e8Count}  switch={switches.Hits.Count}  chunks={chunkFiles.Count}");
 }
 
 static void RunMapNewGame(PeImage pe, DumpStore store)
@@ -3442,7 +3586,9 @@ static void WarnIfDumpLooksTracked(string dir)
 {
     var full = Path.GetFullPath(dir).Replace('\\', '/').TrimEnd('/') + "/";
     if (full.Contains("/Fable.ExeIndex/out/", StringComparison.OrdinalIgnoreCase) ||
-        full.EndsWith("/Fable.ExeIndex/out/", StringComparison.OrdinalIgnoreCase))
+        full.EndsWith("/Fable.ExeIndex/out/", StringComparison.OrdinalIgnoreCase) ||
+        full.Contains("/assembly/", StringComparison.OrdinalIgnoreCase) ||
+        full.EndsWith("/assembly/", StringComparison.OrdinalIgnoreCase))
         return;
     Console.Error.WriteLine($"warning: dump dir {dir} is not tools/Fable.ExeIndex/out — keep it gitignored.");
 }
@@ -3503,9 +3649,69 @@ static void RunIndex(PeImage pe, DumpStore store)
     }
 
     File.WriteAllLines(Path.Combine(dir, "xrefs.tsv"), xrefs);
+    var xrefsByString = new List<string> { "string\tstrva\tsite\tfn" };
+    foreach (var line in xrefs.OrderBy(l =>
+             {
+                 var t = l.Split('\t');
+                 return t.Length >= 4 ? t[3] : l;
+             }, StringComparer.OrdinalIgnoreCase))
+    {
+        var p = line.Split('\t');
+        if (p.Length >= 4)
+            xrefsByString.Add($"{p[3]}\t{p[0]}\t{p[1]}\t{p[2]}");
+    }
+
+    File.WriteAllLines(Path.Combine(dir, "xrefs-by-string.tsv"), xrefsByString);
+    File.WriteAllLines(Path.Combine(dir, "iat.tsv"),
+        pe.Iat.OrderBy(kv => kv.Key).Select(kv => $"0x{kv.Key:X8}\t{kv.Value}"));
+    File.WriteAllLines(Path.Combine(dir, "vtbl.tsv"), ScanVtbls(pe));
     File.WriteAllLines(Path.Combine(dir, "fourcc.tsv"), ScanFourCc(pe));
-    Console.WriteLine($"index  strings={strings.Count} rtti={rtti.Count} xrefs={xrefs.Count}");
+    Console.WriteLine($"index  strings={strings.Count} rtti={rtti.Count} xrefs={xrefs.Count} iat={pe.Iat.Count}");
     store.MarkWritten(family, DumpStore.IndexVersion);
+}
+
+static List<string> ScanVtbls(PeImage pe)
+{
+    var lines = new List<string> { "vtbl\tslot\tdest" };
+    var data = pe.Data;
+    foreach (var sec in pe.Sections)
+    {
+        if (pe.InCode((int)sec.FileOffset))
+            continue;
+        if ((sec.Characteristics & 0x40000000) == 0)
+            continue;
+        var start = (int)((sec.FileOffset + 3) & ~3u);
+        var end = Math.Min(data.Length, (int)(sec.FileOffset + sec.FileSize)) - 3;
+        var i = start;
+        while (i + 4 <= end)
+        {
+            var runAt = i;
+            var n = 0;
+            while (i + 4 <= end)
+            {
+                var dest = BitConverter.ToUInt32(data, i);
+                var file = pe.FileOffset(dest);
+                if (file < 0 || !pe.InCode(file))
+                    break;
+                n++;
+                i += 4;
+            }
+
+            if (n >= 4)
+            {
+                var vtbl = pe.Va(runAt);
+                for (var slot = 0; slot < n; slot++)
+                {
+                    var dest = BitConverter.ToUInt32(data, runAt + slot * 4);
+                    lines.Add($"0x{vtbl:X8}\t{slot}\t0x{dest:X8}");
+                }
+            }
+            else
+                i = runAt + 4;
+        }
+    }
+
+    return lines;
 }
 
 static List<string> ScanFourCc(PeImage pe)

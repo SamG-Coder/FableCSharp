@@ -10,7 +10,7 @@ namespace Fable.ExeIndex;
 /// </summary>
 internal sealed class DumpStore
 {
-    public const int IndexVersion = 1;
+    public const int IndexVersion = 2;
     public const int SplitVersion = 2;
     public const int LandscapeTraceVersion = 5;
     public const int RenderTraceVersion = 2;
@@ -23,7 +23,7 @@ internal sealed class DumpStore
     public const int PlayAviPresentVersion = 2;
     public const int PlayAviTimelineVersion = 10;
     public const int FrontendTraceVersion = 1;
-    public const int TextMapVersion = 3;
+    public const int TextMapVersion = 7;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

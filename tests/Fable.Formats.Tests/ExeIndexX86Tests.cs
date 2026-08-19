@@ -25,6 +25,14 @@ public sealed class ExeIndexX86Tests
     }
 
     [Fact]
+    public void Fable_iat_has_d3d9()
+    {
+        var pe = LoadFable();
+        Assert.Contains(pe.Iat.Values, v => v.Contains("d3d9.dll", StringComparison.OrdinalIgnoreCase)
+            || v.Contains("Direct3D", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public void Transfer_00430900_is_a_function_start()
     {
         var pe = LoadFable();
@@ -87,6 +95,162 @@ public sealed class ExeIndexX86Tests
         var steps = X86.Walk(pe, 0, 4, stopOnRet: true);
         Assert.StartsWith("add", steps[0].Text);
         Assert.DoesNotContain("db", steps[0].Text);
+    }
+
+    [Fact]
+    public void Cpuid_is_two_bytes_not_modrm()
+    {
+        var pe = TinyPe([0x0F, 0xA2, 0xC3]);
+        var steps = X86.Walk(pe, 0, 4, stopOnRet: true);
+        Assert.Equal("cpuid", steps[0].Text);
+        Assert.Equal("ret", steps[1].Text);
+        Assert.Equal(0x00400002u, steps[1].Va);
+    }
+
+    [Fact]
+    public void Rdtsc_is_two_bytes_not_modrm()
+    {
+        var pe = TinyPe([0x0F, 0x31, 0xC3]);
+        var steps = X86.Walk(pe, 0, 4, stopOnRet: true);
+        Assert.Equal("rdtsc", steps[0].Text);
+        Assert.Equal("ret", steps[1].Text);
+        Assert.Equal(0x00400002u, steps[1].Va);
+    }
+
+    [Fact]
+    public void Bswap_eax_is_two_bytes()
+    {
+        var pe = TinyPe([0x0F, 0xC8, 0xC3]);
+        var steps = X86.Walk(pe, 0, 4, stopOnRet: true);
+        Assert.Equal("bswap eax", steps[0].Text);
+        Assert.Equal("ret", steps[1].Text);
+    }
+
+    [Fact]
+    public void Push_fs_pop_gs_are_two_bytes()
+    {
+        var pe = TinyPe([0x0F, 0xA0, 0x0F, 0xA9, 0xC3]);
+        var steps = X86.Walk(pe, 0, 6, stopOnRet: true);
+        Assert.Equal("push fs", steps[0].Text);
+        Assert.Equal("pop gs", steps[1].Text);
+        Assert.Equal("ret", steps[2].Text);
+    }
+
+    [Fact]
+    public void Sse_detect_00A5B850_is_cpuid_then_test_edx()
+    {
+        var pe = LoadFable();
+        var file = pe.FileOffset(0x00A5B850);
+        var steps = X86.WalkFunction(pe, file, 32);
+        Assert.Equal("push ebx", steps[0].Text);
+        Assert.StartsWith("mov eax,", steps[1].Text);
+        Assert.Equal("cpuid", steps[2].Text);
+        Assert.StartsWith("test edx,", steps[3].Text);
+        Assert.DoesNotContain(steps, s => s.Text.Contains("0F_A2", StringComparison.Ordinal));
+        Assert.Contains(steps, s => s.Text == "pop ebx");
+        Assert.Contains(steps, s => s.Text == "ret");
+        Assert.True(steps.Count < 16, $"sse-detect insns={steps.Count}");
+        Assert.Equal(0x00A5B868u, steps[^1].Va);
+    }
+
+    [Fact]
+    public void F6_slash1_test_alias_consumes_imm8()
+    {
+        var pe = TinyPe([0xF6, 0xC8, 0x01, 0xC3]);
+        var steps = X86.Walk(pe, 0, 4, stopOnRet: true);
+        Assert.StartsWith("test", steps[0].Text);
+        Assert.Equal("ret", steps[1].Text);
+        Assert.Equal(0x00400003u, steps[1].Va);
+    }
+
+    [Fact]
+    public void Movaps_uses_xmm_not_gpr()
+    {
+        var pe = TinyPe([0x0F, 0x28, 0x02, 0xC3]);
+        var steps = X86.Walk(pe, 0, 4, stopOnRet: true);
+        Assert.Equal("movaps xmm0, [edx]", steps[0].Text);
+        Assert.Equal("0F 28 02", steps[0].Bytes);
+        Assert.Equal("ret", steps[1].Text);
+    }
+
+    [Fact]
+    public void Grep_facts_disp_ff_rel()
+    {
+        Assert.True(GrepFacts.TryDisp("mov eax, [edi+348]", out var d) && d == 348);
+        Assert.True(GrepFacts.TryFf("call [edx+52]", out var kind, out var mem));
+        Assert.Equal("call", kind);
+        Assert.Equal("[edx+52]", mem);
+        Assert.True(GrepFacts.TryRelTarget("je 00401BD9", out var dest));
+        Assert.Equal(0x00401BD9u, dest);
+        Assert.False(GrepFacts.TryRelTarget("jmp [0x401BDC+eax*4]", out _));
+        Assert.Contains(0x013D2880u, GrepFacts.AbsValues("mov [0x13D2880], 0x01"));
+    }
+
+    [Fact]
+    public void Shufps_xmm4_imm0()
+    {
+        var pe = TinyPe([0x0F, 0xC6, 0xE4, 0x00, 0xC3]);
+        var steps = X86.Walk(pe, 0, 4, stopOnRet: true);
+        Assert.Equal("shufps xmm4, xmm4, 0", steps[0].Text);
+    }
+
+    [Fact]
+    public void Matrix_0098789F_is_movaps_xmm0()
+    {
+        var pe = LoadFable();
+        var file = pe.FileOffset(0x0098789F);
+        var steps = X86.Walk(pe, file, 8, stopOnRet: false);
+        Assert.Equal("movaps xmm0, [edx]", steps[0].Text);
+        Assert.Equal("movaps xmm1, [edx+16]", steps[1].Text);
+        Assert.Contains("xmm", steps[0].Text, StringComparison.Ordinal);
+        Assert.DoesNotContain("movaps eax", steps[0].Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Switch_table_dumps_as_dd_not_salc()
+    {
+        var pe = TinyPe(
+        [
+            0xFF, 0x24, 0x85, 0x10, 0x00, 0x40, 0x00,
+            0xC3,
+            0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC, 0xCC,
+            0x07, 0x00, 0x40, 0x00,
+            0x07, 0x00, 0x40, 0x00,
+            0xCC,
+        ]);
+        var steps = X86.Walk(pe, 0, 16, stopOnRet: false);
+        Assert.Equal("jmp [0x400010+eax*4]", steps[0].Text);
+        Assert.Contains(steps, s => s.Va == 0x00400010u && s.Text == "dd 0x00400007");
+        Assert.DoesNotContain(steps, s => s.Va == 0x00400010u && s.Text.StartsWith("salc", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Fable_00401BDC_is_switch_dd()
+    {
+        var pe = LoadFable();
+        var file = pe.FileOffset(0x00401BDC);
+        var steps = X86.Walk(pe, file, 24, stopOnRet: false);
+        Assert.StartsWith("dd 0x", steps[0].Text);
+        Assert.Equal("dd 0x00401BD6", steps[0].Text);
+        Assert.DoesNotContain("salc", steps[0].Text, StringComparison.Ordinal);
+        var idx = steps.First(s => s.Va == 0x00401BE4u);
+        Assert.Equal("db 0x00", idx.Text);
+    }
+
+    [Fact]
+    public void Fable_0054E32C_is_switch_dd_then_next_fn()
+    {
+        var pe = LoadFable();
+        var file = pe.FileOffset(0x0054E2B1);
+        var steps = X86.Walk(pe, file, 80, stopOnRet: false);
+        Assert.Equal("jmp [0x54E32C+eax*4]", steps[0].Text);
+        var table = steps.First(s => s.Va == 0x0054E32Cu);
+        Assert.StartsWith("dd 0x", table.Text);
+        Assert.DoesNotContain(steps, s => s.Va == 0x0054E32Cu && s.Text == "cli");
+        Assert.Contains(steps, s => s.Va == 0x0054E350u && s.Text == "push ebx");
+        var idx = steps.First(s => s.Va == 0x0054E33Cu);
+        Assert.StartsWith("db 0x", idx.Text);
+        Assert.DoesNotContain(steps, s => s.Va == 0x0054E33Cu && s.Text.StartsWith("add", StringComparison.Ordinal));
     }
 
     private static PeImage LoadFable()
