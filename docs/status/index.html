@@ -29,7 +29,7 @@
         <button type="button" class="chip DISPROVEN" data-filter="DISPROVEN" aria-pressed="false">DISPROVEN</button>
         <button type="button" class="chip TEMPORARY" data-filter="TEMPORARY" aria-pressed="false">TEMPORARY</button>
       </div>
-      <p class="hits" id="hits">214 shown</p>
+      <p class="hits" id="hits">239 shown</p>
     </div>
     <header class="doc-intro">
       <p class="kicker">FableCSharp · human overview</p>
@@ -75,26 +75,28 @@
 
     <p>
       Snapshot: <strong>2026-08-19</strong>, previous snapshot runtime HEAD
-      <code>4a03969</code> via PR #41 merge <code>de7109a</code>,
-      runtime HEAD <code>1a4c51d</code>
-      (<em>CHeroMorphDef against +40,
-      definition manager vtbl+8 Notes, CHighlightItemDef,
-      CSmokeGeneratorDef, CTimeAppearanceFadeDef.</em>).
-      Just locked: 5 runtime commits since <code>4a03969</code>.
-      Headline locks: CHeroMorphDef against the live +40 cap
-      (<code>b7f4c34</code>); PrepareDefinitionManager Notes
-      <code>0044C6B0</code> / <code>0044C72B [vtbl+8]</code> /
-      <code>009ACB10</code> / <code>009E5250</code>
-      (<code>587baae</code>); CHighlightItemDef after
-      CHeroMorphDef (<code>acfe46f</code>); CSmokeGeneratorDef
-      after CHighlightItemDef (<code>100e5cf</code>);
-      CTimeAppearanceFadeDef after CSmokeGeneratorDef
-      (<code>1a4c51d</code>).
-      Ignore snapshot merge <code>de7109a</code> / docs
-      <code>9bdc135</code>. Ignore
-      proofs-only adds. Docs PR #29
+      <code>1a4c51d</code> via PR #43 merge <code>0797a88</code>,
+      runtime HEAD <code>a141c27</code>
+      (<em>CCreatureNavigationDef,
+      CInventoryItemDef, CLookDef + leftover204,
+      CReadableDef, CVillageDef + type-6 0x27 Notes.</em>).
+      Just locked: 5 runtime commits since <code>1a4c51d</code>.
+      Headline locks: CCreatureNavigationDef after
+      CTimeAppearanceFadeDef (<code>ee08490</code>);
+      CInventoryItemDef after CCreatureNavigationDef
+      (<code>3a7b594</code>); host Notes
+      <code>009DA9F0(1) [+16020] empty</code> (stand-in),
+      leftover204 is widget +204, add CLookDef
+      (<code>b1d6877</code>); CReadableDef after
+      CLookDef (<code>113a514</code>); Type-6 host Notes
+      <code>00543910</code> / <code>0x27</code>, add
+      CVillageDef (<code>a141c27</code>).
+      Ignore merge <code>0797a88</code>, docs
+      <code>ee641e5</code> / <code>3bbb598</code> /
+      <code>52b1ffb</code>, and proofs-only
+      <code>ae73127</code>. Docs PR #29
       <code>bedcf919</code> is iOS Settings chrome only — CSS
-      unchanged. Freeze at <code>1a4c51d</code>.
+      unchanged. Freeze at <code>a141c27</code>.
       Do not include any later runtime if master moves.
       Master is still
       proving <strong>boot / world clock</strong>, not animation.
@@ -282,22 +284,26 @@
 
     <h3>Phase 1 in progress — boot / world clock (current master)</h3>
     <p>
-      Recent commits (<code>b7f4c34</code> … <code>1a4c51d</code>) lock
-      Init Thing Components Add Def Class Notes for CHeroMorphDef
-      then CHighlightItemDef / CSmokeGeneratorDef /
-      CTimeAppearanceFadeDef, plus definition-manager host
-      Notes + <code>DefinitionManagerPrepared</code>, not
+      Recent commits (<code>ee08490</code> … <code>a141c27</code>) lock
+      Init Thing Components Add Def Class Notes for
+      CCreatureNavigationDef then CInventoryItemDef /
+      CLookDef / CReadableDef / CVillageDef, plus type-6
+      leftover204 as widget +204 and type-6 host Notes
+      <code>00543910</code> / <code>0x27</code>, not
       <code>00DBDE40</code>. Previous snapshot
-      <code>4a03969</code> via PR #41 <code>de7109a</code>.
-      Just locked this batch: CHeroMorphDef against the live
-      +40 cap, PrepareDefinitionManager Notes
-      <code>0044C6B0</code> / <code>0044C72B [vtbl+8]</code> /
-      <code>009ACB10</code> / <code>009E5250</code>,
-      CHighlightItemDef, CSmokeGeneratorDef,
-      CTimeAppearanceFadeDef. MATCH is Notes+flag, not live
-      constructed objects. dest <code>0044C72B</code> as
-      <code>[01232C24+8]</code> is not rdata-locked
-      (leave #42 open). CSS
+      <code>1a4c51d</code> via PR #43 <code>0797a88</code>.
+      Just locked this batch: CCreatureNavigationDef,
+      CInventoryItemDef, CLookDef + leftover204 / host
+      <code>009DA9F0</code> empty Note, CReadableDef,
+      CVillageDef + type-6 <code>00543910</code> /
+      <code>0x27</code> Notes. MATCH is Notes+flag,
+      not live constructed objects. dest
+      <code>0044C72B</code> as <code>[01232C24+8]</code>
+      is not rdata-locked (leave #42 open).
+      <code>DisplayFlushShouldDip(0, 0)</code> is always
+      false; host never stores <code>[this+16020]</code>.
+      Empty DIP Note is stand-in, not a recovered queue
+      read (leave #36 open). CSS
       unchanged.
     </p>
     <div class="table-scroll">
@@ -645,9 +651,9 @@
           <td><code>0d77c2c</code>. <code>e79f7b4</code> drops unused usings from <code>FrontendWidgetFactory</code> (cleanup of <code>0d77c2c</code>). Type-10 draw is <code>00530260</code> vtbl+8 DrawsChildList (<code>7adf621</code>). Present <code>0042DF9E</code> still Note-only. Host LMB edge queues Type4 (<code>5dcc1fc</code>). Host queues LMB-up as type 6 (<code>48133e9</code>). leave #14 and #20 open.</td>
         </tr>
         <tr>
-          <td>Press Start dest inherits type-10 remap scale. Leftover <code>+204/+208</code> only when <code>GraphicIndex != 0</code>. Type-6 dest is zero-size at remapped origin. Nonempty dest is <code>00BAE2D0</code> not <code>009DB700</code>. Host still Notes <code>009DA9F0</code> DIP</td>
+          <td>Press Start dest inherits type-10 remap scale. Leftover <code>+204/+208</code> only when <code>GraphicIndex != 0</code>. Type-6 leftover 16×16 is gone; leftover204 is widget +204 (0 first-seen). Type-6 dest is a point at remapped origin (512,384), not ctor 0,0,0,0. <code>UI_TITLE_01</code> dest still from texture FrameWidth 256. Nonempty dest draw path is still <code>00BAE2D0</code> / <code>00BAD8A0</code>. <code>EnqueuesDisplayQueue</code> still false. No E8 <code>009DB700</code>. <code>FrontendEnqueueRan</code> still true on nonempty dest / PRESS START. Host Notes <code>009DA9F0(1) [+16020] empty</code> / skip DIP — stand-in, not a recovered queue read</td>
           <td><span class="badge PROVEN">PROVEN</span> / leftover #36</td>
-          <td><code>1a08cc0</code>. Calculator tests still feed 16×16. leave #36 open.</td>
+          <td><code>1a08cc0</code> / later <code>b1d6877</code> / <code>Type6_leftover204_is_widget_plus204_not_dest_width</code> / <code>Press_Start_type6_dest_is_a_point</code> / <code>Frontend_PRESS_START_is_type_10_with_text_child</code> / <code>Press_Start_first_seen_dest_table_matches_0041AFA0</code> / <code>Nonempty_dest_draws_via_00BAE2D0_not_009DB700</code>. leave #36 open.</td>
         </tr>
         <tr>
           <td>Type-4 posts <code>0xE5</code> on Press Start. Host Return quarantined as accept. <code>0x126</code>/15 were still injected at this SHA. CUIDef persist <code>00631C60</code> +189/+190 u8s consumed so Absolute stays aligned. Type-6 Font 26051 is a names.bin offset that resolves to <code>ENG_ARIAL_24</code>, not the <code>0054F4B0</code> <code>ENG_ARIAL_16</code> helper</td>
@@ -740,7 +746,7 @@
           <td><code>540e30c</code> / <code>Init_Subtitled_004CDB10_registers_00A39010_at_13B8A54</code></td>
         </tr>
         <tr>
-          <td>Bind STANDARD_TALK and CONVERSATION names at Init Conversation Attitude. <code>004CD670</code> via <code>0099EFE0</code> (18/12/12). Not Speak. Later Thing Components Notes Add Def Class for CHeroMorphDef then CHighlightItemDef / CSmokeGeneratorDef / CTimeAppearanceFadeDef; MATCH is Notes+flag, not live constructed</td>
+          <td>Bind STANDARD_TALK and CONVERSATION names at Init Conversation Attitude. <code>004CD670</code> via <code>0099EFE0</code> (18/12/12). Not Speak. Later Thing Components Notes Add Def Class for CHeroMorphDef then CHighlightItemDef / CSmokeGeneratorDef / CTimeAppearanceFadeDef / CCreatureNavigationDef / CInventoryItemDef / CLookDef / CReadableDef / CVillageDef; MATCH is Notes+flag, not live constructed</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
           <td><code>fe6c09c</code> / <code>Init_Conversation_004CD670_binds_STANDARD_TALK_tables</code></td>
         </tr>
@@ -795,6 +801,51 @@
           <td>CTC row, not Add Def Class (<code>1a4c51d</code> / <code>Init_Thing_Components_004EE704_adds_CTimeAppearanceFadeDef</code>)</td>
         </tr>
         <tr>
+          <td>Add CCreatureNavigationDef after CTimeAppearanceFadeDef. Site <code>004EE92B</code> / dest <code>009B0AC0</code> at <code>004EE932</code> / factory <code>004DA871</code> size 56 vtbl <code>0123E98C</code>. Host Note-only + <code>FifthDefClassRegistered</code>. MATCH is Notes+flag, not a live 56-byte object</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>ee08490</code> / <code>Init_Thing_Components_004EE932_adds_CCreatureNavigationDef</code></td>
+        </tr>
+        <tr>
+          <td>CTC physics/nav rows (<code>CTCPhysicsLight</code> / <code>CTCPhysicsStandard</code> / <code>CTCPhysicsControlled</code> / <code>CTCCreatureNavigation</code>) are the next <code>009B0AC0</code> / Add Def Class</td>
+          <td><span class="badge DISPROVEN">DISPROVEN</span></td>
+          <td>CTC rows, not Add Def Class (<code>ee08490</code> / <code>Init_Thing_Components_004EE932_adds_CCreatureNavigationDef</code>)</td>
+        </tr>
+        <tr>
+          <td>Add CInventoryItemDef after CCreatureNavigationDef. Site <code>004EF23D</code> / dest <code>009B0AC0</code> at <code>004EF244</code> / factory <code>0044F644</code> jmp <code>0044C108</code> size 112 vtbl <code>01231DBC</code>. Host Note-only + <code>SixthDefClassRegistered</code>. MATCH is Notes+flag, not a live 112-byte object. Also started <code>proofs/github-issues-verify</code> (index only at that SHA). Do not close issues from Note-only</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>3a7b594</code> / <code>Init_Thing_Components_004EF244_adds_CInventoryItemDef</code></td>
+        </tr>
+        <tr>
+          <td>Add CLookDef after CInventoryItemDef. Site <code>004EF37F</code> / dest <code>009B0AC0</code> at <code>004EF386</code> / factory <code>004D80E4</code> ctor <code>0044C0C0</code> size 88 vtbl <code>0123AE14</code>. Host Note-only + <code>SeventhDefClassRegistered</code>. MATCH is Notes+flag, not a live 88-byte object. Type-6 leftover 16×16 is gone; leftover204 is widget +204 (0 first-seen). Type-6 dest is a point at remapped origin (512,384), not ctor 0,0,0,0. <code>UI_TITLE_01</code> dest still from texture FrameWidth 256. Host Notes <code>009DA9F0(1) [+16020] empty</code> / skip DIP: <code>DisplayFlushShouldDip(0, 0)</code> is always false; host never stores <code>[this+16020]</code>. That empty Note is stand-in, not a recovered queue read. <code>FrontendEnqueueRan</code> still true on nonempty dest / PRESS START. <code>EnqueuesDisplayQueue</code> still false. No E8 <code>009DB700</code>. Draw path is still <code>00BAE2D0</code> / <code>00BAD8A0</code>. Leave #36 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>b1d6877</code> / <code>Init_Thing_Components_004EF386_adds_CLookDef</code> / <code>Type6_leftover204_is_widget_plus204_not_dest_width</code> / <code>Press_Start_type6_dest_is_a_point</code> / <code>Frontend_PRESS_START_is_type_10_with_text_child</code> / <code>Press_Start_first_seen_dest_table_matches_0041AFA0</code> / <code>Nonempty_dest_draws_via_00BAE2D0_not_009DB700</code></td>
+        </tr>
+        <tr>
+          <td><code>CTCCreatureExpression</code> / <code>CTCLook</code> are the next <code>009B0AC0</code> / Add Def Class</td>
+          <td><span class="badge DISPROVEN">DISPROVEN</span></td>
+          <td>CTC rows, not Add Def Class (<code>b1d6877</code> / <code>Init_Thing_Components_004EF386_adds_CLookDef</code>)</td>
+        </tr>
+        <tr>
+          <td>Add CReadableDef after CLookDef. Site <code>004EF5AD</code> / dest <code>009B0AC0</code> at <code>004EF5B4</code> / factory <code>004DAA0E</code> ctor <code>0044C0C0</code> size 38 vtbl <code>0123E9F4</code>. Host Note-only + <code>EighthDefClassRegistered</code>. MATCH is Notes+flag, not a live object. Size 38 is thin (no factory dump)</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>113a514</code> / <code>Init_Thing_Components_004EF5B4_adds_CReadableDef</code></td>
+        </tr>
+        <tr>
+          <td><code>CTCActionUseTorch</code> / <code>CTCActionUseReadable</code> are the next <code>009B0AC0</code> / Add Def Class</td>
+          <td><span class="badge DISPROVEN">DISPROVEN</span></td>
+          <td>CTC rows, not Add Def Class (<code>113a514</code> / <code>Init_Thing_Components_004EF5B4_adds_CReadableDef</code>)</td>
+        </tr>
+        <tr>
+          <td>Type-6 host Notes <code>00543910</code> / <code>0x27</code> size 64; add CVillageDef after CReadableDef. Site <code>004F0171</code> / dest <code>009B0AC0</code> at <code>004F0178</code> / factory <code>004E213B</code> pack <code>0042DAE0</code> ctor <code>004DFF04</code> size <code>0x10C</code> vtbl <code>01241DDC</code>. Host Note-only + <code>NinthDefClassRegistered</code>. MATCH is Notes+flag, not a live object. Type-6 <code>0x27</code> is the host packer Note vs old <code>0x22</code> host pack (<code>Type6_widget_packs_00543910_type_27_not_0041BEB0</code>). Last present packer stays <code>0041BEB0</code> / <code>0x22</code>. <code>EnqueuesDisplayQueue</code> still false. No native pack into +16020. Host still Notes <code>009DA9F0(1) [+16020] empty</code>. Leave #36 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>a141c27</code> / <code>Init_Thing_Components_004F0178_adds_CVillageDef</code> / <code>Type6_widget_packs_00543910_type_27_not_0041BEB0</code></td>
+        </tr>
+        <tr>
+          <td><code>CTCActionUseSearch</code> is the next <code>009B0AC0</code> / Add Def Class</td>
+          <td><span class="badge DISPROVEN">DISPROVEN</span></td>
+          <td>CTC row, not Add Def Class (<code>a141c27</code> / <code>Init_Thing_Components_004F0178_adds_CVillageDef</code>)</td>
+        </tr>
+        <tr>
           <td><code>[node+20]</code> is <code>0041DB1D</code>/<code>0041D21B</code> type0 <code>0041B800</code> vtbl <code>0122F5D4</code>; draw <code>0041AFA0</code> not <code>0052D900</code></td>
           <td><span class="badge DISPROVEN">DISPROVEN</span></td>
           <td>PRESS_START Type=10. Type 0 is <code>UI_FRONTEND_BUTTON</code>.</td>
@@ -807,7 +858,7 @@
         <tr>
           <td><code>00404C00</code> first-seen <code>[0x13B7CD8+8]==0</code> skip; <code>0041AFA0</code> packs <code>0041BEB0</code> type <code>0x22</code> (not sibling <code>0041BF60</code>) dest <code>[edx+92]</code> <code>this+0x15C</code> size <code>0xC0</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>c612ad5</code> / same frontend test (<code>Frontend2dLastPacker=0041BEB0</code>, <code>FrontendDisplayFlag=false</code>). Dest leftover <code>+204/+208</code> only when <code>GraphicIndex != 0</code> (<code>1a08cc0</code>). leave #14 open.</td>
+          <td><code>c612ad5</code> / same frontend test (<code>Frontend2dLastPacker=0041BEB0</code>, <code>FrontendDisplayFlag=false</code>). Type-0 stays <code>0041BEB0</code> / <code>0x22</code>; type-6 host Notes <code>00543910</code> / <code>0x27</code> (<code>a141c27</code> / <code>Type6_widget_packs_00543910_type_27_not_0041BEB0</code>). Dest leftover <code>+204</code> is widget +204 (<code>b1d6877</code>). leave #14 open.</td>
         </tr>
         <tr>
           <td><code>00418289</code> dump: <code>00416296</code>/<code>00490A22</code> frontend+GUI gate; <code>009E1BC0</code> → <code>[game+90544]</code>; fade/player <code>004AEBA0</code>; world <code>0049D9E0</code>; vtbl+24 <code>00416E78</code>; <code>0041726D</code> WorldFrame. START_INITIAL_QUESTS factories <code>00CDE2F0</code>/<code>00F01760</code>/<code>00CDBD20</code>/<code>00CB8690</code> (vtbls <code>012C3000</code>/<code>012F72D0</code>). <code>006B3FF0</code> seed PROVEN (208); <code>006B63C0</code> bank copy 6×<code>0x1F4</code> PROVEN (91). Pose leftover <code>006B8640</code>/<code>008889C0</code> stay UNREAD; <code>006B2CA0</code> later PROVEN (<code>204a214</code>). Host <code>SeedAt(1.6m)</code> later DISPROVEN as live New Game (<code>204a214</code>). FOV 72 is SHOT2 leftover; Lookout helper FOV later 70 (<code>be3339e</code>). Do not StartCutscene(S_PSM) from the factory ctor.</td>
@@ -830,9 +881,9 @@
           <td><code>fab17be</code> / <code>World_camera_006B4900_slots_lerp_into_ScriptedCamera</code> (<code>CameraTickSkipped</code>, <code>CameraTickTimer=-1.0</code>, <code>PoseTickFn</code>) / <code>Camera_004164E0_runs_on_install_after_WorldFrame</code> (<code>FiberUpdateFlagSetter</code>)</td>
         </tr>
         <tr>
-          <td><code>009DA9F0(1)</code> first-seen empty → <code>009DB6E6</code> skip DIP. Nonempty would be <code>00A058C0</code> then <code>[device+88].vtbl+332</code>. No <code>cmp …,0x22</code>. Type-0x22 DIP is vtbl+332, not a 0x22 switch. <code>009D9C80</code> first 250: dirty-list only. Queue begin +16020. <code>Frontend2dDipIssued=false</code></td>
+          <td><code>009DA9F0(1)</code> first-seen empty → <code>009DB6E6</code> skip DIP. Nonempty would be <code>00A058C0</code> then <code>[device+88].vtbl+332</code>. No <code>cmp …,0x22</code>. Type-0x22 DIP is vtbl+332, not a 0x22 switch. <code>009D9C80</code> first 250: dirty-list only. Queue begin +16020. Later <code>b1d6877</code> host Notes <code>009DA9F0(1) [+16020] empty</code> / skip DIP: <code>DisplayFlushShouldDip(0, 0)</code> is always false; host never stores <code>[this+16020]</code>. That is stand-in, not a recovered queue read. <code>FrontendEnqueueRan</code> can still be true. <code>Frontend2dDipIssued=false</code>. Leave #36 open</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>6493c77</code> / <code>Frontend_present_runs_on_install_after_videos</code> (<code>DisplayQueueBeginOffset=16020</code>, <code>DrawIndexedPrimitiveVtbl=332</code>, <code>DisplayPrimitiveFn=00A058C0</code>). leave #14 open</td>
+          <td><code>6493c77</code> / <code>b1d6877</code> / <code>Frontend_present_runs_on_install_after_videos</code> / <code>Frontend_009DA9F0_first_seen_is_empty_skip_not_type_22</code> (<code>DisplayQueueBeginOffset=16020</code>, <code>DrawIndexedPrimitiveVtbl=332</code>, <code>DisplayPrimitiveFn=00A058C0</code>). leave #14 open</td>
         </tr>
         <tr>
           <td><code>0042E204</code> Init Engine: <code>00B26340</code> alloc <code>0x178</code> ctor <code>00B260B0</code> vtbl <code>012A0F3C</code> at retail+88. <code>0041AFA0</code> <code>[012A0F3C+92]</code> = <code>00B23BC0</code> → <code>00B324A0([0x1436E80], widget+0x15C, rec, 0xC0, 0)</code>. Type <code>[rec]=0x22</code> → <code>[0x1436E84]+16+0x22*4</code>. dest+4=0 first-seen. Handler vtbl+20 UNREAD (not memcpy +16020)</td>
@@ -1109,12 +1160,12 @@
         <tr>
           <td><code>00B324A0</code> type-0x22 handler vtbl+20</td>
           <td><span class="badge PARTIAL">PARTIAL</span></td>
-          <td>dest+4=0 only while dest is 0. Nonempty dest is <code>00BAE2D0</code> not <code>009DB700</code> (<code>1a08cc0</code>). Host still Notes <code>009DA9F0</code> DIP. Type-6 Font 26051 is a names.bin offset that resolves to <code>ENG_ARIAL_24</code>, not the <code>0054F4B0</code> <code>ENG_ARIAL_16</code> helper (<code>db36334</code>). Init Fonts <code>ENG_ARIAL_18</code> at <code>game+90444</code> is a different object (<code>9901d3b</code>). leave #36 open.</td>
+          <td>dest+4=0 only while dest is 0. Nonempty dest draw path is still <code>00BAE2D0</code> / <code>00BAD8A0</code>. <code>EnqueuesDisplayQueue</code> still false. No E8 <code>009DB700</code> (<code>1a08cc0</code> / <code>Nonempty_dest_draws_via_00BAE2D0_not_009DB700</code>). Host Notes <code>009DA9F0(1) [+16020] empty</code> stand-in (<code>b1d6877</code>); <code>DisplayFlushShouldDip(0, 0)</code> always false; host never stores <code>[this+16020]</code>. Type-6 host Notes <code>00543910</code> / <code>0x27</code> size 64, not <code>0041BEB0</code> / <code>0x22</code> (<code>a141c27</code> / <code>Type6_widget_packs_00543910_type_27_not_0041BEB0</code>). Type-0 stays <code>0041BEB0</code> / <code>0x22</code>. Type-6 Font 26051 is a names.bin offset that resolves to <code>ENG_ARIAL_24</code>, not the <code>0054F4B0</code> <code>ENG_ARIAL_16</code> helper (<code>db36334</code>). Init Fonts <code>ENG_ARIAL_18</code> at <code>game+90444</code> is a different object (<code>9901d3b</code>). leave #36 open.</td>
         </tr>
         <tr>
           <td><code>0041AC20</code> dest rect from +204/+248</td>
-          <td><span class="badge PROVEN">PROVEN</span> first-seen 0,0,0,0</td>
-          <td>Leftover <code>+204/+208</code> only when <code>GraphicIndex != 0</code> (<code>1a08cc0</code>). Type-6 dest is zero-size at remapped origin. Calculator tests still feed 16×16. leave #36 open.</td>
+          <td><span class="badge PROVEN">PROVEN</span> ctor 0,0,0,0; type-6 dest (512,384)</td>
+          <td>Leftover <code>+204</code> is widget +204, not dest width (<code>b1d6877</code> / <code>Type6_leftover204_is_widget_plus204_not_dest_width</code>). Type-6 leftover 16×16 is gone (0 first-seen). Type-6 dest is a point at remapped origin (512,384), not ctor 0,0,0,0 (<code>Press_Start_type6_dest_is_a_point</code> / <code>Frontend_PRESS_START_is_type_10_with_text_child</code>). <code>UI_TITLE_01</code> dest still from texture FrameWidth 256 (<code>Press_Start_first_seen_dest_table_matches_0041AFA0</code>). Leftover <code>+204/+208</code> only when <code>GraphicIndex != 0</code> (<code>1a08cc0</code>). leave #36 open.</td>
         </tr>
         <tr>
           <td>New Game keyboard N/Enter (host stand-in)</td>
@@ -1194,7 +1245,7 @@
         <tr>
           <td>Init Thing Components further Add Def Class</td>
           <td>leftover Note-only</td>
-          <td>Thing Components now Notes Add Def Class for CHeroMorphDef then CHighlightItemDef / CSmokeGeneratorDef / CTimeAppearanceFadeDef (<code>b7f4c34</code> / <code>acfe46f</code> / <code>100e5cf</code> / <code>1a4c51d</code>). MATCH is Notes+flag, not live constructed. LoadDef field walk stays PARTIAL. Do not invent a live object.</td>
+          <td>Thing Components now Notes Add Def Class for CHeroMorphDef then CHighlightItemDef / CSmokeGeneratorDef / CTimeAppearanceFadeDef / CCreatureNavigationDef / CInventoryItemDef / CLookDef / CReadableDef / CVillageDef (<code>b7f4c34</code> / <code>acfe46f</code> / <code>100e5cf</code> / <code>1a4c51d</code> / <code>ee08490</code> / <code>3a7b594</code> / <code>b1d6877</code> / <code>113a514</code> / <code>a141c27</code>). MATCH is Notes+flag, not live constructed. LoadDef field walk stays PARTIAL. Do not invent a live object.</td>
         </tr>
         <tr>
           <td>Init Player Interface leftover <code>Register(ActionInputListener)</code> / <code>00488D20</code> notes</td>
@@ -1424,25 +1475,38 @@
         (<code>b8a2b21</code>). Init World <code>004A67D0</code>
         / <code>004A6E30</code> run inside <code>0041735A</code>
         before <code>00417418</code>.
-        Recent commits <code>b7f4c34</code> …
-        <code>1a4c51d</code> lock Init Thing Components Add
-        Def Class Notes for CHeroMorphDef then
-        CHighlightItemDef / CSmokeGeneratorDef /
-        CTimeAppearanceFadeDef, plus definition-manager host
-        Notes + <code>DefinitionManagerPrepared</code>.
-        MATCH is Notes+flag, not live constructed. dest
-        <code>0044C72B</code> as <code>[01232C24+8]</code>
-        is not rdata-locked (leave #42 open). Different
-        object from later Subtitled <code>[0x13B8A54]</code>.
-        Init Player Interface still leftover
+        Recent commits <code>ee08490</code> …
+        <code>a141c27</code> lock Init Thing Components Add
+        Def Class Notes for CCreatureNavigationDef then
+        CInventoryItemDef / CLookDef / CReadableDef /
+        CVillageDef, plus type-6 leftover204 as widget
+        +204 and type-6 host Notes <code>00543910</code>
+        / <code>0x27</code>. MATCH is Notes+flag, not
+        live constructed. dest <code>0044C72B</code> as
+        <code>[01232C24+8]</code> is not rdata-locked
+        (leave #42 open). Different object from later
+        Subtitled <code>[0x13B8A54]</code>. Init Player
+        Interface still leftover
         Register(ActionInputListener) / <code>00488D20</code>
         notes. Host ctor note of <code>0044A3B0</code> under
         Init Player Interface is DISPROVEN (moved).
         Host LMB edge queues
         Type4 (<code>5dcc1fc</code>). Host queues LMB-up as type 6
-        (<code>48133e9</code>). Dest leftover GraphicIndex path +
-        calculator tests still feed 16×16; host still Notes
-        <code>009DA9F0</code> DIP (#36). leave #36 open.
+        (<code>48133e9</code>). Type-6 leftover 16×16 is gone;
+        leftover204 is widget +204 (0 first-seen). Type-6
+        dest is a point at remapped origin (512,384), not
+        ctor 0,0,0,0. <code>UI_TITLE_01</code> dest still
+        from texture FrameWidth 256. Host Notes
+        <code>009DA9F0(1) [+16020] empty</code> / skip DIP:
+        <code>DisplayFlushShouldDip(0, 0)</code> is always
+        false; host never stores <code>[this+16020]</code>.
+        That is stand-in, not a recovered queue read.
+        <code>FrontendEnqueueRan</code> still true on
+        nonempty dest / PRESS START.
+        <code>EnqueuesDisplayQueue</code> still false. No
+        E8 <code>009DB700</code>. Draw path is still
+        <code>00BAE2D0</code> / <code>00BAD8A0</code>
+        (#36). leave #36 open.
         #37 already locked at the previous freeze
         (<code>61e430f</code> / <code>48133e9</code>):
         <code>0xE5</code> host fill gone
