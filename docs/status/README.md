@@ -24,8 +24,9 @@ Just locked: 5 runtime commits since `a141c27`. Headline
 locks in order: leftover+204 GraphicIndex gate +
 CVillageMemberDef (`76edbbd`); CBuyableHouseDef
 (`91564bd`); CBuyHouseDef (`f30c099`); type-16/18
-persist child 0 + CWifeDef (`71ae66e`); present skip
-constants + CDoorDef (`405b1e8`).
+persist child 0 + CWifeDef (`71ae66e`); thirteenth
+early-return host fix + CDoorDef Note-only MATCH +
+present skip constants/proof (`405b1e8`).
 Ignore merge `03ea5df`, docs `623fa86` / `6cc1d52`.
 Docs PR #29 `bedcf919` is iOS Settings chrome only —
 CSS unchanged. Freeze at `405b1e8`. Do not include any
@@ -136,20 +137,28 @@ skip constants. Previous snapshot `a141c27` via PR #44
 `03ea5df`. Just locked this batch: leftover+204
 GraphicIndex gate + CVillageMemberDef, CBuyableHouseDef,
 CBuyHouseDef + screen dumps, type-16/18 persist
-child 0 + CWifeDef, present skip constants +
-CDoorDef. MATCH is Notes+flag, not live constructed
-objects. dest `0044C72B` as `[01232C24+8]` is not
-rdata-locked (leave #42 open).
+child 0 + CWifeDef, thirteenth early-return host
+fix + CDoorDef Note-only MATCH + present skip
+constants/proof. MATCH is Notes+flag, not live
+constructed objects. `405b1e8` also fixes the
+thirteenth early-return (`if (!ThirteenthDefClassRegistered)`
+then fourteenth) so CWifeDef and CDoorDef both
+register — a real host fix. dest `0044C72B` as
+`[01232C24+8]` is not rdata-locked (leave #42 open).
 `DisplayFlushShouldDip(0, 0)` is always false; host
 never stores `[this+16020]`. Empty DIP Note is
 stand-in, not a recovered queue read (leave #36
 open). leftover+204 GraphicIndex gate is recovered
 (index 0 → leftover 0) but dest is still invented
 512,384,512,384 and tests lock that dest. Present
-skip VAs (`0052F180` / `0052F1D0`) are constants;
-host still exclusive-walks SelectsChild (leave #46
-open). Resident slots 0 / `0x14` / `0x17` still
-MATCH `00595222`. CSS unchanged.
+skip from listing is constants + proof only
+(`BorrowedVisibleFn` `0052F180` / `ClipBitFn`
+`0052F1D0` / `ForwardSelectFn` `0041C5A0` /
+`TextSliderIndexOffset` 348); those VAs are never
+read by `DrawContainerWalk` or `IsPresented`. Host
+still exclusive-walks `kids[ActiveChild]` for
+SelectsChild (leave #46 open). Resident slots 0 /
+`0x14` / `0x17` still MATCH `00595222`. CSS unchanged.
 
 | Item | Status | Evidence |
 |---|---|---|
@@ -265,7 +274,7 @@ MATCH `00595222`. CSS unchanged.
 | Add CBuyableHouseDef after CVillageMemberDef. Site `004F02DD` / dest `009B0AC0` at `004F02E4` / factory `004E0148` ctor `004DDB2C` size 76 vtbl `0124131C`. Host Note-only + `EleventhDefClassRegistered`. MATCH is Notes+flag, not a live object. `proofs/frontend-no-screen-draw-fork` is a host grep labeled PROVEN, not a native dest lock. Quiet leftover; do not file a new issue | PROVEN | `91564bd` / `Init_Thing_Components_004F02E4_adds_CBuyableHouseDef` |
 | Dump three frontend screens after AVI skip; add CBuyHouseDef after CBuyableHouseDef. Site `004F0393` / dest `009B0AC0` at `004F039A` / factory `004D7B5B` ctor `0044C0C0` size 38 vtbl `0123A61C`. Host Note-only + `TwelfthDefClassRegistered`. MATCH is Notes+flag, not a live object. Optional `FABLE_SKIP_STARTUP_AVI` is host `FinishStartupVideo`, not native DIK skip. Screen dumps re-lock invented dest. `proofs/frontend-screens-vs-native` dest MATCH oversell restates #36. Leave #36 open. Do not treat the AVI skip env as a 3D Draw fix (leave #20 open) | PROVEN | `f30c099` / `Init_Thing_Components_004F039A_adds_CBuyHouseDef` / `Frontend_dumps_press_start_new_profile_main_menu_after_avi_skip` |
 | Present type-16/18 persist child 0; add CWifeDef after CBuyHouseDef. Site `004F04B4` / dest `009B0AC0` at `004F04BB` / factory `004D7BA1` ctor `0044C0C0` size 44 vtbl `0123A69C`. Host Note-only + `ThirteenthDefClassRegistered`. MATCH is Notes+flag, not a live object. Type 16 CTextSlider vtbl+8 is `00530260`. First-seen +348=0 keeps ARROWS/NORMAL. Type-6 dest stays a POINT (512,384,512,384). Host `DrawContainerWalk` / `IsPresented` exclusive-walks `kids[ActiveChild]` for SelectsChild. Proof `proofs/type16-18-present-child` DISPROVES `00530260` exclusive-walk (native walks every +176 child, skip vtbl+400 / +420). Unused `ApplySelectState` maps one state onto all type 16/18. Filed issue #46. Leave #46 open. Dest still invented. Leave #36 open | PROVEN | `71ae66e` / `Init_Thing_Components_004F04BB_adds_CWifeDef` / `Factory_builds_press_start_then_main_menu_from_the_same_walk` |
-| Present skip from listing; add CDoorDef after CWifeDef. Site `004F0640` / dest `009B0AC0` at `004F0647` / factory `004D7BE7` ctor `0044C0C0` size 60 vtbl `0123A714`. Host Note-only + `FourteenthDefClassRegistered`. MATCH is Notes+flag, not a live object. Shape-2 pack `0042DAE0`. `FrontendWidgetType` constants: `BorrowedVisibleFn` `0052F180` (`[+300]>>7`, persist def+504), `ClipBitFn` `0052F1D0` (`[+302]&1`, persist def+392, CRC UNREAD), `ForwardSelectFn` `0041C5A0`, `TextSliderIndexOffset` 348. `Frontend_dumps_press_start_new_profile_main_menu_after_avi_skip` now asserts `FrontendResidentSlots` keep 0 / `0x14` / `0x17`. Proof `proofs/listing-present-skip`: `00530260` walks every +176 then +188; skip is vtbl+400 / vtbl+420. Native `00530260` does NOT exclusive-walk. Host SelectsChild + Visible=false on k!=0 is still the first-seen present set (forest_1 / ARROWS / NORMAL). `405b1e8` did NOT remove the exclusive-walk host leftover. Tests lock skip VAs, not a live recovered `00530260` skip in host Draw. Leave #46 open. Type-6 leftover204 dest width DISPROVEN (still invented). Leave #36 open. Next pair (not shipped): CLightDef `004F06F6` / `004D7C73` size 92 vtbl `0123A814`. Do not file CLightDef as an issue | PROVEN | `405b1e8` / `Init_Thing_Components_004F0647_adds_CDoorDef` / `Factory_builds_press_start_then_main_menu_from_the_same_walk` / `Frontend_dumps_press_start_new_profile_main_menu_after_avi_skip` |
+| Present skip from listing (constants + proof only); add CDoorDef after CWifeDef. Site `004F0640` / dest `009B0AC0` at `004F0647` / factory `004D7BE7` ctor `0044C0C0` size 60 vtbl `0123A714`. Host Note-only + `FourteenthDefClassRegistered`. MATCH is Notes+flag, not a live object. Test `Init_Thing_Components_004F0647_adds_CDoorDef`. `405b1e8` also fixes the thirteenth early-return (`if (!ThirteenthDefClassRegistered)` then fourteenth) so CWifeDef and CDoorDef both register — a real host fix. Shape-2 pack `0042DAE0`. `FrontendWidgetType` constants: `BorrowedVisibleFn` `0052F180` (`[+300]>>7`, persist def+504), `ClipBitFn` `0052F1D0` (`[+302]&1`, persist def+392, CRC UNREAD), `ForwardSelectFn` `0041C5A0`, `TextSliderIndexOffset` 348. Those VAs are never read by `DrawContainerWalk` or `IsPresented`. Host still exclusive-walks `kids[ActiveChild]` for SelectsChild. `Frontend_dumps_press_start_new_profile_main_menu_after_avi_skip` now asserts `FrontendResidentSlots` keep 0 / `0x14` / `0x17`. Proof `proofs/listing-present-skip`: `00530260` walks every +176 then +188; skip is vtbl+400 / vtbl+420. Native `00530260` does NOT exclusive-walk. Host SelectsChild + Visible=false on k!=0 is still the first-seen present set (forest_1 / ARROWS / NORMAL). Do not treat skip as recovered in the host walk. Leave #46 open. Dest still invented 512,384,512,384. Leave #36 open. Next leftover (not an issue): CLightDef `004F06F6` / `004D7C73` size 92 vtbl `0123A814` | PROVEN | `405b1e8` / `Init_Thing_Components_004F0647_adds_CDoorDef` / `Factory_builds_press_start_then_main_menu_from_the_same_walk` / `Frontend_dumps_press_start_new_profile_main_menu_after_avi_skip` |
 | `[node+20]` is `0041DB1D`/`0041D21B` type0 `0041B800` vtbl `0122F5D4`; draw `0041AFA0` not `0052D900` | DISPROVEN | PRESS_START Type=10. Type 0 is `UI_FRONTEND_BUTTON`. |
 | `00A09F20` miss: `[bank].vtbl+4` is `009D56C0` Open Bank File Async then `009A7F80` on `[0x13CA79C]` | PROVEN | `bbee903` / `Pe_entry_is_crt_not_new_game` / `Install_banks_and_startup_videos_exist` (`MeshBank.OpenVtbl4`) |
 | `00404C00` first-seen `[0x13B7CD8+8]==0` skip; `0041AFA0` packs `0041BEB0` type `0x22` (not sibling `0041BF60`) dest `[edx+92]` `this+0x15C` size `0xC0` | PROVEN | `c612ad5` / same frontend test (`Frontend2dLastPacker=0041BEB0`, `FrontendDisplayFlag=false`). Type-0 stays `0041BEB0` / `0x22`; type-6 host Notes `00543910` / `0x27` (`a141c27` / `Type6_widget_packs_00543910_type_27_not_0041BEB0`). Dest leftover `+204` is widget +204 (`b1d6877`). leave #14 open. |
@@ -346,7 +355,7 @@ the no-save path.
 | `0041714D` when `world+164 != 0` | UNREAD | Default New Game is `world+164==0` |
 | Slot fields beyond `+6296/+6312/+6328` (weights / `+6340/+6352`) | UNREAD | Lerp into `ScriptedCamera` is PROVEN; first-seen Weight0 ctor 0.2 is locked (`52e26bc`). Leftover slot bodies are not |
 | `00435530` overlay `00435000` / interface `00435070` bodies | PARTIAL | Present + `009DA9F0` layer bits PROVEN; overlay/interface still Note |
-| Frontend `00595222` widget DIP body | DISPROVEN as DIP | `00595222` calls `[node+20].vtbl+8`. Types 5/10/12/18 are `00530260` DrawsChildList (`7adf621`). Tick/draw walk every resident `[ui+84]` slot (`b4a2c89` / `Frontend_tick_and_draw_walk_resident_ui84_slots`). Resident slots 0 / `0x14` / `0x17` still MATCH `00595222` (`405b1e8` / `Frontend_dumps_press_start_new_profile_main_menu_after_avi_skip`). Present skip VAs `0052F180` / `0052F1D0` are constants (`Factory_builds_press_start_then_main_menu_from_the_same_walk`); host still exclusive-walks SelectsChild (leave #46 open). Present `0042DF9E` still Note-only. Host draw still does not skip on State=6. Host still Notes `009DA9F0` DIP. leave #14 open. |
+| Frontend `00595222` widget DIP body | DISPROVEN as DIP | `00595222` calls `[node+20].vtbl+8`. Types 5/10/12/18 are `00530260` DrawsChildList (`7adf621`). Tick/draw walk every resident `[ui+84]` slot (`b4a2c89` / `Frontend_tick_and_draw_walk_resident_ui84_slots`). Resident slots 0 / `0x14` / `0x17` still MATCH `00595222` (`405b1e8` / `Frontend_dumps_press_start_new_profile_main_menu_after_avi_skip`). Present skip VAs `0052F180` / `0052F1D0` / `0041C5A0` / +348 are constants + proof only (`Factory_builds_press_start_then_main_menu_from_the_same_walk`); never read by `DrawContainerWalk` or `IsPresented`. Host still exclusive-walks `kids[ActiveChild]` for SelectsChild (leave #46 open). Present `0042DF9E` still Note-only. Host draw still does not skip on State=6. Host still Notes `009DA9F0` DIP. leave #14 open. |
 | `00B324A0` type-0x22 handler vtbl+20 | PARTIAL | dest+4=0 only while dest is 0. Nonempty dest draw path is still `00BAE2D0` / `00BAD8A0`. `EnqueuesDisplayQueue` still false. No E8 `009DB700` (`1a08cc0` / `Nonempty_dest_draws_via_00BAE2D0_not_009DB700`). Host Notes `009DA9F0(1) [+16020] empty` stand-in (`b1d6877`); `DisplayFlushShouldDip(0, 0)` always false; host never stores `[this+16020]`. Type-6 host Notes `00543910` / `0x27` size 64, not `0041BEB0` / `0x22` (`a141c27` / `Type6_widget_packs_00543910_type_27_not_0041BEB0`). Type-0 stays `0041BEB0` / `0x22`. Type-6 Font 26051 is a names.bin offset that resolves to `ENG_ARIAL_24`, not the `0054F4B0` `ENG_ARIAL_16` helper (`db36334`). Init Fonts `ENG_ARIAL_18` at `game+90444` is a different object (`9901d3b`). leave #36 open. |
 | `0041AC20` dest rect from +204/+248 | PROVEN ctor 0,0,0,0; type-6 dest (512,384,512,384) | leftover+204 GraphicIndex gate recovered (`76edbbd` / `Leftover204_is_0041AC20_graphic_index_not_persist_size`): index 0 → leftover 0. dest still invented 512,384,512,384; tests lock that dest (`Frontend_0041AC20_dest_and_0xE5_new_profile_0x126_main_menu_15`). Leftover `+204` is widget +204, not dest width (`b1d6877` / `Type6_leftover204_is_widget_plus204_not_dest_width`). Type-6 leftover 16×16 is gone (0 first-seen). Type-6 dest is a point at remapped origin (512,384,512,384), not ctor 0,0,0,0 (`Press_Start_type6_dest_is_a_point` / `Frontend_PRESS_START_is_type_10_with_text_child`). `UI_TITLE_01` dest still from texture FrameWidth 256 (`Press_Start_first_seen_dest_table_matches_0041AFA0`). Leftover `+204/+208` only when `GraphicIndex != 0` (`1a08cc0`). `DisplayFlushShouldDip(0, 0)` stand-in. leave #36 open. |
 | New Game keyboard N/Enter (host stand-in) | PARTIAL | Host Return quarantined as accept (`db36334`). Host LMB edge queues Type4 (`5dcc1fc`). Host queues LMB-up as type 6 (`48133e9`). Host current `_frontendWidgets` is still the switched screen (input leftover) (`84a8350`). `DispatchFrontendMessage(15)` is `0059A238` vtbl+32. Enter still queues that message. Present `0042DF9E` still Note-only. Host draw still does not skip on State=6. leave #14 open. |
@@ -365,7 +374,7 @@ the no-save path.
 | PALSKIN c38 dest upload | later | `27cb7ee` — later GPU path; do not file |
 | Init Definition Manager dest `[01232C24+8]` | dest UNREAD | Host Notes `0044C6B0` / `0044C72B [vtbl+8]` / `009ACB10` / `009E5250` + `DefinitionManagerPrepared` are locked (`587baae` / `Init_Definition_Manager_00416005_resets_plus88_via_vtbl8`). dest `0044C72B` as `[01232C24+8]` is not rdata-locked (sibling `proofs/00416005-def-manager` dest UNREAD). Leave #42 open. Do not call dest PROVEN. Different object from later Subtitled `[0x13B8A54]`. Do not invent a `game.bin` parser. |
 | Init Thing Components further Add Def Class | leftover Note-only | Thing Components now Notes Add Def Class for CHeroMorphDef then CHighlightItemDef / CSmokeGeneratorDef / CTimeAppearanceFadeDef / CCreatureNavigationDef / CInventoryItemDef / CLookDef / CReadableDef / CVillageDef / CVillageMemberDef / CBuyableHouseDef / CBuyHouseDef / CWifeDef / CDoorDef (`b7f4c34` / `acfe46f` / `100e5cf` / `1a4c51d` / `ee08490` / `3a7b594` / `b1d6877` / `113a514` / `a141c27` / `76edbbd` / `91564bd` / `f30c099` / `71ae66e` / `405b1e8`). MATCH is Notes+flag, not live constructed. Next leftover named in proof (not an issue): CLightDef `004F06F6` / `004D7C73` size 92 vtbl `0123A814`. LoadDef field walk stays PARTIAL. Do not invent a live object. |
-| Type-16/18 host exclusive-walk SelectsChild | leftover #46 | Native `00530260` walks every +176 child; skip is vtbl+400 / vtbl+420 (`0052F180` / `0052F1D0`). Host SelectsChild + Visible=false on k!=0 remains (`71ae66e` / `405b1e8`). Tests lock skip VAs (`Factory_builds_press_start_then_main_menu_from_the_same_walk`), not the recovered skip in the host walk. Leave #46 open. |
+| Type-16/18 host exclusive-walk SelectsChild | leftover #46 | Native `00530260` walks every +176 child. Present skip from listing is constants + proof only: `BorrowedVisibleFn` `0052F180` / `ClipBitFn` `0052F1D0` / `ForwardSelectFn` `0041C5A0` / `TextSliderIndexOffset` 348. Those VAs are never read by `DrawContainerWalk` or `IsPresented`. Host still exclusive-walks `kids[ActiveChild]` for SelectsChild (`71ae66e` / `405b1e8`). Do not treat skip as recovered in the host walk. Leave #46 open. |
 | Init Player Interface leftover `Register(ActionInputListener)` / `00488D20` notes | leftover | Not a function; factory is Create Players. Host ctor note of `0044A3B0` under Init Player Interface is DISPROVEN (moved to Init Player Manager, `4a03969`). Do not file a new issue. |
 
 No-save `WorldFrame` now ticks after Create Players (`+9826=1`).
@@ -499,7 +508,11 @@ The boot-first sequence holds. Corrections from the repo:
    CVillageMemberDef then CBuyableHouseDef /
    CBuyHouseDef / CWifeDef / CDoorDef, plus leftover+204
    GraphicIndex gate (index 0 → leftover 0) and
-   present skip constants. MATCH is Notes+flag, not
+   present skip constants/proof. `405b1e8` also
+   fixes the thirteenth early-return
+   (`if (!ThirteenthDefClassRegistered)` then
+   fourteenth) so CWifeDef and CDoorDef both
+   register — a real host fix. MATCH is Notes+flag, not
    live constructed. dest `0044C72B` as
    `[01232C24+8]` is not rdata-locked (leave #42
    open). Different object from later Subtitled
@@ -515,9 +528,12 @@ The boot-first sequence holds. Corrections from the repo:
    widget +204 (0 first-seen). Type-6 dest is a point
    at remapped origin (512,384,512,384), not ctor
    0,0,0,0. `UI_TITLE_01` dest still from
-   texture FrameWidth 256. Present skip VAs
-   `0052F180` / `0052F1D0` are constants; host still
-   exclusive-walks SelectsChild (leave #46 open).
+   texture FrameWidth 256. Present skip from listing
+   is constants + proof only (`0052F180` / `0052F1D0`
+   / `0041C5A0` / +348); those VAs are never read by
+   `DrawContainerWalk` or `IsPresented`. Host still
+   exclusive-walks `kids[ActiveChild]` for SelectsChild
+   (leave #46 open).
    Resident slots 0 / `0x14` / `0x17` still MATCH
    `00595222`. Host Notes
    `009DA9F0(1) [+16020] empty` / skip DIP:

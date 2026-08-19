@@ -88,7 +88,9 @@
       CBuyableHouseDef (<code>91564bd</code>);
       CBuyHouseDef (<code>f30c099</code>); type-16/18
       persist child 0 + CWifeDef (<code>71ae66e</code>);
-      present skip constants + CDoorDef (<code>405b1e8</code>).
+      thirteenth early-return host fix + CDoorDef
+      Note-only MATCH + present skip constants/proof
+      (<code>405b1e8</code>).
       Ignore merge <code>03ea5df</code>, docs
       <code>623fa86</code> / <code>6cc1d52</code>.
       Docs PR #29
@@ -295,9 +297,14 @@
       Just locked this batch: leftover+204 GraphicIndex
       gate + CVillageMemberDef, CBuyableHouseDef,
       CBuyHouseDef + screen dumps, type-16/18 persist
-      child 0 + CWifeDef, present skip constants +
-      CDoorDef. MATCH is Notes+flag,
-      not live constructed objects. dest
+      child 0 + CWifeDef, thirteenth early-return host
+      fix + CDoorDef Note-only MATCH + present skip
+      constants/proof. MATCH is Notes+flag,
+      not live constructed objects. <code>405b1e8</code>
+      also fixes the thirteenth early-return
+      (<code>if (!ThirteenthDefClassRegistered)</code>
+      then fourteenth) so CWifeDef and CDoorDef both
+      register — a real host fix. dest
       <code>0044C72B</code> as <code>[01232C24+8]</code>
       is not rdata-locked (leave #42 open).
       <code>DisplayFlushShouldDip(0, 0)</code> is always
@@ -306,12 +313,18 @@
       read (leave #36 open). leftover+204 GraphicIndex
       gate is recovered (index 0 → leftover 0) but dest
       is still invented 512,384,512,384 and tests lock
-      that dest. Present skip VAs (<code>0052F180</code>
-      / <code>0052F1D0</code>) are constants; host still
-      exclusive-walks SelectsChild (leave #46 open).
-      Resident slots 0 / <code>0x14</code> /
-      <code>0x17</code> still MATCH <code>00595222</code>.
-      CSS unchanged.
+      that dest. Present skip from listing is constants
+      + proof only (<code>BorrowedVisibleFn</code>
+      <code>0052F180</code> / <code>ClipBitFn</code>
+      <code>0052F1D0</code> / <code>ForwardSelectFn</code>
+      <code>0041C5A0</code> / <code>TextSliderIndexOffset</code>
+      348); those VAs are never read by
+      <code>DrawContainerWalk</code> or
+      <code>IsPresented</code>. Host still exclusive-walks
+      <code>kids[ActiveChild]</code> for SelectsChild
+      (leave #46 open). Resident slots 0 /
+      <code>0x14</code> / <code>0x17</code> still MATCH
+      <code>00595222</code>. CSS unchanged.
     </p>
     <div class="table-scroll">
     <table>
@@ -873,7 +886,7 @@
           <td><code>71ae66e</code> / <code>Init_Thing_Components_004F04BB_adds_CWifeDef</code> / <code>Factory_builds_press_start_then_main_menu_from_the_same_walk</code></td>
         </tr>
         <tr>
-          <td>Present skip from listing; add CDoorDef after CWifeDef. Site <code>004F0640</code> / dest <code>009B0AC0</code> at <code>004F0647</code> / factory <code>004D7BE7</code> ctor <code>0044C0C0</code> size 60 vtbl <code>0123A714</code>. Host Note-only + <code>FourteenthDefClassRegistered</code>. MATCH is Notes+flag, not a live object. Shape-2 pack <code>0042DAE0</code>. <code>FrontendWidgetType</code> constants: <code>BorrowedVisibleFn</code> <code>0052F180</code> (<code>[+300]&gt;&gt;7</code>, persist def+504), <code>ClipBitFn</code> <code>0052F1D0</code> (<code>[+302]&amp;1</code>, persist def+392, CRC UNREAD), <code>ForwardSelectFn</code> <code>0041C5A0</code>, <code>TextSliderIndexOffset</code> 348. <code>Frontend_dumps_press_start_new_profile_main_menu_after_avi_skip</code> now asserts <code>FrontendResidentSlots</code> keep 0 / <code>0x14</code> / <code>0x17</code>. Proof <code>proofs/listing-present-skip</code>: <code>00530260</code> walks every +176 then +188; skip is vtbl+400 / vtbl+420. Native <code>00530260</code> does NOT exclusive-walk. Host SelectsChild + Visible=false on k!=0 is still the first-seen present set (forest_1 / ARROWS / NORMAL). <code>405b1e8</code> did NOT remove the exclusive-walk host leftover. Tests lock skip VAs, not a live recovered <code>00530260</code> skip in host Draw. Leave #46 open. Type-6 leftover204 dest width DISPROVEN (still invented). Leave #36 open. Next pair (not shipped): CLightDef <code>004F06F6</code> / <code>004D7C73</code> size 92 vtbl <code>0123A814</code>. Do not file CLightDef as an issue</td>
+          <td>Present skip from listing (constants + proof only); add CDoorDef after CWifeDef. Site <code>004F0640</code> / dest <code>009B0AC0</code> at <code>004F0647</code> / factory <code>004D7BE7</code> ctor <code>0044C0C0</code> size 60 vtbl <code>0123A714</code>. Host Note-only + <code>FourteenthDefClassRegistered</code>. MATCH is Notes+flag, not a live object. Test <code>Init_Thing_Components_004F0647_adds_CDoorDef</code>. <code>405b1e8</code> also fixes the thirteenth early-return (<code>if (!ThirteenthDefClassRegistered)</code> then fourteenth) so CWifeDef and CDoorDef both register — a real host fix. Shape-2 pack <code>0042DAE0</code>. <code>FrontendWidgetType</code> constants: <code>BorrowedVisibleFn</code> <code>0052F180</code> (<code>[+300]&gt;&gt;7</code>, persist def+504), <code>ClipBitFn</code> <code>0052F1D0</code> (<code>[+302]&amp;1</code>, persist def+392, CRC UNREAD), <code>ForwardSelectFn</code> <code>0041C5A0</code>, <code>TextSliderIndexOffset</code> 348. Those VAs are never read by <code>DrawContainerWalk</code> or <code>IsPresented</code>. Host still exclusive-walks <code>kids[ActiveChild]</code> for SelectsChild. <code>Frontend_dumps_press_start_new_profile_main_menu_after_avi_skip</code> now asserts <code>FrontendResidentSlots</code> keep 0 / <code>0x14</code> / <code>0x17</code>. Proof <code>proofs/listing-present-skip</code>: <code>00530260</code> walks every +176 then +188; skip is vtbl+400 / vtbl+420. Native <code>00530260</code> does NOT exclusive-walk. Host SelectsChild + Visible=false on k!=0 is still the first-seen present set (forest_1 / ARROWS / NORMAL). Do not treat skip as recovered in the host walk. Leave #46 open. Dest still invented 512,384,512,384. Leave #36 open. Next leftover (not an issue): CLightDef <code>004F06F6</code> / <code>004D7C73</code> size 92 vtbl <code>0123A814</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
           <td><code>405b1e8</code> / <code>Init_Thing_Components_004F0647_adds_CDoorDef</code> / <code>Factory_builds_press_start_then_main_menu_from_the_same_walk</code> / <code>Frontend_dumps_press_start_new_profile_main_menu_after_avi_skip</code></td>
         </tr>
@@ -1187,7 +1200,7 @@
         <tr>
           <td>Frontend <code>00595222</code> widget DIP body</td>
           <td><span class="badge DISPROVEN">DISPROVEN</span> as DIP</td>
-          <td><code>00595222</code> calls <code>[node+20].vtbl+8</code>. Types 5/10/12/18 are <code>00530260</code> DrawsChildList (<code>7adf621</code>). Tick/draw walk every resident <code>[ui+84]</code> slot (<code>b4a2c89</code> / <code>Frontend_tick_and_draw_walk_resident_ui84_slots</code>). Resident slots 0 / <code>0x14</code> / <code>0x17</code> still MATCH <code>00595222</code> (<code>405b1e8</code> / <code>Frontend_dumps_press_start_new_profile_main_menu_after_avi_skip</code>). Present skip VAs <code>0052F180</code> / <code>0052F1D0</code> are constants (<code>Factory_builds_press_start_then_main_menu_from_the_same_walk</code>); host still exclusive-walks SelectsChild (leave #46 open). Present <code>0042DF9E</code> still Note-only. Host draw still does not skip on State=6. Host still Notes <code>009DA9F0</code> DIP. leave #14 open.</td>
+          <td><code>00595222</code> calls <code>[node+20].vtbl+8</code>. Types 5/10/12/18 are <code>00530260</code> DrawsChildList (<code>7adf621</code>). Tick/draw walk every resident <code>[ui+84]</code> slot (<code>b4a2c89</code> / <code>Frontend_tick_and_draw_walk_resident_ui84_slots</code>). Resident slots 0 / <code>0x14</code> / <code>0x17</code> still MATCH <code>00595222</code> (<code>405b1e8</code> / <code>Frontend_dumps_press_start_new_profile_main_menu_after_avi_skip</code>). Present skip VAs <code>0052F180</code> / <code>0052F1D0</code> / <code>0041C5A0</code> / +348 are constants + proof only (<code>Factory_builds_press_start_then_main_menu_from_the_same_walk</code>); never read by <code>DrawContainerWalk</code> or <code>IsPresented</code>. Host still exclusive-walks <code>kids[ActiveChild]</code> for SelectsChild (leave #46 open). Present <code>0042DF9E</code> still Note-only. Host draw still does not skip on State=6. Host still Notes <code>009DA9F0</code> DIP. leave #14 open.</td>
         </tr>
         <tr>
           <td><code>00B324A0</code> type-0x22 handler vtbl+20</td>
@@ -1282,7 +1295,7 @@
         <tr>
           <td>Type-16/18 host exclusive-walk SelectsChild</td>
           <td>leftover #46</td>
-          <td>Native <code>00530260</code> walks every +176 child; skip is vtbl+400 / vtbl+420 (<code>0052F180</code> / <code>0052F1D0</code>). Host SelectsChild + Visible=false on k!=0 remains (<code>71ae66e</code> / <code>405b1e8</code>). Tests lock skip VAs (<code>Factory_builds_press_start_then_main_menu_from_the_same_walk</code>), not the recovered skip in the host walk. Leave #46 open.</td>
+          <td>Native <code>00530260</code> walks every +176 child. Present skip from listing is constants + proof only: <code>BorrowedVisibleFn</code> <code>0052F180</code> / <code>ClipBitFn</code> <code>0052F1D0</code> / <code>ForwardSelectFn</code> <code>0041C5A0</code> / <code>TextSliderIndexOffset</code> 348. Those VAs are never read by <code>DrawContainerWalk</code> or <code>IsPresented</code>. Host still exclusive-walks <code>kids[ActiveChild]</code> for SelectsChild (<code>71ae66e</code> / <code>405b1e8</code>). Do not treat skip as recovered in the host walk. Leave #46 open.</td>
         </tr>
         <tr>
           <td>Init Player Interface leftover <code>Register(ActionInputListener)</code> / <code>00488D20</code> notes</td>
@@ -1518,7 +1531,11 @@
         CBuyableHouseDef / CBuyHouseDef / CWifeDef /
         CDoorDef, plus leftover+204 GraphicIndex gate
         (index 0 → leftover 0) and present skip
-        constants. MATCH is Notes+flag, not
+        constants/proof. <code>405b1e8</code> also
+        fixes the thirteenth early-return
+        (<code>if (!ThirteenthDefClassRegistered)</code>
+        then fourteenth) so CWifeDef and CDoorDef both
+        register — a real host fix. MATCH is Notes+flag, not
         live constructed. dest <code>0044C72B</code> as
         <code>[01232C24+8]</code> is not rdata-locked
         (leave #42 open). Different object from later
@@ -1536,9 +1553,13 @@
         leftover204 is widget +204 (0 first-seen). Type-6
         dest is a point at remapped origin (512,384,512,384), not
         ctor 0,0,0,0. <code>UI_TITLE_01</code> dest still
-        from texture FrameWidth 256. Present skip VAs
-        <code>0052F180</code> / <code>0052F1D0</code> are
-        constants; host still exclusive-walks SelectsChild
+        from texture FrameWidth 256. Present skip from listing
+        is constants + proof only (<code>0052F180</code> /
+        <code>0052F1D0</code> / <code>0041C5A0</code> / +348);
+        those VAs are never read by
+        <code>DrawContainerWalk</code> or
+        <code>IsPresented</code>. Host still exclusive-walks
+        <code>kids[ActiveChild]</code> for SelectsChild
         (leave #46 open). Resident slots 0 /
         <code>0x14</code> / <code>0x17</code> still MATCH
         <code>00595222</code>. Host Notes
