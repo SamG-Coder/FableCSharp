@@ -270,9 +270,9 @@ public sealed class Dx9VulkanParityTests
     public void Sampler_and_blend_translations()
     {
         var sampler = Dx9VulkanSamplerState.FirstSeenTemporary();
-        Assert.Equal(Filter.Linear, sampler.MagFilter);
+        Assert.Equal(Filter.Nearest, sampler.MagFilter);
         Assert.Equal(SamplerAddressMode.Repeat, sampler.AddressModeU);
-        Assert.Equal(1f, sampler.MaxLod);
+        Assert.Equal(0f, sampler.MaxLod);
 
         Assert.Equal(BlendFactor.SrcAlpha, Dx9VulkanBlendState.FirstSeenPalskinSrc);
         Assert.Equal(BlendFactor.OneMinusSrcAlpha, Dx9VulkanBlendState.FirstSeenPalskinDst);

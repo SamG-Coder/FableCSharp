@@ -38,8 +38,11 @@ public static class FrontendWidgetFactory
     /// <c>0052C730</c> writes
     /// <c>+324/+328/+332=0</c>. Type 18
     /// keeps persist child 0. Type 5/10/12
-    /// keep every +176 child. Visibility
-    /// and enabled inherit from the parent.
+    /// keep every +176 child. Type 16
+    /// <c>00549230</c> then
+    /// <c>SelectState(3)</c> on
+    /// child <c>+348</c>. Clip is persist
+    /// <c>+392</c>, not a sibling hide.
     /// </summary>
     public static void ApplyFirstSeenState(List<FrontendWidget> widgets)
     {
@@ -50,25 +53,36 @@ public static class FrontendWidgetFactory
             {
                 Visible = true,
                 Enabled = true,
-                Clip = false,
                 ActiveChild = FrontendWidgetType.FirstSeenState,
                 State = FrontendWidgetType.FirstSeenState,
+                StyleIndex = FrontendWidgetType.FirstSeenState,
+                Colour = ColourAtStyle(widget, FrontendWidgetType.FirstSeenState),
             };
         }
 
         for (var i = 0; i < widgets.Count; i++)
         {
-            if (!FrontendWidgetType.SelectsChild(widgets[i].Type))
+            if (widgets[i].Type != FrontendWidgetType.TextSlider)
                 continue;
             var kids = ChildrenOf(widgets, i);
-            var active = FrontendWidgetType.FirstSeenState;
-            widgets[i] = widgets[i] with { ActiveChild = active };
+            widgets[i] = widgets[i] with
+            {
+                ActiveChild = FrontendWidgetType.FirstSeenState,
+            };
+            if (kids.Count == 0)
+                continue;
             for (var k = 0; k < kids.Count; k++)
             {
-                if (k == active)
-                    continue;
-                var child = kids[k];
-                widgets[child] = widgets[child] with { Visible = false };
+                var child = widgets[kids[k]];
+                var style = k == FrontendWidgetType.FirstSeenState
+                    ? FrontendWidgetType.TextSliderFirstSeenSelect
+                    : FrontendWidgetType.TextSliderUnselectedSelect;
+                widgets[kids[k]] = child with
+                {
+                    State = style,
+                    StyleIndex = style,
+                    Colour = ColourAtStyle(child, style),
+                };
             }
         }
 
@@ -83,19 +97,17 @@ public static class FrontendWidgetFactory
             var inherit = widgets[parent];
             widgets[i] = widgets[i] with
             {
-                Visible = widgets[i].Visible && inherit.Visible && !inherit.Clip,
+                Visible = widgets[i].Visible && inherit.Visible,
                 Enabled = widgets[i].Enabled && inherit.Enabled,
-                Clip = widgets[i].Clip || inherit.Clip,
             };
         }
     }
 
     /// <summary>
-    /// Type 18 / 16 present persist
-    /// child <c>+332</c> only
-    /// (<c>0052C730</c> first-seen 0).
-    /// Descendants of a hidden sibling
-    /// are not drawn.
+    /// <c>00530260</c> walks every
+    /// <c>+176</c> child. Skip is persist
+    /// clip <c>+392</c> / inherited parent
+    /// clip, not a sibling index hide.
     /// </summary>
     public static bool IsPresented(IReadOnlyList<FrontendWidget> tree, int index)
     {
@@ -121,14 +133,6 @@ public static class FrontendWidgetFactory
 
         if (parent < 0)
             return true;
-        if (FrontendWidgetType.SelectsChild(tree[parent].Type))
-        {
-            var kids = ChildrenOf(tree, parent);
-            var active = tree[parent].ActiveChild;
-            if ((uint)active >= (uint)kids.Count || kids[active] != index)
-                return false;
-        }
-
         return IsPresented(tree, parent);
     }
 
@@ -151,7 +155,23 @@ public static class FrontendWidgetFactory
             tree[i] = tree[i] with { ActiveChild = state, State = state };
             var kids = ChildrenOf(tree, i);
             for (var k = 0; k < kids.Count; k++)
-                tree[kids[k]] = tree[kids[k]] with { Visible = k == state };
+            {
+                var child = tree[kids[k]];
+                var style = state;
+                if (tree[i].Type == FrontendWidgetType.TextSlider)
+                {
+                    style = k == tree[i].ActiveChild
+                        ? FrontendWidgetType.TextSliderFirstSeenSelect
+                        : FrontendWidgetType.TextSliderUnselectedSelect;
+                }
+
+                tree[kids[k]] = child with
+                {
+                    State = style,
+                    StyleIndex = style,
+                    Colour = ColourAtStyle(child, style),
+                };
+            }
         }
 
         var byName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
@@ -165,7 +185,7 @@ public static class FrontendWidgetFactory
             var inherit = tree[parent];
             tree[i] = tree[i] with
             {
-                Visible = tree[i].Visible && inherit.Visible && !inherit.Clip,
+                Visible = tree[i].Visible && inherit.Visible,
             };
         }
     }
@@ -293,6 +313,7 @@ public static class FrontendWidgetFactory
         var graphicId = def?.GraphicBankId ?? 0;
         var texture = sprites?.NameForWidget(name, graphicId);
         var font = def?.Font ?? 0;
+        var styleColours = PackStyleColours(def);
         widgets.Add(new FrontendWidget(
             name,
             def?.Type ?? 0,
@@ -315,21 +336,91 @@ public static class FrontendWidgetFactory
             ScaleSizeToViewport: def?.ScaleSizeToViewport ?? false,
             Visible: true,
             Enabled: true,
-            Clip: false,
+            Clip: def is { Plus392: not 0 },
             ActiveChild: FrontendWidgetType.FirstSeenState,
             Font: font,
             FontFace: ResolveFontFace(font, names),
             MessageId: def?.MessageId ?? 0,
             Plus224: def?.Plus224 ?? 0,
-            Colour: FrontendFrameDump.PackPersistColour(
-                def?.ColourR ?? 0f,
-                def?.ColourG ?? 0f,
-                def?.ColourB ?? 0f,
-                def?.ColourA ?? 0f,
-                def?.HaveColourA ?? false),
+            Colour: ColourAtStyle(styleColours, FrontendWidgetType.FirstSeenState,
+                def),
             Layer: def?.Layer ?? 0,
             Plus326: def?.Plus326 ?? 0f,
             Plus322: def?.Plus322 ?? 0f,
-            Plus96: def?.Plus96 ?? 0));
+            Plus96: def?.Plus96 ?? 0,
+            StyleIndex: FrontendWidgetType.FirstSeenState,
+            Flag302: PackFlag302(def),
+            Plus508: def?.Plus508 ?? 0,
+            StyleColours: styleColours));
+    }
+
+    /// <summary>
+    /// <c>005331A0</c> clip bit 0 from
+    /// <c>+392</c>, centre bit 1 from
+    /// <c>+188</c>, remap bits 6/7 from
+    /// <c>+520/+521</c>. Type-6
+    /// <c>0054ED90</c> align from
+    /// <c>+508</c>.
+    /// </summary>
+    public static byte PackFlag302(FrontendUiDef? def)
+    {
+        if (def is null)
+            return 0;
+        byte flag = 0;
+        if (def.Plus392 != 0)
+            flag |= 1;
+        if (def.Center)
+            flag |= 2;
+        if (def.Plus508 == 1)
+            flag |= FrontendTextDraw.Flag302CentreBit;
+        else if (def.Plus508 == 2)
+            flag |= FrontendTextDraw.Flag302RightBit;
+        if (def.ScaleSizeToViewport)
+            flag |= 0x40;
+        if (def.ScaleOriginToViewport)
+            flag |= 0x80;
+        return flag;
+    }
+
+    public static uint ColourAtStyle(FrontendWidget widget, int style) =>
+        ColourAtStyle(widget.StyleColours, style, def: null, fallback: widget.Colour);
+
+    public static uint ColourAtStyle(
+        IReadOnlyList<uint>? colours, int style, FrontendUiDef? def, uint fallback = 0)
+    {
+        if (colours is { Count: > 0 } && (uint)style < (uint)colours.Count)
+            return colours[style];
+        if (def is not null)
+        {
+            return FrontendFrameDump.PackPersistColour(
+                def.ColourR, def.ColourG, def.ColourB, def.ColourA, def.HaveColourA);
+        }
+
+        return fallback;
+    }
+
+    public static List<uint> PackStyleColours(FrontendUiDef? def)
+    {
+        var packed = new List<uint>();
+        if (def is null)
+            return packed;
+        var n = Math.Min(
+            Math.Min(def.StyleColourR.Count, def.StyleColourG.Count),
+            Math.Min(def.StyleColourB.Count, def.StyleColourA.Count));
+        for (var i = 0; i < n; i++)
+        {
+            var colour = FrontendFrameDump.PackPersistColour(
+                def.StyleColourR[i],
+                def.StyleColourG[i],
+                def.StyleColourB[i],
+                def.StyleColourA[i],
+                haveColourA: true);
+            if (i < def.StyleFlags.Count &&
+                (def.StyleFlags[i] & FrontendWidgetType.StyleFlagsForceOpaque) != 0)
+                colour |= 0xFF000000u;
+            packed.Add(colour);
+        }
+
+        return packed;
     }
 }

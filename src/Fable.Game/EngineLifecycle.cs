@@ -3937,13 +3937,6 @@ public sealed class EngineLifecycle : IDisposable
         if (FrontendWidgetType.DrawsChildList(widget.Type))
         {
             var kids = FrontendWidgetFactory.ChildrenOf(tree, widget.Name);
-            if (FrontendWidgetType.SelectsChild(widget.Type))
-            {
-                if ((uint)widget.ActiveChild < (uint)kids.Count)
-                    DrawContainerWalk(tree, kids[widget.ActiveChild], ref drawn);
-                return;
-            }
-
             foreach (var child in kids)
                 DrawContainerWalk(tree, child, ref drawn);
             return;
@@ -8741,12 +8734,13 @@ public sealed class EngineLifecycle : IDisposable
                 widget.Type == FrontendWidgetType.Text &&
                 !string.IsNullOrEmpty(widget.Text))
             {
-                var faceName = widget.FontFace ?? FrontendUiFontFace;
-                var face = _frontendFonts?.TryLoad(faceName)
-                    ?? _frontendFonts?.TryLoad(FrontendUiFontFace);
+                var faceName = widget.FontFace;
+                var face = faceName is not null
+                    ? _frontendFonts?.TryLoad(faceName)
+                    : _frontendFonts?.TryLoad(FrontendUiFontFace);
                 if (face is not null)
                 {
-                    var atlasKey = faceName;
+                    var atlasKey = faceName ?? FrontendUiFontFace;
                     if (!textureIndex.TryGetValue(atlasKey, out var atlasId))
                     {
                         atlasId = textures.Count;
@@ -8762,7 +8756,7 @@ public sealed class EngineLifecycle : IDisposable
                     var leftover204 = widget.Leftover204;
                     var (penX, penY) = FrontendTextDraw.Type6Pen(
                         widget.DestX0, widget.DestY0, leftover204, widget.DestScaleX,
-                        FrontendTextDraw.AlignLeft);
+                        FrontendTextDraw.AlignFromFlag302(widget.Flag302));
                     foreach (var glyph in FrontendTextDraw.Layout(
                         face, widget.Text, penX, penY, colour))
                     {

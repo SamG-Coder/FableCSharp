@@ -116,8 +116,9 @@ public static class FrontendWidgetType
     /// <summary>
     /// <c>vtbl+420</c> <c>0052F1D0</c>:
     /// <c>[+302] &amp; 1</c>. Persist
-    /// <c>def+392</c> at <c>00533288</c>.
-    /// CRC UNREAD.
+    /// <c>def+392</c> CRC
+    /// <c>0x8A69D67E</c> at
+    /// <c>00533288</c>.
     /// </summary>
     public const uint ClipBitFn = 0x0052F1D0;
     public const int Plus302Offset = 302;
@@ -128,6 +129,18 @@ public static class FrontendWidgetType
     /// not <c>+332</c>.
     /// </summary>
     public const int TextSliderIndexOffset = 348;
+    /// <summary>
+    /// Type-16 <c>vtbl+172</c>
+    /// <c>00549230</c> <c>push 3</c>
+    /// then child <c>[+348].vtbl+192</c>.
+    /// <c>00548F40</c> arg 5: every
+    /// <c>+176</c> child <c>vtbl+192(1)</c>,
+    /// selected <c>[+348]</c>
+    /// <c>vtbl+192(3)</c>. Colour is
+    /// style <c>+328</c>, not <c>+332</c>.
+    /// </summary>
+    public const int TextSliderFirstSeenSelect = 3;
+    public const int TextSliderUnselectedSelect = 1;
     /// <summary>
     /// <c>vtbl+188</c> <c>0041C5A0</c>:
     /// store duration at <c>+320</c>
@@ -203,7 +216,12 @@ public static class FrontendWidgetType
     /// in the tree. <c>00530260</c>
     /// walks every <c>+176</c> child
     /// and skips via <c>vtbl+400</c>
-    /// / <c>vtbl+420</c>.
+    /// / <c>vtbl+420</c>. Inactive
+    /// siblings are not
+    /// <c>Visible=false</c>; type-16
+    /// first-seen <c>SelectState(3)</c>
+    /// on child <c>+348</c> picks
+    /// style <c>+328</c>.
     /// </summary>
     public static bool SelectsChild(int type) =>
         type is Swap or TextSlider;

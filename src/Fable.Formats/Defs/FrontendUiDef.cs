@@ -100,6 +100,58 @@ public sealed class FrontendUiDef
     /// </summary>
     public const uint PersistFn = 0x00631C60;
     /// <summary>
+    /// CUIDef persist <c>+160</c>
+    /// <c>00632420</c>. Sequential stop
+    /// before the flag tail. File CRC
+    /// from inflated UI. Name UNREAD.
+    /// </summary>
+    public const uint Plus160Crc = 0x424AD096;
+    /// <summary>
+    /// CUIDef persist <c>+164</c> f32
+    /// after <see cref="Plus160Crc"/>.
+    /// Name UNREAD.
+    /// </summary>
+    public const uint Plus164Crc = 0xECB91A6A;
+    /// <summary>
+    /// CUIDef persist <c>+192</c> f32
+    /// after Centre. Name UNREAD.
+    /// </summary>
+    public const uint Plus192Crc = 0x9B9B2628;
+    /// <summary>
+    /// CUIDef persist <c>+392</c> u8
+    /// <c>0043314A</c> at <c>00632065</c>.
+    /// <c>00533288</c> <c>or [+302],1</c>
+    /// → <c>vtbl+420</c> <c>0052F1D0</c>.
+    /// Name UNREAD.
+    /// </summary>
+    public const uint Plus392Crc = 0x8A69D67E;
+    /// <summary>
+    /// CUIDef persist <c>+476</c> u8
+    /// <c>00632137</c>. Name UNREAD.
+    /// </summary>
+    public const uint Plus476Crc = 0xD5B65965;
+    /// <summary>
+    /// CUIDef persist <c>+504</c> u8
+    /// <c>00632161</c>. <c>0053324C</c>
+    /// <c>or [+300],0x80</c> →
+    /// <c>vtbl+400</c> <c>0052F180</c>.
+    /// Name UNREAD.
+    /// </summary>
+    public const uint Plus504Crc = 0x2CB06C8E;
+    /// <summary>
+    /// CUIDef persist <c>+508</c> i32
+    /// <c>006325E0</c>. Type-6
+    /// <c>0054ED90</c> 0/1/2 →
+    /// <c>+302</c> <c>0x08/0x10/0x20</c>.
+    /// Name UNREAD.
+    /// </summary>
+    public const uint Plus508Crc = 0x02F094DB;
+    /// <summary>
+    /// CUIDef persist <c>+512</c> u8
+    /// <c>0063217D</c>. Name UNREAD.
+    /// </summary>
+    public const uint Plus512Crc = 0x7084E2DD;
+    /// <summary>
     /// Style <c>+64</c> after
     /// <see cref="UnreadNestedCrc"/>.
     /// </summary>
@@ -233,6 +285,40 @@ public sealed class FrontendUiDef
     /// <c>0041AFA0</c> <c>+151</c> skip.
     /// </summary>
     public bool HaveColourA { get; init; }
+    /// <summary>
+    /// One ColourRGBA per persist
+    /// <see cref="States"/> record.
+    /// <c>0052C7E0</c> indexes with
+    /// widget <c>+328</c>.
+    /// </summary>
+    public IReadOnlyList<float> StyleColourR { get; init; } = [];
+    public IReadOnlyList<float> StyleColourG { get; init; } = [];
+    public IReadOnlyList<float> StyleColourB { get; init; } = [];
+    public IReadOnlyList<float> StyleColourA { get; init; } = [];
+    /// <summary>
+    /// Persist style <c>+64</c>
+    /// <see cref="StylePlus64Crc"/>. Map
+    /// dword0. Tick <c>0052C7E0</c>
+    /// <c>0x10/0x20/0x40</c>.
+    /// </summary>
+    public IReadOnlyList<int> StyleFlags { get; init; } = [];
+    /// <summary>
+    /// Persist <see cref="Plus392Crc"/> /
+    /// def <c>+392</c>. Nonzero → widget
+    /// <c>+302</c> bit 0.
+    /// </summary>
+    public byte Plus392 { get; init; }
+    /// <summary>
+    /// Persist <see cref="Plus504Crc"/> /
+    /// def <c>+504</c>. Nonzero → widget
+    /// <c>+300</c> bit 7.
+    /// </summary>
+    public byte Plus504 { get; init; }
+    /// <summary>
+    /// Persist <see cref="Plus508Crc"/> /
+    /// def <c>+508</c>. Type-6 align.
+    /// </summary>
+    public int Plus508 { get; init; }
     public float ZoomX { get; init; } = 1f;
     public float ZoomY { get; init; } = 1f;
     /// <summary>
@@ -314,6 +400,14 @@ public sealed class FrontendUiDef
         var colourB = 0f;
         var colourA = 0f;
         var haveColourA = false;
+        var styleColourR = new List<float>();
+        var styleColourG = new List<float>();
+        var styleColourB = new List<float>();
+        var styleColourA = new List<float>();
+        var styleFlags = new List<int>();
+        var plus392 = (byte)0;
+        var plus504 = (byte)0;
+        var plus508 = 0;
         var zoomX = 1f;
         var zoomY = 1f;
         var haveZoomX = false;
@@ -584,6 +678,10 @@ public sealed class FrontendUiDef
                 haveColourA = true;
                 if (float.IsFinite(value))
                     colourA = value;
+                styleColourR.Add(colourR);
+                styleColourG.Add(colourG);
+                styleColourB.Add(colourB);
+                styleColourA.Add(colourA);
                 cursor = payload + 4;
                 continue;
             }
@@ -620,6 +718,7 @@ public sealed class FrontendUiDef
 
             if (crc == StylePlus64Crc && payload + 4 <= raw.Length)
             {
+                styleFlags.Add(BitConverter.ToInt32(raw, payload));
                 cursor = payload + 4;
                 continue;
             }
@@ -636,6 +735,26 @@ public sealed class FrontendUiDef
             if (crc is CentreCrc or AbsoluteCrc or ScaleSizeCrc or ScaleOriginCrc
                 && payload < raw.Length)
             {
+                cursor = payload + 1;
+                continue;
+            }
+
+            if (crc is Plus160Crc or Plus164Crc or Plus192Crc or Plus508Crc
+                && payload + 4 <= raw.Length)
+            {
+                if (crc == Plus508Crc)
+                    plus508 = BitConverter.ToInt32(raw, payload);
+                cursor = payload + 4;
+                continue;
+            }
+
+            if (crc is Plus392Crc or Plus476Crc or Plus504Crc or Plus512Crc
+                && payload < raw.Length)
+            {
+                if (crc == Plus392Crc)
+                    plus392 = raw[payload];
+                else if (crc == Plus504Crc)
+                    plus504 = raw[payload];
                 cursor = payload + 1;
                 continue;
             }
@@ -658,6 +777,9 @@ public sealed class FrontendUiDef
         var scanned322 = ReadPersistF32(raw, Plus322Crc);
         if (float.IsFinite(scanned322))
             plus322 = scanned322;
+        plus392 = ReadPersistU8(raw, Plus392Crc);
+        plus504 = ReadPersistU8(raw, Plus504Crc);
+        plus508 = ReadPersistI32(raw, Plus508Crc);
         if (graphic == 0)
         {
             for (var i = 0; i + 8 <= raw.Length; i++)
@@ -700,6 +822,14 @@ public sealed class FrontendUiDef
             ColourB = colourB,
             ColourA = colourA,
             HaveColourA = haveColourA,
+            StyleColourR = styleColourR,
+            StyleColourG = styleColourG,
+            StyleColourB = styleColourB,
+            StyleColourA = styleColourA,
+            StyleFlags = styleFlags,
+            Plus392 = plus392,
+            Plus504 = plus504,
+            Plus508 = plus508,
             ZoomX = zoomX,
             ZoomY = zoomY,
             Center = centreByte != 0,

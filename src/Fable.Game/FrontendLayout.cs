@@ -327,6 +327,11 @@ public static class FrontendLayout
             dest.X0, dest.Y0, dest.X1, dest.Y1);
     }
 
+    /// <summary>
+    /// <c>0041AFA0</c> <c>fistp</c> then
+    /// <c>fild</c> at <c>0041B177</c>.
+    /// Default RC round-to-nearest-even.
+    /// </summary>
     private static float Snap(float value) =>
         (float)(int)MathF.Round(value);
 

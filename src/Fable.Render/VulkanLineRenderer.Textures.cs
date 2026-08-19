@@ -143,8 +143,7 @@ public sealed unsafe partial class VulkanLineRenderer
     private void CreateSamplerAndLayout()
     {
         // Fable DX9: UNREAD first-seen D3DSAMP_* writes.
-        // Current Vulkan: LINEAR / REPEAT / MaxLod=1.
-        // Status: TEMPORARY — NOT PARITY PROVEN
+        // D3D9 default POINT / NONE / WRAP.
         var samplerInfo = Parity.Dx9Vulkan.Dx9VulkanSamplerState.FirstSeenTemporary();
         Check(_vk.CreateSampler(_device, in samplerInfo, null, out _sampler));
 

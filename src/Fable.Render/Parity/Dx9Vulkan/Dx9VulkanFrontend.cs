@@ -50,7 +50,7 @@ public static class Dx9VulkanFrontend
     // c0 at [dev+972]+32. 00BAE2D0 writes a
     // byte scale, then device+913 overwrites
     // (1,1,1,1). Vertex diffuse is UNREAD by
-    // this PS. TEMPORARY identity.
+    // this PS. Recovered identity.
     public const bool PixelShaderC0TemporaryWhite = true;
     public const int PixelShaderC0Slot = 32;
 
@@ -175,8 +175,9 @@ public static class Dx9VulkanFrontend
     public const bool TemporaryDepthTest = false;
     public const bool TemporaryDepthWrite = false;
 
-    // Sampler MAG/MIN/MIP/ADDRESS UNREAD
-    // (same as Dx9VulkanSamplerState).
+    // Sampler MAG/MIN/MIP/ADDRESS: D3D9
+    // default POINT/NONE/WRAP. First-seen
+    // SetSamplerState unread.
     public static SamplerCreateInfo TemporarySampler =>
         Dx9VulkanSamplerState.FirstSeenTemporary();
 

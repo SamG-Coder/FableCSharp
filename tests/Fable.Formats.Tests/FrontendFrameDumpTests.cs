@@ -25,7 +25,7 @@ public sealed class FrontendFrameDumpTests
             r.Name == EngineLifecycle.FrontendPressStartText &&
             r.TextTag == EngineLifecycle.FrontendPressStartTextTag);
         Assert.Contains(rows, r => r.Name == "UI_FRONTEND_BG_FORREST_1_1" && r.Visible);
-        Assert.Contains(rows, r => r.Name == "UI_FRONTEND_BG_FORREST_2_1" && !r.Visible);
+        Assert.Contains(rows, r => r.Name == "UI_FRONTEND_BG_FORREST_2_1" && r.Visible);
         var col3 = Assert.Single(rows, r => r.Name == "UI_FRONTEND_BG_FORREST_1_3");
         Assert.Equal(819f, col3.DestX0);
         Assert.Equal(1024f, col3.DestX1);

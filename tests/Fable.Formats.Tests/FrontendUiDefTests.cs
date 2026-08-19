@@ -50,6 +50,12 @@ public sealed class FrontendUiDefTests
         Assert.NotEqual(FableCrc.Hash("ScaleOrigin"), FrontendUiDef.ScaleOriginCrc);
         Assert.Equal(0xBDACBABAu, FrontendUiDef.Plus189Crc);
         Assert.Equal(0xAC637D43u, FrontendUiDef.Plus190Crc);
+        Assert.Equal(0x424AD096u, FrontendUiDef.Plus160Crc);
+        Assert.Equal(0x8A69D67Eu, FrontendUiDef.Plus392Crc);
+        Assert.Equal(0xD5B65965u, FrontendUiDef.Plus476Crc);
+        Assert.Equal(0x2CB06C8Eu, FrontendUiDef.Plus504Crc);
+        Assert.Equal(0x02F094DBu, FrontendUiDef.Plus508Crc);
+        Assert.Equal(0x7084E2DDu, FrontendUiDef.Plus512Crc);
         Assert.Equal(0x00631C60u, FrontendUiDef.PersistFn);
         Assert.Equal(0x0041D21Bu, FrontendWidgetType.ConstructFn);
         Assert.Equal(0x0054E3D0u, FrontendWidgetType.MenuCtor);
@@ -229,9 +235,10 @@ public sealed class FrontendUiDefTests
         Assert.True(forest1.Visible);
         Assert.True(forest1.Enabled);
         Assert.False(forest1.Clip);
-        Assert.False(forest2.Visible);
+        Assert.True(forest2.Visible);
+        Assert.False(forest2.Clip);
         Assert.True(sunbeam1.Visible);
-        Assert.False(sunbeam2.Visible);
+        Assert.True(sunbeam2.Visible);
         Assert.Contains(press, w => w.Name == "UI_TITLE_01" && w.Visible);
         Assert.Contains(press, w => w.Name == "UI_TITLE_02" && w.Visible);
         Assert.Contains(press, w => w.Name == "UI_PRESS_START_TEXT" && w.Visible);
@@ -241,7 +248,7 @@ public sealed class FrontendUiDefTests
         Assert.Contains(press, w =>
             w.Name == "UI_FRONTEND_BG_FORREST_1_1" && w.Visible);
         Assert.Contains(press, w =>
-            w.Name == "UI_FRONTEND_BG_FORREST_2_1" && !w.Visible);
+            w.Name == "UI_FRONTEND_BG_FORREST_2_1" && w.Visible);
         Assert.True(FrontendWidgetType.DrawsChildList(10));
         Assert.True(FrontendWidgetType.DrawsChildList(16));
         Assert.True(FrontendWidgetType.DrawsChildList(18));
@@ -267,10 +274,28 @@ public sealed class FrontendUiDefTests
         var profileSlider = Assert.Single(profile, w => w.Name == "UI_OPTIONS_CONTROL_METHOD_TEXT_SLIDER");
         Assert.Equal(16, profileSlider.Type);
         Assert.Equal(0, profileSlider.ActiveChild);
-        Assert.Contains(profile, w => w.Name == "UI_OPTIONS_TEXT_CONTROL_ARROWS" && w.Visible);
-        Assert.Contains(profile, w => w.Name == "UI_OPTIONS_TEXT_CONTROL_WASD" && !w.Visible);
-        Assert.Contains(profile, w => w.Name == "UI_TEXT_NORMAL" && w.Visible);
-        Assert.Contains(profile, w => w.Name == "UI_TEXT_INVERTED" && !w.Visible);
+        var arrows = Assert.Single(profile, w => w.Name == "UI_OPTIONS_TEXT_CONTROL_ARROWS");
+        var wasd = Assert.Single(profile, w => w.Name == "UI_OPTIONS_TEXT_CONTROL_WASD");
+        Assert.True(arrows.Visible);
+        Assert.True(wasd.Visible);
+        Assert.Equal(FrontendWidgetType.TextSliderFirstSeenSelect, arrows.StyleIndex);
+        Assert.Equal(FrontendWidgetType.TextSliderUnselectedSelect, wasd.StyleIndex);
+        Assert.False(FrontendWidgetType.LeafDipSkipped(arrows.Colour));
+        Assert.True(FrontendWidgetType.LeafDipSkipped(wasd.Colour));
+        var normal = Assert.Single(profile, w => w.Name == "UI_TEXT_NORMAL");
+        var inverted = Assert.Single(profile, w => w.Name == "UI_TEXT_INVERTED");
+        Assert.True(normal.Visible);
+        Assert.True(inverted.Visible);
+        Assert.False(FrontendWidgetType.LeafDipSkipped(normal.Colour));
+        Assert.True(FrontendWidgetType.LeafDipSkipped(inverted.Colour));
+        var acceptOn = Assert.Single(profile, w => w.Name == "UI_SPRITE_ACCEPT_ON");
+        var acceptOff = Assert.Single(profile, w => w.Name == "UI_SPRITE_ACCEPT_OFF");
+        Assert.True(FrontendWidgetType.LeafDipSkipped(acceptOn.Colour));
+        Assert.False(FrontendWidgetType.LeafDipSkipped(acceptOff.Colour));
+        Assert.Equal(0x8A69D67Eu, FrontendUiDef.Plus392Crc);
+        Assert.Equal(1, arrows.Plus508);
+        Assert.Equal(1, wasd.Plus508);
+        Assert.Equal(FrontendTextDraw.Flag302CentreBit, arrows.Flag302 & FrontendTextDraw.Flag302CentreBit);
     }
 
     [Fact]

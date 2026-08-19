@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace Fable.Game;
 
 /// <summary>
@@ -85,6 +87,10 @@ public readonly record struct FrontendWidget(
     bool Clip = false,
     int ActiveChild = 0,
     int State = 0,
+    int StyleIndex = 0,
+    byte Flag302 = 0,
+    int Plus508 = 0,
+    IReadOnlyList<uint>? StyleColours = null,
     int Font = 0,
     string? FontFace = null,
     int MessageId = 0,
