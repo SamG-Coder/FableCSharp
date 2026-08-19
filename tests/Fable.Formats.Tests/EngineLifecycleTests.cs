@@ -584,6 +584,50 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Subtitled_004CDB10_registers_00A39010_at_13B8A54()
+    {
+        Assert.Equal(0x004CDB10u, EngineLifecycle.InitSubtitledMessageFn);
+        Assert.Equal(0x0041A080u, EngineLifecycle.SubtitledPrefixFn);
+        Assert.Equal(0x0099BF30u, EngineLifecycle.SubtitledLeafFn);
+        Assert.Equal(0x00A39010u, EngineLifecycle.SubtitledRegisterFn);
+        Assert.Equal(0x013B8A54u, EngineLifecycle.SubtitledSingletonVa);
+        Assert.Equal(0x0122F3D0u, EngineLifecycle.SubtitledPrefixVa);
+        Assert.Equal(0x01239E74u, EngineLifecycle.SubtitledLeafVa);
+        Assert.Equal(@"Data\Defs\", EngineLifecycle.SubtitledDefsPrefix);
+        Assert.Equal("misc_def_types.h", EngineLifecycle.SubtitledDefsLeaf);
+        Assert.Equal(@"Data\Defs\misc_def_types.h", EngineLifecycle.SubtitledDefsPath);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.False(life.SubtitledSymbolsRegistered);
+        Assert.Null(life.SubtitledSymbolPath);
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.True(life.SubtitledSymbolsRegistered);
+        Assert.Equal(EngineLifecycle.SubtitledDefsPath, life.SubtitledSymbolPath);
+        var fonts = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.InitFontsFn);
+        var prefix = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SubtitledPrefixFn);
+        var leaf = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SubtitledLeafFn);
+        var register = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SubtitledRegisterFn);
+        var attitude = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Conversation Attitude");
+        Assert.True(fonts >= 0 && prefix > fonts);
+        Assert.True(leaf > prefix && register > leaf);
+        Assert.True(attitude > register);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Action.Contains("Speak", StringComparison.OrdinalIgnoreCase) &&
+            e.Stage == "Init Subtitled Message");
+    }
+
+    [Fact]
     public void Init_World_004A67D0_runs_inside_0041735A_before_00417418()
     {
         var life = new EngineLifecycle();

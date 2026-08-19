@@ -154,6 +154,30 @@ public sealed class EngineLifecycle : IDisposable
     public const uint GameFontStoreFn = 0x00419463;
     public const int GameFontOffset = 90444;
     public const string GameFontFaceName = FontFile.GameFace;
+    /// <summary>
+    /// <c>004CDB10</c> joins
+    /// <c>0041A080</c>
+    /// <c>0x122F3D0</c>
+    /// <c>Data\Defs\</c> with
+    /// <c>0099BF30</c>
+    /// <c>0x1239E74</c>
+    /// <c>misc_def_types.h</c>
+    /// then <c>00A39010</c>
+    /// fills <c>[0x13B8A54]</c>.
+    /// Not a spoken line.
+    /// Do not invent
+    /// <c>00A38E50</c> parse.
+    /// </summary>
+    public const uint InitSubtitledMessageFn = 0x004CDB10;
+    public const uint SubtitledPrefixFn = 0x0041A080;
+    public const uint SubtitledLeafFn = 0x0099BF30;
+    public const uint SubtitledRegisterFn = 0x00A39010;
+    public const uint SubtitledSingletonVa = 0x013B8A54;
+    public const uint SubtitledPrefixVa = 0x0122F3D0;
+    public const uint SubtitledLeafVa = 0x01239E74;
+    public const string SubtitledDefsPrefix = @"Data\Defs\";
+    public const string SubtitledDefsLeaf = "misc_def_types.h";
+    public const string SubtitledDefsPath = @"Data\Defs\misc_def_types.h";
     public const uint PlayAviPlayer = 0x006286F0;
     public const uint FrontendIntern = 0x0042F722;
     public const uint LeaveFrontendSite = 0x0042F2A2;
@@ -629,7 +653,7 @@ public sealed class EngineLifecycle : IDisposable
         ("Init Graphics", 0x00416C8A),
         // 004168DC sibling; name is logged inside the fn.
         ("Init Fonts", FontFile.InitFontsFn),
-        ("Init Subtitled Message", 0x004CDB10),
+        ("Init Subtitled Message", InitSubtitledMessageFn),
         ("Init Conversation Attitude", 0x004CD670),
         ("Init Player Manager", 0x0041732A),
         ("Init Player Interface", 0x004473A0),
@@ -2336,6 +2360,17 @@ public sealed class EngineLifecycle : IDisposable
     /// Not frontend type-6.
     /// </summary>
     public string? GameFontFace { get; private set; }
+    /// <summary>
+    /// <c>[0x13B8A54]</c> after
+    /// <c>004CDB10</c>
+    /// <c>00A39010</c>.
+    /// Static ctor already
+    /// <c>0121A630</c>
+    /// <c>00A38500</c>.
+    /// Not a spoken line.
+    /// </summary>
+    public bool SubtitledSymbolsRegistered { get; private set; }
+    public string? SubtitledSymbolPath { get; private set; }
     public bool FrontendMenuConstructed { get; private set; }
     public int FrontendRootType { get; private set; }
     public int FrontendChildCount { get; private set; }
@@ -3795,6 +3830,17 @@ public sealed class EngineLifecycle : IDisposable
                 Note(GameFontStoreFn, "Init Fonts", "Font",
                     $"00419463 [game+{GameFontOffset}]");
                 GameFontFace = GameFontFaceName;
+            }
+            if (name == "Init Subtitled Message")
+            {
+                Note(SubtitledPrefixFn, "Init Subtitled Message", "Defs",
+                    $"0041A080 0x{SubtitledPrefixVa:X} {SubtitledDefsPrefix}");
+                Note(SubtitledLeafFn, "Init Subtitled Message", "Defs",
+                    $"0099BF30 0x{SubtitledLeafVa:X} {SubtitledDefsLeaf}");
+                Note(SubtitledRegisterFn, "Init Subtitled Message", "Defs",
+                    $"00A39010 [0x{SubtitledSingletonVa:X}] {SubtitledDefsPath}");
+                SubtitledSymbolPath = SubtitledDefsPath;
+                SubtitledSymbolsRegistered = true;
             }
             if (name == "Init Display Engine")
             {
