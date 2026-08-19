@@ -2325,6 +2325,14 @@ public sealed class EngineLifecycle : IDisposable
     /// last tick/draw, in-order.
     /// </summary>
     public IReadOnlyList<int> FrontendResidentSlots { get; private set; } = [];
+    /// <summary>
+    /// <c>[ui+32].back()</c> slot.
+    /// <c>00596763</c> calls
+    /// <c>vtbl+192</c>(6) on the
+    /// old back, then pushes the
+    /// new widget.
+    /// </summary>
+    public int FrontendCurrentSlot { get; private set; }
     private readonly List<int> _frontendSubmitCounts = [];
     private FrontendSpriteBank? _frontendSprites;
     private FontBank? _frontendFonts;
@@ -3549,6 +3557,7 @@ public sealed class EngineLifecycle : IDisposable
         Note(FrontendUiBuildMenu, "Frontend", "UI", "00595B24");
         FrontendMenuRoot = name;
         ResolveFrontendDef(name);
+        SwitchFrontendSlot(FrontendMainMenuSlot);
         AttachFrontendTree(name, FrontendMainMenuSlot);
     }
 
@@ -3586,6 +3595,7 @@ public sealed class EngineLifecycle : IDisposable
         FrontendEditBoxBound = true;
         FrontendEditBoxName = FrontendProfileDefaultFallback;
         ResolveFrontendDef(FrontendNewProfileMenu);
+        SwitchFrontendSlot(FrontendNewProfileSlot);
         AttachFrontendTree(FrontendNewProfileMenu, FrontendNewProfileSlot);
     }
 
@@ -3641,6 +3651,7 @@ public sealed class EngineLifecycle : IDisposable
         FrontendUi96Present = false;
         FrontendUi96Armed = false;
         ResolveFrontendDef(FrontendMainMenuNoContinue);
+        SwitchFrontendSlot(FrontendMainMenuSlot);
         AttachFrontendTree(FrontendMainMenuNoContinue, FrontendMainMenuSlot);
     }
 
@@ -3746,22 +3757,27 @@ public sealed class EngineLifecycle : IDisposable
             }
 
             if (name == "Init World")
+            {
                 Note(InitWorldFn, "InitGame", "World",
                     "00418790 [world+320] from 013B7C90");
+                Note(InitWorldFn, "Init World", "World", "004A67D0 vtbl 012390F0");
+                Note(InitWorldInitFn, "Init World Init", "World", "004A6E30 vtbl+36");
+                foreach (var (worldName, worldApply) in InitWorldInitStages)
+                {
+                    Note(worldApply, worldName, "World", worldName);
+                    if (worldApply == InitMeshBankFn)
+                        OpenMeshBank();
+                }
+
+                InitWorldCameras();
+            }
+
+            if (name == "Create Players")
+                CreatePlayers();
             if (name == "Load Particles")
                 Note(SkipParticlesVa, "InitGame", "InitGame",
                     $"013B8648={SkipParticlesFirstSeen} run 004174F1");
         }
-        Note(InitWorldFn, "Init World", "World", "004A67D0 vtbl 012390F0");
-        Note(InitWorldInitFn, "Init World Init", "World", "004A6E30 vtbl+36");
-        foreach (var (name, apply) in InitWorldInitStages)
-        {
-            Note(apply, name, "World", name);
-            if (apply == InitMeshBankFn)
-                OpenMeshBank();
-        }
-        InitWorldCameras();
-        CreatePlayers();
         LoadWorld();
         GameRenderEnabled = true;
         Note(GameLoadWorldFn, "InitGame", "GameStart",
@@ -6908,7 +6924,41 @@ public sealed class EngineLifecycle : IDisposable
     private void AttachPressStartWidgets()
     {
         AttachFrontendTree(FrontendPressStartMenu, FrontendPressStartSlot);
+        FrontendCurrentSlot = FrontendPressStartSlot;
         WriteType10AttachMessage();
+    }
+
+    /// <summary>
+    /// <c>00596763</c>: old
+    /// <c>[ui+32].back()</c>
+    /// <c>vtbl+192</c>(6) then
+    /// push the incoming slot.
+    /// <c>0052CF40</c> writes
+    /// <c>+332</c>. Not a
+    /// <c>+302</c> hide.
+    /// </summary>
+    private void SwitchFrontendSlot(int slot)
+    {
+        if (_frontendSlotTrees.ContainsKey(FrontendCurrentSlot) &&
+            FrontendCurrentSlot != slot)
+            SelectFrontendState(FrontendCurrentSlot, 6);
+        FrontendCurrentSlot = slot;
+    }
+
+    /// <summary>
+    /// <c>0052CF40</c> <c>vtbl+192</c>:
+    /// <c>+332 = arg</c>. Forwards
+    /// <c>vtbl+188</c> to own
+    /// <c>+176</c> children.
+    /// </summary>
+    private void SelectFrontendState(int slot, int state)
+    {
+        Note(FrontendWidgetType.SelectStateFn, "Frontend", "UI",
+            $"0052CF40 vtbl+192 +332={state} slot 0x{slot:X}");
+        if (!_frontendSlotTrees.TryGetValue(slot, out var tree) ||
+            tree.Count == 0)
+            return;
+        tree[0] = tree[0] with { State = state };
     }
 
     /// <summary>

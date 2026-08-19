@@ -52,6 +52,7 @@ public static class FrontendWidgetFactory
                 Enabled = true,
                 Clip = false,
                 ActiveChild = FrontendWidgetType.FirstSeenState,
+                State = FrontendWidgetType.FirstSeenState,
             };
         }
 

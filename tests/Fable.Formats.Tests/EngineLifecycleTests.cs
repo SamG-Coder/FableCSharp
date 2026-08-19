@@ -450,6 +450,12 @@ public sealed class EngineLifecycleTests
         Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, profile.Name);
         Assert.Equal(10, profile.Type);
         Assert.Equal(0, profile.MessageId);
+        Assert.Equal(6, kept.State);
+        Assert.Equal(0, profile.State);
+        Assert.Equal(0x0052CF40u, FrontendWidgetType.SelectStateFn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == FrontendWidgetType.SelectStateFn &&
+            e.Action.Contains("+332=6", StringComparison.Ordinal));
         Assert.Equal(
             new[]
             {
@@ -534,6 +540,32 @@ public sealed class EngineLifecycleTests
         Assert.DoesNotContain(life.FrontendWidgets, w =>
             w.Type == 10 &&
             w.MessageId == EngineLifecycle.FrontendPressStartMessage);
+    }
+
+    [Fact]
+    public void Init_World_004A67D0_runs_inside_0041735A_before_00417418()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        var worldCtor = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.InitWorldFn &&
+            e.Action.Contains("004A67D0", StringComparison.Ordinal));
+        var worldInit = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.InitWorldInitFn);
+        var display = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.DisplayCtorFn);
+        var particles = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SkipParticlesVa &&
+            e.Action.Contains("run 004174F1", StringComparison.Ordinal));
+        Assert.True(worldCtor >= 0 && worldInit > worldCtor);
+        Assert.True(display > worldInit, "004A6E30 before 00417418");
+        Assert.True(particles > display, "00417418 before 004174F1");
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
     }
 
     [Fact]
