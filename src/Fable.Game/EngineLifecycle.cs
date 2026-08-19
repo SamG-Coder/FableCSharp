@@ -178,6 +178,72 @@ public sealed class EngineLifecycle : IDisposable
     public const string SubtitledDefsPrefix = @"Data\Defs\";
     public const string SubtitledDefsLeaf = "misc_def_types.h";
     public const string SubtitledDefsPath = @"Data\Defs\misc_def_types.h";
+    /// <summary>
+    /// <c>004CD670</c> once
+    /// <c>[0x13B8A28]</c> then
+    /// <c>0099EFE0</c> into
+    /// <c>[0x13B8A2C]</c> /
+    /// <c>[0x13B8A38]</c> /
+    /// <c>[0x13B8A44]</c>.
+    /// Not a spoken line.
+    /// </summary>
+    public const uint InitConversationAttitudeFn = 0x004CD670;
+    public const uint ConversationAttitudeBindFn = 0x0099EFE0;
+    public const uint ConversationAttitudeOnceVa = 0x013B8A28;
+    public const uint ConversationAttitudeTable0Va = 0x013B8A2C;
+    public const uint ConversationAttitudeTable1Va = 0x013B8A38;
+    public const uint ConversationAttitudeTable2Va = 0x013B8A44;
+    public static readonly string[] ConversationAttitudeNames0 =
+    [
+        "STANDARD_TALK_GENERIC",
+        "STANDARD_TALK_GENERIC",
+        "STANDARD_TALK_LOVE",
+        "STANDARD_TALK_GENERIC",
+        "STANDARD_TALK_GENERIC",
+        "STANDARD_TALK_FEAR",
+        "STANDARD_TALK_ANGER",
+        "STANDARD_TALK_ANGER",
+        "STANDARD_TALK_ANGER",
+        "STANDARD_TALK_ANGER",
+        "STANDARD_TALK_LOVE",
+        "STANDARD_TALK_GENERIC",
+        "STANDARD_TALK_ANGER",
+        "STANDARD_TALK_FEAR",
+        "STANDARD_TALK_ANGER",
+        "STANDARD_TALK_ANGER",
+        "STANDARD_TALK_LOVE",
+        "STANDARD_TALK_GENERIC",
+    ];
+    public static readonly string[] ConversationAttitudeNames1 =
+    [
+        "NULL",
+        "STANDARD_TALK_GENERIC",
+        "STANDARD_TALK_LOVE",
+        "STANDARD_TALK_ANGER",
+        "STANDARD_TALK_FEAR",
+        "STANDARD_TALK_GLEE",
+        "STANDARD_TALK_SADNESS",
+        "STANDARD_TALK_RIDICULE",
+        "STANDARD_TALK_FRIENDLY",
+        "STANDARD_TALK_RIDICULE",
+        "STANDARD_TALK_GENERIC",
+        "STANDARD_TALK_GENERIC",
+    ];
+    public static readonly string[] ConversationAttitudeNames2 =
+    [
+        "",
+        "CONVERSATION_HAPPY",
+        "CONVERSATION_HAPPY",
+        "CONVERSATION_ANGRY",
+        "CONVERSATION_FEAR",
+        "CONVERSATION_HAPPY",
+        "CONVERSATION_SAD",
+        "CONVERSATION_BELLIGERENT",
+        "CONVERSATION_HAPPY",
+        "CONVERSATION_BELLIGERENT",
+        "CONVERSATION_CAGED",
+        "CONVERSATION_HOLDING_SWORD",
+    ];
     public const uint PlayAviPlayer = 0x006286F0;
     public const uint FrontendIntern = 0x0042F722;
     public const uint LeaveFrontendSite = 0x0042F2A2;
@@ -654,7 +720,7 @@ public sealed class EngineLifecycle : IDisposable
         // 004168DC sibling; name is logged inside the fn.
         ("Init Fonts", FontFile.InitFontsFn),
         ("Init Subtitled Message", InitSubtitledMessageFn),
-        ("Init Conversation Attitude", 0x004CD670),
+        ("Init Conversation Attitude", InitConversationAttitudeFn),
         ("Init Player Manager", 0x0041732A),
         ("Init Player Interface", 0x004473A0),
         ("Init World", 0x0041735A),
@@ -2371,6 +2437,22 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public bool SubtitledSymbolsRegistered { get; private set; }
     public string? SubtitledSymbolPath { get; private set; }
+    /// <summary>
+    /// <c>[0x13B8A28]</c> after
+    /// <c>004CD670</c>
+    /// <c>0099EFE0</c>.
+    /// Not a spoken line.
+    /// </summary>
+    public bool ConversationAttitudesBound { get; private set; }
+    public IReadOnlyList<string> ConversationAttitudeTable0 =>
+        _conversationAttitudeTable0;
+    public IReadOnlyList<string> ConversationAttitudeTable1 =>
+        _conversationAttitudeTable1;
+    public IReadOnlyList<string> ConversationAttitudeTable2 =>
+        _conversationAttitudeTable2;
+    private string[] _conversationAttitudeTable0 = [];
+    private string[] _conversationAttitudeTable1 = [];
+    private string[] _conversationAttitudeTable2 = [];
     public bool FrontendMenuConstructed { get; private set; }
     public int FrontendRootType { get; private set; }
     public int FrontendChildCount { get; private set; }
@@ -3842,6 +3924,8 @@ public sealed class EngineLifecycle : IDisposable
                 SubtitledSymbolPath = SubtitledDefsPath;
                 SubtitledSymbolsRegistered = true;
             }
+            if (name == "Init Conversation Attitude")
+                BindConversationAttitudes();
             if (name == "Init Display Engine")
             {
                 DisplayPlus232 = DisplayPlus232Ctor;
@@ -4321,6 +4405,31 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>0044C71F</c> before
     /// Thing Components.
     /// </summary>
+    /// <summary>
+    /// <c>004CD670</c>: skip if
+    /// <c>[0x13B8A28]!=0</c>, else
+    /// <c>0099EFE0</c> the three
+    /// tables and set the once
+    /// flag. Not Speak.
+    /// </summary>
+    private void BindConversationAttitudes()
+    {
+        if (ConversationAttitudesBound)
+            return;
+        Note(ConversationAttitudeBindFn, "Init Conversation Attitude", "Defs",
+            $"0099EFE0 [0x{ConversationAttitudeTable0Va:X}]/{ConversationAttitudeNames0.Length}");
+        Note(ConversationAttitudeBindFn, "Init Conversation Attitude", "Defs",
+            $"0099EFE0 [0x{ConversationAttitudeTable1Va:X}]/{ConversationAttitudeNames1.Length}");
+        Note(ConversationAttitudeBindFn, "Init Conversation Attitude", "Defs",
+            $"0099EFE0 [0x{ConversationAttitudeTable2Va:X}]/{ConversationAttitudeNames2.Length}");
+        Note(ConversationAttitudeOnceVa, "Init Conversation Attitude", "Defs",
+            $"[0x{ConversationAttitudeOnceVa:X}]=1");
+        _conversationAttitudeTable0 = ConversationAttitudeNames0;
+        _conversationAttitudeTable1 = ConversationAttitudeNames1;
+        _conversationAttitudeTable2 = ConversationAttitudeNames2;
+        ConversationAttitudesBound = true;
+    }
+
     private void EnsurePlayerManagerSingleton()
     {
         Note(PlayerManagerPresentFn, "InitGame", "Player",

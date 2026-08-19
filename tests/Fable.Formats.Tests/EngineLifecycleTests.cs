@@ -628,6 +628,57 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Conversation_004CD670_binds_STANDARD_TALK_tables()
+    {
+        Assert.Equal(0x004CD670u, EngineLifecycle.InitConversationAttitudeFn);
+        Assert.Equal(0x0099EFE0u, EngineLifecycle.ConversationAttitudeBindFn);
+        Assert.Equal(0x013B8A28u, EngineLifecycle.ConversationAttitudeOnceVa);
+        Assert.Equal(0x013B8A2Cu, EngineLifecycle.ConversationAttitudeTable0Va);
+        Assert.Equal(0x013B8A38u, EngineLifecycle.ConversationAttitudeTable1Va);
+        Assert.Equal(0x013B8A44u, EngineLifecycle.ConversationAttitudeTable2Va);
+        Assert.Equal(18, EngineLifecycle.ConversationAttitudeNames0.Length);
+        Assert.Equal(12, EngineLifecycle.ConversationAttitudeNames1.Length);
+        Assert.Equal(12, EngineLifecycle.ConversationAttitudeNames2.Length);
+        Assert.Equal("STANDARD_TALK_GENERIC", EngineLifecycle.ConversationAttitudeNames0[0]);
+        Assert.Equal("STANDARD_TALK_GENERIC", EngineLifecycle.ConversationAttitudeNames0[17]);
+        Assert.Equal("NULL", EngineLifecycle.ConversationAttitudeNames1[0]);
+        Assert.Equal("STANDARD_TALK_FRIENDLY", EngineLifecycle.ConversationAttitudeNames1[8]);
+        Assert.Equal("", EngineLifecycle.ConversationAttitudeNames2[0]);
+        Assert.Equal("CONVERSATION_HOLDING_SWORD", EngineLifecycle.ConversationAttitudeNames2[11]);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.False(life.ConversationAttitudesBound);
+        Assert.Empty(life.ConversationAttitudeTable0);
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.True(life.ConversationAttitudesBound);
+        Assert.Equal(EngineLifecycle.ConversationAttitudeNames0, life.ConversationAttitudeTable0);
+        Assert.Equal(EngineLifecycle.ConversationAttitudeNames1, life.ConversationAttitudeTable1);
+        Assert.Equal(EngineLifecycle.ConversationAttitudeNames2, life.ConversationAttitudeTable2);
+        var register = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SubtitledRegisterFn);
+        var console = life.Trace.Events.FindIndex(e =>
+            e.Va == 0x0041863D);
+        var bind = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ConversationAttitudeBindFn);
+        var once = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ConversationAttitudeOnceVa);
+        var players = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Player Manager");
+        Assert.True(register >= 0 && console > register);
+        Assert.True(bind > console && once > bind);
+        Assert.True(players > once);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Action.Contains("Speak", StringComparison.OrdinalIgnoreCase) &&
+            e.Stage == "Init Conversation Attitude");
+    }
+
+    [Fact]
     public void Init_World_004A67D0_runs_inside_0041735A_before_00417418()
     {
         var life = new EngineLifecycle();
