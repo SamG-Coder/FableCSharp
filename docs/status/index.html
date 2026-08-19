@@ -435,7 +435,7 @@
         <tr>
           <td>Leave Press Start: <code>0059A238</code> msg <code>0xE5</code> → <code>00599D5C</code> empty <code>005955AB</code> → <code>00595845</code> → <code>00596917</code> slot <code>0x17</code> <code>NEW_PROFILE</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>Frontend_0059A238_msg_E5_empty_005955AB_is_00595845_then_00596917</code>. Type-4 posts type-10 +352 (<code>48133e9</code>). Host LMB edge queues Type4 (<code>5dcc1fc</code>). Host Return quarantined as accept. Return→msg 15 from Press Start DISPROVEN. Type-10 <code>0xE5</code> is only <code>00598A1C</code> attach write (<code>00598EE6</code> is the mov inside it) → widget+352 (<code>61e430f</code>). leftover #37 remaining half: action 26 empty +224 vs LMB-up +228.</td>
+          <td><code>Frontend_0059A238_msg_E5_empty_005955AB_is_00595845_then_00596917</code>. Type-4 posts type-10 +352 only (<code>48133e9</code>). Host LMB edge queues Type4 (<code>5dcc1fc</code>). Host Return quarantined as accept. Return→msg 15 from Press Start DISPROVEN. Type-10 <code>0xE5</code> is only <code>00598A1C</code> attach write (<code>00598EE6</code> is the mov inside it) → widget+352 (<code>61e430f</code>). #37 locked.</td>
         </tr>
         <tr>
           <td>New Profile accept: <code>00851770</code> seeds <code>0x122DE80</code> "Default"; msg <code>0x126</code> → <code>00851920</code> → <code>0059697A</code> <code>MAIN_MENU_NO_CONTINUE</code></td>
@@ -663,14 +663,19 @@
           <td><code>9e94ef9</code></td>
         </tr>
         <tr>
-          <td>Type 11/38 +228 via <code>0055ACF0</code>. Type-10 <code>0xE5</code> is only the <code>00598A1C</code> attach write (<code>00598EE6</code> is the mov inside it). Empty widget lists no longer invent <code>0xE5</code>. Press Start name-check invent gone</td>
+          <td>Type 11/38 +228 via <code>0055ACF0</code>. Type-10 <code>0xE5</code> is only the <code>00598A1C</code> attach write (<code>00598EE6</code> is the mov inside it). Empty widget lists no longer invent <code>0xE5</code>. Press Start name-check invent gone. <code>0xE5</code> host fill gone</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>61e430f</code> / <code>Frontend_press_start_type4_without_widgets_does_not_invent_0xE5</code></td>
+          <td><code>61e430f</code> / <code>Frontend_press_start_type4_without_widgets_does_not_invent_0xE5</code>. #37 first half locked.</td>
         </tr>
         <tr>
-          <td>Type 11/38 +228 on LMB-up action 28 after action 26 arms. Type 4 still posts type-10 +352. Type 6 (<code>00A03D60</code>) is action 28 / vtbl+588 / <code>0055ACF0</code>. Host queues LMB-up as type 6. Unarmed +228 lists stay silent</td>
+          <td>Type 11/38 +228 on LMB-up action 28 after action 26 arms. Type 4 still posts type-10 +352 only (not first-visible +228). Type 6 (<code>00A03D60</code>) is action 28 / vtbl+588 / <code>0055ACF0</code>. Host queues LMB-up as type 6. Unarmed +228 lists stay silent</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>48133e9</code></td>
+          <td><code>48133e9</code> / <code>Type4_action_26_posts_stored_widget_message</code> (ActionType4 accept == null) / <code>Type4_drives_lifecycle_0xE5_then_0x126_then_15</code> (Type4 then Type6). #37 second half locked.</td>
+        </tr>
+        <tr>
+          <td>Press Start <code>0xE5</code> host fill gone; Type4 posts type-10 +352 only; Type6 LMB-up action 28 posts +228 after arm. Unarmed lists silent. #37 locked</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>61e430f</code> / <code>Frontend_press_start_type4_without_widgets_does_not_invent_0xE5</code>. <code>48133e9</code> / <code>Type4_action_26_posts_stored_widget_message</code> / <code>Type4_drives_lifecycle_0xE5_then_0x126_then_15</code></td>
         </tr>
         <tr>
           <td><code>[node+20]</code> is <code>0041DB1D</code>/<code>0041D21B</code> type0 <code>0041B800</code> vtbl <code>0122F5D4</code>; draw <code>0041AFA0</code> not <code>0052D900</code></td>
@@ -1000,11 +1005,6 @@
           <td>Host Return quarantined as accept (<code>db36334</code>). Host LMB edge queues Type4 (<code>5dcc1fc</code>). Host queues LMB-up as type 6 (<code>48133e9</code>). <code>DispatchFrontendMessage(15)</code> is <code>0059A238</code> vtbl+32. Enter still queues that message. Present <code>0042DF9E</code> / <code>00595222</code> still Note-only. leave #14 open.</td>
         </tr>
         <tr>
-          <td>Press Start <code>0xE5</code> / action-26 +224 vs LMB-up +228</td>
-          <td><span class="badge PARTIAL">PARTIAL</span></td>
-          <td><code>0xE5</code> host fill is gone (<code>61e430f</code>). Empty widget lists no longer invent <code>0xE5</code> (<code>Frontend_press_start_type4_without_widgets_does_not_invent_0xE5</code>). Type-10 <code>0xE5</code> is only the <code>00598A1C</code> attach write (<code>00598EE6</code> is the mov inside it). Remaining half at this freeze: action 26 native posts empty +224; C# LMB-up posts +228 via <code>0055ACF0</code> after arm. leave #37 open.</td>
-        </tr>
-        <tr>
           <td><code>006B8640</code> / <code>008889C0</code> leftover (do not write V0 first-seen)</td>
           <td><span class="badge UNREAD">UNREAD</span></td>
           <td><code>006B2CA0</code> pose is PROVEN (<code>204a214</code>). Host <code>SeedAt(1.6m)</code> is DISPROVEN as live New Game. Lookout helper FOV 70 from <code>00A0C130</code> (<code>be3339e</code>). <code>00A0C130</code> is a packer (<code>a6f939a</code>); ctor look +Z, up <code>(1,1,1)</code>. SHOT2 FOV 72 is intro-view leftover — do not collapse into Lookout. Do not reopen #6 / #13</td>
@@ -1282,10 +1282,14 @@
         (<code>48133e9</code>). Dest leftover GraphicIndex path +
         calculator tests still feed 16×16; host still Notes
         <code>009DA9F0</code> DIP (#36). leave #36 open.
-        <code>0xE5</code> host fill is gone (<code>61e430f</code>).
-        Remaining #37 half: action 26 native posts empty +224; C#
-        LMB-up posts +228 via <code>0055ACF0</code> after arm. leave
-        #37 open. PlayAVI still 3D Draw (#20). leave #14 and #20 open.
+        #37 locked: <code>0xE5</code> host fill gone
+        (<code>61e430f</code> /
+        <code>Frontend_press_start_type4_without_widgets_does_not_invent_0xE5</code>);
+        Type4 posts type-10 +352 only; Type6 LMB-up action 28 posts
+        +228 after arm (<code>48133e9</code> /
+        <code>Type4_action_26_posts_stored_widget_message</code>,
+        <code>Type4_drives_lifecycle_0xE5_then_0x126_then_15</code>).
+        PlayAVI still 3D Draw (#20). leave #14 and #20 open.
         New Game submit now walks
         <code>0x4</code>/<code>0x40</code>/<code>0x20</code>/<code>0x100</code>/<code>0x2000</code>
         (<code>676bf63</code>); cell DIP is <code>0x40</code> only
