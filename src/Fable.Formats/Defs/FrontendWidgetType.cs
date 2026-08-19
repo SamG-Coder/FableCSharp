@@ -178,10 +178,15 @@ public static class FrontendWidgetType
 
     /// <summary>
     /// <c>vtbl+8 == 00530260</c> on
-    /// type 5 / 10 / 12 / 16 / 18.
+    /// type 5 / 10 / 11 / 12 / 16 / 18 / 38.
+    /// Dumped <c>01245DE4+8</c>,
+    /// <c>012497E4+8</c>,
+    /// <c>01249554+8</c>,
+    /// <c>01248A8C+8</c>,
+    /// <c>0124B04C+8</c>.
     /// </summary>
     public static bool DrawsChildList(int type) =>
-        type is Group or Menu or List or TextSlider or Swap;
+        type is Group or Menu or 11 or List or TextSlider or Swap or 38;
 
     /// <summary>
     /// Type 18 <c>CSwappingStateComponent</c>

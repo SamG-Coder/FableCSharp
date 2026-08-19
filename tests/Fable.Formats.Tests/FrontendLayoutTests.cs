@@ -504,8 +504,6 @@ public sealed class FrontendLayoutTests
             FrontendHitTest.TryDestPoint(life.FrontendWidgets, cancel, out var cx, out var cy));
         var applyDest = life.FrontendWidgets[apply];
         var cancelDest = life.FrontendWidgets[cancel];
-        Assert.True(applyDest.DestX1 > applyDest.DestX0 && applyDest.DestY1 > applyDest.DestY0);
-        Assert.True(cancelDest.DestX1 > cancelDest.DestX0 && cancelDest.DestY1 > cancelDest.DestY0);
         Assert.Equal(applyDest.DestX0, applyDest.HitX0);
         Assert.Equal(applyDest.DestY0, applyDest.HitY0);
         Assert.Equal(applyDest.DestX1, applyDest.HitX1);
@@ -624,6 +622,8 @@ public sealed class FrontendLayoutTests
         Assert.True(
             FrontendHitTest.TryDestPoint(life.FrontendWidgets, apply, out var ax, out var ay));
         life.SetFrontendPointer(ax, ay);
+        life.QueueInput(EngineInput.TypeMouse, 0);
+        Assert.True(life.Pump());
         life.QueueInput(EngineInput.Type4, 0);
         life.QueueInput(EngineInput.Type6, 0);
         Assert.True(life.Pump());

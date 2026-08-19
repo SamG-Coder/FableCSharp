@@ -3790,15 +3790,12 @@ public sealed class EngineLifecycle : IDisposable
         Note(InputEventKeyFn, "Frontend", "Input",
             "00A03B70 key [record+0]");
         PumpInput();
-        // 0055BF10 writes +352 before
-        // action 26 reads it. Dest
-        // comes from the previous
-        // 00531EC0 tick.
-        HoverSelectFrontend();
         // 0042E3EE then 0042DC94: 0xE5
         // lands before 00599E3F so
         // 00595845 and 00596917 are
-        // the same frame.
+        // the same frame. Action 26
+        // reads +352 from last tick's
+        // 0055ACB0 → vtbl+580.
         MaybeActivateNewGameFromInput();
         Note(FrontendUpdateFn, "Frontend", "UI", "0042DC94");
         Note(FrontendUiTickFn, "Frontend", "UI", "00599E3F");
@@ -3810,7 +3807,6 @@ public sealed class EngineLifecycle : IDisposable
         Note(BeginSceneFn, "Frontend", "D3D9", "009BEF20 BeginScene");
         Note(FrontendUiGet, "Frontend", "UI", "00595582");
         TickFrontendWidgets();
-        HoverSelectFrontend();
         DrawFrontendWidgets();
         Note(InputActionGetter, "Frontend", "Input", "0041E5F2");
         FlushFrontendDisplay();
@@ -3851,7 +3847,11 @@ public sealed class EngineLifecycle : IDisposable
         Note(FrontendDestOriginFn, "Frontend", "UI",
             "0052FFD0 +248 from +52/+60");
         foreach (var tree in ResidentSlotTrees())
+        {
             LayoutFrontendWidgets(tree);
+            TickType11Type38Hover(tree);
+        }
+
         FrontendWidgetTickRan = true;
         FrontendDestLayoutRan = true;
         Note(FrontendWidgetNextFn, "Frontend", "UI", "004292C0");
@@ -8187,130 +8187,42 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
-    /// <c>0055BF10</c>: vtbl+568 hit then
-    /// <c>+352=1</c> (<c>0055C0DE</c>).
-    /// Type-38 ON/OFF sprites follow
-    /// that byte. Type-32 dest tracks
-    /// the pointer.
+    /// Type 11/38 <c>vtbl+4</c>
+    /// <c>0055ACB0</c> → <c>0055B890</c>
+    /// → <c>vtbl+580</c> <c>0055BF10</c>
+    /// when action 25 is live.
+    /// <c>+352</c> then action 26.
+    /// <c>vtbl+532</c> is list unlink
+    /// <c>0055BBF0</c>, not a texture
+    /// suffix.
     /// </summary>
-    private void HoverSelectFrontend()
+    private void TickType11Type38Hover(List<FrontendWidget> tree)
     {
-        Note(FrontendHitTest.HoverSelectFn, "Frontend", "UI",
-            "0055BF10 vtbl+568 then +352");
-        foreach (var tree in ResidentSlotTrees())
+        var action25 = false;
+        foreach (var (type, _) in Input.Applied)
         {
-            for (var i = 0; i < tree.Count; i++)
+            if (type == FrontendInputMap.TypeMouse)
             {
-                if (tree[i].Hovered)
-                    tree[i] = tree[i] with { Hovered = false };
-            }
-
-            var hit = FrontendHitTest.HitIndex(
-                tree, FrontendPointerX, FrontendPointerY);
-            if (hit is int index)
-                tree[index] = tree[index] with { Hovered = true };
-            ApplyType38OnOff(tree);
-            ApplyType1OnOff(tree);
-            MoveType32Pointer(tree);
-        }
-    }
-
-    private static void ApplyType38OnOff(List<FrontendWidget> tree)
-    {
-        for (var i = 0; i < tree.Count; i++)
-        {
-            if (tree[i].Type != FrontendInputMap.TypeAccept &&
-                tree[i].Type != FrontendInputMap.TypeButton)
-                continue;
-            var on = tree[i].Hovered;
-            foreach (var kid in FrontendWidgetFactory.ChildrenOf(tree, i))
-            {
-                var child = tree[kid];
-                if (child.Type != 0)
-                    continue;
-                var tex = child.TextureName ?? "";
-                var isOn = tex.EndsWith("_ON", StringComparison.OrdinalIgnoreCase);
-                var isOff = tex.EndsWith("_OFF", StringComparison.OrdinalIgnoreCase);
-                if (!isOn && !isOff)
-                    continue;
-                var show = isOn ? on : !on;
-                var colour = (child.Colour & 0x00FFFFFFu) | (show ? 0xFF000000u : 0u);
-                tree[kid] = child with { Colour = colour };
-            }
-        }
-    }
-
-    /// <summary>
-    /// Type-1 leftover graphic names
-    /// pair <c>_OFF</c>/<c>_ON</c>.
-    /// <c>0055BF10</c> <c>vtbl+532</c>
-    /// after <c>+352</c> swaps the
-    /// presented suffix.
-    /// </summary>
-    private static void ApplyType1OnOff(List<FrontendWidget> tree)
-    {
-        for (var i = 0; i < tree.Count; i++)
-        {
-            if (tree[i].Type != 1)
-                continue;
-            var tex = tree[i].TextureName;
-            if (string.IsNullOrEmpty(tex))
-                continue;
-            var on = tex.EndsWith("_ON", StringComparison.OrdinalIgnoreCase);
-            var off = tex.EndsWith("_OFF", StringComparison.OrdinalIgnoreCase);
-            if (!on && !off)
-                continue;
-            var hot = AncestorHovered(tree, i);
-            string next;
-            if (hot && off)
-                next = string.Concat(tex.AsSpan(0, tex.Length - 4), "_ON");
-            else if (!hot && on)
-                next = string.Concat(tex.AsSpan(0, tex.Length - 3), "_OFF");
-            else
-                continue;
-            tree[i] = tree[i] with { TextureName = next };
-        }
-    }
-
-    private static bool AncestorHovered(List<FrontendWidget> tree, int index)
-    {
-        for (var i = index; (uint)i < (uint)tree.Count;)
-        {
-            if (tree[i].Hovered)
-                return true;
-            var parent = tree[i].ParentIndex;
-            if (parent < 0)
+                action25 = true;
                 break;
-            i = parent;
+            }
         }
 
-        return false;
-    }
-
-    private void MoveType32Pointer(List<FrontendWidget> tree)
-    {
+        Note(FrontendHitTest.HoverSelectFn, "Frontend", "UI",
+            "0055ACB0 vtbl+580 0055BF10");
         for (var i = 0; i < tree.Count; i++)
         {
-            if (tree[i].Type != 32)
-                continue;
             var widget = tree[i];
-            var w = widget.DestX1 > widget.DestX0
-                ? widget.DestX1 - widget.DestX0
-                : (widget.Leftover204 > 0f ? widget.Leftover204 : 32f);
-            var h = widget.DestY1 > widget.DestY0
-                ? widget.DestY1 - widget.DestY0
-                : w;
-            tree[i] = widget with
-            {
-                DestX0 = FrontendPointerX,
-                DestY0 = FrontendPointerY,
-                DestX1 = FrontendPointerX + w,
-                DestY1 = FrontendPointerY + h,
-                HitX0 = FrontendPointerX,
-                HitY0 = FrontendPointerY,
-                HitX1 = FrontendPointerX + w,
-                HitY1 = FrontendPointerY + h,
-            };
+            if (widget.Type != FrontendInputMap.TypeButton &&
+                widget.Type != FrontendInputMap.TypeAccept)
+                continue;
+            if (!action25 && !widget.Hovered)
+                continue;
+            var hit = FrontendHitTest.Contains(
+                tree, i, FrontendPointerX, FrontendPointerY)
+                || FrontendHitTest.HitIndex(
+                    tree, FrontendPointerX, FrontendPointerY) == i;
+            tree[i] = widget with { Hovered = hit };
         }
     }
 
@@ -8343,7 +8255,11 @@ public sealed class EngineLifecycle : IDisposable
         if (widget.Type != FrontendInputMap.TypeButton &&
             widget.Type != FrontendInputMap.TypeAccept)
             return;
-        _frontendWidgets[index] = widget with { Armed = true, Hovered = true };
+        // 0055AD60: +352==0 skips vtbl+584
+        // and does not write +364.
+        if (!widget.Hovered)
+            return;
+        _frontendWidgets[index] = widget with { Armed = true };
     }
 
     private void ApplyTextSliderHit(int index)
@@ -8640,72 +8556,15 @@ public sealed class EngineLifecycle : IDisposable
             float y0 = widget.DestY0;
             float x1 = widget.DestX1;
             float y1 = widget.DestY1;
-            var destFromMouse = false;
             if (x1 <= x0 || y1 <= y0)
+                TryChromeHit(widgets, i, ref x0, ref y0, ref x1, ref y1);
+            widgets[i] = widget with
             {
-                TryMouseAreaDest(widgets, i, ref x0, ref y0, ref x1, ref y1);
-                destFromMouse = x1 > x0 && y1 > y0;
-                if (!destFromMouse)
-                    TryChromeHit(widgets, i, ref x0, ref y0, ref x1, ref y1);
-            }
-
-            widgets[i] = destFromMouse
-                ? widget with
-                {
-                    DestX0 = x0,
-                    DestY0 = y0,
-                    DestX1 = x1,
-                    DestY1 = y1,
-                    HitX0 = x0,
-                    HitY0 = y0,
-                    HitX1 = x1,
-                    HitY1 = y1,
-                }
-                : widget with
-                {
-                    HitX0 = x0,
-                    HitY0 = y0,
-                    HitX1 = x1,
-                    HitY1 = y1,
-                };
-        }
-    }
-
-    /// <summary>
-    /// Type 11/38 <c>0055B8F0</c>
-    /// dest size is the persist-size
-    /// type-0 mouse-area child
-    /// (<c>005339B0</c>), not a
-    /// leftover union.
-    /// </summary>
-    private static void TryMouseAreaDest(
-        List<FrontendWidget> widgets,
-        int index,
-        ref float x0,
-        ref float y0,
-        ref float x1,
-        ref float y1)
-    {
-        var widget = widgets[index];
-        if (widget.Type != FrontendInputMap.TypeButton &&
-            widget.Type != FrontendInputMap.TypeAccept)
-            return;
-        for (var c = 0; c < widgets.Count; c++)
-        {
-            if (widgets[c].ParentIndex != index)
-                continue;
-            if (widgets[c].Type != 0)
-                continue;
-            if (widgets[c].PersistWidth <= 0f || widgets[c].PersistHeight <= 0f)
-                continue;
-            if (widgets[c].DestX1 <= widgets[c].DestX0 ||
-                widgets[c].DestY1 <= widgets[c].DestY0)
-                continue;
-            x0 = widgets[c].DestX0;
-            y0 = widgets[c].DestY0;
-            x1 = widgets[c].DestX1;
-            y1 = widgets[c].DestY1;
-            return;
+                HitX0 = x0,
+                HitY0 = y0,
+                HitX1 = x1,
+                HitY1 = y1,
+            };
         }
     }
 
@@ -8831,8 +8690,6 @@ public sealed class EngineLifecycle : IDisposable
         // 0052CF40(6) on the old current.
         // 0052C7E0 style 0x20 zeros dest
         // so 0041AFA0 submits nothing.
-        if (tree.Count > 0 && tree[0].State == 6)
-            continue;
         var slot = new List<FrontendDx9DrawRecord>();
         var slotCounts = new List<int>(tree.Count);
         for (var i = 0; i < tree.Count; i++)

@@ -2251,6 +2251,8 @@ public sealed class EngineLifecycleTests
             FrontendHitTest.TryDestPoint(life.FrontendWidgets, index, out var x, out var y),
             name + " dest empty");
         life.SetFrontendPointer(x, y);
+        life.QueueInput(EngineInput.TypeMouse, 0);
+        Assert.True(life.Pump());
         life.QueueInput(EngineInput.Type4, 0);
         life.QueueInput(EngineInput.Type6, 0);
         Assert.True(life.Pump());
