@@ -4878,15 +4878,31 @@ public sealed class EngineLifecycle : IDisposable
             return;
         EnsureLevels();
         var loaded = new List<ThingInstance>();
+        // 004FDBC0 ebx=1 skips dummy slot 0.
+        // First 004FBF60 is LookoutPoint (NewMap 1).
+        // Later proximity maps stay closed until
+        // 00501450 / ContainsMap. Parsing every
+        // LoadedOnPlayerProximity .tng here is
+        // leftover and OOMs the New Game pump.
+        WorldMap? first = null;
         foreach (var map in World.Maps)
         {
             if (!map.LoadedOnPlayerProximity)
                 continue;
-            var tng = _levels?.TryLoadThings(map.ScriptName);
-            if (tng is null)
-                continue;
-            loaded.AddRange(tng.Things);
-            GlobalThingMapsLoaded++;
+            first = map;
+            break;
+        }
+
+        if (first is { } lookout)
+        {
+            Note(LoadGlobalThingsPerMap, "Loading global things", "WLD",
+                "004FBF60 " + lookout.ScriptName + ".tng");
+            var tng = _levels?.TryLoadThings(lookout.ScriptName);
+            if (tng is not null)
+            {
+                loaded.AddRange(tng.Things);
+                GlobalThingMapsLoaded = 1;
+            }
         }
 
         if (loaded.Count == 0)
@@ -8343,16 +8359,23 @@ public sealed class EngineLifecycle : IDisposable
             }
 
             FrontendDest dest;
+            var spriteClone = persistW == 0 && persistH == 0;
             if (parentWidget is { Type: FrontendWidgetType.TableType } table &&
-                parentDest is { } tableDest)
+                parentDest is { } tableDest &&
+                spriteClone)
             {
                 var cellCount = 0;
+                var sliceIndex = 0;
                 var firstCapW = 0f;
                 var rightCapW = 0f;
                 for (var c = 0; c < widgets.Count; c++)
                 {
                     if (widgets[c].ParentIndex != widget.ParentIndex)
                         continue;
+                    if (widgets[c].PersistWidth > 0 || widgets[c].PersistHeight > 0)
+                        continue;
+                    if (c == i)
+                        sliceIndex = cellCount;
                     var cap = WidgetLeftover(widgets[c]).W;
                     if (cellCount == 0)
                         firstCapW = cap;
@@ -8362,7 +8385,7 @@ public sealed class EngineLifecycle : IDisposable
                 }
 
                 var placed = FrontendLayout.PlaceTableCell(
-                    siblingIndex,
+                    sliceIndex,
                     cellCount,
                     tableDest.X0,
                     tableDest.Y0,

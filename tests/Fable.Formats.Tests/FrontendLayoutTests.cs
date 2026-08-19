@@ -374,6 +374,30 @@ public sealed class FrontendLayoutTests
         }
 
         sb.AppendLine();
+        foreach (var name in new[] { "UI_BUTTON_BIG", "UI_BUTTON", "UI_BUTTON_MOUSE_AREA" })
+        {
+            var def = FrontendUiDef.TryParse(bin.FindEntry(name)!)!;
+            sb.Append(name).Append(" type=").Append(def.Type);
+            sb.Append(" wh=").Append(def.Width).Append(',').Append(def.Height);
+            sb.Append(" plus96=").Append(def.Plus96);
+            sb.Append(" graphic=").Append(def.GraphicBankId);
+            sb.Append(" alpha=").Append(def.ColourA);
+            sb.Append(" sprites=").Append(def.Sprites);
+            sb.Append(" keys=");
+            foreach (var k in def.SpriteKeys)
+                sb.Append(k).Append(',');
+            sb.Append(" defs=");
+            foreach (var i in def.SpriteDefIndices)
+            {
+                var child = (uint)i < (uint)bin.Entries.Count
+                    ? bin.Entries[i].InstanceName
+                    : "?";
+                sb.Append('[').Append(child).Append(']');
+            }
+
+            sb.AppendLine();
+        }
+
         File.WriteAllText(scratch, sb.ToString());
         var editText = FrontendUiDef.TryParse(bin.FindEntry("UI_SCOREBOARD_EDITBOX_TEXT_FE")!)!;
         Assert.True(string.IsNullOrEmpty(editText.TextTag));
@@ -571,6 +595,79 @@ public sealed class FrontendLayoutTests
         }
 
         throw new InvalidOperationException("no dest area");
+    }
+
+    [Fact]
+    public void Main_Menu_button_slices_are_sprite_keys_not_mouse_area()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var names = NamesBin.Load(install.FindCompiledDef("names.bin")!)!;
+        var bin = GameBin.Load(install.FindCompiledDef("frontend.bin")!, names);
+        var big = FrontendUiDef.TryParse(bin.FindEntry("UI_BUTTON_BIG")!)!;
+        Assert.Equal(new[] { 0, 1, 4 }, big.SpriteKeys);
+        Assert.Equal(3, big.SpriteDefIndices.Count);
+        var mouse = FrontendUiDef.TryParse(bin.FindEntry("UI_BUTTON_MOUSE_AREA")!)!;
+        Assert.Equal(0, mouse.Type);
+        Assert.Equal(0f, mouse.ColourA);
+        Assert.True(mouse.Width > 0f);
+
+        var life = ReachNewProfile();
+        var apply = IndexOf(life, "UI_ACCEPT_NEW_PROFILE");
+        Assert.True(
+            FrontendHitTest.TryDestPoint(life.FrontendWidgets, apply, out var ax, out var ay));
+        life.SetFrontendPointer(ax, ay);
+        life.QueueInput(EngineInput.Type4, 0);
+        life.QueueInput(EngineInput.Type6, 0);
+        Assert.True(life.Pump());
+        Assert.Equal(EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
+        var tableIndex = -1;
+        for (var i = 0; i < life.FrontendWidgets.Count; i++)
+        {
+            if (life.FrontendWidgets[i].Name == "UI_BUTTON_BIG")
+            {
+                tableIndex = i;
+                break;
+            }
+        }
+
+        Assert.True(tableIndex >= 0);
+        var table = life.FrontendWidgets[tableIndex];
+        Assert.True(table.DestX1 > table.DestX0);
+        var kids = FrontendWidgetFactory.ChildrenOf(life.FrontendWidgets, tableIndex);
+        Assert.True(kids.Count >= 4, "kids=" + kids.Count);
+        var overlay = life.FrontendWidgets[kids[0]];
+        Assert.True(overlay.PersistWidth > 0f);
+        Assert.Equal((overlay.Colour >> 24) & 0xFFu, 0u);
+        var capL = life.FrontendWidgets[kids[1]];
+        var capR = life.FrontendWidgets[kids[2]];
+        var stretch = life.FrontendWidgets[kids[3]];
+        Assert.Equal(0f, capL.PersistWidth);
+        Assert.Equal(table.DestX0, capL.DestX0);
+        Assert.Equal(capL.DestX1, stretch.DestX0);
+        Assert.Equal(stretch.DestX1, capR.DestX0);
+        Assert.Equal(table.DestX1, capR.DestX1);
+    }
+
+    [Fact]
+    public void New_Game_004FDBC0_opens_LookoutPoint_only()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        life.EnterGame();
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.Equal(1, life.GlobalThingMapsLoaded);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.LoadGlobalThingsPerMap &&
+            e.Action.Contains("LookoutPoint", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.LoadGlobalThingsPerMap &&
+            e.Action.Contains("Bowerstone", StringComparison.Ordinal));
     }
 
     private static EngineLifecycle ReachNewProfile()
