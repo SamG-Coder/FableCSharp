@@ -927,6 +927,27 @@ public sealed class EngineLifecycle : IDisposable
     public const int EighthDefClassSize = 38;
     public const string EighthDefClassName = "CReadableDef";
     /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CReadableDef</c>:
+    /// <c>004F0171</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F0178</c>
+    /// <c>CVillageDef</c>
+    /// factory <c>0x4E213B</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>004DFF04</c>
+    /// size <c>0x10C</c> vtbl
+    /// <c>01241DDC</c>.
+    /// Not intervening CTC rows.
+    /// </summary>
+    public const uint NinthDefClassSite = 0x004F0171;
+    public const uint NinthDefClassFactory = 0x004E213B;
+    public const uint NinthDefClassPackFn = 0x0042DAE0;
+    public const uint NinthDefClassCtor = 0x004DFF04;
+    public const uint NinthDefClassVtbl = 0x01241DDC;
+    public const int NinthDefClassSize = 0x10C;
+    public const string NinthDefClassName = "CVillageDef";
+    /// <summary>
     /// <c>00416005</c> parent
     /// <c>push 1</c>:
     /// <c>0044C6B0</c>
@@ -2351,6 +2372,8 @@ public sealed class EngineLifecycle : IDisposable
     public string? SeventhDefClass { get; private set; }
     public bool EighthDefClassRegistered { get; private set; }
     public string? EighthDefClass { get; private set; }
+    public bool NinthDefClassRegistered { get; private set; }
+    public string? NinthDefClass { get; private set; }
     /// <summary>
     /// After <c>00416005</c>
     /// <c>0044C72B</c> /
@@ -3710,8 +3733,17 @@ public sealed class EngineLifecycle : IDisposable
             return;
         }
 
-        Note(FrontendWidgetDrawFn, "Frontend", "UI",
-            $"00530260 child {widget.Name} type {widget.Type} dest {widget.DestX0},{widget.DestY0},{widget.DestX1},{widget.DestY1}");
+        if (widget.Type == FrontendWidgetType.Text)
+        {
+            Note(FrontendTextDrawFn, "Frontend", "UI",
+                $"0054EF00 child {widget.Name} type {widget.Type} dest {widget.DestX0},{widget.DestY0},{widget.DestX1},{widget.DestY1}");
+        }
+        else
+        {
+            Note(FrontendWidgetDrawFn, "Frontend", "UI",
+                $"00530260 child {widget.Name} type {widget.Type} dest {widget.DestX0},{widget.DestY0},{widget.DestX1},{widget.DestY1}");
+        }
+
         QueueFrontend2dRecord(widget);
     }
 
@@ -3731,6 +3763,12 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     private void QueueFrontend2dRecord(FrontendWidget? widget)
     {
+        if (widget is { } leaf && leaf.Type == FrontendWidgetType.Text)
+        {
+            QueueType6Record(leaf);
+            return;
+        }
+
         var destX0 = widget?.DestX0 ?? FrontendWidgetDestX0;
         var destY0 = widget?.DestY0 ?? FrontendWidgetDestY0;
         var destX1 = widget?.DestX1 ?? FrontendWidgetDestX1;
@@ -3778,6 +3816,24 @@ public sealed class EngineLifecycle : IDisposable
         Frontend2dLastType = Frontend2dRecordType;
         Frontend2dLastPacker = packer;
         Frontend2dLastSubmitVtbl = Frontend2dSubmitVtbl;
+        Frontend2dRecordsQueued++;
+    }
+
+    /// <summary>
+    /// Type-6 <c>0054EF00</c> packs
+    /// via <c>00543910</c> type
+    /// <c>0x27</c> size 64. Not
+    /// <c>0041BEB0</c> / <c>0x22</c>.
+    /// </summary>
+    private void QueueType6Record(FrontendWidget widget)
+    {
+        var pack = FrontendDx9Submit.RecordForWidget(widget.Type);
+        Note(FrontendTextDrawFn, "Frontend", "UI",
+            $"0054EF00 dest {widget.DestX0},{widget.DestY0},{widget.DestX1},{widget.DestY1}");
+        Note(pack.Packer, "Frontend", "UI",
+            $"00543910 type 0x{pack.Type:X} size {pack.Bytes}");
+        Frontend2dLastType = pack.Type;
+        Frontend2dLastPacker = pack.Packer;
         Frontend2dRecordsQueued++;
     }
 
@@ -4797,20 +4853,37 @@ public sealed class EngineLifecycle : IDisposable
             SeventhDefClass = SeventhDefClassName;
             SeventhDefClassRegistered = true;
         }
-        if (EighthDefClassRegistered)
+        if (!EighthDefClassRegistered)
+        {
+            Note(EighthDefClassSite, "Init Thing Components", "Defs",
+                $"004EF5AD 0044C6B0 {EighthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {EighthDefClassName}");
+            Note(EighthDefClassFactory, "Init Thing Components", "Defs",
+                $"004DAA0E 0044C0C0 size {EighthDefClassSize} vtbl 0x{EighthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {EighthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            EighthDefClass = EighthDefClassName;
+            EighthDefClassRegistered = true;
+        }
+        if (NinthDefClassRegistered)
             return;
-        Note(EighthDefClassSite, "Init Thing Components", "Defs",
-            $"004EF5AD 0044C6B0 {EighthDefClassName}");
+        Note(NinthDefClassSite, "Init Thing Components", "Defs",
+            $"004F0171 0044C6B0 {NinthDefClassName}");
+        Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+            $"0042DAE0 {NinthDefClassName}");
         Note(AddDefClassFn, "Init Thing Components", "Defs",
-            $"009B0AC0 Add Def Class {EighthDefClassName}");
-        Note(EighthDefClassFactory, "Init Thing Components", "Defs",
-            $"004DAA0E 0044C0C0 size {EighthDefClassSize} vtbl 0x{EighthDefClassVtbl:X}");
+            $"009B0AC0 Add Def Class {NinthDefClassName}");
+        Note(NinthDefClassFactory, "Init Thing Components", "Defs",
+            $"004E213B 004DFF04 size 0x{NinthDefClassSize:X} vtbl 0x{NinthDefClassVtbl:X}");
         Note(LoadDefFn, "Init Thing Components", "Defs",
-            $"009AD6E0 {EighthDefClassName}");
+            $"009AD6E0 {NinthDefClassName}");
         Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
             $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
-        EighthDefClass = EighthDefClassName;
-        EighthDefClassRegistered = true;
+        NinthDefClass = NinthDefClassName;
+        NinthDefClassRegistered = true;
     }
 
     /// <summary>

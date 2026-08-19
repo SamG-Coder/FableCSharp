@@ -1,5 +1,6 @@
 using Fable.Core;
 using Fable.Formats.Banks;
+using Fable.Formats.Defs;
 using Fable.Formats.Shaders;
 using Fable.Game;
 using Fable.Render.Parity.Dx9Vulkan;
@@ -139,6 +140,24 @@ public sealed class FrontendDx9SubmitTests
         Assert.Equal(0x00A0AEA0u, FrontendDx9Submit.SpriteDipUpFn);
         Assert.Equal(0x00A058C0u, FrontendDx9Submit.StateFlushFn);
         Assert.Equal(2, Dx9FrontendState.SpriteTextureStages);
+    }
+
+    [Fact]
+    public void Type6_widget_packs_00543910_type_27_not_0041BEB0()
+    {
+        var type6 = FrontendDx9Submit.RecordForWidget(FrontendWidgetType.Text);
+        Assert.Equal(0x00543910u, type6.Packer);
+        Assert.Equal(0x27u, type6.Type);
+        Assert.Equal(64, type6.Bytes);
+        Assert.NotEqual(FrontendDx9Submit.PackerFn, type6.Packer);
+        Assert.NotEqual(FrontendDx9Submit.SpriteRecordType, type6.Type);
+        Assert.NotEqual(FrontendDx9Submit.SpriteRecordBytes, type6.Bytes);
+        var type0 = FrontendDx9Submit.RecordForWidget(FrontendWidgetType.Button);
+        Assert.Equal(0x0041BEB0u, type0.Packer);
+        Assert.Equal(0x22u, type0.Type);
+        Assert.Equal(0xC0, type0.Bytes);
+        Assert.Equal(FrontendDx9Submit.Type6PackerFn, type6.Packer);
+        Assert.Equal(FrontendDx9Submit.GlyphRecordType, type6.Type);
     }
 
     [Fact]

@@ -1183,6 +1183,59 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Thing_Components_004F0178_adds_CVillageDef()
+    {
+        Assert.Equal(0x004F0171u, EngineLifecycle.NinthDefClassSite);
+        Assert.Equal(0x004E213Bu, EngineLifecycle.NinthDefClassFactory);
+        Assert.Equal(0x0042DAE0u, EngineLifecycle.NinthDefClassPackFn);
+        Assert.Equal(0x004DFF04u, EngineLifecycle.NinthDefClassCtor);
+        Assert.Equal(0x01241DDCu, EngineLifecycle.NinthDefClassVtbl);
+        Assert.Equal(0x10C, EngineLifecycle.NinthDefClassSize);
+        Assert.Equal("CVillageDef", EngineLifecycle.NinthDefClassName);
+        Assert.NotEqual(EngineLifecycle.EighthDefClassName, EngineLifecycle.NinthDefClassName);
+        Assert.NotEqual(EngineLifecycle.EighthDefClassFactory, EngineLifecycle.NinthDefClassFactory);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.False(life.NinthDefClassRegistered);
+        Assert.Null(life.NinthDefClass);
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.True(life.EighthDefClassRegistered);
+        Assert.Equal(EngineLifecycle.EighthDefClassName, life.EighthDefClass);
+        Assert.True(life.NinthDefClassRegistered);
+        Assert.Equal(EngineLifecycle.NinthDefClassName, life.NinthDefClass);
+        var eighthFactory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EighthDefClassFactory);
+        var ninthSite = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.NinthDefClassSite);
+        var ninthPack = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.NinthDefClassPackFn);
+        var ninthAdd = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.AddDefClassFn &&
+            e.Action.Contains(EngineLifecycle.NinthDefClassName, StringComparison.Ordinal));
+        var ninthFactory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.NinthDefClassFactory);
+        var ninthLoad = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.LoadDefFn);
+        var ninthBudget = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.LoadDefBudgetFn);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(eighthFactory >= 0 && ninthSite > eighthFactory);
+        Assert.True(ninthPack > ninthSite && ninthAdd > ninthPack);
+        Assert.True(ninthFactory > ninthAdd && ninthLoad > ninthFactory);
+        Assert.True(ninthBudget > ninthLoad);
+        Assert.True(defs > ninthBudget, "CVillageDef before Init Definition Manager");
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.AddDefClassFn &&
+            e.Action.Contains("CTCActionUseSearch", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Init_Definition_Manager_00416005_resets_plus88_via_vtbl8()
     {
         Assert.Equal(0x00416005u, EngineLifecycle.InitDefinitionManagerFn);
@@ -1629,6 +1682,12 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.DisplayFlushLayersFn);
         Assert.True(life.FrontendWidgetsDrawn >= 1);
         Assert.True(life.Frontend2dRecordsQueued >= 1);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == FrontendTextDraw.Type6RecordFn &&
+            e.Action.Contains("0x27", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendWidgetQueueFn &&
+            e.Action.Contains("0041BEB0", StringComparison.Ordinal));
         Assert.Equal(0x0041BEB0u, life.Frontend2dLastPacker);
         Assert.Equal(0, life.FrontendWidgetFont);
         Assert.Contains(life.Trace.Events, e =>
@@ -1710,6 +1769,9 @@ public sealed class EngineLifecycleTests
         Assert.False(string.IsNullOrEmpty(drawn.Text));
         Assert.Equal(0x0054F5C0u, EngineLifecycle.FrontendTextCtorFn);
         Assert.Equal(0x0054EF00u, EngineLifecycle.FrontendTextDrawFn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == FrontendTextDraw.Type6RecordFn &&
+            e.Action.Contains("0x27", StringComparison.Ordinal));
         Assert.Equal(FontFile.UiFace, EngineLifecycle.FrontendUiFontFace);
         Assert.True(life.FrontendEnqueueRan);
         Assert.False(life.Frontend2dDipIssued);

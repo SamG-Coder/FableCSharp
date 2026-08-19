@@ -1,3 +1,5 @@
+using Fable.Formats.Defs;
+
 namespace Fable.Game;
 
 /// <summary>
@@ -80,6 +82,17 @@ public static class FrontendDx9Submit
     public const uint GlyphRecordType = 0x27;
     public const int GlyphRecordBytes = 64;
     public const uint GlyphFaceHelperFn = 0x0054F4B0;
+
+    /// <summary>
+    /// Type-6 packs via <c>00543910</c>
+    /// type <c>0x27</c> size 64.
+    /// Type-0 stays <c>0041BEB0</c>
+    /// type <c>0x22</c> size <c>0xC0</c>.
+    /// </summary>
+    public static (uint Packer, uint Type, int Bytes) RecordForWidget(int widgetType) =>
+        widgetType == FrontendWidgetType.Text
+            ? (Type6PackerFn, GlyphRecordType, GlyphRecordBytes)
+            : (PackerFn, SpriteRecordType, SpriteRecordBytes);
 
     public const int DisplayQueueBeginOffset = 16020;
     public const int DisplayQueueEndOffset = 16024;
