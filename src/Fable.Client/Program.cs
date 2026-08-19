@@ -16,19 +16,11 @@ if (install is null)
 
 using var life = new EngineLifecycle();
 life.BootstrapUntilGraphics(install);
-// FABLE_FORCE_WINDOWED is host convenience.
-// Parity follows life.DeviceWindowed from
-// PE / userst.ini SetFullscreen.
-var forceWindowed = !string.IsNullOrEmpty(
-    Environment.GetEnvironmentVariable("FABLE_FORCE_WINDOWED"));
 var options = WindowOptions.DefaultVulkan with
 {
     Title = life.WindowTitle,
     Size = new Vector2D<int>(life.BackBufferWidth, life.BackBufferHeight),
-    WindowState = EngineLifecycle.HostExclusiveWindow(
-        life.DeviceWindowed, forceWindowed)
-        ? WindowState.Fullscreen
-        : WindowState.Normal,
+    WindowState = SilkHostWindow.DefaultState,
     WindowBorder = WindowBorder.Fixed,
     VSync = true,
 };
@@ -46,6 +38,7 @@ IMouse? mouse = null;
 Vector2 lastMouse = Vector2.Zero;
 var looking = false;
 var f2WasDown = false;
+var enterWasDown = false;
 var lmbWasDown = false;
 var debugFly = false;
 var debugCam = new FlyCamera();
@@ -90,8 +83,15 @@ window.Update += dt =>
     if (keyboard is null)
         return;
 
+    var altDown = keyboard.IsKeyPressed(Key.AltLeft) ||
+                  keyboard.IsKeyPressed(Key.AltRight);
+    var enterDown = keyboard.IsKeyPressed(Key.Enter);
+    if (SilkHostWindow.AltEnterPressed(altDown, enterDown, enterWasDown))
+        window.WindowState = SilkHostWindow.ToggleFullscreen(window.WindowState);
+    enterWasDown = enterDown;
+
     if (!debugFly)
-        SilkNativeInput.QueueKeys(life, keyboard);
+        SilkNativeInput.QueueKeys(life, keyboard, skipEnter: altDown);
 
     var f2Down = keyboard.IsKeyPressed(Key.F2);
     if (f2Down && !f2WasDown)

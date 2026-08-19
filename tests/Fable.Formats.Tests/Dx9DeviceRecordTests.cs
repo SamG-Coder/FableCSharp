@@ -1,3 +1,4 @@
+using Fable.Client;
 using Fable.Dx9;
 using Fable.Game;
 using Fable.Render;
@@ -165,14 +166,21 @@ public sealed class Dx9DeviceRecordTests
     }
 
     [Fact]
-    public void Parity_window_follows_device_windowed()
+    public void Host_os_window_starts_windowed_alt_enter_toggles()
     {
         var life = new EngineLifecycle();
         life.Bootstrap(null);
         Assert.False(life.DeviceWindowed);
-        Assert.True(EngineLifecycle.HostExclusiveWindow(life.DeviceWindowed, false));
-        Assert.False(EngineLifecycle.HostExclusiveWindow(life.DeviceWindowed, true));
-        Assert.False(EngineLifecycle.HostExclusiveWindow(true, false));
+        Assert.Equal(Silk.NET.Windowing.WindowState.Normal, SilkHostWindow.DefaultState);
+        Assert.False(SilkHostWindow.AltEnterPressed(false, true, false));
+        Assert.True(SilkHostWindow.AltEnterPressed(true, true, false));
+        Assert.False(SilkHostWindow.AltEnterPressed(true, true, true));
+        Assert.Equal(
+            Silk.NET.Windowing.WindowState.Fullscreen,
+            SilkHostWindow.ToggleFullscreen(Silk.NET.Windowing.WindowState.Normal));
+        Assert.Equal(
+            Silk.NET.Windowing.WindowState.Normal,
+            SilkHostWindow.ToggleFullscreen(Silk.NET.Windowing.WindowState.Fullscreen));
     }
 
     [Fact]

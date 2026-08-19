@@ -3345,9 +3345,9 @@ public sealed class EngineLifecycle : IDisposable
 
     /// <summary>
     /// Native exclusive is D3D
-    /// <c>![0x137544A]</c>. Host OS
-    /// fullscreen follows that unless
-    /// <paramref name="forceWindowed"/>.
+    /// <c>![0x137544A]</c>. The Silk
+    /// window starts windowed; Alt+Enter
+    /// toggles OS fullscreen.
     /// </summary>
     public static bool HostExclusiveWindow(bool deviceWindowed, bool forceWindowed) =>
         !forceWindowed && !deviceWindowed;

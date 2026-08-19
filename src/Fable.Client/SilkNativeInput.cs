@@ -12,13 +12,14 @@ namespace Fable.Client;
 /// </summary>
 public static class SilkNativeInput
 {
-    public static void QueueKeys(EngineLifecycle life, IKeyboard keyboard)
+    public static void QueueKeys(
+        EngineLifecycle life, IKeyboard keyboard, bool skipEnter = false)
     {
         if (keyboard.IsKeyPressed(Key.Escape))
             life.QueueInput(EngineInput.TypeKey, RegionTravel.PlayAviSkipEscape);
         if (keyboard.IsKeyPressed(Key.Space))
             life.QueueInput(EngineInput.TypeKey, RegionTravel.PlayAviSkipSpace);
-        if (keyboard.IsKeyPressed(Key.Enter))
+        if (!skipEnter && keyboard.IsKeyPressed(Key.Enter))
             life.QueueInput(EngineInput.TypeKey, RegionTravel.PlayAviSkipReturn);
         if (keyboard.IsKeyPressed(Key.F4))
             life.QueueInput(EngineInput.TypeKey, RegionTravel.PlayAviSkipF4);
