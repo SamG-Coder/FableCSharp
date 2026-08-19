@@ -1255,10 +1255,14 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
 
         // 006286F0 BeginScene/blit/EndScene/Present
         // does not draw landscape or fade.
+        // 0042DF9E frontend Present is 2D
+        // (009D9C80 / 009DA9F0). World mesh
+        // and host gizmos are 00435530.
         var playAviOnly = _playAviPump ||
             (_videoReady && _videoPipeline.Handle != 0 && _videoTexture.Set.Handle != 0);
+        var frontendOnly = _frontendReady && !playAviOnly;
 
-        if (!playAviOnly &&
+        if (!playAviOnly && !frontendOnly &&
             ((_meshCount > 0 && _meshBuffer.Handle != 0) ||
              (_objectCount > 0 && _objectBuffer.Handle != 0)))
         {
@@ -1283,7 +1287,8 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             DrawMeshBatches(commandBuffer);
         }
 
-        if (!playAviOnly && ShowGizmos && _vertexCount > 0 && _vertexBuffer.Handle != 0)
+        if (!playAviOnly && !frontendOnly &&
+            ShowGizmos && _vertexCount > 0 && _vertexBuffer.Handle != 0)
         {
             _vk.CmdBindPipeline(commandBuffer, PipelineBindPoint.Graphics, _linePipeline);
             _vk.CmdPushConstants(commandBuffer, _pipelineLayout, ShaderStageFlags.VertexBit, 0, 64, &viewProj);

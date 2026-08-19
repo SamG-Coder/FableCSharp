@@ -8828,6 +8828,11 @@ public sealed class EngineLifecycle : IDisposable
         _frontendSubmitCounts.Clear();
         foreach (var tree in ResidentSlotTrees())
         {
+        // 0052CF40(6) on the old current.
+        // 0052C7E0 style 0x20 zeros dest
+        // so 0041AFA0 submits nothing.
+        if (tree.Count > 0 && tree[0].State == 6)
+            continue;
         var slot = new List<FrontendDx9DrawRecord>();
         var slotCounts = new List<int>(tree.Count);
         for (var i = 0; i < tree.Count; i++)

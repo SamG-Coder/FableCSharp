@@ -111,24 +111,17 @@ window.Update += dt =>
         var pos = mouse.Position;
         var moved = pos.X != lastMouse.X || pos.Y != lastMouse.Y;
         lastMouse = new Vector2(pos.X, pos.Y);
-        // glfwGetCursorPos is window.Size
-        // space. Some DPI backends report
-        // framebuffer pixels instead —
-        // if the cursor is past Size,
-        // use FramebufferSize.
-        var srcW = Math.Max(1, window.Size.X);
-        var srcH = Math.Max(1, window.Size.Y);
-        if (pos.X > srcW + 1 || pos.Y > srcH + 1)
-        {
-            srcW = Math.Max(1, window.FramebufferSize.X);
-            srcH = Math.Max(1, window.FramebufferSize.Y);
-        }
-
+        // 0055BF10 reads input+184 vtbl+64
+        // as dest pixels. 009BEF80 viewport
+        // is the created window size.
         var destW = life.BackBufferWidth > 0 ? life.BackBufferWidth : 1024;
         var destH = life.BackBufferHeight > 0 ? life.BackBufferHeight : 768;
-        life.SetFrontendPointer(
-            pos.X / srcW * destW,
-            pos.Y / srcH * destH);
+        var srcW = Math.Max(1, window.Size.X);
+        var srcH = Math.Max(1, window.Size.Y);
+        if (srcW == destW && srcH == destH)
+            life.SetFrontendPointer(pos.X, pos.Y);
+        else
+            life.SetFrontendPointer(pos.X / srcW * destW, pos.Y / srcH * destH);
         if (moved)
             life.QueueInput(EngineInput.TypeMouse, 0);
         if (lmbDown && !lmbWasDown)
