@@ -17,6 +17,16 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x00401067u, EngineLifecycle.PeEntry);
         Assert.Equal(0x00403480u, EngineLifecycle.WinMain);
         Assert.Equal(0x00402510u, EngineLifecycle.BootstrapFn);
+        Assert.Equal(0x0040138Cu, EngineLifecycle.CrtSehFn);
+        Assert.Equal(0x004012CEu, EngineLifecycle.CrtStaticCtorsFn);
+        Assert.Equal(0x004011E7u, EngineLifecycle.WinMainCallSite);
+        Assert.Equal(0x00BFEA30u, EngineLifecycle.WinMainAllocaFn);
+        Assert.Equal(0x009D86B0u, EngineLifecycle.WinMainZeroFn);
+        Assert.Equal(0x0143FE24u, EngineLifecycle.OpenMutexIat);
+        Assert.Equal(0x0143FE28u, EngineLifecycle.CreateMutexIat);
+        Assert.Equal(@"Global\Fable", EngineLifecycle.MutexName);
+        Assert.Equal(0x1F0001, EngineLifecycle.MutexAccess);
+        Assert.Equal(0x32008, EngineLifecycle.WinMainAllocaSize);
         Assert.NotEqual(RegionTravel.StartOakValeSetup, EngineLifecycle.PeEntry);
         Assert.NotEqual(RegionTravel.StartOakValeSetup, EngineLifecycle.WinMain);
         Assert.NotEqual(0x00DBDE40u, EngineLifecycle.RetailPump);
@@ -132,6 +142,128 @@ public sealed class EngineLifecycleTests
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.Equal(0x009A4EC0u, EngineLifecycle.EngineSingletonGetter);
         Assert.Equal(0x013CA618u, EngineLifecycle.EngineSingletonVa);
+    }
+
+    [Fact]
+    public void Assembly_dump_pe_entry_is_crt_then_winmain()
+    {
+        var dump = AssemblyTextMap.TryLocate();
+        Assert.NotNull(dump);
+
+        Assert.Equal("push 116", dump.Text(EngineLifecycle.PeEntry));
+        Assert.Equal("call 0040138C", dump.Text(0x0040106E));
+        Assert.Equal(EngineLifecycle.CrtSehFn, dump.E8Dest(0x0040106E));
+        Assert.Equal(EngineLifecycle.CrtStaticCtorsFn, dump.E8Dest(0x00401115));
+        Assert.Equal(EngineLifecycle.WinMain, dump.E8Dest(EngineLifecycle.WinMainCallSite));
+        Assert.Equal("call 00403480", dump.Text(EngineLifecycle.WinMainCallSite));
+
+        Assert.Equal("mov eax, 0x32008", dump.Text(EngineLifecycle.WinMain));
+        Assert.Equal("call 00BFEA30", dump.Text(0x00403485));
+        Assert.Equal("call [0x143FE24]", dump.Text(0x004034A2));
+        Assert.Equal("call [0x143FE28]", dump.Text(0x004034B3));
+        Assert.Equal("call 009D86B0", dump.Text(0x004034D6));
+        Assert.Equal("call 00402510", dump.Text(0x004034F1));
+        Assert.Equal("KERNEL32.dll!OpenMutexW", dump.IatName(EngineLifecycle.OpenMutexIat));
+        Assert.Equal("KERNEL32.dll!CreateMutexW", dump.IatName(EngineLifecycle.CreateMutexIat));
+        Assert.Equal("KERNEL32.dll!GetModuleHandleA", dump.IatName(EngineLifecycle.GetModuleHandleIat));
+        Assert.Equal("MSVCR71.dll!__set_app_type", dump.IatName(EngineLifecycle.SetAppTypeIat));
+        Assert.Equal(EngineLifecycle.MutexName, dump.Utf16FromVtbl(EngineLifecycle.MutexNameVa));
+
+        Assert.Equal("sub esp, 0x168", dump.Text(EngineLifecycle.BootstrapFn));
+        foreach (var (name, va) in EngineLifecycle.NamedBootstrapStages)
+            Assert.Equal($"push \"{name}\"", dump.Text(va));
+
+        Assert.Equal("push ebx", dump.Text(EngineLifecycle.ParseCommandLineCtor));
+        Assert.Equal(EngineLifecycle.ParseCommandLineCtor, dump.E8Dest(0x00402553));
+        Assert.Equal(EngineLifecycle.ParseCommandLineScan, dump.E8Dest(0x00402583));
+        Assert.Equal(EngineLifecycle.ParseCommandLineApply, dump.E8Dest(0x0040258A));
+        Assert.Equal(EngineLifecycle.UserstRegisterFn, dump.E8Dest(0x004025A1));
+        Assert.Equal(EngineLifecycle.SetupInstallCopyFn, dump.E8Dest(0x0040262A));
+        Assert.Equal(EngineLifecycle.SetupLanguageFn, dump.E8Dest(0x0040269F));
+        Assert.Equal("push \"English\"", dump.Text(0x00415533));
+        Assert.Equal(EngineLifecycle.LanguagePrefix, dump.Utf16FromVtbl(EngineLifecycle.LanguagePrefixVa));
+        Assert.Equal(EngineLifecycle.LanguageSettingsLeaf, dump.Utf16FromVtbl(EngineLifecycle.LanguageSettingsVa));
+        Assert.Equal("push \"LeftAlignText\"", dump.Text(0x00402774));
+        Assert.Equal("push \"NoHangulWordWrap\"", dump.Text(0x00402794));
+        Assert.Equal("push \"DisableCapsLock\"", dump.Text(0x004027B4));
+        Assert.Equal(EngineLifecycle.LanguageIniFn, dump.E8Dest(0x00402785));
+        Assert.Equal(EngineLifecycle.LanguageIniFn, dump.E8Dest(0x004027A5));
+        Assert.Equal(EngineLifecycle.LanguageIniFn, dump.E8Dest(0x004027C5));
+        Assert.Equal(EngineLifecycle.ApplyLeftAlignFn, dump.E8Dest(0x0040282C));
+        Assert.Equal(EngineLifecycle.ApplyNoHangulFn, dump.E8Dest(0x00402837));
+        Assert.Equal(EngineLifecycle.BankManagerInitFn, dump.E8Dest(0x00402875));
+        Assert.Equal(EngineLifecycle.RegisterRetailBank, dump.E8Dest(0x004028A9));
+        Assert.Equal(EngineLifecycle.EngineSingletonGetter, dump.E8Dest(0x00403325));
+        Assert.Equal(EngineLifecycle.SetupLibrary, dump.E8Dest(0x0040332C));
+        Assert.Equal(EngineLifecycle.FrontendDisplayHelperFn, dump.E8Dest(0x00403346));
+        Assert.Equal(EngineLifecycle.LibraryPostWindowFn, dump.E8Dest(0x0040334D));
+        Assert.Equal(EngineLifecycle.ProbeGraphics, dump.E8Dest(0x00403389));
+        Assert.Equal(EngineLifecycle.RunModes, dump.E8Dest(0x004033C2));
+    }
+
+    [Fact]
+    public void Bootstrap_first_seen_matches_assembly_pe_entry()
+    {
+        var dump = AssemblyTextMap.TryLocate();
+        Assert.NotNull(dump);
+        Assert.Equal("call 00403480", dump.Text(EngineLifecycle.WinMainCallSite));
+
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        var events = life.Trace.Events;
+        var last = -1;
+        foreach (var va in EngineLifecycle.PeEntryFirstSeenVas)
+        {
+            var i = events.FindIndex(last + 1, e => e.Va == va);
+            Assert.True(i > last, $"missing or out of order 0x{va:X8} after {last}");
+            last = i;
+        }
+
+        Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.Equal(EngineStage.StartupVideos, life.Stage);
+        Assert.Equal(EngineMode.RetailFrontend, life.Mode);
+        Assert.False(life.LanguageSettingsLoaded);
+        Assert.Equal((byte)0, life.LeftAlignText);
+        Assert.Equal((byte)0, life.NoHangulWordWrap);
+        Assert.Equal((byte)0, life.DisableCapsLock);
+        Assert.DoesNotContain(events, e =>
+            e.Va == EngineLifecycle.LanguageIniFn && e.Stage == "Setup Language");
+    }
+
+    [Fact]
+    public void Setup_language_004045C0_reads_lang_settings_txt()
+    {
+        var dump = AssemblyTextMap.TryLocate();
+        Assert.NotNull(dump);
+        Assert.Equal(EngineLifecycle.LanguageIniFn, dump.E8Dest(0x00402785));
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var path = Path.Combine(
+            install.DataRoot, "lang", EngineLifecycle.LanguageFolder,
+            EngineLifecycle.LanguageSettingsName);
+        Assert.True(File.Exists(path), path);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        Assert.True(life.LanguageSettingsLoaded);
+        Assert.Equal((byte)0, life.LeftAlignText);
+        Assert.Equal((byte)0, life.NoHangulWordWrap);
+        Assert.Equal((byte)0, life.DisableCapsLock);
+        var events = life.Trace.Events;
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.LanguageIniFn &&
+            e.Action.Contains("LeftAlignText", StringComparison.Ordinal));
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.LanguageIniFn &&
+            e.Action.Contains("NoHangulWordWrap", StringComparison.Ordinal));
+        Assert.Contains(events, e =>
+            e.Va == EngineLifecycle.LanguageIniFn &&
+            e.Action.Contains("DisableCapsLock", StringComparison.Ordinal));
+        Assert.Contains(events, e => e.Va == EngineLifecycle.ApplyLeftAlignFn);
+        Assert.Contains(events, e => e.Va == EngineLifecycle.ApplyNoHangulFn);
+        var bind = events.FindIndex(e =>
+            e.Va == EngineLifecycle.LanguageIniFn && e.Stage == "Setup Language");
+        var apply = events.FindIndex(e => e.Va == EngineLifecycle.ApplyLeftAlignFn);
+        Assert.True(bind >= 0 && apply > bind, "009BC890 after 004045C0");
     }
 
     [Fact]
@@ -2668,8 +2800,11 @@ public sealed class EngineLifecycleTests
         life.Bootstrap(install);
         Assert.Contains(EngineLifecycle.IniSetFullscreenName, life.UserstIniCommands);
         Assert.Contains(EngineLifecycle.IniSetResolutionName, life.UserstIniCommands);
-        Assert.True(life.DeviceWindowed);
-        Assert.Equal(0, life.DisplayWindowFlag);
+        var userstText = File.ReadAllText(userst);
+        var exclusive = userstText.Contains("SetFullscreen(true)", StringComparison.OrdinalIgnoreCase)
+            || userstText.Contains("SetFullscreen(1)", StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(exclusive ? 1 : 0, life.DisplayWindowFlag);
+        Assert.Equal(!exclusive, life.DeviceWindowed);
         Assert.Equal(1024, life.BackBufferWidth);
         Assert.Equal(768, life.BackBufferHeight);
         Assert.Equal(16, life.BackBufferBpp);

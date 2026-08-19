@@ -29,6 +29,57 @@ public sealed class EngineLifecycle : IDisposable
     public const uint PeEntry = 0x00401067;
     public const uint WinMain = 0x00403480;
     public const uint BootstrapFn = 0x00402510;
+    /// <summary>
+    /// Dump listing at <c>00401067</c>, not a
+    /// live <c>Fable.exe</c> attach.
+    /// </summary>
+    public const uint CrtSehFn = 0x0040138C;
+    public const uint CrtStaticCtorsFn = 0x004012CE;
+    public const uint WinMainCallSite = 0x004011E7;
+    public const uint GetModuleHandleIat = 0x0143FE94;
+    public const uint SetAppTypeIat = 0x0144017C;
+    public const int SetAppTypeGui = 2;
+    public const uint WinMainAllocaFn = 0x00BFEA30;
+    public const uint WinMainAllocaUnwindFn = 0x00BFE9F9;
+    public const int WinMainAllocaSize = 0x32008;
+    public const int WinMainScratchSize = 0x32000;
+    public const uint OpenMutexIat = 0x0143FE24;
+    public const uint CreateMutexIat = 0x0143FE28;
+    public const uint MutexNameVa = 0x0122DC28;
+    public const string MutexName = @"Global\Fable";
+    public const int MutexAccess = 0x1F0001;
+    public const uint WinMainZeroFn = 0x009D86B0;
+    public const uint ParseCommandLineCtor = 0x00403B10;
+    public const uint ParseCommandLineScan = 0x00997510;
+    public const uint ParseCommandLineApply = 0x009974F0;
+    public const uint SetupInstallCopyFn = 0x009D5240;
+    public const uint SetupLanguageFn = 0x00415530;
+    public const string LanguageFolder = "English";
+    public const uint LanguagePrefixVa = 0x0122DBA8;
+    public const string LanguagePrefix = @"Data\lang\";
+    public const uint LanguageSettingsVa = 0x0122DBC0;
+    public const string LanguageSettingsLeaf = @"\lang_settings.txt";
+    public const string LanguageSettingsName = "lang_settings.txt";
+    public const string LanguageSettingsRelative =
+        @"Data\lang\English\lang_settings.txt";
+    public const uint LanguageIniFn = 0x004045C0;
+    public const string LanguageLeftAlignName = "LeftAlignText";
+    public const string LanguageNoHangulName = "NoHangulWordWrap";
+    public const string LanguageCapsLockName = "DisableCapsLock";
+    public const uint LeftAlignTextVa = 0x013B861B;
+    public const uint NoHangulWordWrapVa = 0x013B861C;
+    public const uint DisableCapsLockVa = 0x013B864F;
+    public const uint ApplyLeftAlignFn = 0x009BC890;
+    public const uint ApplyNoHangulFn = 0x009BC8A0;
+    public const uint ApplyLeftAlignDestVa = 0x013CA7EA;
+    public const uint ApplyNoHangulDestVa = 0x013CA7EB;
+    public const uint BankManagerInitFn = 0x009A76D0;
+    /// <summary>
+    /// After <c>009A6610</c>: HWND
+    /// <c>[engine+148]</c> → <c>00404A80</c>
+    /// then <c>00405650</c>.
+    /// </summary>
+    public const uint LibraryPostWindowFn = 0x00405650;
     public const uint SetupLibrary = 0x009A6610;
     public const uint EngineSingletonVa = 0x013CA618;
     public const uint EngineSingletonGetter = 0x009A4EC0;
@@ -706,6 +757,52 @@ public sealed class EngineLifecycle : IDisposable
         ("Setup basic retail banks", 0x00402845),
         ("Setup library", 0x00403079),
         ("End basic init", 0x00403354),
+    ];
+
+    /// <summary>
+    /// First-seen dump calls from PE
+    /// <c>00401067</c> through
+    /// <c>00412F90</c> RunModes.
+    /// Host <see cref="Bootstrap"/> must
+    /// Note these VAs in this order.
+    /// Extra notes in between are allowed.
+    /// </summary>
+    public static uint[] PeEntryFirstSeenVas =>
+    [
+        PeEntry,
+        CrtSehFn,
+        GetModuleHandleIat,
+        SetAppTypeIat,
+        CrtStaticCtorsFn,
+        WinMainCallSite,
+        WinMain,
+        WinMainAllocaFn,
+        OpenMutexIat,
+        CreateMutexIat,
+        WinMainZeroFn,
+        BootstrapFn,
+        NamedBootstrapStages[0].Va,
+        ParseCommandLineCtor,
+        ParseCommandLineScan,
+        ParseCommandLineApply,
+        UserstRegisterFn,
+        NamedBootstrapStages[1].Va,
+        SetupInstallCopyFn,
+        NamedBootstrapStages[2].Va,
+        SetupLanguageFn,
+        ApplyLeftAlignFn,
+        ApplyNoHangulFn,
+        NamedBootstrapStages[3].Va,
+        BankManagerInitFn,
+        RegisterRetailBank,
+        NamedBootstrapStages[4].Va,
+        EngineSingletonGetter,
+        SetupLibrary,
+        FrontendDisplayHelperFn,
+        LibraryPostWindowFn,
+        NamedBootstrapStages[5].Va,
+        ProbeGraphics,
+        RunModes,
     ];
 
     /// <summary>
@@ -2464,6 +2561,22 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public byte DisplayWindowFlag { get; private set; } = DisplayWindowFlagFirstSeen;
     /// <summary>
+    /// <c>[0x13B861B]</c> then
+    /// <c>009BC890</c> <c>[0x13CA7EA]</c>.
+    /// </summary>
+    public byte LeftAlignText { get; private set; }
+    /// <summary>
+    /// <c>[0x13B861C]</c> then
+    /// <c>009BC8A0</c> <c>[0x13CA7EB]</c>.
+    /// </summary>
+    public byte NoHangulWordWrap { get; private set; }
+    /// <summary>
+    /// <c>[0x13B864F]</c>. File miss keeps
+    /// the <c>004045C0</c> scratch 0.
+    /// </summary>
+    public byte DisableCapsLock { get; private set; }
+    public bool LanguageSettingsLoaded { get; private set; }
+    /// <summary>
     /// <c>009BF7E0</c> <c>[ebp+572] = ![ebx+28]</c>.
     /// </summary>
     public bool DeviceWindowed { get; private set; }
@@ -3167,20 +3280,66 @@ public sealed class EngineLifecycle : IDisposable
         hardwareTnl ? CreateDeviceHardwareFlags : CreateDeviceSoftwareFlags;
 
     /// <summary>
-    /// CRT <c>00401067</c> → WinMain <c>00403480</c>
-    /// → named stages in <c>00402510</c> through
-    /// <c>End basic init</c>. Does not enter
-    /// <c>00DBDE40</c>.
+    /// Dump listing from PE <c>00401067</c>:
+    /// CRT → WinMain <c>00403480</c> →
+    /// named stages in <c>00402510</c>
+    /// through <c>00412F90</c>. Does not
+    /// enter <c>00DBDE40</c>. Native
+    /// RunModes blocks; host returns here
+    /// and <see cref="Pump"/> steps the
+    /// retail loop.
     /// </summary>
     public void Bootstrap(GameInstall? install)
     {
         var boot = System.Diagnostics.Stopwatch.StartNew();
         Install = install;
+        RunCrtStartup();
+        RunWinMain();
+        Timing.Add("bootstrap", boot.Elapsed.TotalMilliseconds, Stage.ToString());
+    }
+
+    /// <summary>
+    /// Listing <c>00401067</c> MSVCR71
+    /// WinMainCRTStartup. Host does not
+    /// run the CRT heap; it Notes the
+    /// dump IAT/E8 then enters WinMain.
+    /// </summary>
+    private void RunCrtStartup()
+    {
         Note(PeEntry, "ProcessEntry", "CRT", "WinMainCRTStartup");
         Stage = EngineStage.CrtStartup;
-        Note(WinMain, "WinMain", "App", "CreateMutex then 00402510");
-        Stage = EngineStage.WinMain;
+        Note(CrtSehFn, "ProcessEntry", "CRT", "0040138C");
+        Note(GetModuleHandleIat, "ProcessEntry", "CRT", "GetModuleHandleA");
+        Note(SetAppTypeIat, "ProcessEntry", "CRT",
+            $"__set_app_type({SetAppTypeGui})");
+        Note(CrtStaticCtorsFn, "ProcessEntry", "CRT", "004012CE");
+        Note(WinMainCallSite, "ProcessEntry", "CRT", "004011E7 call 00403480");
+    }
 
+    /// <summary>
+    /// Listing <c>00403480</c>: alloca,
+    /// OpenMutexW miss, CreateMutexW
+    /// <c>Global\Fable</c>, zero scratch,
+    /// <c>00402510</c>.
+    /// </summary>
+    private void RunWinMain()
+    {
+        Note(WinMain, "WinMain", "App", "00403480");
+        Stage = EngineStage.WinMain;
+        Note(WinMainAllocaFn, "WinMain", "App",
+            $"00BFEA30 alloca 0x{WinMainAllocaSize:X}");
+        Note(OpenMutexIat, "WinMain", "App",
+            $"OpenMutexW {MutexName} 0x{MutexAccess:X} miss");
+        Note(CreateMutexIat, "WinMain", "App",
+            $"CreateMutexW {MutexName}");
+        Note(WinMainZeroFn, "WinMain", "App",
+            $"009D86B0 0x{WinMainScratchSize:X}");
+        Note(BootstrapFn, "WinMain", "App", "00402510");
+        RunNamedBootstrap();
+    }
+
+    private void RunNamedBootstrap()
+    {
         foreach (var (name, va) in NamedBootstrapStages)
         {
             Stage = name switch
@@ -3195,11 +3354,32 @@ public sealed class EngineLifecycle : IDisposable
             };
             Note(va, name, "Bootstrap", name);
             if (name == "Parse Command Line")
+            {
+                Note(ParseCommandLineCtor, name, "Cmd", "00403B10");
+                Note(ParseCommandLineScan, name, "Cmd", "00997510");
+                Note(ParseCommandLineApply, name, "Cmd", "009974F0");
                 ApplyUserstIni();
+            }
+
+            if (name == "Setup Basic install files")
+                Note(SetupInstallCopyFn, name, "Install", "009D5240");
+            if (name == "Setup Language")
+                ApplyLanguageSettings();
             if (name == "Setup basic retail banks")
-                RegisterRetailBankTable(install);
+            {
+                Note(BankManagerInitFn, name, "Bank",
+                    "009A76D0 [0x13CA79C]");
+                RegisterRetailBankTable(install: Install);
+            }
+
             if (name == "Setup library")
+            {
                 ConstructLibrary();
+                Note(FrontendDisplayHelperFn, name, "Window",
+                    "00404A80 [engine+148]");
+                Note(LibraryPostWindowFn, name, "Window", "00405650");
+            }
+
             _completed.Add(name);
         }
 
@@ -3214,7 +3394,6 @@ public sealed class EngineLifecycle : IDisposable
             ApplyPlayAviSlot(StartupVideos[0]);
         else
             Note(FrontendIntern, "Frontend", "FRONT_END", "skip videos");
-        Timing.Add("bootstrap", boot.Elapsed.TotalMilliseconds, Stage.ToString());
     }
 
     /// <summary>
@@ -4674,6 +4853,105 @@ public sealed class EngineLifecycle : IDisposable
 
         Note(IniUnknownFn, stage, "Ini",
             "009EB260 unknown input - " + name);
+    }
+
+    /// <summary>
+    /// <c>00415530</c> folder
+    /// <c>English</c>, join
+    /// <c>Data\lang\</c> +
+    /// <c>\lang_settings.txt</c>.
+    /// <c>00999230</c> hit loads
+    /// <c>004045C0</c> bools into
+    /// <c>[0x13B861B]</c> /
+    /// <c>[0x13B861C]</c> /
+    /// <c>[0x13B864F]</c>. Miss
+    /// skips the binds. Always
+    /// <c>009BC890</c> /
+    /// <c>009BC8A0</c>.
+    /// </summary>
+    private void ApplyLanguageSettings()
+    {
+        Note(SetupLanguageFn, "Setup Language", "Lang",
+            "00415530 " + LanguageFolder);
+        Note(LanguagePrefixVa, "Setup Language", "Lang",
+            LanguagePrefix + LanguageFolder + LanguageSettingsLeaf);
+        string? path = null;
+        if (Install is not null)
+            path = Path.Combine(
+                Install.DataRoot, "lang", LanguageFolder, LanguageSettingsName);
+        if (path is null || !File.Exists(path))
+        {
+            Note(FileExistsFn, "Setup Language", "Lang",
+                "00999230 " + LanguageSettingsRelative + " miss");
+        }
+        else
+        {
+            LanguageSettingsLoaded = true;
+            Note(FileExistsFn, "Setup Language", "Lang",
+                "00999230 " + LanguageSettingsRelative);
+            var values = ReadLangSettings(path);
+            LeftAlignText = BindLanguageBool(
+                LanguageLeftAlignName, LeftAlignTextVa, values);
+            NoHangulWordWrap = BindLanguageBool(
+                LanguageNoHangulName, NoHangulWordWrapVa, values);
+            DisableCapsLock = BindLanguageBool(
+                LanguageCapsLockName, DisableCapsLockVa, values);
+        }
+
+        Note(ApplyLeftAlignFn, "Setup Language", "Lang",
+            $"009BC890 [0x{LeftAlignTextVa:X}]={LeftAlignText} " +
+            $"[0x{ApplyLeftAlignDestVa:X}]");
+        Note(ApplyNoHangulFn, "Setup Language", "Lang",
+            $"009BC8A0 [0x{NoHangulWordWrapVa:X}]={NoHangulWordWrap} " +
+            $"[0x{ApplyNoHangulDestVa:X}]");
+    }
+
+    private byte BindLanguageBool(
+        string name, uint destVa, Dictionary<string, string> values)
+    {
+        var value = (byte)0;
+        if (values.TryGetValue(name, out var arg) && !ParseIniFalse(arg))
+            value = 1;
+        Note(LanguageIniFn, "Setup Language", "Lang",
+            $"004045C0 \"{name}\" [0x{destVa:X}]={value}");
+        return value;
+    }
+
+    private static Dictionary<string, string> ReadLangSettings(string path)
+    {
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var raw in File.ReadAllLines(path))
+        {
+            var line = raw.Trim().TrimEnd(';');
+            if (line.Length == 0 || line[0] is ';' or '/' or '#')
+                continue;
+            string name;
+            var arg = "";
+            var paren = line.IndexOf('(');
+            if (paren > 0)
+            {
+                name = line[..paren];
+                var close = line.LastIndexOf(')');
+                if (close > paren)
+                    arg = line[(paren + 1)..close].Trim().Trim('"');
+            }
+            else
+            {
+                var space = line.IndexOfAny([' ', '\t']);
+                if (space < 0)
+                    name = line;
+                else
+                {
+                    name = line[..space];
+                    arg = line[(space + 1)..].Trim();
+                }
+            }
+
+            if (name.Length > 0)
+                map[name] = arg;
+        }
+
+        return map;
     }
 
     /// <summary>

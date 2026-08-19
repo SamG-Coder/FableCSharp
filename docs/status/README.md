@@ -166,7 +166,7 @@ written — do not re-file. Resident slots 0 / `0x14` /
 
 | Item | Status | Evidence |
 |---|---|---|
-| Launch from PE `00401067` / WinMain `00403480` / bootstrap `00402510` | PROVEN | `EngineLifecycleTests.Pe_entry_is_crt_not_new_game` |
+| Launch from PE `00401067` / WinMain `00403480` / bootstrap `00402510` | PROVEN | `EngineLifecycleTests.Pe_entry_is_crt_not_new_game`, dump listing `Assembly_dump_pe_entry_is_crt_then_winmain`, host order `Bootstrap_first_seen_matches_assembly_pe_entry` |
 | New Game is leave-frontend → `FinalAlbion.wld` → Init Game `004184BD` | PROVEN | same + `New_game_is_leave_frontend_then_FinalAlbion_wld` |
 | Init World Map `005066E0`; Load `.wld` `00507C30` token switch | PROVEN | `Load_wld_is_00507C30_not_00DBDE40` |
 | Region graph `00506D40` / `00828710` | PROVEN | `Install_banks_and_startup_videos_exist` |

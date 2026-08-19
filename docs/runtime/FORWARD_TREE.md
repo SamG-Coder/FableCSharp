@@ -4,10 +4,12 @@ This is the **executable walk**, not a name search.
 
 Every node is an `E8` / vtbl slot recovered with
 `tools/Fable.ExeIndex`. Dump the whole `.text` once
-(`map-text`) and grep `out/01-sections/text-map/`
+(`map-text`) into gitignored `assembly/exe` and grep
+`assembly/exe/01-sections/text-map/`
 (`e8.tsv`, `listing-*.txt`). Do not `fn` one VA.
 Do not add a function because a string looks related.
 Do not start at `00DBDE40` / `StartOakVale`.
+Do not attach a live `Fable.exe`; the listing is the walk.
 
 **No-save New Game path is the default retail branch:**
 `[0x13B8648]=0`, `[0x13B8605]=0`, `[0x13B8642]=0`,
@@ -28,10 +30,10 @@ Statuses:
 From the repo root, against TLC `Fable.exe`:
 
 ```text
-dotnet run --project tools/Fable.ExeIndex -- map-text
+dotnet run --project tools/Fable.ExeIndex -- --force --out assembly/exe map-text
 ```
 
-Grep `out/01-sections/text-map/e8.tsv` and
+Grep `assembly/exe/01-sections/text-map/e8.tsv` and
 `listing-*.txt`. `fn` / `vtbl` only if a chunk is
 misaligned.
 
@@ -89,17 +91,20 @@ flowchart TD
 ## 1. Process entry
 
 ```
-00401067  PE entry / CRT  PROVEN
+00401067  PE entry / CRT  PROVEN  listing-00400000.txt
 ├── 0040138C  SEH frame
+├── IAT GetModuleHandleA [0x143FE94]
+├── IAT __set_app_type(2) [0x144017C]
 ├── 004012CE  static ctors
 ├── 00401377  nop
 ├── 0040135C  heap range
 ├── 00401356  IAT
 ├── 004012BC  atexit wrapper
-└── 00403480  WinMain  PROVEN
+└── 00403480  WinMain  PROVEN  004011E7
     ├── 00BFEA30  alloca 0x32008
-    ├── [0x143FE24] / [0x143FE28]  mutex "Fable" (IAT)
-    ├── 009D86B0  zero scratch
+    ├── OpenMutexW [0x143FE24] "Global\Fable" 0x1F0001
+    ├── CreateMutexW [0x143FE28]  first instance
+    ├── 009D86B0  zero 0x32000
     ├── 00402510  bootstrap  PROVEN
     └── 00BFE9F9  alloca unwind
 ```
@@ -127,8 +132,15 @@ Named stages are **push string then work**. Order is the file order.
 │   ├── 00404440
 │   └── 009D5240
 ├── "Setup Language"              0040266F
-│   ├── 00415530
-│   └── 004045C0  LeftAlignText / NoHangulWordWrap / DisableCapsLock
+│   ├── 00415530  "English"
+│   ├── Data\lang\ + English + \lang_settings.txt
+│   ├── 00999230  TLC hit  Data\lang\English\lang_settings.txt
+│   ├── 004045C0  LeftAlignText → [0x13B861B]
+│   │             NoHangulWordWrap → [0x13B861C]
+│   │             DisableCapsLock → [0x13B864F]
+│   │     file FALSE / FALSE / missing  scratch 0
+│   └── 009BC890 / 009BC8A0  [0x13CA7EA] / [0x13CA7EB]
+│       (always; miss path still copies BSS 0)
 ├── "Setup basic retail banks"    00402845
 │   ├── 009A76D0  bank manager [0x13CA79C]
 │   └── 009A8150  register pair
