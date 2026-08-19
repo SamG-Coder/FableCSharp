@@ -3,6 +3,9 @@ namespace Fable.ExeIndex;
 /// <summary>
 /// 32-bit x86 decoder for Fable.exe. Length must be correct: a missed
 /// <c>0F B7</c> / <c>F6</c> / x87 used to emit <c>db</c> then a fake <c>ret</c>.
+/// Function starts are frame prologues or INT3-padded thiscall
+/// (<c>56 8B F1</c>), not every mid-body <c>push esi; mov esi, ecx</c>.
+/// Do not decode <c>0x8E</c> (that hides a mid-instruction dump).
 /// </summary>
 internal static class X86
 {
@@ -21,7 +24,8 @@ internal static class X86
 
     /// <summary>
     /// Walk one function: keep going past an early <c>ret</c>, but stop at
-    /// INT3 padding or the next <c>push ebp / mov ebp, esp</c> prologue.
+    /// INT3 padding or the next function start (frame or INT3-padded
+    /// thiscall). Mid-body <c>push esi; mov esi, ecx</c> is not a start.
     /// </summary>
     public static List<Step> WalkFunction(PeImage pe, int fileOffset, int maxInsns)
     {
@@ -39,7 +43,7 @@ internal static class X86
                 break;
             }
 
-            if (IsFramePrologue(d, file))
+            if (IsFunctionStart(d, file))
             {
                 keep = i;
                 break;
@@ -77,7 +81,7 @@ internal static class X86
         {
             var start = ip;
             var look = ip;
-            while (look < d.Length && d[look] is 0x66 or 0xF2 or 0xF3 or 0xF0 or 0x64 or 0x65 or 0x26 or 0x2E or 0x36 or 0x3E)
+            while (look < d.Length && d[look] is 0x66 or 0x67 or 0xF2 or 0xF3 or 0xF0 or 0x64 or 0x65 or 0x26 or 0x2E or 0x36 or 0x3E)
                 look++;
             uint? call = null;
             if (look + 5 <= d.Length && d[look] == 0xE8)
@@ -112,11 +116,38 @@ internal static class X86
     }
 
     /// <summary>
+    /// If <paramref name="file"/> sits inside an instruction, return the
+    /// start of that instruction. Used by <c>disasm</c> / <c>fn --exact</c>
+    /// so a ModRM VA does not dump <c>db</c> then a fake stream.
+    /// Does not treat the snap as a function entry.
+    /// </summary>
+    public static int FindInsnStart(PeImage pe, int file)
+    {
+        if (file < 0 || file >= pe.Data.Length)
+            return file;
+        var ip = file;
+        if (TryDecode(pe, ref ip, out _) && ip > file)
+            return file;
+        var lo = Math.Max(0, file - 15);
+        for (var start = file - 1; start >= lo; start--)
+        {
+            ip = start;
+            if (!TryDecode(pe, ref ip, out _))
+                continue;
+            if (start <= file && file < ip)
+                return start;
+        }
+
+        return file;
+    }
+
+    /// <summary>
     /// Standard <c>push ebp; mov ebp, esp</c>, MSVC large-frame
-    /// <c>push ebp; lea ebp, [esp+disp]</c>, or the first non-INT3 byte
-    /// after padding. Stops at INT3 so a mid-function VA does not walk
-    /// into the previous function (PALSKIN bind <c>00BD3070</c> is
-    /// <c>lea ebp</c>, not <c>mov ebp, esp</c>).
+    /// <c>push ebp; lea ebp, [esp+disp]</c>, INT3-padded thiscall, or
+    /// the first non-INT3 byte after padding. Stops at INT3 so a
+    /// mid-function VA does not walk into the previous function
+    /// (PALSKIN bind <c>00BD3070</c> is <c>lea ebp</c>, not
+    /// <c>mov ebp, esp</c>).
     /// </summary>
     public static int FindPrologue(PeImage pe, int from, int maxBack = 16384)
     {
@@ -124,7 +155,7 @@ internal static class X86
         var lo = Math.Max(0, from - maxBack);
         for (var i = from; i >= lo + 2; i--)
         {
-            if (IsFramePrologue(data, i))
+            if (IsFunctionStart(data, i))
                 return i;
             // Two INT3s — a lone 0xCC is often a displacement (PALSKIN
             // `mov edx, [eax+0x3CC]` at 00BD41E4 is not a function start).
@@ -164,6 +195,54 @@ internal static class X86
         return i + 4 < data.Length && data[i + 2] == 0xAC && data[i + 3] == 0x24;
     }
 
+    /// <summary>
+    /// MSVC thiscall: keep <c>ecx</c> in esi/ebx/edi. Do not use as a
+    /// start unless <see cref="IsFunctionStart"/> saw INT3 padding —
+    /// the same bytes appear mid-body.
+    /// </summary>
+    public static bool IsThiscallPrologue(byte[] data, int i)
+    {
+        if (i + 2 >= data.Length)
+            return false;
+        // push esi; mov esi, ecx
+        if (data[i] == 0x56 && data[i + 1] == 0x8B && data[i + 2] == 0xF1)
+            return true;
+        // push ebx; mov ebx, ecx
+        if (data[i] == 0x53 && data[i + 1] == 0x8B && data[i + 2] == 0xD9)
+            return true;
+        // push edi; mov edi, ecx
+        if (data[i] == 0x57 && data[i + 1] == 0x8B && data[i + 2] == 0xF9)
+            return true;
+        // push ebx; push esi; mov esi, ecx
+        return i + 3 < data.Length
+            && data[i] == 0x53 && data[i + 1] == 0x56
+            && data[i + 2] == 0x8B && data[i + 3] == 0xF1;
+    }
+
+    /// <summary>
+    /// MSVC <c>/hotpatch</c> two-byte nop <c>mov edi, edi</c> then a
+    /// real prologue.
+    /// </summary>
+    public static bool IsHotpatchPrefix(byte[] data, int i) =>
+        i + 1 < data.Length && data[i] == 0x8B && data[i + 1] == 0xFF;
+
+    /// <summary>
+    /// Frame prologue, or INT3-padded thiscall / hotpatch. A lone
+    /// mid-body <c>56 8B F1</c> is not a start.
+    /// </summary>
+    public static bool IsFunctionStart(byte[] data, int i)
+    {
+        if (IsFramePrologue(data, i))
+            return true;
+        if (i <= 0 || data[i - 1] != 0xCC)
+            return false;
+        if (IsThiscallPrologue(data, i))
+            return true;
+        if (IsHotpatchPrefix(data, i) && i + 2 < data.Length)
+            return IsFramePrologue(data, i + 2) || IsThiscallPrologue(data, i + 2);
+        return false;
+    }
+
     public static int FindImmInsn(PeImage pe, int immSite)
     {
         var data = pe.Data;
@@ -187,6 +266,7 @@ internal static class X86
         {
             var p = d[ip];
             if (p == 0x66) { opsize16 = true; ip++; continue; }
+            if (p == 0x67) { ip++; continue; }
             if (p == 0xF3) { rep = "rep "; ip++; continue; }
             if (p == 0xF2) { rep = "repne "; ip++; continue; }
             if (p is 0xF0 or 0x64 or 0x65 or 0x26 or 0x2E or 0x36 or 0x3E) { ip++; continue; }
@@ -292,6 +372,8 @@ internal static class X86
             case 0x7F: return Rel8(pe, ref ip, "jg", out text);
             case 0x80: return AluImm(pe, d, ref ip, immBytes: 1, r8: true, out text);
             case 0x81: return AluImm(pe, d, ref ip, immBytes: opsize16 ? 2 : 4, r8: false, out text);
+            // 32-bit alias of 80 (ALU r/m8, imm8). Invalid in 64-bit.
+            case 0x82: return AluImm(pe, d, ref ip, immBytes: 1, r8: true, out text);
             case 0x83: return AluImm(pe, d, ref ip, 1, false, out text, signed8: true);
             case 0x84: return ModRm(pe, d, ref ip, "test", rmFirst: true, out text, r8: true);
             case 0x85: return ModRm(pe, d, ref ip, "test", rmFirst: true, out text);
@@ -302,6 +384,9 @@ internal static class X86
             case 0x8A: return ModRm(pe, d, ref ip, "mov", rmFirst: false, out text, r8: true);
             case 0x8B: return ModRm(pe, d, ref ip, "mov", rmFirst: false, out text);
             case 0x8D: return Lea(pe, d, ref ip, out text);
+            // 0x8E is MOV Sreg,r/m. Do not decode: a mid-instruction
+            // VA (ModRM of lea) must stay db so the dump does not
+            // pretend it was a segment move.
             case 0x8F: return Unary(pe, d, ref ip, "pop", out text);
             case 0x90: text = "nop"; return true;
             case 0x91: case 0x92: case 0x93:
@@ -313,6 +398,8 @@ internal static class X86
             case 0x9B: text = "wait"; return true;
             case 0x9C: text = "pushfd"; return true;
             case 0x9D: text = "popfd"; return true;
+            case 0x9E: text = "sahf"; return true;
+            case 0x9F: text = "lahf"; return true;
             case 0xA0: return Moffs(pe, d, ref ip, "mov al", store: false, out text);
             case 0xA1: return Moffs(pe, d, ref ip, opsize16 ? "mov ax" : "mov eax", store: false, out text);
             case 0xA2: return Moffs(pe, d, ref ip, "mov", store: true, out text, "al");
@@ -349,6 +436,11 @@ internal static class X86
                 return true;
             case 0xC6: return MovImm(pe, d, ref ip, imm32: false, out text);
             case 0xC7: return MovImm(pe, d, ref ip, imm32: !opsize16, out text);
+            case 0xC8:
+                if (ip + 3 > d.Length) return false;
+                text = $"enter {BitConverter.ToUInt16(d, ip)}, {d[ip + 2]}";
+                ip += 3;
+                return true;
             case 0xC9: text = "leave"; return true;
             case 0xCC: text = "int3"; return true;
             case 0xCD:
@@ -371,8 +463,11 @@ internal static class X86
             case 0xEB: return Rel8(pe, ref ip, "jmp", out text);
             case 0xF6: return F6F7(pe, d, ref ip, wide: false, out text);
             case 0xF7: return F6F7(pe, d, ref ip, wide: !opsize16, out text);
+            case 0xF5: text = "cmc"; return true;
             case 0xF8: text = "clc"; return true;
             case 0xF9: text = "stc"; return true;
+            case 0xFA: text = "cli"; return true;
+            case 0xFB: text = "sti"; return true;
             case 0xFC: text = "cld"; return true;
             case 0xFD: text = "std"; return true;
             case 0xFE: return IncDec(pe, d, ref ip, out text);

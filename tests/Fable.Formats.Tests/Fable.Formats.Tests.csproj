@@ -23,6 +23,7 @@
     <ProjectReference Include="..\..\src\Fable.Formats\Fable.Formats.csproj" />
     <ProjectReference Include="..\..\src\Fable.Game\Fable.Game.csproj" />
     <ProjectReference Include="..\..\src\Fable.Render\Fable.Render.csproj" />
+    <ProjectReference Include="..\..\tools\Fable.ExeIndex\Fable.ExeIndex.csproj" />
   </ItemGroup>
 
 </Project>

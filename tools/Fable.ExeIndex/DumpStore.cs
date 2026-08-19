@@ -23,7 +23,7 @@ internal sealed class DumpStore
     public const int PlayAviPresentVersion = 2;
     public const int PlayAviTimelineVersion = 10;
     public const int FrontendTraceVersion = 1;
-    public const int TextMapVersion = 2;
+    public const int TextMapVersion = 3;
 
     private static readonly JsonSerializerOptions JsonOptions = new()
     {

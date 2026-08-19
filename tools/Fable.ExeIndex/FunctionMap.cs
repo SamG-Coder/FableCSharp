@@ -638,7 +638,7 @@ internal static class FunctionMap
             var end = Math.Min(data.Length, (int)(sec.FileOffset + sec.FileSize) - 4);
             for (var i = (int)sec.FileOffset; i < end; i++)
             {
-                if (X86.IsFramePrologue(data, i))
+                if (X86.IsFunctionStart(data, i))
                     starts.Add(pe.Va(i));
             }
         }
@@ -712,7 +712,7 @@ internal static class FunctionMap
             {
                 if (!pe.InCode(i))
                     continue;
-                if (X86.IsFramePrologue(data, i))
+                if (X86.IsFunctionStart(data, i))
                 {
                     var va = pe.Va(i);
                     if (InNewGameRange(va))

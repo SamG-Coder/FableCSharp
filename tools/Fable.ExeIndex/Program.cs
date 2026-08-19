@@ -605,6 +605,17 @@ static void RunDisasm(PeImage pe, string[] args)
         return;
     }
 
+    var raw = args.Any(a => a is "--raw");
+    if (!raw)
+    {
+        var aligned = X86.FindInsnStart(pe, file);
+        if (aligned != file)
+        {
+            Console.WriteLine($"disasm  snapped 0x{pe.Va(aligned):X8} from 0x{va:X8}");
+            file = aligned;
+        }
+    }
+
     foreach (var line in X86.Disassemble(pe, file, n))
         Console.WriteLine(line);
 }
@@ -631,7 +642,18 @@ static void RunFn(PeImage pe, string[] args)
     }
 
     var exact = args.Any(a => a is "--exact");
+    var raw = args.Any(a => a is "--raw");
     var startFile = exact ? file : X86.FindPrologue(pe, file);
+    if (exact && !raw)
+    {
+        var aligned = X86.FindInsnStart(pe, startFile);
+        if (aligned != startFile)
+        {
+            Console.WriteLine($"fn  snapped 0x{pe.Va(aligned):X8} from 0x{va:X8}  (not a function entry)");
+            startFile = aligned;
+        }
+    }
+
     var startVa = pe.Va(startFile);
     var steps = X86.WalkFunction(pe, startFile, n);
     Console.WriteLine($"fn  0x{startVa:X8}  insns={steps.Count}  from 0x{va:X8}{(exact ? "  exact" : "")}");
@@ -2419,7 +2441,7 @@ static void RunMapText(PeImage pe, DumpStore store)
 
         insnCount++;
         var file = pe.FileOffset(step.Va);
-        if (file >= 0 && X86.IsFramePrologue(pe.Data, file))
+        if (file >= 0 && X86.IsFunctionStart(pe.Data, file))
         {
             FlushFn();
             fnVa = step.Va;
