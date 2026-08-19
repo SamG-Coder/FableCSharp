@@ -451,11 +451,14 @@ public sealed class EngineLifecycleTests
         Assert.Equal(10, profile.Type);
         Assert.Equal(0, profile.MessageId);
         Assert.Equal(6, kept.State);
-        Assert.Equal(0, profile.State);
+        Assert.Equal(5, profile.State);
         Assert.Equal(0x0052CF40u, FrontendWidgetType.SelectStateFn);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == FrontendWidgetType.SelectStateFn &&
             e.Action.Contains("+332=6", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == FrontendWidgetType.SelectStateFn &&
+            e.Action.Contains("+332=5", StringComparison.Ordinal));
         Assert.Equal(
             new[]
             {
@@ -540,6 +543,39 @@ public sealed class EngineLifecycleTests
         Assert.DoesNotContain(life.FrontendWidgets, w =>
             w.Type == 10 &&
             w.MessageId == EngineLifecycle.FrontendPressStartMessage);
+    }
+
+    [Fact]
+    public void Init_Fonts_004168DC_stores_ENG_ARIAL_18_at_game_plus90444()
+    {
+        Assert.Equal(0x004168DCu, EngineLifecycle.InitFontsFn);
+        Assert.Equal(0x009E2C80u, EngineLifecycle.GameFontLookupFn);
+        Assert.Equal(0x00419463u, EngineLifecycle.GameFontStoreFn);
+        Assert.Equal(90444, EngineLifecycle.GameFontOffset);
+        Assert.Equal("ENG_ARIAL_18", EngineLifecycle.GameFontFaceName);
+        Assert.NotEqual(FontFile.UiFace, EngineLifecycle.GameFontFaceName);
+        Assert.NotEqual(FontFile.PersistType6Face, EngineLifecycle.GameFontFaceName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.Null(life.GameFontFace);
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.Equal(FontFile.GameFace, life.GameFontFace);
+        var graphics = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.InitGraphicsFn);
+        var fonts = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.InitFontsFn);
+        var subtitled = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Subtitled Message");
+        Assert.True(graphics >= 0 && fonts > graphics);
+        Assert.True(subtitled > fonts);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.GameFontLookupFn &&
+            e.Action.Contains("ENG_ARIAL_18", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
     }
 
     [Fact]
@@ -1952,8 +1988,18 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x0041735Au, EngineLifecycle.InitWorldFn);
         Assert.Equal(0x004166A8u, EngineLifecycle.CreatePlayersFn);
         Assert.Equal(0x00416C8Au, EngineLifecycle.InitGraphicsFn);
-        Assert.Equal(12, EngineLifecycle.InitGameStages.Length);
-        Assert.Equal("Init World", EngineLifecycle.InitGameStages[7].Stage);
+        Assert.Equal(13, EngineLifecycle.InitGameStages.Length);
+        Assert.Equal("Init Fonts", EngineLifecycle.InitGameStages[3].Stage);
+        Assert.Equal("Init World", EngineLifecycle.InitGameStages[8].Stage);
+        Assert.Equal(FontFile.InitFontsFn, EngineLifecycle.InitFontsFn);
+        Assert.Equal(FontFile.GameFace, life.GameFontFace);
+        Assert.Equal(90444, EngineLifecycle.GameFontOffset);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.InitFontsFn &&
+            e.Action.Contains("Init Fonts", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.GameFontStoreFn &&
+            e.Action.Contains("90444", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InitWorldFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.InitWorldMapFn);
         Assert.Equal("Init World Map", EngineLifecycle.InitWorldInitStages[0].Stage);

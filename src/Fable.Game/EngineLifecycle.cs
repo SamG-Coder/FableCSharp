@@ -149,6 +149,11 @@ public sealed class EngineLifecycle : IDisposable
     public const uint InitWorldFn = 0x0041735A;
     public const uint CreatePlayersFn = 0x004166A8;
     public const uint InitGraphicsFn = 0x00416C8A;
+    public const uint InitFontsFn = FontFile.InitFontsFn;
+    public const uint GameFontLookupFn = FontFile.FontLookupFn;
+    public const uint GameFontStoreFn = 0x00419463;
+    public const int GameFontOffset = 90444;
+    public const string GameFontFaceName = FontFile.GameFace;
     public const uint PlayAviPlayer = 0x006286F0;
     public const uint FrontendIntern = 0x0042F722;
     public const uint LeaveFrontendSite = 0x0042F2A2;
@@ -614,6 +619,8 @@ public sealed class EngineLifecycle : IDisposable
         ("Init Thing Components", 0x004EE23F),
         ("Init Definition Manager", 0x00416005),
         ("Init Graphics", 0x00416C8A),
+        // 004168DC sibling; name is logged inside the fn.
+        ("Init Fonts", FontFile.InitFontsFn),
         ("Init Subtitled Message", 0x004CDB10),
         ("Init Conversation Attitude", 0x004CD670),
         ("Init Player Manager", 0x0041732A),
@@ -2292,6 +2299,14 @@ public sealed class EngineLifecycle : IDisposable
     public float FrontendWidgetDestY1 { get; private set; }
     public int FrontendWidgetTexture { get; private set; }
     public string? FrontendMenuRoot { get; private set; }
+    /// <summary>
+    /// <c>[game+90444]</c> after
+    /// <c>004168DC</c>
+    /// <c>009E2C80</c>
+    /// <c>ENG_ARIAL_18</c>.
+    /// Not frontend type-6.
+    /// </summary>
+    public string? GameFontFace { get; private set; }
     public bool FrontendMenuConstructed { get; private set; }
     public int FrontendRootType { get; private set; }
     public int FrontendChildCount { get; private set; }
@@ -3559,6 +3574,7 @@ public sealed class EngineLifecycle : IDisposable
         ResolveFrontendDef(name);
         SwitchFrontendSlot(FrontendMainMenuSlot);
         AttachFrontendTree(name, FrontendMainMenuSlot);
+        SelectFrontendState(FrontendMainMenuSlot, 5);
     }
 
     /// <summary>
@@ -3597,6 +3613,7 @@ public sealed class EngineLifecycle : IDisposable
         ResolveFrontendDef(FrontendNewProfileMenu);
         SwitchFrontendSlot(FrontendNewProfileSlot);
         AttachFrontendTree(FrontendNewProfileMenu, FrontendNewProfileSlot);
+        SelectFrontendState(FrontendNewProfileSlot, 5);
     }
 
     /// <summary>
@@ -3653,6 +3670,7 @@ public sealed class EngineLifecycle : IDisposable
         ResolveFrontendDef(FrontendMainMenuNoContinue);
         SwitchFrontendSlot(FrontendMainMenuSlot);
         AttachFrontendTree(FrontendMainMenuNoContinue, FrontendMainMenuSlot);
+        SelectFrontendState(FrontendMainMenuSlot, 5);
     }
 
     /// <summary>
@@ -3737,6 +3755,14 @@ public sealed class EngineLifecycle : IDisposable
             Note(apply, name, "InitGame", name);
             if (name == "Init Graphics")
                 OpenTextureBank();
+            if (name == "Init Fonts")
+            {
+                Note(GameFontLookupFn, "Init Fonts", "Font",
+                    $"009E2C80 {GameFontFaceName} [0x13B838C]");
+                Note(GameFontStoreFn, "Init Fonts", "Font",
+                    $"00419463 [game+{GameFontOffset}]");
+                GameFontFace = GameFontFaceName;
+            }
             if (name == "Init Display Engine")
             {
                 DisplayPlus232 = DisplayPlus232Ctor;
