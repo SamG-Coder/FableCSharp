@@ -75,27 +75,26 @@
 
     <p>
       Snapshot: <strong>2026-08-19</strong>, previous snapshot runtime HEAD
-      <code>b8a2b21</code> via PR #40 merge <code>fb7299d</code>,
-      runtime HEAD <code>4a03969</code>
-      (<em>Init Fonts ENG_ARIAL_18, 0xE0 singleton,
-      Init Subtitled misc_def_types.h,
-      STANDARD_TALK/CONVERSATION, player owner at
-      game+28.</em>).
-      Just locked: 5 runtime commits since <code>b8a2b21</code>.
-      Headline locks: Init Fonts ENG_ARIAL_18 at game+90444
-      (<code>9901d3b</code>); 0xE0 <code>[0x13B879C]</code>
-      singleton before Thing Components
-      (<code>6ae001f</code>); Init Subtitled
-      <code>misc_def_types.h</code> into
-      <code>[0x13B8A54]</code> (<code>540e30c</code>);
-      STANDARD_TALK/CONVERSATION names at Init Conversation
-      Attitude (<code>fe6c09c</code>); player owner at
-      game+28 (<code>4a03969</code>).
-      Ignore snapshot merge <code>fb7299d</code> / docs
-      <code>cc4ab63</code>. Ignore
+      <code>4a03969</code> via PR #41 merge <code>de7109a</code>,
+      runtime HEAD <code>1a4c51d</code>
+      (<em>CHeroMorphDef against +40,
+      definition manager vtbl+8 Notes, CHighlightItemDef,
+      CSmokeGeneratorDef, CTimeAppearanceFadeDef.</em>).
+      Just locked: 5 runtime commits since <code>4a03969</code>.
+      Headline locks: CHeroMorphDef against the live +40 cap
+      (<code>b7f4c34</code>); PrepareDefinitionManager Notes
+      <code>0044C6B0</code> / <code>0044C72B [vtbl+8]</code> /
+      <code>009ACB10</code> / <code>009E5250</code>
+      (<code>587baae</code>); CHighlightItemDef after
+      CHeroMorphDef (<code>acfe46f</code>); CSmokeGeneratorDef
+      after CHighlightItemDef (<code>100e5cf</code>);
+      CTimeAppearanceFadeDef after CSmokeGeneratorDef
+      (<code>1a4c51d</code>).
+      Ignore snapshot merge <code>de7109a</code> / docs
+      <code>9bdc135</code>. Ignore
       proofs-only adds. Docs PR #29
       <code>bedcf919</code> is iOS Settings chrome only — CSS
-      unchanged. Freeze at <code>4a03969</code>.
+      unchanged. Freeze at <code>1a4c51d</code>.
       Do not include any later runtime if master moves.
       Master is still
       proving <strong>boot / world clock</strong>, not animation.
@@ -283,18 +282,22 @@
 
     <h3>Phase 1 in progress — boot / world clock (current master)</h3>
     <p>
-      Recent commits (<code>9901d3b</code> … <code>4a03969</code>) lock
-      Init Fonts / 0xE0 singleton / Subtitled register /
-      Conversation Attitude names / player owner at game+28, not
+      Recent commits (<code>b7f4c34</code> … <code>1a4c51d</code>) lock
+      Init Thing Components Add Def Class Notes for CHeroMorphDef
+      then CHighlightItemDef / CSmokeGeneratorDef /
+      CTimeAppearanceFadeDef, plus definition-manager host
+      Notes + <code>DefinitionManagerPrepared</code>, not
       <code>00DBDE40</code>. Previous snapshot
-      <code>b8a2b21</code> via PR #40 <code>fb7299d</code>.
-      Just locked this batch: Init Fonts ENG_ARIAL_18 at
-      game+90444, 0xE0 <code>[0x13B879C]</code> singleton
-      before Thing Components, Init Subtitled
-      <code>misc_def_types.h</code> into
-      <code>[0x13B8A54]</code>, STANDARD_TALK/CONVERSATION
-      names at Init Conversation Attitude, player owner at
-      game+28 during Init Player Manager. CSS
+      <code>4a03969</code> via PR #41 <code>de7109a</code>.
+      Just locked this batch: CHeroMorphDef against the live
+      +40 cap, PrepareDefinitionManager Notes
+      <code>0044C6B0</code> / <code>0044C72B [vtbl+8]</code> /
+      <code>009ACB10</code> / <code>009E5250</code>,
+      CHighlightItemDef, CSmokeGeneratorDef,
+      CTimeAppearanceFadeDef. MATCH is Notes+flag, not live
+      constructed objects. dest <code>0044C72B</code> as
+      <code>[01232C24+8]</code> is not rdata-locked
+      (leave #42 open). CSS
       unchanged.
     </p>
     <div class="table-scroll">
@@ -737,7 +740,7 @@
           <td><code>540e30c</code> / <code>Init_Subtitled_004CDB10_registers_00A39010_at_13B8A54</code></td>
         </tr>
         <tr>
-          <td>Bind STANDARD_TALK and CONVERSATION names at Init Conversation Attitude. <code>004CD670</code> via <code>0099EFE0</code> (18/12/12). Not Speak. <code>004EE23F</code> leftover (Init Thing Components still Note-only)</td>
+          <td>Bind STANDARD_TALK and CONVERSATION names at Init Conversation Attitude. <code>004CD670</code> via <code>0099EFE0</code> (18/12/12). Not Speak. Later Thing Components Notes Add Def Class for CHeroMorphDef then CHighlightItemDef / CSmokeGeneratorDef / CTimeAppearanceFadeDef; MATCH is Notes+flag, not live constructed</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
           <td><code>fe6c09c</code> / <code>Init_Conversation_004CD670_binds_STANDARD_TALK_tables</code></td>
         </tr>
@@ -755,6 +758,41 @@
           <td><code>+24=0</code> write on the player owner</td>
           <td><span class="badge DISPROVEN">DISPROVEN</span></td>
           <td><code>4a03969</code> / same owner test</td>
+        </tr>
+        <tr>
+          <td>Add CHeroMorphDef against the live +40 cap during Init Thing Components. <code>004EE337</code> / <code>0044C6B0</code> / <code>009B0AC0</code> / factory <code>004E4219</code> / <code>009AD6E0</code> / <code>009FC4F0</code> <code>[this+40]=0x80000</code>. Host Note-only + <code>FirstDefClassRegistered</code>. MATCH is Notes+flag, not a live object. LoadDef field walk stays PARTIAL. Do not invent <code>00A38E50</code></td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>b7f4c34</code> / <code>Init_Thing_Components_004EE23F_adds_CHeroMorphDef_against_plus40</code></td>
+        </tr>
+        <tr>
+          <td>Prepare the definition manager via vtbl+8 <code>0044C72B</code> and <code>009ACB10</code>. Host <code>PrepareDefinitionManager()</code> Notes <code>0044C6B0</code> / <code>0044C72B [vtbl+8]</code> / <code>009ACB10</code> / <code>009E5250</code> and sets <code>DefinitionManagerPrepared</code>. dest <code>0044C72B</code> as <code>[01232C24+8]</code> is not rdata-locked (sibling <code>proofs/00416005-def-manager</code> dest UNREAD). Leave #42 open. Do not call dest PROVEN. Not a <code>game.bin</code> parse. Different object from later Subtitled <code>[0x13B8A54]</code></td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>587baae</code> / <code>Init_Definition_Manager_00416005_resets_plus88_via_vtbl8</code></td>
+        </tr>
+        <tr>
+          <td>Add CHighlightItemDef after CHeroMorphDef during Init Thing Components. Site <code>004EE565</code> / dest <code>009B0AC0</code> / factory <code>004D8671</code> size 72 vtbl <code>0123BD14</code>. Note-only + <code>SecondDefClassRegistered</code>. MATCH is Notes+flag, not a 72-byte object</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>acfe46f</code> / <code>Init_Thing_Components_004EE565_adds_CHighlightItemDef</code></td>
+        </tr>
+        <tr>
+          <td>Add CSmokeGeneratorDef after CHighlightItemDef. Site <code>004EE62B</code> (<code>0044C6B0</code>), dest <code>009B0AC0</code> at <code>004EE632</code>, factory <code>004DA82B</code> size 48 vtbl <code>0123E924</code>, name <code>CSmokeGeneratorDef</code>. Host Note-only + <code>ThirdDefClassRegistered</code>. MATCH is Notes+flag, not a live 48-byte object</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>100e5cf</code> / <code>Init_Thing_Components_004EE632_adds_CSmokeGeneratorDef</code></td>
+        </tr>
+        <tr>
+          <td><code>CTCSmokeGenerator</code> <code>004EE588</code> is the next <code>009B0AC0</code> / Add Def Class</td>
+          <td><span class="badge DISPROVEN">DISPROVEN</span></td>
+          <td>CTC row, not Add Def Class (<code>100e5cf</code> / <code>Init_Thing_Components_004EE632_adds_CSmokeGeneratorDef</code>)</td>
+        </tr>
+        <tr>
+          <td>Add CTimeAppearanceFadeDef after CSmokeGeneratorDef. Site <code>004EE6FD</code> (<code>0044C6B0</code>), dest <code>009B0AC0</code> at <code>004EE704</code>, factory <code>004D84C8</code> size 56 vtbl <code>0123B7CC</code>, name <code>CTimeAppearanceFadeDef</code>. Host Note-only + <code>FourthDefClassRegistered</code>. MATCH is Notes+flag, not a live 56-byte object</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>1a4c51d</code> / <code>Init_Thing_Components_004EE704_adds_CTimeAppearanceFadeDef</code></td>
+        </tr>
+        <tr>
+          <td><code>CTCTimeAppearanceFade</code> <code>004EE64E</code> is the next <code>009B0AC0</code> / Add Def Class</td>
+          <td><span class="badge DISPROVEN">DISPROVEN</span></td>
+          <td>CTC row, not Add Def Class (<code>1a4c51d</code> / <code>Init_Thing_Components_004EE704_adds_CTimeAppearanceFadeDef</code>)</td>
         </tr>
         <tr>
           <td><code>[node+20]</code> is <code>0041DB1D</code>/<code>0041D21B</code> type0 <code>0041B800</code> vtbl <code>0122F5D4</code>; draw <code>0041AFA0</code> not <code>0052D900</code></td>
@@ -1149,14 +1187,14 @@
           <td><code>27cb7ee</code> — later GPU path; do not file</td>
         </tr>
         <tr>
-          <td>Init Definition Manager <code>00416005</code></td>
-          <td>host Note-only</td>
-          <td><code>[0x13B879C]</code> <code>[vtbl+8]</code> + <code>009ACB10</code>. Proofs-only this commit; not locked. Different object from later Subtitled <code>[0x13B8A54]</code>. Do not invent a <code>game.bin</code> parser.</td>
+          <td>Init Definition Manager dest <code>[01232C24+8]</code></td>
+          <td>dest UNREAD</td>
+          <td>Host Notes <code>0044C6B0</code> / <code>0044C72B [vtbl+8]</code> / <code>009ACB10</code> / <code>009E5250</code> + <code>DefinitionManagerPrepared</code> are locked (<code>587baae</code> / <code>Init_Definition_Manager_00416005_resets_plus88_via_vtbl8</code>). dest <code>0044C72B</code> as <code>[01232C24+8]</code> is not rdata-locked (sibling <code>proofs/00416005-def-manager</code> dest UNREAD). Leave #42 open. Do not call dest PROVEN. Different object from later Subtitled <code>[0x13B8A54]</code>. Do not invent a <code>game.bin</code> parser.</td>
         </tr>
         <tr>
-          <td>Init Thing Components <code>004EE23F</code></td>
+          <td>Init Thing Components further Add Def Class</td>
           <td>leftover Note-only</td>
-          <td><code>fe6c09c</code> — still Note-only. Do not file as locked.</td>
+          <td>Thing Components now Notes Add Def Class for CHeroMorphDef then CHighlightItemDef / CSmokeGeneratorDef / CTimeAppearanceFadeDef (<code>b7f4c34</code> / <code>acfe46f</code> / <code>100e5cf</code> / <code>1a4c51d</code>). MATCH is Notes+flag, not live constructed. LoadDef field walk stays PARTIAL. Do not invent a live object.</td>
         </tr>
         <tr>
           <td>Init Player Interface leftover <code>Register(ActionInputListener)</code> / <code>00488D20</code> notes</td>
@@ -1386,14 +1424,16 @@
         (<code>b8a2b21</code>). Init World <code>004A67D0</code>
         / <code>004A6E30</code> run inside <code>0041735A</code>
         before <code>00417418</code>.
-        Recent commits <code>9901d3b</code> …
-        <code>4a03969</code> lock Init Fonts ENG_ARIAL_18 /
-        0xE0 singleton / Subtitled register / Conversation
-        Attitude names / player owner at game+28. Init
-        Definition Manager <code>00416005</code> is still host
-        Note-only (proofs-only; different object from later
-        Subtitled <code>[0x13B8A54]</code>). Init Thing
-        Components still Note-only (<code>004EE23F</code>).
+        Recent commits <code>b7f4c34</code> …
+        <code>1a4c51d</code> lock Init Thing Components Add
+        Def Class Notes for CHeroMorphDef then
+        CHighlightItemDef / CSmokeGeneratorDef /
+        CTimeAppearanceFadeDef, plus definition-manager host
+        Notes + <code>DefinitionManagerPrepared</code>.
+        MATCH is Notes+flag, not live constructed. dest
+        <code>0044C72B</code> as <code>[01232C24+8]</code>
+        is not rdata-locked (leave #42 open). Different
+        object from later Subtitled <code>[0x13B8A54]</code>.
         Init Player Interface still leftover
         Register(ActionInputListener) / <code>00488D20</code>
         notes. Host ctor note of <code>0044A3B0</code> under
