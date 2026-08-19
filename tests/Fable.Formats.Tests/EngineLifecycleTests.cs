@@ -842,6 +842,46 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Definition_Manager_00416005_resets_plus88_via_vtbl8()
+    {
+        Assert.Equal(0x00416005u, EngineLifecycle.InitDefinitionManagerFn);
+        Assert.Equal(0x0044C72Bu, EngineLifecycle.DefinitionManagerVtbl8Fn);
+        Assert.Equal(8, EngineLifecycle.DefinitionManagerVtbl8);
+        Assert.Equal(0x009ACB10u, EngineLifecycle.DefinitionManagerResetFn);
+        Assert.Equal(0x009E5250u, EngineLifecycle.DefinitionManagerResetApply);
+        Assert.Equal(88, EngineLifecycle.DefinitionManagerPlus88);
+        Assert.Equal(1, EngineLifecycle.DefinitionManagerArg);
+        Assert.Equal(0x01232C24u, EngineLifecycle.PlayerManagerVtbl);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.False(life.DefinitionManagerPrepared);
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.True(life.FirstDefClassRegistered);
+        Assert.True(life.DefinitionManagerPrepared);
+        var add = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.AddDefClassFn);
+        var getter = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.PlayerManagerGetter &&
+            e.Stage == "Init Definition Manager");
+        var vtbl8 = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.DefinitionManagerVtbl8Fn);
+        var reset = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.DefinitionManagerResetFn);
+        var apply = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.DefinitionManagerResetApply);
+        var graphics = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.InitGraphicsFn);
+        Assert.True(add >= 0 && getter > add);
+        Assert.True(vtbl8 > getter && reset > vtbl8 && apply > reset);
+        Assert.True(graphics > apply, "00416005 before Init Graphics");
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Frontend_press_start_type4_without_widgets_does_not_invent_0xE5()
     {
         var life = new EngineLifecycle();

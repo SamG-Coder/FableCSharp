@@ -715,7 +715,7 @@ public sealed class EngineLifecycle : IDisposable
     public static readonly (string Stage, uint Apply)[] InitGameStages =
     [
         ("Init Thing Components", InitThingComponentsFn),
-        ("Init Definition Manager", 0x00416005),
+        ("Init Definition Manager", InitDefinitionManagerFn),
         ("Init Graphics", 0x00416C8A),
         // 004168DC sibling; name is logged inside the fn.
         ("Init Fonts", FontFile.InitFontsFn),
@@ -807,6 +807,23 @@ public sealed class EngineLifecycle : IDisposable
     public const uint LoadDefBudgetFn = 0x009FC4F0;
     public const uint FirstDefClassFactory = 0x004E4219;
     public const string FirstDefClassName = "CHeroMorphDef";
+    /// <summary>
+    /// <c>00416005</c> parent
+    /// <c>push 1</c>:
+    /// <c>0044C6B0</c>
+    /// <c>[vtbl+8]=0044C72B</c>
+    /// <c>009ACB10</c>
+    /// <c>[[this+88]]</c>
+    /// <c>009E5250</c>.
+    /// Not a game.bin parse.
+    /// </summary>
+    public const uint InitDefinitionManagerFn = 0x00416005;
+    public const uint DefinitionManagerVtbl8Fn = 0x0044C72B;
+    public const int DefinitionManagerVtbl8 = 8;
+    public const uint DefinitionManagerResetFn = 0x009ACB10;
+    public const uint DefinitionManagerResetApply = 0x009E5250;
+    public const int DefinitionManagerPlus88 = 88;
+    public const int DefinitionManagerArg = 1;
     public const uint PlayerManagerVa = 0x013B879C;
     public const uint PlayerManagerApply = 0x0044A530;
     public const uint CreatePlayerSlotFn = 0x0044A1A0;
@@ -2201,6 +2218,13 @@ public sealed class EngineLifecycle : IDisposable
     public int PlayerManagerPlus40Cap { get; private set; }
     public bool FirstDefClassRegistered { get; private set; }
     public string? FirstDefClass { get; private set; }
+    /// <summary>
+    /// After <c>00416005</c>
+    /// <c>0044C72B</c> /
+    /// <c>009ACB10</c>.
+    /// Not a game.bin parse.
+    /// </summary>
+    public bool DefinitionManagerPrepared { get; private set; }
     /// <summary>
     /// <c>WorldMap+156</c>. Ctor 0 is the
     /// dummy slot, not LookoutPoint.
@@ -3954,6 +3978,8 @@ public sealed class EngineLifecycle : IDisposable
             Note(apply, name, "InitGame", name);
             if (name == "Init Thing Components")
                 AddFirstDefClass();
+            if (name == "Init Definition Manager")
+                PrepareDefinitionManager();
             if (name == "Init Graphics")
                 OpenTextureBank();
             if (name == "Init Fonts")
@@ -4543,6 +4569,30 @@ public sealed class EngineLifecycle : IDisposable
             $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
         FirstDefClass = FirstDefClassName;
         FirstDefClassRegistered = true;
+    }
+
+    /// <summary>
+    /// <c>00416005</c>
+    /// <c>0044C6B0</c>
+    /// <c>[vtbl+8] 0044C72B</c>
+    /// <c>009ACB10</c>
+    /// <c>009E5250</c>.
+    /// Parent arg is 1.
+    /// Not a game.bin parse.
+    /// </summary>
+    private void PrepareDefinitionManager()
+    {
+        if (DefinitionManagerPrepared)
+            return;
+        Note(PlayerManagerGetter, "Init Definition Manager", "Defs",
+            "0044C6B0 [0x13B879C]");
+        Note(DefinitionManagerVtbl8Fn, "Init Definition Manager", "Defs",
+            $"0044C72B [vtbl+{DefinitionManagerVtbl8}]");
+        Note(DefinitionManagerResetFn, "Init Definition Manager", "Defs",
+            $"009ACB10 [this+{DefinitionManagerPlus88}] arg={DefinitionManagerArg}");
+        Note(DefinitionManagerResetApply, "Init Definition Manager", "Defs",
+            "009E5250 list reset");
+        DefinitionManagerPrepared = true;
     }
 
     public void CreatePlayers()
