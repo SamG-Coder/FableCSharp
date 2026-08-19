@@ -20,7 +20,7 @@ public sealed class Dx9ArchitectureTests
     }
 
     [Fact]
-    public void Migrated_frontend_does_not_pass_vulkan_batch()
+    public void Attaching_dx9_device_does_not_discard_frontend_batch()
     {
         var rec = new RecordingDx9Device();
         var host = new FakeEngineHost();
@@ -29,12 +29,70 @@ public sealed class Dx9ArchitectureTests
         life.Bootstrap(null);
         while (life.Stage == EngineStage.StartupVideos)
             life.FinishStartupVideo();
-        life.Pump();
-        Assert.Null(life.FrontendBatch);
-        Assert.Equal(0, host.PresentCalls);
+        Assert.Equal(Dx9SubmitMode.Shadow, life.FrontendSubmitMode);
+        Assert.False(life.Dx9OwnsFrontendPresent);
+        Assert.True(life.Pump());
+        Assert.False(life.Dx9OwnsFrontendPresent);
+        Assert.NotNull(life.FrontendBatch);
+        Assert.True(host.PresentCalls > 0);
         var frame = life.BuildFrame();
-        Assert.Null(frame.FrontendBatch);
+        Assert.NotNull(frame.FrontendBatch);
         Assert.Null(frame.Vertices);
+    }
+
+    [Fact]
+    public void Frontend_stays_shadow_until_sprite_and_glyph_capabilities()
+    {
+        var rec = new RecordingDx9Device();
+        var life = new EngineLifecycle { Device = rec };
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.False(life.SubmitCapabilities.CanRenderFrontendSprites);
+        Assert.False(life.SubmitCapabilities.CanRenderFrontendGlyphs);
+        Assert.Equal(Dx9SubmitMode.Shadow, life.FrontendSubmitMode);
+        Assert.False(life.Dx9OwnsFrontendPresent);
+        life.SubmitCapabilities = new Dx9SubmitCapabilities
+        {
+            CanRenderFrontendSprites = true,
+            CanRenderFrontendGlyphs = true,
+        };
+        Assert.Equal(Dx9SubmitMode.NativeSemantic, life.FrontendSubmitMode);
+        Assert.True(life.Dx9OwnsFrontendPresent);
+    }
+
+    [Fact]
+    public void Native_semantic_without_capabilities_is_not_device_attached()
+    {
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        Assert.Equal(Dx9SubmitMode.Compatibility, life.FrontendSubmitMode);
+        Assert.False(life.Dx9OwnsFrontendPresent);
+    }
+
+    [Fact]
+    public void Native_semantic_frontend_skips_host_present()
+    {
+        var rec = new RecordingDx9Device();
+        var host = new FakeEngineHost();
+        var life = new EngineLifecycle
+        {
+            Device = rec,
+            SubmitCapabilities = new Dx9SubmitCapabilities
+            {
+                CanRenderFrontendSprites = true,
+                CanRenderFrontendGlyphs = true,
+            },
+        };
+        life.AttachHost(host);
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        var presents = host.PresentCalls;
+        Assert.True(life.Pump());
+        Assert.True(life.Dx9OwnsFrontendPresent);
+        Assert.Null(life.FrontendBatch);
+        Assert.Equal(presents, host.PresentCalls);
     }
 
     [Fact]

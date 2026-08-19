@@ -8,6 +8,20 @@ See [FIRST_SCENE_CONTRACT.md](FIRST_SCENE_CONTRACT.md) and
 
 Translations live in `src/Fable.Render/Parity/Dx9Vulkan/`.
 
+Present ownership is per submission unit
+(`Dx9SubmitMode`: Compatibility / Shadow /
+NativeSemantic). Attaching
+`IDirect3DDevice9` is Shadow: the device
+records Clear/Begin/End/Present and does
+**not** discard `FrontendBatch` or skip
+`host.Draw`. `VulkanDx9Device.OwnsSwapchainPresent`
+defaults false so Shadow is not a second
+swapchain Present. NativeSemantic requires
+proven `Dx9SubmitCapabilities` for that unit
+(frontend sprites **and** glyphs before the
+frontend path owns Present). All capabilities
+default false.
+
 | Semantic | Fable evidence | DX9 value | Vulkan equivalent | Status | Notes |
 |---|---|---|---|---|---|
 | Depth compare | PARITY lock; `D3dDeviceState.FirstSeenZFunc` | `D3DCMP_LESSEQUAL` (4) | `VK_COMPARE_OP_LESS_OR_EQUAL` | PROVEN | `Dx9VulkanDepth` |

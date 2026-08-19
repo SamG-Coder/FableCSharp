@@ -4,14 +4,24 @@ using Fable.Render.Parity.Dx9Vulkan;
 namespace Fable.Render;
 
 /// <summary>
-/// First frontend Present: Clear /
-/// BeginScene / EndScene / Present.
-/// Other ops throw until a later dump
-/// proves arguments.
+/// Vulkan translation of used DX9 ops.
+/// Default is Shadow: Clear/Present
+/// record device state and do not
+/// consume the swapchain. Set
+/// <see cref="OwnsSwapchainPresent"/>
+/// only for a NativeSemantic unit.
 /// </summary>
 public sealed class VulkanDx9Device : IDirect3DDevice9
 {
     public VulkanLineRenderer? Renderer { get; set; }
+    /// <summary>
+    /// When false, <see cref="Present"/>
+    /// does not call
+    /// <see cref="VulkanLineRenderer.PresentDx9"/>.
+    /// Compatibility <c>host.Draw</c>
+    /// owns the swapchain.
+    /// </summary>
+    public bool OwnsSwapchainPresent { get; set; }
     public uint LastClearArgb { get; private set; }
     public bool InScene { get; private set; }
     public int PresentCount { get; private set; }
@@ -65,7 +75,8 @@ public sealed class VulkanDx9Device : IDirect3DDevice9
         LastClearArgb = colorArgb;
         LastClearZ = z;
         LastClearStencil = stencil;
-        Renderer?.SetDx9ClearColor(Dx9VulkanColor.FromD3dArgb(colorArgb));
+        if (OwnsSwapchainPresent)
+            Renderer?.SetDx9ClearColor(Dx9VulkanColor.FromD3dArgb(colorArgb));
     }
 
     public void SetViewport(in Dx9Viewport viewport) =>
@@ -116,10 +127,35 @@ public sealed class VulkanDx9Device : IDirect3DDevice9
         int primitiveCount) =>
         throw Unread(nameof(DrawIndexedPrimitive));
 
+    public void DrawIndexedPrimitiveUP(
+        Dx9PrimitiveType type,
+        int minVertexIndex,
+        int numVertices,
+        int primitiveCount,
+        ReadOnlySpan<byte> indexData,
+        int indexFormat,
+        ReadOnlySpan<byte> vertexData,
+        int vertexStride)
+    {
+        if (OwnsSwapchainPresent)
+            throw Unread(nameof(DrawIndexedPrimitiveUP));
+    }
+
+    public void DrawPrimitiveUP(
+        Dx9PrimitiveType type,
+        int primitiveCount,
+        ReadOnlySpan<byte> vertexData,
+        int vertexStride)
+    {
+        if (OwnsSwapchainPresent)
+            throw Unread(nameof(DrawPrimitiveUP));
+    }
+
     public void Present()
     {
         PresentCount++;
-        Renderer?.PresentDx9();
+        if (OwnsSwapchainPresent)
+            Renderer?.PresentDx9();
     }
 
     private static NotSupportedException Unread(string name) =>

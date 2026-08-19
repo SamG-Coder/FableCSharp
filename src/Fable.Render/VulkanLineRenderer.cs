@@ -392,8 +392,9 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
 
     /// <summary>
     /// One swapchain Present for a
-    /// migrated DX9 frame. Clear only
-    /// until DIP arguments are proven.
+    /// NativeSemantic DX9 frame. Do
+    /// not call while Compatibility
+    /// or Shadow still draws.
     /// </summary>
     public void PresentDx9()
     {

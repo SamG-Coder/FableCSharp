@@ -39,5 +39,32 @@ public interface IDirect3DDevice9
         int numVertices,
         int startIndex,
         int primitiveCount);
+    /// <summary>
+    /// <c>00A0AEA0</c> vtbl+336
+    /// DrawIndexedPrimitiveUP. Copies
+    /// vertex and index bytes.
+    /// </summary>
+    void DrawIndexedPrimitiveUP(
+        Dx9PrimitiveType type,
+        int minVertexIndex,
+        int numVertices,
+        int primitiveCount,
+        ReadOnlySpan<byte> indexData,
+        int indexFormat,
+        ReadOnlySpan<byte> vertexData,
+        int vertexStride);
+    /// <summary>
+    /// User-pointer verts for
+    /// <c>00A0ABE0</c> (<c>00AB7C20</c>
+    /// fills a stream then vtbl+324
+    /// DrawPrimitive). Copies vertex
+    /// bytes so Shadow can record the
+    /// 6×28 XYZRHW payload.
+    /// </summary>
+    void DrawPrimitiveUP(
+        Dx9PrimitiveType type,
+        int primitiveCount,
+        ReadOnlySpan<byte> vertexData,
+        int vertexStride);
     void Present();
 }

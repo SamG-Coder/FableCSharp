@@ -2994,6 +2994,7 @@ public sealed class EngineLifecycle : IDisposable
     public int FrontendPresentWidth { get; private set; }
     public int FrontendPresentHeight { get; private set; }
     public FrontendSubmitBatch? FrontendBatch { get; private set; }
+    private List<FrontendDx9DrawRecord> _frontendDx9Records = [];
     public IReadOnlyList<FrontendWidget> FrontendWidgets => _frontendWidgets;
     /// <summary>
     /// Frontend virtual-space pointer
@@ -3211,11 +3212,19 @@ public sealed class EngineLifecycle : IDisposable
     public GameInstall? Install { get; private set; }
     public IEngineHost? Host { get; private set; }
     /// <summary>
-    /// Neutral DX9 device. Migrated
-    /// Present issues here, not
-    /// <c>Dx9Vulkan*</c>.
+    /// Neutral DX9 device. Shadow-records
+    /// reconstructed calls. Compatibility
+    /// Present stays on
+    /// <see cref="IEngineHost"/> until a
+    /// unit is NativeSemantic.
     /// </summary>
     public IDirect3DDevice9? Device { get; set; }
+    /// <summary>
+    /// Unproven capabilities stay false.
+    /// Attaching <see cref="Device"/> is
+    /// not migration complete.
+    /// </summary>
+    public Dx9SubmitCapabilities SubmitCapabilities { get; set; }
     public WmvPlayer? StartupAvi { get; private set; }
     /// <summary>
     /// Live <c>[0x13961E0]</c> from the
@@ -3353,12 +3362,23 @@ public sealed class EngineLifecycle : IDisposable
         !forceWindowed && !deviceWindowed;
 
     /// <summary>
-    /// Migrated frontend Present is
-    /// <see cref="Device"/>, not
+    /// Frontend Present owner. Shadow
+    /// while sprite/glyph DIPs are
+    /// unproven. NativeSemantic only
+    /// when both capabilities are set.
+    /// </summary>
+    public Dx9SubmitMode FrontendSubmitMode =>
+        SubmitCapabilities.FrontendMode(Device is not null);
+
+    /// <summary>
+    /// NativeSemantic frontend Present
+    /// is <see cref="Device"/>, not
     /// <see cref="IEngineHost.Present"/>.
+    /// Device attached is not enough.
     /// </summary>
     public bool Dx9OwnsFrontendPresent =>
-        Device is not null && Stage == EngineStage.Frontend;
+        FrontendSubmitMode == Dx9SubmitMode.NativeSemantic
+        && Stage == EngineStage.Frontend;
 
     /// <summary>
     /// Listing <c>00401067</c> MSVCR71
@@ -4074,9 +4094,14 @@ public sealed class EngineLifecycle : IDisposable
     /// <summary>
     /// <c>0042DF9E</c>: <c>009D8CF0</c>
     /// then <c>009BEF20</c> vtbl+164
-    /// BeginScene, empty
-    /// <c>009DA9F0</c> skip DIP,
-    /// <c>009BEF50</c>, <c>009BEEB0</c>.
+    /// BeginScene. Nonempty dest
+    /// <c>00BAE2D0</c> → <c>00A0AEA0</c>
+    /// DIPUP. Zero dest
+    /// <c>00BADB36</c> skip. Glyphs
+    /// <c>00AB7C20</c> → <c>00A0ABE0</c>.
+    /// Empty <c>009DA9F0</c> is not
+    /// “no UI draws.” Do not emit
+    /// buffered <c>DrawIndexedPrimitive(0,…)</c>.
     /// </summary>
     private void IssueFrontendFramePresent()
     {
@@ -4086,13 +4111,7 @@ public sealed class EngineLifecycle : IDisposable
         var frame = FrontendDx9Submit.FrontendFrame();
         device.Clear(Dx9Clear.WhenArgZero, frame.ClearColorArgb, 1f, 0);
         device.BeginScene();
-        // 00595222 walks [ui+84]; first
-        // node slot 0 is null. Leaves
-        // call 0041AFA0 dest 0,0,0,0.
-        // 00BAE2D0 runs (CallsDraw) but
-        // 009DA9F0 DIP args for a zero
-        // dest are UNREAD. Do not emit
-        // DrawIndexedPrimitive(0,…).
+        FrontendDx9Submit.IssueRecoveredDraws(device, _frontendDx9Records);
         device.EndScene();
         device.Present();
     }
@@ -9039,15 +9058,17 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     private void CompositeFrontendPresent()
     {
-        if (Device is not null)
+        if (Dx9OwnsFrontendPresent)
         {
             FrontendBatch = null;
+            _frontendDx9Records = [];
             return;
         }
 
         var width = BackBufferWidth > 0 ? BackBufferWidth : DisplayDefaultWidth;
         var height = BackBufferHeight > 0 ? BackBufferHeight : DisplayDefaultHeight;
         var (records, textures) = CollectFrontendRecords();
+        _frontendDx9Records = records;
         FrontendBatch = Dx9VulkanFrontend.BuildBatch(records, textures, 0, 0, width, height);
         DumpFrontendPresentRgba(records, textures, width, height);
     }

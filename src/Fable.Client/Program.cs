@@ -49,6 +49,10 @@ window.Load += () =>
         throw new NotSupportedException("This window backend cannot create a Vulkan surface.");
 
     host.Renderer = new VulkanLineRenderer(window);
+    // Shadow: records Clear/Present.
+    // OwnsSwapchainPresent stays false
+    // until frontend sprites and glyphs
+    // are NativeSemantic.
     life.Device = new VulkanDx9Device { Renderer = host.Renderer };
     life.CompleteRetailLoop();
     // After Device: skip AVI still issues
@@ -161,6 +165,9 @@ window.Render += _ =>
             debugCam.SkyViewProjection(aspect),
             debugCam.HostLandscapeViewProjection(aspect));
     }
+    // NativeSemantic Device.Present already
+    // consumed the swapchain. Shadow and
+    // Compatibility still need host.Draw.
     else if (life.Dx9OwnsFrontendPresent)
         return;
     else

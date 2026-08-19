@@ -46,6 +46,8 @@ public sealed class RecordingDx9Device : IDirect3DDevice9
         Dx9SetPixelShaderConstantFCall => "SetPixelShaderConstantF",
         Dx9DrawPrimitiveCall => "DrawPrimitive",
         Dx9DrawIndexedPrimitiveCall => "DrawIndexedPrimitive",
+        Dx9DrawIndexedPrimitiveUpCall => "DrawIndexedPrimitiveUP",
+        Dx9DrawPrimitiveUpCall => "DrawPrimitiveUP",
         _ => call.GetType().Name,
     };
 
@@ -160,6 +162,33 @@ public sealed class RecordingDx9Device : IDirect3DDevice9
         int primitiveCount) =>
         _calls.Add(new Dx9DrawIndexedPrimitiveCall(
             type, baseVertexIndex, minVertexIndex, numVertices, startIndex, primitiveCount));
+
+    public void DrawIndexedPrimitiveUP(
+        Dx9PrimitiveType type,
+        int minVertexIndex,
+        int numVertices,
+        int primitiveCount,
+        ReadOnlySpan<byte> indexData,
+        int indexFormat,
+        ReadOnlySpan<byte> vertexData,
+        int vertexStride) =>
+        _calls.Add(new Dx9DrawIndexedPrimitiveUpCall(
+            type,
+            minVertexIndex,
+            numVertices,
+            primitiveCount,
+            indexData.ToArray(),
+            indexFormat,
+            vertexData.ToArray(),
+            vertexStride));
+
+    public void DrawPrimitiveUP(
+        Dx9PrimitiveType type,
+        int primitiveCount,
+        ReadOnlySpan<byte> vertexData,
+        int vertexStride) =>
+        _calls.Add(new Dx9DrawPrimitiveUpCall(
+            type, primitiveCount, vertexData.ToArray(), vertexStride));
 
     public void Present() => _calls.Add(new Dx9PresentCall());
 

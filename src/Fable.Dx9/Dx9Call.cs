@@ -75,3 +75,19 @@ public sealed record Dx9DrawIndexedPrimitiveCall(
     int NumVertices,
     int StartIndex,
     int PrimitiveCount) : Dx9Call;
+
+public sealed record Dx9DrawIndexedPrimitiveUpCall(
+    Dx9PrimitiveType Type,
+    int MinVertexIndex,
+    int NumVertices,
+    int PrimitiveCount,
+    byte[] IndexData,
+    int IndexFormat,
+    byte[] VertexData,
+    int VertexStride) : Dx9Call;
+
+public sealed record Dx9DrawPrimitiveUpCall(
+    Dx9PrimitiveType Type,
+    int PrimitiveCount,
+    byte[] VertexData,
+    int VertexStride) : Dx9Call;

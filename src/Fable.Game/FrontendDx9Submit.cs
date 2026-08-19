@@ -1,4 +1,8 @@
+using System.Runtime.InteropServices;
+using Fable.Dx9;
 using Fable.Formats.Defs;
+using Fable.Render;
+using Fable.Render.Parity.Dx9Vulkan;
 
 namespace Fable.Game;
 
@@ -259,6 +263,90 @@ public static class FrontendDx9Submit
     /// handler+44: 0,1,2,1,3,2.
     /// </summary>
     public static readonly ushort[] QuadIndices = [0, 1, 2, 1, 3, 2];
+    public const int SpriteUpNumVertices = 4;
+    public const int SpriteUpPrimitiveCount = 2;
+    public const int SpriteUpVertexStride = 32;
+    public const int GlyphUpVertexStride = 28;
+    public const int GlyphUpVertsPerQuad = 6;
+    public const int GlyphUpPrimitiveCount = 2;
+    public const int Index16Format = 101;
+    public const int DipUpMinVertexIndex = 0;
+
+    /// <summary>
+    /// Shadow-record recovered sprite
+    /// DIPUP and glyph user verts.
+    /// Empty dest is <c>00BADB36</c>.
+    /// Do not emit buffered DIP(0).
+    /// Sprite <c>TextureId</c> and
+    /// vertex diffuse stay UNREAD as
+    /// native bank/fill; dest/UV/index
+    /// words are the recovered subset.
+    /// </summary>
+    public static void IssueRecoveredDraws(
+        IDirect3DDevice9 device,
+        IReadOnlyList<FrontendDx9DrawRecord> records)
+    {
+        foreach (var rec in records)
+        {
+            if (rec.DestX1 <= rec.DestX0 || rec.DestY1 <= rec.DestY0)
+                continue;
+            if (rec.RecordType == (int)GlyphRecordType)
+                IssueGlyphUp(device, rec);
+            else
+                IssueSpriteUp(device, rec);
+        }
+    }
+
+    public static void IssueSpriteUp(IDirect3DDevice9 device, FrontendDx9DrawRecord rec)
+    {
+        var vertices = PackSpriteUpVertices(rec);
+        var indices = PackQuadIndexBytes();
+        device.DrawIndexedPrimitiveUP(
+            Dx9PrimitiveType.TriangleList,
+            DipUpMinVertexIndex,
+            SpriteUpNumVertices,
+            SpriteUpPrimitiveCount,
+            indices,
+            Index16Format,
+            vertices,
+            SpriteUpVertexStride);
+    }
+
+    public static void IssueGlyphUp(IDirect3DDevice9 device, FrontendDx9DrawRecord rec)
+    {
+        var vertices = PackGlyphUpVertices(rec);
+        device.DrawPrimitiveUP(
+            Dx9PrimitiveType.TriangleList,
+            GlyphUpPrimitiveCount,
+            vertices,
+            GlyphUpVertexStride);
+    }
+
+    public static byte[] PackQuadIndexBytes()
+    {
+        var bytes = new byte[QuadIndices.Length * sizeof(ushort)];
+        MemoryMarshal.AsBytes(QuadIndices.AsSpan()).CopyTo(bytes);
+        return bytes;
+    }
+
+    public static byte[] PackSpriteUpVertices(FrontendDx9DrawRecord rec)
+    {
+        var verts = Dx9VulkanFrontend.BuildDx9Quad(rec);
+        var bytes = new byte[verts.Length * SpriteUpVertexStride];
+        MemoryMarshal.AsBytes(verts.AsSpan()).CopyTo(bytes);
+        return bytes;
+    }
+
+    public static byte[] PackGlyphUpVertices(FrontendDx9DrawRecord rec)
+    {
+        var verts = Dx9VulkanFrontend.BuildDx9GlyphList(rec);
+        var src = MemoryMarshal.AsBytes(verts.AsSpan());
+        var bytes = new byte[verts.Length * GlyphUpVertexStride];
+        for (var i = 0; i < verts.Length; i++)
+            src.Slice(i * SpriteUpVertexStride, GlyphUpVertexStride)
+                .CopyTo(bytes.AsSpan(i * GlyphUpVertexStride));
+        return bytes;
+    }
 }
 
 /// <summary>
