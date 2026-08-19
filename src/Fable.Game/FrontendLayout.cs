@@ -329,6 +329,91 @@ public static class FrontendLayout
 
     private static float Snap(float value) =>
         (float)(int)MathF.Round(value);
+
+    /// <summary>
+    /// Type-2 <c>00551340</c> leftover
+    /// <c>+204/+208</c> is persist W/H,
+    /// not GraphicIndex.
+    /// </summary>
+    public static (float W, float H) Type2Leftover(float persistWidth, float persistHeight) =>
+        (persistWidth, persistHeight);
+
+    /// <summary>
+    /// Type-12 persist <c>+326</c> row
+    /// stride. When nonzero, first-seen
+    /// child authored Y is
+    /// <c>index * spacing</c>, not the
+    /// persist PositionY (those are 0
+    /// on the first New Profile rows).
+    /// </summary>
+    public static float ListChildAuthoredY(int index, float persistY, float spacing)
+    {
+        if (index < 0 || spacing == 0f)
+            return persistY;
+        return index * spacing;
+    }
+
+    /// <summary>
+    /// <c>00551EA0</c> when def+96 bit 0:
+    /// place clones along X from the
+    /// parent origin. First and last
+    /// keep leftover width; the middle
+    /// cell (n==3) fills the leftover
+    /// budget. Height is the cell
+    /// leftover H.
+    /// </summary>
+    public static (float X0, float Y0, float X1, float Y1) PlaceTableCell(
+        int index,
+        int count,
+        float originX,
+        float originY,
+        float leftoverW,
+        float leftoverH,
+        float cellW,
+        float cellH,
+        int plus96)
+    {
+        var height = leftoverH > 0f ? leftoverH : cellH;
+        if (height <= 0f)
+            height = cellH;
+        if ((plus96 & 1) == 0 || count <= 0)
+        {
+            var w = cellW > 0f ? cellW : leftoverW;
+            return (Snap(originX), Snap(originY), Snap(originX + w), Snap(originY + height));
+        }
+
+        if (count == 3 && leftoverW > 0f)
+        {
+            var leftW = cellW > 0f ? cellW : leftoverW / 3f;
+            var rightW = leftW;
+            var midW = leftoverW - leftW - rightW;
+            if (midW < 0f)
+                midW = 0f;
+            float x0;
+            float width;
+            if (index == 0)
+            {
+                x0 = originX;
+                width = leftW;
+            }
+            else if (index == 1)
+            {
+                x0 = originX + leftW;
+                width = midW;
+            }
+            else
+            {
+                x0 = originX + leftW + midW;
+                width = rightW;
+            }
+
+            return (Snap(x0), Snap(originY), Snap(x0 + width), Snap(originY + height));
+        }
+
+        var step = leftoverW > 0f ? leftoverW / count : cellW;
+        var px = originX + index * step;
+        return (Snap(px), Snap(originY), Snap(px + step), Snap(originY + height));
+    }
 }
 
 public readonly record struct FrontendViewport(

@@ -31,6 +31,19 @@ public sealed class FrontendUiDef
     public const uint Unknown0961Crc = 0x0961B216;
     public const uint Unknown38BBCrc = 0x38BB7ED4;
     public const uint SpritesCrc = 0x5E5D8A25;
+    /// <summary>
+    /// CUIDef persist <c>+326</c> <c>00431061</c>
+    /// (<c>00631DE1</c>). Lionhead name UNREAD.
+    /// Type-12 New Profile list stores 30.
+    /// </summary>
+    public const uint Plus326Crc = 0xD7495328;
+    /// <summary>
+    /// CUIDef persist <c>+96</c> i32
+    /// (<c>00631CCD</c> / <c>00632340</c>).
+    /// Bit 0 places type-2 cells on X
+    /// (<c>00551EA0</c>).
+    /// </summary>
+    public const uint Plus96Crc = 0x38BB7ED4;
     public const uint Unknown6B10Crc = 0x6B1015E4;
     public const uint UnknownF81FCrc = 0xF81F10A8;
     public const uint StatesCrc = 0x87ACD3D8;
@@ -168,6 +181,24 @@ public sealed class FrontendUiDef
     public int GraphicId { get; init; }
     public int GraphicBankId { get; init; }
     public int Sprites { get; init; }
+    /// <summary>
+    /// <c>006327A0</c> / <c>006327E0</c>:
+    /// count then <c>n</c> <c>(key, defIndex)</c>
+    /// pairs. <c>00551340</c> constructs
+    /// <c>defIndex</c> via <c>0041E5F2</c>.
+    /// </summary>
+    public IReadOnlyList<int> SpriteDefIndices { get; init; } = [];
+    /// <summary>
+    /// Persist <see cref="Plus96Crc"/> /
+    /// def <c>+96</c>. Bit 0 = place
+    /// type-2 cells along X.
+    /// </summary>
+    public int Plus96 { get; init; }
+    /// <summary>
+    /// Persist <see cref="Plus326Crc"/> /
+    /// def <c>+326</c>.
+    /// </summary>
+    public float Plus326 { get; init; }
     public int States { get; init; }
     public float ColourR { get; init; }
     public float ColourG { get; init; }
@@ -243,6 +274,9 @@ public sealed class FrontendUiDef
         var graphic = 0;
         var haveGraphic = false;
         var sprites = 0;
+        var spriteDefs = new List<int>();
+        var plus96 = 0;
+        var plus326 = 0f;
         var states = 0;
         var colourR = 0f;
         var colourG = 0f;
@@ -366,7 +400,7 @@ public sealed class FrontendUiDef
             if (crc == GraphicIndexCrc && payload + 4 <= raw.Length)
             {
                 var id = BitConverter.ToInt32(raw, payload);
-                if (!haveGraphic)
+                if (!haveGraphic || (graphic == 0 && id != 0))
                 {
                     graphic = id;
                     haveGraphic = true;
@@ -384,6 +418,7 @@ public sealed class FrontendUiDef
 
             if (crc == Unknown38BBCrc && payload + 4 <= raw.Length)
             {
+                plus96 = BitConverter.ToInt32(raw, payload);
                 cursor = payload + 4;
                 continue;
             }
@@ -392,14 +427,33 @@ public sealed class FrontendUiDef
             {
                 sprites = BitConverter.ToInt32(raw, payload);
                 cursor = payload + 4;
-                if (sprites != 0)
+                spriteDefs.Clear();
+                if (sprites is > 0 and <= 64)
+                {
+                    for (var i = 0; i < sprites && cursor + 8 <= raw.Length; i++)
+                    {
+                        cursor += 4;
+                        spriteDefs.Add(BitConverter.ToInt32(raw, cursor));
+                        cursor += 4;
+                    }
+                }
+                else if (sprites != 0)
                 {
                     unread.Add(crc);
                     partial = true;
-                    unreadOffset = cursor;
+                    unreadOffset = payload - 4;
                     break;
                 }
 
+                continue;
+            }
+
+            if (crc == Plus326Crc && payload + 4 <= raw.Length)
+            {
+                var value = BitConverter.ToSingle(raw, payload);
+                if (float.IsFinite(value))
+                    plus326 = value;
+                cursor = payload + 4;
                 continue;
             }
 
@@ -548,6 +602,23 @@ public sealed class FrontendUiDef
         var scaleOriginByte = ReadPersistU8(raw, ScaleOriginCrc);
         var messageId = ReadPersistI32(raw, MessageIdCrc);
         var plus224 = ReadPersistI32(raw, Plus224Crc);
+        var scanned326 = ReadPersistF32(raw, Plus326Crc);
+        if (float.IsFinite(scanned326))
+            plus326 = scanned326;
+        if (graphic == 0)
+        {
+            for (var i = 0; i + 8 <= raw.Length; i++)
+            {
+                if (BitConverter.ToUInt32(raw, i) != GraphicIndexCrc)
+                    continue;
+                var id = BitConverter.ToInt32(raw, i + 4);
+                if (id != 0)
+                {
+                    graphic = id;
+                    break;
+                }
+            }
+        }
 
         return new FrontendUiDef
         {
@@ -565,6 +636,9 @@ public sealed class FrontendUiDef
             GraphicId = graphic,
             GraphicBankId = graphic,
             Sprites = sprites,
+            SpriteDefIndices = spriteDefs,
+            Plus96 = plus96,
+            Plus326 = plus326,
             States = states,
             ColourR = colourR,
             ColourG = colourG,
@@ -617,6 +691,20 @@ public sealed class FrontendUiDef
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// File form: CRC then f32.
+    /// </summary>
+    public static float ReadPersistF32(byte[] raw, uint crc)
+    {
+        for (var i = 0; i + 8 <= raw.Length; i++)
+        {
+            if (BitConverter.ToUInt32(raw, i) == crc)
+                return BitConverter.ToSingle(raw, i + 4);
+        }
+
+        return 0f;
     }
 
     private static string? ReadUtf16(byte[] raw, ref int cursor)

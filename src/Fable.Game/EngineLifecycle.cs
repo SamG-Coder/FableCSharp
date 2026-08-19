@@ -2881,6 +2881,22 @@ public sealed class EngineLifecycle : IDisposable
     public int FrontendPresentHeight { get; private set; }
     public FrontendSubmitBatch? FrontendBatch { get; private set; }
     public IReadOnlyList<FrontendWidget> FrontendWidgets => _frontendWidgets;
+    /// <summary>
+    /// Frontend virtual-space pointer
+    /// (same space as dest / hit rects).
+    /// </summary>
+    public float FrontendPointerX { get; private set; }
+    public float FrontendPointerY { get; private set; }
+
+    /// <summary>
+    /// Mouse position in dest space
+    /// (<c>0055BF10</c> vtbl+64).
+    /// </summary>
+    public void SetFrontendPointer(float x, float y)
+    {
+        FrontendPointerX = x;
+        FrontendPointerY = y;
+    }
     private List<FrontendWidget> _frontendWidgets = [];
     /// <summary>
     /// <c>[ui+84]</c> slot id →
@@ -3506,7 +3522,10 @@ public sealed class EngineLifecycle : IDisposable
                 ? FrontendInputMap.MessageFromWidgets(act, _frontendWidgets)
                 : null;
             if (action == FrontendInputMap.ActionType6)
+            {
+                mapped ??= FrontendInputMap.MessageFromPlus228List(_frontendWidgets);
                 UnarmType34Widgets();
+            }
             if (mapped is not int msg)
                 continue;
             DispatchFrontendMessage(msg);
@@ -8116,19 +8135,56 @@ public sealed class EngineLifecycle : IDisposable
 
     /// <summary>
     /// Action 26 <c>[inner+364]=1</c> on
-    /// type 11/38. Action 28
-    /// <c>0055ACF0</c> needs this.
+    /// the type 11/38 under the pointer
+    /// (<c>0055B8F0</c>). Not every
+    /// visible button.
     /// </summary>
     private void ArmType34Widgets()
     {
-        for (var i = 0; i < _frontendWidgets.Count; i++)
+        UnarmType34Widgets();
+        var hit = FrontendHitTest.HitIndex(
+            _frontendWidgets, FrontendPointerX, FrontendPointerY);
+        if (hit is not int index)
+            return;
+        var widget = _frontendWidgets[index];
+        if (widget.Type == FrontendWidgetType.TextSlider)
         {
-            var widget = _frontendWidgets[i];
-            if (widget.Type != FrontendInputMap.TypeButton &&
-                widget.Type != FrontendInputMap.TypeAccept)
-                continue;
-            _frontendWidgets[i] = widget with { Armed = true };
+            ApplyTextSliderHit(index);
+            return;
         }
+
+        if (widget.Type == 15)
+        {
+            ApplySliderHit(index);
+            return;
+        }
+
+        if (widget.Type != FrontendInputMap.TypeButton &&
+            widget.Type != FrontendInputMap.TypeAccept)
+            return;
+        _frontendWidgets[index] = widget with { Armed = true, Hovered = true };
+    }
+
+    private void ApplyTextSliderHit(int index)
+    {
+        var widget = _frontendWidgets[index];
+        var kids = FrontendWidgetFactory.ChildrenOf(_frontendWidgets, index);
+        if (kids.Count == 0)
+            return;
+        var next = widget.ActiveChild;
+        if (FrontendHitTest.IsLeftHalf(_frontendWidgets, index, FrontendPointerX))
+            next = next <= 0 ? kids.Count - 1 : next - 1;
+        else
+            next = next + 1 >= kids.Count ? 0 : next + 1;
+        _frontendWidgets[index] = widget with { ActiveChild = next, Armed = true };
+        for (var k = 0; k < kids.Count; k++)
+            _frontendWidgets[kids[k]] = _frontendWidgets[kids[k]] with { Visible = k == next };
+    }
+
+    private void ApplySliderHit(int index)
+    {
+        var widget = _frontendWidgets[index];
+        _frontendWidgets[index] = widget with { Armed = true, Hovered = true };
     }
 
     private void UnarmType34Widgets()
@@ -8203,7 +8259,8 @@ public sealed class EngineLifecycle : IDisposable
         var width = BackBufferWidth > 0 ? BackBufferWidth : DisplayDefaultWidth;
         var height = BackBufferHeight > 0 ? BackBufferHeight : DisplayDefaultHeight;
         var viewport = FrontendLayout.FirstSeenFrontend(width, height);
-        var dests = new Dictionary<string, FrontendDest>(StringComparer.OrdinalIgnoreCase);
+        var dests = new FrontendDest[widgets.Count];
+        var sibling = new Dictionary<int, int>();
         for (var i = 0; i < widgets.Count; i++)
         {
             var widget = widgets[i];
@@ -8211,34 +8268,89 @@ public sealed class EngineLifecycle : IDisposable
             var persistH = widget.PersistHeight > 0 ? (int)widget.PersistHeight : 0;
             var leftoverW = 0f;
             var leftoverH = 0f;
+            if (widget.Type == FrontendWidgetType.TableType)
+                (leftoverW, leftoverH) = FrontendLayout.Type2Leftover(
+                    widget.PersistWidth, widget.PersistHeight);
             if (widget.TextureName is { } leftoverName &&
                 _frontendSprites?.TryLoad(leftoverName) is { } leftoverTex)
             {
                 var frameW = leftoverTex.FrameWidth > 0 ? leftoverTex.FrameWidth : leftoverTex.Width;
                 var frameH = leftoverTex.FrameHeight > 0 ? leftoverTex.FrameHeight : leftoverTex.Height;
-                (leftoverW, leftoverH) = FrontendLayout.LeftoverFromGraphic(
+                var graphic = FrontendLayout.LeftoverFromGraphic(
                     widget.GraphicId, frameW, frameH);
+                if (graphic.W > leftoverW)
+                    leftoverW = graphic.W;
+                if (graphic.H > leftoverH)
+                    leftoverH = graphic.H;
             }
 
             FrontendDest? parentDest = null;
-            if (widget.ParentName is { } parentName &&
-                dests.TryGetValue(parentName, out var parent))
-                parentDest = parent;
-            var layout = new FrontendWidgetLayout(
-                widget.PersistX,
-                widget.PersistY,
-                PersistScaleX: widget.PersistScaleX,
-                PersistScaleY: widget.PersistScaleY,
-                PersistWidth: persistW,
-                PersistHeight: persistH,
-                LeftoverW: leftoverW,
-                LeftoverH: leftoverH,
-                Center: widget.Center,
-                Absolute: widget.Absolute,
-                ScaleOriginToViewport: widget.ScaleOriginToViewport,
-                ScaleSizeToViewport: widget.ScaleSizeToViewport);
-            var dest = FrontendLayout.Compute(layout, parentDest, viewport);
-            dests[widget.Name] = dest;
+            FrontendWidget? parentWidget = null;
+            if ((uint)widget.ParentIndex < (uint)i)
+            {
+                parentDest = dests[widget.ParentIndex];
+                parentWidget = widgets[widget.ParentIndex];
+            }
+
+            var persistY = widget.PersistY;
+            var siblingIndex = 0;
+            if (widget.ParentIndex >= 0)
+            {
+                sibling.TryGetValue(widget.ParentIndex, out siblingIndex);
+                sibling[widget.ParentIndex] = siblingIndex + 1;
+            }
+
+            if (parentWidget is { Type: FrontendWidgetType.List, Plus326: not 0f } list)
+            {
+                persistY = FrontendLayout.ListChildAuthoredY(
+                    siblingIndex, widget.PersistY, list.Plus326);
+            }
+
+            FrontendDest dest;
+            if (parentWidget is { Type: FrontendWidgetType.TableType } table &&
+                parentDest is { } tableDest)
+            {
+                var cellCount = 0;
+                for (var c = 0; c < widgets.Count; c++)
+                {
+                    if (widgets[c].ParentIndex == widget.ParentIndex)
+                        cellCount++;
+                }
+
+                var placed = FrontendLayout.PlaceTableCell(
+                    siblingIndex,
+                    cellCount,
+                    tableDest.X0,
+                    tableDest.Y0,
+                    tableDest.X1 > tableDest.X0 ? tableDest.X1 - tableDest.X0 : leftoverW,
+                    leftoverH > 0f ? leftoverH : (table.PersistHeight > 0f ? table.PersistHeight : leftoverH),
+                    leftoverW,
+                    leftoverH,
+                    table.Plus96);
+                dest = new FrontendDest(
+                    placed.X0, placed.Y0,
+                    tableDest.ScaleX, tableDest.ScaleY,
+                    placed.X0, placed.Y0, placed.X1, placed.Y1);
+            }
+            else
+            {
+                var layout = new FrontendWidgetLayout(
+                    widget.PersistX,
+                    persistY,
+                    PersistScaleX: widget.PersistScaleX,
+                    PersistScaleY: widget.PersistScaleY,
+                    PersistWidth: persistW,
+                    PersistHeight: persistH,
+                    LeftoverW: leftoverW,
+                    LeftoverH: leftoverH,
+                    Center: widget.Center,
+                    Absolute: widget.Absolute,
+                    ScaleOriginToViewport: widget.ScaleOriginToViewport,
+                    ScaleSizeToViewport: widget.ScaleSizeToViewport);
+                dest = FrontendLayout.Compute(layout, parentDest, viewport);
+            }
+
+            dests[i] = dest;
             widgets[i] = widget with
             {
                 DestX0 = dest.X0,
@@ -8247,6 +8359,9 @@ public sealed class EngineLifecycle : IDisposable
                 DestY1 = dest.Y1,
                 Leftover204 = leftoverW,
                 DestScaleX = dest.ScaleX,
+                PersistY = persistY,
+                TextOriginX = dest.X0,
+                TextOriginY = dest.Y0,
             };
             if (i == 0 && ReferenceEquals(widgets, _frontendWidgets))
             {
@@ -8257,6 +8372,52 @@ public sealed class EngineLifecycle : IDisposable
                 FrontendScaleX = dest.ScaleX;
                 FrontendScaleY = dest.ScaleY;
             }
+        }
+
+        ExpandTableDests(widgets);
+        AssignHitRects(widgets);
+    }
+
+    private static void ExpandTableDests(List<FrontendWidget> widgets)
+    {
+        for (var i = 0; i < widgets.Count; i++)
+        {
+            var widget = widgets[i];
+            if (widget.Type != FrontendWidgetType.TableType)
+                continue;
+            if (widget.DestY1 > widget.DestY0)
+                continue;
+            var have = false;
+            var y1 = widget.DestY0;
+            for (var c = 0; c < widgets.Count; c++)
+            {
+                if (widgets[c].ParentIndex != i)
+                    continue;
+                if (widgets[c].DestY1 > y1)
+                {
+                    y1 = widgets[c].DestY1;
+                    have = true;
+                }
+            }
+
+            if (!have || y1 <= widget.DestY0)
+                continue;
+            widgets[i] = widget with { DestY1 = y1 };
+        }
+    }
+
+    private static void AssignHitRects(List<FrontendWidget> widgets)
+    {
+        for (var i = 0; i < widgets.Count; i++)
+        {
+            var rect = FrontendHitTest.HitRect(widgets, i);
+            widgets[i] = widgets[i] with
+            {
+                HitX0 = rect.X0,
+                HitY0 = rect.Y0,
+                HitX1 = rect.X1,
+                HitY1 = rect.Y1,
+            };
         }
     }
 
@@ -8492,6 +8653,13 @@ public sealed class EngineLifecycle : IDisposable
         var rows = DumpFrontendFrame();
         var draws = FrontendBatch?.Draws.Length ?? 0;
         FrontendFrameDump.Write(path, rows, draws);
+        return path;
+    }
+
+    public string WriteNewProfileWidgetDump(string path)
+    {
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        File.WriteAllText(path, FrontendFrameDump.FormatNewProfile(_frontendWidgets));
         return path;
     }
 

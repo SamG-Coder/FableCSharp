@@ -108,6 +108,13 @@ window.Update += dt =>
     if (mouse is not null)
     {
         var lmbDown = mouse.IsButtonPressed(MouseButton.Left);
+        var fbW = Math.Max(1, window.FramebufferSize.X);
+        var fbH = Math.Max(1, window.FramebufferSize.Y);
+        var destW = life.BackBufferWidth > 0 ? life.BackBufferWidth : 1024;
+        var destH = life.BackBufferHeight > 0 ? life.BackBufferHeight : 768;
+        life.SetFrontendPointer(
+            lastMouse.X / fbW * destW,
+            lastMouse.Y / fbH * destH);
         if (lmbDown && !lmbWasDown)
             life.QueueInput(EngineInput.Type4, 0);
         if (!lmbDown && lmbWasDown)

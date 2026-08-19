@@ -219,6 +219,51 @@ public static class FrontendFrameDump
         return sb.ToString();
     }
 
+    public static string FormatNewProfile(IReadOnlyList<FrontendWidget> widgets)
+    {
+        ArgumentNullException.ThrowIfNull(widgets);
+        var sb = new StringBuilder();
+        sb.AppendLine("# New Profile widget dump");
+        sb.AppendLine("# name type parent state selected authoredX authoredY authoredW authoredH drawX0 drawY0 drawX1 drawY1 hitX0 hitY0 hitX1 hitY1 textOriginX textOriginY texture layer alpha visible enabled message");
+        var byName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < widgets.Count; i++)
+            byName.TryAdd(widgets[i].Name, i);
+        for (var i = 0; i < widgets.Count; i++)
+        {
+            var w = widgets[i];
+            var rect = FrontendHitTest.HitRect(widgets, i);
+            var alpha = (int)(w.Colour >> 24);
+            sb.Append(Escape(w.Name));
+            sb.Append(' ').Append(w.Type);
+            sb.Append(' ').Append(Escape(w.ParentName));
+            sb.Append(' ').Append(w.State);
+            sb.Append(' ').Append(w.ActiveChild);
+            sb.Append(' ').Append(F(w.PersistX));
+            sb.Append(' ').Append(F(w.PersistY));
+            sb.Append(' ').Append(F(w.PersistWidth));
+            sb.Append(' ').Append(F(w.PersistHeight));
+            sb.Append(' ').Append(F(w.DestX0));
+            sb.Append(' ').Append(F(w.DestY0));
+            sb.Append(' ').Append(F(w.DestX1));
+            sb.Append(' ').Append(F(w.DestY1));
+            sb.Append(' ').Append(F(rect.X0));
+            sb.Append(' ').Append(F(rect.Y0));
+            sb.Append(' ').Append(F(rect.X1));
+            sb.Append(' ').Append(F(rect.Y1));
+            sb.Append(' ').Append(F(w.TextOriginX));
+            sb.Append(' ').Append(F(w.TextOriginY));
+            sb.Append(' ').Append(Escape(w.TextureName));
+            sb.Append(' ').Append(w.Layer);
+            sb.Append(' ').Append(alpha);
+            sb.Append(' ').Append(w.Visible ? 1 : 0);
+            sb.Append(' ').Append(w.Enabled ? 1 : 0);
+            sb.Append(' ').Append(w.MessageId);
+            sb.AppendLine();
+        }
+
+        return sb.ToString();
+    }
+
     public static void Write(string path, IReadOnlyList<FrontendFrameDumpRow> rows, int batchDraws)
     {
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);

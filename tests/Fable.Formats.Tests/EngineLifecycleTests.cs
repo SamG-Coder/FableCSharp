@@ -1675,9 +1675,7 @@ public sealed class EngineLifecycleTests
         Assert.Equal(
             EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
         Assert.False(life.RetailNewGameFlag);
-        life.QueueInput(EngineInput.Type4, 0);
-        life.QueueInput(EngineInput.Type6, 0);
-        Assert.True(life.Pump());
+        ClickNamed(life, "UI_ACCEPT_NEW_PROFILE");
         Assert.Equal(
             EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
         Assert.False(life.RetailNewGameFlag);
@@ -1689,9 +1687,7 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Pump());
         Assert.False(life.RetailNewGameFlag);
         Assert.Equal(EngineStage.Frontend, life.Stage);
-        life.QueueInput(EngineInput.Type4, 0);
-        life.QueueInput(EngineInput.Type6, 0);
-        Assert.True(life.Pump());
+        ClickNamed(life, "UI_FRONTEND_BUTTON_NEW_GAME");
         Assert.True(life.RetailNewGameFlag);
         Assert.Equal(EngineStage.Game, life.Stage);
         Assert.Equal("FinalAlbion.wld", life.WorldFileName);
@@ -1739,9 +1735,7 @@ public sealed class EngineLifecycleTests
         Assert.All(
             life.FrontendWidgets.Where(w => w.Type == FrontendWidgetType.Text),
             w => Assert.Equal(0f, w.Leftover204));
-        life.QueueInput(EngineInput.Type4, 0);
-        life.QueueInput(EngineInput.Type6, 0);
-        Assert.True(life.Pump());
+        ClickNamed(life, "UI_ACCEPT_NEW_PROFILE");
         Assert.Equal(
             EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
         Assert.False(life.RetailNewGameFlag);
@@ -1749,11 +1743,10 @@ public sealed class EngineLifecycleTests
             w.Name == "UI_FRONTEND_BUTTON_NEW_GAME" &&
             w.MessageId == FrontendMessages.NewGame);
         Assert.All(
-            life.FrontendWidgets.Where(w => w.GraphicId == 0),
+            life.FrontendWidgets.Where(w =>
+                w.GraphicId == 0 && w.Type != FrontendWidgetType.TableType),
             w => Assert.Equal(0f, w.Leftover204));
-        life.QueueInput(EngineInput.Type4, 0);
-        life.QueueInput(EngineInput.Type6, 0);
-        Assert.True(life.Pump());
+        ClickNamed(life, "UI_FRONTEND_BUTTON_NEW_GAME");
         Assert.True(life.RetailNewGameFlag);
         Assert.Equal(EngineStage.Game, life.Stage);
         Assert.Equal("FinalAlbion.wld", life.WorldFileName);
@@ -2227,9 +2220,7 @@ public sealed class EngineLifecycleTests
             e.Va == FrontendWidgetType.ForwardSelectFn &&
             e.Action.Contains("0041C5A0", StringComparison.Ordinal));
 
-        life.QueueInput(EngineInput.Type4, 0);
-        life.QueueInput(EngineInput.Type6, 0);
-        Assert.True(life.Pump());
+        ClickNamed(life, "UI_ACCEPT_NEW_PROFILE");
         Assert.Equal(EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
         Assert.Contains(life.FrontendWidgets, w =>
             w.Name == "UI_FRONTEND_BUTTON_NEW_GAME" &&
@@ -2241,6 +2232,27 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.FrontendResidentSlots, s => s == EngineLifecycle.FrontendPressStartSlot);
         Assert.Contains(life.FrontendResidentSlots, s => s == EngineLifecycle.FrontendNewProfileSlot);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    private static void ClickNamed(EngineLifecycle life, string name)
+    {
+        var index = -1;
+        for (var i = 0; i < life.FrontendWidgets.Count; i++)
+        {
+            if (life.FrontendWidgets[i].Name == name)
+            {
+                index = i;
+                break;
+            }
+        }
+
+        Assert.True(index >= 0, name);
+        var hit = FrontendHitTest.HitRect(life.FrontendWidgets, index);
+        Assert.True(hit.X1 > hit.X0 && hit.Y1 > hit.Y0, name + " empty hit");
+        life.SetFrontendPointer((hit.X0 + hit.X1) / 2f, (hit.Y0 + hit.Y1) / 2f);
+        life.QueueInput(EngineInput.Type4, 0);
+        life.QueueInput(EngineInput.Type6, 0);
+        Assert.True(life.Pump());
     }
 
     private static void WriteScreenDump(EngineLifecycle life, string name)

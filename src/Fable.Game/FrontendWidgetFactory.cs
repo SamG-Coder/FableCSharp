@@ -26,10 +26,10 @@ public static class FrontendWidgetFactory
         var widgets = new List<FrontendWidget>();
         var root = defs.FindEntry(rootName);
         var parsed = root is null ? null : FrontendUiDef.TryParse(root);
-        Add(widgets, parsed, rootName, parent: null, sprites, lookupText, names);
+        Add(widgets, parsed, rootName, parent: null, parentIndex: -1, sprites, lookupText, names);
         if (parsed is null)
             return widgets;
-        AttachChildren(widgets, defs, parsed, rootName, sprites, lookupText, names);
+        AttachChildren(widgets, defs, parsed, rootName, 0, sprites, lookupText, names);
         ApplyFirstSeenState(widgets);
         return widgets;
     }
@@ -60,7 +60,7 @@ public static class FrontendWidgetFactory
         {
             if (!FrontendWidgetType.SelectsChild(widgets[i].Type))
                 continue;
-            var kids = ChildrenOf(widgets, widgets[i].Name);
+            var kids = ChildrenOf(widgets, i);
             var active = FrontendWidgetType.FirstSeenState;
             widgets[i] = widgets[i] with { ActiveChild = active };
             for (var k = 0; k < kids.Count; k++)
@@ -104,15 +104,18 @@ public static class FrontendWidgetFactory
         var widget = tree[index];
         if (!widget.Visible || widget.Clip)
             return false;
-        if (widget.ParentName is null)
+        if (widget.ParentIndex < 0 && widget.ParentName is null)
             return true;
-        var parent = -1;
-        for (var i = 0; i < tree.Count; i++)
+        var parent = widget.ParentIndex;
+        if (parent < 0)
         {
-            if (string.Equals(tree[i].Name, widget.ParentName, StringComparison.Ordinal))
+            for (var i = 0; i < tree.Count; i++)
             {
-                parent = i;
-                break;
+                if (string.Equals(tree[i].Name, widget.ParentName, StringComparison.Ordinal))
+                {
+                    parent = i;
+                    break;
+                }
             }
         }
 
@@ -120,7 +123,7 @@ public static class FrontendWidgetFactory
             return true;
         if (FrontendWidgetType.SelectsChild(tree[parent].Type))
         {
-            var kids = ChildrenOf(tree, tree[parent].Name);
+            var kids = ChildrenOf(tree, parent);
             var active = tree[parent].ActiveChild;
             if ((uint)active >= (uint)kids.Count || kids[active] != index)
                 return false;
@@ -146,7 +149,7 @@ public static class FrontendWidgetFactory
             if (!FrontendWidgetType.SelectsChild(tree[i].Type))
                 continue;
             tree[i] = tree[i] with { ActiveChild = state, State = state };
-            var kids = ChildrenOf(tree, tree[i].Name);
+            var kids = ChildrenOf(tree, i);
             for (var k = 0; k < kids.Count; k++)
                 tree[kids[k]] = tree[kids[k]] with { Visible = k == state };
         }
@@ -170,9 +173,36 @@ public static class FrontendWidgetFactory
     public static List<int> ChildrenOf(IReadOnlyList<FrontendWidget> widgets, string? parent)
     {
         var kids = new List<int>();
+        var parentIndex = -1;
+        if (parent is not null)
+        {
+            for (var i = 0; i < widgets.Count; i++)
+            {
+                if (string.Equals(widgets[i].Name, parent, StringComparison.Ordinal))
+                {
+                    parentIndex = i;
+                    break;
+                }
+            }
+        }
+
+        if (parentIndex >= 0)
+            return ChildrenOf(widgets, parentIndex);
         for (var i = 0; i < widgets.Count; i++)
         {
             if (string.Equals(widgets[i].ParentName, parent, StringComparison.Ordinal))
+                kids.Add(i);
+        }
+
+        return kids;
+    }
+
+    public static List<int> ChildrenOf(IReadOnlyList<FrontendWidget> widgets, int parentIndex)
+    {
+        var kids = new List<int>();
+        for (var i = 0; i < widgets.Count; i++)
+        {
+            if (widgets[i].ParentIndex == parentIndex)
                 kids.Add(i);
         }
 
@@ -184,6 +214,7 @@ public static class FrontendWidgetFactory
         GameBin defs,
         FrontendUiDef parent,
         string parentName,
+        int parentIndex,
         FrontendSpriteBank? sprites,
         Func<string, string?>? lookupText,
         NamesBin? names)
@@ -195,9 +226,40 @@ public static class FrontendWidgetFactory
             var child = FrontendUiDef.TryParse(defs.Entries[index]);
             if (child is null)
                 continue;
-            Add(widgets, child, child.InstanceName, parentName, sprites, lookupText, names);
+            var childIndex = widgets.Count;
+            Add(widgets, child, child.InstanceName, parentName, parentIndex, sprites, lookupText, names);
             AttachChildren(
-                widgets, defs, child, child.InstanceName, sprites, lookupText, names);
+                widgets, defs, child, child.InstanceName, childIndex, sprites, lookupText, names);
+        }
+
+        AttachSpriteCells(widgets, defs, parent, parentName, parentIndex, sprites, lookupText, names);
+    }
+
+    /// <summary>
+    /// Type-2 <c>00551340</c> walks persist
+    /// Sprites <c>(key, defIndex)</c> and
+    /// <c>0041D21B</c>s each cell.
+    /// </summary>
+    private static void AttachSpriteCells(
+        List<FrontendWidget> widgets,
+        GameBin defs,
+        FrontendUiDef parent,
+        string parentName,
+        int parentIndex,
+        FrontendSpriteBank? sprites,
+        Func<string, string?>? lookupText,
+        NamesBin? names)
+    {
+        if (parent.Type != FrontendWidgetType.TableType || parent.SpriteDefIndices.Count == 0)
+            return;
+        foreach (var index in parent.SpriteDefIndices)
+        {
+            if ((uint)index >= (uint)defs.Entries.Count)
+                continue;
+            var child = FrontendUiDef.TryParse(defs.Entries[index]);
+            if (child is null || child.InstanceName == parentName)
+                continue;
+            Add(widgets, child, child.InstanceName, parentName, parentIndex, sprites, lookupText, names);
         }
     }
 
@@ -219,6 +281,7 @@ public static class FrontendWidgetFactory
         FrontendUiDef? def,
         string name,
         string? parent,
+        int parentIndex,
         FrontendSpriteBank? sprites,
         Func<string, string?>? lookupText,
         NamesBin? names)
@@ -237,6 +300,7 @@ public static class FrontendWidgetFactory
             text,
             body,
             parent,
+            ParentIndex: parentIndex,
             texture,
             graphicId,
             def?.Width ?? 0,
@@ -261,6 +325,9 @@ public static class FrontendWidgetFactory
                 def?.ColourR ?? 0f,
                 def?.ColourG ?? 0f,
                 def?.ColourB ?? 0f,
-                def?.ColourA ?? 0f)));
+                def?.ColourA ?? 0f),
+            Layer: def?.Layer ?? 0,
+            Plus326: def?.Plus326 ?? 0f,
+            Plus96: def?.Plus96 ?? 0));
     }
 }

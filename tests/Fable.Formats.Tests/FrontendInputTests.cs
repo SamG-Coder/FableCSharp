@@ -176,18 +176,14 @@ public sealed class FrontendInputTests
         Assert.Contains(life.FrontendWidgets, w =>
             w.Name == "UI_ACCEPT_NEW_PROFILE" &&
             w.MessageId == FrontendMessages.AcceptNewProfile);
-        life.QueueInput(FrontendInputMap.Type4, 0);
-        life.QueueInput(FrontendInputMap.Type6, 0);
-        Assert.True(life.Pump());
+        ClickNamed(life, "UI_ACCEPT_NEW_PROFILE");
         Assert.Equal(
             EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
         Assert.False(life.RetailNewGameFlag);
         Assert.Contains(life.FrontendWidgets, w =>
             w.Name == "UI_FRONTEND_BUTTON_NEW_GAME" &&
             w.MessageId == FrontendMessages.NewGame);
-        life.QueueInput(FrontendInputMap.Type4, 0);
-        life.QueueInput(FrontendInputMap.Type6, 0);
-        Assert.True(life.Pump());
+        ClickNamed(life, "UI_FRONTEND_BUTTON_NEW_GAME");
         Assert.True(life.RetailNewGameFlag);
         Assert.Equal(EngineStage.Game, life.Stage);
         Assert.Equal("FinalAlbion.wld", life.WorldFileName);
@@ -293,6 +289,75 @@ public sealed class FrontendInputTests
         ]));
         Assert.Null(FrontendInputMap.MessageFromAction(
             FrontendInputMap.ActionType4, FrontendMessages.NewProfileMenu));
+    }
+
+    [Fact]
+    public void New_Profile_empty_space_Type4_Type6_does_not_accept()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.QueueInput(FrontendInputMap.Type4, 0);
+        life.QueueInput(FrontendInputMap.Type6, 0);
+        Assert.True(life.Pump());
+        Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        life.SetFrontendPointer(12f, 12f);
+        life.QueueInput(FrontendInputMap.Type4, 0);
+        life.QueueInput(FrontendInputMap.Type6, 0);
+        Assert.True(life.Pump());
+        Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        Assert.False(life.RetailNewGameFlag);
+        Assert.Null(FrontendHitTest.HitIndex(life.FrontendWidgets, 12f, 12f));
+    }
+
+    [Fact]
+    public void New_Profile_Apply_hit_posts_0x126_Cancel_does_not()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.QueueInput(FrontendInputMap.Type4, 0);
+        life.QueueInput(FrontendInputMap.Type6, 0);
+        Assert.True(life.Pump());
+        var cancel = IndexOf(life, "UI_CANCEL");
+        var cancelHit = FrontendHitTest.HitRect(life.FrontendWidgets, cancel);
+        life.SetFrontendPointer(
+            (cancelHit.X0 + cancelHit.X1) / 2f,
+            (cancelHit.Y0 + cancelHit.Y1) / 2f);
+        life.QueueInput(FrontendInputMap.Type4, 0);
+        life.QueueInput(FrontendInputMap.Type6, 0);
+        Assert.True(life.Pump());
+        Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        ClickNamed(life, "UI_ACCEPT_NEW_PROFILE");
+        Assert.Equal(EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
+    }
+
+    private static void ClickNamed(EngineLifecycle life, string name)
+    {
+        var index = IndexOf(life, name);
+        var hit = FrontendHitTest.HitRect(life.FrontendWidgets, index);
+        Assert.True(hit.X1 > hit.X0 && hit.Y1 > hit.Y0, name + " hit empty");
+        life.SetFrontendPointer((hit.X0 + hit.X1) / 2f, (hit.Y0 + hit.Y1) / 2f);
+        life.QueueInput(FrontendInputMap.Type4, 0);
+        life.QueueInput(FrontendInputMap.Type6, 0);
+        Assert.True(life.Pump());
+    }
+
+    private static int IndexOf(EngineLifecycle life, string name)
+    {
+        for (var i = 0; i < life.FrontendWidgets.Count; i++)
+        {
+            if (life.FrontendWidgets[i].Name == name)
+                return i;
+        }
+
+        throw new InvalidOperationException(name);
     }
 
     [Fact]

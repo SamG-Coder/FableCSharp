@@ -280,6 +280,90 @@ public sealed class FrontendLayoutTests
         Assert.Equal(384f, text.Y0);
     }
 
+    [Fact]
+    public void New_Profile_type12_rows_use_persist_plus326_not_equal_Y()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var names = NamesBin.Load(install.FindCompiledDef("names.bin")!);
+        var bin = GameBin.Load(install.FindCompiledDef("frontend.bin")!, names);
+        var list = FrontendUiDef.TryParse(bin.FindEntry("UI_NEW_PROFILE_MENU")!)!;
+        Assert.Equal(12, list.Type);
+        Assert.Equal(30f, list.Plus326);
+        Assert.Equal(4, list.ChildIndices.Count);
+        Assert.Equal(0f, FrontendLayout.ListChildAuthoredY(0, 0f, list.Plus326));
+        Assert.Equal(30f, FrontendLayout.ListChildAuthoredY(1, 0f, list.Plus326));
+        Assert.Equal(60f, FrontendLayout.ListChildAuthoredY(2, 0f, list.Plus326));
+        Assert.Equal(90f, FrontendLayout.ListChildAuthoredY(3, 70f, list.Plus326));
+
+        var life = ReachNewProfile();
+        var rows = life.FrontendWidgets
+            .Where(w => w.ParentName == "UI_NEW_PROFILE_MENU")
+            .ToList();
+        Assert.Equal(4, rows.Count);
+        var ys = rows.Select(w => w.DestY0).Distinct().ToList();
+        Assert.True(ys.Count >= 4, string.Join(",", rows.Select(w => $"{w.Name}:{w.DestY0}")));
+        Assert.Equal(0x0054C3A0u, FrontendWidgetType.ListCtor);
+
+        var left = FrontendUiDef.TryParse(bin.FindEntry("UI_BUTTON_OPTIONS_LEFT")!)!;
+        Assert.Equal(2, left.Type);
+        Assert.Equal(3, left.Sprites);
+        Assert.True(
+            left.SpriteDefIndices.Count == 3,
+            "sprites=" + string.Join(",", left.SpriteDefIndices) +
+            " n=" + left.Sprites + " partial=" + left.Partial);
+        Assert.Equal((180f, 0f), FrontendLayout.Type2Leftover(left.Width, left.Height));
+        var cell = FrontendLayout.PlaceTableCell(
+            1, 3, 64f, 240f, 288f, 16f, 16f, 16f, plus96: 1);
+        Assert.True(cell.X1 > cell.X0);
+        Assert.True(cell.Y1 > cell.Y0);
+    }
+
+    [Fact]
+    public void New_Profile_apply_cancel_hit_rects_are_disjoint()
+    {
+        var life = ReachNewProfile();
+        var apply = IndexOf(life, "UI_ACCEPT_NEW_PROFILE");
+        var cancel = IndexOf(life, "UI_CANCEL");
+        var applyHit = FrontendHitTest.HitRect(life.FrontendWidgets, apply);
+        var cancelHit = FrontendHitTest.HitRect(life.FrontendWidgets, cancel);
+        Assert.True(applyHit.X1 > applyHit.X0);
+        Assert.True(applyHit.Y1 > applyHit.Y0);
+        Assert.True(cancelHit.X1 > cancelHit.X0);
+        Assert.True(cancelHit.Y1 > cancelHit.Y0);
+        Assert.False(
+            FrontendFrameDump.Intersects(
+                applyHit.X0, applyHit.Y0, applyHit.X1, applyHit.Y1,
+                cancelHit.X0, cancelHit.Y0, cancelHit.X1, cancelHit.Y1));
+        Assert.Equal(0x0055B8F0u, FrontendHitTest.HitTestFn);
+    }
+
+    private static EngineLifecycle ReachNewProfile()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.QueueInput(EngineInput.Type4, 0);
+        life.QueueInput(EngineInput.Type6, 0);
+        Assert.True(life.Pump());
+        Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        return life;
+    }
+
+    private static int IndexOf(EngineLifecycle life, string name)
+    {
+        for (var i = 0; i < life.FrontendWidgets.Count; i++)
+        {
+            if (life.FrontendWidgets[i].Name == name)
+                return i;
+        }
+
+        throw new InvalidOperationException(name);
+    }
+
     private static (float X, float Y) FirstPos(byte[] raw)
     {
         float x = 0f;

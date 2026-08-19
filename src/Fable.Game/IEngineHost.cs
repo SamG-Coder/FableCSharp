@@ -65,6 +65,7 @@ public readonly record struct FrontendWidget(
     string? TextTag,
     string? Text,
     string? ParentName = null,
+    int ParentIndex = -1,
     string? TextureName = null,
     int GraphicId = 0,
     float PersistWidth = 0,
@@ -95,4 +96,14 @@ public readonly record struct FrontendWidget(
     float V1 = 0,
     uint Colour = 0xFFFFFFFFu,
     int GlyphCount = 0,
-    int DrawOrder = 0);
+    int DrawOrder = 0,
+    int Layer = 0,
+    float Plus326 = 0,
+    int Plus96 = 0,
+    float HitX0 = 0,
+    float HitY0 = 0,
+    float HitX1 = 0,
+    float HitY1 = 0,
+    float TextOriginX = 0,
+    float TextOriginY = 0,
+    bool Hovered = false);
