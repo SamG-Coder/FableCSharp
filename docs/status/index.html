@@ -29,7 +29,7 @@
         <button type="button" class="chip DISPROVEN" data-filter="DISPROVEN" aria-pressed="false">DISPROVEN</button>
         <button type="button" class="chip TEMPORARY" data-filter="TEMPORARY" aria-pressed="false">TEMPORARY</button>
       </div>
-      <p class="hits" id="hits">201 shown</p>
+      <p class="hits" id="hits">206 shown</p>
     </div>
     <header class="doc-intro">
       <p class="kicker">FableCSharp · human overview</p>
@@ -75,26 +75,24 @@
 
     <p>
       Snapshot: <strong>2026-08-19</strong>, previous snapshot runtime HEAD
-      <code>8cd110a</code> via PR #35 merge <code>313e573</code>,
-      runtime HEAD <code>c180b8c</code>
-      (<em>frontend.bin widget tree, dest inherit, type-4 0xE5,
-      stored MessageId 0x126/15.</em>).
-      Just locked: 5 runtime commits since <code>8cd110a</code>.
-      Headline locks: frontend.bin widget tree + DX9-to-Vulkan submit
-      (<code>0d77c2c</code>); dest inherit type-10 remap; leftover
-      size only GraphicIndex; type-6 dest zero-size
-      (<code>1a08cc0</code>); type-4 Press Start 0xE5; Return is
-      not accept (<code>db36334</code>); stored MessageId 0x126/15;
-      type-4 action 26 posts them; no lifecycle inject
-      (<code>c180b8c</code>). <code>e79f7b4</code> is unused-usings
-      cleanup of <code>0d77c2c</code>. Ignore merge
-      <code>f2aebf57</code>. Ignore docs <code>fb46116</code> /
-      snapshot <code>313e573</code> / <code>09684a0</code>. Ignore
-      gitignore <code>d1a9f91</code>. Ignore tools/_frontend
-      <code>fa5c1a2</code>. Ignore proofs-only adds. Docs PR #29
+      <code>c180b8c</code> via PR #38 merge <code>86bee1ad</code>,
+      runtime HEAD <code>48133e9</code>
+      (<em>QST TRUE activate + host LMB Type4, MessageId persist
+      +228, action 26 +224 empty first-seen vs +228 MessageId,
+      0xE5 invent gone, LMB-up type 6 action 28.</em>).
+      Just locked: 5 runtime commits since <code>c180b8c</code>.
+      Headline locks: QST TRUE activate + host LMB Type4
+      (<code>5dcc1fc</code>); MessageId persist +228
+      (<code>f38f9f9</code>); action 26 +224 empty first-seen vs
+      +228 MessageId (<code>9e94ef9</code>); 0xE5 invent gone;
+      type-10 attach 00598A1C (<code>61e430f</code>); LMB-up type 6
+      action 28 posts +228 after arm (<code>48133e9</code>).
+      Ignore snapshot merge <code>86bee1ad</code> /
+      <code>62ae998</code>. Ignore proofs-only adds. Docs PR #29
       <code>bedcf919</code> is iOS Settings chrome only — CSS
-      unchanged. Freeze at <code>c180b8c</code>.
-      Do not include any later runtime if master moves. Master is still
+      unchanged. Freeze at <code>48133e9</code>.
+      Do not include any later runtime if master moves (e.g.
+      <code>7adf621</code>). Master is still
       proving <strong>boot / world clock</strong>, not animation.
       README’s long-term priority list still starts with animation; that
       list is not the current phase.
@@ -280,13 +278,15 @@
 
     <h3>Phase 1 in progress — boot / world clock (current master)</h3>
     <p>
-      Recent commits (<code>0d77c2c</code> … <code>c180b8c</code>) lock
-      frontend.bin widget tree / dest inherit / type-4 Press Start /
-      stored MessageId, not <code>00DBDE40</code>. Previous snapshot
-      <code>8cd110a</code> via PR #35 <code>313e573</code>.
-      Just locked this batch: frontend.bin widget tree + DX9-to-Vulkan
-      submit, dest inherit type-10 remap, type-4 0xE5, stored
-      MessageId 0x126/15 via action 26. CSS unchanged.
+      Recent commits (<code>5dcc1fc</code> … <code>48133e9</code>) lock
+      QST TRUE activate / host LMB Type4 / MessageId +228 / action 26
+      empty +224 / 0xE5 invent gone / LMB-up type 6, not
+      <code>00DBDE40</code>. Previous snapshot
+      <code>c180b8c</code> via PR #38 <code>86bee1ad</code>.
+      Just locked this batch: QST AddQuest TRUE as world+172, MessageId
+      persist +228, action 26 +224 empty first-seen, type-10 attach
+      00598A1C, LMB-up type 6 action 28 posts +228 after arm. CSS
+      unchanged.
     </p>
     <div class="table-scroll">
     <table>
@@ -435,17 +435,17 @@
         <tr>
           <td>Leave Press Start: <code>0059A238</code> msg <code>0xE5</code> → <code>00599D5C</code> empty <code>005955AB</code> → <code>00595845</code> → <code>00596917</code> slot <code>0x17</code> <code>NEW_PROFILE</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>Frontend_0059A238_msg_E5_empty_005955AB_is_00595845_then_00596917</code>. Type-4 posts <code>0xE5</code> on Press Start (<code>db36334</code>). Host Return quarantined as accept. Return→msg 15 from Press Start DISPROVEN. Native <code>0xE5</code> is attach <code>00598EE6</code> → widget+352, not persist +224 — leftover #37.</td>
+          <td><code>Frontend_0059A238_msg_E5_empty_005955AB_is_00595845_then_00596917</code>. Type-4 posts type-10 +352 only (<code>48133e9</code>). Host LMB edge queues Type4 (<code>5dcc1fc</code>). Host Return quarantined as accept. Return→msg 15 from Press Start DISPROVEN. Type-10 <code>0xE5</code> is only <code>00598A1C</code> attach write (<code>00598EE6</code> is the mov inside it) → widget+352 (<code>61e430f</code>). #37 locked.</td>
         </tr>
         <tr>
           <td>New Profile accept: <code>00851770</code> seeds <code>0x122DE80</code> "Default"; msg <code>0x126</code> → <code>00851920</code> → <code>0059697A</code> <code>MAIN_MENU_NO_CONTINUE</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>Frontend_00851770_seeds_Default_then_0x126_is_0059697A_main_menu</code>. Persist CRC <code>0x53C644E4</code> as MessageId (def+224 via <code>0055B040</code>): type-38 <code>UI_ACCEPT_NEW_PROFILE</code> stores <code>0x126</code> (<code>c180b8c</code>). Action 26 posts the stored id.</td>
+          <td><code>Frontend_00851770_seeds_Default_then_0x126_is_0059697A_main_menu</code>. Persist CRC <code>0x53C644E4</code> as MessageId (def+228 via <code>0055B040</code> / <code>00632500</code>): type-38 <code>UI_ACCEPT_NEW_PROFILE</code> stores <code>0x126</code> (<code>f38f9f9</code>). Action 26 posts widget+372 from def+224 (0 first-seen). LMB-up action 28 posts +228 after arm (<code>48133e9</code>).</td>
         </tr>
         <tr>
           <td>Frontend New Game click: <code>0059A238</code> msg 15 → <code>[retail+41]=1</code> → Leave <code>0042F2A2</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>64a2e14</code> / <code>Frontend_00595582_new_game_message_leaves_without_RequestNewGame</code>. Type-11 <code>UI_FRONTEND_BUTTON_NEW_GAME</code> stores 15 (<code>c180b8c</code>). Action 26 posts it.</td>
+          <td><code>64a2e14</code> / <code>Frontend_00595582_new_game_message_leaves_without_RequestNewGame</code>. Type-11 <code>UI_FRONTEND_BUTTON_NEW_GAME</code> stores 15 at +228 (<code>f38f9f9</code>). Action 26 posts empty +224 first-seen (<code>9e94ef9</code>). LMB-up action 28 posts +228 after arm (<code>48133e9</code>).</td>
         </tr>
         <tr>
           <td>Menu built at <code>00595B24</code> (<code>UI_TEXT_NEW_GAME</code> id=0); not <code>00DBDE40</code></td>
@@ -508,19 +508,19 @@
           <td><code>48a879ac</code> / <code>Window_00403079_defaults_1024x768_and_title</code>. Client Size = <code>BackBufferWidth</code>/<code>Height</code>. <code>DefaultVulkan</code> 1600×900 DISPROVEN (issue #8 done).</td>
         </tr>
         <tr>
-          <td><code>004B4260</code> activates WLD <code>START_INITIAL_QUESTS</code> (world+172 from <code>00507C30</code>)</td>
+          <td><code>004B4260</code> activates QST AddQuest TRUE as world+172 (FinalAlbion then GlobalQuests, not WLD <code>START_INITIAL_QUESTS</code>)</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>efa0e541</code> / <code>Init_quests_004B4260_activates_wld_initial_list</code> (<code>QuestsInitDone=true</code>)</td>
+          <td><code>5dcc1fc</code> / <code>Init_quests_004B4260_activates_wld_initial_list</code> (<code>QuestsInitDone=true</code>). <code>00507C30</code> has no START_INITIAL_QUESTS case.</td>
         </tr>
         <tr>
           <td><code>00CB5AD0</code> starts <code>QuestFactoryTable</code> factory scripts (not <code>S_QNOVI</code>)</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>48a879ac</code> / <code>Activate_quests_00CB5AD0_starts_factory_scripts</code></td>
+          <td><code>48a879ac</code> / <code>Activate_quests_00CB5AD0_starts_factory_scripts</code>. QM+44 (<code>004B2850</code> / <code>004B00C0</code>) gates activate before <code>00CB5AD0</code> (<code>f38f9f9</code>).</td>
         </tr>
         <tr>
           <td><code>0042E3EE</code> type/key events dispatch <code>0041E5F2</code> actions 0–5 / 20–21 (not WASD)</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>e7b3c76</code> / <code>Input_0042E3EE_dispatches_0041E5F2_actions</code>. <code>0055CB10</code> records actions; no recovered player-move listener. Not WASD. New Game is still keyboard N/Enter (leave #14 open).</td>
+          <td><code>e7b3c76</code> / <code>Input_0042E3EE_dispatches_0041E5F2_actions</code>. <code>0055CB10</code> records actions; no recovered player-move listener. Not WASD. Host LMB edge queues Type4 (<code>5dcc1fc</code>). New Game keyboard N/Enter leftover still stands (leave #14 open).</td>
         </tr>
         <tr>
           <td><code>009BEF80</code> SetViewport vtbl+188 full backbuffer 1024×768 MinZ 0 MaxZ 1</td>
@@ -630,7 +630,7 @@
         <tr>
           <td><code>frontend.bin</code> drives widget tree, dest, sprites and DX9-to-Vulkan submit</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>0d77c2c</code>. <code>e79f7b4</code> drops unused usings from <code>FrontendWidgetFactory</code> (cleanup of <code>0d77c2c</code>). Present <code>0042DF9E</code> / <code>00595222</code> still Note-only. Host never queues Type4. leave #14 and #20 open.</td>
+          <td><code>0d77c2c</code>. <code>e79f7b4</code> drops unused usings from <code>FrontendWidgetFactory</code> (cleanup of <code>0d77c2c</code>). Present <code>0042DF9E</code> / <code>00595222</code> still Note-only. Host LMB edge queues Type4 (<code>5dcc1fc</code>). Host queues LMB-up as type 6 (<code>48133e9</code>). leave #14 and #20 open.</td>
         </tr>
         <tr>
           <td>Press Start dest inherits type-10 remap scale. Leftover <code>+204/+208</code> only when <code>GraphicIndex != 0</code>. Type-6 dest is zero-size at remapped origin. Nonempty dest is <code>00BAE2D0</code> not <code>009DB700</code>. Host still Notes <code>009DA9F0</code> DIP</td>
@@ -645,7 +645,37 @@
         <tr>
           <td>Persist CRC <code>0x53C644E4</code> as MessageId (def+224 via <code>0055B040</code>). Type-38 <code>UI_ACCEPT_NEW_PROFILE</code> stores <code>0x126</code>; type-11 <code>UI_FRONTEND_BUTTON_NEW_GAME</code> stores 15. Type 4 is <code>00A03C80</code> (+40=4), not a DIK. Action 26 posts stored id. Lifecycle no longer injects <code>0x126</code>/15</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>c180b8c</code> / <code>Type4_drives_lifecycle_0xE5_then_0x126_then_15</code></td>
+          <td><code>c180b8c</code> / <code>Type4_drives_lifecycle_0xE5_then_0x126_then_15</code>. Later <code>f38f9f9</code> moves MessageId to persist +228.</td>
+        </tr>
+        <tr>
+          <td>QST AddQuest TRUE as world+172 (FinalAlbion then GlobalQuests, not WLD <code>START_INITIAL_QUESTS</code>). Host LMB edge queues Type4. <code>DikPosterUnread=false</code></td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>5dcc1fc</code></td>
+        </tr>
+        <tr>
+          <td>MessageId is persist +228 / <code>0x53C644E4</code> (<code>00632500</code>), not +224 (<code>0x230364D6</code>). QM+44 (<code>004B2850</code> / <code>004B00C0</code>) gates activate before <code>00CB5AD0</code></td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>f38f9f9</code></td>
+        </tr>
+        <tr>
+          <td>Action 26 posts widget+372 from def+224 (0 first-seen on Accept/New Game). <code>0x53C644E4</code> at +228 still holds <code>0x126</code>/15. Widgets carry Plus224</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>9e94ef9</code></td>
+        </tr>
+        <tr>
+          <td>Type 11/38 +228 via <code>0055ACF0</code>. Type-10 <code>0xE5</code> is only the <code>00598A1C</code> attach write (<code>00598EE6</code> is the mov inside it). Empty widget lists no longer invent <code>0xE5</code>. Press Start name-check invent gone. <code>0xE5</code> host fill gone</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>61e430f</code> / <code>Frontend_press_start_type4_without_widgets_does_not_invent_0xE5</code>. #37 first half locked.</td>
+        </tr>
+        <tr>
+          <td>Type 11/38 +228 on LMB-up action 28 after action 26 arms. Type 4 still posts type-10 +352 only (not first-visible +228). Type 6 (<code>00A03D60</code>) is action 28 / vtbl+588 / <code>0055ACF0</code>. Host queues LMB-up as type 6. Unarmed +228 lists stay silent</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>48133e9</code> / <code>Type4_action_26_posts_stored_widget_message</code> (ActionType4 accept == null) / <code>Type4_drives_lifecycle_0xE5_then_0x126_then_15</code> (Type4 then Type6). #37 second half locked.</td>
+        </tr>
+        <tr>
+          <td>Press Start <code>0xE5</code> host fill gone; Type4 posts type-10 +352 only; Type6 LMB-up action 28 posts +228 after arm. Unarmed lists silent. #37 locked</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>61e430f</code> / <code>Frontend_press_start_type4_without_widgets_does_not_invent_0xE5</code>. <code>48133e9</code> / <code>Type4_action_26_posts_stored_widget_message</code> / <code>Type4_drives_lifecycle_0xE5_then_0x126_then_15</code></td>
         </tr>
         <tr>
           <td><code>[node+20]</code> is <code>0041DB1D</code>/<code>0041D21B</code> type0 <code>0041B800</code> vtbl <code>0122F5D4</code>; draw <code>0041AFA0</code> not <code>0052D900</code></td>
@@ -972,12 +1002,7 @@
         <tr>
           <td>New Game keyboard N/Enter (host stand-in)</td>
           <td><span class="badge PARTIAL">PARTIAL</span></td>
-          <td>Host Return quarantined as accept (<code>db36334</code>). Host never queues Type4. <code>DispatchFrontendMessage(15)</code> is <code>0059A238</code> vtbl+32. Enter still queues that message. leave #14 open.</td>
-        </tr>
-        <tr>
-          <td>Press Start <code>0xE5</code> host fill / action-26 poster</td>
-          <td><span class="badge PARTIAL">PARTIAL</span></td>
-          <td>Host fills <code>0xE5</code> when persist MessageId is 0. Action 26 posts first-visible type-10/11/38, not the action-target widget. Native <code>0xE5</code> is <code>00598EE6</code> → widget+352, not persist +224 (<code>0055B040</code>). issue #37. Stored 0x126/15 on type-38/11 is recovered.</td>
+          <td>Host Return quarantined as accept (<code>db36334</code>). Host LMB edge queues Type4 (<code>5dcc1fc</code>). Host queues LMB-up as type 6 (<code>48133e9</code>). <code>DispatchFrontendMessage(15)</code> is <code>0059A238</code> vtbl+32. Enter still queues that message. Present <code>0042DF9E</code> / <code>00595222</code> still Note-only. leave #14 open.</td>
         </tr>
         <tr>
           <td><code>006B8640</code> / <code>008889C0</code> leftover (do not write V0 first-seen)</td>
@@ -1251,12 +1276,20 @@
         #6 / #13. SHOT2 FOV 72 stays intro-view leftover.
         <code>006B8640</code>/<code>008889C0</code> leftover UNREAD.
         Frontend leftover is still <code>00595222</code> Note-only and
-        New Game keyboard N/Enter (#14). Host never queues Type4.
-        Dest leftover GraphicIndex path + calculator tests still
-        feed 16×16; host still Notes <code>009DA9F0</code> DIP (#36).
-        Press Start <code>0xE5</code> is a host fill when persist
-        MessageId is 0; action 26 posts first-visible type-10/11/38
-        (#37). PlayAVI still 3D Draw (#20). leave #14 and #20 open.
+        New Game keyboard N/Enter (#14). Present <code>0042DF9E</code>
+        / <code>00595222</code> still Note-only. Host LMB edge queues
+        Type4 (<code>5dcc1fc</code>). Host queues LMB-up as type 6
+        (<code>48133e9</code>). Dest leftover GraphicIndex path +
+        calculator tests still feed 16×16; host still Notes
+        <code>009DA9F0</code> DIP (#36). leave #36 open.
+        #37 locked: <code>0xE5</code> host fill gone
+        (<code>61e430f</code> /
+        <code>Frontend_press_start_type4_without_widgets_does_not_invent_0xE5</code>);
+        Type4 posts type-10 +352 only; Type6 LMB-up action 28 posts
+        +228 after arm (<code>48133e9</code> /
+        <code>Type4_action_26_posts_stored_widget_message</code>,
+        <code>Type4_drives_lifecycle_0xE5_then_0x126_then_15</code>).
+        PlayAVI still 3D Draw (#20). leave #14 and #20 open.
         New Game submit now walks
         <code>0x4</code>/<code>0x40</code>/<code>0x20</code>/<code>0x100</code>/<code>0x2000</code>
         (<code>676bf63</code>); cell DIP is <code>0x40</code> only
