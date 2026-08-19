@@ -75,24 +75,26 @@
 
     <p>
       Snapshot: <strong>2026-08-19</strong>, previous snapshot runtime HEAD
-      <code>c180b8c</code> via PR #38 merge <code>86bee1ad</code>,
-      runtime HEAD <code>48133e9</code>
-      (<em>QST TRUE activate + host LMB Type4, MessageId persist
-      +228, action 26 +224 empty first-seen vs +228 MessageId,
-      0xE5 invent gone, LMB-up type 6 action 28.</em>).
-      Just locked: 5 runtime commits since <code>c180b8c</code>.
-      Headline locks: QST TRUE activate + host LMB Type4
-      (<code>5dcc1fc</code>); MessageId persist +228
-      (<code>f38f9f9</code>); action 26 +224 empty first-seen vs
-      +228 MessageId (<code>9e94ef9</code>); 0xE5 invent gone;
-      type-10 attach 00598A1C (<code>61e430f</code>); LMB-up type 6
-      action 28 posts +228 after arm (<code>48133e9</code>).
-      Ignore snapshot merge <code>86bee1ad</code> /
-      <code>62ae998</code>. Ignore proofs-only adds. Docs PR #29
+      <code>48133e9</code> via PR #39 merge <code>f430cc90</code>,
+      runtime HEAD <code>b8a2b21</code>
+      (<em>type-10 vtbl+8 DrawsChildList, slot 0x14 0xE5,
+      [ui+84] residency, resident-slot walk, +332
+      SelectState(6) + Init World construct.</em>).
+      Just locked: 5 runtime commits since <code>48133e9</code>.
+      Headline locks: type-10 draw vtbl+8 DrawsChildList
+      (<code>7adf621</code>); Press Start 0xE5 through slot
+      0x14 0059B5D7 (<code>59fde69</code>); [ui+84] slots
+      0x14/0x17 keep across switch (<code>84a8350</code>);
+      tick/draw walk every resident [ui+84] slot
+      (<code>b4a2c89</code>); +332 via SelectState(6); Init
+      World 004A67D0 (<code>b8a2b21</code>).
+      Ignore snapshot merge <code>f430cc90</code> / docs
+      <code>036dcb1</code> / <code>3d7e522</code>. Ignore
+      proofs-only adds. Docs PR #29
       <code>bedcf919</code> is iOS Settings chrome only — CSS
-      unchanged. Freeze at <code>48133e9</code>.
-      Do not include any later runtime if master moves (e.g.
-      <code>7adf621</code>). Master is still
+      unchanged. Freeze at <code>b8a2b21</code>.
+      Do not include any later runtime if master moves.
+      Master is still
       proving <strong>boot / world clock</strong>, not animation.
       README’s long-term priority list still starts with animation; that
       list is not the current phase.
@@ -278,14 +280,17 @@
 
     <h3>Phase 1 in progress — boot / world clock (current master)</h3>
     <p>
-      Recent commits (<code>5dcc1fc</code> … <code>48133e9</code>) lock
-      QST TRUE activate / host LMB Type4 / MessageId +228 / action 26
-      empty +224 / 0xE5 invent gone / LMB-up type 6, not
+      Recent commits (<code>7adf621</code> … <code>b8a2b21</code>) lock
+      type-10 vtbl+8 DrawsChildList / slot 0x14 0xE5 / [ui+84]
+      residency / resident-slot walk / +332 SelectState(6)
+      + Init World construct, not
       <code>00DBDE40</code>. Previous snapshot
-      <code>c180b8c</code> via PR #38 <code>86bee1ad</code>.
-      Just locked this batch: QST AddQuest TRUE as world+172, MessageId
-      persist +228, action 26 +224 empty first-seen, type-10 attach
-      00598A1C, LMB-up type 6 action 28 posts +228 after arm. CSS
+      <code>48133e9</code> via PR #39 <code>f430cc90</code>.
+      Just locked this batch: type-10 draw via 00530260 vtbl+8,
+      Press Start 0xE5 through slot 0x14 0059B5D7, [ui+84]
+      0x14/0x17 keep across switch, tick/draw walk every
+      resident slot, +332 via SelectState(6), Init World
+      004A67D0 before 00417418. CSS
       unchanged.
     </p>
     <div class="table-scroll">
@@ -315,7 +320,7 @@
         <tr>
           <td>Create Players: 5 × <code>0x22C</code> slots, 4 active — not <code>hero_swap_*.tng</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>CreatePlayers_is_five_0x22C_slots_not_hero_swap</code></td>
+          <td><code>CreatePlayers_is_five_0x22C_slots_not_hero_swap</code>. Runs at the named <code>004166A8</code> stage (<code>b8a2b21</code>).</td>
         </tr>
         <tr>
           <td>Load GTNG <code>0050959F</code> stem+<code>.gtng</code>; TLC missing → skip</td>
@@ -435,7 +440,7 @@
         <tr>
           <td>Leave Press Start: <code>0059A238</code> msg <code>0xE5</code> → <code>00599D5C</code> empty <code>005955AB</code> → <code>00595845</code> → <code>00596917</code> slot <code>0x17</code> <code>NEW_PROFILE</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>Frontend_0059A238_msg_E5_empty_005955AB_is_00595845_then_00596917</code>. Type-4 posts type-10 +352 only (<code>48133e9</code>). Host LMB edge queues Type4 (<code>5dcc1fc</code>). Host Return quarantined as accept. Return→msg 15 from Press Start DISPROVEN. Type-10 <code>0xE5</code> is only <code>00598A1C</code> attach write (<code>00598EE6</code> is the mov inside it) → widget+352 (<code>61e430f</code>). #37 locked.</td>
+          <td><code>Frontend_0059A238_msg_E5_empty_005955AB_is_00595845_then_00596917</code>. Type-4 posts type-10 +352 only (<code>48133e9</code>). Host LMB edge queues Type4 (<code>5dcc1fc</code>). Host Return quarantined as accept. Return→msg 15 from Press Start DISPROVEN. Type-10 <code>0xE5</code> is the <code>00598A1C</code> attach write (<code>00598EE6</code> is the mov inside it) → widget+352 (<code>61e430f</code>). #37 already locked. Later <code>59fde69</code> writes <code>0xE5</code> through slot <code>0x14</code> <code>0059B5D7</code> then vtbl+284 <code>0054E4F0</code>.</td>
         </tr>
         <tr>
           <td>New Profile accept: <code>00851770</code> seeds <code>0x122DE80</code> "Default"; msg <code>0x126</code> → <code>00851920</code> → <code>0059697A</code> <code>MAIN_MENU_NO_CONTINUE</code></td>
@@ -610,17 +615,17 @@
         <tr>
           <td><code>Q_NewOakValeIntro</code> / SHOT2 is not first no-save Present. First playable is Lookout <code>006B3FF0</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>004162B5</code> dump: +20 then +28. Frontend widgets <code>00595222</code> UNREAD (black).</td>
+          <td><code>004162B5</code> dump: +20 then +28. Frontend <code>00595222</code> is the resident-slot vtbl+8 walk (<code>7adf621</code> / <code>b4a2c89</code>). Present <code>0042DF9E</code> still Note-only.</td>
         </tr>
         <tr>
           <td><code>0042DF9E</code> walks <code>[ui+84]</code> vtbl+8, then <code>009D9C80</code>/<code>009DA9F0(1)</code> twice. <code>00404A80</code> is getter <code>0x13B7CD8</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>5657176</code> / <code>6607c1e</code> / <code>Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present</code> (<code>FrontendFlushCount=2</code>, <code>FrontendDisplayHelperFn</code>, <code>FrontendDisplaySingletonVa</code>). New Game still keyboard N/Enter (leave #14 open).</td>
+          <td><code>5657176</code> / <code>6607c1e</code> / <code>Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present</code> (<code>FrontendFlushCount=2</code>, <code>FrontendDisplayHelperFn</code>, <code>FrontendDisplaySingletonVa</code>). Walks every resident <code>[ui+84]</code> slot (<code>b4a2c89</code> / <code>Frontend_tick_and_draw_walk_resident_ui84_slots</code>). Present <code>0042DF9E</code> still Note-only. New Game still keyboard N/Enter (leave #14 open).</td>
         </tr>
         <tr>
           <td>PRESS_START is type 10 <code>0054E3D0</code> vtbl <code>012497E4</code>; draw <code>00530260</code> +176; <code>005339B0</code> +272=1; <code>UI_PRESS_START_TEXT</code> <code>TEXT_GUI_MENU_PRESS_BUTTON</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>Frontend_PRESS_START_is_type_10_with_text_child</code>. Type-0 <code>0041B800</code> / dest-always-0 / <code>0041AFA0</code> as the menu draw is DISPROVEN.</td>
+          <td><code>Frontend_PRESS_START_is_type_10_with_text_child</code>. Type-0 <code>0041B800</code> / dest-always-0 / <code>0041AFA0</code> as the menu draw is DISPROVEN. <code>00595222</code> calls <code>[node+20].vtbl+8</code>. Types 5/10/12/18 are <code>00530260</code>. Attach no longer Finds <code>UI_PRESS_START_TEXT</code> after every root (<code>7adf621</code>).</td>
         </tr>
         <tr>
           <td>Press Start sprites are <code>frontend.big</code> <code>FRONTEND_TITLE_01/02_SPRITE</code> + <code>FORREST_1_*</code> + mouse</td>
@@ -630,7 +635,7 @@
         <tr>
           <td><code>frontend.bin</code> drives widget tree, dest, sprites and DX9-to-Vulkan submit</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>0d77c2c</code>. <code>e79f7b4</code> drops unused usings from <code>FrontendWidgetFactory</code> (cleanup of <code>0d77c2c</code>). Present <code>0042DF9E</code> / <code>00595222</code> still Note-only. Host LMB edge queues Type4 (<code>5dcc1fc</code>). Host queues LMB-up as type 6 (<code>48133e9</code>). leave #14 and #20 open.</td>
+          <td><code>0d77c2c</code>. <code>e79f7b4</code> drops unused usings from <code>FrontendWidgetFactory</code> (cleanup of <code>0d77c2c</code>). Type-10 draw is <code>00530260</code> vtbl+8 DrawsChildList (<code>7adf621</code>). Present <code>0042DF9E</code> still Note-only. Host LMB edge queues Type4 (<code>5dcc1fc</code>). Host queues LMB-up as type 6 (<code>48133e9</code>). leave #14 and #20 open.</td>
         </tr>
         <tr>
           <td>Press Start dest inherits type-10 remap scale. Leftover <code>+204/+208</code> only when <code>GraphicIndex != 0</code>. Type-6 dest is zero-size at remapped origin. Nonempty dest is <code>00BAE2D0</code> not <code>009DB700</code>. Host still Notes <code>009DA9F0</code> DIP</td>
@@ -673,9 +678,39 @@
           <td><code>48133e9</code> / <code>Type4_action_26_posts_stored_widget_message</code> (ActionType4 accept == null) / <code>Type4_drives_lifecycle_0xE5_then_0x126_then_15</code> (Type4 then Type6). #37 second half locked.</td>
         </tr>
         <tr>
-          <td>Press Start <code>0xE5</code> host fill gone; Type4 posts type-10 +352 only; Type6 LMB-up action 28 posts +228 after arm. Unarmed lists silent. #37 locked</td>
+          <td>Press Start <code>0xE5</code> host fill gone; Type4 posts type-10 +352 only; Type6 LMB-up action 28 posts +228 after arm. Unarmed lists silent. #37 already locked</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
           <td><code>61e430f</code> / <code>Frontend_press_start_type4_without_widgets_does_not_invent_0xE5</code>. <code>48133e9</code> / <code>Type4_action_26_posts_stored_widget_message</code> / <code>Type4_drives_lifecycle_0xE5_then_0x126_then_15</code></td>
+        </tr>
+        <tr>
+          <td>Draw type-10 menus via vtbl+8 DrawsChildList. <code>00595222</code> calls <code>[node+20].vtbl+8</code>. Types 5/10/12/18 are <code>00530260</code>. Attach no longer Finds <code>UI_PRESS_START_TEXT</code> after every root. <code>00598EE6</code> stays on the <code>00598A1C</code> slot-0x14 write</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>7adf621</code>. Present <code>0042DF9E</code> still Note-only.</td>
+        </tr>
+        <tr>
+          <td>Write Press Start <code>0xE5</code> through slot <code>0x14</code> <code>0059B5D7</code>. Native attach looks up <code>[ui+84]</code> key <code>0x14</code> then vtbl+284 <code>0054E4F0</code>. Dropped leftover widgets[0] type-10 / MessageId==0 walk. Host still collapses <code>[packet+0]</code> onto MessageId (leftover field)</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>59fde69</code> / <code>Frontend_attach_0xE5_is_slot_0x14_0059B5D7_not_type10_walk</code></td>
+        </tr>
+        <tr>
+          <td>Keep <code>[ui+84]</code> slots <code>0x14</code> and <code>0x17</code> across menu switch. <code>00596763</code> switches current screen; it does not drop the map. <code>00595A06</code> overwrites existing key <code>0</code> with Main Menu. Stop AttachFrontendTree from clearing the slot map. Host current <code>_frontendWidgets</code> is still the switched screen (input leftover)</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>84a8350</code> / <code>Frontend_ui84_keeps_slot_0x14_and_0x17_after_main_menu</code></td>
+        </tr>
+        <tr>
+          <td>Walk every resident <code>[ui+84]</code> slot on tick and draw. <code>00595222</code> vtbl+8 and <code>0059A0C4</code> vtbl+4 are the same in-order map walk; they do not filter to the current screen. Keep <code>_frontendWidgets</code> as the switched tree for input</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>b4a2c89</code> / <code>Frontend_tick_and_draw_walk_resident_ui84_slots</code> (<code>FrontendResidentSlots</code>)</td>
+        </tr>
+        <tr>
+          <td>Write <code>+332</code> via SelectState(6) on slot switch; construct world in Init World. <code>0052CF40</code> stores vtbl+192 arg at <code>+332</code>. <code>004A67D0</code>/<code>004A6E30</code> belong inside <code>"Init World"</code> <code>0041735A</code>, before <code>"Init Display Engine"</code> <code>00417418</code>. CreatePlayers runs at the named <code>004166A8</code> stage</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>b8a2b21</code> / <code>Frontend_attach_0xE5_is_slot_0x14_0059B5D7_not_type10_walk</code> (<code>kept.State == 6</code>, Note <code>+332=6</code>) / <code>Init_World_004A67D0_runs_inside_0041735A_before_00417418</code></td>
+        </tr>
+        <tr>
+          <td><code>+332</code> SelectState(6) is a <code>+302</code> hide</td>
+          <td><span class="badge DISPROVEN">DISPROVEN</span></td>
+          <td><code>0052CF40</code> stores vtbl+192 arg at <code>+332</code> (<code>b8a2b21</code>)</td>
         </tr>
         <tr>
           <td><code>[node+20]</code> is <code>0041DB1D</code>/<code>0041D21B</code> type0 <code>0041B800</code> vtbl <code>0122F5D4</code>; draw <code>0041AFA0</code> not <code>0052D900</code></td>
@@ -987,7 +1022,7 @@
         <tr>
           <td>Frontend <code>00595222</code> widget DIP body</td>
           <td><span class="badge DISPROVEN">DISPROVEN</span> as DIP</td>
-          <td>Walk only (<code>[ui+84]</code> → <code>0041AFA0</code>). Present <code>0042DF9E</code> / <code>00595222</code> still Note-only. Host still Notes <code>009DA9F0</code> DIP. leave #14 open.</td>
+          <td><code>00595222</code> calls <code>[node+20].vtbl+8</code>. Types 5/10/12/18 are <code>00530260</code> DrawsChildList (<code>7adf621</code>). Tick/draw walk every resident <code>[ui+84]</code> slot (<code>b4a2c89</code> / <code>Frontend_tick_and_draw_walk_resident_ui84_slots</code>). Present <code>0042DF9E</code> still Note-only. Host draw still does not skip on State=6. Host still Notes <code>009DA9F0</code> DIP. leave #14 open.</td>
         </tr>
         <tr>
           <td><code>00B324A0</code> type-0x22 handler vtbl+20</td>
@@ -1002,7 +1037,7 @@
         <tr>
           <td>New Game keyboard N/Enter (host stand-in)</td>
           <td><span class="badge PARTIAL">PARTIAL</span></td>
-          <td>Host Return quarantined as accept (<code>db36334</code>). Host LMB edge queues Type4 (<code>5dcc1fc</code>). Host queues LMB-up as type 6 (<code>48133e9</code>). <code>DispatchFrontendMessage(15)</code> is <code>0059A238</code> vtbl+32. Enter still queues that message. Present <code>0042DF9E</code> / <code>00595222</code> still Note-only. leave #14 open.</td>
+          <td>Host Return quarantined as accept (<code>db36334</code>). Host LMB edge queues Type4 (<code>5dcc1fc</code>). Host queues LMB-up as type 6 (<code>48133e9</code>). Host current <code>_frontendWidgets</code> is still the switched screen (input leftover) (<code>84a8350</code>). <code>DispatchFrontendMessage(15)</code> is <code>0059A238</code> vtbl+32. Enter still queues that message. Present <code>0042DF9E</code> still Note-only. Host draw still does not skip on State=6. leave #14 open.</td>
         </tr>
         <tr>
           <td><code>006B8640</code> / <code>008889C0</code> leftover (do not write V0 first-seen)</td>
@@ -1275,19 +1310,34 @@
         Consumed first-Present helper stays UNREAD — do not reopen
         #6 / #13. SHOT2 FOV 72 stays intro-view leftover.
         <code>006B8640</code>/<code>008889C0</code> leftover UNREAD.
-        Frontend leftover is still <code>00595222</code> Note-only and
-        New Game keyboard N/Enter (#14). Present <code>0042DF9E</code>
-        / <code>00595222</code> still Note-only. Host LMB edge queues
+        Frontend <code>00595222</code> is the resident-slot
+        vtbl+8 DrawsChildList walk (<code>7adf621</code> /
+        <code>b4a2c89</code>). Present <code>0042DF9E</code>
+        still Note-only. New Game keyboard N/Enter leftover
+        stands (#14). Host current <code>_frontendWidgets</code>
+        is still the switched screen (input leftover)
+        (<code>84a8350</code>). Host draw still does not skip
+        on State=6. Host still collapses <code>[packet+0]</code>
+        onto MessageId. Press Start <code>0xE5</code> is slot
+        <code>0x14</code> <code>0059B5D7</code>
+        (<code>59fde69</code>). <code>[ui+84]</code> keeps
+        <code>0x14</code>/<code>0x17</code> across switch
+        (<code>84a8350</code>). <code>+332</code> via
+        SelectState(6) is not a <code>+302</code> hide
+        (<code>b8a2b21</code>). Init World <code>004A67D0</code>
+        / <code>004A6E30</code> run inside <code>0041735A</code>
+        before <code>00417418</code>. Host LMB edge queues
         Type4 (<code>5dcc1fc</code>). Host queues LMB-up as type 6
         (<code>48133e9</code>). Dest leftover GraphicIndex path +
         calculator tests still feed 16×16; host still Notes
         <code>009DA9F0</code> DIP (#36). leave #36 open.
-        #37 locked: <code>0xE5</code> host fill gone
-        (<code>61e430f</code> /
-        <code>Frontend_press_start_type4_without_widgets_does_not_invent_0xE5</code>);
+        #37 already locked at the previous freeze
+        (<code>61e430f</code> / <code>48133e9</code>):
+        <code>0xE5</code> host fill gone
+        (<code>Frontend_press_start_type4_without_widgets_does_not_invent_0xE5</code>);
         Type4 posts type-10 +352 only; Type6 LMB-up action 28 posts
-        +228 after arm (<code>48133e9</code> /
-        <code>Type4_action_26_posts_stored_widget_message</code>,
+        +228 after arm
+        (<code>Type4_action_26_posts_stored_widget_message</code>,
         <code>Type4_drives_lifecycle_0xE5_then_0x126_then_15</code>).
         PlayAVI still 3D Draw (#20). leave #14 and #20 open.
         New Game submit now walks
