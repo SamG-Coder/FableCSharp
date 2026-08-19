@@ -840,6 +840,22 @@ public sealed class EngineLifecycle : IDisposable
     public const int ThirdDefClassSize = 48;
     public const string ThirdDefClassName = "CSmokeGeneratorDef";
     /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CSmokeGeneratorDef</c>:
+    /// <c>004EE6FD</c>
+    /// <c>0044C6B0</c>
+    /// <c>004EE704</c>
+    /// <c>CTimeAppearanceFadeDef</c>
+    /// factory <c>0x4D84C8</c>
+    /// size 56 vtbl <c>0123B7CC</c>.
+    /// Not <c>CTCTimeAppearanceFade</c>.
+    /// </summary>
+    public const uint FourthDefClassSite = 0x004EE6FD;
+    public const uint FourthDefClassFactory = 0x004D84C8;
+    public const uint FourthDefClassVtbl = 0x0123B7CC;
+    public const int FourthDefClassSize = 56;
+    public const string FourthDefClassName = "CTimeAppearanceFadeDef";
+    /// <summary>
     /// <c>00416005</c> parent
     /// <c>push 1</c>:
     /// <c>0044C6B0</c>
@@ -2254,6 +2270,8 @@ public sealed class EngineLifecycle : IDisposable
     public string? SecondDefClass { get; private set; }
     public bool ThirdDefClassRegistered { get; private set; }
     public string? ThirdDefClass { get; private set; }
+    public bool FourthDefClassRegistered { get; private set; }
+    public string? FourthDefClass { get; private set; }
     /// <summary>
     /// After <c>00416005</c>
     /// <c>0044C72B</c> /
@@ -4621,20 +4639,35 @@ public sealed class EngineLifecycle : IDisposable
             SecondDefClass = SecondDefClassName;
             SecondDefClassRegistered = true;
         }
-        if (ThirdDefClassRegistered)
+        if (!ThirdDefClassRegistered)
+        {
+            Note(ThirdDefClassSite, "Init Thing Components", "Defs",
+                $"004EE62B 0044C6B0 {ThirdDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {ThirdDefClassName}");
+            Note(ThirdDefClassFactory, "Init Thing Components", "Defs",
+                $"004DA82B size {ThirdDefClassSize} vtbl 0x{ThirdDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {ThirdDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            ThirdDefClass = ThirdDefClassName;
+            ThirdDefClassRegistered = true;
+        }
+        if (FourthDefClassRegistered)
             return;
-        Note(ThirdDefClassSite, "Init Thing Components", "Defs",
-            $"004EE62B 0044C6B0 {ThirdDefClassName}");
+        Note(FourthDefClassSite, "Init Thing Components", "Defs",
+            $"004EE6FD 0044C6B0 {FourthDefClassName}");
         Note(AddDefClassFn, "Init Thing Components", "Defs",
-            $"009B0AC0 Add Def Class {ThirdDefClassName}");
-        Note(ThirdDefClassFactory, "Init Thing Components", "Defs",
-            $"004DA82B size {ThirdDefClassSize} vtbl 0x{ThirdDefClassVtbl:X}");
+            $"009B0AC0 Add Def Class {FourthDefClassName}");
+        Note(FourthDefClassFactory, "Init Thing Components", "Defs",
+            $"004D84C8 size {FourthDefClassSize} vtbl 0x{FourthDefClassVtbl:X}");
         Note(LoadDefFn, "Init Thing Components", "Defs",
-            $"009AD6E0 {ThirdDefClassName}");
+            $"009AD6E0 {FourthDefClassName}");
         Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
             $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
-        ThirdDefClass = ThirdDefClassName;
-        ThirdDefClassRegistered = true;
+        FourthDefClass = FourthDefClassName;
+        FourthDefClassRegistered = true;
     }
 
     /// <summary>

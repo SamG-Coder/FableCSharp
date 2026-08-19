@@ -938,6 +938,54 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Thing_Components_004EE704_adds_CTimeAppearanceFadeDef()
+    {
+        Assert.Equal(0x004EE6FDu, EngineLifecycle.FourthDefClassSite);
+        Assert.Equal(0x004D84C8u, EngineLifecycle.FourthDefClassFactory);
+        Assert.Equal(0x0123B7CCu, EngineLifecycle.FourthDefClassVtbl);
+        Assert.Equal(56, EngineLifecycle.FourthDefClassSize);
+        Assert.Equal("CTimeAppearanceFadeDef", EngineLifecycle.FourthDefClassName);
+        Assert.NotEqual(EngineLifecycle.ThirdDefClassName, EngineLifecycle.FourthDefClassName);
+        Assert.NotEqual(EngineLifecycle.ThirdDefClassFactory, EngineLifecycle.FourthDefClassFactory);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.False(life.FourthDefClassRegistered);
+        Assert.Null(life.FourthDefClass);
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.True(life.ThirdDefClassRegistered);
+        Assert.Equal(EngineLifecycle.ThirdDefClassName, life.ThirdDefClass);
+        Assert.True(life.FourthDefClassRegistered);
+        Assert.Equal(EngineLifecycle.FourthDefClassName, life.FourthDefClass);
+        var thirdFactory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirdDefClassFactory);
+        var fourthSite = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FourthDefClassSite);
+        var fourthAdd = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.AddDefClassFn &&
+            e.Action.Contains(EngineLifecycle.FourthDefClassName, StringComparison.Ordinal));
+        var fourthFactory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FourthDefClassFactory);
+        var fourthLoad = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.LoadDefFn);
+        var fourthBudget = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.LoadDefBudgetFn);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(thirdFactory >= 0 && fourthSite > thirdFactory);
+        Assert.True(fourthAdd > fourthSite && fourthFactory > fourthAdd);
+        Assert.True(fourthLoad > fourthFactory && fourthBudget > fourthLoad);
+        Assert.True(defs > fourthBudget, "CTimeAppearanceFadeDef before Init Definition Manager");
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.AddDefClassFn &&
+            e.Action.Contains("CTCTimeAppearanceFade", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Init_Definition_Manager_00416005_resets_plus88_via_vtbl8()
     {
         Assert.Equal(0x00416005u, EngineLifecycle.InitDefinitionManagerFn);
