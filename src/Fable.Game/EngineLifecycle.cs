@@ -1023,6 +1023,24 @@ public sealed class EngineLifecycle : IDisposable
     public const int ThirteenthDefClassSize = 44;
     public const string ThirteenthDefClassName = "CWifeDef";
     /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CWifeDef</c>:
+    /// <c>004F0640</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F0647</c>
+    /// <c>CDoorDef</c>
+    /// factory <c>0x4D7BE7</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>0044C0C0</c>
+    /// size 60 vtbl <c>0123A714</c>.
+    /// </summary>
+    public const uint FourteenthDefClassSite = 0x004F0640;
+    public const uint FourteenthDefClassFactory = 0x004D7BE7;
+    public const uint FourteenthDefClassCtor = 0x0044C0C0;
+    public const uint FourteenthDefClassVtbl = 0x0123A714;
+    public const int FourteenthDefClassSize = 60;
+    public const string FourteenthDefClassName = "CDoorDef";
+    /// <summary>
     /// <c>00416005</c> parent
     /// <c>push 1</c>:
     /// <c>0044C6B0</c>
@@ -2457,6 +2475,8 @@ public sealed class EngineLifecycle : IDisposable
     public string? TwelfthDefClass { get; private set; }
     public bool ThirteenthDefClassRegistered { get; private set; }
     public string? ThirteenthDefClass { get; private set; }
+    public bool FourteenthDefClassRegistered { get; private set; }
+    public string? FourteenthDefClass { get; private set; }
     /// <summary>
     /// After <c>00416005</c>
     /// <c>0044C72B</c> /
@@ -5026,22 +5046,39 @@ public sealed class EngineLifecycle : IDisposable
             TwelfthDefClass = TwelfthDefClassName;
             TwelfthDefClassRegistered = true;
         }
-        if (ThirteenthDefClassRegistered)
+        if (!ThirteenthDefClassRegistered)
+        {
+            Note(ThirteenthDefClassSite, "Init Thing Components", "Defs",
+                $"004F04B4 0044C6B0 {ThirteenthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {ThirteenthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {ThirteenthDefClassName}");
+            Note(ThirteenthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D7BA1 0044C0C0 size {ThirteenthDefClassSize} vtbl 0x{ThirteenthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {ThirteenthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            ThirteenthDefClass = ThirteenthDefClassName;
+            ThirteenthDefClassRegistered = true;
+        }
+        if (FourteenthDefClassRegistered)
             return;
-        Note(ThirteenthDefClassSite, "Init Thing Components", "Defs",
-            $"004F04B4 0044C6B0 {ThirteenthDefClassName}");
+        Note(FourteenthDefClassSite, "Init Thing Components", "Defs",
+            $"004F0640 0044C6B0 {FourteenthDefClassName}");
         Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
-            $"0042DAE0 {ThirteenthDefClassName}");
+            $"0042DAE0 {FourteenthDefClassName}");
         Note(AddDefClassFn, "Init Thing Components", "Defs",
-            $"009B0AC0 Add Def Class {ThirteenthDefClassName}");
-        Note(ThirteenthDefClassFactory, "Init Thing Components", "Defs",
-            $"004D7BA1 0044C0C0 size {ThirteenthDefClassSize} vtbl 0x{ThirteenthDefClassVtbl:X}");
+            $"009B0AC0 Add Def Class {FourteenthDefClassName}");
+        Note(FourteenthDefClassFactory, "Init Thing Components", "Defs",
+            $"004D7BE7 0044C0C0 size {FourteenthDefClassSize} vtbl 0x{FourteenthDefClassVtbl:X}");
         Note(LoadDefFn, "Init Thing Components", "Defs",
-            $"009AD6E0 {ThirteenthDefClassName}");
+            $"009AD6E0 {FourteenthDefClassName}");
         Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
             $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
-        ThirteenthDefClass = ThirteenthDefClassName;
-        ThirteenthDefClassRegistered = true;
+        FourteenthDefClass = FourteenthDefClassName;
+        FourteenthDefClassRegistered = true;
     }
 
     /// <summary>

@@ -105,6 +105,38 @@ public static class FrontendWidgetType
         type is Group or Menu or List or Swap or TableType;
 
     /// <summary>
+    /// <c>vtbl+400</c> <c>0052F180</c>:
+    /// <c>[+300] >> 7</c>. <c>00530260</c>
+    /// skips when parent!=this and this
+    /// bit is 0. Persist <c>def+504</c>.
+    /// </summary>
+    public const uint BorrowedVisibleFn = 0x0052F180;
+    public const int Plus300Offset = 300;
+    public const int Plus300BorrowedBit = 7;
+    /// <summary>
+    /// <c>vtbl+420</c> <c>0052F1D0</c>:
+    /// <c>[+302] &amp; 1</c>. Persist
+    /// <c>def+392</c> at <c>00533288</c>.
+    /// CRC UNREAD.
+    /// </summary>
+    public const uint ClipBitFn = 0x0052F1D0;
+    public const int Plus302Offset = 302;
+    public const int Plus302ClipBit = 0;
+    /// <summary>
+    /// Type 16 selected child is
+    /// <c>+348</c> (<c>00549B20</c>),
+    /// not <c>+332</c>.
+    /// </summary>
+    public const int TextSliderIndexOffset = 348;
+    /// <summary>
+    /// <c>vtbl+188</c> <c>0041C5A0</c>:
+    /// store duration at <c>+320</c>
+    /// then <c>vtbl+192</c>.
+    /// </summary>
+    public const uint ForwardSelectFn = 0x0041C5A0;
+    public const int DurationOffset = 320;
+
+    /// <summary>
     /// <c>vtbl+8 == 00530260</c> on
     /// type 5 / 10 / 12 / 16 / 18.
     /// </summary>
@@ -119,8 +151,9 @@ public static class FrontendWidgetType
     /// (<c>00549F60</c> vtbl
     /// <c>01248A8C</c>). First-seen
     /// keeps persist child 0
-    /// (type 18 <c>+332</c>; type 16
-    /// <c>+348</c> from <c>00549B20</c>).
+    /// (type 18 style <c>+332</c>;
+    /// type 16 index
+    /// <see cref="TextSliderIndexOffset"/>).
     /// Other persist children stay
     /// in the tree. <c>00530260</c>
     /// walks every <c>+176</c> child

@@ -247,6 +247,10 @@ public sealed class FrontendUiDefTests
         Assert.True(FrontendWidgetType.DrawsChildList(18));
         Assert.Equal(0x01248A8Cu, FrontendWidgetType.TextSliderVtbl);
         Assert.Equal(0x012485ACu, FrontendWidgetType.SwapVtbl);
+        Assert.Equal(0x0052F180u, FrontendWidgetType.BorrowedVisibleFn);
+        Assert.Equal(0x0052F1D0u, FrontendWidgetType.ClipBitFn);
+        Assert.Equal(0x0041C5A0u, FrontendWidgetType.ForwardSelectFn);
+        Assert.Equal(348, FrontendWidgetType.TextSliderIndexOffset);
         Assert.True(FrontendWidgetType.SelectsChild(18));
         Assert.True(FrontendWidgetType.SelectsChild(16));
         Assert.False(FrontendWidgetType.SelectsChild(5));

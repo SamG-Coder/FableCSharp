@@ -1397,6 +1397,34 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Thing_Components_004F0647_adds_CDoorDef()
+    {
+        Assert.Equal(0x004F0640u, EngineLifecycle.FourteenthDefClassSite);
+        Assert.Equal(0x004D7BE7u, EngineLifecycle.FourteenthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.FourteenthDefClassCtor);
+        Assert.Equal(0x0123A714u, EngineLifecycle.FourteenthDefClassVtbl);
+        Assert.Equal(60, EngineLifecycle.FourteenthDefClassSize);
+        Assert.Equal("CDoorDef", EngineLifecycle.FourteenthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.ThirteenthDefClassRegistered);
+        Assert.True(life.FourteenthDefClassRegistered);
+        Assert.Equal("CDoorDef", life.FourteenthDefClass);
+        var thirteenth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirteenthDefClassFactory);
+        var fourteenth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FourteenthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(thirteenth >= 0 && fourteenth > thirteenth && defs > fourteenth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Init_Definition_Manager_00416005_resets_plus88_via_vtbl8()
     {
         Assert.Equal(0x00416005u, EngineLifecycle.InitDefinitionManagerFn);
@@ -2053,6 +2081,7 @@ public sealed class EngineLifecycleTests
         Assert.Equal((112f, 48f, 522f, 253f),
             (title.DestX0, title.DestY0, title.DestX1, title.DestY1));
         WriteScreenDump(life, "press-start");
+        Assert.Contains(life.FrontendResidentSlots, s => s == EngineLifecycle.FrontendPressStartSlot);
 
         life.QueueInput(EngineInput.Type4, 0);
         life.QueueInput(EngineInput.Type6, 0);
@@ -2074,6 +2103,8 @@ public sealed class EngineLifecycleTests
         Assert.NotNull(life.FrontendBatch);
         Assert.False(life.FrontendBatch.Value.IsEmpty);
         WriteScreenDump(life, "new-profile");
+        Assert.Contains(life.FrontendResidentSlots, s => s == EngineLifecycle.FrontendPressStartSlot);
+        Assert.Contains(life.FrontendResidentSlots, s => s == EngineLifecycle.FrontendNewProfileSlot);
 
         life.QueueInput(EngineInput.Type4, 0);
         life.QueueInput(EngineInput.Type6, 0);
@@ -2085,6 +2116,9 @@ public sealed class EngineLifecycleTests
         Assert.NotNull(life.FrontendBatch);
         Assert.False(life.FrontendBatch.Value.IsEmpty);
         WriteScreenDump(life, "main-menu");
+        Assert.Contains(life.FrontendResidentSlots, s => s == EngineLifecycle.FrontendMainMenuSlot);
+        Assert.Contains(life.FrontendResidentSlots, s => s == EngineLifecycle.FrontendPressStartSlot);
+        Assert.Contains(life.FrontendResidentSlots, s => s == EngineLifecycle.FrontendNewProfileSlot);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
     }
 
