@@ -714,7 +714,7 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public static readonly (string Stage, uint Apply)[] InitGameStages =
     [
-        ("Init Thing Components", 0x004EE23F),
+        ("Init Thing Components", InitThingComponentsFn),
         ("Init Definition Manager", 0x00416005),
         ("Init Graphics", 0x00416C8A),
         // 004168DC sibling; name is logged inside the fn.
@@ -791,6 +791,22 @@ public sealed class EngineLifecycle : IDisposable
     public const uint PlayerManagerVtbl = 0x01232C24;
     public const int PlayerManagerSize = 0xE0;
     public const int PlayerManagerPlus40 = 0x80000;
+    /// <summary>
+    /// First <c>+40</c> consume:
+    /// <c>004EE337</c>
+    /// <c>0044C6B0</c>
+    /// <c>009B0AC0</c>
+    /// <c>CHeroMorphDef</c>
+    /// <c>009AD6E0</c>
+    /// <c>009FC4F0</c>.
+    /// Not a def parse.
+    /// </summary>
+    public const uint InitThingComponentsFn = 0x004EE23F;
+    public const uint AddDefClassFn = 0x009B0AC0;
+    public const uint LoadDefFn = 0x009AD6E0;
+    public const uint LoadDefBudgetFn = 0x009FC4F0;
+    public const uint FirstDefClassFactory = 0x004E4219;
+    public const string FirstDefClassName = "CHeroMorphDef";
     public const uint PlayerManagerVa = 0x013B879C;
     public const uint PlayerManagerApply = 0x0044A530;
     public const uint CreatePlayerSlotFn = 0x0044A1A0;
@@ -2176,6 +2192,15 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>0044C71F</c>.
     /// </summary>
     public bool PlayerManagerPresent { get; private set; }
+    /// <summary>
+    /// Live <c>[this+40]</c> cap
+    /// after <c>009FC520(0x80000)</c>.
+    /// First consume is
+    /// <c>CHeroMorphDef</c>.
+    /// </summary>
+    public int PlayerManagerPlus40Cap { get; private set; }
+    public bool FirstDefClassRegistered { get; private set; }
+    public string? FirstDefClass { get; private set; }
     /// <summary>
     /// <c>WorldMap+156</c>. Ctor 0 is the
     /// dummy slot, not LookoutPoint.
@@ -3927,6 +3952,8 @@ public sealed class EngineLifecycle : IDisposable
                 Note(IniActivateQuestRegister, "InitGame", "Ini",
                     "00419D90 ActivateQuest");
             Note(apply, name, "InitGame", name);
+            if (name == "Init Thing Components")
+                AddFirstDefClass();
             if (name == "Init Graphics")
                 OpenTextureBank();
             if (name == "Init Fonts")
@@ -4488,6 +4515,34 @@ public sealed class EngineLifecycle : IDisposable
         Note(PlayerManagerStoreFn, "InitGame", "Player",
             $"0044C71F 00450142 [0x{PlayerManagerVa:X}]");
         PlayerManagerPresent = true;
+        PlayerManagerPlus40Cap = PlayerManagerPlus40;
+    }
+
+    /// <summary>
+    /// <c>004EE337</c>
+    /// <c>0044C6B0</c>
+    /// <c>009B0AC0</c>
+    /// <c>CHeroMorphDef</c>
+    /// <c>009AD6E0</c>
+    /// <c>009FC4F0</c>.
+    /// Not a def parse.
+    /// </summary>
+    private void AddFirstDefClass()
+    {
+        if (FirstDefClassRegistered)
+            return;
+        Note(PlayerManagerGetter, "Init Thing Components", "Defs",
+            "0044C6B0 [0x13B879C]");
+        Note(AddDefClassFn, "Init Thing Components", "Defs",
+            $"009B0AC0 Add Def Class {FirstDefClassName}");
+        Note(FirstDefClassFactory, "Init Thing Components", "Defs",
+            $"004E4219 {FirstDefClassName}");
+        Note(LoadDefFn, "Init Thing Components", "Defs",
+            "009AD6E0 CDefinitionManager::LoadDef");
+        Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+            $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+        FirstDefClass = FirstDefClassName;
+        FirstDefClassRegistered = true;
     }
 
     public void CreatePlayers()

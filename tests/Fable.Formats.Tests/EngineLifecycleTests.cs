@@ -796,6 +796,52 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Thing_Components_004EE23F_adds_CHeroMorphDef_against_plus40()
+    {
+        Assert.Equal(0x004EE23Fu, EngineLifecycle.InitThingComponentsFn);
+        Assert.Equal(0x009B0AC0u, EngineLifecycle.AddDefClassFn);
+        Assert.Equal(0x009AD6E0u, EngineLifecycle.LoadDefFn);
+        Assert.Equal(0x009FC4F0u, EngineLifecycle.LoadDefBudgetFn);
+        Assert.Equal(0x004E4219u, EngineLifecycle.FirstDefClassFactory);
+        Assert.Equal("CHeroMorphDef", EngineLifecycle.FirstDefClassName);
+        Assert.Equal(0x80000, EngineLifecycle.PlayerManagerPlus40);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.False(life.FirstDefClassRegistered);
+        Assert.Null(life.FirstDefClass);
+        Assert.Equal(0, life.PlayerManagerPlus40Cap);
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.True(life.PlayerManagerPresent);
+        Assert.Equal(EngineLifecycle.PlayerManagerPlus40, life.PlayerManagerPlus40Cap);
+        Assert.True(life.FirstDefClassRegistered);
+        Assert.Equal(EngineLifecycle.FirstDefClassName, life.FirstDefClass);
+        var store = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.PlayerManagerStoreFn);
+        var getter = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.PlayerManagerGetter &&
+            e.Stage == "Init Thing Components");
+        var add = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.AddDefClassFn);
+        var factory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FirstDefClassFactory);
+        var load = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.LoadDefFn);
+        var budget = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.LoadDefBudgetFn);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(store >= 0 && getter > store);
+        Assert.True(add > getter && factory > add);
+        Assert.True(load > factory && budget > load);
+        Assert.True(defs > budget, "CHeroMorphDef before Init Definition Manager");
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Frontend_press_start_type4_without_widgets_does_not_invent_0xE5()
     {
         var life = new EngineLifecycle();
