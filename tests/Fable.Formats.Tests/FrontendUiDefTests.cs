@@ -259,6 +259,8 @@ public sealed class FrontendUiDefTests
         Assert.Equal(0x10, FrontendWidgetType.StyleFlagsForceOpaque);
         Assert.Equal(0x20, FrontendWidgetType.StyleFlagsZeroDest);
         Assert.Equal(0x40, FrontendWidgetType.StyleFlagsUnitScale);
+        Assert.Equal(0x0052CEB0u, FrontendWidgetType.StyleLookupFn);
+        Assert.Equal(20, FrontendWidgetType.StyleLookupPayload);
         Assert.True(FrontendWidgetType.SelectsChild(18));
         Assert.True(FrontendWidgetType.SelectsChild(16));
         Assert.False(FrontendWidgetType.SelectsChild(5));

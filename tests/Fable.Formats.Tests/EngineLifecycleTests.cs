@@ -1509,6 +1509,34 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Thing_Components_004F091F_adds_CHeroDef()
+    {
+        Assert.Equal(0x004F0918u, EngineLifecycle.EighteenthDefClassSite);
+        Assert.Equal(0x004D7CFFu, EngineLifecycle.EighteenthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.EighteenthDefClassCtor);
+        Assert.Equal(0x0123A904u, EngineLifecycle.EighteenthDefClassVtbl);
+        Assert.Equal(48, EngineLifecycle.EighteenthDefClassSize);
+        Assert.Equal("CHeroDef", EngineLifecycle.EighteenthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SeventeenthDefClassRegistered);
+        Assert.True(life.EighteenthDefClassRegistered);
+        Assert.Equal("CHeroDef", life.EighteenthDefClass);
+        var seventeenth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventeenthDefClassFactory);
+        var eighteenth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EighteenthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(seventeenth >= 0 && eighteenth > seventeenth && defs > eighteenth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Init_Definition_Manager_00416005_resets_plus88_via_vtbl8()
     {
         Assert.Equal(0x00416005u, EngineLifecycle.InitDefinitionManagerFn);

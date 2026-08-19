@@ -168,6 +168,13 @@ public static class FrontendWidgetType
     public const int StyleFlagsForceOpaque = 0x10;
     public const int StyleFlagsZeroDest = 0x20;
     public const int StyleFlagsUnitScale = 0x40;
+    /// <summary>
+    /// <c>0052CEB0</c> <c>vtbl+540</c>
+    /// returns map node <c>+20</c>.
+    /// Persist style-6 dword0 UNREAD.
+    /// </summary>
+    public const uint StyleLookupFn = 0x0052CEB0;
+    public const int StyleLookupPayload = 20;
 
     /// <summary>
     /// <c>vtbl+8 == 00530260</c> on
