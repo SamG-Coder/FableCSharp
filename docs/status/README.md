@@ -15,24 +15,33 @@ or in tests/code, treat it as **UNREAD**.
 world clock.
 
 Snapshot: **2026-08-19**, previous snapshot runtime HEAD
-`1a4c51d` via PR #43 merge `0797a88`,
-runtime HEAD `a141c27` (*CCreatureNavigationDef,
-CInventoryItemDef, CLookDef + leftover204,
-CReadableDef, CVillageDef + type-6 0x27 Notes.*).
-Just locked: 5 runtime commits since `1a4c51d`. Headline
-locks: CCreatureNavigationDef after
-CTimeAppearanceFadeDef (`ee08490`); CInventoryItemDef
-after CCreatureNavigationDef (`3a7b594`); host Notes
-`009DA9F0(1) [+16020] empty` (stand-in), leftover204
-is widget +204, add CLookDef (`b1d6877`); CReadableDef
-after CLookDef (`113a514`); Type-6 host Notes
-`00543910` / `0x27`, add CVillageDef (`a141c27`).
-Ignore merge `0797a88`, docs `ee641e5` / `3bbb598` /
-`52b1ffb`, and proofs-only `ae73127`. Docs PR #29
-`bedcf919` is iOS Settings chrome only — CSS unchanged.
-Freeze at `a141c27`. Do not include any later runtime if
-master moves. Master is still proving **boot / world
-clock**, not animation.
+`1a4c51d` via PR #43 merge `0797a88`
+(~11:33am AEST), runtime HEAD `a141c27`
+(~11:47am AEST; 5th runtime since `1a4c51d`)
+(*CCreatureNavigationDef, CInventoryItemDef,
+CLookDef + DIP/+16020 leftover204, CReadableDef,
+CVillageDef + type-6 0x27 identity.*).
+Just locked: 5 runtime commits since `1a4c51d`
+(`ee08490`, `3a7b594`, `b1d6877`, `113a514`,
+`a141c27`). Headline locks: CCreatureNavigationDef
+after CTimeAppearanceFadeDef (`ee08490`);
+CInventoryItemDef after CCreatureNavigationDef
+(`3a7b594`); Gate `009DA9F0` DIP on +16020
+via `DisplayFlushShouldDip(0, 0)`, type-6 leftover204
+is widget +204, add CLookDef (`b1d6877`);
+CReadableDef after CLookDef (`113a514`); Type-6
+packs via `00543910` / `0x27` (stand-in identity),
+add CVillageDef (`a141c27`). leave #14 #20 #36
+#42 open. Also still open: #4 #5 #9 #12 #15 #17
+#19 (proofs index marks #12/#19 FIXED for deleted
+client paths, but no `[Fact]` lock). Do not reopen
+#6 #8 #11 #13 #18 #37. Ignore merge `0797a88`,
+docs `ee641e5` / `3bbb598` / `52b1ffb`, and
+proofs-only `ae73127`. Docs PR #29 `bedcf919`
+is iOS Settings chrome only — CSS unchanged.
+Freeze at `a141c27`. Do not include any later
+runtime if master moves. Master is still proving
+**boot / world clock**, not animation.
 README’s long-term priority list still starts with animation;
 that list is not the current phase.
 
@@ -129,20 +138,27 @@ when a ledger or test already records them.
 Recent commits (`ee08490` … `a141c27`) lock Init Thing
 Components Add Def Class Notes for
 CCreatureNavigationDef then CInventoryItemDef /
-CLookDef / CReadableDef / CVillageDef, plus type-6
-leftover204 as widget +204 and type-6 host Notes
-`00543910` / `0x27`, not `00DBDE40`. Previous
-snapshot `1a4c51d` via PR #43 `0797a88`. Just
-locked this batch: CCreatureNavigationDef,
-CInventoryItemDef, CLookDef + leftover204 / host
-`009DA9F0` empty Note, CReadableDef, CVillageDef +
-type-6 `00543910` / `0x27` Notes. MATCH is
+CLookDef / CReadableDef / CVillageDef, plus
+`009DA9F0` DIP gated by host
+`DisplayFlushShouldDip(0, 0)` (always false;
+stand-in, not recovered +16020), type-6 leftover204
+as widget +204, dest still remapped
+`512,384,512,384`, and type-6 `00543910` / `0x27`
+identity (stand-in, not recovered packer body),
+not `00DBDE40`. Previous snapshot `1a4c51d` via
+PR #43 `0797a88`. Just locked this batch:
+CCreatureNavigationDef, CInventoryItemDef, Gate
+`009DA9F0` DIP on +16020 / leftover204 is widget
++204 / CLookDef, CReadableDef, Type-6 `00543910`
+/ `0x27` identity / CVillageDef. MATCH is
 Notes+flag, not live constructed objects. dest
 `0044C72B` as `[01232C24+8]` is not rdata-locked
-(leave #42 open). `DisplayFlushShouldDip(0, 0)` is
-always false; host never stores `[this+16020]`.
-Empty DIP Note is stand-in, not a recovered queue
-read (leave #36 open). CSS unchanged.
+(leave #42 open). Host still Notes `009DA9F0`
+DIP; type-6 dest still invented (leave #36
+open). Frontend `0042DF9E` / `00595222` still
+Note; host `FrontendBatch` still composites
+(leave #14 open). PlayAVI still 3D Draw (leave
+#20 open). CSS unchanged.
 
 | Item | Status | Evidence |
 |---|---|---|
@@ -214,8 +230,8 @@ read (leave #36 open). CSS unchanged.
 | `0042DF9E` walks `[ui+84]` vtbl+8, then `009D9C80`/`009DA9F0(1)` twice. `00404A80` is getter `0x13B7CD8` | PROVEN | `5657176` / `6607c1e` / `Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present` (`FrontendFlushCount=2`, `FrontendDisplayHelperFn`, `FrontendDisplaySingletonVa`). Walks every resident `[ui+84]` slot (`b4a2c89` / `Frontend_tick_and_draw_walk_resident_ui84_slots`). Present `0042DF9E` still Note-only. New Game still keyboard N/Enter (leave #14 open). |
 | PRESS_START is type 10 `0054E3D0` vtbl `012497E4`; draw `00530260` +176; `005339B0` +272=1; `UI_PRESS_START_TEXT` `TEXT_GUI_MENU_PRESS_BUTTON` | PROVEN | `Frontend_PRESS_START_is_type_10_with_text_child`. Type-0 `0041B800` / dest-always-0 / `0041AFA0` as the menu draw is DISPROVEN. `00595222` calls `[node+20].vtbl+8`. Types 5/10/12/18 are `00530260`. Attach no longer Finds `UI_PRESS_START_TEXT` after every root (`7adf621`). |
 | Press Start sprites are `frontend.big` `FRONTEND_TITLE_01/02_SPRITE` + `FORREST_1_*` + mouse | PROVEN | decoded via `TextureFile` (Rgba8 framed LZO); title 256×128 gold logo; forest DXT1 oak grove |
-| `frontend.bin` drives widget tree, dest, sprites and DX9-to-Vulkan submit | PROVEN | `0d77c2c`. `e79f7b4` drops unused usings from `FrontendWidgetFactory` (cleanup of `0d77c2c`). Type-10 draw is `00530260` vtbl+8 DrawsChildList (`7adf621`). Present `0042DF9E` still Note-only. Host LMB edge queues Type4 (`5dcc1fc`). Host queues LMB-up as type 6 (`48133e9`). leave #14 and #20 open. |
-| Press Start dest inherits type-10 remap scale. Leftover `+204/+208` only when `GraphicIndex != 0`. Type-6 leftover 16×16 is gone; leftover204 is widget +204 (0 first-seen). Type-6 dest is a point at remapped origin (512,384), not ctor 0,0,0,0. `UI_TITLE_01` dest still from texture FrameWidth 256. Nonempty dest draw path is still `00BAE2D0` / `00BAD8A0`. `EnqueuesDisplayQueue` still false. No E8 `009DB700`. `FrontendEnqueueRan` still true on nonempty dest / PRESS START. Host Notes `009DA9F0(1) [+16020] empty` / skip DIP — stand-in, not a recovered queue read | PROVEN / leftover #36 | `1a08cc0` / later `b1d6877` / `Type6_leftover204_is_widget_plus204_not_dest_width` / `Press_Start_type6_dest_is_a_point` / `Frontend_PRESS_START_is_type_10_with_text_child` / `Press_Start_first_seen_dest_table_matches_0041AFA0` / `Nonempty_dest_draws_via_00BAE2D0_not_009DB700`. leave #36 open. |
+| `frontend.bin` drives widget tree, dest, sprites and DX9-to-Vulkan submit | PROVEN | `0d77c2c`. `e79f7b4` drops unused usings from `FrontendWidgetFactory` (cleanup of `0d77c2c`). Type-10 draw is `00530260` vtbl+8 DrawsChildList (`7adf621`). Present `0042DF9E` / `00595222` still Note-only. Host `FrontendBatch` still composites. Host LMB edge queues Type4 (`5dcc1fc`). Host queues LMB-up as type 6 (`48133e9`). leave #14 and #20 open. |
+| Press Start dest inherits type-10 remap scale. Leftover `+204/+208` only when `GraphicIndex != 0`. Type-6 leftover204 is widget +204, not dest width. First-seen type-6 GraphicIndex=0 never writes +204 (`Leftover204==0`); dest is remapped origin `512,384,512,384` (not native `0,0,0,0`). Glyphs still emit (no dest-empty gate). `FrontendBatch` nonempty. Nonempty dest is `00BAE2D0` / `00BAD8A0` not `009DB700`. Host still Notes `009DA9F0` DIP via `DisplayFlushShouldDip(0, 0)` (always false; stand-in, not recovered +16020). `FrontendEnqueueRan` still true on destW/H>0. `Frontend2dDipIssued=false` | PROVEN / leftover #36 | `1a08cc0` / later `b1d6877` / `a141c27` / `Type6_leftover204_is_widget_plus204_not_dest_width` / `Press_Start_type6_dest_is_a_point` / `Frontend_009DA9F0_first_seen_is_empty_skip_not_type_22`. leave #36 open. |
 | Type-4 posts `0xE5` on Press Start. Host Return quarantined as accept. `0x126`/15 were still injected at this SHA. CUIDef persist `00631C60` +189/+190 u8s consumed so Absolute stays aligned. Type-6 Font 26051 is a names.bin offset that resolves to `ENG_ARIAL_24`, not the `0054F4B0` `ENG_ARIAL_16` helper | PROVEN | `db36334` |
 | Persist CRC `0x53C644E4` as MessageId (def+224 via `0055B040`). Type-38 `UI_ACCEPT_NEW_PROFILE` stores `0x126`; type-11 `UI_FRONTEND_BUTTON_NEW_GAME` stores 15. Type 4 is `00A03C80` (+40=4), not a DIK. Action 26 posts stored id. Lifecycle no longer injects `0x126`/15 | PROVEN | `c180b8c` / `Type4_drives_lifecycle_0xE5_then_0x126_then_15`. Later `f38f9f9` moves MessageId to persist +228. |
 | QST AddQuest TRUE as world+172 (FinalAlbion then GlobalQuests, not WLD `START_INITIAL_QUESTS`). Host LMB edge queues Type4. `DikPosterUnread=false` | PROVEN | `5dcc1fc` |
@@ -247,21 +263,21 @@ read (leave #36 open). CSS unchanged.
 | `CTCTimeAppearanceFade` `004EE64E` is the next `009B0AC0` / Add Def Class | DISPROVEN | CTC row, not Add Def Class (`1a4c51d` / `Init_Thing_Components_004EE704_adds_CTimeAppearanceFadeDef`) |
 | Add CCreatureNavigationDef after CTimeAppearanceFadeDef. Site `004EE92B` / dest `009B0AC0` at `004EE932` / factory `004DA871` size 56 vtbl `0123E98C`. Host Note-only + `FifthDefClassRegistered`. MATCH is Notes+flag, not a live 56-byte object | PROVEN | `ee08490` / `Init_Thing_Components_004EE932_adds_CCreatureNavigationDef` |
 | CTC physics/nav rows (`CTCPhysicsLight` / `CTCPhysicsStandard` / `CTCPhysicsControlled` / `CTCCreatureNavigation`) are the next `009B0AC0` / Add Def Class | DISPROVEN | CTC rows, not Add Def Class (`ee08490` / `Init_Thing_Components_004EE932_adds_CCreatureNavigationDef`) |
-| Add CInventoryItemDef after CCreatureNavigationDef. Site `004EF23D` / dest `009B0AC0` at `004EF244` / factory `0044F644` jmp `0044C108` size 112 vtbl `01231DBC`. Host Note-only + `SixthDefClassRegistered`. MATCH is Notes+flag, not a live 112-byte object. Also started `proofs/github-issues-verify` (index only at that SHA). Do not close issues from Note-only | PROVEN | `3a7b594` / `Init_Thing_Components_004EF244_adds_CInventoryItemDef` |
-| Add CLookDef after CInventoryItemDef. Site `004EF37F` / dest `009B0AC0` at `004EF386` / factory `004D80E4` ctor `0044C0C0` size 88 vtbl `0123AE14`. Host Note-only + `SeventhDefClassRegistered`. MATCH is Notes+flag, not a live 88-byte object. Type-6 leftover 16×16 is gone; leftover204 is widget +204 (0 first-seen). Type-6 dest is a point at remapped origin (512,384), not ctor 0,0,0,0. `UI_TITLE_01` dest still from texture FrameWidth 256. Host Notes `009DA9F0(1) [+16020] empty` / skip DIP: `DisplayFlushShouldDip(0, 0)` is always false; host never stores `[this+16020]`. That empty Note is stand-in, not a recovered queue read. `FrontendEnqueueRan` still true on nonempty dest / PRESS START. `EnqueuesDisplayQueue` still false. No E8 `009DB700`. Draw path is still `00BAE2D0` / `00BAD8A0`. Leave #36 open | PROVEN | `b1d6877` / `Init_Thing_Components_004EF386_adds_CLookDef` / `Type6_leftover204_is_widget_plus204_not_dest_width` / `Press_Start_type6_dest_is_a_point` / `Frontend_PRESS_START_is_type_10_with_text_child` / `Press_Start_first_seen_dest_table_matches_0041AFA0` / `Nonempty_dest_draws_via_00BAE2D0_not_009DB700` |
+| Add CInventoryItemDef after CCreatureNavigationDef. Site `004EF23D` / dest `009B0AC0` at `004EF244` / factory `0044F644` (jmp thunk to ctor `0044C108`) size 112 vtbl `01231DBC`. Host Note-only + `SixthDefClassRegistered`. MATCH is Notes+flag, not a live 112-byte object. Ctor `0044C108` ≠ `0044C72B`; vtbl `01231DBC` ≠ `01232C24`. Does not copy #42. Also started `proofs/github-issues-verify` (index only at that SHA). Do not close issues from Note-only | PROVEN | `3a7b594` / `Init_Thing_Components_004EF244_adds_CInventoryItemDef` |
+| Gate `009DA9F0` DIP on +16020; type-6 leftover204 is widget +204; add CLookDef after CInventoryItemDef. Site `004EF37F` / dest `009B0AC0` at `004EF386` / factory `004D80E4` ctor `0044C0C0` size 88 vtbl `0123AE14`. Host Note-only + `SeventhDefClassRegistered`. MATCH is Notes+flag, not a live 88-byte object. `FlushFrontendDisplay` uses `DisplayFlushShouldDip(0, 0)` (always false). Notes `009DA9F0(1) [+16020] empty` / skip DIP. `Frontend2dDipIssued=false`. HOST STAND-IN, not recovered +16020. `FrontendEnqueueRan` still true on destW/H>0. Queue still named `00BAE2D0` / `00BAD8A0`, no `009DB700`. Type-6 dest still not native `0,0,0,0`; dest is remapped origin `512,384,512,384`. `Leftover204==0` when `GraphicIndex==0`. Glyphs still emit (no dest-empty gate). `FrontendBatch` nonempty. Leave #36 open | PROVEN | `b1d6877` / `Init_Thing_Components_004EF386_adds_CLookDef` / `Type6_leftover204_is_widget_plus204_not_dest_width` / `Press_Start_type6_dest_is_a_point` / `Frontend_009DA9F0_first_seen_is_empty_skip_not_type_22` |
 | `CTCCreatureExpression` / `CTCLook` are the next `009B0AC0` / Add Def Class | DISPROVEN | CTC rows, not Add Def Class (`b1d6877` / `Init_Thing_Components_004EF386_adds_CLookDef`) |
-| Add CReadableDef after CLookDef. Site `004EF5AD` / dest `009B0AC0` at `004EF5B4` / factory `004DAA0E` ctor `0044C0C0` size 38 vtbl `0123E9F4`. Host Note-only + `EighthDefClassRegistered`. MATCH is Notes+flag, not a live object. Size 38 is thin (no factory dump) | PROVEN | `113a514` / `Init_Thing_Components_004EF5B4_adds_CReadableDef` |
+| Add CReadableDef after CLookDef. Site `004EF5AD` / dest `009B0AC0` at `004EF5B4` / factory `004DAA0E` ctor `0044C0C0` size 38 vtbl `0123E9F4`. Host Note-only + `EighthDefClassRegistered`. MATCH is Notes+flag, not a live object. Size 38 is odd vs 4-aligned siblings. Next leftover named CVillageDef (now landed) | PROVEN | `113a514` / `Init_Thing_Components_004EF5B4_adds_CReadableDef` |
 | `CTCActionUseTorch` / `CTCActionUseReadable` are the next `009B0AC0` / Add Def Class | DISPROVEN | CTC rows, not Add Def Class (`113a514` / `Init_Thing_Components_004EF5B4_adds_CReadableDef`) |
-| Type-6 host Notes `00543910` / `0x27` size 64; add CVillageDef after CReadableDef. Site `004F0171` / dest `009B0AC0` at `004F0178` / factory `004E213B` pack `0042DAE0` ctor `004DFF04` size `0x10C` vtbl `01241DDC`. Host Note-only + `NinthDefClassRegistered`. MATCH is Notes+flag, not a live object. Type-6 `0x27` is the host packer Note vs old `0x22` host pack (`Type6_widget_packs_00543910_type_27_not_0041BEB0`). Last present packer stays `0041BEB0` / `0x22`. `EnqueuesDisplayQueue` still false. No native pack into +16020. Host still Notes `009DA9F0(1) [+16020] empty`. Leave #36 open | PROVEN | `a141c27` / `Init_Thing_Components_004F0178_adds_CVillageDef` / `Type6_widget_packs_00543910_type_27_not_0041BEB0` |
+| Type-6 packs via `00543910` / `0x27`; add CVillageDef after CReadableDef. Site `004F0171` / dest `009B0AC0` at `004F0178` / factory `004E213B` pack `0042DAE0` ctor `004DFF04` size `0x10C` vtbl `01241DDC`. First shape-2 pair. Host Note-only + `NinthDefClassRegistered`. MATCH is Notes+flag, not a live object. Type-6 pack identity: `RecordForWidget(Text)` → `00543910` / type `0x27` / 64 bytes (was `0041BEB0` / `0x22` / `0xC0`). `QueueType6Record` Notes those constants. STAND-IN, not recovered packer body. Tests lock identity (`Type6_widget_packs_00543910_type_27_not_0041BEB0`). Dest still `512,384,512,384`. DIP stays empty-gated (`DisplayFlushShouldDip(0, 0)`; `Frontend2dDipIssued==false`). Type-0 stays `0041BEB0` / `0x22`. Leave #36 open | PROVEN | `a141c27` / `Init_Thing_Components_004F0178_adds_CVillageDef` / `Type6_widget_packs_00543910_type_27_not_0041BEB0` |
 | `CTCActionUseSearch` is the next `009B0AC0` / Add Def Class | DISPROVEN | CTC row, not Add Def Class (`a141c27` / `Init_Thing_Components_004F0178_adds_CVillageDef`) |
 | `[node+20]` is `0041DB1D`/`0041D21B` type0 `0041B800` vtbl `0122F5D4`; draw `0041AFA0` not `0052D900` | DISPROVEN | PRESS_START Type=10. Type 0 is `UI_FRONTEND_BUTTON`. |
 | `00A09F20` miss: `[bank].vtbl+4` is `009D56C0` Open Bank File Async then `009A7F80` on `[0x13CA79C]` | PROVEN | `bbee903` / `Pe_entry_is_crt_not_new_game` / `Install_banks_and_startup_videos_exist` (`MeshBank.OpenVtbl4`) |
-| `00404C00` first-seen `[0x13B7CD8+8]==0` skip; `0041AFA0` packs `0041BEB0` type `0x22` (not sibling `0041BF60`) dest `[edx+92]` `this+0x15C` size `0xC0` | PROVEN | `c612ad5` / same frontend test (`Frontend2dLastPacker=0041BEB0`, `FrontendDisplayFlag=false`). Type-0 stays `0041BEB0` / `0x22`; type-6 host Notes `00543910` / `0x27` (`a141c27` / `Type6_widget_packs_00543910_type_27_not_0041BEB0`). Dest leftover `+204` is widget +204 (`b1d6877`). leave #14 open. |
+| `00404C00` first-seen `[0x13B7CD8+8]==0` skip; `0041AFA0` packs `0041BEB0` type `0x22` (not sibling `0041BF60`) dest `[edx+92]` `this+0x15C` size `0xC0` | PROVEN | `c612ad5` / same frontend test (`Frontend2dLastPacker=0041BEB0`, `FrontendDisplayFlag=false`). Type-0 stays `0041BEB0` / `0x22`; type-6 pack identity is `00543910` / `0x27` / 64 (stand-in, not recovered packer body; `a141c27` / `Type6_widget_packs_00543910_type_27_not_0041BEB0`). Dest leftover `+204` is widget +204 (`b1d6877`). Host `FrontendBatch` still composites. leave #14 open. |
 | `00418289` dump: `00416296`/`00490A22` frontend+GUI gate; `009E1BC0` → `[game+90544]`; fade/player `004AEBA0`; world `0049D9E0`; vtbl+24 `00416E78`; `0041726D` WorldFrame. START_INITIAL_QUESTS factories `00CDE2F0`/`00F01760`/`00CDBD20`/`00CB8690` (vtbls `012C3000`/`012F72D0`). `006B3FF0` seed PROVEN (208); `006B63C0` bank copy 6×`0x1F4` PROVEN (91). Pose leftover `006B8640`/`008889C0` stay UNREAD; `006B2CA0` later PROVEN (`204a214`). Host `SeedAt(1.6m)` later DISPROVEN as live New Game (`204a214`). FOV 72 is SHOT2 leftover; Lookout helper FOV later 70 (`be3339e`). Do not StartCutscene(S_PSM) from the factory ctor. | PROVEN | `18ef09b` / [FORWARD_TREE.md](../runtime/FORWARD_TREE.md) §11 |
 | `006B3FF0` +68 → `006B2CA0` pose (not invented `SeedAt` 1.6 m eye). First-seen V2/V3 `(1,0,0)`, V4 `(-1,0,0)`. `00A14440` normalize. Host `SeedAt(1.6m)` is not the New Game path | PROVEN | `204a214` / `World_camera_006B4900_slots_lerp_into_ScriptedCamera` / `Camera_004164E0_runs_on_install_after_WorldFrame` / `Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint` (`PoseComputed`, `WorldCamera.PoseFn`). Do not reopen #6 |
 | `004A5A40` type-1 tick pumps `004B4490` `[0x13B89FC]` → `00CB8220` / `00CB7C40` / `00CB8170`. First-seen `QuestVtbl24Calls=0` (`+41==0` takes vtbl+4 start). `006B3030` V0 spring: Weight0 stays ctor 0.2; V0 stays `(1,0,0)` (no invented V0). `004978A0` LCG seed UNREAD; `00A14260` yaw/pitch not applied first-seen | PROVEN | `52e26bc` / `Camera_004164E0_runs_on_install_after_WorldFrame` (`QuestPumpRan`, `QuestPumpWalked>=6`, `FollowSpringRan`, `SubjectFillNoted`). FORWARD_TREE §11 |
 | First-seen `006B3B80` skip (`+460=0`, qword +24 = −1.0 from `[0x1236700]`, fcomp `[0x122ED70]=0` → ret). No V0 write. Fiber +41 setter `00CB78D0` (`mov al,[esp+4]; mov [ecx+41],al; ret 4`). `00CB7950` clears +41 after update; first-seen stays 0. Not in factory vtbls `012C3000` / `012F72D0` / `012C3688` / `0129B938` / `012C1648` / `012C2748` | PROVEN | `fab17be` / `World_camera_006B4900_slots_lerp_into_ScriptedCamera` (`CameraTickSkipped`, `CameraTickTimer=-1.0`, `PoseTickFn`) / `Camera_004164E0_runs_on_install_after_WorldFrame` (`FiberUpdateFlagSetter`) |
-| `009DA9F0(1)` first-seen empty → `009DB6E6` skip DIP. Nonempty would be `00A058C0` then `[device+88].vtbl+332`. No `cmp …,0x22`. Type-0x22 DIP is vtbl+332, not a 0x22 switch. `009D9C80` first 250: dirty-list only. Queue begin +16020. Later `b1d6877` host Notes `009DA9F0(1) [+16020] empty` / skip DIP: `DisplayFlushShouldDip(0, 0)` is always false; host never stores `[this+16020]`. That is stand-in, not a recovered queue read. `FrontendEnqueueRan` can still be true. `Frontend2dDipIssued=false`. Leave #36 open | PROVEN | `6493c77` / `b1d6877` / `Frontend_present_runs_on_install_after_videos` / `Frontend_009DA9F0_first_seen_is_empty_skip_not_type_22` (`DisplayQueueBeginOffset=16020`, `DrawIndexedPrimitiveVtbl=332`, `DisplayPrimitiveFn=00A058C0`). leave #14 open |
+| `009DA9F0(1)` first-seen empty → `009DB6E6` skip DIP. Nonempty would be `00A058C0` then `[device+88].vtbl+332`. No `cmp …,0x22`. Type-0x22 DIP is vtbl+332, not a 0x22 switch. `009D9C80` first 250: dirty-list only. Queue begin +16020. Later `b1d6877` gates DIP via `DisplayFlushShouldDip(0, 0)` (always false; HOST STAND-IN, not recovered +16020). Host no longer ORs `FrontendEnqueueRan`. `FrontendEnqueueRan` still true on destW/H>0. `Frontend2dDipIssued=false`. Host still Notes `009DA9F0`. Leave #36 open | PROVEN | `6493c77` / `b1d6877` / `Frontend_present_runs_on_install_after_videos` / `Frontend_009DA9F0_first_seen_is_empty_skip_not_type_22` (`DisplayQueueBeginOffset=16020`, `DrawIndexedPrimitiveVtbl=332`, `DisplayPrimitiveFn=00A058C0`). leave #14 open |
 | `0042E204` Init Engine: `00B26340` alloc `0x178` ctor `00B260B0` vtbl `012A0F3C` at retail+88. `0041AFA0` `[012A0F3C+92]` = `00B23BC0` → `00B324A0([0x1436E80], widget+0x15C, rec, 0xC0, 0)`. Type `[rec]=0x22` → `[0x1436E84]+16+0x22*4`. dest+4=0 first-seen. Handler vtbl+20 UNREAD (not memcpy +16020) | PROVEN | `d6821b8` / `Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present` (`FrontendSubmitFn=00B23BC0`, `FrontendSubmitDispatchFn=00B324A0`, `FrontendEngineVtbl=012A0F3C`, `FrontendEngineObjectSize=0x178`). leave #14 open |
 | First-seen WorldCamera +6296 is the ctor axis, not the eye (`IsCtorAxis`). `00B314E0` consumes helper from the hero (look `006B2CA0` V4, up `(0,0,1)` `FirstSeenCameraUp`, FOV 70 from `00A0C130` / `0x3E471B48` turns). Letterbox 1024×768 (`00B30B50` camera +176/+180). AABB-cull neighbour STB before height parse (`00BDC2D0` / `00BF6F80`). `textures.h` resolve cached (`LevelLibrary.LandscapeEnums`). Skip `SetMesh`/`SetTextures` when payload unchanged | PROVEN | `be3339e` / `Load_single_thing_0051FD80_spawns_hero_at_LookoutPoint` / `Install_banks_and_startup_videos_exist` (`RendererHelperBound`, `GameCamera.FirstSeenFovDegrees`) / `CameraProjectionTests` (`ApplyRendererHelper`, `LandscapeFrustum.CameraUpdate=00B314E0`) / `World_submit_is_stable_between_frames` / `BuildFrame_reuses_texture_array` / `Texture_decode_is_cached` / `Lookout_tile_origin_is_region_local` / `MeshBank_does_not_reparse_c3d` / `Native_draw_order_is_begin_layers_end_present`. Do not reopen #6 / #13 |
 | Landscape `00BF4570` cells as persistent draws. Each STB 16 m tile is one LandscapeCell (cached on LevelLibrary). Submit builds per-cell MeshDraws; landscape and C3D on separate VBs. Concat stays a test rollup. Print LoadTiming on first New Game submit | PROVEN | `3dba4a1` / `Lookout_cells_match_stb_tiles` / `World_submit_is_stable_between_frames` (`SubmittedLandscapeCells`, `LastLoadTiming`). First commit submitted bits `0x4`/`0x40`; cell DIP later `0x40` only (`40037b1`) |
@@ -334,10 +350,10 @@ the no-save path.
 | `0041714D` when `world+164 != 0` | UNREAD | Default New Game is `world+164==0` |
 | Slot fields beyond `+6296/+6312/+6328` (weights / `+6340/+6352`) | UNREAD | Lerp into `ScriptedCamera` is PROVEN; first-seen Weight0 ctor 0.2 is locked (`52e26bc`). Leftover slot bodies are not |
 | `00435530` overlay `00435000` / interface `00435070` bodies | PARTIAL | Present + `009DA9F0` layer bits PROVEN; overlay/interface still Note |
-| Frontend `00595222` widget DIP body | DISPROVEN as DIP | `00595222` calls `[node+20].vtbl+8`. Types 5/10/12/18 are `00530260` DrawsChildList (`7adf621`). Tick/draw walk every resident `[ui+84]` slot (`b4a2c89` / `Frontend_tick_and_draw_walk_resident_ui84_slots`). Present `0042DF9E` still Note-only. Host draw still does not skip on State=6. Host still Notes `009DA9F0` DIP. leave #14 open. |
-| `00B324A0` type-0x22 handler vtbl+20 | PARTIAL | dest+4=0 only while dest is 0. Nonempty dest draw path is still `00BAE2D0` / `00BAD8A0`. `EnqueuesDisplayQueue` still false. No E8 `009DB700` (`1a08cc0` / `Nonempty_dest_draws_via_00BAE2D0_not_009DB700`). Host Notes `009DA9F0(1) [+16020] empty` stand-in (`b1d6877`); `DisplayFlushShouldDip(0, 0)` always false; host never stores `[this+16020]`. Type-6 host Notes `00543910` / `0x27` size 64, not `0041BEB0` / `0x22` (`a141c27` / `Type6_widget_packs_00543910_type_27_not_0041BEB0`). Type-0 stays `0041BEB0` / `0x22`. Type-6 Font 26051 is a names.bin offset that resolves to `ENG_ARIAL_24`, not the `0054F4B0` `ENG_ARIAL_16` helper (`db36334`). Init Fonts `ENG_ARIAL_18` at `game+90444` is a different object (`9901d3b`). leave #36 open. |
-| `0041AC20` dest rect from +204/+248 | PROVEN ctor 0,0,0,0; type-6 dest (512,384) | Leftover `+204` is widget +204, not dest width (`b1d6877` / `Type6_leftover204_is_widget_plus204_not_dest_width`). Type-6 leftover 16×16 is gone (0 first-seen). Type-6 dest is a point at remapped origin (512,384), not ctor 0,0,0,0 (`Press_Start_type6_dest_is_a_point` / `Frontend_PRESS_START_is_type_10_with_text_child`). `UI_TITLE_01` dest still from texture FrameWidth 256 (`Press_Start_first_seen_dest_table_matches_0041AFA0`). Leftover `+204/+208` only when `GraphicIndex != 0` (`1a08cc0`). leave #36 open. |
-| New Game keyboard N/Enter (host stand-in) | PARTIAL | Host Return quarantined as accept (`db36334`). Host LMB edge queues Type4 (`5dcc1fc`). Host queues LMB-up as type 6 (`48133e9`). Host current `_frontendWidgets` is still the switched screen (input leftover) (`84a8350`). `DispatchFrontendMessage(15)` is `0059A238` vtbl+32. Enter still queues that message. Present `0042DF9E` still Note-only. Host draw still does not skip on State=6. leave #14 open. |
+| Frontend `00595222` widget DIP body | DISPROVEN as DIP | `00595222` calls `[node+20].vtbl+8`. Types 5/10/12/18 are `00530260` DrawsChildList (`7adf621`). Tick/draw walk every resident `[ui+84]` slot (`b4a2c89` / `Frontend_tick_and_draw_walk_resident_ui84_slots`). Present `0042DF9E` / `00595222` still Note-only. Host `FrontendBatch` still composites. Host draw still does not skip on State=6. Host still Notes `009DA9F0` DIP. leave #14 open. |
+| `00B324A0` type-0x22 handler vtbl+20 | PARTIAL | dest+4=0 only while dest is 0. Nonempty dest is `00BAE2D0` / `00BAD8A0` not `009DB700` (`1a08cc0`). Host still Notes `009DA9F0` DIP via `DisplayFlushShouldDip(0, 0)` (always false; stand-in, not recovered +16020, `b1d6877`). Type-6 0x22 leftover is locked as identity only (now Notes `00543910` / `0x27` / 64, not `0041BEB0` / `0x22` / `0xC0`). Packer body is still a stand-in. Next leftover is the recovered dest writer / real `00543910` body (colour/text → 64-byte type `0x27`) and GPU emit `00AB7C20` — not another packer-type flip (`a141c27` / `Type6_widget_packs_00543910_type_27_not_0041BEB0`). Type-0 stays `0041BEB0` / `0x22`. Type-6 Font 26051 is a names.bin offset that resolves to `ENG_ARIAL_24`, not the `0054F4B0` `ENG_ARIAL_16` helper (`db36334`). Init Fonts `ENG_ARIAL_18` at `game+90444` is a different object (`9901d3b`). leave #36 open. |
+| `0041AC20` dest rect from +204/+248 | PARTIAL — type-6 dest still invented | Leftover `+204` is widget +204, not dest width (`b1d6877` / `Type6_leftover204_is_widget_plus204_not_dest_width`). `Leftover204==0` when `GraphicIndex==0`. Type-6 dest is remapped origin `512,384,512,384`, not native `0,0,0,0`. Glyphs still emit (no dest-empty gate). `FrontendBatch` nonempty. Leftover `+204/+208` only when `GraphicIndex != 0` (`1a08cc0`). leave #36 open. |
+| New Game keyboard N/Enter (host stand-in) | PARTIAL | Host Return quarantined as accept (`db36334`). Host LMB edge queues Type4 (`5dcc1fc`). Host queues LMB-up as type 6 (`48133e9`). Host current `_frontendWidgets` is still the switched screen (input leftover) (`84a8350`). `DispatchFrontendMessage(15)` is `0059A238` vtbl+32. Enter still queues that message. Present `0042DF9E` / `00595222` still Note-only. Host `FrontendBatch` still composites. Host draw still does not skip on State=6. leave #14 open. |
 | `006B8640` / `008889C0` leftover (do not write V0 first-seen) | UNREAD | `006B2CA0` pose is PROVEN (`204a214`). Host `SeedAt(1.6m)` is DISPROVEN as live New Game. Lookout helper FOV 70 from `00A0C130` (`be3339e`). `00A0C130` is a packer (`a6f939a`); ctor look +Z, up `(1,1,1)`. SHOT2 FOV 72 is intro-view leftover — do not collapse into Lookout. Do not reopen #6 / #13 |
 | Consumed first-Present helper | UNREAD | `a6f939a` locks ctor packer / `00988A50` WVP / bank lerp `008857E0` / vtbl+244 colour-filter. Does not change the consumed first-Present helper. Do not reopen #6 / #13 |
 | `004978A0` LCG seed for `006B3030` | UNREAD | Spring ran; Weight0/V0 first-seen locked (`52e26bc`). Seed unread |
@@ -352,7 +368,7 @@ the no-save path.
 | PALSKIN type1/Flag1 routing (slot 14 `0x80` / Flag1 slot 9 `0x200`) | UNREAD | leftover research (`f4a1efc`); geometry still submits on `0x100`. Not a new issue |
 | PALSKIN c38 dest upload | later | `27cb7ee` — later GPU path; do not file |
 | Init Definition Manager dest `[01232C24+8]` | dest UNREAD | Host Notes `0044C6B0` / `0044C72B [vtbl+8]` / `009ACB10` / `009E5250` + `DefinitionManagerPrepared` are locked (`587baae` / `Init_Definition_Manager_00416005_resets_plus88_via_vtbl8`). dest `0044C72B` as `[01232C24+8]` is not rdata-locked (sibling `proofs/00416005-def-manager` dest UNREAD). Leave #42 open. Do not call dest PROVEN. Different object from later Subtitled `[0x13B8A54]`. Do not invent a `game.bin` parser. |
-| Init Thing Components further Add Def Class | leftover Note-only | Thing Components now Notes Add Def Class for CHeroMorphDef then CHighlightItemDef / CSmokeGeneratorDef / CTimeAppearanceFadeDef / CCreatureNavigationDef / CInventoryItemDef / CLookDef / CReadableDef / CVillageDef (`b7f4c34` / `acfe46f` / `100e5cf` / `1a4c51d` / `ee08490` / `3a7b594` / `b1d6877` / `113a514` / `a141c27`). MATCH is Notes+flag, not live constructed. LoadDef field walk stays PARTIAL. Do not invent a live object. |
+| Init Thing Components further Add Def Class | leftover Note-only | Thing Components now Notes Add Def Class for CHeroMorphDef then CHighlightItemDef / CSmokeGeneratorDef / CTimeAppearanceFadeDef / CCreatureNavigationDef / CInventoryItemDef / CLookDef / CReadableDef / CVillageDef (`b7f4c34` / `acfe46f` / `100e5cf` / `1a4c51d` / `ee08490` / `3a7b594` / `b1d6877` / `113a514` / `a141c27`). MATCH is Notes+flag, not live constructed. Next leftover is CVillageMemberDef at `004F01FF` / `004F0227` / `004F022E` / factory `0x4DA7AD` (next `009B0AC0` after CVillageDef). Do not file as an issue. LoadDef field walk stays PARTIAL. Do not invent a live object. |
 | Init Player Interface leftover `Register(ActionInputListener)` / `00488D20` notes | leftover | Not a function; factory is Create Players. Host ctor note of `0044A3B0` under Init Player Interface is DISPROVEN (moved to Init Player Manager, `4a03969`). Do not file a new issue. |
 
 No-save `WorldFrame` now ticks after Create Players (`+9826=1`).
@@ -471,11 +487,13 @@ The boot-first sequence holds. Corrections from the repo:
    not reopen #6 / #13. SHOT2 FOV 72 stays intro-view leftover.
    `006B8640`/`008889C0` leftover UNREAD.    Frontend `00595222` is the resident-slot vtbl+8
    DrawsChildList walk (`7adf621` / `b4a2c89`). Present
-   `0042DF9E` still Note-only. New Game keyboard N/Enter
-   leftover stands (#14). Host current `_frontendWidgets`
-   is still the switched screen (input leftover)
-   (`84a8350`). Host draw still does not skip on State=6.
-   Host still collapses `[packet+0]` onto MessageId.
+   `0042DF9E` / `00595222` still Note-only. Host
+   `FrontendBatch` still composites. New Game keyboard
+   N/Enter leftover stands (leave #14 open). Host
+   current `_frontendWidgets` is still the switched
+   screen (input leftover) (`84a8350`). Host draw
+   still does not skip on State=6. Host still
+   collapses `[packet+0]` onto MessageId.
    Press Start `0xE5` is slot `0x14` `0059B5D7`
    (`59fde69`). `[ui+84]` keeps `0x14`/`0x17` across
    switch (`84a8350`). `+332` via SelectState(6) is not
@@ -484,31 +502,31 @@ The boot-first sequence holds. Corrections from the repo:
    Recent commits `ee08490` … `a141c27` lock Init Thing
    Components Add Def Class Notes for
    CCreatureNavigationDef then CInventoryItemDef /
-   CLookDef / CReadableDef / CVillageDef, plus type-6
-   leftover204 as widget +204 and type-6 host Notes
-   `00543910` / `0x27`. MATCH is Notes+flag, not
-   live constructed. dest `0044C72B` as
-   `[01232C24+8]` is not rdata-locked (leave #42
-   open). Different object from later Subtitled
-   `[0x13B8A54]`. Init Player Interface still leftover
-   Register(ActionInputListener) / `00488D20` notes.
-   Host ctor note of `0044A3B0` under Init Player
-   Interface is DISPROVEN (moved).
+   CLookDef / CReadableDef / CVillageDef, plus
+   `009DA9F0` DIP gated by host
+   `DisplayFlushShouldDip(0, 0)` (always false;
+   stand-in, not recovered +16020), type-6 leftover204
+   as widget +204, dest still remapped
+   `512,384,512,384`, and type-6 `00543910` / `0x27`
+   identity (stand-in, not recovered packer body).
+   MATCH is Notes+flag, not live constructed. dest
+   `0044C72B` as `[01232C24+8]` is not rdata-locked
+   (leave #42 open). Different object from later
+   Subtitled `[0x13B8A54]`. Init Player Interface
+   still leftover Register(ActionInputListener) /
+   `00488D20` notes. Host ctor note of `0044A3B0`
+   under Init Player Interface is DISPROVEN (moved).
    Host LMB edge queues Type4 (`5dcc1fc`). Host queues LMB-up
-   as type 6 (`48133e9`). Type-6 leftover 16×16 is gone;
-   leftover204 is widget +204 (0 first-seen). Type-6
-   dest is a point at remapped origin (512,384), not
-   ctor 0,0,0,0. `UI_TITLE_01` dest still from
-   texture FrameWidth 256. Host Notes
-   `009DA9F0(1) [+16020] empty` / skip DIP:
-   `DisplayFlushShouldDip(0, 0)` is always false;
-   host never stores `[this+16020]`. That is stand-in,
-   not a recovered queue read. `FrontendEnqueueRan`
-   still true on nonempty dest / PRESS START.
-   `EnqueuesDisplayQueue` still false. No E8
-   `009DB700`. Draw path is still `00BAE2D0` /
-   `00BAD8A0` (#36). leave #36 open.
-   #37 already locked
+   as type 6 (`48133e9`). Type-6 leftover204 is widget
+   +204 (`Leftover204==0` when GraphicIndex==0); dest
+   is remapped origin `512,384,512,384` (not native
+   `0,0,0,0`). Host still Notes `009DA9F0` DIP via
+   hardcoded `(0, 0)` (#36). leave #36 open.
+   Next leftovers (do not file as issues):
+   CVillageMemberDef at `004F01FF` / `004F0227` /
+   `004F022E` / factory `0x4DA7AD`; recovered dest
+   writer / real `00543910` body and GPU emit
+   `00AB7C20`. #37 already locked
    at the previous freeze (`61e430f` / `48133e9`):
    `0xE5` host fill gone
    (`Frontend_press_start_type4_without_widgets_does_not_invent_0xE5`);
@@ -516,7 +534,10 @@ The boot-first sequence holds. Corrections from the repo:
    posts +228 after arm
    (`Type4_action_26_posts_stored_widget_message`,
    `Type4_drives_lifecycle_0xE5_then_0x126_then_15`).
-   PlayAVI still 3D Draw (#20). leave #14 and #20 open. New Game submit now walks `0x4`/`0x40`/`0x20`/`0x100`/
+   PlayAVI still 3D Draw / host.Draw (leave #20 open).
+   leave #14 #20 #36 #42 open. Also still open:
+   #4 #5 #9 #12 #15 #17 #19. Do not reopen #6 #8
+   #11 #13 #18 #37. New Game submit now walks `0x4`/`0x40`/`0x20`/`0x100`/
    `0x2000` (`676bf63`); cell DIP is `0x40` only (`40037b1`).
    #11 done (`98c4acc` recreate-on-height + `00628B79` dest).
    #18 done (`ff808b1` RHSet +X). Lookout EnvironmentTheme is
