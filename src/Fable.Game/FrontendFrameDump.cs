@@ -225,13 +225,9 @@ public static class FrontendFrameDump
         var sb = new StringBuilder();
         sb.AppendLine("# New Profile widget dump");
         sb.AppendLine("# name type parent state selected authoredX authoredY authoredW authoredH drawX0 drawY0 drawX1 drawY1 hitX0 hitY0 hitX1 hitY1 textOriginX textOriginY texture layer alpha visible enabled message");
-        var byName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        for (var i = 0; i < widgets.Count; i++)
-            byName.TryAdd(widgets[i].Name, i);
         for (var i = 0; i < widgets.Count; i++)
         {
             var w = widgets[i];
-            var rect = FrontendHitTest.HitRect(widgets, i);
             var alpha = (int)(w.Colour >> 24);
             sb.Append(Escape(w.Name));
             sb.Append(' ').Append(w.Type);
@@ -246,10 +242,10 @@ public static class FrontendFrameDump
             sb.Append(' ').Append(F(w.DestY0));
             sb.Append(' ').Append(F(w.DestX1));
             sb.Append(' ').Append(F(w.DestY1));
-            sb.Append(' ').Append(F(rect.X0));
-            sb.Append(' ').Append(F(rect.Y0));
-            sb.Append(' ').Append(F(rect.X1));
-            sb.Append(' ').Append(F(rect.Y1));
+            sb.Append(' ').Append(F(w.HitX0));
+            sb.Append(' ').Append(F(w.HitY0));
+            sb.Append(' ').Append(F(w.HitX1));
+            sb.Append(' ').Append(F(w.HitY1));
             sb.Append(' ').Append(F(w.TextOriginX));
             sb.Append(' ').Append(F(w.TextOriginY));
             sb.Append(' ').Append(Escape(w.TextureName));

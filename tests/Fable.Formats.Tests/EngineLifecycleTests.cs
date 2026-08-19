@@ -2247,9 +2247,10 @@ public sealed class EngineLifecycleTests
         }
 
         Assert.True(index >= 0, name);
-        var hit = FrontendHitTest.HitRect(life.FrontendWidgets, index);
-        Assert.True(hit.X1 > hit.X0 && hit.Y1 > hit.Y0, name + " empty hit");
-        life.SetFrontendPointer((hit.X0 + hit.X1) / 2f, (hit.Y0 + hit.Y1) / 2f);
+        Assert.True(
+            FrontendHitTest.TryDestPoint(life.FrontendWidgets, index, out var x, out var y),
+            name + " dest empty");
+        life.SetFrontendPointer(x, y);
         life.QueueInput(EngineInput.Type4, 0);
         life.QueueInput(EngineInput.Type6, 0);
         Assert.True(life.Pump());

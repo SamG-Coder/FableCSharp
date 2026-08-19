@@ -6,10 +6,13 @@ namespace Fable.Game;
 /// Type 11/38 <c>vtbl+568</c>
 /// <c>0055B8F0</c>: AABB from dest
 /// origin (<c>vtbl+488</c>) plus size
-/// (<c>vtbl+492</c>). Point dests use
-/// the union of presented descendants
-/// (mouse-area children). Empty space
-/// hits nothing.
+/// (<c>vtbl+492</c>). Draw dest and
+/// hit dest are the same rectangle.
+/// Point dests do not invent a
+/// leftover union. Empty space hits
+/// nothing; click a presented child
+/// dest and walk to the interactive
+/// ancestor.
 /// </summary>
 public static class FrontendHitTest
 {
@@ -25,27 +28,50 @@ public static class FrontendHitTest
         (widget.DestX0, widget.DestY0, widget.DestX1, widget.DestY1);
 
     /// <summary>
-    /// Submit dest if it has area, else
-    /// the union of presented descendants
-    /// that do. Same rectangle is used
-    /// for draw leftovers and hit.
+    /// <c>0055B8F0</c> uses dest origin
+    /// (<c>vtbl+488</c>) plus dest size
+    /// (<c>vtbl+492</c>). Draw dest and
+    /// hit dest are the same rectangle.
+    /// Point dests do not invent a
+    /// leftover union.
     /// </summary>
     public static (float X0, float Y0, float X1, float Y1) HitRect(
         IReadOnlyList<FrontendWidget> tree, int index)
     {
         if ((uint)index >= (uint)tree.Count)
             return (0f, 0f, 0f, 0f);
+        return DestRect(tree[index]);
+    }
+
+    /// <summary>
+    /// Centre of this dest if it has
+    /// area, else the first presented
+    /// descendant dest that does.
+    /// </summary>
+    public static bool TryDestPoint(
+        IReadOnlyList<FrontendWidget> tree, int index, out float x, out float y)
+    {
+        x = 0f;
+        y = 0f;
+        if ((uint)index >= (uint)tree.Count)
+            return false;
         var widget = tree[index];
         if (widget.DestX1 > widget.DestX0 && widget.DestY1 > widget.DestY0)
-            return DestRect(widget);
+        {
+            x = (widget.DestX0 + widget.DestX1) * 0.5f;
+            y = (widget.DestY0 + widget.DestY1) * 0.5f;
+            return true;
+        }
 
-        var have = false;
-        var x0 = 0f;
-        var y0 = 0f;
-        var x1 = 0f;
-        var y1 = 0f;
-        UnionDescendants(tree, index, ref have, ref x0, ref y0, ref x1, ref y1);
-        return have ? (x0, y0, x1, y1) : DestRect(widget);
+        foreach (var kid in FrontendWidgetFactory.ChildrenOf(tree, index))
+        {
+            if (!FrontendWidgetFactory.IsPresented(tree, kid))
+                continue;
+            if (TryDestPoint(tree, kid, out x, out y))
+                return true;
+        }
+
+        return false;
     }
 
     public static bool Contains(IReadOnlyList<FrontendWidget> tree, int index, float x, float y)
@@ -56,15 +82,15 @@ public static class FrontendHitTest
 
     /// <summary>
     /// Reverse-walk presented widgets and
-    /// return the interactive target under
+    /// return the first interactive target
+    /// whose dest contains
     /// <paramref name="x"/>,<paramref name="y"/>.
-    /// Clicking empty space returns null.
+    /// Last-drawn dest wins. Clicking
+    /// empty space returns null.
     /// </summary>
     public static int? HitIndex(IReadOnlyList<FrontendWidget> tree, float x, float y)
     {
         ArgumentNullException.ThrowIfNull(tree);
-        int? best = null;
-        var bestArea = float.MaxValue;
         for (var i = tree.Count - 1; i >= 0; i--)
         {
             if (!FrontendWidgetFactory.IsPresented(tree, i))
@@ -73,18 +99,11 @@ public static class FrontendHitTest
                 continue;
             if (!Contains(tree, i, x, y))
                 continue;
-            var target = InteractiveAt(tree, i);
-            if (target is not int hit)
-                continue;
-            var rect = HitRect(tree, hit);
-            var area = MathF.Max(1f, rect.X1 - rect.X0) * MathF.Max(1f, rect.Y1 - rect.Y0);
-            if (area > bestArea)
-                continue;
-            best = hit;
-            bestArea = area;
+            if (InteractiveAt(tree, i) is int hit)
+                return hit;
         }
 
-        return best;
+        return null;
     }
 
     public static bool IsInteractive(int type) =>
@@ -172,47 +191,5 @@ public static class FrontendHitTest
         }
 
         return null;
-    }
-
-    private static void UnionDescendants(
-        IReadOnlyList<FrontendWidget> tree,
-        int parent,
-        ref bool have,
-        ref float x0,
-        ref float y0,
-        ref float x1,
-        ref float y1)
-    {
-        var kids = FrontendWidgetFactory.ChildrenOf(tree, parent);
-        foreach (var kid in kids)
-        {
-            if (!FrontendWidgetFactory.IsPresented(tree, kid))
-                continue;
-            var child = tree[kid];
-            if (child.DestX1 > child.DestX0 && child.DestY1 > child.DestY0)
-            {
-                if (!have)
-                {
-                    x0 = child.DestX0;
-                    y0 = child.DestY0;
-                    x1 = child.DestX1;
-                    y1 = child.DestY1;
-                    have = true;
-                }
-                else
-                {
-                    if (child.DestX0 < x0)
-                        x0 = child.DestX0;
-                    if (child.DestY0 < y0)
-                        y0 = child.DestY0;
-                    if (child.DestX1 > x1)
-                        x1 = child.DestX1;
-                    if (child.DestY1 > y1)
-                        y1 = child.DestY1;
-                }
-            }
-
-            UnionDescendants(tree, kid, ref have, ref x0, ref y0, ref x1, ref y1);
-        }
     }
 }

@@ -344,17 +344,86 @@ public sealed class FrontendLayoutTests
         var life = ReachNewProfile();
         var apply = IndexOf(life, "UI_ACCEPT_NEW_PROFILE");
         var cancel = IndexOf(life, "UI_CANCEL");
-        var applyHit = FrontendHitTest.HitRect(life.FrontendWidgets, apply);
-        var cancelHit = FrontendHitTest.HitRect(life.FrontendWidgets, cancel);
-        Assert.True(applyHit.X1 > applyHit.X0);
-        Assert.True(applyHit.Y1 > applyHit.Y0);
-        Assert.True(cancelHit.X1 > cancelHit.X0);
-        Assert.True(cancelHit.Y1 > cancelHit.Y0);
+        Assert.True(
+            FrontendHitTest.TryDestPoint(life.FrontendWidgets, apply, out var ax, out var ay));
+        Assert.True(
+            FrontendHitTest.TryDestPoint(life.FrontendWidgets, cancel, out var cx, out var cy));
+        var applyDest = life.FrontendWidgets[apply];
+        var cancelDest = life.FrontendWidgets[cancel];
+        Assert.Equal(applyDest.DestX0, applyDest.HitX0);
+        Assert.Equal(applyDest.DestY0, applyDest.HitY0);
+        Assert.Equal(applyDest.DestX1, applyDest.HitX1);
+        Assert.Equal(applyDest.DestY1, applyDest.HitY1);
+        Assert.Equal(cancelDest.DestX0, cancelDest.HitX0);
+        Assert.Equal(cancelDest.DestY0, cancelDest.HitY0);
+        Assert.Equal(cancelDest.DestX1, cancelDest.HitX1);
+        Assert.Equal(cancelDest.DestY1, cancelDest.HitY1);
+        foreach (var widget in life.FrontendWidgets)
+        {
+            Assert.Equal(widget.DestX0, widget.HitX0);
+            Assert.Equal(widget.DestY0, widget.HitY0);
+            Assert.Equal(widget.DestX1, widget.HitX1);
+            Assert.Equal(widget.DestY1, widget.HitY1);
+        }
+
+        Assert.NotEqual(ax, cx);
+        var applyArea = FirstAreaDest(life, apply);
+        var cancelArea = FirstAreaDest(life, cancel);
         Assert.False(
             FrontendFrameDump.Intersects(
-                applyHit.X0, applyHit.Y0, applyHit.X1, applyHit.Y1,
-                cancelHit.X0, cancelHit.Y0, cancelHit.X1, cancelHit.Y1));
+                applyArea.X0, applyArea.Y0, applyArea.X1, applyArea.Y1,
+                cancelArea.X0, cancelArea.Y0, cancelArea.X1, cancelArea.Y1));
         Assert.Equal(0x0055B8F0u, FrontendHitTest.HitTestFn);
+        Assert.Null(FrontendHitTest.HitIndex(life.FrontendWidgets, 12f, 12f));
+        Assert.Equal(
+            apply,
+            FrontendHitTest.HitIndex(life.FrontendWidgets, ax, ay));
+        Assert.Equal(
+            cancel,
+            FrontendHitTest.HitIndex(life.FrontendWidgets, cx, cy));
+        var edit = IndexOf(life, "UI_NEW_PROFILE_EDIT_BOX");
+        var slider = IndexOf(life, "UI_OPTIONS_CONTROL_METHOD_TEXT_SLIDER");
+        var knob = IndexOf(life, "UI_SLIDER_CAMERA_SENSITIVITY");
+        Assert.Equal(
+            edit,
+            FrontendHitTest.HitIndex(
+                life.FrontendWidgets,
+                MidX(life.FrontendWidgets[edit]),
+                MidY(life.FrontendWidgets[edit])));
+        Assert.Equal(
+            slider,
+            FrontendHitTest.HitIndex(
+                life.FrontendWidgets,
+                MidX(life.FrontendWidgets[slider]),
+                MidY(life.FrontendWidgets[slider])));
+        Assert.Equal(
+            knob,
+            FrontendHitTest.HitIndex(
+                life.FrontendWidgets,
+                MidX(life.FrontendWidgets[knob]),
+                MidY(life.FrontendWidgets[knob])));
+    }
+
+    private static float MidX(FrontendWidget widget) =>
+        (widget.DestX0 + widget.DestX1) * 0.5f;
+
+    private static float MidY(FrontendWidget widget) =>
+        (widget.DestY0 + widget.DestY1) * 0.5f;
+
+    private static (float X0, float Y0, float X1, float Y1) FirstAreaDest(
+        EngineLifecycle life, int index)
+    {
+        var w = life.FrontendWidgets[index];
+        if (w.DestX1 > w.DestX0 && w.DestY1 > w.DestY0)
+            return (w.DestX0, w.DestY0, w.DestX1, w.DestY1);
+        foreach (var kid in FrontendWidgetFactory.ChildrenOf(life.FrontendWidgets, index))
+        {
+            var child = life.FrontendWidgets[kid];
+            if (child.DestX1 > child.DestX0 && child.DestY1 > child.DestY0)
+                return (child.DestX0, child.DestY0, child.DestX1, child.DestY1);
+        }
+
+        throw new InvalidOperationException("no dest area");
     }
 
     private static EngineLifecycle ReachNewProfile()

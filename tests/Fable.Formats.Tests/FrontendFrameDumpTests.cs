@@ -83,6 +83,14 @@ public sealed class FrontendFrameDumpTests
         Assert.Contains("textOriginX", text, StringComparison.Ordinal);
         var rows = life.FrontendWidgets.Where(w => w.ParentName == "UI_NEW_PROFILE_MENU").ToList();
         Assert.True(rows.Select(w => w.DestY0).Distinct().Count() >= 4);
+        foreach (var widget in life.FrontendWidgets)
+        {
+            Assert.Equal(widget.DestX0, widget.HitX0);
+            Assert.Equal(widget.DestY0, widget.HitY0);
+            Assert.Equal(widget.DestX1, widget.HitX1);
+            Assert.Equal(widget.DestY1, widget.HitY1);
+        }
+
         life.SetFrontendPointer(12f, 12f);
         Assert.Null(FrontendHitTest.HitIndex(life.FrontendWidgets, 12f, 12f));
         var scratch = Path.Combine(
