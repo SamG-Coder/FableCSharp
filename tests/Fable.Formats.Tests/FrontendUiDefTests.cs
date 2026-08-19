@@ -243,8 +243,20 @@ public sealed class FrontendUiDefTests
         Assert.Contains(press, w =>
             w.Name == "UI_FRONTEND_BG_FORREST_2_1" && !w.Visible);
         Assert.True(FrontendWidgetType.DrawsChildList(10));
+        Assert.True(FrontendWidgetType.DrawsChildList(16));
+        Assert.True(FrontendWidgetType.DrawsChildList(18));
+        Assert.Equal(0x01248A8Cu, FrontendWidgetType.TextSliderVtbl);
+        Assert.Equal(0x012485ACu, FrontendWidgetType.SwapVtbl);
         Assert.True(FrontendWidgetType.SelectsChild(18));
+        Assert.True(FrontendWidgetType.SelectsChild(16));
         Assert.False(FrontendWidgetType.SelectsChild(5));
+        var profileSlider = Assert.Single(profile, w => w.Name == "UI_OPTIONS_CONTROL_METHOD_TEXT_SLIDER");
+        Assert.Equal(16, profileSlider.Type);
+        Assert.Equal(0, profileSlider.ActiveChild);
+        Assert.Contains(profile, w => w.Name == "UI_OPTIONS_TEXT_CONTROL_ARROWS" && w.Visible);
+        Assert.Contains(profile, w => w.Name == "UI_OPTIONS_TEXT_CONTROL_WASD" && !w.Visible);
+        Assert.Contains(profile, w => w.Name == "UI_TEXT_NORMAL" && w.Visible);
+        Assert.Contains(profile, w => w.Name == "UI_TEXT_INVERTED" && !w.Visible);
     }
 
     [Fact]

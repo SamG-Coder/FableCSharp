@@ -48,6 +48,7 @@ public static class FrontendWidgetType
     public const int Text = 6;
     public const int Menu = 10;
     public const int List = 12;
+    public const int TextSlider = 16;
     public const int Swap = 18;
     public const int Unused = 29;
     public const int Mouse = 32;
@@ -61,6 +62,7 @@ public static class FrontendWidgetType
     public const uint TextCtor = 0x0054F5C0;
     public const uint MenuCtor = 0x0054E3D0;
     public const uint ListCtor = 0x0054C3A0;
+    public const uint TextSliderCtor = 0x00549F60;
     public const uint SwapCtor = 0x00547600;
     public const uint MouseCtor = 0x0055C650;
     public const uint EditBoxCtor = 0x005407B0;
@@ -71,6 +73,8 @@ public static class FrontendWidgetType
     public const uint GroupVtbl = 0x01245DE4;
     public const uint TextVtbl = 0x01249CCC;
     public const uint MenuVtbl = 0x012497E4;
+    public const uint TextSliderVtbl = 0x01248A8C;
+    public const uint SwapVtbl = 0x012485AC;
     public const uint MouseVtbl = 0x0124C22C;
     public const uint EditBoxVtbl = 0x01246B8C;
     public const uint AcceptVtbl = 0x0124B04C;
@@ -102,18 +106,29 @@ public static class FrontendWidgetType
 
     /// <summary>
     /// <c>vtbl+8 == 00530260</c> on
-    /// type 5 / 10 / 12 / 18.
+    /// type 5 / 10 / 12 / 16 / 18.
     /// </summary>
     public static bool DrawsChildList(int type) =>
-        type is Group or Menu or List or Swap;
+        type is Group or Menu or List or TextSlider or Swap;
 
     /// <summary>
-    /// Type 18 <c>CSwappingStateComponent</c>.
-    /// First-seen <c>+332=0</c> keeps
-    /// persist child 0.
+    /// Type 18 <c>CSwappingStateComponent</c>
+    /// (<c>00547600</c> vtbl
+    /// <c>012485AC</c>) and type 16
+    /// <c>CTextSlider</c>
+    /// (<c>00549F60</c> vtbl
+    /// <c>01248A8C</c>). First-seen
+    /// keeps persist child 0
+    /// (type 18 <c>+332</c>; type 16
+    /// <c>+348</c> from <c>00549B20</c>).
+    /// Other persist children stay
+    /// in the tree. <c>00530260</c>
+    /// walks every <c>+176</c> child
+    /// and skips via <c>vtbl+400</c>
+    /// / <c>vtbl+420</c>.
     /// </summary>
     public static bool SelectsChild(int type) =>
-        type == Swap;
+        type is Swap or TextSlider;
 
     public static bool TryConstruct(int type) =>
         type != Unused && Info(type).Ctor != 0;
@@ -136,9 +151,9 @@ public static class FrontendWidgetType
         new(13, 0x0053F120, 0x19C, 0, null),
         new(14, 0x0054C1D0, 0x190, 0, null),
         new(15, 0x0054C050, 0x1EC, 0, null),
-        new(16, 0x00549F60, 0x1A0, 0, null),
+        new(16, 0x00549F60, 0x1A0, 0x01248A8C, "TextSlider"),
         new(17, 0x005482D0, 0x198, 0, null),
-        new(18, 0x00547600, 0x170, 0, "Swap"),
+        new(18, 0x00547600, 0x170, 0x012485AC, "Swap"),
         new(19, 0x00546F40, 0x15C, 0, null),
         new(20, 0x00546D30, 0x16C, 0, null),
         new(21, 0x00546B00, 0x184, 0, null),

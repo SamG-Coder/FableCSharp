@@ -90,6 +90,83 @@ public static class FrontendWidgetFactory
         }
     }
 
+    /// <summary>
+    /// Type 18 / 16 present persist
+    /// child <c>+332</c> only
+    /// (<c>0052C730</c> first-seen 0).
+    /// Descendants of a hidden sibling
+    /// are not drawn.
+    /// </summary>
+    public static bool IsPresented(IReadOnlyList<FrontendWidget> tree, int index)
+    {
+        if ((uint)index >= (uint)tree.Count)
+            return false;
+        var widget = tree[index];
+        if (!widget.Visible || widget.Clip)
+            return false;
+        if (widget.ParentName is null)
+            return true;
+        var parent = -1;
+        for (var i = 0; i < tree.Count; i++)
+        {
+            if (string.Equals(tree[i].Name, widget.ParentName, StringComparison.Ordinal))
+            {
+                parent = i;
+                break;
+            }
+        }
+
+        if (parent < 0)
+            return true;
+        if (FrontendWidgetType.SelectsChild(tree[parent].Type))
+        {
+            var kids = ChildrenOf(tree, tree[parent].Name);
+            var active = tree[parent].ActiveChild;
+            if ((uint)active >= (uint)kids.Count || kids[active] != index)
+                return false;
+        }
+
+        return IsPresented(tree, parent);
+    }
+
+    /// <summary>
+    /// <c>0052CF40</c> writes
+    /// <c>+332</c> then child
+    /// <c>vtbl+188</c>. Type 18/16
+    /// keep persist child
+    /// <paramref name="state"/>.
+    /// </summary>
+    public static void ApplySelectState(List<FrontendWidget> tree, int state)
+    {
+        if (tree.Count == 0)
+            return;
+        tree[0] = tree[0] with { State = state };
+        for (var i = 0; i < tree.Count; i++)
+        {
+            if (!FrontendWidgetType.SelectsChild(tree[i].Type))
+                continue;
+            tree[i] = tree[i] with { ActiveChild = state, State = state };
+            var kids = ChildrenOf(tree, tree[i].Name);
+            for (var k = 0; k < kids.Count; k++)
+                tree[kids[k]] = tree[kids[k]] with { Visible = k == state };
+        }
+
+        var byName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < tree.Count; i++)
+            byName.TryAdd(tree[i].Name, i);
+        for (var i = 0; i < tree.Count; i++)
+        {
+            if (tree[i].ParentName is not { } parentName ||
+                !byName.TryGetValue(parentName, out var parent))
+                continue;
+            var inherit = tree[parent];
+            tree[i] = tree[i] with
+            {
+                Visible = tree[i].Visible && inherit.Visible && !inherit.Clip,
+            };
+        }
+    }
+
     public static List<int> ChildrenOf(IReadOnlyList<FrontendWidget> widgets, string? parent)
     {
         var kids = new List<int>();

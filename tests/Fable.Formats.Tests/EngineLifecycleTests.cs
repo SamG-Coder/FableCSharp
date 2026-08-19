@@ -1369,6 +1369,34 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Thing_Components_004F04BB_adds_CWifeDef()
+    {
+        Assert.Equal(0x004F04B4u, EngineLifecycle.ThirteenthDefClassSite);
+        Assert.Equal(0x004D7BA1u, EngineLifecycle.ThirteenthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.ThirteenthDefClassCtor);
+        Assert.Equal(0x0123A69Cu, EngineLifecycle.ThirteenthDefClassVtbl);
+        Assert.Equal(44, EngineLifecycle.ThirteenthDefClassSize);
+        Assert.Equal("CWifeDef", EngineLifecycle.ThirteenthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.TwelfthDefClassRegistered);
+        Assert.True(life.ThirteenthDefClassRegistered);
+        Assert.Equal("CWifeDef", life.ThirteenthDefClass);
+        var twelfth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwelfthDefClassFactory);
+        var thirteenth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirteenthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(twelfth >= 0 && thirteenth > twelfth && defs > thirteenth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Init_Definition_Manager_00416005_resets_plus88_via_vtbl8()
     {
         Assert.Equal(0x00416005u, EngineLifecycle.InitDefinitionManagerFn);
@@ -2032,6 +2060,17 @@ public sealed class EngineLifecycleTests
         Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
         Assert.Equal("Default", life.FrontendEditBoxName);
         Assert.Contains(life.FrontendWidgets, w => w.Name == "UI_ACCEPT_NEW_PROFILE");
+        Assert.Contains(life.FrontendWidgets, w =>
+            w.Name == "UI_OPTIONS_TEXT_CONTROL_ARROWS" && w.Visible);
+        Assert.Contains(life.FrontendWidgets, w =>
+            w.Name == "UI_OPTIONS_TEXT_CONTROL_WASD" && !w.Visible);
+        Assert.Contains(life.FrontendWidgets, w =>
+            w.Name.Contains("COASTAL_SUNBEAM_2_1", StringComparison.Ordinal) && !w.Visible);
+        Assert.Contains(life.FrontendWidgets, w =>
+            w.Name.Contains("COASTAL_1_1", StringComparison.Ordinal) && w.Visible);
+        var npText = life.FrontendWidgets.First(w => w.Name == "UI_TEXT_NEW_PROFILE_MENU_TITLE");
+        Assert.Equal(npText.DestX0, npText.DestX1);
+        Assert.Equal(0f, npText.Leftover204);
         Assert.NotNull(life.FrontendBatch);
         Assert.False(life.FrontendBatch.Value.IsEmpty);
         WriteScreenDump(life, "new-profile");

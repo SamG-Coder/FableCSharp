@@ -1005,6 +1005,24 @@ public sealed class EngineLifecycle : IDisposable
     public const int TwelfthDefClassSize = 38;
     public const string TwelfthDefClassName = "CBuyHouseDef";
     /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CBuyHouseDef</c>:
+    /// <c>004F04B4</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F04BB</c>
+    /// <c>CWifeDef</c>
+    /// factory <c>0x4D7BA1</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>0044C0C0</c>
+    /// size 44 vtbl <c>0123A69C</c>.
+    /// </summary>
+    public const uint ThirteenthDefClassSite = 0x004F04B4;
+    public const uint ThirteenthDefClassFactory = 0x004D7BA1;
+    public const uint ThirteenthDefClassCtor = 0x0044C0C0;
+    public const uint ThirteenthDefClassVtbl = 0x0123A69C;
+    public const int ThirteenthDefClassSize = 44;
+    public const string ThirteenthDefClassName = "CWifeDef";
+    /// <summary>
     /// <c>00416005</c> parent
     /// <c>push 1</c>:
     /// <c>0044C6B0</c>
@@ -2437,6 +2455,8 @@ public sealed class EngineLifecycle : IDisposable
     public string? EleventhDefClass { get; private set; }
     public bool TwelfthDefClassRegistered { get; private set; }
     public string? TwelfthDefClass { get; private set; }
+    public bool ThirteenthDefClassRegistered { get; private set; }
+    public string? ThirteenthDefClass { get; private set; }
     /// <summary>
     /// After <c>00416005</c>
     /// <c>0044C72B</c> /
@@ -3755,7 +3775,7 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>+176</c>. Skip when
     /// <c>vtbl+420</c> (<c>+302</c> bit 0)
     /// or the child is not visible.
-    /// Type 5/10/12/18 recurse; leaves
+    /// Type 5/10/12/16/18 recurse; leaves
     /// call <c>0041AFA0</c> /
     /// <c>0054EF00</c>.
     /// </summary>
@@ -3790,8 +3810,15 @@ public sealed class EngineLifecycle : IDisposable
         drawn++;
         if (FrontendWidgetType.DrawsChildList(widget.Type))
         {
-            foreach (var child in FrontendWidgetFactory.ChildrenOf(
-                tree, widget.Name))
+            var kids = FrontendWidgetFactory.ChildrenOf(tree, widget.Name);
+            if (FrontendWidgetType.SelectsChild(widget.Type))
+            {
+                if ((uint)widget.ActiveChild < (uint)kids.Count)
+                    DrawContainerWalk(tree, kids[widget.ActiveChild], ref drawn);
+                return;
+            }
+
+            foreach (var child in kids)
                 DrawContainerWalk(tree, child, ref drawn);
             return;
         }
@@ -4982,22 +5009,39 @@ public sealed class EngineLifecycle : IDisposable
             EleventhDefClass = EleventhDefClassName;
             EleventhDefClassRegistered = true;
         }
-        if (TwelfthDefClassRegistered)
+        if (!TwelfthDefClassRegistered)
+        {
+            Note(TwelfthDefClassSite, "Init Thing Components", "Defs",
+                $"004F0393 0044C6B0 {TwelfthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {TwelfthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {TwelfthDefClassName}");
+            Note(TwelfthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D7B5B 0044C0C0 size {TwelfthDefClassSize} vtbl 0x{TwelfthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {TwelfthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            TwelfthDefClass = TwelfthDefClassName;
+            TwelfthDefClassRegistered = true;
+        }
+        if (ThirteenthDefClassRegistered)
             return;
-        Note(TwelfthDefClassSite, "Init Thing Components", "Defs",
-            $"004F0393 0044C6B0 {TwelfthDefClassName}");
+        Note(ThirteenthDefClassSite, "Init Thing Components", "Defs",
+            $"004F04B4 0044C6B0 {ThirteenthDefClassName}");
         Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
-            $"0042DAE0 {TwelfthDefClassName}");
+            $"0042DAE0 {ThirteenthDefClassName}");
         Note(AddDefClassFn, "Init Thing Components", "Defs",
-            $"009B0AC0 Add Def Class {TwelfthDefClassName}");
-        Note(TwelfthDefClassFactory, "Init Thing Components", "Defs",
-            $"004D7B5B 0044C0C0 size {TwelfthDefClassSize} vtbl 0x{TwelfthDefClassVtbl:X}");
+            $"009B0AC0 Add Def Class {ThirteenthDefClassName}");
+        Note(ThirteenthDefClassFactory, "Init Thing Components", "Defs",
+            $"004D7BA1 0044C0C0 size {ThirteenthDefClassSize} vtbl 0x{ThirteenthDefClassVtbl:X}");
         Note(LoadDefFn, "Init Thing Components", "Defs",
-            $"009AD6E0 {TwelfthDefClassName}");
+            $"009AD6E0 {ThirteenthDefClassName}");
         Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
             $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
-        TwelfthDefClass = TwelfthDefClassName;
-        TwelfthDefClassRegistered = true;
+        ThirteenthDefClass = ThirteenthDefClassName;
+        ThirteenthDefClassRegistered = true;
     }
 
     /// <summary>
@@ -8057,7 +8101,7 @@ public sealed class EngineLifecycle : IDisposable
             var glyphs = 0;
             var colour = widget.Colour;
             var recordStart = records.Count;
-            if (widget.Visible && !widget.Clip &&
+            if (FrontendWidgetFactory.IsPresented(tree, i) &&
                 widget.DestX1 > widget.DestX0 && widget.DestY1 > widget.DestY0)
             {
                 if (widget.TextureName is { } texName &&
@@ -8089,7 +8133,7 @@ public sealed class EngineLifecycle : IDisposable
                 }
             }
 
-            if (widget.Visible && !widget.Clip &&
+            if (FrontendWidgetFactory.IsPresented(tree, i) &&
                 widget.Type == FrontendWidgetType.Text &&
                 !string.IsNullOrEmpty(widget.Text))
             {
