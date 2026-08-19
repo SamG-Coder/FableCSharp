@@ -891,6 +891,24 @@ public sealed class EngineLifecycle : IDisposable
     public const int SixthDefClassSize = 112;
     public const string SixthDefClassName = "CInventoryItemDef";
     /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CInventoryItemDef</c>:
+    /// <c>004EF37F</c>
+    /// <c>0044C6B0</c>
+    /// <c>004EF386</c>
+    /// <c>CLookDef</c>
+    /// factory <c>0x4D80E4</c>
+    /// <c>0044C0C0</c>
+    /// size 88 vtbl <c>0123AE14</c>.
+    /// Not intervening CTC rows.
+    /// </summary>
+    public const uint SeventhDefClassSite = 0x004EF37F;
+    public const uint SeventhDefClassFactory = 0x004D80E4;
+    public const uint SeventhDefClassCtor = 0x0044C0C0;
+    public const uint SeventhDefClassVtbl = 0x0123AE14;
+    public const int SeventhDefClassSize = 88;
+    public const string SeventhDefClassName = "CLookDef";
+    /// <summary>
     /// <c>00416005</c> parent
     /// <c>push 1</c>:
     /// <c>0044C6B0</c>
@@ -2311,6 +2329,8 @@ public sealed class EngineLifecycle : IDisposable
     public string? FifthDefClass { get; private set; }
     public bool SixthDefClassRegistered { get; private set; }
     public string? SixthDefClass { get; private set; }
+    public bool SeventhDefClassRegistered { get; private set; }
+    public string? SeventhDefClass { get; private set; }
     /// <summary>
     /// After <c>00416005</c>
     /// <c>0044C72B</c> /
@@ -3781,7 +3801,11 @@ public sealed class EngineLifecycle : IDisposable
             "009D9C80 [0x13CB508]+10248 bump");
         Note(DisplayFlush2dFn, "Frontend", "D3D9",
             "009D9C80 dirty-list no type 0x22 in 009D9C80-009DB000");
-        var shouldDip = FrontendEnqueueRan || DisplayFlushShouldDip(0, 0);
+        // 009DA9F0 drains +16020 only.
+        // Nonempty widget dest is 00BAE2D0,
+        // not 009DB700, so the display
+        // queue stays empty first-seen.
+        var shouldDip = DisplayFlushShouldDip(0, 0);
         Note(DisplayFlushLayersFn, "Frontend", "D3D9",
             shouldDip
                 ? $"009DA9F0({DisplayFlushLayersArg}) [+{DisplayQueueBeginOffset}] DIP vtbl+{DrawIndexedPrimitiveVtbl}"
@@ -4723,20 +4747,35 @@ public sealed class EngineLifecycle : IDisposable
             FifthDefClass = FifthDefClassName;
             FifthDefClassRegistered = true;
         }
-        if (SixthDefClassRegistered)
+        if (!SixthDefClassRegistered)
+        {
+            Note(SixthDefClassSite, "Init Thing Components", "Defs",
+                $"004EF23D 0044C6B0 {SixthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SixthDefClassName}");
+            Note(SixthDefClassFactory, "Init Thing Components", "Defs",
+                $"0044F644 0044C108 size {SixthDefClassSize} vtbl 0x{SixthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SixthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SixthDefClass = SixthDefClassName;
+            SixthDefClassRegistered = true;
+        }
+        if (SeventhDefClassRegistered)
             return;
-        Note(SixthDefClassSite, "Init Thing Components", "Defs",
-            $"004EF23D 0044C6B0 {SixthDefClassName}");
+        Note(SeventhDefClassSite, "Init Thing Components", "Defs",
+            $"004EF37F 0044C6B0 {SeventhDefClassName}");
         Note(AddDefClassFn, "Init Thing Components", "Defs",
-            $"009B0AC0 Add Def Class {SixthDefClassName}");
-        Note(SixthDefClassFactory, "Init Thing Components", "Defs",
-            $"0044F644 0044C108 size {SixthDefClassSize} vtbl 0x{SixthDefClassVtbl:X}");
+            $"009B0AC0 Add Def Class {SeventhDefClassName}");
+        Note(SeventhDefClassFactory, "Init Thing Components", "Defs",
+            $"004D80E4 0044C0C0 size {SeventhDefClassSize} vtbl 0x{SeventhDefClassVtbl:X}");
         Note(LoadDefFn, "Init Thing Components", "Defs",
-            $"009AD6E0 {SixthDefClassName}");
+            $"009AD6E0 {SeventhDefClassName}");
         Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
             $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
-        SixthDefClass = SixthDefClassName;
-        SixthDefClassRegistered = true;
+        SeventhDefClass = SeventhDefClassName;
+        SeventhDefClassRegistered = true;
     }
 
     /// <summary>
@@ -7728,6 +7767,8 @@ public sealed class EngineLifecycle : IDisposable
                 DestY0 = dest.Y0,
                 DestX1 = dest.X1,
                 DestY1 = dest.Y1,
+                Leftover204 = leftoverW,
+                DestScaleX = dest.ScaleX,
             };
             if (i == 0 && ReferenceEquals(widgets, _frontendWidgets))
             {
@@ -7846,9 +7887,13 @@ public sealed class EngineLifecycle : IDisposable
                             atlasId, face.UvWidth, face.UvHeight, face.Atlas));
                     }
 
-                    var leftoverW = MathF.Max(0f, widget.DestX1 - widget.DestX0);
+                    // 0054EF00 leftover +204 is the
+                    // widget field, not dest width.
+                    // First-seen type-6 GraphicIndex=0
+                    // never writes +204.
+                    var leftover204 = widget.Leftover204;
                     var (penX, penY) = FrontendTextDraw.Type6Pen(
-                        widget.DestX0, widget.DestY0, leftoverW, 1f,
+                        widget.DestX0, widget.DestY0, leftover204, widget.DestScaleX,
                         FrontendTextDraw.AlignLeft);
                     foreach (var glyph in FrontendTextDraw.Layout(
                         face, widget.Text, penX, penY, colour))

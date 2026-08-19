@@ -44,7 +44,7 @@ public sealed class FrontendLayoutTests
     }
 
     [Fact]
-    public void Press_Start_child_dest_is_nonempty_after_layout()
+    public void Press_Start_type6_dest_is_a_point()
     {
         var root = FrontendLayout.Compute(
             new FrontendWidgetLayout(0f, 0f),
@@ -53,20 +53,20 @@ public sealed class FrontendLayoutTests
         Assert.Equal(0f, root.X0);
         Assert.Equal(0f, root.X1);
 
+        // Type-6 GraphicIndex=0: leftover +204/+208
+        // stay 0. Dest is the remapped origin.
         var text = new FrontendWidgetLayout(
             PositionX: 320f,
             PositionY: 240f,
-            LeftoverW: 16f,
-            LeftoverH: 16f);
+            LeftoverW: 0f,
+            LeftoverH: 0f);
         var dest = FrontendLayout.Compute(text, root, FirstSeen);
-        Assert.True(dest.X1 > dest.X0, $"text dest {dest.X0},{dest.Y0},{dest.X1},{dest.Y1}");
-        Assert.True(dest.Y1 > dest.Y0);
         Assert.Equal(320f, dest.OriginX);
         Assert.Equal(240f, dest.OriginY);
         Assert.Equal(320f, dest.X0);
         Assert.Equal(240f, dest.Y0);
-        Assert.Equal(336f, dest.X1);
-        Assert.Equal(256f, dest.Y1);
+        Assert.Equal(320f, dest.X1);
+        Assert.Equal(240f, dest.Y1);
     }
 
     [Fact]
@@ -215,10 +215,11 @@ public sealed class FrontendLayoutTests
         var textDest = FrontendLayout.Compute(
             new FrontendWidgetLayout(
                 textPos.X, textPos.Y,
-                LeftoverW: 16f, LeftoverH: 16f),
+                LeftoverW: 0f, LeftoverH: 0f),
             rootDest,
             FirstSeen);
-        Assert.True(textDest.X1 > textDest.X0);
+        Assert.Equal(textDest.X0, textDest.X1);
+        Assert.Equal(textDest.Y0, textDest.Y1);
         Assert.Equal(320f, textDest.OriginX);
         Assert.Equal(240f, textDest.OriginY);
     }
@@ -266,13 +267,17 @@ public sealed class FrontendLayoutTests
         var text = FrontendLayout.Compute(
             new FrontendWidgetLayout(
                 textDef.PositionX, textDef.PositionY,
-                LeftoverW: 16f, LeftoverH: 16f,
+                LeftoverW: 0f, LeftoverH: 0f,
                 ScaleSizeToViewport: textDef.ScaleSizeToViewport,
                 ScaleOriginToViewport: textDef.ScaleOriginToViewport),
             root,
             FirstSeen);
         Assert.Equal(320f * scaledOne.X, text.OriginX);
         Assert.Equal(240f * scaledOne.Y, text.OriginY);
+        Assert.Equal(text.X0, text.X1);
+        Assert.Equal(text.Y0, text.Y1);
+        Assert.Equal(512f, text.X0);
+        Assert.Equal(384f, text.Y0);
     }
 
     private static (float X, float Y) FirstPos(byte[] raw)
@@ -379,6 +384,29 @@ public sealed class FrontendLayoutTests
 
     private static (float X0, float Y0, float X1, float Y1) Rect(FrontendDest dest) =>
         (dest.X0, dest.Y0, dest.X1, dest.Y1);
+
+    [Fact]
+    public void Type6_leftover204_is_widget_plus204_not_dest_width()
+    {
+        Assert.Equal(204, FrontendLayout.DestWOffset);
+        Assert.Equal(264, FrontendLayout.DestScaleXOffset);
+        // First-seen type-6 GraphicIndex=0: +204 stays 0.
+        // Dest scale +264 is used; leftover width is not dest W.
+        const float leftover204 = 0f;
+        var destScale = FirstSeen.Width / FrontendLayout.AuthoredWidth;
+        Assert.Equal(512f, FrontendTextDraw.Type6AlignedX(
+            512f, leftover204, destScale, FrontendTextDraw.AlignLeft));
+        Assert.Equal(512f, FrontendTextDraw.Type6AlignedX(
+            512f, leftover204, destScale, FrontendTextDraw.AlignCentre));
+        Assert.Equal(512f, FrontendTextDraw.Type6AlignedX(
+            512f, leftover204, destScale, FrontendTextDraw.AlignRight));
+        Assert.NotEqual(512f, FrontendTextDraw.Type6AlignedX(
+            512f, 16f, destScale, FrontendTextDraw.AlignCentre));
+        var pen = FrontendTextDraw.Type6Pen(
+            512f, 384f, leftover204, destScale, FrontendTextDraw.AlignLeft);
+        Assert.Equal(512f + FrontendTextDraw.Type6OriginPad, pen.X);
+        Assert.Equal(384f + FrontendTextDraw.Type6OriginPad, pen.Y);
+    }
 
     [Fact]
     public void Y_increases_down_with_no_flip()

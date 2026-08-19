@@ -73,6 +73,8 @@ public readonly record struct FrontendWidget(
     float PersistY = 0,
     float PersistScaleX = 1,
     float PersistScaleY = 1,
+    float Leftover204 = 0,
+    float DestScaleX = 1,
     bool Center = false,
     bool Absolute = false,
     bool ScaleOriginToViewport = false,
