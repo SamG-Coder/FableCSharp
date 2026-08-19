@@ -29,7 +29,7 @@
         <button type="button" class="chip DISPROVEN" data-filter="DISPROVEN" aria-pressed="false">DISPROVEN</button>
         <button type="button" class="chip TEMPORARY" data-filter="TEMPORARY" aria-pressed="false">TEMPORARY</button>
       </div>
-      <p class="hits" id="hits">206 shown</p>
+      <p class="hits" id="hits">214 shown</p>
     </div>
     <header class="doc-intro">
       <p class="kicker">FableCSharp · human overview</p>
@@ -75,24 +75,27 @@
 
     <p>
       Snapshot: <strong>2026-08-19</strong>, previous snapshot runtime HEAD
-      <code>48133e9</code> via PR #39 merge <code>f430cc90</code>,
-      runtime HEAD <code>b8a2b21</code>
-      (<em>type-10 vtbl+8 DrawsChildList, slot 0x14 0xE5,
-      [ui+84] residency, resident-slot walk, +332
-      SelectState(6) + Init World construct.</em>).
-      Just locked: 5 runtime commits since <code>48133e9</code>.
-      Headline locks: type-10 draw vtbl+8 DrawsChildList
-      (<code>7adf621</code>); Press Start 0xE5 through slot
-      0x14 0059B5D7 (<code>59fde69</code>); [ui+84] slots
-      0x14/0x17 keep across switch (<code>84a8350</code>);
-      tick/draw walk every resident [ui+84] slot
-      (<code>b4a2c89</code>); +332 via SelectState(6); Init
-      World 004A67D0 (<code>b8a2b21</code>).
-      Ignore snapshot merge <code>f430cc90</code> / docs
-      <code>036dcb1</code> / <code>3d7e522</code>. Ignore
+      <code>b8a2b21</code> via PR #40 merge <code>fb7299d</code>,
+      runtime HEAD <code>4a03969</code>
+      (<em>Init Fonts ENG_ARIAL_18, 0xE0 singleton,
+      Init Subtitled misc_def_types.h,
+      STANDARD_TALK/CONVERSATION, player owner at
+      game+28.</em>).
+      Just locked: 5 runtime commits since <code>b8a2b21</code>.
+      Headline locks: Init Fonts ENG_ARIAL_18 at game+90444
+      (<code>9901d3b</code>); 0xE0 <code>[0x13B879C]</code>
+      singleton before Thing Components
+      (<code>6ae001f</code>); Init Subtitled
+      <code>misc_def_types.h</code> into
+      <code>[0x13B8A54]</code> (<code>540e30c</code>);
+      STANDARD_TALK/CONVERSATION names at Init Conversation
+      Attitude (<code>fe6c09c</code>); player owner at
+      game+28 (<code>4a03969</code>).
+      Ignore snapshot merge <code>fb7299d</code> / docs
+      <code>cc4ab63</code>. Ignore
       proofs-only adds. Docs PR #29
       <code>bedcf919</code> is iOS Settings chrome only — CSS
-      unchanged. Freeze at <code>b8a2b21</code>.
+      unchanged. Freeze at <code>4a03969</code>.
       Do not include any later runtime if master moves.
       Master is still
       proving <strong>boot / world clock</strong>, not animation.
@@ -280,17 +283,18 @@
 
     <h3>Phase 1 in progress — boot / world clock (current master)</h3>
     <p>
-      Recent commits (<code>7adf621</code> … <code>b8a2b21</code>) lock
-      type-10 vtbl+8 DrawsChildList / slot 0x14 0xE5 / [ui+84]
-      residency / resident-slot walk / +332 SelectState(6)
-      + Init World construct, not
+      Recent commits (<code>9901d3b</code> … <code>4a03969</code>) lock
+      Init Fonts / 0xE0 singleton / Subtitled register /
+      Conversation Attitude names / player owner at game+28, not
       <code>00DBDE40</code>. Previous snapshot
-      <code>48133e9</code> via PR #39 <code>f430cc90</code>.
-      Just locked this batch: type-10 draw via 00530260 vtbl+8,
-      Press Start 0xE5 through slot 0x14 0059B5D7, [ui+84]
-      0x14/0x17 keep across switch, tick/draw walk every
-      resident slot, +332 via SelectState(6), Init World
-      004A67D0 before 00417418. CSS
+      <code>b8a2b21</code> via PR #40 <code>fb7299d</code>.
+      Just locked this batch: Init Fonts ENG_ARIAL_18 at
+      game+90444, 0xE0 <code>[0x13B879C]</code> singleton
+      before Thing Components, Init Subtitled
+      <code>misc_def_types.h</code> into
+      <code>[0x13B8A54]</code>, STANDARD_TALK/CONVERSATION
+      names at Init Conversation Attitude, player owner at
+      game+28 during Init Player Manager. CSS
       unchanged.
     </p>
     <div class="table-scroll">
@@ -320,7 +324,7 @@
         <tr>
           <td>Create Players: 5 × <code>0x22C</code> slots, 4 active — not <code>hero_swap_*.tng</code></td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>CreatePlayers_is_five_0x22C_slots_not_hero_swap</code>. Runs at the named <code>004166A8</code> stage (<code>b8a2b21</code>).</td>
+          <td><code>CreatePlayers_is_five_0x22C_slots_not_hero_swap</code>. Runs at the named <code>004166A8</code> stage (<code>b8a2b21</code>). Hero swap names <code>hero_swap_1.tng</code>…<code>_4.tng</code> belong on the player owner at game+28 (<code>4a03969</code>), not here.</td>
         </tr>
         <tr>
           <td>Load GTNG <code>0050959F</code> stem+<code>.gtng</code>; TLC missing → skip</td>
@@ -713,6 +717,46 @@
           <td><code>0052CF40</code> stores vtbl+192 arg at <code>+332</code> (<code>b8a2b21</code>)</td>
         </tr>
         <tr>
+          <td>Run Init Fonts after Graphics and select +332=5 on the new current. <code>004168DC</code> looks up <code>ENG_ARIAL_18</code> via <code>009E2C80</code> and stores it at <code>game+90444</code>. That is not frontend type-6 <code>ENG_ARIAL_16</code>/<code>ENG_ARIAL_24</code>. <code>0059A119</code> applies vtbl+192(5) to the incoming slot after the old current got vtbl+192(6)</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>9901d3b</code> / <code>Init_Fonts_004168DC_stores_ENG_ARIAL_18_at_game_plus90444</code></td>
+        </tr>
+        <tr>
+          <td>Ensure the 0xE0 <code>[0x13B879C]</code> singleton before Thing Components. <code>0044C6B6</code> is a present-check; first-seen miss constructs <code>0044C6C2</code> / <code>0044C71F</code>. Init frontend <code>005952C3</code> applies vtbl+192(5) to Press Start</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>6ae001f</code> / <code>Init_Game_0044C6B6_ensures_0xE0_singleton_before_Thing_Components</code></td>
+        </tr>
+        <tr>
+          <td><code>0044C6B0</code> is the 0xE0 singleton ctor</td>
+          <td><span class="badge DISPROVEN">DISPROVEN</span></td>
+          <td><code>0044C6B0</code> remains the later getter (<code>6ae001f</code>)</td>
+        </tr>
+        <tr>
+          <td>Register <code>Data\Defs\misc_def_types.h</code> into <code>[0x13B8A54]</code> at Init Subtitled. <code>004CDB10</code> via <code>00A39010</code>. Not Speak. <code>00A38E50</code> payload UNREAD</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>540e30c</code> / <code>Init_Subtitled_004CDB10_registers_00A39010_at_13B8A54</code></td>
+        </tr>
+        <tr>
+          <td>Bind STANDARD_TALK and CONVERSATION names at Init Conversation Attitude. <code>004CD670</code> via <code>0099EFE0</code> (18/12/12). Not Speak. <code>004EE23F</code> leftover (Init Thing Components still Note-only)</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>fe6c09c</code> / <code>Init_Conversation_004CD670_binds_STANDARD_TALK_tables</code></td>
+        </tr>
+        <tr>
+          <td>Store the 44-byte player owner at <code>game+28</code> during Init Player Manager. <code>0041732A</code>: <code>00BFEA1A(44)</code> / <code>0044C6B0</code> / <code>0044A3B0</code> vtbl <code>01231CD0</code> size 44 / <code>004193A0</code> <code>[game+28]</code>. Not Create Players (<code>004166A8</code>). Hero swap names <code>hero_swap_1.tng</code>…<code>_4.tng</code> belong on this owner</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>4a03969</code> / <code>Init_Player_Manager_0041732A_stores_44byte_owner_at_game_plus28</code></td>
+        </tr>
+        <tr>
+          <td>Host ctor note of <code>0044A3B0</code> under Init Player Interface</td>
+          <td><span class="badge DISPROVEN">DISPROVEN</span></td>
+          <td>moved to Init Player Manager (<code>4a03969</code>)</td>
+        </tr>
+        <tr>
+          <td><code>+24=0</code> write on the player owner</td>
+          <td><span class="badge DISPROVEN">DISPROVEN</span></td>
+          <td><code>4a03969</code> / same owner test</td>
+        </tr>
+        <tr>
           <td><code>[node+20]</code> is <code>0041DB1D</code>/<code>0041D21B</code> type0 <code>0041B800</code> vtbl <code>0122F5D4</code>; draw <code>0041AFA0</code> not <code>0052D900</code></td>
           <td><span class="badge DISPROVEN">DISPROVEN</span></td>
           <td>PRESS_START Type=10. Type 0 is <code>UI_FRONTEND_BUTTON</code>.</td>
@@ -1027,7 +1071,7 @@
         <tr>
           <td><code>00B324A0</code> type-0x22 handler vtbl+20</td>
           <td><span class="badge PARTIAL">PARTIAL</span></td>
-          <td>dest+4=0 only while dest is 0. Nonempty dest is <code>00BAE2D0</code> not <code>009DB700</code> (<code>1a08cc0</code>). Host still Notes <code>009DA9F0</code> DIP. Type-6 Font 26051 is a names.bin offset that resolves to <code>ENG_ARIAL_24</code>, not the <code>0054F4B0</code> <code>ENG_ARIAL_16</code> helper (<code>db36334</code>). leave #36 open.</td>
+          <td>dest+4=0 only while dest is 0. Nonempty dest is <code>00BAE2D0</code> not <code>009DB700</code> (<code>1a08cc0</code>). Host still Notes <code>009DA9F0</code> DIP. Type-6 Font 26051 is a names.bin offset that resolves to <code>ENG_ARIAL_24</code>, not the <code>0054F4B0</code> <code>ENG_ARIAL_16</code> helper (<code>db36334</code>). Init Fonts <code>ENG_ARIAL_18</code> at <code>game+90444</code> is a different object (<code>9901d3b</code>). leave #36 open.</td>
         </tr>
         <tr>
           <td><code>0041AC20</code> dest rect from +204/+248</td>
@@ -1103,6 +1147,21 @@
           <td>PALSKIN c38 dest upload</td>
           <td>later</td>
           <td><code>27cb7ee</code> — later GPU path; do not file</td>
+        </tr>
+        <tr>
+          <td>Init Definition Manager <code>00416005</code></td>
+          <td>host Note-only</td>
+          <td><code>[0x13B879C]</code> <code>[vtbl+8]</code> + <code>009ACB10</code>. Proofs-only this commit; not locked. Different object from later Subtitled <code>[0x13B8A54]</code>. Do not invent a <code>game.bin</code> parser.</td>
+        </tr>
+        <tr>
+          <td>Init Thing Components <code>004EE23F</code></td>
+          <td>leftover Note-only</td>
+          <td><code>fe6c09c</code> — still Note-only. Do not file as locked.</td>
+        </tr>
+        <tr>
+          <td>Init Player Interface leftover <code>Register(ActionInputListener)</code> / <code>00488D20</code> notes</td>
+          <td>leftover</td>
+          <td>Not a function; factory is Create Players. Host ctor note of <code>0044A3B0</code> under Init Player Interface is DISPROVEN (moved to Init Player Manager, <code>4a03969</code>). Do not file a new issue.</td>
         </tr>
       </tbody>
     </table>
@@ -1326,7 +1385,20 @@
         SelectState(6) is not a <code>+302</code> hide
         (<code>b8a2b21</code>). Init World <code>004A67D0</code>
         / <code>004A6E30</code> run inside <code>0041735A</code>
-        before <code>00417418</code>. Host LMB edge queues
+        before <code>00417418</code>.
+        Recent commits <code>9901d3b</code> …
+        <code>4a03969</code> lock Init Fonts ENG_ARIAL_18 /
+        0xE0 singleton / Subtitled register / Conversation
+        Attitude names / player owner at game+28. Init
+        Definition Manager <code>00416005</code> is still host
+        Note-only (proofs-only; different object from later
+        Subtitled <code>[0x13B8A54]</code>). Init Thing
+        Components still Note-only (<code>004EE23F</code>).
+        Init Player Interface still leftover
+        Register(ActionInputListener) / <code>00488D20</code>
+        notes. Host ctor note of <code>0044A3B0</code> under
+        Init Player Interface is DISPROVEN (moved).
+        Host LMB edge queues
         Type4 (<code>5dcc1fc</code>). Host queues LMB-up as type 6
         (<code>48133e9</code>). Dest leftover GraphicIndex path +
         calculator tests still feed 16×16; host still Notes
