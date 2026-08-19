@@ -890,6 +890,54 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Thing_Components_004EE632_adds_CSmokeGeneratorDef()
+    {
+        Assert.Equal(0x004EE62Bu, EngineLifecycle.ThirdDefClassSite);
+        Assert.Equal(0x004DA82Bu, EngineLifecycle.ThirdDefClassFactory);
+        Assert.Equal(0x0123E924u, EngineLifecycle.ThirdDefClassVtbl);
+        Assert.Equal(48, EngineLifecycle.ThirdDefClassSize);
+        Assert.Equal("CSmokeGeneratorDef", EngineLifecycle.ThirdDefClassName);
+        Assert.NotEqual(EngineLifecycle.SecondDefClassName, EngineLifecycle.ThirdDefClassName);
+        Assert.NotEqual(EngineLifecycle.SecondDefClassFactory, EngineLifecycle.ThirdDefClassFactory);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.False(life.ThirdDefClassRegistered);
+        Assert.Null(life.ThirdDefClass);
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.True(life.SecondDefClassRegistered);
+        Assert.Equal(EngineLifecycle.SecondDefClassName, life.SecondDefClass);
+        Assert.True(life.ThirdDefClassRegistered);
+        Assert.Equal(EngineLifecycle.ThirdDefClassName, life.ThirdDefClass);
+        var secondFactory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SecondDefClassFactory);
+        var thirdSite = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirdDefClassSite);
+        var thirdAdd = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.AddDefClassFn &&
+            e.Action.Contains(EngineLifecycle.ThirdDefClassName, StringComparison.Ordinal));
+        var thirdFactory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirdDefClassFactory);
+        var thirdLoad = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.LoadDefFn);
+        var thirdBudget = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.LoadDefBudgetFn);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(secondFactory >= 0 && thirdSite > secondFactory);
+        Assert.True(thirdAdd > thirdSite && thirdFactory > thirdAdd);
+        Assert.True(thirdLoad > thirdFactory && thirdBudget > thirdLoad);
+        Assert.True(defs > thirdBudget, "CSmokeGeneratorDef before Init Definition Manager");
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.AddDefClassFn &&
+            e.Action.Contains("CTCSmokeGenerator", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Init_Definition_Manager_00416005_resets_plus88_via_vtbl8()
     {
         Assert.Equal(0x00416005u, EngineLifecycle.InitDefinitionManagerFn);
