@@ -281,6 +281,89 @@ public sealed class FrontendLayoutTests
     }
 
     [Fact]
+    public void New_Profile_persist_child_order_and_layers()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var names = NamesBin.Load(install.FindCompiledDef("names.bin")!);
+        var bin = GameBin.Load(install.FindCompiledDef("frontend.bin")!, names);
+        var scratch = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Temp", "grok-goal-d6d68af8e2ab", "implementer", "persist-new-profile.txt");
+        Directory.CreateDirectory(Path.GetDirectoryName(scratch)!);
+        var sb = new System.Text.StringBuilder();
+        foreach (var name in new[]
+        {
+            "UI_FRONTEND_NEW_PROFILE_SCREEN",
+            "UI_TABLE_TITLE_WHOLE",
+            "UI_TEXT_NEW_PROFILE_MENU_TITLE",
+            "UI_BUTTON_OPTIONS_LEFT",
+            "UI_OPTIONS_TEXT_SLOT_L",
+            "UI_OPTIONS_TEXT_SLOT_R",
+            "UI_OPTIONS_TEXT_SLOT_M",
+            "UI_BUTTON_OPTIONS_RIGHT",
+            "UI_OPTIONS_CONTROL_METHOD_TEXT_SLIDER",
+            "UI_OPTIONS_TEXT_CONTROL_ARROWS",
+            "UI_NEW_PROFILE_EDIT_BOX",
+            "UI_SCOREBOARD_EDITBOX_TEXT_FE",
+            "UI_OPTIONS_TEXT_SLIDER_BUTTON_TABLES",
+        })
+        {
+            var def = FrontendUiDef.TryParse(bin.FindEntry(name)!)!;
+            sb.Append(name).Append(" type=").Append(def.Type);
+            sb.Append(" layer=").Append(def.Layer);
+            sb.Append(" xy=").Append(def.PositionX).Append(',').Append(def.PositionY);
+            sb.Append(" wh=").Append(def.Width).Append(',').Append(def.Height);
+            sb.Append(" plus96=").Append(def.Plus96);
+            sb.Append(" sprites=").Append(def.Sprites);
+            sb.Append(" graphic=").Append(def.GraphicBankId);
+            sb.Append(" text=").Append(def.TextTag ?? "-");
+            sb.Append(" kids=");
+            foreach (var i in def.ChildIndices)
+            {
+                var child = (uint)i < (uint)bin.Entries.Count
+                    ? bin.Entries[i].InstanceName ?? bin.Entries[i].SourceName
+                    : "?";
+                sb.Append('[').Append(i).Append(':').Append(child).Append(']');
+            }
+
+            sb.Append(" spriteDefs=");
+            foreach (var i in def.SpriteDefIndices)
+            {
+                var child = (uint)i < (uint)bin.Entries.Count
+                    ? bin.Entries[i].InstanceName ?? bin.Entries[i].SourceName
+                    : "?";
+                sb.Append('[').Append(i).Append(':').Append(child).Append(']');
+            }
+
+            sb.AppendLine();
+        }
+
+        File.WriteAllText(scratch, sb.ToString());
+        var screen = FrontendUiDef.TryParse(bin.FindEntry("UI_FRONTEND_NEW_PROFILE_SCREEN")!)!;
+        Assert.Equal(5, screen.ChildIndices.Count);
+        Assert.Equal("UI_TEXT_NEW_PROFILE_MENU_TITLE", bin.Entries[screen.ChildIndices[0]].InstanceName);
+        Assert.Equal("UI_TABLE_TITLE_WHOLE", bin.Entries[screen.ChildIndices[2]].InstanceName);
+        var left = FrontendUiDef.TryParse(bin.FindEntry("UI_BUTTON_OPTIONS_LEFT")!)!;
+        Assert.Equal(3, left.SpriteDefIndices.Count);
+        Assert.Equal("UI_OPTIONS_TEXT_SLOT_L", bin.Entries[left.SpriteDefIndices[0]].InstanceName);
+        Assert.Equal("UI_OPTIONS_TEXT_SLOT_M", bin.Entries[left.SpriteDefIndices[2]].InstanceName);
+        var editText = FrontendUiDef.TryParse(bin.FindEntry("UI_SCOREBOARD_EDITBOX_TEXT_FE")!)!;
+        Assert.True(string.IsNullOrEmpty(editText.TextTag));
+        var first = FrontendLayout.PlaceTableCell(
+            0, 3, 64f, 240f, 288f, 32f, 64f, 32f, plus96: 1, firstCapW: 64f, lastCapW: 8f);
+        var mid = FrontendLayout.PlaceTableCell(
+            1, 3, 64f, 240f, 288f, 32f, 160f, 32f, plus96: 1, firstCapW: 64f, lastCapW: 8f);
+        var last = FrontendLayout.PlaceTableCell(
+            2, 3, 64f, 240f, 288f, 32f, 8f, 32f, plus96: 1, firstCapW: 64f, lastCapW: 8f);
+        Assert.Equal(64f, first.X0);
+        Assert.Equal(128f, first.X1);
+        Assert.Equal(first.X1, mid.X0);
+        Assert.Equal(mid.X1, last.X0);
+        Assert.Equal(352f, last.X1);
+    }
+
+    [Fact]
     public void New_Profile_type12_rows_use_persist_plus326_not_equal_Y()
     {
         var install = GameInstall.TryLocate();
@@ -317,11 +400,11 @@ public sealed class FrontendLayoutTests
         Assert.True(label.DestX0 > 0f, $"labelX={label.DestX0}");
         var slider = life.FrontendWidgets.First(w =>
             w.Name == "UI_OPTIONS_CONTROL_METHOD_TEXT_SLIDER");
-        Assert.True(slider.DestX1 > slider.DestX0 && slider.DestY1 > slider.DestY0,
-            $"slider={slider.DestX0},{slider.DestY0},{slider.DestX1},{slider.DestY1}");
+        Assert.Equal(slider.DestX0, slider.DestX1);
+        Assert.Equal(slider.DestY0, slider.DestY1);
         var edit = life.FrontendWidgets.First(w => w.Name == "UI_NEW_PROFILE_EDIT_BOX");
-        Assert.True(edit.DestX1 > edit.DestX0 && edit.DestY1 > edit.DestY0,
-            $"edit={edit.DestX0},{edit.DestY0},{edit.DestX1},{edit.DestY1}");
+        Assert.Equal(edit.DestX0, edit.DestX1);
+        Assert.Equal(edit.DestY0, edit.DestY1);
         Assert.Equal(0x0054C3A0u, FrontendWidgetType.ListCtor);
 
         var left = FrontendUiDef.TryParse(bin.FindEntry("UI_BUTTON_OPTIONS_LEFT")!)!;
@@ -332,10 +415,17 @@ public sealed class FrontendLayoutTests
             "sprites=" + string.Join(",", left.SpriteDefIndices) +
             " n=" + left.Sprites + " partial=" + left.Partial);
         Assert.Equal((180f, 0f), FrontendLayout.Type2Leftover(left.Width, left.Height));
-        var cell = FrontendLayout.PlaceTableCell(
-            1, 3, 64f, 240f, 288f, 16f, 16f, 16f, plus96: 1);
-        Assert.True(cell.X1 > cell.X0);
-        Assert.True(cell.Y1 > cell.Y0);
+        var cells = life.FrontendWidgets
+            .Where(w => w.ParentName == "UI_BUTTON_OPTIONS_LEFT" &&
+                        w.DestY0 == 240f)
+            .ToList();
+        Assert.True(cells.Count >= 3, "left cells=" + cells.Count);
+        Assert.Equal(cells[0].DestX1, cells[1].DestX0);
+        Assert.Equal(cells[1].DestX1, cells[2].DestX0);
+        var table = life.FrontendWidgets.First(w =>
+            w.Name == "UI_BUTTON_OPTIONS_LEFT" && w.DestY0 == 240f);
+        Assert.Equal(table.DestX0, cells[0].DestX0);
+        Assert.Equal(table.DestX1, cells[2].DestX1);
     }
 
     [Fact]
@@ -381,27 +471,22 @@ public sealed class FrontendLayoutTests
         Assert.Equal(
             cancel,
             FrontendHitTest.HitIndex(life.FrontendWidgets, cx, cy));
-        var edit = IndexOf(life, "UI_NEW_PROFILE_EDIT_BOX");
         var slider = IndexOf(life, "UI_OPTIONS_CONTROL_METHOD_TEXT_SLIDER");
+        var before = life.FrontendWidgets[slider].ActiveChild;
+        Assert.Null(FrontendHitTest.HitIndex(life.FrontendWidgets, 96f, 304f));
         var knob = IndexOf(life, "UI_SLIDER_CAMERA_SENSITIVITY");
-        Assert.Equal(
-            edit,
-            FrontendHitTest.HitIndex(
-                life.FrontendWidgets,
-                MidX(life.FrontendWidgets[edit]),
-                MidY(life.FrontendWidgets[edit])));
-        Assert.Equal(
-            slider,
-            FrontendHitTest.HitIndex(
-                life.FrontendWidgets,
-                MidX(life.FrontendWidgets[slider]),
-                MidY(life.FrontendWidgets[slider])));
         Assert.Equal(
             knob,
             FrontendHitTest.HitIndex(
                 life.FrontendWidgets,
                 MidX(life.FrontendWidgets[knob]),
                 MidY(life.FrontendWidgets[knob])));
+        var title = life.FrontendWidgets.First(w => w.Name == "UI_TEXT_NEW_PROFILE_MENU_TITLE");
+        Assert.False(string.IsNullOrEmpty(title.Text));
+        var editGlyph = life.FrontendWidgets.First(w =>
+            w.Name == "UI_SCOREBOARD_EDITBOX_TEXT_FE");
+        Assert.False(string.IsNullOrEmpty(editGlyph.Text));
+        Assert.Equal(before, life.FrontendWidgets[slider].ActiveChild);
     }
 
     private static float MidX(FrontendWidget widget) =>

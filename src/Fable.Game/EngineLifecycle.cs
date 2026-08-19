@@ -4234,11 +4234,42 @@ public sealed class EngineLifecycle : IDisposable
         FrontendUi96Accept = false;
         FrontendUi96Armed = false;
         FrontendEditBoxBound = true;
-        FrontendEditBoxName = FrontendProfileDefaultFallback;
+        var seed = LookupFrontendText(FrontendProfileDefaultText)
+            ?? FrontendProfileDefaultFallback;
+        FrontendEditBoxName = seed;
         ResolveFrontendDef(FrontendNewProfileMenu);
         SwitchFrontendSlot(FrontendNewProfileSlot);
         AttachFrontendTree(FrontendNewProfileMenu, FrontendNewProfileSlot);
         SelectFrontendState(FrontendNewProfileSlot, 5);
+        BindEditBoxSeed(seed);
+    }
+
+    /// <summary>
+    /// <c>00851770</c> writes
+    /// <c>004069E0</c> into type-37
+    /// <c>vtbl+572</c>. The type-6
+    /// child has no persist TextTag,
+    /// so the seed becomes its glyph
+    /// run.
+    /// </summary>
+    private void BindEditBoxSeed(string seed)
+    {
+        if (string.IsNullOrEmpty(seed))
+            return;
+        for (var i = 0; i < _frontendWidgets.Count; i++)
+        {
+            if (_frontendWidgets[i].Type != FrontendWidgetType.EditBox)
+                continue;
+            foreach (var kid in FrontendWidgetFactory.ChildrenOf(_frontendWidgets, i))
+            {
+                var child = _frontendWidgets[kid];
+                if (child.Type != FrontendWidgetType.Text)
+                    continue;
+                if (!string.IsNullOrEmpty(child.Text))
+                    continue;
+                _frontendWidgets[kid] = child with { Text = seed };
+            }
+        }
     }
 
     /// <summary>
@@ -8266,23 +8297,7 @@ public sealed class EngineLifecycle : IDisposable
             var widget = widgets[i];
             var persistW = widget.PersistWidth > 0 ? (int)widget.PersistWidth : 0;
             var persistH = widget.PersistHeight > 0 ? (int)widget.PersistHeight : 0;
-            var leftoverW = 0f;
-            var leftoverH = 0f;
-            if (widget.Type == FrontendWidgetType.TableType)
-                (leftoverW, leftoverH) = FrontendLayout.Type2Leftover(
-                    widget.PersistWidth, widget.PersistHeight);
-            if (widget.TextureName is { } leftoverName &&
-                _frontendSprites?.TryLoad(leftoverName) is { } leftoverTex)
-            {
-                var frameW = leftoverTex.FrameWidth > 0 ? leftoverTex.FrameWidth : leftoverTex.Width;
-                var frameH = leftoverTex.FrameHeight > 0 ? leftoverTex.FrameHeight : leftoverTex.Height;
-                var graphic = FrontendLayout.LeftoverFromGraphic(
-                    widget.GraphicId, frameW, frameH);
-                if (graphic.W > leftoverW)
-                    leftoverW = graphic.W;
-                if (graphic.H > leftoverH)
-                    leftoverH = graphic.H;
-            }
+            var (leftoverW, leftoverH) = WidgetLeftover(widget);
 
             FrontendDest? parentDest = null;
             FrontendWidget? parentWidget = null;
@@ -8332,10 +8347,17 @@ public sealed class EngineLifecycle : IDisposable
                 parentDest is { } tableDest)
             {
                 var cellCount = 0;
+                var firstCapW = 0f;
+                var lastCapW = 0f;
                 for (var c = 0; c < widgets.Count; c++)
                 {
-                    if (widgets[c].ParentIndex == widget.ParentIndex)
-                        cellCount++;
+                    if (widgets[c].ParentIndex != widget.ParentIndex)
+                        continue;
+                    var cap = WidgetLeftover(widgets[c]).W;
+                    if (cellCount == 0)
+                        firstCapW = cap;
+                    lastCapW = cap;
+                    cellCount++;
                 }
 
                 var placed = FrontendLayout.PlaceTableCell(
@@ -8347,7 +8369,9 @@ public sealed class EngineLifecycle : IDisposable
                     leftoverH > 0f ? leftoverH : (table.PersistHeight > 0f ? table.PersistHeight : leftoverH),
                     leftoverW,
                     leftoverH,
-                    table.Plus96);
+                    table.Plus96,
+                    firstCapW,
+                    lastCapW);
                 dest = new FrontendDest(
                     placed.X0, placed.Y0,
                     tableDest.ScaleX, tableDest.ScaleY,
@@ -8395,93 +8419,30 @@ public sealed class EngineLifecycle : IDisposable
         }
 
         ExpandTableDests(widgets);
-        ExpandControlDests(widgets);
         AssignHitRects(widgets);
     }
 
-    /// <summary>
-    /// Type 16/37 <c>0041AFA0</c> dest is a
-    /// point when leftover is 0. Native
-    /// hit <c>0055B8F0</c> still uses a
-    /// size from the packed type-2
-    /// leftover in the same list row
-    /// (rightmost table dest).
-    /// </summary>
-    private static void ExpandControlDests(List<FrontendWidget> widgets)
+    private (float W, float H) WidgetLeftover(FrontendWidget widget)
     {
-        for (var i = 0; i < widgets.Count; i++)
+        var leftoverW = 0f;
+        var leftoverH = 0f;
+        if (widget.Type == FrontendWidgetType.TableType)
+            (leftoverW, leftoverH) = FrontendLayout.Type2Leftover(
+                widget.PersistWidth, widget.PersistHeight);
+        if (widget.TextureName is { } leftoverName &&
+            _frontendSprites?.TryLoad(leftoverName) is { } leftoverTex)
         {
-            var widget = widgets[i];
-            if (widget.Type != FrontendWidgetType.TextSlider &&
-                widget.Type != FrontendWidgetType.EditBox)
-                continue;
-            if (widget.DestX1 > widget.DestX0 && widget.DestY1 > widget.DestY0)
-                continue;
-            var row = i;
-            while ((uint)row < (uint)widgets.Count)
-            {
-                var parent = widgets[row].ParentIndex;
-                if (parent < 0)
-                    break;
-                if (widgets[parent].Type == FrontendWidgetType.List)
-                    break;
-                row = parent;
-            }
-
-            var bestW = 0f;
-            var bestH = 0f;
-            var bestX0 = float.NegativeInfinity;
-            for (var c = 0; c < widgets.Count; c++)
-            {
-                if (widgets[c].Type != FrontendWidgetType.TableType)
-                    continue;
-                if (!IsDescendantOf(widgets, c, row))
-                    continue;
-                var w = widgets[c].DestX1 - widgets[c].DestX0;
-                var h = widgets[c].DestY1 - widgets[c].DestY0;
-                if (w <= 0f)
-                    continue;
-                if (widgets[c].DestX0 < bestX0)
-                    continue;
-                bestX0 = widgets[c].DestX0;
-                bestW = w;
-                bestH = h > 0f ? h : widgets[c].Leftover204;
-            }
-
-            if (bestW <= 0f)
-                continue;
-            if (bestH <= 0f)
-            {
-                var listParent = widgets[row].ParentIndex;
-                if ((uint)listParent < (uint)widgets.Count &&
-                    widgets[listParent].Plus326 > 0f)
-                    bestH = widgets[listParent].Plus326 * (widget.DestScaleX > 0f ? widget.DestScaleX : 1f);
-            }
-
-            if (bestH <= 0f)
-                continue;
-            widgets[i] = widget with
-            {
-                DestX1 = widget.DestX0 + bestW,
-                DestY1 = widget.DestY0 + bestH,
-                Leftover204 = bestW,
-            };
-        }
-    }
-
-    private static bool IsDescendantOf(List<FrontendWidget> widgets, int index, int ancestor)
-    {
-        var i = index;
-        while ((uint)i < (uint)widgets.Count)
-        {
-            if (i == ancestor)
-                return true;
-            i = widgets[i].ParentIndex;
-            if (i < 0)
-                return false;
+            var frameW = leftoverTex.FrameWidth > 0 ? leftoverTex.FrameWidth : leftoverTex.Width;
+            var frameH = leftoverTex.FrameHeight > 0 ? leftoverTex.FrameHeight : leftoverTex.Height;
+            var graphic = FrontendLayout.LeftoverFromGraphic(
+                widget.GraphicId, frameW, frameH);
+            if (graphic.W > leftoverW)
+                leftoverW = graphic.W;
+            if (graphic.H > leftoverH)
+                leftoverH = graphic.H;
         }
 
-        return false;
+        return (leftoverW, leftoverH);
     }
 
     private static void ExpandTableDests(List<FrontendWidget> widgets)
@@ -8558,8 +8519,9 @@ public sealed class EngineLifecycle : IDisposable
         var width = BackBufferWidth > 0 ? BackBufferWidth : DisplayDefaultWidth;
         var height = BackBufferHeight > 0 ? BackBufferHeight : DisplayDefaultHeight;
         var (records, textures) = CollectFrontendRecords();
-        FrontendBatch = Dx9VulkanFrontend.BuildBatch(records, textures, 0, 0, width, height);
-        DumpFrontendPresentRgba(records, textures, width, height);
+        var present = SpritesThenGlyphs(records);
+        FrontendBatch = Dx9VulkanFrontend.BuildBatch(present, textures, 0, 0, width, height);
+        DumpFrontendPresentRgba(present, textures, width, height);
     }
 
     private (List<FrontendDx9DrawRecord> Records, List<GpuTexture> Textures)
@@ -8693,6 +8655,31 @@ public sealed class EngineLifecycle : IDisposable
         }
 
         return (records, textures);
+    }
+
+    /// <summary>
+    /// <c>0054EF00</c> glyph records flush
+    /// after <c>0041AFA0</c> sprite dests
+    /// so type-6 text is not covered by
+    /// a later opaque cell.
+    /// </summary>
+    private static List<FrontendDx9DrawRecord> SpritesThenGlyphs(
+        List<FrontendDx9DrawRecord> records)
+    {
+        var ordered = new List<FrontendDx9DrawRecord>(records.Count);
+        foreach (var rec in records)
+        {
+            if (rec.RecordType != FrontendTextDraw.Type6RecordType)
+                ordered.Add(rec);
+        }
+
+        foreach (var rec in records)
+        {
+            if (rec.RecordType == FrontendTextDraw.Type6RecordType)
+                ordered.Add(rec);
+        }
+
+        return ordered;
     }
 
     /// <summary>

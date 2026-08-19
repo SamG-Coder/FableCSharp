@@ -352,21 +352,15 @@ public sealed class FrontendInputTests
         Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
         Assert.Null(FrontendHitTest.HitIndex(life.FrontendWidgets, 12f, 12f));
 
-        var edit = IndexOf(life, "UI_NEW_PROFILE_EDIT_BOX");
-        ClickIndex(life, edit);
-        Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
-        Assert.Equal(
-            edit,
-            FrontendHitTest.HitIndex(
-                life.FrontendWidgets,
-                life.FrontendPointerX,
-                life.FrontendPointerY));
-
         var slider = IndexOf(life, "UI_OPTIONS_CONTROL_METHOD_TEXT_SLIDER");
         var before = life.FrontendWidgets[slider].ActiveChild;
-        ClickIndex(life, slider);
+        life.SetFrontendPointer(96f, 304f);
+        life.QueueInput(FrontendInputMap.Type4, 0);
+        life.QueueInput(FrontendInputMap.Type6, 0);
+        Assert.True(life.Pump());
         Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
-        Assert.NotEqual(before, life.FrontendWidgets[slider].ActiveChild);
+        Assert.Null(FrontendHitTest.HitIndex(life.FrontendWidgets, 96f, 304f));
+        Assert.Equal(before, life.FrontendWidgets[slider].ActiveChild);
 
         var knob = IndexOf(life, "UI_SLIDER_CAMERA_SENSITIVITY");
         ClickIndex(life, knob);

@@ -142,13 +142,7 @@ public static class FrontendHitTest
             i = parent;
         }
 
-        var row = NearestRow(tree, index);
-        if ((uint)row >= (uint)tree.Count)
-            return null;
-        var rowParent = tree[row].ParentIndex;
-        if (rowParent < 0 || tree[rowParent].Type != FrontendWidgetType.List)
-            return null;
-        return InteractiveInSubtree(tree, row);
+        return null;
     }
 
     public static bool IsLeftHalf(
@@ -158,38 +152,5 @@ public static class FrontendHitTest
         if (rect.X1 <= rect.X0)
             return x < rect.X0;
         return x < (rect.X0 + rect.X1) * 0.5f;
-    }
-
-    private static int NearestRow(IReadOnlyList<FrontendWidget> tree, int index)
-    {
-        var i = index;
-        while ((uint)i < (uint)tree.Count)
-        {
-            var parent = tree[i].ParentIndex;
-            if (parent < 0)
-                break;
-            if (tree[parent].Type == FrontendWidgetType.List)
-                return i;
-            i = parent;
-        }
-
-        return index;
-    }
-
-    private static int? InteractiveInSubtree(IReadOnlyList<FrontendWidget> tree, int root)
-    {
-        if ((uint)root >= (uint)tree.Count)
-            return null;
-        if (IsInteractive(tree[root].Type))
-            return root;
-        var kids = FrontendWidgetFactory.ChildrenOf(tree, root);
-        foreach (var kid in kids)
-        {
-            var found = InteractiveInSubtree(tree, kid);
-            if (found is int hit)
-                return hit;
-        }
-
-        return null;
     }
 }

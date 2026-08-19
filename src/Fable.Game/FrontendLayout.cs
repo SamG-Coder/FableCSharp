@@ -381,10 +381,12 @@ public static class FrontendLayout
     /// <c>00551EA0</c> when def+96 bit 0:
     /// place clones along X from the
     /// parent origin. First and last
-    /// keep leftover width; the middle
-    /// cell (n==3) fills the leftover
-    /// budget. Height is the cell
-    /// leftover H.
+    /// cap leftover is taken once from
+    /// the first/last template; the
+    /// middle cell (n==3) fills the
+    /// leftover budget so the three
+    /// cells tile the parent bar.
+    /// Height is the cell leftover H.
     /// </summary>
     public static (float X0, float Y0, float X1, float Y1) PlaceTableCell(
         int index,
@@ -395,7 +397,9 @@ public static class FrontendLayout
         float leftoverH,
         float cellW,
         float cellH,
-        int plus96)
+        int plus96,
+        float firstCapW = 0f,
+        float lastCapW = 0f)
     {
         var height = leftoverH > 0f ? leftoverH : cellH;
         if (height <= 0f)
@@ -408,8 +412,8 @@ public static class FrontendLayout
 
         if (count == 3 && leftoverW > 0f)
         {
-            var leftW = cellW > 0f ? cellW : leftoverW / 3f;
-            var rightW = leftW;
+            var leftW = firstCapW > 0f ? firstCapW : (cellW > 0f ? cellW : leftoverW / 3f);
+            var rightW = lastCapW > 0f ? lastCapW : leftW;
             var midW = leftoverW - leftW - rightW;
             if (midW < 0f)
                 midW = 0f;
