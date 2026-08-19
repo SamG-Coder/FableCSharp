@@ -1059,6 +1059,24 @@ public sealed class EngineLifecycle : IDisposable
     public const int FifteenthDefClassSize = 92;
     public const string FifteenthDefClassName = "CLightDef";
     /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CLightDef</c>:
+    /// <c>004F07AC</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F07B3</c>
+    /// <c>CSpotLightDef</c>
+    /// factory <c>0x4D7CB9</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>0044C0C0</c>
+    /// size 68 vtbl <c>0123A88C</c>.
+    /// </summary>
+    public const uint SixteenthDefClassSite = 0x004F07AC;
+    public const uint SixteenthDefClassFactory = 0x004D7CB9;
+    public const uint SixteenthDefClassCtor = 0x0044C0C0;
+    public const uint SixteenthDefClassVtbl = 0x0123A88C;
+    public const int SixteenthDefClassSize = 68;
+    public const string SixteenthDefClassName = "CSpotLightDef";
+    /// <summary>
     /// <c>00416005</c> parent
     /// <c>push 1</c>:
     /// <c>0044C6B0</c>
@@ -2497,6 +2515,8 @@ public sealed class EngineLifecycle : IDisposable
     public string? FourteenthDefClass { get; private set; }
     public bool FifteenthDefClassRegistered { get; private set; }
     public string? FifteenthDefClass { get; private set; }
+    public bool SixteenthDefClassRegistered { get; private set; }
+    public string? SixteenthDefClass { get; private set; }
     /// <summary>
     /// After <c>00416005</c>
     /// <c>0044C72B</c> /
@@ -5100,22 +5120,39 @@ public sealed class EngineLifecycle : IDisposable
             FourteenthDefClass = FourteenthDefClassName;
             FourteenthDefClassRegistered = true;
         }
-        if (FifteenthDefClassRegistered)
+        if (!FifteenthDefClassRegistered)
+        {
+            Note(FifteenthDefClassSite, "Init Thing Components", "Defs",
+                $"004F06F6 0044C6B0 {FifteenthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FifteenthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FifteenthDefClassName}");
+            Note(FifteenthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D7C73 0044C0C0 size {FifteenthDefClassSize} vtbl 0x{FifteenthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FifteenthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FifteenthDefClass = FifteenthDefClassName;
+            FifteenthDefClassRegistered = true;
+        }
+        if (SixteenthDefClassRegistered)
             return;
-        Note(FifteenthDefClassSite, "Init Thing Components", "Defs",
-            $"004F06F6 0044C6B0 {FifteenthDefClassName}");
+        Note(SixteenthDefClassSite, "Init Thing Components", "Defs",
+            $"004F07AC 0044C6B0 {SixteenthDefClassName}");
         Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
-            $"0042DAE0 {FifteenthDefClassName}");
+            $"0042DAE0 {SixteenthDefClassName}");
         Note(AddDefClassFn, "Init Thing Components", "Defs",
-            $"009B0AC0 Add Def Class {FifteenthDefClassName}");
-        Note(FifteenthDefClassFactory, "Init Thing Components", "Defs",
-            $"004D7C73 0044C0C0 size {FifteenthDefClassSize} vtbl 0x{FifteenthDefClassVtbl:X}");
+            $"009B0AC0 Add Def Class {SixteenthDefClassName}");
+        Note(SixteenthDefClassFactory, "Init Thing Components", "Defs",
+            $"004D7CB9 0044C0C0 size {SixteenthDefClassSize} vtbl 0x{SixteenthDefClassVtbl:X}");
         Note(LoadDefFn, "Init Thing Components", "Defs",
-            $"009AD6E0 {FifteenthDefClassName}");
+            $"009AD6E0 {SixteenthDefClassName}");
         Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
             $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
-        FifteenthDefClass = FifteenthDefClassName;
-        FifteenthDefClassRegistered = true;
+        SixteenthDefClass = SixteenthDefClassName;
+        SixteenthDefClassRegistered = true;
     }
 
     /// <summary>
@@ -8204,6 +8241,7 @@ public sealed class EngineLifecycle : IDisposable
             var colour = widget.Colour;
             var recordStart = records.Count;
             if (FrontendWidgetFactory.IsPresented(tree, i) &&
+                !FrontendWidgetType.LeafDipSkipped(colour) &&
                 widget.DestX1 > widget.DestX0 && widget.DestY1 > widget.DestY0)
             {
                 if (widget.TextureName is { } texName &&
@@ -8236,6 +8274,7 @@ public sealed class EngineLifecycle : IDisposable
             }
 
             if (FrontendWidgetFactory.IsPresented(tree, i) &&
+                !FrontendWidgetType.LeafDipSkipped(colour) &&
                 widget.Type == FrontendWidgetType.Text &&
                 !string.IsNullOrEmpty(widget.Text))
             {

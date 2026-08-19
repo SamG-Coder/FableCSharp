@@ -135,6 +135,24 @@ public static class FrontendWidgetType
     /// </summary>
     public const uint ForwardSelectFn = 0x0041C5A0;
     public const int DurationOffset = 320;
+    /// <summary>
+    /// Type-0 <c>0041AFA0</c> tests
+    /// <c>+151</c>. Alpha 0 with
+    /// <c>+368==1</c> returns before
+    /// <c>0041BEB0</c>. Type 6
+    /// <c>0054EF00</c> same alpha
+    /// vs <c>+394</c>.
+    /// </summary>
+    public const uint LeafPresentFn = 0x0041AFA0;
+    public const int PackedAlphaOffset = 151;
+    public const uint Type6PresentFn = 0x0054EF00;
+
+    /// <summary>
+    /// Packed <c>+151</c> is the high
+    /// byte of persist colour.
+    /// </summary>
+    public static bool LeafDipSkipped(uint colour) =>
+        (colour >> 24) == 0;
 
     /// <summary>
     /// <c>vtbl+8 == 00530260</c> on

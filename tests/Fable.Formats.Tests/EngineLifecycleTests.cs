@@ -1453,6 +1453,34 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Thing_Components_004F07B3_adds_CSpotLightDef()
+    {
+        Assert.Equal(0x004F07ACu, EngineLifecycle.SixteenthDefClassSite);
+        Assert.Equal(0x004D7CB9u, EngineLifecycle.SixteenthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.SixteenthDefClassCtor);
+        Assert.Equal(0x0123A88Cu, EngineLifecycle.SixteenthDefClassVtbl);
+        Assert.Equal(68, EngineLifecycle.SixteenthDefClassSize);
+        Assert.Equal("CSpotLightDef", EngineLifecycle.SixteenthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FifteenthDefClassRegistered);
+        Assert.True(life.SixteenthDefClassRegistered);
+        Assert.Equal("CSpotLightDef", life.SixteenthDefClass);
+        var fifteenth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FifteenthDefClassFactory);
+        var sixteenth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixteenthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fifteenth >= 0 && sixteenth > fifteenth && defs > sixteenth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Init_Definition_Manager_00416005_resets_plus88_via_vtbl8()
     {
         Assert.Equal(0x00416005u, EngineLifecycle.InitDefinitionManagerFn);
