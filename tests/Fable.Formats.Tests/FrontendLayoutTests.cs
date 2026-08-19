@@ -291,6 +291,12 @@ public sealed class FrontendLayoutTests
         Assert.Equal(12, list.Type);
         Assert.Equal(30f, list.Plus326);
         Assert.Equal(4, list.ChildIndices.Count);
+        Assert.Equal(0f, list.Plus322);
+        Assert.Equal(0xA04E63BEu, FrontendUiDef.Plus322Crc);
+        Assert.Equal((0f, 0f), FrontendLayout.ListChildAuthoredPos(0, 0f, 0f, 0f, 30f, 0f, 0f));
+        Assert.Equal((0f, 30f), FrontendLayout.ListChildAuthoredPos(1, -100f, 0f, 0f, 30f, 0f, 0f));
+        Assert.Equal((0f, 60f), FrontendLayout.ListChildAuthoredPos(2, -100f, 0f, 0f, 30f, 0f, 0f));
+        Assert.Equal((0f, 90f), FrontendLayout.ListChildAuthoredPos(3, -100f, 70f, 0f, 30f, 0f, 0f));
         Assert.Equal(0f, FrontendLayout.ListChildAuthoredY(0, 0f, list.Plus326));
         Assert.Equal(30f, FrontendLayout.ListChildAuthoredY(1, 0f, list.Plus326));
         Assert.Equal(60f, FrontendLayout.ListChildAuthoredY(2, 0f, list.Plus326));
@@ -303,6 +309,19 @@ public sealed class FrontendLayoutTests
         Assert.Equal(4, rows.Count);
         var ys = rows.Select(w => w.DestY0).Distinct().ToList();
         Assert.True(ys.Count >= 4, string.Join(",", rows.Select(w => $"{w.Name}:{w.DestY0}")));
+        var method = life.FrontendWidgets.First(w =>
+            w.Name == "UI_OPTIONS_TEXT_SLIDER_WHOLE_CONTROL_METHOD");
+        Assert.True(method.DestX0 >= 0f, $"methodX={method.DestX0}");
+        var label = life.FrontendWidgets.First(w =>
+            w.Name == "UI_OPTIONS_SLIDER_TEXT_CONTROL_METHOD");
+        Assert.True(label.DestX0 > 0f, $"labelX={label.DestX0}");
+        var slider = life.FrontendWidgets.First(w =>
+            w.Name == "UI_OPTIONS_CONTROL_METHOD_TEXT_SLIDER");
+        Assert.True(slider.DestX1 > slider.DestX0 && slider.DestY1 > slider.DestY0,
+            $"slider={slider.DestX0},{slider.DestY0},{slider.DestX1},{slider.DestY1}");
+        var edit = life.FrontendWidgets.First(w => w.Name == "UI_NEW_PROFILE_EDIT_BOX");
+        Assert.True(edit.DestX1 > edit.DestX0 && edit.DestY1 > edit.DestY0,
+            $"edit={edit.DestX0},{edit.DestY0},{edit.DestX1},{edit.DestY1}");
         Assert.Equal(0x0054C3A0u, FrontendWidgetType.ListCtor);
 
         var left = FrontendUiDef.TryParse(bin.FindEntry("UI_BUTTON_OPTIONS_LEFT")!)!;

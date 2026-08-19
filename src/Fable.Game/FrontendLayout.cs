@@ -339,6 +339,30 @@ public static class FrontendLayout
         (persistWidth, persistHeight);
 
     /// <summary>
+    /// Type-8 ctor <c>0053822B</c> copies
+    /// def <c>+322/+326</c> to widget
+    /// <c>+392/+396</c>. List pack
+    /// <c>00539B58</c> writes the next
+    /// item at previous layout
+    /// <c>+8/+12</c> plus that spacing.
+    /// Persist Position of later
+    /// children is overwritten.
+    /// </summary>
+    public static (float X, float Y) ListChildAuthoredPos(
+        int index,
+        float persistX,
+        float persistY,
+        float spaceX,
+        float spaceY,
+        float firstX,
+        float firstY)
+    {
+        if (index <= 0)
+            return (persistX, persistY);
+        return (firstX + index * spaceX, firstY + index * spaceY);
+    }
+
+    /// <summary>
     /// Type-12 persist <c>+326</c> row
     /// stride. When nonzero, first-seen
     /// child authored Y is
@@ -348,7 +372,7 @@ public static class FrontendLayout
     /// </summary>
     public static float ListChildAuthoredY(int index, float persistY, float spacing)
     {
-        if (index < 0 || spacing == 0f)
+        if (index < 0)
             return persistY;
         return index * spacing;
     }

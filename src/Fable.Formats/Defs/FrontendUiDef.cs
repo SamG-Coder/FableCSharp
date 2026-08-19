@@ -38,6 +38,14 @@ public sealed class FrontendUiDef
     /// </summary>
     public const uint Plus326Crc = 0xD7495328;
     /// <summary>
+    /// CUIDef persist <c>+322</c> <c>00431061</c>
+    /// (<c>00631DD3</c>). Type-8 ctor
+    /// <c>0053822B</c> copies it to
+    /// widget <c>+392</c>. New Profile
+    /// list stores 0.
+    /// </summary>
+    public const uint Plus322Crc = 0xA04E63BE;
+    /// <summary>
     /// CUIDef persist <c>+96</c> i32
     /// (<c>00631CCD</c> / <c>00632340</c>).
     /// Bit 0 places type-2 cells on X
@@ -199,6 +207,12 @@ public sealed class FrontendUiDef
     /// def <c>+326</c>.
     /// </summary>
     public float Plus326 { get; init; }
+    /// <summary>
+    /// Persist <see cref="Plus322Crc"/> /
+    /// def <c>+322</c>. Type-8/12 item
+    /// X spacing at widget <c>+392</c>.
+    /// </summary>
+    public float Plus322 { get; init; }
     public int States { get; init; }
     public float ColourR { get; init; }
     public float ColourG { get; init; }
@@ -277,6 +291,7 @@ public sealed class FrontendUiDef
         var spriteDefs = new List<int>();
         var plus96 = 0;
         var plus326 = 0f;
+        var plus322 = 0f;
         var states = 0;
         var colourR = 0f;
         var colourG = 0f;
@@ -605,6 +620,9 @@ public sealed class FrontendUiDef
         var scanned326 = ReadPersistF32(raw, Plus326Crc);
         if (float.IsFinite(scanned326))
             plus326 = scanned326;
+        var scanned322 = ReadPersistF32(raw, Plus322Crc);
+        if (float.IsFinite(scanned322))
+            plus322 = scanned322;
         if (graphic == 0)
         {
             for (var i = 0; i + 8 <= raw.Length; i++)
@@ -639,6 +657,7 @@ public sealed class FrontendUiDef
             SpriteDefIndices = spriteDefs,
             Plus96 = plus96,
             Plus326 = plus326,
+            Plus322 = plus322,
             States = states,
             ColourR = colourR,
             ColourG = colourG,

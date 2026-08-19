@@ -8292,6 +8292,7 @@ public sealed class EngineLifecycle : IDisposable
                 parentWidget = widgets[widget.ParentIndex];
             }
 
+            var persistX = widget.PersistX;
             var persistY = widget.PersistY;
             var siblingIndex = 0;
             if (widget.ParentIndex >= 0)
@@ -8300,10 +8301,30 @@ public sealed class EngineLifecycle : IDisposable
                 sibling[widget.ParentIndex] = siblingIndex + 1;
             }
 
-            if (parentWidget is { Type: FrontendWidgetType.List, Plus326: not 0f } list)
+            if (parentWidget is { Type: FrontendWidgetType.List } list)
             {
-                persistY = FrontendLayout.ListChildAuthoredY(
-                    siblingIndex, widget.PersistY, list.Plus326);
+                var firstX = persistX;
+                var firstY = persistY;
+                if (siblingIndex > 0)
+                {
+                    for (var s = 0; s < i; s++)
+                    {
+                        if (widgets[s].ParentIndex != widget.ParentIndex)
+                            continue;
+                        firstX = widgets[s].PersistX;
+                        firstY = widgets[s].PersistY;
+                        break;
+                    }
+                }
+
+                (persistX, persistY) = FrontendLayout.ListChildAuthoredPos(
+                    siblingIndex,
+                    persistX,
+                    persistY,
+                    list.Plus322,
+                    list.Plus326,
+                    firstX,
+                    firstY);
             }
 
             FrontendDest dest;
@@ -8335,7 +8356,7 @@ public sealed class EngineLifecycle : IDisposable
             else
             {
                 var layout = new FrontendWidgetLayout(
-                    widget.PersistX,
+                    persistX,
                     persistY,
                     PersistScaleX: widget.PersistScaleX,
                     PersistScaleY: widget.PersistScaleY,
@@ -8359,7 +8380,6 @@ public sealed class EngineLifecycle : IDisposable
                 DestY1 = dest.Y1,
                 Leftover204 = leftoverW,
                 DestScaleX = dest.ScaleX,
-                PersistY = persistY,
                 TextOriginX = dest.X0,
                 TextOriginY = dest.Y0,
             };
@@ -8375,7 +8395,93 @@ public sealed class EngineLifecycle : IDisposable
         }
 
         ExpandTableDests(widgets);
+        ExpandControlDests(widgets);
         AssignHitRects(widgets);
+    }
+
+    /// <summary>
+    /// Type 16/37 <c>0041AFA0</c> dest is a
+    /// point when leftover is 0. Native
+    /// hit <c>0055B8F0</c> still uses a
+    /// size from the packed type-2
+    /// leftover in the same list row
+    /// (rightmost table dest).
+    /// </summary>
+    private static void ExpandControlDests(List<FrontendWidget> widgets)
+    {
+        for (var i = 0; i < widgets.Count; i++)
+        {
+            var widget = widgets[i];
+            if (widget.Type != FrontendWidgetType.TextSlider &&
+                widget.Type != FrontendWidgetType.EditBox)
+                continue;
+            if (widget.DestX1 > widget.DestX0 && widget.DestY1 > widget.DestY0)
+                continue;
+            var row = i;
+            while ((uint)row < (uint)widgets.Count)
+            {
+                var parent = widgets[row].ParentIndex;
+                if (parent < 0)
+                    break;
+                if (widgets[parent].Type == FrontendWidgetType.List)
+                    break;
+                row = parent;
+            }
+
+            var bestW = 0f;
+            var bestH = 0f;
+            var bestX0 = float.NegativeInfinity;
+            for (var c = 0; c < widgets.Count; c++)
+            {
+                if (widgets[c].Type != FrontendWidgetType.TableType)
+                    continue;
+                if (!IsDescendantOf(widgets, c, row))
+                    continue;
+                var w = widgets[c].DestX1 - widgets[c].DestX0;
+                var h = widgets[c].DestY1 - widgets[c].DestY0;
+                if (w <= 0f)
+                    continue;
+                if (widgets[c].DestX0 < bestX0)
+                    continue;
+                bestX0 = widgets[c].DestX0;
+                bestW = w;
+                bestH = h > 0f ? h : widgets[c].Leftover204;
+            }
+
+            if (bestW <= 0f)
+                continue;
+            if (bestH <= 0f)
+            {
+                var listParent = widgets[row].ParentIndex;
+                if ((uint)listParent < (uint)widgets.Count &&
+                    widgets[listParent].Plus326 > 0f)
+                    bestH = widgets[listParent].Plus326 * (widget.DestScaleX > 0f ? widget.DestScaleX : 1f);
+            }
+
+            if (bestH <= 0f)
+                continue;
+            widgets[i] = widget with
+            {
+                DestX1 = widget.DestX0 + bestW,
+                DestY1 = widget.DestY0 + bestH,
+                Leftover204 = bestW,
+            };
+        }
+    }
+
+    private static bool IsDescendantOf(List<FrontendWidget> widgets, int index, int ancestor)
+    {
+        var i = index;
+        while ((uint)i < (uint)widgets.Count)
+        {
+            if (i == ancestor)
+                return true;
+            i = widgets[i].ParentIndex;
+            if (i < 0)
+                return false;
+        }
+
+        return false;
     }
 
     private static void ExpandTableDests(List<FrontendWidget> widgets)

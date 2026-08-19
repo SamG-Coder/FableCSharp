@@ -99,6 +99,7 @@ public readonly record struct FrontendWidget(
     int DrawOrder = 0,
     int Layer = 0,
     float Plus326 = 0,
+    float Plus322 = 0,
     int Plus96 = 0,
     float HitX0 = 0,
     float HitY0 = 0,

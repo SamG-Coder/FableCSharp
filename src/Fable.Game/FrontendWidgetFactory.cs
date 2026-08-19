@@ -328,6 +328,7 @@ public static class FrontendWidgetFactory
                 def?.ColourA ?? 0f),
             Layer: def?.Layer ?? 0,
             Plus326: def?.Plus326 ?? 0f,
+            Plus322: def?.Plus322 ?? 0f,
             Plus96: def?.Plus96 ?? 0));
     }
 }
