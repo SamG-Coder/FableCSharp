@@ -986,6 +986,57 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Thing_Components_004EE932_adds_CCreatureNavigationDef()
+    {
+        Assert.Equal(0x004EE92Bu, EngineLifecycle.FifthDefClassSite);
+        Assert.Equal(0x004DA871u, EngineLifecycle.FifthDefClassFactory);
+        Assert.Equal(0x0123E98Cu, EngineLifecycle.FifthDefClassVtbl);
+        Assert.Equal(56, EngineLifecycle.FifthDefClassSize);
+        Assert.Equal("CCreatureNavigationDef", EngineLifecycle.FifthDefClassName);
+        Assert.NotEqual(EngineLifecycle.FourthDefClassName, EngineLifecycle.FifthDefClassName);
+        Assert.NotEqual(EngineLifecycle.FourthDefClassFactory, EngineLifecycle.FifthDefClassFactory);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.False(life.FifthDefClassRegistered);
+        Assert.Null(life.FifthDefClass);
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.True(life.FourthDefClassRegistered);
+        Assert.Equal(EngineLifecycle.FourthDefClassName, life.FourthDefClass);
+        Assert.True(life.FifthDefClassRegistered);
+        Assert.Equal(EngineLifecycle.FifthDefClassName, life.FifthDefClass);
+        var fourthFactory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FourthDefClassFactory);
+        var fifthSite = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FifthDefClassSite);
+        var fifthAdd = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.AddDefClassFn &&
+            e.Action.Contains(EngineLifecycle.FifthDefClassName, StringComparison.Ordinal));
+        var fifthFactory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FifthDefClassFactory);
+        var fifthLoad = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.LoadDefFn);
+        var fifthBudget = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.LoadDefBudgetFn);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fourthFactory >= 0 && fifthSite > fourthFactory);
+        Assert.True(fifthAdd > fifthSite && fifthFactory > fifthAdd);
+        Assert.True(fifthLoad > fifthFactory && fifthBudget > fifthLoad);
+        Assert.True(defs > fifthBudget, "CCreatureNavigationDef before Init Definition Manager");
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.AddDefClassFn &&
+            (e.Action.Contains("CTCPhysicsLight", StringComparison.Ordinal) ||
+             e.Action.Contains("CTCPhysicsStandard", StringComparison.Ordinal) ||
+             e.Action.Contains("CTCPhysicsControlled", StringComparison.Ordinal) ||
+             e.Action.Contains("CTCCreatureNavigation", StringComparison.Ordinal)));
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Init_Definition_Manager_00416005_resets_plus88_via_vtbl8()
     {
         Assert.Equal(0x00416005u, EngineLifecycle.InitDefinitionManagerFn);
