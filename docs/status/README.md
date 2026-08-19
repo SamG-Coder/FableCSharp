@@ -15,20 +15,21 @@ or in tests/code, treat it as **UNREAD**.
 world clock.
 
 Snapshot: **2026-08-19**, previous snapshot runtime HEAD
-`48133e9` via PR #39 merge `f430cc90`,
-runtime HEAD `b8a2b21` (*type-10 vtbl+8 DrawsChildList,
-slot 0x14 0xE5, [ui+84] residency, resident-slot walk,
-+332 SelectState(6) + Init World construct.*).
-Just locked: 5 runtime commits since `48133e9`. Headline
-locks: type-10 draw vtbl+8 DrawsChildList (`7adf621`);
-Press Start 0xE5 through slot 0x14 0059B5D7 (`59fde69`);
-[ui+84] slots 0x14/0x17 keep across switch (`84a8350`);
-tick/draw walk every resident [ui+84] slot (`b4a2c89`);
-+332 via SelectState(6); Init World 004A67D0 (`b8a2b21`).
-Ignore snapshot merge `f430cc90` / docs `036dcb1` /
-`3d7e522`. Ignore proofs-only adds. Docs PR #29
+`b8a2b21` via PR #40 merge `fb7299d`,
+runtime HEAD `4a03969` (*Init Fonts ENG_ARIAL_18,
+0xE0 singleton, Init Subtitled misc_def_types.h,
+STANDARD_TALK/CONVERSATION, player owner at game+28.*).
+Just locked: 5 runtime commits since `b8a2b21`. Headline
+locks: Init Fonts ENG_ARIAL_18 at game+90444 (`9901d3b`);
+0xE0 `[0x13B879C]` singleton before Thing Components
+(`6ae001f`); Init Subtitled `misc_def_types.h` into
+`[0x13B8A54]` (`540e30c`); STANDARD_TALK/CONVERSATION
+names at Init Conversation Attitude (`fe6c09c`);
+player owner at game+28 (`4a03969`).
+Ignore snapshot merge `fb7299d` / docs `cc4ab63`. Ignore
+proofs-only adds. Docs PR #29
 `bedcf919` is iOS Settings chrome only — CSS unchanged.
-Freeze at `b8a2b21`. Do not include any later runtime if
+Freeze at `4a03969`. Do not include any later runtime if
 master moves. Master is still proving **boot / world
 clock**, not animation.
 README’s long-term priority list still starts with animation;
@@ -124,15 +125,16 @@ when a ledger or test already records them.
 
 ### Phase 1 in progress — boot / world clock (current master)
 
-Recent commits (`7adf621` … `b8a2b21`) lock type-10
-vtbl+8 DrawsChildList / slot 0x14 0xE5 / [ui+84]
-residency / resident-slot walk / +332 SelectState(6)
-+ Init World construct, not `00DBDE40`. Previous
-snapshot `48133e9` via PR #39 `f430cc90`. Just locked
-this batch: type-10 draw via 00530260 vtbl+8, Press Start
-0xE5 through slot 0x14 0059B5D7, [ui+84] 0x14/0x17 keep
-across switch, tick/draw walk every resident slot, +332
-via SelectState(6), Init World 004A67D0 before 00417418.
+Recent commits (`9901d3b` … `4a03969`) lock Init Fonts /
+0xE0 singleton / Subtitled register / Conversation
+Attitude names / player owner at game+28, not
+`00DBDE40`. Previous snapshot `b8a2b21` via PR #40
+`fb7299d`. Just locked this batch: Init Fonts
+ENG_ARIAL_18 at game+90444, 0xE0 `[0x13B879C]`
+singleton before Thing Components, Init Subtitled
+`misc_def_types.h` into `[0x13B8A54]`, STANDARD_TALK/
+CONVERSATION names at Init Conversation Attitude,
+player owner at game+28 during Init Player Manager.
 CSS unchanged.
 
 | Item | Status | Evidence |
@@ -141,7 +143,7 @@ CSS unchanged.
 | New Game is leave-frontend → `FinalAlbion.wld` → Init Game `004184BD` | PROVEN | same + `New_game_is_leave_frontend_then_FinalAlbion_wld` |
 | Init World Map `005066E0`; Load `.wld` `00507C30` token switch | PROVEN | `Load_wld_is_00507C30_not_00DBDE40` |
 | Region graph `00506D40` / `00828710` | PROVEN | `Install_banks_and_startup_videos_exist` |
-| Create Players: 5 × `0x22C` slots, 4 active — not `hero_swap_*.tng` | PROVEN | `CreatePlayers_is_five_0x22C_slots_not_hero_swap`. Runs at the named `004166A8` stage (`b8a2b21`). |
+| Create Players: 5 × `0x22C` slots, 4 active — not `hero_swap_*.tng` | PROVEN | `CreatePlayers_is_five_0x22C_slots_not_hero_swap`. Runs at the named `004166A8` stage (`b8a2b21`). Hero swap names `hero_swap_1.tng`…`_4.tng` belong on the player owner at game+28 (`4a03969`), not here. |
 | Load GTNG `0050959F` stem+`.gtng`; TLC missing → skip | PROVEN | same install test (`Gtng` null, “missing”) |
 | Global things: BSS `[0x13B8609]=0` → per-map `.tng` `004FDBC0`; flag → `.gtg` `004FE2A0` | PROVEN | `Gtng_is_stem_gtng_gtg_is_004FE2A0_single_file` |
 | Current region index is `WorldMap+156` (`004FB150`); ctor 0 is dummy | PROVEN | `Game_pump_is_004189C2_not_00DBDE40` |
@@ -221,6 +223,14 @@ CSS unchanged.
 | Walk every resident `[ui+84]` slot on tick and draw. `00595222` vtbl+8 and `0059A0C4` vtbl+4 are the same in-order map walk; they do not filter to the current screen. Keep `_frontendWidgets` as the switched tree for input | PROVEN | `b4a2c89` / `Frontend_tick_and_draw_walk_resident_ui84_slots` (`FrontendResidentSlots`) |
 | Write `+332` via SelectState(6) on slot switch; construct world in Init World. `0052CF40` stores vtbl+192 arg at `+332`. `004A67D0`/`004A6E30` belong inside `"Init World"` `0041735A`, before `"Init Display Engine"` `00417418`. CreatePlayers runs at the named `004166A8` stage | PROVEN | `b8a2b21` / `Frontend_attach_0xE5_is_slot_0x14_0059B5D7_not_type10_walk` (`kept.State == 6`, Note `+332=6`) / `Init_World_004A67D0_runs_inside_0041735A_before_00417418` |
 | `+332` SelectState(6) is a `+302` hide | DISPROVEN | `0052CF40` stores vtbl+192 arg at `+332` (`b8a2b21`) |
+| Run Init Fonts after Graphics and select +332=5 on the new current. `004168DC` looks up `ENG_ARIAL_18` via `009E2C80` and stores it at `game+90444`. That is not frontend type-6 `ENG_ARIAL_16`/`ENG_ARIAL_24`. `0059A119` applies vtbl+192(5) to the incoming slot after the old current got vtbl+192(6) | PROVEN | `9901d3b` / `Init_Fonts_004168DC_stores_ENG_ARIAL_18_at_game_plus90444` |
+| Ensure the 0xE0 `[0x13B879C]` singleton before Thing Components. `0044C6B6` is a present-check; first-seen miss constructs `0044C6C2` / `0044C71F`. Init frontend `005952C3` applies vtbl+192(5) to Press Start | PROVEN | `6ae001f` / `Init_Game_0044C6B6_ensures_0xE0_singleton_before_Thing_Components` |
+| `0044C6B0` is the 0xE0 singleton ctor | DISPROVEN | `0044C6B0` remains the later getter (`6ae001f`) |
+| Register `Data\Defs\misc_def_types.h` into `[0x13B8A54]` at Init Subtitled. `004CDB10` via `00A39010`. Not Speak. `00A38E50` payload UNREAD | PROVEN | `540e30c` / `Init_Subtitled_004CDB10_registers_00A39010_at_13B8A54` |
+| Bind STANDARD_TALK and CONVERSATION names at Init Conversation Attitude. `004CD670` via `0099EFE0` (18/12/12). Not Speak. `004EE23F` leftover (Init Thing Components still Note-only) | PROVEN | `fe6c09c` / `Init_Conversation_004CD670_binds_STANDARD_TALK_tables` |
+| Store the 44-byte player owner at `game+28` during Init Player Manager. `0041732A`: `00BFEA1A(44)` / `0044C6B0` / `0044A3B0` vtbl `01231CD0` size 44 / `004193A0` `[game+28]`. Not Create Players (`004166A8`). Hero swap names `hero_swap_1.tng`…`_4.tng` belong on this owner | PROVEN | `4a03969` / `Init_Player_Manager_0041732A_stores_44byte_owner_at_game_plus28` |
+| Host ctor note of `0044A3B0` under Init Player Interface | DISPROVEN | moved to Init Player Manager (`4a03969`) |
+| `+24=0` write on the player owner | DISPROVEN | `4a03969` / same owner test |
 | `[node+20]` is `0041DB1D`/`0041D21B` type0 `0041B800` vtbl `0122F5D4`; draw `0041AFA0` not `0052D900` | DISPROVEN | PRESS_START Type=10. Type 0 is `UI_FRONTEND_BUTTON`. |
 | `00A09F20` miss: `[bank].vtbl+4` is `009D56C0` Open Bank File Async then `009A7F80` on `[0x13CA79C]` | PROVEN | `bbee903` / `Pe_entry_is_crt_not_new_game` / `Install_banks_and_startup_videos_exist` (`MeshBank.OpenVtbl4`) |
 | `00404C00` first-seen `[0x13B7CD8+8]==0` skip; `0041AFA0` packs `0041BEB0` type `0x22` (not sibling `0041BF60`) dest `[edx+92]` `this+0x15C` size `0xC0` | PROVEN | `c612ad5` / same frontend test (`Frontend2dLastPacker=0041BEB0`, `FrontendDisplayFlag=false`). Dest leftover `+204/+208` only when `GraphicIndex != 0` (`1a08cc0`). leave #14 open. |
@@ -302,7 +312,7 @@ the no-save path.
 | Slot fields beyond `+6296/+6312/+6328` (weights / `+6340/+6352`) | UNREAD | Lerp into `ScriptedCamera` is PROVEN; first-seen Weight0 ctor 0.2 is locked (`52e26bc`). Leftover slot bodies are not |
 | `00435530` overlay `00435000` / interface `00435070` bodies | PARTIAL | Present + `009DA9F0` layer bits PROVEN; overlay/interface still Note |
 | Frontend `00595222` widget DIP body | DISPROVEN as DIP | `00595222` calls `[node+20].vtbl+8`. Types 5/10/12/18 are `00530260` DrawsChildList (`7adf621`). Tick/draw walk every resident `[ui+84]` slot (`b4a2c89` / `Frontend_tick_and_draw_walk_resident_ui84_slots`). Present `0042DF9E` still Note-only. Host draw still does not skip on State=6. Host still Notes `009DA9F0` DIP. leave #14 open. |
-| `00B324A0` type-0x22 handler vtbl+20 | PARTIAL | dest+4=0 only while dest is 0. Nonempty dest is `00BAE2D0` not `009DB700` (`1a08cc0`). Host still Notes `009DA9F0` DIP. Type-6 Font 26051 is a names.bin offset that resolves to `ENG_ARIAL_24`, not the `0054F4B0` `ENG_ARIAL_16` helper (`db36334`). leave #36 open. |
+| `00B324A0` type-0x22 handler vtbl+20 | PARTIAL | dest+4=0 only while dest is 0. Nonempty dest is `00BAE2D0` not `009DB700` (`1a08cc0`). Host still Notes `009DA9F0` DIP. Type-6 Font 26051 is a names.bin offset that resolves to `ENG_ARIAL_24`, not the `0054F4B0` `ENG_ARIAL_16` helper (`db36334`). Init Fonts `ENG_ARIAL_18` at `game+90444` is a different object (`9901d3b`). leave #36 open. |
 | `0041AC20` dest rect from +204/+248 | PROVEN first-seen 0,0,0,0 | Leftover `+204/+208` only when `GraphicIndex != 0` (`1a08cc0`). Type-6 dest is zero-size at remapped origin. Calculator tests still feed 16×16. leave #36 open. |
 | New Game keyboard N/Enter (host stand-in) | PARTIAL | Host Return quarantined as accept (`db36334`). Host LMB edge queues Type4 (`5dcc1fc`). Host queues LMB-up as type 6 (`48133e9`). Host current `_frontendWidgets` is still the switched screen (input leftover) (`84a8350`). `DispatchFrontendMessage(15)` is `0059A238` vtbl+32. Enter still queues that message. Present `0042DF9E` still Note-only. Host draw still does not skip on State=6. leave #14 open. |
 | `006B8640` / `008889C0` leftover (do not write V0 first-seen) | UNREAD | `006B2CA0` pose is PROVEN (`204a214`). Host `SeedAt(1.6m)` is DISPROVEN as live New Game. Lookout helper FOV 70 from `00A0C130` (`be3339e`). `00A0C130` is a packer (`a6f939a`); ctor look +Z, up `(1,1,1)`. SHOT2 FOV 72 is intro-view leftover — do not collapse into Lookout. Do not reopen #6 / #13 |
@@ -318,6 +328,9 @@ the no-save path.
 | Wire persist-Oakvale (or a proven New Game region write) to `FirstSceneWorld` | UNREAD | Host first-scene lists are a separate reconstructed path |
 | PALSKIN type1/Flag1 routing (slot 14 `0x80` / Flag1 slot 9 `0x200`) | UNREAD | leftover research (`f4a1efc`); geometry still submits on `0x100`. Not a new issue |
 | PALSKIN c38 dest upload | later | `27cb7ee` — later GPU path; do not file |
+| Init Definition Manager `00416005` | host Note-only | `[0x13B879C]` `[vtbl+8]` + `009ACB10`. Proofs-only this commit; not locked. Different object from later Subtitled `[0x13B8A54]`. Do not invent a `game.bin` parser. |
+| Init Thing Components `004EE23F` | leftover Note-only | `fe6c09c` — still Note-only. Do not file as locked. |
+| Init Player Interface leftover `Register(ActionInputListener)` / `00488D20` notes | leftover | Not a function; factory is Create Players. Host ctor note of `0044A3B0` under Init Player Interface is DISPROVEN (moved to Init Player Manager, `4a03969`). Do not file a new issue. |
 
 No-save `WorldFrame` now ticks after Create Players (`+9826=1`).
 The Oakvale intro fiber still needs a proven region write (persist
@@ -445,6 +458,16 @@ The boot-first sequence holds. Corrections from the repo:
    switch (`84a8350`). `+332` via SelectState(6) is not
    a `+302` hide (`b8a2b21`). Init World `004A67D0` /
    `004A6E30` run inside `0041735A` before `00417418`.
+   Recent commits `9901d3b` … `4a03969` lock Init Fonts
+   ENG_ARIAL_18 / 0xE0 singleton / Subtitled register /
+   Conversation Attitude names / player owner at
+   game+28. Init Definition Manager `00416005` is still
+   host Note-only (proofs-only; different object from
+   later Subtitled `[0x13B8A54]`). Init Thing Components
+   still Note-only (`004EE23F`). Init Player Interface
+   still leftover Register(ActionInputListener) /
+   `00488D20` notes. Host ctor note of `0044A3B0` under
+   Init Player Interface is DISPROVEN (moved).
    Host LMB edge queues Type4 (`5dcc1fc`). Host queues LMB-up
    as type 6 (`48133e9`). Dest leftover GraphicIndex path +
    calculator tests still feed 16×16; host still Notes
