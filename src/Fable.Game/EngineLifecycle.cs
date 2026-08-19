@@ -422,6 +422,13 @@ public sealed class EngineLifecycle : IDisposable
     public const string FrontendPressStartMenu =
         "UI_FRONTEND_PRESS_START_MENU";
     public const int FrontendPressStartSlot = 0x14;
+    /// <summary>
+    /// <c>00595A06</c> writes Main
+    /// Menu into existing key
+    /// <c>0</c>. First-seen attach
+    /// left that cell null.
+    /// </summary>
+    public const int FrontendMainMenuSlot = 0;
     public const int FrontendPressStartMessage = 0xE5;
     public const int FrontendWidgetMessageVtbl = 284;
     /// <summary>
@@ -2303,11 +2310,14 @@ public sealed class EngineLifecycle : IDisposable
     private readonly List<FrontendWidget> _frontendWidgets = [];
     /// <summary>
     /// <c>[ui+84]</c> slot id →
-    /// widget index. Native is a
-    /// tree; first-seen Press Start
-    /// only needs key <c>0x14</c>.
+    /// root widget. Native keeps
+    /// keys <c>0x14</c> / <c>0x17</c>
+    /// across <c>00596763</c>.
+    /// Current
+    /// <see cref="_frontendWidgets"/>
+    /// is the switched screen only.
     /// </summary>
-    private readonly Dictionary<int, int> _frontendSlots = [];
+    private readonly Dictionary<int, FrontendWidget> _frontendSlotRoots = [];
     private readonly List<int> _frontendSubmitCounts = [];
     private FrontendSpriteBank? _frontendSprites;
     private FontBank? _frontendFonts;
@@ -3509,7 +3519,7 @@ public sealed class EngineLifecycle : IDisposable
         Note(FrontendUiBuildMenu, "Frontend", "UI", "00595B24");
         FrontendMenuRoot = name;
         ResolveFrontendDef(name);
-        AttachFrontendTree(name);
+        AttachFrontendTree(name, FrontendMainMenuSlot);
     }
 
     /// <summary>
@@ -3546,7 +3556,7 @@ public sealed class EngineLifecycle : IDisposable
         FrontendEditBoxBound = true;
         FrontendEditBoxName = FrontendProfileDefaultFallback;
         ResolveFrontendDef(FrontendNewProfileMenu);
-        AttachFrontendTree(FrontendNewProfileMenu);
+        AttachFrontendTree(FrontendNewProfileMenu, FrontendNewProfileSlot);
     }
 
     /// <summary>
@@ -3601,7 +3611,7 @@ public sealed class EngineLifecycle : IDisposable
         FrontendUi96Present = false;
         FrontendUi96Armed = false;
         ResolveFrontendDef(FrontendMainMenuNoContinue);
-        AttachFrontendTree(FrontendMainMenuNoContinue);
+        AttachFrontendTree(FrontendMainMenuNoContinue, FrontendMainMenuSlot);
     }
 
     /// <summary>
@@ -6867,8 +6877,7 @@ public sealed class EngineLifecycle : IDisposable
 
     private void AttachPressStartWidgets()
     {
-        AttachFrontendTree(FrontendPressStartMenu);
-        BindFrontendSlot(FrontendPressStartSlot, 0);
+        AttachFrontendTree(FrontendPressStartMenu, FrontendPressStartSlot);
         WriteType10AttachMessage();
     }
 
@@ -6876,15 +6885,17 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>0059B5D7</c> on
     /// <c>[ui+84]</c>. Factory
     /// stores the constructed
-    /// widget* at node+20.
+    /// widget* at node+20. Later
+    /// attaches do not drop other
+    /// keys.
     /// </summary>
-    private void BindFrontendSlot(int slot, int widgetIndex)
+    private void BindFrontendSlot(int slot)
     {
         Note(FrontendSlotLookupFn, "Frontend", "UI",
             $"0059B5D7 [ui+{FrontendWidgetListOffset}] slot 0x{slot:X} node+{FrontendWidgetSlotOffset}");
-        if ((uint)widgetIndex >= (uint)_frontendWidgets.Count)
+        if (_frontendWidgets.Count == 0)
             return;
-        _frontendSlots[slot] = widgetIndex;
+        _frontendSlotRoots[slot] = _frontendWidgets[0];
     }
 
     /// <summary>
@@ -6904,35 +6915,17 @@ public sealed class EngineLifecycle : IDisposable
             $"00598EE6 slot 0x{FrontendPressStartSlot:X} vtbl+{FrontendInputMap.WidgetMessageVtbl} {FrontendInputMap.Type10StoreMsgFn:X} +{FrontendInputMap.Type10StoredMsgOffset} 0x{FrontendPressStartMessage:X}");
         Note(FrontendSlotLookupFn, "Frontend", "UI",
             $"0059B5D7 slot 0x{FrontendPressStartSlot:X} vtbl+{FrontendInputMap.WidgetMessageVtbl} {FrontendInputMap.Type10StoreMsgFn:X}");
-        if (!TryGetFrontendSlotIndex(FrontendPressStartSlot, out var index))
+        if (!_frontendSlotRoots.TryGetValue(FrontendPressStartSlot, out var widget))
             return;
-        var widget = _frontendWidgets[index];
-        _frontendWidgets[index] = widget with
-        {
-            MessageId = FrontendPressStartMessage,
-        };
+        widget = widget with { MessageId = FrontendPressStartMessage };
+        _frontendSlotRoots[FrontendPressStartSlot] = widget;
+        if (_frontendWidgets.Count > 0 &&
+            _frontendWidgets[0].Name == widget.Name)
+            _frontendWidgets[0] = widget;
     }
 
-    public bool TryGetFrontendSlot(int slot, out FrontendWidget widget)
-    {
-        if (TryGetFrontendSlotIndex(slot, out var index))
-        {
-            widget = _frontendWidgets[index];
-            return true;
-        }
-
-        widget = default;
-        return false;
-    }
-
-    private bool TryGetFrontendSlotIndex(int slot, out int index)
-    {
-        if (_frontendSlots.TryGetValue(slot, out index) &&
-            (uint)index < (uint)_frontendWidgets.Count)
-            return true;
-        index = -1;
-        return false;
-    }
+    public bool TryGetFrontendSlot(int slot, out FrontendWidget widget) =>
+        _frontendSlotRoots.TryGetValue(slot, out widget);
 
     /// <summary>
     /// Action 26 <c>[inner+364]=1</c> on
@@ -6962,14 +6955,13 @@ public sealed class EngineLifecycle : IDisposable
         }
     }
 
-    private void AttachFrontendTree(string rootName)
+    private void AttachFrontendTree(string rootName, int? slot = null)
     {
         if (Install is not null && _frontendSprites is null)
             _frontendSprites = new FrontendSpriteBank(Install);
         if (Install is not null && _frontendFonts is null)
             _frontendFonts = new FontBank(Install);
         _frontendWidgets.Clear();
-        _frontendSlots.Clear();
         FrontendChildCount = 0;
         FrontendRootType = 0;
         if (FrontendDefs is null)
@@ -7000,6 +6992,9 @@ public sealed class EngineLifecycle : IDisposable
             Note(FrontendWidgetType.ChildAttachFn, "Frontend", "UI",
                 $"005331A0 child {widget.Name} type {widget.Type}");
         }
+
+        if (slot is int key)
+            BindFrontendSlot(key);
     }
 
     private void ApplyFrontendScaleInit()

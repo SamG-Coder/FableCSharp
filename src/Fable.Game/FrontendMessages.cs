@@ -59,6 +59,11 @@ public static class FrontendMessages
 
     public const int PressStartSlot = 0x14;
     public const int NewProfileSlot = 0x17;
+    /// <summary>
+    /// <c>00595A06</c> overwrites
+    /// existing key <c>0</c>.
+    /// </summary>
+    public const int MainMenuSlot = 0;
     public const int UiArmedOffset = 160;
     public const int Ui100Offset = 100;
     public const int Ui96Offset = 96;

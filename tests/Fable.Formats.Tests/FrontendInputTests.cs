@@ -15,6 +15,7 @@ public sealed class FrontendInputTests
         Assert.Equal(15, FrontendMessages.NewGame);
         Assert.Equal(0x14, FrontendMessages.PressStartSlot);
         Assert.Equal(0x17, FrontendMessages.NewProfileSlot);
+        Assert.Equal(0, FrontendMessages.MainMenuSlot);
         Assert.Equal("UI_FRONTEND_PRESS_START_MENU", FrontendMessages.PressStartMenu);
         Assert.Equal("UI_FRONTEND_NEW_PROFILE_SCREEN", FrontendMessages.NewProfileMenu);
         Assert.Equal("UI_NEW_PROFILE_EDIT_BOX", FrontendMessages.NewProfileEditBox);

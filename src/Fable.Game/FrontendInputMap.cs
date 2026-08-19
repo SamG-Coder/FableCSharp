@@ -42,6 +42,9 @@ public sealed class FrontendInputMap
     public const uint SlotLookupFn = 0x0059B5D7;
     public const int SlotMapOffset = 84;
     public const int SlotNodeValueOffset = 20;
+    public const int PressStartSlot = FrontendMessages.PressStartSlot;
+    public const int NewProfileSlot = FrontendMessages.NewProfileSlot;
+    public const int MainMenuSlot = 0;
     public const uint GenericWidgetVtbl = 0x0122F5D4;
     public const uint Type10WidgetVtbl = 0x012497E4;
     public const int WidgetMessageVtbl = 284;
