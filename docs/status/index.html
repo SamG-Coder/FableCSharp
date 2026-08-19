@@ -75,33 +75,32 @@
 
     <p>
       Snapshot: <strong>2026-08-19</strong>, previous snapshot runtime HEAD
-      <code>405b1e8</code> via PR #47 merge <code>8a7eccb</code>
-      (~12:43pm AEST),
-      runtime HEAD <code>b075dd3</code>
-      (<em>CLightDef + ForwardSelectState,
-      CSpotLightDef + packed-alpha +151 skip,
-      CClockDef + style-tick constants named only,
-      CHeroDef + style lookup named only,
-      New Profile layout/hit recover</em>).
-      Just locked: 5 runtime commits since <code>405b1e8</code>.
-      Headline locks in order: CLightDef fifteenth MATCH +
-      ForwardSelectState (<code>46663e3</code>);
-      CSpotLightDef sixteenth MATCH + packed-alpha
-      <code>+151</code> skip (<code>db3899a</code>);
-      CClockDef seventeenth MATCH + style-tick
-      constants named only (<code>065eb28</code>);
-      CHeroDef eighteenth MATCH + style lookup named
-      only (<code>6577614</code>); New Profile
-      layout/hit recover (<code>b075dd3</code>).
-      Ignore docs merge <code>8a7eccb</code> / docs
-      <code>83ce2f7</code> / <code>4539318</code>.
-      CSS unchanged. Freeze at <code>b075dd3</code>.
+      <code>b075dd3</code> via PR #49 merge <code>8181f40</code>
+      (~2:16pm AEST),
+      runtime HEAD <code>d628952</code>
+      (<em>type-12 persist-X pack, dest AABB
+      hit then chrome-hit invent, type-16 dest point again,
+      type-2 L/R/M sprite caps, first-proximity TNG +
+      persist-size slice</em>).
+      Just locked: 5 runtime commits since <code>b075dd3</code>.
+      Headline locks in order: type-12 persist-X pack
+      (<code>43b1cf2</code>); dest AABB hit
+      (<code>6e76ac5</code>); type-2 leftover tile +
+      type-16 dest point (<code>68eb1c5</code>);
+      type-2 sprite L/R/M caps + TryChromeHit
+      (<code>069c6a9</code>); first-proximity
+      LookoutPoint.tng + persist-size menu slice
+      (<code>d628952</code>).
+      Ignore docs merge <code>8181f40</code> / docs
+      <code>9c4416c</code>.
+      CSS unchanged. Freeze at <code>d628952</code>.
       Do not include any later runtime if master moves.
       dest still invented 512,384,512,384; DIP
-      <code>(0,0)</code> stand-in; exclusive-walk host leftover
-      still stands; New Profile dest/hit is host stand-in.
+      <code>(0,0)</code> stand-in; exclusive-walk leftover
+      still stands; New Profile dest/hit is host stand-in;
+      first-proximity TNG is host OOM workaround.
       leave #14 and #20 open
-      (also leave #36 #42 #46 #48 open).
+      (also leave #36 #42 #46 #48 #50 open).
       Master is still
       proving <strong>boot / world clock</strong>, not animation.
       README’s long-term priority list still starts with animation; that
@@ -288,22 +287,18 @@
 
     <h3>Phase 1 in progress — boot / world clock (current master)</h3>
     <p>
-      Recent commits (<code>46663e3</code> … <code>b075dd3</code>) lock
-      Init Thing Components Add Def Class Notes for
-      CLightDef then CSpotLightDef /
-      CClockDef / CHeroDef, plus ForwardSelectState
-      (+332 via <code>0041C5A0</code>), packed-alpha
-      <code>+151</code> leaf DIP skip, style-tick /
-      style-lookup constants named only, and New
-      Profile layout/hit recover. Previous snapshot
-      <code>405b1e8</code> via PR #47 <code>8a7eccb</code>.
-      Just locked this batch: CLightDef fifteenth MATCH +
-      ForwardSelectState, CSpotLightDef sixteenth MATCH +
-      packed-alpha <code>+151</code> skip, CClockDef
-      seventeenth MATCH + style-tick constants named
-      only, CHeroDef eighteenth MATCH + style lookup
-      named only, New Profile layout/hit recover.
-      MATCH for named-stage Add Def Class is Note-only +
+      Recent commits (<code>43b1cf2</code> … <code>d628952</code>) lock
+      type-12 persist-X pack so persist X=-100 is not dest X=-45,
+      dest AABB hit then chrome-hit invent, type-2 leftover
+      tile + type-16 dest as a point again, type-2 sprite
+      L/R/M caps + TryChromeHit, and first-proximity
+      LookoutPoint.tng + persist-size menu slice. Previous
+      snapshot <code>b075dd3</code> via PR #49 <code>8181f40</code>.
+      Just locked this batch: type-12 persist-X pack, dest AABB hit,
+      type-2 leftover tile + type-16 dest point, type-2
+      sprite L/R/M caps + TryChromeHit, first-proximity
+      LookoutPoint.tng + persist-size menu slice.
+      MATCH for named-stage Add Def Class is still Note-only +
       <code>*DefClassRegistered</code> flag, not a live
       constructed object. dest
       <code>0044C72B</code> as <code>[01232C24+8]</code>
@@ -314,11 +309,22 @@
       read (leave #36 open). dest is still invented
       512,384,512,384 and Press Start dest table is
       unchanged (type-6 still remapped point).
+      <code>CompositeFrontendPresent</code> still
+      <code>BuildBatch(..., 0, 0, width, height)</code>.
       <code>DrawContainerWalk</code> exclusive-walk
       unchanged. Host still exclusive-walks
       <code>kids[ActiveChild]</code> for SelectsChild
       (leave #46 open). New Profile dest/hit is host
-      stand-in (leave #48 open). Resident slots 0 /
+      stand-in: <code>PlaceTableCell</code> n==3 leftover fill
+      still host; <code>TryChromeHit</code> invents type-16/37 hit
+      size from rightmost type-2; persist-size skip is
+      extra host heuristic on the same helper (leave #48
+      open). First-proximity TNG is host OOM workaround,
+      not a locked native <code>ebx=1</code> / NewMap slot /
+      <code>00501450</code> (leave #50 open). Style-6 persist /
+      style-tick / style-lookup still named-only
+      (constants), not applied. #5 grok-goal dump still
+      written — do not re-file. Resident slots 0 /
       <code>0x14</code> / <code>0x17</code> still MATCH
       <code>00595222</code>. CSS unchanged.
     </p>
@@ -912,6 +918,31 @@
           <td><code>b075dd3</code> / <code>New_Profile_type12_rows_use_persist_plus326_not_equal_Y</code> / <code>New_Profile_apply_cancel_hit_rects_are_disjoint</code> / <code>New_Profile_empty_space_Type4_Type6_does_not_accept</code> / <code>New_Profile_Apply_hit_posts_0x126_Cancel_does_not</code></td>
         </tr>
         <tr>
+          <td>Pack type-12 rows so persist X=-100 is not dest X=-45. Persist <code>Plus322</code> CRC <code>0xA04E63BE</code>. <code>ListChildAuthoredPos</code> packs children; persist X=-100 discarded. Stopped writing packed Y back onto <code>PersistY</code> (partial #48 item 4). Added <code>ExpandControlDests</code> (type-16/37 dest grown from rightmost type-2 — invented dest). Tests lock host pack formula and “has area”, not dest numbers. Press Start dest table <strong>unchanged</strong>: type-6 still remapped point <code>512,384,512,384</code>. DIP <code>(0,0)</code> stand-in. Exclusive-walk not gone. Style-6 still named-only. #48 stays open. Leave #14 #20 #36 #42 #46 #48 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>43b1cf2</code> / <code>New_Profile_type12_rows_use_persist_plus326_not_equal_Y</code></td>
+        </tr>
+        <tr>
+          <td>Hit New Profile widgets from dest, not leftover unions. <code>UnionDescendants</code> deleted. <code>HitRect</code> = dest AABB only. Point dests miss. Dest writers unchanged (<code>ExpandControlDests</code>, <code>PlaceTableCell</code> n==3, <code>ExpandTableDests</code>). #48 stays open (union stop is item 2 only). Press Start dest table unchanged. DIP <code>(0,0)</code> stand-in. Exclusive-walk not gone. Leave #14 #20 #36 #42 #46 #48 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>6e76ac5</code> / <code>New_Profile_per_control_LMB_uses_dest_not_empty_space</code> / <code>New_Profile_apply_cancel_hit_rects_are_disjoint</code></td>
+        </tr>
+        <tr>
+          <td>Tile type-2 leftover cells and keep type-16 dest a point. <strong><code>ExpandControlDests</code> deleted</strong>. Type-16/37 dest is a point again (honest undo of <code>43b1cf2</code> size invent). <code>PlaceTableCell</code> n==3 fill is NOT gone — first/last sibling leftover W as caps. <code>BindEditBoxSeed</code> / <code>SpritesThenGlyphs</code> claimed <code>00851770</code> / <code>0054EF00</code> — oversell. Tests: slider/edit dest is a <strong>point</strong>; live cells tile-the-bar, not dest tuples. #5 grok-goal dump still written — do not re-file. #48 stays open. Press Start dest table unchanged. DIP <code>(0,0)</code> stand-in. Exclusive-walk not gone. Leave #14 #20 #36 #42 #46 #48 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>68eb1c5</code> / <code>New_Profile_persist_child_order_and_layers</code> / <code>New_Profile_type12_rows_use_persist_plus326_not_equal_Y</code></td>
+        </tr>
+        <tr>
+          <td>Pair type-2 sprite keys as left/right caps and stretch. Persist Sprites sorted by key → clone order L, R, M. <code>SpriteKeys == [0,1,4]</code> MATCH persist. <code>PlaceTableCell</code> index 1 is now right cap; n==3 leftover fill still invented. <strong><code>TryChromeHit</code>:</strong> if dest is a point, hit = dest origin + rightmost type-2 table dest size. Claimed <code>0055B8F0</code>. <strong>Regresses</strong> <code>6e76ac5</code> “hit dest AABB only” for type-16/37. <code>SpritesThenGlyphs</code> now per <code>[ui+84]</code> tree (<code>0054EF00</code> oversell). Tests lock tiling / nonempty chrome hit / click <code>(700,300)</code>, not dest numbers. Persist leftover LEFT still <code>(180, 0)</code>; helper uses 288×32. #48 stays open. Press Start dest table unchanged. DIP <code>(0,0)</code> stand-in. Exclusive-walk not gone. Leave #14 #20 #36 #42 #46 #48 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>069c6a9</code> / <code>New_Profile_persist_child_order_and_layers</code> / <code>New_Profile_apply_cancel_hit_rects_are_disjoint</code></td>
+        </tr>
+        <tr>
+          <td>New Game TNG load + menu cap slice. <strong>TNG:</strong> <code>LoadGlobalThingsFile</code> now <code>break</code>s on the first <code>LoadedOnPlayerProximity</code> map, Notes <code>LoadGlobalThingsPerMap</code> (<code>004FDBC0</code>) as <code>"004FBF60 " + lookout.ScriptName + ".tng"</code>, loads that one TNG, sets <code>GlobalThingMapsLoaded = 1</code>. Does <strong>not</strong> look up <code>map.Index == 1</code> or name <code>LookoutPoint</code>; takes first proximity map in WLD parse order. Comment claims <code>004FDBC0 ebx=1</code> skips dummy slot 0 and first <code>004FBF60</code> is LookoutPoint (NewMap 1); later maps stay closed until <code>00501450</code> / <code>ContainsMap</code>. Real reason in code: parsing every proximity <code>.tng</code> OOMs the New Game pump. <strong>Menu slice:</strong> Type-2 <code>PlaceTableCell</code> only when <code>persistW == 0 && persistH == 0</code>. Persist-size kids (mouse-area) skip the table helper and fall through to generic dest / inherit-scale <code>005339B0</code>. <code>PlaceTableCell</code> body <strong>unchanged</strong> from <code>069c6a9</code> (<code>count==3</code> host L/R/mid fill claimed as <code>00551EA0</code>). <code>AttachSpriteCells</code> still attaches every <code>SpriteDefIndices</code> entry. Tests: <code>New_Game_004FDBC0_opens_LookoutPoint_only</code> locks <code>GlobalThingMapsLoaded == 1</code> + LookoutPoint in the Note, no Bowerstone Note. Does <strong>not</strong> lock NewMap index, <code>ebx=1</code>, <code>004FBF60</code> callee, or <code>00501450</code>. <code>Main_Menu_button_slices_are_sprite_keys_not_mouse_area</code> locks <code>SpriteKeys == [0,1,4]</code>, mouse-area persist W&gt;0 / alpha 0, kids[1..3] tile the table dest. Host dest tiling, no native dest tuple. Filed leftover <strong>#50</strong>: host first-proximity TNG / OOM workaround sold as recovered <code>004FDBC0</code> NewMap 1. Do not fold #50 into #4 (ledgers vs TNG pump). Persist-size skip is #48 family, not a new leftover. Press Start dest table unchanged. DIP <code>(0,0)</code> stand-in. Exclusive-walk not gone. <code>CompositeFrontendPresent</code> still <code>BuildBatch(..., 0, 0, width, height)</code>. Leave #14 #20 #36 #42 #46 #48 #50 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>d628952</code> / <code>New_Game_004FDBC0_opens_LookoutPoint_only</code> / <code>Main_Menu_button_slices_are_sprite_keys_not_mouse_area</code></td>
+        </tr>
+        <tr>
           <td><code>[node+20]</code> is <code>0041DB1D</code>/<code>0041D21B</code> type0 <code>0041B800</code> vtbl <code>0122F5D4</code>; draw <code>0041AFA0</code> not <code>0052D900</code></td>
           <td><span class="badge DISPROVEN">DISPROVEN</span></td>
           <td>PRESS_START Type=10. Type 0 is <code>UI_FRONTEND_BUTTON</code>.</td>
@@ -1221,7 +1252,7 @@
         <tr>
           <td>Frontend <code>00595222</code> widget DIP body</td>
           <td><span class="badge DISPROVEN">DISPROVEN</span> as DIP</td>
-          <td><code>00595222</code> calls <code>[node+20].vtbl+8</code>. Types 5/10/12/18 are <code>00530260</code> DrawsChildList (<code>7adf621</code>). Tick/draw walk every resident <code>[ui+84]</code> slot (<code>b4a2c89</code> / <code>Frontend_tick_and_draw_walk_resident_ui84_slots</code>). Resident slots 0 / <code>0x14</code> / <code>0x17</code> still MATCH <code>00595222</code> (<code>405b1e8</code> / <code>Frontend_dumps_press_start_new_profile_main_menu_after_avi_skip</code>). Present skip VAs <code>0052F180</code> / <code>0052F1D0</code> / <code>0041C5A0</code> / +348 are constants + proof only (<code>Factory_builds_press_start_then_main_menu_from_the_same_walk</code>); never read by <code>DrawContainerWalk</code> or <code>IsPresented</code>. Host still exclusive-walks <code>kids[ActiveChild]</code> for SelectsChild; exclusive-walk still in <code>IsPresented</code> (leave #46 open). Present <code>0042DF9E</code> still Note-only. Present/UI submit still not locked. Clicks now exist (<code>ClickNamed</code> / host hit midpoint). New Profile dest/hit is host stand-in (leave #48 open). Host draw still does not skip on State=6. Host still Notes <code>009DA9F0</code> DIP. leave #14 open.</td>
+          <td><code>00595222</code> calls <code>[node+20].vtbl+8</code>. Types 5/10/12/18 are <code>00530260</code> DrawsChildList (<code>7adf621</code>). Tick/draw walk every resident <code>[ui+84]</code> slot (<code>b4a2c89</code> / <code>Frontend_tick_and_draw_walk_resident_ui84_slots</code>). Resident slots 0 / <code>0x14</code> / <code>0x17</code> still MATCH <code>00595222</code> (<code>405b1e8</code> / <code>Frontend_dumps_press_start_new_profile_main_menu_after_avi_skip</code>). Present skip VAs <code>0052F180</code> / <code>0052F1D0</code> / <code>0041C5A0</code> / +348 are constants + proof only (<code>Factory_builds_press_start_then_main_menu_from_the_same_walk</code>); never read by <code>DrawContainerWalk</code> or <code>IsPresented</code>. Host still exclusive-walks <code>kids[ActiveChild]</code> for SelectsChild; exclusive-walk still in <code>IsPresented</code> (leave #46 open). Present <code>0042DF9E</code> still Note-only. Present/UI submit still not locked. Clicks now exist (<code>ClickNamed</code> / host hit midpoint). New Profile dest/hit is host stand-in: persist-size skip / <code>TryChromeHit</code> are #48 family (leave #48 open). Host draw still does not skip on State=6. Host still Notes <code>009DA9F0</code> DIP. leave #14 open.</td>
         </tr>
         <tr>
           <td><code>00B324A0</code> type-0x22 handler vtbl+20</td>
@@ -1231,7 +1262,7 @@
         <tr>
           <td><code>0041AC20</code> dest rect from +204/+248</td>
           <td><span class="badge PROVEN">PROVEN</span> ctor 0,0,0,0; type-6 dest (512,384,512,384)</td>
-          <td>leftover+204 GraphicIndex gate recovered (<code>76edbbd</code> / <code>Leftover204_is_0041AC20_graphic_index_not_persist_size</code>): index 0 → leftover 0. dest still invented 512,384,512,384; tests lock that dest (<code>Frontend_0041AC20_dest_and_0xE5_new_profile_0x126_main_menu_15</code>). Leftover <code>+204</code> is widget +204, not dest width (<code>b1d6877</code> / <code>Type6_leftover204_is_widget_plus204_not_dest_width</code>). Type-6 leftover 16×16 is gone (0 first-seen). Type-6 dest is a point at remapped origin (512,384,512,384), not ctor 0,0,0,0 (<code>Press_Start_type6_dest_is_a_point</code> / <code>Frontend_PRESS_START_is_type_10_with_text_child</code>). <code>UI_TITLE_01</code> dest still from texture FrameWidth 256 (<code>Press_Start_first_seen_dest_table_matches_0041AFA0</code>). Leftover <code>+204/+208</code> only when <code>GraphicIndex != 0</code> (<code>1a08cc0</code>). New Profile type-2 leftover (180,0) and <code>PlaceTableCell</code> n==3 fill are host heuristics, not dest lock (leave #48 open). <code>DisplayFlushShouldDip(0, 0)</code> stand-in. leave #36 open.</td>
+          <td>leftover+204 GraphicIndex gate recovered (<code>76edbbd</code> / <code>Leftover204_is_0041AC20_graphic_index_not_persist_size</code>): index 0 → leftover 0. dest still invented 512,384,512,384; tests lock that dest (<code>Frontend_0041AC20_dest_and_0xE5_new_profile_0x126_main_menu_15</code>). Leftover <code>+204</code> is widget +204, not dest width (<code>b1d6877</code> / <code>Type6_leftover204_is_widget_plus204_not_dest_width</code>). Type-6 leftover 16×16 is gone (0 first-seen). Type-6 dest is a point at remapped origin (512,384,512,384), not ctor 0,0,0,0 (<code>Press_Start_type6_dest_is_a_point</code> / <code>Frontend_PRESS_START_is_type_10_with_text_child</code>). <code>UI_TITLE_01</code> dest still from texture FrameWidth 256 (<code>Press_Start_first_seen_dest_table_matches_0041AFA0</code>). Leftover <code>+204/+208</code> only when <code>GraphicIndex != 0</code> (<code>1a08cc0</code>). New Profile type-2 leftover (180,0) and <code>PlaceTableCell</code> n==3 fill are host heuristics, not dest lock; persist-size skip / <code>TryChromeHit</code> are #48 family (leave #48 open). <code>DisplayFlushShouldDip(0, 0)</code> stand-in. leave #36 open.</td>
         </tr>
         <tr>
           <td>New Game keyboard N/Enter (host stand-in)</td>
@@ -1314,9 +1345,19 @@
           <td>Thing Components now Notes Add Def Class for CHeroMorphDef then CHighlightItemDef / CSmokeGeneratorDef / CTimeAppearanceFadeDef / CCreatureNavigationDef / CInventoryItemDef / CLookDef / CReadableDef / CVillageDef / CVillageMemberDef / CBuyableHouseDef / CBuyHouseDef / CWifeDef / CDoorDef / CLightDef / CSpotLightDef / CClockDef / CHeroDef (<code>b7f4c34</code> / <code>acfe46f</code> / <code>100e5cf</code> / <code>1a4c51d</code> / <code>ee08490</code> / <code>3a7b594</code> / <code>b1d6877</code> / <code>113a514</code> / <code>a141c27</code> / <code>76edbbd</code> / <code>91564bd</code> / <code>f30c099</code> / <code>71ae66e</code> / <code>405b1e8</code> / <code>46663e3</code> / <code>db3899a</code> / <code>065eb28</code> / <code>6577614</code>). MATCH is Note-only + <code>*DefClassRegistered</code> flag, not live constructed. LoadDef field walk stays PARTIAL. Do not invent a live object.</td>
         </tr>
         <tr>
+          <td>Lookout/GuildArrival vs Oakvale intro view (#4)</td>
+          <td>leftover #4</td>
+          <td>No-save first region / first <em>rendered</em> scene is LookoutPoint (<code>RegionThings</code> + <code>006B3FF0</code> / GuildArrivalHSP). First-scene <em>intro view</em> is still <code>StartOakValeWest</code> / <code>HerosOldHouse</code> / <code>CAM_OVIF_SHOT2</code> (<code>FIRST_SCENE_*</code>). Do not collapse those ledgers. Do not fold first-proximity TNG (#50) into this leftover. Leave #4 open.</td>
+        </tr>
+        <tr>
           <td>New Profile dest/hit (#48)</td>
           <td>leftover #48</td>
-          <td>New Profile dest/hit claimed recovered (<code>b075dd3</code>). Persist parse of type-12 <code>+326=30</code> / Sprites is real file recover. <code>PlaceTableCell</code> / type-2 leftover (180,0) / hit AABB are host heuristics. Tests do not lock dest numbers. Leave #48 open.</td>
+          <td>New Profile dest/hit still not dest-locked (<code>b075dd3</code> … <code>d628952</code>). Persist parse of type-12 <code>+326=30</code> / Sprites / <code>SpriteKeys == [0,1,4]</code> is real file recover. <code>PlaceTableCell</code> n==3 leftover fill still host. <code>TryChromeHit</code> invents type-16/37 hit size from rightmost type-2 (regresses <code>6e76ac5</code> dest AABB only). Persist-size skip (<code>persistW==0 &amp;&amp; persistH==0</code> before <code>PlaceTableCell</code>) is extra host heuristic on the same helper — #48 family, not a new leftover. Tests lock pack formula / tiling / nonempty chrome hit / click <code>(700,300)</code>, not dest numbers. Leave #48 open.</td>
+        </tr>
+        <tr>
+          <td>First-proximity TNG pump (#50)</td>
+          <td>leftover #50</td>
+          <td>Host <code>LoadGlobalThingsFile</code> <code>break</code>s on the first <code>LoadedOnPlayerProximity</code> map and Notes <code>004FDBC0</code> / <code>004FBF60 LookoutPoint.tng</code> (<code>d628952</code>). Real reason is New Game pump OOM if every proximity <code>.tng</code> is parsed. Tests lock <code>GlobalThingMapsLoaded == 1</code> + LookoutPoint in the Note, no Bowerstone Note. Does <strong>not</strong> lock NewMap index, <code>ebx=1</code>, <code>004FBF60</code> callee, or <code>00501450</code>. First-proximity TNG is host OOM workaround, not a recovered <code>004FDBC0</code> NewMap-1 lock. Do not fold #50 into #4 (ledgers vs TNG pump). Leave #50 open.</td>
         </tr>
         <tr>
           <td>Type-16/18 host exclusive-walk SelectsChild</td>
@@ -1551,14 +1592,13 @@
         (<code>b8a2b21</code>). Init World <code>004A67D0</code>
         / <code>004A6E30</code> run inside <code>0041735A</code>
         before <code>00417418</code>.
-        Recent commits <code>46663e3</code> …
-        <code>b075dd3</code> lock Init Thing Components Add
-        Def Class Notes for CLightDef then
-        CSpotLightDef / CClockDef / CHeroDef, plus
-        ForwardSelectState, packed-alpha
-        <code>+151</code> skip, style-tick / style-lookup
-        named only, and New Profile layout/hit recover.
-        MATCH for named-stage Add Def Class is Note-only +
+        Recent commits <code>43b1cf2</code> …
+        <code>d628952</code> lock type-12 persist-X pack,
+        dest AABB hit then chrome-hit invent, type-2 leftover
+        tile + type-16 dest point, type-2 sprite L/R/M caps +
+        TryChromeHit, and first-proximity LookoutPoint.tng +
+        persist-size menu slice.
+        MATCH for named-stage Add Def Class is still Note-only +
         <code>*DefClassRegistered</code> flag, not a live
         constructed object. dest <code>0044C72B</code> as
         <code>[01232C24+8]</code> is not rdata-locked
@@ -1585,10 +1625,18 @@
         <code>IsPresented</code>. Host still exclusive-walks
         <code>kids[ActiveChild]</code> for SelectsChild
         (leave #46 open). New Profile dest/hit is host
-        stand-in (leave #48 open). dest still invented
+        stand-in: <code>PlaceTableCell</code> n==3 leftover fill still
+        host; <code>TryChromeHit</code> invents type-16/37 hit size
+        from rightmost type-2; persist-size skip is #48
+        family (leave #48 open). First-proximity TNG is
+        host OOM workaround, not a locked native <code>ebx=1</code> /
+        NewMap slot / <code>00501450</code> (leave #50 open). Do not
+        collapse Lookout vs Oakvale (leave #4 open). dest still invented
         512,384,512,384; DIP <code>(0,0)</code>
         stand-in; exclusive-walk leftover still
-        stands. Resident slots 0 /
+        stands. <code>CompositeFrontendPresent</code> still
+        <code>BuildBatch(..., 0, 0, width, height)</code>.
+        Resident slots 0 /
         <code>0x14</code> / <code>0x17</code> still MATCH
         <code>00595222</code>. Host Notes
         <code>009DA9F0(1) [+16020] empty</code> / skip DIP:
@@ -1610,7 +1658,7 @@
         (<code>Type4_action_26_posts_stored_widget_message</code>,
         <code>Type4_drives_lifecycle_0xE5_then_0x126_then_15</code>).
         PlayAVI still 3D Draw (#20). leave #14 and #20 open
-        (also leave #36 #42 #46 #48 open).
+        (also leave #36 #42 #46 #48 #50 open).
         New Game submit now walks
         <code>0x4</code>/<code>0x40</code>/<code>0x20</code>/<code>0x100</code>/<code>0x2000</code>
         (<code>676bf63</code>); cell DIP is <code>0x40</code> only
@@ -1625,8 +1673,10 @@
       <li>
         <strong>GTNG is not an unread file on TLC</strong> — missing skip is
         PROVEN. <code>00521AE0</code> loads the current map <code>.tng</code>.
-        Remaining UNREAD is global-things <em>use</em> after
-        <code>004FDBC0</code> / <code>.gtg</code> parse, plus
+        Host first-proximity TNG (<code>d628952</code>) is leftover #50
+        (OOM workaround), not a <code>004FDBC0</code> NewMap-1 lock and
+        not folded into #4. Remaining UNREAD is global-things <em>use</em>
+        after <code>004FDBC0</code> / <code>.gtg</code> parse, plus
         <code>[record+36]</code> and catchup-tick writers.
       </li>
       <li>
