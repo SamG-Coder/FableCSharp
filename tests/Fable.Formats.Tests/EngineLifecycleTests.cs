@@ -2196,9 +2196,11 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.FrontendWidgets, w => w.Name == "UI_ACCEPT_NEW_PROFILE");
         Assert.Contains(life.FrontendWidgets, w =>
             w.Name == "UI_OPTIONS_TEXT_CONTROL_ARROWS" && w.Visible &&
-            !FrontendWidgetType.LeafDipSkipped(w.Colour));
+            w.StyleIndex == FrontendWidgetType.TextSliderFirstSeenSelect &&
+            FrontendWidgetType.LeafDipSkipped(w.Colour));
         Assert.Contains(life.FrontendWidgets, w =>
             w.Name == "UI_OPTIONS_TEXT_CONTROL_WASD" && w.Visible &&
+            w.StyleIndex == FrontendWidgetType.FirstSeenState &&
             FrontendWidgetType.LeafDipSkipped(w.Colour));
         Assert.Contains(life.FrontendWidgets, w =>
             w.Name.Contains("COASTAL_SUNBEAM_2_1", StringComparison.Ordinal) && w.Visible);

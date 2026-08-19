@@ -3936,7 +3936,7 @@ public sealed class EngineLifecycle : IDisposable
         drawn++;
         if (FrontendWidgetType.DrawsChildList(widget.Type))
         {
-            var kids = FrontendWidgetFactory.ChildrenOf(tree, widget.Name);
+            var kids = FrontendWidgetFactory.ChildrenOf(tree, index);
             foreach (var child in kids)
                 DrawContainerWalk(tree, child, ref drawn);
             return;
@@ -8089,8 +8089,7 @@ public sealed class EngineLifecycle : IDisposable
         if ((uint)index >= (uint)tree.Count)
             return;
         tree[index] = tree[index] with { State = state };
-        var name = tree[index].Name;
-        foreach (var child in FrontendWidgetFactory.ChildrenOf(tree, name))
+        foreach (var child in FrontendWidgetFactory.ChildrenOf(tree, index))
         {
             Note(FrontendWidgetType.ForwardSelectFn, "Frontend", "UI",
                 $"0041C5A0 vtbl+188 +{FrontendWidgetType.DurationOffset} child {tree[child].Name} +332={state}");

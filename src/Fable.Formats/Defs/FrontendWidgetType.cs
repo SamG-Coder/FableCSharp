@@ -133,14 +133,15 @@ public static class FrontendWidgetType
     /// Type-16 <c>vtbl+172</c>
     /// <c>00549230</c> <c>push 3</c>
     /// then child <c>[+348].vtbl+192</c>.
-    /// <c>00548F40</c> arg 5: every
-    /// <c>+176</c> child <c>vtbl+192(1)</c>,
-    /// selected <c>[+348]</c>
-    /// <c>vtbl+192(3)</c>. Colour is
-    /// style <c>+328</c>, not <c>+332</c>.
+    /// <c>vtbl+176</c> <c>0041C5C0</c>
+    /// is style-exists → <c>+328=3</c>.
+    /// Present colour stays style 0
+    /// (<c>005339B0</c> <c>+132</c>).
     /// </summary>
     public const int TextSliderFirstSeenSelect = 3;
-    public const int TextSliderUnselectedSelect = 1;
+    public const uint StyleExistsFn = 0x0041C5C0;
+    public const uint InheritPackedColourFn = 0x0052E930;
+    public const int InheritPackedColourVtbl = 88;
     /// <summary>
     /// <c>vtbl+188</c> <c>0041C5A0</c>:
     /// store duration at <c>+320</c>
