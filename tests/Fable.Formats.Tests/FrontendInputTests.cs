@@ -314,6 +314,55 @@ public sealed class FrontendInputTests
     }
 
     [Fact]
+    public void New_Profile_hover_0055BF10_swaps_type38_on_off()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.QueueInput(FrontendInputMap.Type4, 0);
+        life.QueueInput(FrontendInputMap.Type6, 0);
+        Assert.True(life.Pump());
+        Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        var apply = IndexOf(life, "UI_ACCEPT_NEW_PROFILE");
+        Assert.True(
+            FrontendHitTest.TryDestPoint(life.FrontendWidgets, apply, out var ax, out var ay));
+        life.SetFrontendPointer(12f, 12f);
+        Assert.True(life.Pump());
+        var offIdle = life.FrontendWidgets.First(w => w.Name == "UI_SPRITE_ACCEPT_OFF");
+        var onIdle = life.FrontendWidgets.First(w => w.Name == "UI_SPRITE_ACCEPT_ON");
+        Assert.Equal(255u, offIdle.Colour >> 24);
+        Assert.Equal(0u, onIdle.Colour >> 24);
+        life.SetFrontendPointer(ax, ay);
+        Assert.True(life.Pump());
+        var offHot = life.FrontendWidgets.First(w => w.Name == "UI_SPRITE_ACCEPT_OFF");
+        var onHot = life.FrontendWidgets.First(w => w.Name == "UI_SPRITE_ACCEPT_ON");
+        Assert.Equal(0u, offHot.Colour >> 24);
+        Assert.Equal(255u, onHot.Colour >> 24);
+        Assert.True(life.FrontendWidgets[apply].Hovered);
+        Assert.True(life.FrontendWidgets[apply].DestX1 > life.FrontendWidgets[apply].DestX0);
+        Assert.Equal(apply, FrontendHitTest.HitIndex(life.FrontendWidgets, ax, ay));
+        Assert.Equal(0x0055BF10u, FrontendHitTest.HoverSelectFn);
+        var pill = IndexOf(life, "UI_NEW_PROFILE_BUTTON");
+        Assert.True(
+            FrontendHitTest.TryDestPoint(life.FrontendWidgets, pill, out var px, out var py));
+        life.SetFrontendPointer(px, py);
+        Assert.True(life.Pump());
+        Assert.True(life.FrontendWidgets[pill].Hovered);
+        Assert.Contains(
+            life.FrontendWidgets,
+            w => w.Type == 1 &&
+                 (w.TextureName ?? "").EndsWith("_ON", StringComparison.OrdinalIgnoreCase));
+        life.SetFrontendPointer(ax, ay);
+        life.QueueInput(FrontendInputMap.Type4, 0);
+        life.QueueInput(FrontendInputMap.Type6, 0);
+        Assert.True(life.Pump());
+        Assert.Equal(EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
+    }
+
+    [Fact]
     public void New_Profile_Apply_hit_posts_0x126_Cancel_does_not()
     {
         var install = GameInstall.TryLocate();

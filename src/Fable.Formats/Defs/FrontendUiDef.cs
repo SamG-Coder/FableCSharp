@@ -225,6 +225,14 @@ public sealed class FrontendUiDef
     public float ColourG { get; init; }
     public float ColourB { get; init; }
     public float ColourA { get; init; }
+    /// <summary>
+    /// Persist <see cref="ColourACrc"/> was
+    /// present. Unread colour stays ctor
+    /// <c>005339B0</c> <c>+144..+147=0xFF</c>.
+    /// Explicit <c>ColourA=0</c> is
+    /// <c>0041AFA0</c> <c>+151</c> skip.
+    /// </summary>
+    public bool HaveColourA { get; init; }
     public float ZoomX { get; init; } = 1f;
     public float ZoomY { get; init; } = 1f;
     /// <summary>
@@ -305,6 +313,7 @@ public sealed class FrontendUiDef
         var colourG = 0f;
         var colourB = 0f;
         var colourA = 0f;
+        var haveColourA = false;
         var zoomX = 1f;
         var zoomY = 1f;
         var haveZoomX = false;
@@ -572,6 +581,7 @@ public sealed class FrontendUiDef
             if (crc == ColourACrc && payload + 4 <= raw.Length)
             {
                 var value = BitConverter.ToSingle(raw, payload);
+                haveColourA = true;
                 if (float.IsFinite(value))
                     colourA = value;
                 cursor = payload + 4;
@@ -689,6 +699,7 @@ public sealed class FrontendUiDef
             ColourG = colourG,
             ColourB = colourB,
             ColourA = colourA,
+            HaveColourA = haveColourA,
             ZoomX = zoomX,
             ZoomY = zoomY,
             Center = centreByte != 0,

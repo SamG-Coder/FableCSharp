@@ -69,13 +69,21 @@ public static class FrontendFrameDump
 
     /// <summary>
     /// Persist Colour* is 0..1. All-zero
-    /// is unread / ctor default; native
+    /// with no persist <c>ColourA</c> is
+    /// unread / ctor default; native
     /// <c>005339B0</c> then writes
-    /// <c>+144..+147=0xFF</c>.
+    /// <c>+144..+147=0xFF</c>. An
+    /// authored <c>ColourA=0</c> stays 0
+    /// so <c>0041AFA0</c> <c>+151</c>
+    /// skips the DIP.
     /// </summary>
-    public static uint PackPersistColour(float r, float g, float b, float a)
+    public static uint PackPersistColour(float r, float g, float b, float a) =>
+        PackPersistColour(r, g, b, a, haveColourA: false);
+
+    public static uint PackPersistColour(
+        float r, float g, float b, float a, bool haveColourA)
     {
-        if (r == 0f && g == 0f && b == 0f && a == 0f)
+        if (!haveColourA && r == 0f && g == 0f && b == 0f && a == 0f)
             return 0xFFFFFFFFu;
         return ((uint)ToByte(a) << 24)
             | ((uint)ToByte(r) << 16)

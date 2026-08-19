@@ -504,6 +504,8 @@ public sealed class FrontendLayoutTests
             FrontendHitTest.TryDestPoint(life.FrontendWidgets, cancel, out var cx, out var cy));
         var applyDest = life.FrontendWidgets[apply];
         var cancelDest = life.FrontendWidgets[cancel];
+        Assert.True(applyDest.DestX1 > applyDest.DestX0 && applyDest.DestY1 > applyDest.DestY0);
+        Assert.True(cancelDest.DestX1 > cancelDest.DestX0 && cancelDest.DestY1 > cancelDest.DestY0);
         Assert.Equal(applyDest.DestX0, applyDest.HitX0);
         Assert.Equal(applyDest.DestY0, applyDest.HitY0);
         Assert.Equal(applyDest.DestX1, applyDest.HitX1);
@@ -610,7 +612,12 @@ public sealed class FrontendLayoutTests
         var mouse = FrontendUiDef.TryParse(bin.FindEntry("UI_BUTTON_MOUSE_AREA")!)!;
         Assert.Equal(0, mouse.Type);
         Assert.Equal(0f, mouse.ColourA);
+        Assert.True(mouse.HaveColourA);
         Assert.True(mouse.Width > 0f);
+        Assert.Equal(
+            0u,
+            FrontendFrameDump.PackPersistColour(
+                mouse.ColourR, mouse.ColourG, mouse.ColourB, mouse.ColourA, mouse.HaveColourA) >> 24);
 
         var life = ReachNewProfile();
         var apply = IndexOf(life, "UI_ACCEPT_NEW_PROFILE");
