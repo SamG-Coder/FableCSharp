@@ -386,6 +386,26 @@ public sealed class FrontendLayoutTests
         (dest.X0, dest.Y0, dest.X1, dest.Y1);
 
     [Fact]
+    public void Leftover204_is_0041AC20_graphic_index_not_persist_size()
+    {
+        Assert.Equal(0x0041AC20u, FrontendLayout.LeftoverFn);
+        Assert.Equal(376, FrontendLayout.GraphicIndexOffset);
+        Assert.Equal(84, FrontendLayout.BankFrameWVtbl);
+        Assert.Equal(88, FrontendLayout.BankFrameHVtbl);
+        Assert.Equal((0f, 0f), FrontendLayout.LeftoverFromGraphic(0, 256f, 128f));
+        Assert.Equal((256f, 128f), FrontendLayout.LeftoverFromGraphic(3, 256f, 128f));
+        var persistWins = FrontendLayout.ComputeSubmitDest(
+            10, 8, 256f, 128f, 0f, 0f, 1f, 1f, center: false);
+        Assert.Equal((0f, 0f, 10f, 8f), persistWins);
+        var leftoverWhenPersistZero = FrontendLayout.ComputeSubmitDest(
+            0, 0, 32f, 16f, 10f, 20f, 2f, 2f, center: false);
+        Assert.Equal((10f, 20f, 74f, 52f), leftoverWhenPersistZero);
+        var type6 = FrontendLayout.ComputeSubmitDest(
+            0, 0, 0f, 0f, 512f, 384f, 1.6f, 1.6f, center: false);
+        Assert.Equal((512f, 384f, 512f, 384f), type6);
+    }
+
+    [Fact]
     public void Type6_leftover204_is_widget_plus204_not_dest_width()
     {
         Assert.Equal(204, FrontendLayout.DestWOffset);

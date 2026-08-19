@@ -1236,6 +1236,52 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Thing_Components_004F022E_adds_CVillageMemberDef()
+    {
+        Assert.Equal(0x004F0227u, EngineLifecycle.TenthDefClassSite);
+        Assert.Equal(0x004DA7ADu, EngineLifecycle.TenthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.TenthDefClassCtor);
+        Assert.Equal(0x0123E854u, EngineLifecycle.TenthDefClassVtbl);
+        Assert.Equal(38, EngineLifecycle.TenthDefClassSize);
+        Assert.Equal("CVillageMemberDef", EngineLifecycle.TenthDefClassName);
+        Assert.NotEqual(EngineLifecycle.NinthDefClassName, EngineLifecycle.TenthDefClassName);
+        Assert.NotEqual(EngineLifecycle.NinthDefClassFactory, EngineLifecycle.TenthDefClassFactory);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.False(life.TenthDefClassRegistered);
+        Assert.Null(life.TenthDefClass);
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.True(life.NinthDefClassRegistered);
+        Assert.Equal(EngineLifecycle.NinthDefClassName, life.NinthDefClass);
+        Assert.True(life.TenthDefClassRegistered);
+        Assert.Equal(EngineLifecycle.TenthDefClassName, life.TenthDefClass);
+        var ninthFactory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.NinthDefClassFactory);
+        var tenthSite = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TenthDefClassSite);
+        var tenthAdd = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.AddDefClassFn &&
+            e.Action.Contains(EngineLifecycle.TenthDefClassName, StringComparison.Ordinal));
+        var tenthFactory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TenthDefClassFactory);
+        var tenthLoad = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.LoadDefFn);
+        var tenthBudget = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.LoadDefBudgetFn);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(ninthFactory >= 0 && tenthSite > ninthFactory);
+        Assert.True(tenthAdd > tenthSite && tenthFactory > tenthAdd);
+        Assert.True(tenthLoad > tenthFactory && tenthBudget > tenthLoad);
+        Assert.True(defs > tenthBudget, "CVillageMemberDef before Init Definition Manager");
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Init_Definition_Manager_00416005_resets_plus88_via_vtbl8()
     {
         Assert.Equal(0x00416005u, EngineLifecycle.InitDefinitionManagerFn);
@@ -1398,6 +1444,67 @@ public sealed class EngineLifecycleTests
             e.Va == EngineLifecycle.LeaveFrontendSite);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.InitGameSite);
+    }
+
+    [Fact]
+    public void Frontend_0041AC20_dest_and_0xE5_new_profile_0x126_main_menu_15()
+    {
+        Assert.Equal(0x0041AC20u, FrontendLayout.LeftoverFn);
+        Assert.Equal(204, FrontendLayout.DestWOffset);
+        Assert.Equal(360, FrontendLayout.SizeWOffset);
+        Assert.Equal(264, FrontendLayout.DestScaleXOffset);
+        Assert.Equal((0f, 0f), FrontendLayout.LeftoverFromGraphic(0, 32f, 32f));
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.True(life.Pump());
+        Assert.Equal(
+            EngineLifecycle.FrontendPressStartMenu, life.FrontendMenuRoot);
+        var pressText = life.FrontendWidgets.First(w => w.Name == "UI_PRESS_START_TEXT");
+        Assert.Equal(0, pressText.GraphicId);
+        Assert.Equal(0f, pressText.Leftover204);
+        Assert.Equal(512f, pressText.DestX0);
+        Assert.Equal(384f, pressText.DestY0);
+        Assert.Equal(pressText.DestX0, pressText.DestX1);
+        Assert.Equal(pressText.DestY0, pressText.DestY1);
+        var title = life.FrontendWidgets.First(w => w.Name == "UI_TITLE_01");
+        Assert.True(title.GraphicId != 0);
+        Assert.True(title.Leftover204 > 0f);
+        Assert.True(title.DestX1 > title.DestX0);
+        life.QueueInput(EngineInput.Type4, 0);
+        life.QueueInput(EngineInput.Type6, 0);
+        Assert.True(life.Pump());
+        Assert.Equal(
+            EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        Assert.Equal("Default", life.FrontendEditBoxName);
+        Assert.False(life.RetailNewGameFlag);
+        Assert.All(
+            life.FrontendWidgets.Where(w => w.Type == FrontendWidgetType.Text),
+            w => Assert.Equal(0f, w.Leftover204));
+        life.QueueInput(EngineInput.Type4, 0);
+        life.QueueInput(EngineInput.Type6, 0);
+        Assert.True(life.Pump());
+        Assert.Equal(
+            EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
+        Assert.False(life.RetailNewGameFlag);
+        Assert.Contains(life.FrontendWidgets, w =>
+            w.Name == "UI_FRONTEND_BUTTON_NEW_GAME" &&
+            w.MessageId == FrontendMessages.NewGame);
+        Assert.All(
+            life.FrontendWidgets.Where(w => w.GraphicId == 0),
+            w => Assert.Equal(0f, w.Leftover204));
+        life.QueueInput(EngineInput.Type4, 0);
+        life.QueueInput(EngineInput.Type6, 0);
+        Assert.True(life.Pump());
+        Assert.True(life.RetailNewGameFlag);
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.Equal("FinalAlbion.wld", life.WorldFileName);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.LeaveFrontendSite);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
     }
 
     [Fact]

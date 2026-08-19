@@ -948,6 +948,25 @@ public sealed class EngineLifecycle : IDisposable
     public const int NinthDefClassSize = 0x10C;
     public const string NinthDefClassName = "CVillageDef";
     /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CVillageDef</c>:
+    /// <c>004F0227</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F022E</c>
+    /// <c>CVillageMemberDef</c>
+    /// factory <c>0x4DA7AD</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>0044C0C0</c>
+    /// size 38 vtbl <c>0123E854</c>.
+    /// Not intervening CTC rows.
+    /// </summary>
+    public const uint TenthDefClassSite = 0x004F0227;
+    public const uint TenthDefClassFactory = 0x004DA7AD;
+    public const uint TenthDefClassCtor = 0x0044C0C0;
+    public const uint TenthDefClassVtbl = 0x0123E854;
+    public const int TenthDefClassSize = 38;
+    public const string TenthDefClassName = "CVillageMemberDef";
+    /// <summary>
     /// <c>00416005</c> parent
     /// <c>push 1</c>:
     /// <c>0044C6B0</c>
@@ -2374,6 +2393,8 @@ public sealed class EngineLifecycle : IDisposable
     public string? EighthDefClass { get; private set; }
     public bool NinthDefClassRegistered { get; private set; }
     public string? NinthDefClass { get; private set; }
+    public bool TenthDefClassRegistered { get; private set; }
+    public string? TenthDefClass { get; private set; }
     /// <summary>
     /// After <c>00416005</c>
     /// <c>0044C72B</c> /
@@ -4868,22 +4889,39 @@ public sealed class EngineLifecycle : IDisposable
             EighthDefClass = EighthDefClassName;
             EighthDefClassRegistered = true;
         }
-        if (NinthDefClassRegistered)
+        if (!NinthDefClassRegistered)
+        {
+            Note(NinthDefClassSite, "Init Thing Components", "Defs",
+                $"004F0171 0044C6B0 {NinthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {NinthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {NinthDefClassName}");
+            Note(NinthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E213B 004DFF04 size 0x{NinthDefClassSize:X} vtbl 0x{NinthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {NinthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            NinthDefClass = NinthDefClassName;
+            NinthDefClassRegistered = true;
+        }
+        if (TenthDefClassRegistered)
             return;
-        Note(NinthDefClassSite, "Init Thing Components", "Defs",
-            $"004F0171 0044C6B0 {NinthDefClassName}");
+        Note(TenthDefClassSite, "Init Thing Components", "Defs",
+            $"004F0227 0044C6B0 {TenthDefClassName}");
         Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
-            $"0042DAE0 {NinthDefClassName}");
+            $"0042DAE0 {TenthDefClassName}");
         Note(AddDefClassFn, "Init Thing Components", "Defs",
-            $"009B0AC0 Add Def Class {NinthDefClassName}");
-        Note(NinthDefClassFactory, "Init Thing Components", "Defs",
-            $"004E213B 004DFF04 size 0x{NinthDefClassSize:X} vtbl 0x{NinthDefClassVtbl:X}");
+            $"009B0AC0 Add Def Class {TenthDefClassName}");
+        Note(TenthDefClassFactory, "Init Thing Components", "Defs",
+            $"004DA7AD 0044C0C0 size {TenthDefClassSize} vtbl 0x{TenthDefClassVtbl:X}");
         Note(LoadDefFn, "Init Thing Components", "Defs",
-            $"009AD6E0 {NinthDefClassName}");
+            $"009AD6E0 {TenthDefClassName}");
         Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
             $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
-        NinthDefClass = NinthDefClassName;
-        NinthDefClassRegistered = true;
+        TenthDefClass = TenthDefClassName;
+        TenthDefClassRegistered = true;
     }
 
     /// <summary>
@@ -7839,15 +7877,13 @@ public sealed class EngineLifecycle : IDisposable
             var persistH = widget.PersistHeight > 0 ? (int)widget.PersistHeight : 0;
             var leftoverW = 0f;
             var leftoverH = 0f;
-            // 0041AC20 leftover +204/+208 only when
-            // +376 = first style GraphicIndex != 0,
-            // via bank vtbl+84/+88 (frame w/h).
-            if (widget.GraphicId != 0 &&
-                widget.TextureName is { } leftoverName &&
+            if (widget.TextureName is { } leftoverName &&
                 _frontendSprites?.TryLoad(leftoverName) is { } leftoverTex)
             {
-                leftoverW = leftoverTex.FrameWidth > 0 ? leftoverTex.FrameWidth : leftoverTex.Width;
-                leftoverH = leftoverTex.FrameHeight > 0 ? leftoverTex.FrameHeight : leftoverTex.Height;
+                var frameW = leftoverTex.FrameWidth > 0 ? leftoverTex.FrameWidth : leftoverTex.Width;
+                var frameH = leftoverTex.FrameHeight > 0 ? leftoverTex.FrameHeight : leftoverTex.Height;
+                (leftoverW, leftoverH) = FrontendLayout.LeftoverFromGraphic(
+                    widget.GraphicId, frameW, frameH);
             }
 
             FrontendDest? parentDest = null;

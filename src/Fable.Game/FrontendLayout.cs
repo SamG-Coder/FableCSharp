@@ -15,6 +15,16 @@ public static class FrontendLayout
     public const uint DestScaleFn = 0x0052F5C0;
     public const uint DestOriginFn = 0x0052FFD0;
     public const uint SubmitDestFn = 0x0041AFA0;
+    /// <summary>
+    /// <c>0041AC20</c> leftover
+    /// <c>+204/+208</c> from bank
+    /// vtbl+84/+88 when
+    /// <c>+376</c> GraphicIndex != 0.
+    /// </summary>
+    public const uint LeftoverFn = 0x0041AC20;
+    public const int GraphicIndexOffset = 376;
+    public const int BankFrameWVtbl = 84;
+    public const int BankFrameHVtbl = 88;
     public const uint ResolutionScaleFn = 0x0052E580;
     public const uint CenterFn = 0x0052F1E0;
     public const uint ViewportFlagWriterFn = 0x004299A8;
@@ -202,6 +212,24 @@ public static class FrontendLayout
         }
 
         return (x, y);
+    }
+
+    /// <summary>
+    /// <c>0041AC20</c>:
+    /// <c>cmp [esi+376], ebx</c> /
+    /// <c>jbe</c> skip. Nonzero
+    /// GraphicIndex stores bank
+    /// vtbl+84/+88 (frame w/h) into
+    /// leftover <c>+204/+208</c>.
+    /// Not persist Width/Height.
+    /// Not font measure.
+    /// </summary>
+    public static (float W, float H) LeftoverFromGraphic(
+        int graphicIndex, float frameWidth, float frameHeight)
+    {
+        if (graphicIndex == 0)
+            return (0f, 0f);
+        return (frameWidth, frameHeight);
     }
 
     /// <summary>
