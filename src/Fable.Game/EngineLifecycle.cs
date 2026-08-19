@@ -1041,6 +1041,24 @@ public sealed class EngineLifecycle : IDisposable
     public const int FourteenthDefClassSize = 60;
     public const string FourteenthDefClassName = "CDoorDef";
     /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CDoorDef</c>:
+    /// <c>004F06F6</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F06FD</c>
+    /// <c>CLightDef</c>
+    /// factory <c>0x4D7C73</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>0044C0C0</c>
+    /// size 92 vtbl <c>0123A814</c>.
+    /// </summary>
+    public const uint FifteenthDefClassSite = 0x004F06F6;
+    public const uint FifteenthDefClassFactory = 0x004D7C73;
+    public const uint FifteenthDefClassCtor = 0x0044C0C0;
+    public const uint FifteenthDefClassVtbl = 0x0123A814;
+    public const int FifteenthDefClassSize = 92;
+    public const string FifteenthDefClassName = "CLightDef";
+    /// <summary>
     /// <c>00416005</c> parent
     /// <c>push 1</c>:
     /// <c>0044C6B0</c>
@@ -2477,6 +2495,8 @@ public sealed class EngineLifecycle : IDisposable
     public string? ThirteenthDefClass { get; private set; }
     public bool FourteenthDefClassRegistered { get; private set; }
     public string? FourteenthDefClass { get; private set; }
+    public bool FifteenthDefClassRegistered { get; private set; }
+    public string? FifteenthDefClass { get; private set; }
     /// <summary>
     /// After <c>00416005</c>
     /// <c>0044C72B</c> /
@@ -5063,22 +5083,39 @@ public sealed class EngineLifecycle : IDisposable
             ThirteenthDefClass = ThirteenthDefClassName;
             ThirteenthDefClassRegistered = true;
         }
-        if (FourteenthDefClassRegistered)
+        if (!FourteenthDefClassRegistered)
+        {
+            Note(FourteenthDefClassSite, "Init Thing Components", "Defs",
+                $"004F0640 0044C6B0 {FourteenthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FourteenthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FourteenthDefClassName}");
+            Note(FourteenthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D7BE7 0044C0C0 size {FourteenthDefClassSize} vtbl 0x{FourteenthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FourteenthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FourteenthDefClass = FourteenthDefClassName;
+            FourteenthDefClassRegistered = true;
+        }
+        if (FifteenthDefClassRegistered)
             return;
-        Note(FourteenthDefClassSite, "Init Thing Components", "Defs",
-            $"004F0640 0044C6B0 {FourteenthDefClassName}");
+        Note(FifteenthDefClassSite, "Init Thing Components", "Defs",
+            $"004F06F6 0044C6B0 {FifteenthDefClassName}");
         Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
-            $"0042DAE0 {FourteenthDefClassName}");
+            $"0042DAE0 {FifteenthDefClassName}");
         Note(AddDefClassFn, "Init Thing Components", "Defs",
-            $"009B0AC0 Add Def Class {FourteenthDefClassName}");
-        Note(FourteenthDefClassFactory, "Init Thing Components", "Defs",
-            $"004D7BE7 0044C0C0 size {FourteenthDefClassSize} vtbl 0x{FourteenthDefClassVtbl:X}");
+            $"009B0AC0 Add Def Class {FifteenthDefClassName}");
+        Note(FifteenthDefClassFactory, "Init Thing Components", "Defs",
+            $"004D7C73 0044C0C0 size {FifteenthDefClassSize} vtbl 0x{FifteenthDefClassVtbl:X}");
         Note(LoadDefFn, "Init Thing Components", "Defs",
-            $"009AD6E0 {FourteenthDefClassName}");
+            $"009AD6E0 {FifteenthDefClassName}");
         Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
             $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
-        FourteenthDefClass = FourteenthDefClassName;
-        FourteenthDefClassRegistered = true;
+        FifteenthDefClass = FifteenthDefClassName;
+        FifteenthDefClassRegistered = true;
     }
 
     /// <summary>
@@ -7845,9 +7882,12 @@ public sealed class EngineLifecycle : IDisposable
 
     /// <summary>
     /// <c>0052CF40</c> <c>vtbl+192</c>:
-    /// <c>+332 = arg</c>. Forwards
-    /// <c>vtbl+188</c> to own
-    /// <c>+176</c> children.
+    /// <c>+332 = arg</c>.
+    /// <c>0041C5A0</c> <c>vtbl+188</c>
+    /// stores <c>+320</c> then child
+    /// <c>vtbl+192</c>. Not
+    /// <c>ActiveChild</c> and not
+    /// <c>+302</c>.
     /// </summary>
     private void SelectFrontendState(int slot, int state)
     {
@@ -7856,7 +7896,29 @@ public sealed class EngineLifecycle : IDisposable
         if (!_frontendSlotTrees.TryGetValue(slot, out var tree) ||
             tree.Count == 0)
             return;
-        tree[0] = tree[0] with { State = state };
+        ForwardSelectState(tree, 0, state);
+        if (slot == FrontendCurrentSlot)
+            _frontendWidgets = tree;
+    }
+
+    /// <summary>
+    /// <c>0041C5A0</c>: every persist
+    /// <c>+176</c> child whose parent
+    /// is this. Type 16/18 keep first-seen
+    /// persist child 0.
+    /// </summary>
+    private void ForwardSelectState(List<FrontendWidget> tree, int index, int state)
+    {
+        if ((uint)index >= (uint)tree.Count)
+            return;
+        tree[index] = tree[index] with { State = state };
+        var name = tree[index].Name;
+        foreach (var child in FrontendWidgetFactory.ChildrenOf(tree, name))
+        {
+            Note(FrontendWidgetType.ForwardSelectFn, "Frontend", "UI",
+                $"0041C5A0 vtbl+188 +{FrontendWidgetType.DurationOffset} child {tree[child].Name} +332={state}");
+            ForwardSelectState(tree, child, state);
+        }
     }
 
     /// <summary>
@@ -7911,6 +7973,9 @@ public sealed class EngineLifecycle : IDisposable
         widget = default;
         return false;
     }
+
+    public IReadOnlyList<FrontendWidget> FrontendSlotTree(int slot) =>
+        _frontendSlotTrees.TryGetValue(slot, out var tree) ? tree : [];
 
     private IEnumerable<List<FrontendWidget>> ResidentSlotTrees()
     {

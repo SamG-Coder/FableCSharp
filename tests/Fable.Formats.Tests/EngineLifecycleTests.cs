@@ -1425,6 +1425,34 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Thing_Components_004F06FD_adds_CLightDef()
+    {
+        Assert.Equal(0x004F06F6u, EngineLifecycle.FifteenthDefClassSite);
+        Assert.Equal(0x004D7C73u, EngineLifecycle.FifteenthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.FifteenthDefClassCtor);
+        Assert.Equal(0x0123A814u, EngineLifecycle.FifteenthDefClassVtbl);
+        Assert.Equal(92, EngineLifecycle.FifteenthDefClassSize);
+        Assert.Equal("CLightDef", EngineLifecycle.FifteenthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FourteenthDefClassRegistered);
+        Assert.True(life.FifteenthDefClassRegistered);
+        Assert.Equal("CLightDef", life.FifteenthDefClass);
+        var fourteenth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FourteenthDefClassFactory);
+        var fifteenth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FifteenthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fourteenth >= 0 && fifteenth > fourteenth && defs > fifteenth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Init_Definition_Manager_00416005_resets_plus88_via_vtbl8()
     {
         Assert.Equal(0x00416005u, EngineLifecycle.InitDefinitionManagerFn);
@@ -2105,6 +2133,15 @@ public sealed class EngineLifecycleTests
         WriteScreenDump(life, "new-profile");
         Assert.Contains(life.FrontendResidentSlots, s => s == EngineLifecycle.FrontendPressStartSlot);
         Assert.Contains(life.FrontendResidentSlots, s => s == EngineLifecycle.FrontendNewProfileSlot);
+        Assert.True(life.TryGetFrontendSlot(EngineLifecycle.FrontendPressStartSlot, out var leftover));
+        Assert.Equal(6, leftover.State);
+        Assert.Contains(life.FrontendSlotTree(EngineLifecycle.FrontendPressStartSlot),
+            w => w.Name == "UI_PRESS_START_TEXT" && w.State == 6 && w.Visible);
+        Assert.Contains(life.FrontendSlotTree(EngineLifecycle.FrontendPressStartSlot),
+            w => w.Name.Contains("FORREST_1_1", StringComparison.Ordinal) && w.Visible);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == FrontendWidgetType.ForwardSelectFn &&
+            e.Action.Contains("0041C5A0", StringComparison.Ordinal));
 
         life.QueueInput(EngineInput.Type4, 0);
         life.QueueInput(EngineInput.Type6, 0);

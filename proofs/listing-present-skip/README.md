@@ -66,3 +66,6 @@ draw-current-only.
 `TextSliderIndexOffset`.
 `ResidentSlotTrees` keeps keys `0` /
 `0x14` / `0x17`.
+`SelectFrontendState` forwards `+332`
+via `0041C5A0` to persist children.
+Not `ActiveChild`. Not `Visible=false`.
