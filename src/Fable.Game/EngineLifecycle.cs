@@ -425,6 +425,14 @@ public sealed class EngineLifecycle : IDisposable
     public const int FrontendPressStartMessage = 0xE5;
     public const int FrontendWidgetMessageVtbl = 284;
     /// <summary>
+    /// <c>0059B5D7</c>
+    /// <c>[ui+84]</c> map
+    /// <c>operator[]</c>. Key
+    /// <c>0x14</c> is Press Start.
+    /// Value is node+20 widget*.
+    /// </summary>
+    public const uint FrontendSlotLookupFn = FrontendInputMap.SlotLookupFn;
+    /// <summary>
     /// <c>0059A238</c> <c>sub ecx, 0xE5</c>
     /// → <c>00599D5C</c>. Attach-time
     /// <c>0xE5</c> is widget vtbl+284
@@ -2293,6 +2301,13 @@ public sealed class EngineLifecycle : IDisposable
     public FrontendSubmitBatch? FrontendBatch { get; private set; }
     public IReadOnlyList<FrontendWidget> FrontendWidgets => _frontendWidgets;
     private readonly List<FrontendWidget> _frontendWidgets = [];
+    /// <summary>
+    /// <c>[ui+84]</c> slot id →
+    /// widget index. Native is a
+    /// tree; first-seen Press Start
+    /// only needs key <c>0x14</c>.
+    /// </summary>
+    private readonly Dictionary<int, int> _frontendSlots = [];
     private readonly List<int> _frontendSubmitCounts = [];
     private FrontendSpriteBank? _frontendSprites;
     private FontBank? _frontendFonts;
@@ -6853,28 +6868,70 @@ public sealed class EngineLifecycle : IDisposable
     private void AttachPressStartWidgets()
     {
         AttachFrontendTree(FrontendPressStartMenu);
+        BindFrontendSlot(FrontendPressStartSlot, 0);
         WriteType10AttachMessage();
     }
 
     /// <summary>
-    /// <c>00598A1C</c> → <c>00598EE6</c>
-    /// type-10 <c>+352</c> packet
-    /// <c>0xE5</c>. Not a screen-name
-    /// check in the mapper.
+    /// <c>0059B5D7</c> on
+    /// <c>[ui+84]</c>. Factory
+    /// stores the constructed
+    /// widget* at node+20.
+    /// </summary>
+    private void BindFrontendSlot(int slot, int widgetIndex)
+    {
+        Note(FrontendSlotLookupFn, "Frontend", "UI",
+            $"0059B5D7 [ui+{FrontendWidgetListOffset}] slot 0x{slot:X} node+{FrontendWidgetSlotOffset}");
+        if ((uint)widgetIndex >= (uint)_frontendWidgets.Count)
+            return;
+        _frontendSlots[slot] = widgetIndex;
+    }
+
+    /// <summary>
+    /// Slot <c>0x14</c> via
+    /// <c>0059B5D7</c>. Native
+    /// always writes the packet
+    /// through type-10
+    /// <c>vtbl+284</c>
+    /// <c>0054E4F0</c>. Host
+    /// still collapses
+    /// <c>[packet+0]</c> onto
+    /// <see cref="FrontendWidget.MessageId"/>.
     /// </summary>
     private void WriteType10AttachMessage()
     {
         Note(FrontendInputMap.AttachWriteE5, "Frontend", "UI",
             $"00598EE6 slot 0x{FrontendPressStartSlot:X} vtbl+{FrontendInputMap.WidgetMessageVtbl} {FrontendInputMap.Type10StoreMsgFn:X} +{FrontendInputMap.Type10StoredMsgOffset} 0x{FrontendPressStartMessage:X}");
-        if (_frontendWidgets.Count == 0)
+        Note(FrontendSlotLookupFn, "Frontend", "UI",
+            $"0059B5D7 slot 0x{FrontendPressStartSlot:X} vtbl+{FrontendInputMap.WidgetMessageVtbl} {FrontendInputMap.Type10StoreMsgFn:X}");
+        if (!TryGetFrontendSlotIndex(FrontendPressStartSlot, out var index))
             return;
-        var root = _frontendWidgets[0];
-        if (root.Type != FrontendPressStartType || root.MessageId != 0)
-            return;
-        _frontendWidgets[0] = root with
+        var widget = _frontendWidgets[index];
+        _frontendWidgets[index] = widget with
         {
             MessageId = FrontendPressStartMessage,
         };
+    }
+
+    public bool TryGetFrontendSlot(int slot, out FrontendWidget widget)
+    {
+        if (TryGetFrontendSlotIndex(slot, out var index))
+        {
+            widget = _frontendWidgets[index];
+            return true;
+        }
+
+        widget = default;
+        return false;
+    }
+
+    private bool TryGetFrontendSlotIndex(int slot, out int index)
+    {
+        if (_frontendSlots.TryGetValue(slot, out index) &&
+            (uint)index < (uint)_frontendWidgets.Count)
+            return true;
+        index = -1;
+        return false;
     }
 
     /// <summary>
@@ -6912,6 +6969,7 @@ public sealed class EngineLifecycle : IDisposable
         if (Install is not null && _frontendFonts is null)
             _frontendFonts = new FontBank(Install);
         _frontendWidgets.Clear();
+        _frontendSlots.Clear();
         FrontendChildCount = 0;
         FrontendRootType = 0;
         if (FrontendDefs is null)

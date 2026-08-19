@@ -393,6 +393,57 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Frontend_attach_0xE5_is_slot_0x14_0059B5D7_not_type10_walk()
+    {
+        Assert.Equal(0x0059B5D7u, EngineLifecycle.FrontendSlotLookupFn);
+        Assert.Equal(FrontendInputMap.SlotLookupFn, EngineLifecycle.FrontendSlotLookupFn);
+        Assert.Equal(20, EngineLifecycle.FrontendWidgetSlotOffset);
+        Assert.Equal(84, EngineLifecycle.FrontendWidgetListOffset);
+        Assert.Equal(0x14, EngineLifecycle.FrontendPressStartSlot);
+        Assert.Equal(0x0054E4F0u, FrontendInputMap.Type10StoreMsgFn);
+
+        var empty = new EngineLifecycle();
+        empty.Bootstrap(null);
+        while (empty.Stage == EngineStage.StartupVideos)
+            empty.FinishStartupVideo();
+        Assert.False(empty.TryGetFrontendSlot(
+            EngineLifecycle.FrontendPressStartSlot, out _));
+        Assert.Contains(empty.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendSlotLookupFn &&
+            e.Action.Contains("0059B5D7", StringComparison.Ordinal));
+        Assert.Contains(empty.Trace.Events, e =>
+            e.Va == FrontendInputMap.AttachWriteE5 &&
+            e.Action.Contains("slot 0x14", StringComparison.Ordinal));
+        Assert.DoesNotContain(empty.FrontendWidgets, w =>
+            w.MessageId == EngineLifecycle.FrontendPressStartMessage);
+
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.True(life.TryGetFrontendSlot(
+            EngineLifecycle.FrontendPressStartSlot, out var slot));
+        Assert.Equal(EngineLifecycle.FrontendPressStartMenu, slot.Name);
+        Assert.Equal(10, slot.Type);
+        Assert.Equal(EngineLifecycle.FrontendPressStartMessage, slot.MessageId);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.FrontendSlotLookupFn &&
+            e.Action.Contains("slot 0x14", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == FrontendInputMap.AttachWriteE5 &&
+            e.Action.Contains("54E4F0", StringComparison.Ordinal));
+        life.DispatchFrontendMessage(EngineLifecycle.FrontendPressStartMessage);
+        Assert.True(life.Pump());
+        Assert.Equal(
+            EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        Assert.DoesNotContain(life.FrontendWidgets, w =>
+            w.Type == 10 &&
+            w.MessageId == EngineLifecycle.FrontendPressStartMessage);
+    }
+
+    [Fact]
     public void Frontend_press_start_type4_without_widgets_does_not_invent_0xE5()
     {
         var life = new EngineLifecycle();

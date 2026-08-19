@@ -30,6 +30,18 @@ public sealed class FrontendInputMap
     public const uint AttachWriteE5 = 0x00598EE6;
     public const uint Type10StoreMsgFn = 0x0054E4F0;
     public const int Type10StoredMsgOffset = 352;
+    /// <summary>
+    /// <c>0059B5D7</c> is
+    /// <c>operator[]</c> on
+    /// <c>[ui+84]</c>. Key is the
+    /// slot id. Value at node+20 is
+    /// the widget*. Attach looks up
+    /// <c>0x14</c> then
+    /// <c>vtbl+284</c>.
+    /// </summary>
+    public const uint SlotLookupFn = 0x0059B5D7;
+    public const int SlotMapOffset = 84;
+    public const int SlotNodeValueOffset = 20;
     public const uint GenericWidgetVtbl = 0x0122F5D4;
     public const uint Type10WidgetVtbl = 0x012497E4;
     public const int WidgetMessageVtbl = 284;

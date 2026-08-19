@@ -258,6 +258,9 @@ public sealed class FrontendInputTests
         Assert.Equal(0x0054E2FAu, FrontendInputMap.Type10PostSite);
         Assert.Equal(0x00598EE6u, FrontendInputMap.AttachWriteE5);
         Assert.Equal(0x0054E4F0u, FrontendInputMap.Type10StoreMsgFn);
+        Assert.Equal(0x0059B5D7u, FrontendInputMap.SlotLookupFn);
+        Assert.Equal(84, FrontendInputMap.SlotMapOffset);
+        Assert.Equal(20, FrontendInputMap.SlotNodeValueOffset);
         Assert.Equal(352, FrontendInputMap.Type10StoredMsgOffset);
         Assert.Equal(228, FrontendInputMap.PersistMessageDefOffset);
         Assert.Equal(FrontendUiDef.MessageIdDefOffset, FrontendInputMap.PersistMessageDefOffset);
