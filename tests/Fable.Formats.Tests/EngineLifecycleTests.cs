@@ -1133,6 +1133,56 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Thing_Components_004EF5B4_adds_CReadableDef()
+    {
+        Assert.Equal(0x004EF5ADu, EngineLifecycle.EighthDefClassSite);
+        Assert.Equal(0x004DAA0Eu, EngineLifecycle.EighthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.EighthDefClassCtor);
+        Assert.Equal(0x0123E9F4u, EngineLifecycle.EighthDefClassVtbl);
+        Assert.Equal(38, EngineLifecycle.EighthDefClassSize);
+        Assert.Equal("CReadableDef", EngineLifecycle.EighthDefClassName);
+        Assert.NotEqual(EngineLifecycle.SeventhDefClassName, EngineLifecycle.EighthDefClassName);
+        Assert.NotEqual(EngineLifecycle.SeventhDefClassFactory, EngineLifecycle.EighthDefClassFactory);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.False(life.EighthDefClassRegistered);
+        Assert.Null(life.EighthDefClass);
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.True(life.SeventhDefClassRegistered);
+        Assert.Equal(EngineLifecycle.SeventhDefClassName, life.SeventhDefClass);
+        Assert.True(life.EighthDefClassRegistered);
+        Assert.Equal(EngineLifecycle.EighthDefClassName, life.EighthDefClass);
+        var seventhFactory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventhDefClassFactory);
+        var eighthSite = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EighthDefClassSite);
+        var eighthAdd = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.AddDefClassFn &&
+            e.Action.Contains(EngineLifecycle.EighthDefClassName, StringComparison.Ordinal));
+        var eighthFactory = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EighthDefClassFactory);
+        var eighthLoad = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.LoadDefFn);
+        var eighthBudget = life.Trace.Events.FindLastIndex(e =>
+            e.Va == EngineLifecycle.LoadDefBudgetFn);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(seventhFactory >= 0 && eighthSite > seventhFactory);
+        Assert.True(eighthAdd > eighthSite && eighthFactory > eighthAdd);
+        Assert.True(eighthLoad > eighthFactory && eighthBudget > eighthLoad);
+        Assert.True(defs > eighthBudget, "CReadableDef before Init Definition Manager");
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.AddDefClassFn &&
+            (e.Action.Contains("CTCActionUseTorch", StringComparison.Ordinal) ||
+             e.Action.Contains("CTCActionUseReadable", StringComparison.Ordinal)));
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
     public void Init_Definition_Manager_00416005_resets_plus88_via_vtbl8()
     {
         Assert.Equal(0x00416005u, EngineLifecycle.InitDefinitionManagerFn);

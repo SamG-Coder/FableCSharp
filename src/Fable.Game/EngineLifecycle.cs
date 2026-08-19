@@ -909,6 +909,24 @@ public sealed class EngineLifecycle : IDisposable
     public const int SeventhDefClassSize = 88;
     public const string SeventhDefClassName = "CLookDef";
     /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CLookDef</c>:
+    /// <c>004EF5AD</c>
+    /// <c>0044C6B0</c>
+    /// <c>004EF5B4</c>
+    /// <c>CReadableDef</c>
+    /// factory <c>0x4DAA0E</c>
+    /// <c>0044C0C0</c>
+    /// size 38 vtbl <c>0123E9F4</c>.
+    /// Not intervening CTC rows.
+    /// </summary>
+    public const uint EighthDefClassSite = 0x004EF5AD;
+    public const uint EighthDefClassFactory = 0x004DAA0E;
+    public const uint EighthDefClassCtor = 0x0044C0C0;
+    public const uint EighthDefClassVtbl = 0x0123E9F4;
+    public const int EighthDefClassSize = 38;
+    public const string EighthDefClassName = "CReadableDef";
+    /// <summary>
     /// <c>00416005</c> parent
     /// <c>push 1</c>:
     /// <c>0044C6B0</c>
@@ -2331,6 +2349,8 @@ public sealed class EngineLifecycle : IDisposable
     public string? SixthDefClass { get; private set; }
     public bool SeventhDefClassRegistered { get; private set; }
     public string? SeventhDefClass { get; private set; }
+    public bool EighthDefClassRegistered { get; private set; }
+    public string? EighthDefClass { get; private set; }
     /// <summary>
     /// After <c>00416005</c>
     /// <c>0044C72B</c> /
@@ -4762,20 +4782,35 @@ public sealed class EngineLifecycle : IDisposable
             SixthDefClass = SixthDefClassName;
             SixthDefClassRegistered = true;
         }
-        if (SeventhDefClassRegistered)
+        if (!SeventhDefClassRegistered)
+        {
+            Note(SeventhDefClassSite, "Init Thing Components", "Defs",
+                $"004EF37F 0044C6B0 {SeventhDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SeventhDefClassName}");
+            Note(SeventhDefClassFactory, "Init Thing Components", "Defs",
+                $"004D80E4 0044C0C0 size {SeventhDefClassSize} vtbl 0x{SeventhDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SeventhDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SeventhDefClass = SeventhDefClassName;
+            SeventhDefClassRegistered = true;
+        }
+        if (EighthDefClassRegistered)
             return;
-        Note(SeventhDefClassSite, "Init Thing Components", "Defs",
-            $"004EF37F 0044C6B0 {SeventhDefClassName}");
+        Note(EighthDefClassSite, "Init Thing Components", "Defs",
+            $"004EF5AD 0044C6B0 {EighthDefClassName}");
         Note(AddDefClassFn, "Init Thing Components", "Defs",
-            $"009B0AC0 Add Def Class {SeventhDefClassName}");
-        Note(SeventhDefClassFactory, "Init Thing Components", "Defs",
-            $"004D80E4 0044C0C0 size {SeventhDefClassSize} vtbl 0x{SeventhDefClassVtbl:X}");
+            $"009B0AC0 Add Def Class {EighthDefClassName}");
+        Note(EighthDefClassFactory, "Init Thing Components", "Defs",
+            $"004DAA0E 0044C0C0 size {EighthDefClassSize} vtbl 0x{EighthDefClassVtbl:X}");
         Note(LoadDefFn, "Init Thing Components", "Defs",
-            $"009AD6E0 {SeventhDefClassName}");
+            $"009AD6E0 {EighthDefClassName}");
         Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
             $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
-        SeventhDefClass = SeventhDefClassName;
-        SeventhDefClassRegistered = true;
+        EighthDefClass = EighthDefClassName;
+        EighthDefClassRegistered = true;
     }
 
     /// <summary>
