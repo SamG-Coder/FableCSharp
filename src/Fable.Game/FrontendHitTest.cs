@@ -32,8 +32,8 @@ public static class FrontendHitTest
     /// (<c>vtbl+488</c>) plus dest size
     /// (<c>vtbl+492</c>). Draw dest stays
     /// a point when leftover is 0; hit
-    /// size is that leftover when the
-    /// type-16/37 row packed a type-2.
+    /// size is leftover #48 sibling
+    /// type-2 packing, not a child dest.
     /// </summary>
     public static (float X0, float Y0, float X1, float Y1) HitRect(
         IReadOnlyList<FrontendWidget> tree, int index)

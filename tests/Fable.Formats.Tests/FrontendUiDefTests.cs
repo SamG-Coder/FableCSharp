@@ -252,6 +252,11 @@ public sealed class FrontendUiDefTests
         Assert.True(FrontendWidgetType.DrawsChildList(10));
         Assert.True(FrontendWidgetType.DrawsChildList(16));
         Assert.True(FrontendWidgetType.DrawsChildList(18));
+        Assert.True(FrontendWidgetType.ContainerDrawWalksEveryChild);
+        Assert.False(FrontendWidgetType.ExclusiveWalkSelectsChild);
+        Assert.True(FrontendWidgetType.Leftover46ExclusiveWalkIsStale);
+        Assert.False(FrontendWidgetType.SkipVtblsAreMethodCalls);
+        Assert.False(FrontendWidgetType.SelectStateArg6SkipsDraw);
         Assert.Equal(0x01248A8Cu, FrontendWidgetType.TextSliderVtbl);
         Assert.Equal(0x012485ACu, FrontendWidgetType.SwapVtbl);
         Assert.Equal(0x0052F180u, FrontendWidgetType.BorrowedVisibleFn);
@@ -376,6 +381,14 @@ public sealed class FrontendUiDefTests
             w.Name == "UI_FRONTEND_BUTTON_NEW_GAME");
         Assert.Equal(15, newGameWidget.MessageId);
         Assert.Equal(0, newGameWidget.Plus224);
+        var cancel = FrontendUiDef.TryParse(bin.FindEntry("UI_CANCEL")!)!;
+        Assert.Equal(38, cancel.Type);
+        Assert.Equal(FrontendMessages.CancelNewProfile, cancel.MessageId);
+        Assert.Equal(
+            FrontendMessages.CancelNewProfile,
+            FrontendUiDef.ReadPersistI32(
+                bin.FindEntry("UI_CANCEL")!.Raw,
+                FrontendUiDef.MessageIdCrc));
         _ = install;
     }
 

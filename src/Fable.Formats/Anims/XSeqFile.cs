@@ -163,12 +163,12 @@ public sealed class XSeqFile
 
     public bool TrySample(string bone, float time, out Quaternion rotation, out Vector3 translation)
     {
-        _ = time;
         foreach (var track in Tracks)
         {
             if (!track.Name.Equals(bone, StringComparison.OrdinalIgnoreCase))
                 continue;
-            rotation = track.FirstRotation;
+            var key = FloorKey(time);
+            rotation = track.RotationAt(key);
             translation = track.FirstTranslation;
             return track.HasRotation || track.HasTranslation;
         }
@@ -178,7 +178,10 @@ public sealed class XSeqFile
         return false;
     }
 
-    public MeshBone[] ApplyFirstLocals(IReadOnlyList<MeshBone> bones)
+    public MeshBone[] ApplyFirstLocals(IReadOnlyList<MeshBone> bones) =>
+        ApplyLocals(bones, 0);
+
+    public MeshBone[] ApplyLocals(IReadOnlyList<MeshBone> bones, int key)
     {
         var replaced = new MeshBone[bones.Count];
         for (var i = 0; i < bones.Count; i++)
@@ -203,7 +206,7 @@ public sealed class XSeqFile
             replaced[i] = bone with
             {
                 LocalRotation = track.Value.HasRotation
-                    ? track.Value.FirstRotation
+                    ? track.Value.RotationAt(key)
                     : bone.LocalRotation,
                 LocalTranslation = track.Value.HasTranslation
                     ? track.Value.FirstTranslation
@@ -212,6 +215,20 @@ public sealed class XSeqFile
         }
 
         return replaced;
+    }
+
+    /// <summary>
+    /// <c>00A52650</c> using first-track
+    /// <c>+4</c> rate / <c>+8</c> period
+    /// (<c>00A5007F</c>). Floor key only.
+    /// </summary>
+    public int FloorKey(float time)
+    {
+        if (Tracks.Count == 0)
+            return 0;
+        var first = Tracks[0];
+        var period = (int)(first.FrameCount & 0xFF);
+        return Fable.Formats.WorldShading.TimeToKey(time, first.SamplesPerSecond, period).Key;
     }
 
     private static void WalkChunks(
@@ -276,21 +293,30 @@ public sealed class XSeqFile
         var hasPos = false;
         var rotCount = 0;
         var posCount = 0;
+        var rotations = Array.Empty<Quaternion>();
         if (cursor + 2 <= payload.Length)
         {
             rotCount = BitConverter.ToUInt16(payload, cursor);
             cursor += 2;
             if (rotCount > 0 && rotCount < 4096 && cursor + 16 <= payload.Length)
             {
-                rot = new Quaternion(
-                    BitConverter.ToSingle(payload, cursor),
-                    BitConverter.ToSingle(payload, cursor + 4),
-                    BitConverter.ToSingle(payload, cursor + 8),
-                    BitConverter.ToSingle(payload, cursor + 12));
+                var n = Math.Min(rotCount, (payload.Length - cursor) / 16);
+                rotations = new Quaternion[n];
+                for (var i = 0; i < n; i++)
+                {
+                    var q = new Quaternion(
+                        BitConverter.ToSingle(payload, cursor),
+                        BitConverter.ToSingle(payload, cursor + 4),
+                        BitConverter.ToSingle(payload, cursor + 8),
+                        BitConverter.ToSingle(payload, cursor + 12));
+                    if (q.LengthSquared() > 0.01f)
+                        q = Quaternion.Normalize(q);
+                    rotations[i] = q;
+                    cursor += 16;
+                }
+
+                rot = rotations[0];
                 hasRot = rot.LengthSquared() > 0.01f;
-                if (hasRot)
-                    rot = Quaternion.Normalize(rot);
-                cursor += 16 * Math.Min(rotCount, (payload.Length - cursor) / 16);
             }
             else if (rotCount >= 4096)
             {
@@ -327,7 +353,8 @@ public sealed class XSeqFile
 
         track = new XSeqTrack(
             name, boneIndex, parent, fps, frames, preFps,
-            posFactor, scaleFactor, rot, pos, hasRot, hasPos, rotCount, posCount);
+            posFactor, scaleFactor, rot, pos, hasRot, hasPos, rotCount, posCount,
+            rotations);
         return name.Length > 0;
     }
 
@@ -400,4 +427,19 @@ public readonly record struct XSeqTrack(
     bool HasRotation,
     bool HasTranslation,
     int RotationCount,
-    int PositionCount);
+    int PositionCount,
+    IReadOnlyList<Quaternion> RotationKeys)
+{
+    public Quaternion RotationAt(int key)
+    {
+        if (RotationKeys is { Count: > 0 })
+        {
+            var i = key % RotationKeys.Count;
+            if (i < 0)
+                i += RotationKeys.Count;
+            return RotationKeys[i];
+        }
+
+        return FirstRotation;
+    }
+}

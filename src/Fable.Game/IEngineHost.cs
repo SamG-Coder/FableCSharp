@@ -94,6 +94,13 @@ public readonly record struct FrontendWidget(
     int Font = 0,
     string? FontFace = null,
     int MessageId = 0,
+    /// <summary>
+    /// Type-10 attach packet first dword
+    /// at widget <c>+352</c>
+    /// (<c>0054E4F0</c>). Persist
+    /// <c>MessageId</c> stays 0.
+    /// </summary>
+    int Type10Packet = 0,
     int Plus224 = 0,
     bool Armed = false,
     float U0 = 0,

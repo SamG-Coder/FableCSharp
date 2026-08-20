@@ -143,6 +143,8 @@ public sealed class WmvPlayer : IDisposable
     public static int LastFrames { get; private set; }
     public static int LastWidth { get; private set; }
     public static int LastHeight { get; private set; }
+    public static bool LastBasicAudioQi { get; private set; }
+    public static int LastBasicAudioVolume { get; private set; }
 
     private readonly object _gate = new();
     private readonly AutoResetEvent _frameEvent = new(false);
@@ -153,6 +155,7 @@ public sealed class WmvPlayer : IDisposable
     private IMediaControl? _control;
     private IMediaEvent? _events;
     private IMediaPosition? _position;
+    private IBasicAudio? _audio;
     private TextureRenderer? _renderer;
 
     public static WmvPlayer? TryOpen(string path)
@@ -181,6 +184,8 @@ public sealed class WmvPlayer : IDisposable
         CaptureQi = true;
         LastFilterQi = "";
         LastPinQi = "";
+        LastBasicAudioQi = false;
+        LastBasicAudioVolume = int.MinValue;
         PresentWaitTicks = 0;
         ScratchAllocs = 0;
         RgbaAllocs = 0;
@@ -378,6 +383,24 @@ public sealed class WmvPlayer : IDisposable
         _control = (IMediaControl)_graph;
         _position = (IMediaPosition)_graph;
         _events = (IMediaEvent)_graph;
+        // 00A3B9D0 QI IBasicAudio 0x12AA054 then
+        // put_Volume(0) = 0 dB. Not a WAV mixer.
+        LastBasicAudioQi = false;
+        LastBasicAudioVolume = int.MinValue;
+        try
+        {
+            _audio = (IBasicAudio)_graph;
+            var volHr = _audio.put_Volume(0);
+            if (volHr >= 0)
+            {
+                LastBasicAudioQi = true;
+                LastBasicAudioVolume = 0;
+            }
+        }
+        catch
+        {
+            _audio = null;
+        }
 
         // 00A3B130: put_CurrentPosition(0) then Run, retry 50.
         for (var i = 0; i < 8 && _position is not null; i++)
@@ -619,6 +642,7 @@ public sealed class WmvPlayer : IDisposable
         try { _control?.Stop(); } catch { /* already stopped */ }
         _events = null;
         _position = null;
+        _audio = null;
         _control = null;
         if (_graph is not null)
         {
@@ -761,6 +785,21 @@ public sealed class WmvPlayer : IDisposable
         [PreserveSig] int NotifyEndOfStream(IntPtr notify);
         [PreserveSig] int IsEndPin();
         [PreserveSig] int DynamicDisconnect();
+    }
+
+    [ComImport]
+    [Guid("56a868b3-0ad4-11ce-b03a-0020af0ba770")]
+    [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    private interface IBasicAudio
+    {
+        void GetTypeInfoCount(out int count);
+        void GetTypeInfo(int itinfo, int lcid, out IntPtr info);
+        void GetIDsOfNames(ref Guid iid, IntPtr names, int count, int lcid, IntPtr dispIds);
+        void Invoke(int dispId, ref Guid iid, int lcid, short flags, IntPtr dispParams, IntPtr result, IntPtr excep, IntPtr argErr);
+        [PreserveSig] int put_Volume(int volume);
+        [PreserveSig] int get_Volume(out int volume);
+        [PreserveSig] int put_Balance(int balance);
+        [PreserveSig] int get_Balance(out int balance);
     }
 
     [ComImport]

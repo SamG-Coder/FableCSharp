@@ -313,11 +313,35 @@ public sealed class EngineLifecycle : IDisposable
     public const uint LeaveFrontendClearFn = 0x009BE420;
     public const uint LeaveFrontendAudioVtbl = 72;
     public const int LeaveFrontendAudioMs = 0x1F4;
+    /// <summary>
+    /// Native Leave fades live
+    /// <c>[0x13B8394]</c>
+    /// <c>vtbl+72(500)</c>. Host has
+    /// no player object. Do not invent
+    /// <c>MUSIC_SET_*</c> to fill it.
+    /// </summary>
+    public const bool HostFadesLeaveFrontendAudio = false;
+    public const uint FrontendAudioSingletonVa = 0x013B8394;
     public const uint GameSingletonVa = 0x013B86A0;
     public const uint RetailSuccessorVa = 0x013B7D58;
     public const int GameReadyOffset = 90592;
     public const uint SkipParticlesVa = 0x013B8648;
     public const byte SkipParticlesFirstSeen = 0;
+    /// <summary>
+    /// Boot loads <c>PARTICLE_MAIN</c> at
+    /// <c>004174F1</c> when
+    /// <c>[0x13B8648]==0</c>. First-seen
+    /// running list on Lookout Present is
+    /// empty. Oakvale intro authors 47
+    /// <c>PARTICLE_EMITTER_PLACEABLE</c>
+    /// Things; names UNREAD. Do not invent
+    /// particle GPU. <c>004A67D0</c> is
+    /// world ctor, not Oakvale VFX.
+    /// </summary>
+    public const uint LoadParticlesFn = 0x004174F1;
+    public const bool FirstSeenRunningParticleListEmpty = true;
+    public const int OakvalePlaceableEmitterCount = 47;
+    public const bool FirstSeenCanRenderParticles = false;
     /// <summary>
     /// <c>00595582</c> singleton at
     /// <c>[0x13B8B5C]</c>. Size <c>0xE0</c>,
@@ -343,6 +367,17 @@ public sealed class EngineLifecycle : IDisposable
     public const int RetailNewGameFlagOffset = 41;
     public const int RetailLoadGameFlagOffset = 42;
     /// <summary>
+    /// Msg 15 <c>[ui+28] vtbl+16</c>
+    /// is <c>00430340</c>:
+    /// <c>[retail+8]=1</c> then
+    /// <c>[retail+41]=1</c>. Host
+    /// Notes the store. Pump uses
+    /// <c>RetailNewGameFlag</c> as
+    /// both loop-exit and New Game.
+    /// </summary>
+    public const uint RetailPlus8StoreFn = 0x00430340;
+    public const int RetailPlus8Offset = 8;
+    /// <summary>
     /// <c>0042EC7C</c> loop after Init frontend:
     /// <c>0042E3EE</c> input, <c>0042DC94</c>
     /// update, <c>0042FA30</c> zero record,
@@ -355,6 +390,15 @@ public sealed class EngineLifecycle : IDisposable
     public const uint FrontendRecordZeroFn = 0x0042FA30;
     public const uint FrontendRecordFillFn = 0x0042DBFA;
     public const uint FrontendDrawFn = 0x0042DF9E;
+    /// <summary>
+    /// With <see cref="Device"/> attached,
+    /// <c>IssueFrontendFramePresent</c> issues
+    /// Clear / recovered DIPUP / Present.
+    /// <c>009DA9F0(1)</c> twice is still
+    /// Note-only empty skip.
+    /// </summary>
+    public const bool FrontendPresentBodyIsLive = true;
+    public const bool DisplayFlushQueueIsNoteOnly = true;
     public const uint FrontendUiDrawFn = 0x00595222;
     /// <summary>
     /// <c>00595222</c>: circular list at
@@ -638,6 +682,19 @@ public sealed class EngineLifecycle : IDisposable
     public const int FrontendEditBoxActionA = 33;
     public const int FrontendEditBoxActionB = 34;
     /// <summary>
+    /// <c>0053FE50</c> action 34 insert
+    /// into type-37 <c>+356</c>. Arg 8
+    /// backspace, 32 space, else glyph.
+    /// Cap persist/default <c>0x32</c>.
+    /// Not DIK.
+    /// </summary>
+    public const uint EditBoxInsertFn = 0x0053FE50;
+    public const int EditBoxTextOffset = 356;
+    public const int EditBoxLenOffset = 360;
+    public const int EditBoxCursorOffset = 364;
+    public const int EditBoxCap = 0x32;
+    public const bool EditBoxTypesFromDik = false;
+    /// <summary>
     /// <c>0059A238</c> msg <c>0x126</c>
     /// → <c>00851920</c>. frontend.bin
     /// <c>UI_ACCEPT_NEW_PROFILE</c>
@@ -743,8 +800,58 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>0042DED5(0)</c> after the
     /// post-AVI <c>009D8CF0</c> /
     /// <c>009BEEB0</c> Present.
+    /// Native <c>[0x13B8394].vtbl+68</c>
+    /// starts frontend voice. Host Notes
+    /// the site only. Do not start
+    /// <c>MUSIC_SET_*</c> from New Game.
     /// </summary>
     public const uint RetailAudioFadeFn = 0x0042DED5;
+    public const uint RetailAudioEngineVa = 0x013B8394;
+    public const int RetailAudioStartVtbl = 68;
+    public const int RetailAudioFadeVtbl = 72;
+    public const uint InitSoundFn = 0x00417A58;
+    /// <summary>
+    /// First-seen <c>00417A58</c> after Leave
+    /// (<c>[0x13B8394]</c> live): locale
+    /// <c>00415550</c> <c>ENGLISH_SOUND_SETUP</c>,
+    /// def lookup <c>004196B2</c>
+    /// <c>MAIN_SOUND_SETUP</c>, register
+    /// <c>009919C0</c> twice, atmos
+    /// <c>00991C10</c>, map
+    /// <c>00991840(1)</c> → <c>[game+16]</c>.
+    /// Register, not play, not graphic-bank
+    /// Open. Symbols first-seen compiled
+    /// <c>00A38C20</c>, not <c>00A01A4F</c>.
+    /// Do not start <c>MUSIC_SET_*</c> /
+    /// <c>SND_MENU_04</c>.
+    /// </summary>
+    public const uint InitSoundLocaleFn = 0x00415550;
+    public const uint InitSoundLookupFn = 0x004196B2;
+    public const uint InitSoundRegisterFn = 0x009919C0;
+    public const uint InitSoundAtmosRegisterFn = 0x00991C10;
+    public const uint InitSoundMapLookupFn = 0x00991840;
+    public const uint InitSoundSymbolsCompiledFn = 0x00A38C20;
+    public const uint InitSoundSymbolsTextFn = 0x00A01A4F;
+    public const string InitSoundLocaleName = "ENGLISH_SOUND_SETUP";
+    public const string InitSoundMainName = "MAIN_SOUND_SETUP";
+    public const bool InitSoundOpensBank = false;
+    public const bool InitSoundPlaysMusicSet = false;
+    public const bool FrontendClickStartsSnd = false;
+    public const bool RequestNewGameStartsMusicSet = false;
+    /// <summary>
+    /// Script <c>PlayMusic</c>
+    /// <c>00CC8EAC</c> looks up
+    /// <c>009E5120</c> then
+    /// <c>[0x143E8F8].vtbl+2784</c>.
+    /// Host stores the name only.
+    /// Do not invent an ogg/FMOD
+    /// player. First-seen Gameflow
+    /// never reaches PlayMusic.
+    /// </summary>
+    public const uint ScriptPlayMusicApplyFn = 0x00CC8EAC;
+    public const uint ScriptPlayMusicLookupFn = 0x009E5120;
+    public const int ScriptPlayMusicVtbl = 2784;
+    public const bool ScriptPlayMusicAppliesBank = false;
     public const uint FrontendUiShowFn = 0x005952C3;
     public const uint RetailFadeClockStartFn = 0x0062F800;
     public const uint RetailFadeClockResetFn = 0x0062F8B0;
@@ -866,6 +973,23 @@ public sealed class EngineLifecycle : IDisposable
     public const uint LoadGlobalThingsSingle = 0x004FE2A0;
     public const uint LoadGlobalThingsPerMap = 0x004FDBC0;
     public const uint LoadGlobalThingsMapFile = 0x004FBF60;
+    /// <summary>
+    /// Native <c>004FDBC0</c> <c>ebx</c>
+    /// starts at 1 (dummy slot 0 never
+    /// pushed). Stop is
+    /// <c>ebx &gt;= count</c> (TLC 399
+    /// → 1..398). First
+    /// <c>004FBF60</c> is LookoutPoint
+    /// (NewMap 1).
+    /// <c>StartOakValeWest.tng</c> is
+    /// <c>ebx=203</c> during Loading
+    /// world, not first Present.
+    /// Host <c>break</c> after the first
+    /// prox file is leftover #50.
+    /// </summary>
+    public const int LoadGlobalThingsEbxStart = 1;
+    public const int StartOakValeWestTngEbx = 203;
+    public const bool LoadGlobalThingsHostBreaksAfterFirstProx = true;
     public const uint SingleGlobalThingsFlagVa = 0x013B8609;
     public const byte DefaultSingleGlobalThingsFlag = 0;
     public const uint GtngExtVa = 0x01244BB4;
@@ -1212,6 +1336,1880 @@ public sealed class EngineLifecycle : IDisposable
     public const int EighteenthDefClassSize = 48;
     public const string EighteenthDefClassName = "CHeroDef";
     /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CHeroDef</c>:
+    /// <c>004F0D26</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F0D2D</c>
+    /// <c>CCreatureModeDef</c>
+    /// factory <c>0x4E0B4B</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(64)</c>
+    /// <c>jmp 004DE7DC</c>
+    /// <c>0044C0C0</c>
+    /// size 64 vtbl <c>01241704</c>.
+    /// Note-only + flag, not a live
+    /// 64-byte object.
+    /// </summary>
+    public const uint NineteenthDefClassSite = 0x004F0D26;
+    public const uint NineteenthDefClassFactory = 0x004E0B4B;
+    public const uint NineteenthDefClassCtor = 0x004DE7DC;
+    public const uint NineteenthDefClassVtbl = 0x01241704;
+    public const int NineteenthDefClassSize = 64;
+    public const string NineteenthDefClassName = "CCreatureModeDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CCreatureModeDef</c>:
+    /// <c>004F0DDC</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F0DE3</c>
+    /// <c>CPerceivedThingDef</c>
+    /// factory <c>0x4D7EB6</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(80)</c>
+    /// <c>0044C0C0</c>
+    /// size 80 vtbl <c>0123AA9C</c>.
+    /// Note-only + flag, not a live
+    /// 80-byte object.
+    /// </summary>
+    public const uint TwentiethDefClassSite = 0x004F0DDC;
+    public const uint TwentiethDefClassFactory = 0x004D7EB6;
+    public const uint TwentiethDefClassCtor = 0x0044C0C0;
+    public const uint TwentiethDefClassVtbl = 0x0123AA9C;
+    public const int TwentiethDefClassSize = 80;
+    public const string TwentiethDefClassName = "CPerceivedThingDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CPerceivedThingDef</c>:
+    /// <c>004F0E92</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F0E99</c>
+    /// <c>CBedDef</c>
+    /// factory <c>0x4DA7F3</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(60)</c>
+    /// <c>jmp 004D7A25</c>
+    /// <c>0044C0C0</c>
+    /// size 60 vtbl <c>0123E8BC</c>.
+    /// Note-only + flag, not a live
+    /// 60-byte object.
+    /// </summary>
+    public const uint TwentyFirstDefClassSite = 0x004F0E92;
+    public const uint TwentyFirstDefClassFactory = 0x004DA7F3;
+    public const uint TwentyFirstDefClassCtor = 0x004D7A25;
+    public const uint TwentyFirstDefClassVtbl = 0x0123E8BC;
+    public const int TwentyFirstDefClassSize = 60;
+    public const string TwentyFirstDefClassName = "CBedDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CBedDef</c>:
+    /// <c>004F0F48</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F0F4F</c>
+    /// <c>CStealthDef</c>
+    /// factory <c>0x4D7EFC</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(72)</c>
+    /// <c>0044C0C0</c>
+    /// size 72 vtbl <c>0123AB1C</c>.
+    /// Note-only + flag, not a live
+    /// 72-byte object.
+    /// </summary>
+    public const uint TwentySecondDefClassSite = 0x004F0F48;
+    public const uint TwentySecondDefClassFactory = 0x004D7EFC;
+    public const uint TwentySecondDefClassCtor = 0x0044C0C0;
+    public const uint TwentySecondDefClassVtbl = 0x0123AB1C;
+    public const int TwentySecondDefClassSize = 72;
+    public const string TwentySecondDefClassName = "CStealthDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CStealthDef</c>:
+    /// <c>004F10D4</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F10DB</c>
+    /// <c>CTrophyDef</c>
+    /// factory <c>0x4D7F7B</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(100)</c>
+    /// <c>jmp 004D36FE</c>
+    /// <c>0044C0C0</c>
+    /// size 100 vtbl <c>0123AC1C</c>.
+    /// Note-only + flag, not a live
+    /// 100-byte object.
+    /// </summary>
+    public const uint TwentyThirdDefClassSite = 0x004F10D4;
+    public const uint TwentyThirdDefClassFactory = 0x004D7F7B;
+    public const uint TwentyThirdDefClassCtor = 0x004D36FE;
+    public const uint TwentyThirdDefClassVtbl = 0x0123AC1C;
+    public const int TwentyThirdDefClassSize = 100;
+    public const string TwentyThirdDefClassName = "CTrophyDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CTrophyDef</c>:
+    /// <c>004F11F5</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F11FC</c>
+    /// <c>CCreatureGeneratorDef</c>
+    /// factory <c>0x4E0513</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(64)</c>
+    /// <c>jmp 004DE1DF</c>
+    /// <c>0044C0C0</c>
+    /// size 64 vtbl <c>01241384</c>.
+    /// Note-only + flag, not a live
+    /// 64-byte object.
+    /// </summary>
+    public const uint TwentyFourthDefClassSite = 0x004F11F5;
+    public const uint TwentyFourthDefClassFactory = 0x004E0513;
+    public const uint TwentyFourthDefClassCtor = 0x004DE1DF;
+    public const uint TwentyFourthDefClassVtbl = 0x01241384;
+    public const int TwentyFourthDefClassSize = 64;
+    public const string TwentyFourthDefClassName = "CCreatureGeneratorDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CCreatureGeneratorDef</c>:
+    /// <c>004F12AB</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F12B2</c>
+    /// <c>CChestDef</c>
+    /// factory <c>0x4D805C</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(60)</c>
+    /// <c>jmp 004D3826</c>
+    /// <c>0044C0C0</c>
+    /// size 60 vtbl <c>0123ACDC</c>.
+    /// Note-only + flag, not a live
+    /// 60-byte object.
+    /// </summary>
+    public const uint TwentyFifthDefClassSite = 0x004F12AB;
+    public const uint TwentyFifthDefClassFactory = 0x004D805C;
+    public const uint TwentyFifthDefClassCtor = 0x004D3826;
+    public const uint TwentyFifthDefClassVtbl = 0x0123ACDC;
+    public const int TwentyFifthDefClassSize = 60;
+    public const string TwentyFifthDefClassName = "CChestDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CChestDef</c>:
+    /// <c>004F14A2</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F14A9</c>
+    /// <c>CExplodingObjectDef</c>
+    /// factory <c>0x4D809E</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(52)</c>
+    /// <c>0044C0C0</c>
+    /// size 52 vtbl <c>0123AD7C</c>.
+    /// Note-only + flag, not a live
+    /// 52-byte object.
+    /// </summary>
+    public const uint TwentySixthDefClassSite = 0x004F14A2;
+    public const uint TwentySixthDefClassFactory = 0x004D809E;
+    public const uint TwentySixthDefClassCtor = 0x0044C0C0;
+    public const uint TwentySixthDefClassVtbl = 0x0123AD7C;
+    public const int TwentySixthDefClassSize = 52;
+    public const string TwentySixthDefClassName = "CExplodingObjectDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CExplodingObjectDef</c>:
+    /// <c>004F1558</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F155F</c>
+    /// <c>CContainerRewardHeroDef</c>
+    /// factory <c>0x4E3C81</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(52)</c>
+    /// <c>jmp 004E247A</c>
+    /// <c>0044C0C0</c>
+    /// size 52 vtbl <c>012428B4</c>.
+    /// Note-only + flag, not a live
+    /// 52-byte object.
+    /// </summary>
+    public const uint TwentySeventhDefClassSite = 0x004F1558;
+    public const uint TwentySeventhDefClassFactory = 0x004E3C81;
+    public const uint TwentySeventhDefClassCtor = 0x004E247A;
+    public const uint TwentySeventhDefClassVtbl = 0x012428B4;
+    public const int TwentySeventhDefClassSize = 52;
+    public const string TwentySeventhDefClassName = "CContainerRewardHeroDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CContainerRewardHeroDef</c>:
+    /// <c>004F1CBA</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F1CC1</c>
+    /// <c>CWeaponDef</c>
+    /// factory <c>0x4E3D15</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(0xE4)</c>
+    /// <c>jmp 004E2612</c>
+    /// <c>0044C0C0</c>
+    /// size 228 vtbl <c>0124291C</c>.
+    /// Note-only + flag, not a live
+    /// 228-byte object.
+    /// </summary>
+    public const uint TwentyEighthDefClassSite = 0x004F1CBA;
+    public const uint TwentyEighthDefClassFactory = 0x004E3D15;
+    public const uint TwentyEighthDefClassCtor = 0x004E2612;
+    public const uint TwentyEighthDefClassVtbl = 0x0124291C;
+    public const int TwentyEighthDefClassSize = 228;
+    public const string TwentyEighthDefClassName = "CWeaponDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CWeaponDef</c>:
+    /// <c>004F1D70</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F1D77</c>
+    /// <c>CCarryingDef</c>
+    /// factory <c>0x4DFE62</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(56)</c>
+    /// <c>jmp 004DD8FF</c>
+    /// <c>0044C0C0</c>
+    /// size 56 vtbl <c>01241194</c>.
+    /// Note-only + flag, not a live
+    /// 56-byte object.
+    /// </summary>
+    public const uint TwentyNinthDefClassSite = 0x004F1D70;
+    public const uint TwentyNinthDefClassFactory = 0x004DFE62;
+    public const uint TwentyNinthDefClassCtor = 0x004DD8FF;
+    public const uint TwentyNinthDefClassVtbl = 0x01241194;
+    public const int TwentyNinthDefClassSize = 56;
+    public const string TwentyNinthDefClassName = "CCarryingDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CCarryingDef</c>:
+    /// <c>004F1E26</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F1E2D</c>
+    /// <c>CCarryableDef</c>
+    /// factory <c>0x4DA767</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(80)</c>
+    /// <c>0044C0C0</c>
+    /// size 80 vtbl <c>0123E7EC</c>.
+    /// Note-only + flag, not a live
+    /// 80-byte object.
+    /// </summary>
+    public const uint ThirtiethDefClassSite = 0x004F1E26;
+    public const uint ThirtiethDefClassFactory = 0x004DA767;
+    public const uint ThirtiethDefClassCtor = 0x0044C0C0;
+    public const uint ThirtiethDefClassVtbl = 0x0123E7EC;
+    public const int ThirtiethDefClassSize = 80;
+    public const string ThirtiethDefClassName = "CCarryableDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CCarryableDef</c>:
+    /// <c>004F1EDC</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F1EE3</c>
+    /// <c>CEnemyDef</c>
+    /// factory <c>0x4D835A</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(44)</c>
+    /// <c>0044C0C0</c>
+    /// size 44 vtbl <c>0123B3F4</c>.
+    /// Note-only + flag, not a live
+    /// 44-byte object.
+    /// </summary>
+    public const uint ThirtyFirstDefClassSite = 0x004F1EDC;
+    public const uint ThirtyFirstDefClassFactory = 0x004D835A;
+    public const uint ThirtyFirstDefClassCtor = 0x0044C0C0;
+    public const uint ThirtyFirstDefClassVtbl = 0x0123B3F4;
+    public const int ThirtyFirstDefClassSize = 44;
+    public const string ThirtyFirstDefClassName = "CEnemyDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CEnemyDef</c>:
+    /// <c>004F22E6</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F22ED</c>
+    /// <c>COpinionOfHeroDef</c>
+    /// factory <c>0x4D83D9</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(60)</c>
+    /// <c>jmp 004D3F83</c>
+    /// <c>0044C0C0</c>
+    /// size 60 vtbl <c>0123B59C</c>.
+    /// Note-only + flag, not a live
+    /// 60-byte object.
+    /// </summary>
+    public const uint ThirtySecondDefClassSite = 0x004F22E6;
+    public const uint ThirtySecondDefClassFactory = 0x004D83D9;
+    public const uint ThirtySecondDefClassCtor = 0x004D3F83;
+    public const uint ThirtySecondDefClassVtbl = 0x0123B59C;
+    public const int ThirtySecondDefClassSize = 60;
+    public const string ThirtySecondDefClassName = "COpinionOfHeroDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>COpinionOfHeroDef</c>:
+    /// <c>004F2472</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F2479</c>
+    /// <c>CShopDef</c>
+    /// factory <c>0x4E26BC</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(0xD0)</c>
+    /// <c>jmp 004E06C3</c>
+    /// <c>0044C0C0</c>
+    /// size 208 vtbl <c>01241F9C</c>.
+    /// Note-only + flag, not a live
+    /// 208-byte object.
+    /// </summary>
+    public const uint ThirtyThirdDefClassSite = 0x004F2472;
+    public const uint ThirtyThirdDefClassFactory = 0x004E26BC;
+    public const uint ThirtyThirdDefClassCtor = 0x004E06C3;
+    public const uint ThirtyThirdDefClassVtbl = 0x01241F9C;
+    public const int ThirtyThirdDefClassSize = 208;
+    public const string ThirtyThirdDefClassName = "CShopDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CShopDef</c>:
+    /// <c>004F2593</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F259A</c>
+    /// <c>CStockItemDef</c>
+    /// factory <c>0x4D8482</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(64)</c>
+    /// <c>0044C0C0</c>
+    /// size 64 vtbl <c>0123B74C</c>.
+    /// Note-only + flag, not a live
+    /// 64-byte object.
+    /// </summary>
+    public const uint ThirtyFourthDefClassSite = 0x004F2593;
+    public const uint ThirtyFourthDefClassFactory = 0x004D8482;
+    public const uint ThirtyFourthDefClassCtor = 0x0044C0C0;
+    public const uint ThirtyFourthDefClassVtbl = 0x0123B74C;
+    public const int ThirtyFourthDefClassSize = 64;
+    public const string ThirtyFourthDefClassName = "CStockItemDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CStockItemDef</c>:
+    /// <c>004F2649</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F2650</c>
+    /// <c>CGiftDef</c>
+    /// factory <c>0x4D8547</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(48)</c>
+    /// <c>0044C0C0</c>
+    /// size 48 vtbl <c>0123B8B4</c>.
+    /// Note-only + flag, not a live
+    /// 48-byte object.
+    /// </summary>
+    public const uint ThirtyFifthDefClassSite = 0x004F2649;
+    public const uint ThirtyFifthDefClassFactory = 0x004D8547;
+    public const uint ThirtyFifthDefClassCtor = 0x0044C0C0;
+    public const uint ThirtyFifthDefClassVtbl = 0x0123B8B4;
+    public const int ThirtyFifthDefClassSize = 48;
+    public const string ThirtyFifthDefClassName = "CGiftDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CGiftDef</c>:
+    /// <c>004F27CD</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F27D4</c>
+    /// <c>CHeroSuitDef</c>
+    /// factory <c>0x4E2809</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(52)</c>
+    /// <c>jmp 004E0900</c>
+    /// <c>0044C0C0</c>
+    /// size 52 vtbl <c>0124216C</c>.
+    /// Note-only + flag, not a live
+    /// 52-byte object.
+    /// </summary>
+    public const uint ThirtySixthDefClassSite = 0x004F27CD;
+    public const uint ThirtySixthDefClassFactory = 0x004E2809;
+    public const uint ThirtySixthDefClassCtor = 0x004E0900;
+    public const uint ThirtySixthDefClassVtbl = 0x0124216C;
+    public const int ThirtySixthDefClassSize = 52;
+    public const string ThirtySixthDefClassName = "CHeroSuitDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CHeroSuitDef</c>:
+    /// <c>004F2C36</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F2C3D</c>
+    /// <c>CHeroExperienceDef</c>
+    /// factory <c>0x4EBAE7</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(0xB4)</c>
+    /// <c>jmp 004EB9E8</c>
+    /// <c>0044C0C0</c>
+    /// size 180 vtbl <c>0124390C</c>.
+    /// Note-only + flag, not a live
+    /// 180-byte object.
+    /// </summary>
+    public const uint ThirtySeventhDefClassSite = 0x004F2C36;
+    public const uint ThirtySeventhDefClassFactory = 0x004EBAE7;
+    public const uint ThirtySeventhDefClassCtor = 0x004EB9E8;
+    public const uint ThirtySeventhDefClassVtbl = 0x0124390C;
+    public const int ThirtySeventhDefClassSize = 180;
+    public const string ThirtySeventhDefClassName = "CHeroExperienceDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CHeroExperienceDef</c>:
+    /// <c>004F2CE8</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F2CEF</c>
+    /// <c>CExperienceDef</c>
+    /// factory <c>0x4E27AE</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(80)</c>
+    /// <c>jmp 004E0860</c>
+    /// <c>0044C0C0</c>
+    /// size 80 vtbl <c>01242104</c>.
+    /// Note-only + flag, not a live
+    /// 80-byte object.
+    /// </summary>
+    public const uint ThirtyEighthDefClassSite = 0x004F2CE8;
+    public const uint ThirtyEighthDefClassFactory = 0x004E27AE;
+    public const uint ThirtyEighthDefClassCtor = 0x004E0860;
+    public const uint ThirtyEighthDefClassVtbl = 0x01242104;
+    public const int ThirtyEighthDefClassSize = 80;
+    public const string ThirtyEighthDefClassName = "CExperienceDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CExperienceDef</c>:
+    /// <c>004F2FB5</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F2FBC</c>
+    /// <c>CReplaceableMeshDef</c>
+    /// factory <c>0x4E60D8</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(52)</c>
+    /// <c>jmp 004E3E4C</c>
+    /// <c>0044C0C0</c>
+    /// size 52 vtbl <c>012430BC</c>.
+    /// Note-only + flag, not a live
+    /// 52-byte object.
+    /// </summary>
+    public const uint ThirtyNinthDefClassSite = 0x004F2FB5;
+    public const uint ThirtyNinthDefClassFactory = 0x004E60D8;
+    public const uint ThirtyNinthDefClassCtor = 0x004E3E4C;
+    public const uint ThirtyNinthDefClassVtbl = 0x012430BC;
+    public const int ThirtyNinthDefClassSize = 52;
+    public const string ThirtyNinthDefClassName = "CReplaceableMeshDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CReplaceableMeshDef</c>:
+    /// <c>004F306B</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F3072</c>
+    /// <c>CMultiStaticMeshDef</c>
+    /// factory <c>0x4E31FA</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(52)</c>
+    /// <c>jmp 004E1516</c>
+    /// <c>0044C0C0</c>
+    /// size 52 vtbl <c>0124265C</c>.
+    /// Note-only + flag, not a live
+    /// 52-byte object.
+    /// </summary>
+    public const uint FortiethDefClassSite = 0x004F306B;
+    public const uint FortiethDefClassFactory = 0x004E31FA;
+    public const uint FortiethDefClassCtor = 0x004E1516;
+    public const uint FortiethDefClassVtbl = 0x0124265C;
+    public const int FortiethDefClassSize = 52;
+    public const string FortiethDefClassName = "CMultiStaticMeshDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CMultiStaticMeshDef</c>:
+    /// <c>004F3338</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F333F</c>
+    /// <c>CHeroCentreDef</c>
+    /// factory <c>0x4D86F0</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(37)</c>
+    /// <c>0044C0C0</c>
+    /// size 37 vtbl <c>0123BE54</c>.
+    /// Note-only + flag, not a live
+    /// 37-byte object.
+    /// </summary>
+    public const uint FortyFirstDefClassSite = 0x004F3338;
+    public const uint FortyFirstDefClassFactory = 0x004D86F0;
+    public const uint FortyFirstDefClassCtor = 0x0044C0C0;
+    public const uint FortyFirstDefClassVtbl = 0x0123BE54;
+    public const int FortyFirstDefClassSize = 37;
+    public const string FortyFirstDefClassName = "CHeroCentreDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CHeroCentreDef</c>:
+    /// <c>004F34C4</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F34CB</c>
+    /// <c>CQuestCardDef</c>
+    /// factory <c>0x4E2333</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(116)</c>
+    /// <c>jmp 004E00BC</c>
+    /// <c>0044C0C0</c>
+    /// size 116 vtbl <c>01241E44</c>.
+    /// Note-only + flag, not a live
+    /// 116-byte object. Does not
+    /// construct
+    /// <c>Q_NewOakValeIntro</c>.
+    /// </summary>
+    public const uint FortySecondDefClassSite = 0x004F34C4;
+    public const uint FortySecondDefClassFactory = 0x004E2333;
+    public const uint FortySecondDefClassCtor = 0x004E00BC;
+    public const uint FortySecondDefClassVtbl = 0x01241E44;
+    public const int FortySecondDefClassSize = 116;
+    public const string FortySecondDefClassName = "CQuestCardDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CQuestCardDef</c>:
+    /// <c>004F357A</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F3581</c>
+    /// <c>CFlammableDef</c>
+    /// factory <c>0x4E3DC3</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(76)</c>
+    /// <c>jmp 004E284B</c>
+    /// <c>0044C0C0</c>
+    /// size 76 vtbl <c>01242984</c>.
+    /// Note-only + flag, not a live
+    /// 76-byte object.
+    /// </summary>
+    public const uint FortyThirdDefClassSite = 0x004F357A;
+    public const uint FortyThirdDefClassFactory = 0x004E3DC3;
+    public const uint FortyThirdDefClassCtor = 0x004E284B;
+    public const uint FortyThirdDefClassVtbl = 0x01242984;
+    public const int FortyThirdDefClassSize = 76;
+    public const string FortyThirdDefClassName = "CFlammableDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CFlammableDef</c>:
+    /// <c>004F3630</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F3637</c>
+    /// <c>CBoastingPodiumDef</c>
+    /// factory <c>0x4D8736</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(44)</c>
+    /// <c>0044C0C0</c>
+    /// size 44 vtbl <c>0123BF0C</c>.
+    /// Note-only + flag, not a live
+    /// 44-byte object.
+    /// </summary>
+    public const uint FortyFourthDefClassSite = 0x004F3630;
+    public const uint FortyFourthDefClassFactory = 0x004D8736;
+    public const uint FortyFourthDefClassCtor = 0x0044C0C0;
+    public const uint FortyFourthDefClassVtbl = 0x0123BF0C;
+    public const int FortyFourthDefClassSize = 44;
+    public const string FortyFourthDefClassName = "CBoastingPodiumDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CBoastingPodiumDef</c>:
+    /// <c>004F3892</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F3899</c>
+    /// <c>CTCVolumeContainmentTrackerDef</c>
+    /// factory <c>0x4D94C8</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(48)</c>
+    /// <c>0044C0C0</c>
+    /// size 48 vtbl <c>0123E0C4</c>.
+    /// Note-only + flag, not a live
+    /// 48-byte object.
+    /// </summary>
+    public const uint FortyFifthDefClassSite = 0x004F3892;
+    public const uint FortyFifthDefClassFactory = 0x004D94C8;
+    public const uint FortyFifthDefClassCtor = 0x0044C0C0;
+    public const uint FortyFifthDefClassVtbl = 0x0123E0C4;
+    public const int FortyFifthDefClassSize = 48;
+    public const string FortyFifthDefClassName = "CTCVolumeContainmentTrackerDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CTCVolumeContainmentTrackerDef</c>:
+    /// <c>004F3E4C</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F3E53</c>
+    /// <c>CThingDrainLifeShotDef</c>
+    /// factory <c>0x4D8D56</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(60)</c>
+    /// <c>0044C0C0</c>
+    /// size 60 vtbl <c>0123CCA4</c>.
+    /// Note-only + flag, not a live
+    /// 60-byte object.
+    /// </summary>
+    public const uint FortySixthDefClassSite = 0x004F3E4C;
+    public const uint FortySixthDefClassFactory = 0x004D8D56;
+    public const uint FortySixthDefClassCtor = 0x0044C0C0;
+    public const uint FortySixthDefClassVtbl = 0x0123CCA4;
+    public const int FortySixthDefClassSize = 60;
+    public const string FortySixthDefClassName = "CThingDrainLifeShotDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CThingDrainLifeShotDef</c>:
+    /// <c>004F3F02</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F3F09</c>
+    /// <c>CFireballSpellLevelDef</c>
+    /// factory <c>0x4D8D10</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(44)</c>
+    /// <c>0044C0C0</c>
+    /// size 44 vtbl <c>0123CC3C</c>.
+    /// Note-only + flag, not a live
+    /// 44-byte object.
+    /// </summary>
+    public const uint FortySeventhDefClassSite = 0x004F3F02;
+    public const uint FortySeventhDefClassFactory = 0x004D8D10;
+    public const uint FortySeventhDefClassCtor = 0x0044C0C0;
+    public const uint FortySeventhDefClassVtbl = 0x0123CC3C;
+    public const int FortySeventhDefClassSize = 44;
+    public const string FortySeventhDefClassName = "CFireballSpellLevelDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CFireballSpellLevelDef</c>:
+    /// <c>004F40F9</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F4100</c>
+    /// <c>CSkeletalMorphDef</c>
+    /// factory <c>0x4E3DD9</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(52)</c>
+    /// <c>jmp 004E2895</c>
+    /// <c>0044C0C0</c>
+    /// size 52 vtbl <c>012429EC</c>.
+    /// Note-only + flag, not a live
+    /// 52-byte object.
+    /// </summary>
+    public const uint FortyEighthDefClassSite = 0x004F40F9;
+    public const uint FortyEighthDefClassFactory = 0x004E3DD9;
+    public const uint FortyEighthDefClassCtor = 0x004E2895;
+    public const uint FortyEighthDefClassVtbl = 0x012429EC;
+    public const int FortyEighthDefClassSize = 52;
+    public const string FortyEighthDefClassName = "CSkeletalMorphDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CSkeletalMorphDef</c>:
+    /// <c>004F43C6</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F43CD</c>
+    /// <c>CTrapDef</c>
+    /// factory <c>0x4E5CF2</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(100)</c>
+    /// <c>jmp 004E3E2A</c>
+    /// <c>0044C0C0</c>
+    /// size 100 vtbl <c>01243054</c>.
+    /// Note-only + flag, not a live
+    /// 100-byte object.
+    /// </summary>
+    public const uint FortyNinthDefClassSite = 0x004F43C6;
+    public const uint FortyNinthDefClassFactory = 0x004E5CF2;
+    public const uint FortyNinthDefClassCtor = 0x004E3E2A;
+    public const uint FortyNinthDefClassVtbl = 0x01243054;
+    public const int FortyNinthDefClassSize = 100;
+    public const string FortyNinthDefClassName = "CTrapDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CTrapDef</c>:
+    /// <c>004F4628</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F462F</c>
+    /// <c>CParticleAttacherDef</c>
+    /// factory <c>0x4E2AFA</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(52)</c>
+    /// <c>jmp 004E0B9C</c>
+    /// <c>0044C0C0</c>
+    /// size 52 vtbl <c>01242364</c>.
+    /// Note-only + flag, not a live
+    /// 52-byte object. GPU attach
+    /// remains skipped
+    /// (<c>FirstSeenCanRenderParticles</c>).
+    /// </summary>
+    public const uint FiftiethDefClassSite = 0x004F4628;
+    public const uint FiftiethDefClassFactory = 0x004E2AFA;
+    public const uint FiftiethDefClassCtor = 0x004E0B9C;
+    public const uint FiftiethDefClassVtbl = 0x01242364;
+    public const int FiftiethDefClassSize = 52;
+    public const string FiftiethDefClassName = "CParticleAttacherDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CParticleAttacherDef</c>:
+    /// <c>004F46DE</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F46E5</c>
+    /// <c>CAnimatingObjectDef</c>
+    /// factory <c>0x4EBA6E</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(72)</c>
+    /// <c>jmp 004EA1F0</c>
+    /// <c>0044C0C0</c>
+    /// size 72 vtbl <c>0124376C</c>.
+    /// Note-only + flag, not a live
+    /// 72-byte object.
+    /// </summary>
+    public const uint FiftyFirstDefClassSite = 0x004F46DE;
+    public const uint FiftyFirstDefClassFactory = 0x004EBA6E;
+    public const uint FiftyFirstDefClassCtor = 0x004EA1F0;
+    public const uint FiftyFirstDefClassVtbl = 0x0124376C;
+    public const int FiftyFirstDefClassSize = 72;
+    public const string FiftyFirstDefClassName = "CAnimatingObjectDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CAnimatingObjectDef</c>:
+    /// <c>004F4A16</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F4A1D</c>
+    /// <c>CExpressionSubDef</c>
+    /// factory <c>0x4D8818</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(44)</c>
+    /// <c>0044C0C0</c>
+    /// size 44 vtbl <c>0123C2E4</c>.
+    /// Note-only + flag, not a live
+    /// 44-byte object. Persist is u32
+    /// at <c>+40</c>, not a quest
+    /// CString. Not
+    /// <c>ActivateQuest</c>.
+    /// </summary>
+    public const uint FiftySecondDefClassSite = 0x004F4A16;
+    public const uint FiftySecondDefClassFactory = 0x004D8818;
+    public const uint FiftySecondDefClassCtor = 0x0044C0C0;
+    public const uint FiftySecondDefClassVtbl = 0x0123C2E4;
+    public const int FiftySecondDefClassSize = 44;
+    public const string FiftySecondDefClassName = "CExpressionSubDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CExpressionSubDef</c>:
+    /// <c>004F4DB9</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F4DC0</c>
+    /// <c>CWillResponseDef</c>
+    /// factory <c>0x4D9629</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(45)</c>
+    /// <c>0044C0C0</c>
+    /// size 45 vtbl <c>0123E324</c>.
+    /// Note-only + flag, not a live
+    /// 45-byte object.
+    /// </summary>
+    public const uint FiftyThirdDefClassSite = 0x004F4DB9;
+    public const uint FiftyThirdDefClassFactory = 0x004D9629;
+    public const uint FiftyThirdDefClassCtor = 0x0044C0C0;
+    public const uint FiftyThirdDefClassVtbl = 0x0123E324;
+    public const int FiftyThirdDefClassSize = 45;
+    public const string FiftyThirdDefClassName = "CWillResponseDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CWillResponseDef</c>:
+    /// <c>004F4F45</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F4F4C</c>
+    /// <c>CTurncoatDef</c>
+    /// factory <c>0x4E0F9C</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(84)</c>
+    /// <c>jmp 004DEBA3</c>
+    /// <c>0044C0C0</c>
+    /// size 84 vtbl <c>0124193C</c>.
+    /// Note-only + flag, not a live
+    /// 84-byte object.
+    /// </summary>
+    public const uint FiftyFourthDefClassSite = 0x004F4F45;
+    public const uint FiftyFourthDefClassFactory = 0x004E0F9C;
+    public const uint FiftyFourthDefClassCtor = 0x004DEBA3;
+    public const uint FiftyFourthDefClassVtbl = 0x0124193C;
+    public const int FiftyFourthDefClassSize = 84;
+    public const string FiftyFourthDefClassName = "CTurncoatDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CTurncoatDef</c>:
+    /// <c>004F4FFB</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F5002</c>
+    /// <c>CSummonableCreatureDef</c>
+    /// factory <c>0x4D885E</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(48)</c>
+    /// <c>jmp 004D4C3E</c>
+    /// <c>0044C0C0</c>
+    /// size 48 vtbl <c>0123C3A4</c>.
+    /// Note-only + flag, not a live
+    /// 48-byte object.
+    /// </summary>
+    public const uint FiftyFifthDefClassSite = 0x004F4FFB;
+    public const uint FiftyFifthDefClassFactory = 0x004D885E;
+    public const uint FiftyFifthDefClassCtor = 0x004D4C3E;
+    public const uint FiftyFifthDefClassVtbl = 0x0123C3A4;
+    public const int FiftyFifthDefClassSize = 48;
+    public const string FiftyFifthDefClassName = "CSummonableCreatureDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CSummonableCreatureDef</c>:
+    /// <c>004F55B5</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F55BC</c>
+    /// <c>CAIScratchpadDef</c>
+    /// factory <c>0x4D4E07</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(156)</c>
+    /// <c>jmp 007ABB30</c>
+    /// <c>009FBEC0</c>
+    /// size 156 vtbl <c>0126D014</c>.
+    /// Note-only + flag, not a live
+    /// 156-byte object.
+    /// </summary>
+    public const uint FiftySixthDefClassSite = 0x004F55B5;
+    public const uint FiftySixthDefClassFactory = 0x004D4E07;
+    public const uint FiftySixthDefClassCtor = 0x007ABB30;
+    public const uint FiftySixthDefClassVtbl = 0x0126D014;
+    public const int FiftySixthDefClassSize = 156;
+    public const string FiftySixthDefClassName = "CAIScratchpadDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CAIScratchpadDef</c>:
+    /// <c>004F566B</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F5672</c>
+    /// <c>COccupiableDef</c>
+    /// factory <c>0x4D88FC</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(44)</c>
+    /// <c>0044C0C0</c>
+    /// size 44 vtbl <c>0123C514</c>.
+    /// Note-only + flag, not a live
+    /// 44-byte object.
+    /// </summary>
+    public const uint FiftySeventhDefClassSite = 0x004F566B;
+    public const uint FiftySeventhDefClassFactory = 0x004D88FC;
+    public const uint FiftySeventhDefClassCtor = 0x0044C0C0;
+    public const uint FiftySeventhDefClassVtbl = 0x0123C514;
+    public const int FiftySeventhDefClassSize = 44;
+    public const string FiftySeventhDefClassName = "COccupiableDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>COccupiableDef</c>:
+    /// <c>004F5721</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F5728</c>
+    /// <c>CBossDef</c>
+    /// factory <c>0x4E0D4C</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(84)</c>
+    /// <c>jmp 004DE8C2</c>
+    /// <c>0044C0C0</c>
+    /// size 84 vtbl <c>0124185C</c>.
+    /// Note-only + flag, not a live
+    /// 84-byte object.
+    /// </summary>
+    public const uint FiftyEighthDefClassSite = 0x004F5721;
+    public const uint FiftyEighthDefClassFactory = 0x004E0D4C;
+    public const uint FiftyEighthDefClassCtor = 0x004DE8C2;
+    public const uint FiftyEighthDefClassVtbl = 0x0124185C;
+    public const int FiftyEighthDefClassSize = 84;
+    public const string FiftyEighthDefClassName = "CBossDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CBossDef</c>:
+    /// <c>004F5918</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F591F</c>
+    /// <c>CFishingDef</c>
+    /// factory <c>0x4E0DB9</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(124)</c>
+    /// <c>jmp 004DE8F5</c>
+    /// <c>0044C0C0</c>
+    /// size 124 vtbl <c>012418C4</c>.
+    /// Note-only + flag, not a live
+    /// 124-byte object.
+    /// </summary>
+    public const uint FiftyNinthDefClassSite = 0x004F5918;
+    public const uint FiftyNinthDefClassFactory = 0x004E0DB9;
+    public const uint FiftyNinthDefClassCtor = 0x004DE8F5;
+    public const uint FiftyNinthDefClassVtbl = 0x012418C4;
+    public const int FiftyNinthDefClassSize = 124;
+    public const string FiftyNinthDefClassName = "CFishingDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CFishingDef</c>:
+    /// <c>004F5A39</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F5A40</c>
+    /// <c>CGuardDef</c>
+    /// factory <c>0x4D89EC</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(80)</c>
+    /// <c>0044C0C0</c>
+    /// size 80 vtbl <c>0123C75C</c>.
+    /// Note-only + flag, not a live
+    /// 80-byte object.
+    /// </summary>
+    public const uint SixtiethDefClassSite = 0x004F5A39;
+    public const uint SixtiethDefClassFactory = 0x004D89EC;
+    public const uint SixtiethDefClassCtor = 0x0044C0C0;
+    public const uint SixtiethDefClassVtbl = 0x0123C75C;
+    public const int SixtiethDefClassSize = 80;
+    public const string SixtiethDefClassName = "CGuardDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CGuardDef</c>:
+    /// <c>004F5AEF</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F5AF6</c>
+    /// <c>CInterestingToVillagersDef</c>
+    /// factory <c>0x4D89B4</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(44)</c>
+    /// <c>jmp 004D4FCF</c>
+    /// <c>0044C0C0</c>
+    /// size 44 vtbl <c>0123C6D4</c>.
+    /// Note-only + flag, not a live
+    /// 44-byte object.
+    /// </summary>
+    public const uint SixtyFirstDefClassSite = 0x004F5AEF;
+    public const uint SixtyFirstDefClassFactory = 0x004D89B4;
+    public const uint SixtyFirstDefClassCtor = 0x004D4FCF;
+    public const uint SixtyFirstDefClassVtbl = 0x0123C6D4;
+    public const int SixtyFirstDefClassSize = 44;
+    public const string SixtyFirstDefClassName = "CInterestingToVillagersDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CInterestingToVillagersDef</c>:
+    /// <c>004F5BA5</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F5BAC</c>
+    /// <c>CActivateQuestDef</c>
+    /// factory <c>0x4D8A32</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(48)</c>
+    /// <c>jmp 004D5056</c>
+    /// <c>0044C0C0</c>
+    /// size 48 vtbl <c>0123C7F4</c>.
+    /// Note-only + flag, not a live
+    /// 48-byte object. Registrar only.
+    /// Does not
+    /// <c>ActivateQuest("Q_NewOakValeIntro")</c>.
+    /// </summary>
+    public const uint SixtySecondDefClassSite = 0x004F5BA5;
+    public const uint SixtySecondDefClassFactory = 0x004D8A32;
+    public const uint SixtySecondDefClassCtor = 0x004D5056;
+    public const uint SixtySecondDefClassVtbl = 0x0123C7F4;
+    public const int SixtySecondDefClassSize = 48;
+    public const string SixtySecondDefClassName = "CActivateQuestDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CActivateQuestDef</c>:
+    /// <c>004F5CC6</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F5CCD</c>
+    /// <c>CCrateStackDef</c>
+    /// factory <c>0x4D8A6A</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(48)</c>
+    /// <c>0044C0C0</c>
+    /// size 48 vtbl <c>0123C86C</c>.
+    /// Note-only + flag, not a live
+    /// 48-byte object.
+    /// </summary>
+    public const uint SixtyThirdDefClassSite = 0x004F5CC6;
+    public const uint SixtyThirdDefClassFactory = 0x004D8A6A;
+    public const uint SixtyThirdDefClassCtor = 0x0044C0C0;
+    public const uint SixtyThirdDefClassVtbl = 0x0123C86C;
+    public const int SixtyThirdDefClassSize = 48;
+    public const string SixtyThirdDefClassName = "CCrateStackDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CCrateStackDef</c>:
+    /// <c>004F5D7C</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F5D83</c>
+    /// <c>COverheadDisplayDef</c>
+    /// factory <c>0x4D8AB0</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(40)</c>
+    /// <c>0044C0C0</c>
+    /// size 40 vtbl <c>0123C8FC</c>.
+    /// Note-only + flag, not a live
+    /// 40-byte object.
+    /// </summary>
+    public const uint SixtyFourthDefClassSite = 0x004F5D7C;
+    public const uint SixtyFourthDefClassFactory = 0x004D8AB0;
+    public const uint SixtyFourthDefClassCtor = 0x0044C0C0;
+    public const uint SixtyFourthDefClassVtbl = 0x0123C8FC;
+    public const int SixtyFourthDefClassSize = 40;
+    public const string SixtyFourthDefClassName = "COverheadDisplayDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>COverheadDisplayDef</c>:
+    /// <c>004F5E32</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F5E39</c>
+    /// <c>CTavernTableDef</c>
+    /// factory <c>0x4D8AF6</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(39)</c>
+    /// <c>0044C0C0</c>
+    /// size 39 vtbl <c>0123C964</c>.
+    /// Note-only + flag, not a live
+    /// 39-byte object.
+    /// </summary>
+    public const uint SixtyFifthDefClassSite = 0x004F5E32;
+    public const uint SixtyFifthDefClassFactory = 0x004D8AF6;
+    public const uint SixtyFifthDefClassCtor = 0x0044C0C0;
+    public const uint SixtyFifthDefClassVtbl = 0x0123C964;
+    public const int SixtyFifthDefClassSize = 39;
+    public const string SixtyFifthDefClassName = "CTavernTableDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CTavernTableDef</c>:
+    /// <c>004F6029</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F6030</c>
+    /// <c>CTavernDef</c>
+    /// factory <c>0x4D8BE1</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(44)</c>
+    /// <c>0044C0C0</c>
+    /// size 44 vtbl <c>0123CA8C</c>.
+    /// Note-only + flag, not a live
+    /// 44-byte object. Not Oakvale
+    /// tavern spawn.
+    /// </summary>
+    public const uint SixtySixthDefClassSite = 0x004F6029;
+    public const uint SixtySixthDefClassFactory = 0x004D8BE1;
+    public const uint SixtySixthDefClassCtor = 0x0044C0C0;
+    public const uint SixtySixthDefClassVtbl = 0x0123CA8C;
+    public const int SixtySixthDefClassSize = 44;
+    public const string SixtySixthDefClassName = "CTavernDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CTavernDef</c>:
+    /// <c>004F60DF</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F60E6</c>
+    /// <c>CObjectAugmentationsDef</c>
+    /// factory <c>0x4EC526</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(140)</c>
+    /// <c>jmp 004EBBA3</c>
+    /// <c>0044C0C0</c>
+    /// size 140 vtbl <c>01243974</c>.
+    /// Note-only + flag, not a live
+    /// 140-byte object.
+    /// </summary>
+    public const uint SixtySeventhDefClassSite = 0x004F60DF;
+    public const uint SixtySeventhDefClassFactory = 0x004EC526;
+    public const uint SixtySeventhDefClassCtor = 0x004EBBA3;
+    public const uint SixtySeventhDefClassVtbl = 0x01243974;
+    public const int SixtySeventhDefClassSize = 140;
+    public const string SixtySeventhDefClassName = "CObjectAugmentationsDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CObjectAugmentationsDef</c>:
+    /// <c>004F63AC</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F63B3</c>
+    /// <c>CDrunkennessDef</c>
+    /// factory <c>0x4D8C91</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(44)</c>
+    /// <c>0044C0C0</c>
+    /// size 44 vtbl <c>0123CB3C</c>.
+    /// Note-only + flag, not a live
+    /// 44-byte object.
+    /// </summary>
+    public const uint SixtyEighthDefClassSite = 0x004F63AC;
+    public const uint SixtyEighthDefClassFactory = 0x004D8C91;
+    public const uint SixtyEighthDefClassCtor = 0x0044C0C0;
+    public const uint SixtyEighthDefClassVtbl = 0x0123CB3C;
+    public const int SixtyEighthDefClassSize = 44;
+    public const string SixtyEighthDefClassName = "CDrunkennessDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CDrunkennessDef</c>:
+    /// <c>004F67BA</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F67C1</c>
+    /// <c>CGoldDef</c>
+    /// factory <c>0x4D8EC5</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(44)</c>
+    /// <c>0044C0C0</c>
+    /// size 44 vtbl <c>0123D2EC</c>.
+    /// Note-only + flag, not a live
+    /// 44-byte object.
+    /// </summary>
+    public const uint SixtyNinthDefClassSite = 0x004F67BA;
+    public const uint SixtyNinthDefClassFactory = 0x004D8EC5;
+    public const uint SixtyNinthDefClassCtor = 0x0044C0C0;
+    public const uint SixtyNinthDefClassVtbl = 0x0123D2EC;
+    public const int SixtyNinthDefClassSize = 44;
+    public const string SixtyNinthDefClassName = "CGoldDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CGoldDef</c>:
+    /// <c>004F6946</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F694D</c>
+    /// <c>CAICreatureWillPowerIndicatorDef</c>
+    /// factory <c>0x4D926A</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(44)</c>
+    /// <c>0044C0C0</c>
+    /// size 44 vtbl <c>0123DAA4</c>.
+    /// Note-only + flag, not a live
+    /// 44-byte object.
+    /// </summary>
+    public const uint SeventiethDefClassSite = 0x004F6946;
+    public const uint SeventiethDefClassFactory = 0x004D926A;
+    public const uint SeventiethDefClassCtor = 0x0044C0C0;
+    public const uint SeventiethDefClassVtbl = 0x0123DAA4;
+    public const int SeventiethDefClassSize = 44;
+    public const string SeventiethDefClassName = "CAICreatureWillPowerIndicatorDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// that indicator:
+    /// <c>004F6991</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F6998</c>
+    /// <c>CKickableDef</c>
+    /// factory <c>0x4D7C2D</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(84)</c>
+    /// <c>0044C0C0</c>
+    /// size 84 vtbl <c>0123A7AC</c>.
+    /// Note-only + flag, not a live
+    /// 84-byte object.
+    /// </summary>
+    public const uint SeventyFirstDefClassSite = 0x004F6991;
+    public const uint SeventyFirstDefClassFactory = 0x004D7C2D;
+    public const uint SeventyFirstDefClassCtor = 0x0044C0C0;
+    public const uint SeventyFirstDefClassVtbl = 0x0123A7AC;
+    public const int SeventyFirstDefClassSize = 84;
+    public const string SeventyFirstDefClassName = "CKickableDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CKickableDef</c>:
+    /// <c>004F69DC</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F69E3</c>
+    /// <c>CTavernGameDef</c>
+    /// factory <c>0x4E2D3B</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(420)</c>
+    /// <c>jmp 004E1049</c>
+    /// <c>0044C0C0</c>
+    /// size 420 vtbl <c>012424BC</c>.
+    /// Note-only + flag, not a live
+    /// 420-byte object.
+    /// </summary>
+    public const uint SeventySecondDefClassSite = 0x004F69DC;
+    public const uint SeventySecondDefClassFactory = 0x004E2D3B;
+    public const uint SeventySecondDefClassCtor = 0x004E1049;
+    public const uint SeventySecondDefClassVtbl = 0x012424BC;
+    public const int SeventySecondDefClassSize = 420;
+    public const string SeventySecondDefClassName = "CTavernGameDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CTavernGameDef</c>:
+    /// <c>004F6A27</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F6A2E</c>
+    /// <c>CTavernGameCardBaseDef</c>
+    /// factory <c>0x4E2DB2</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(132)</c>
+    /// <c>jmp 004E1195</c>
+    /// <c>0044C0C0</c>
+    /// size 132 vtbl <c>0124258C</c>.
+    /// Note-only + flag, not a live
+    /// 132-byte object.
+    /// </summary>
+    public const uint SeventyThirdDefClassSite = 0x004F6A27;
+    public const uint SeventyThirdDefClassFactory = 0x004E2DB2;
+    public const uint SeventyThirdDefClassCtor = 0x004E1195;
+    public const uint SeventyThirdDefClassVtbl = 0x0124258C;
+    public const int SeventyThirdDefClassSize = 132;
+    public const string SeventyThirdDefClassName = "CTavernGameCardBaseDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CTavernGameCardBaseDef</c>:
+    /// <c>004F6A72</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F6A79</c>
+    /// <c>CTavernGameCoinBaseDef</c>
+    /// factory <c>0x4D8F51</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(68)</c>
+    /// <c>0044C0C0</c>
+    /// size 68 vtbl <c>0123D44C</c>.
+    /// Note-only + flag, not a live
+    /// 68-byte object.
+    /// </summary>
+    public const uint SeventyFourthDefClassSite = 0x004F6A72;
+    public const uint SeventyFourthDefClassFactory = 0x004D8F51;
+    public const uint SeventyFourthDefClassCtor = 0x0044C0C0;
+    public const uint SeventyFourthDefClassVtbl = 0x0123D44C;
+    public const int SeventyFourthDefClassSize = 68;
+    public const string SeventyFourthDefClassName = "CTavernGameCoinBaseDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CTavernGameCoinBaseDef</c>:
+    /// <c>004F6B28</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F6B2F</c>
+    /// <c>CTavernGameShoveHaPennyDef</c>
+    /// factory <c>0x4E2D70</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(512)</c>
+    /// <c>jmp 004E1105</c>
+    /// size 512 vtbl <c>01242524</c>.
+    /// Note-only + flag, not a live
+    /// 512-byte object.
+    /// </summary>
+    public const uint SeventyFifthDefClassSite = 0x004F6B28;
+    public const uint SeventyFifthDefClassFactory = 0x004E2D70;
+    public const uint SeventyFifthDefClassCtor = 0x004E1105;
+    public const uint SeventyFifthDefClassVtbl = 0x01242524;
+    public const int SeventyFifthDefClassSize = 512;
+    public const string SeventyFifthDefClassName = "CTavernGameShoveHaPennyDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// shove ha'penny:
+    /// <c>004F6BDE</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F6BE5</c>
+    /// <c>CTavernGameCoinGolfDef</c>
+    /// factory <c>0x4D8F97</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(92)</c>
+    /// <c>0044C0C0</c>
+    /// size 92 vtbl <c>0123D4D4</c>.
+    /// Note-only + flag, not a live
+    /// 92-byte object.
+    /// </summary>
+    public const uint SeventySixthDefClassSite = 0x004F6BDE;
+    public const uint SeventySixthDefClassFactory = 0x004D8F97;
+    public const uint SeventySixthDefClassCtor = 0x0044C0C0;
+    public const uint SeventySixthDefClassVtbl = 0x0123D4D4;
+    public const int SeventySixthDefClassSize = 92;
+    public const string SeventySixthDefClassName = "CTavernGameCoinGolfDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// coin golf:
+    /// <c>004F6D6A</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F6D71</c>
+    /// <c>CTavernGameSpotTheAdditionDef</c>
+    /// factory <c>0x4E11C3</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(144)</c>
+    /// <c>jmp 004DED22</c>
+    /// <c>0044C0C0</c>
+    /// size 144 vtbl <c>01241A4C</c>.
+    /// Note-only + flag, not a live
+    /// 144-byte object.
+    /// </summary>
+    public const uint SeventySeventhDefClassSite = 0x004F6D6A;
+    public const uint SeventySeventhDefClassFactory = 0x004E11C3;
+    public const uint SeventySeventhDefClassCtor = 0x004DED22;
+    public const uint SeventySeventhDefClassVtbl = 0x01241A4C;
+    public const int SeventySeventhDefClassSize = 144;
+    public const string SeventySeventhDefClassName = "CTavernGameSpotTheAdditionDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// spot-the-addition:
+    /// <c>004F6EF6</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F6EFD</c>
+    /// <c>CDecapitationDef</c>
+    /// factory <c>0x4D9047</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(48)</c>
+    /// <c>0044C0C0</c>
+    /// size 48 vtbl <c>0123D5E4</c>.
+    /// Note-only + flag, not a live
+    /// 48-byte object.
+    /// </summary>
+    public const uint SeventyEighthDefClassSite = 0x004F6EF6;
+    public const uint SeventyEighthDefClassFactory = 0x004D9047;
+    public const uint SeventyEighthDefClassCtor = 0x0044C0C0;
+    public const uint SeventyEighthDefClassVtbl = 0x0123D5E4;
+    public const int SeventyEighthDefClassSize = 48;
+    public const string SeventyEighthDefClassName = "CDecapitationDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CDecapitationDef</c>:
+    /// <c>004F6FAC</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F6FB3</c>
+    /// <c>CCoinGameObstacleDef</c>
+    /// factory <c>0x4D8F0B</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(44)</c>
+    /// <c>0044C0C0</c>
+    /// size 44 vtbl <c>0123D3E4</c>.
+    /// Note-only + flag, not a live
+    /// 44-byte object.
+    /// </summary>
+    public const uint SeventyNinthDefClassSite = 0x004F6FAC;
+    public const uint SeventyNinthDefClassFactory = 0x004D8F0B;
+    public const uint SeventyNinthDefClassCtor = 0x0044C0C0;
+    public const uint SeventyNinthDefClassVtbl = 0x0123D3E4;
+    public const int SeventyNinthDefClassSize = 44;
+    public const string SeventyNinthDefClassName = "CCoinGameObstacleDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CCoinGameObstacleDef</c>:
+    /// <c>004F71EA</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F71F1</c>
+    /// <c>CWallMountEffectsDef</c>
+    /// factory <c>0x4D90C6</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(52)</c>
+    /// <c>0044C0C0</c>
+    /// size 52 vtbl <c>0123D74C</c>.
+    /// Note-only + flag, not a live
+    /// 52-byte object.
+    /// </summary>
+    public const uint EightiethDefClassSite = 0x004F71EA;
+    public const uint EightiethDefClassFactory = 0x004D90C6;
+    public const uint EightiethDefClassCtor = 0x0044C0C0;
+    public const uint EightiethDefClassVtbl = 0x0123D74C;
+    public const int EightiethDefClassSize = 52;
+    public const string EightiethDefClassName = "CWallMountEffectsDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CWallMountEffectsDef</c>:
+    /// <c>004F7294</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F729B</c>
+    /// <c>CFishDef</c>
+    /// factory <c>0x4D910C</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(88)</c>
+    /// <c>0044C0C0</c>
+    /// size 88 vtbl <c>0123D7BC</c>.
+    /// Note-only + flag, not a live
+    /// 88-byte object.
+    /// </summary>
+    public const uint EightyFirstDefClassSite = 0x004F7294;
+    public const uint EightyFirstDefClassFactory = 0x004D910C;
+    public const uint EightyFirstDefClassCtor = 0x0044C0C0;
+    public const uint EightyFirstDefClassVtbl = 0x0123D7BC;
+    public const int EightyFirstDefClassSize = 88;
+    public const string EightyFirstDefClassName = "CFishDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CFishDef</c>:
+    /// <c>004F733E</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F7345</c>
+    /// <c>CTeleporterDef</c>
+    /// factory <c>0x4D9152</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(52)</c>
+    /// <c>0044C0C0</c>
+    /// size 52 vtbl <c>0123D834</c>.
+    /// Note-only + flag, not a live
+    /// 52-byte object. Not Guild
+    /// transition.
+    /// </summary>
+    public const uint EightySecondDefClassSite = 0x004F733E;
+    public const uint EightySecondDefClassFactory = 0x004D9152;
+    public const uint EightySecondDefClassCtor = 0x0044C0C0;
+    public const uint EightySecondDefClassVtbl = 0x0123D834;
+    public const int EightySecondDefClassSize = 52;
+    public const string EightySecondDefClassName = "CTeleporterDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CTeleporterDef</c>:
+    /// <c>004F7443</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F744A</c>
+    /// <c>CExplosionDef</c>
+    /// factory <c>0x4E3096</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(112)</c>
+    /// <c>jmp 004E1341</c>
+    /// <c>0044C0C0</c>
+    /// size 112 vtbl <c>012425F4</c>.
+    /// Note-only + flag, not a live
+    /// 112-byte object.
+    /// </summary>
+    public const uint EightyThirdDefClassSite = 0x004F7443;
+    public const uint EightyThirdDefClassFactory = 0x004E3096;
+    public const uint EightyThirdDefClassCtor = 0x004E1341;
+    public const uint EightyThirdDefClassVtbl = 0x012425F4;
+    public const int EightyThirdDefClassSize = 112;
+    public const string EightyThirdDefClassName = "CExplosionDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CExplosionDef</c>:
+    /// <c>004F760A</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F7611</c>
+    /// <c>CResurrectionItemDef</c>
+    /// factory <c>0x4D91DE</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(44)</c>
+    /// <c>0044C0C0</c>
+    /// size 44 vtbl <c>0123D9AC</c>.
+    /// Note-only + flag, not a live
+    /// 44-byte object.
+    /// </summary>
+    public const uint EightyFourthDefClassSite = 0x004F760A;
+    public const uint EightyFourthDefClassFactory = 0x004D91DE;
+    public const uint EightyFourthDefClassCtor = 0x0044C0C0;
+    public const uint EightyFourthDefClassVtbl = 0x0123D9AC;
+    public const int EightyFourthDefClassSize = 44;
+    public const string EightyFourthDefClassName = "CResurrectionItemDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CResurrectionItemDef</c>:
+    /// <c>004F76B4</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F76BB</c>
+    /// <c>CKrakenDef</c>
+    /// factory <c>0x4E13AD</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(124)</c>
+    /// <c>jmp 004DEF86</c>
+    /// <c>0044C0C0</c>
+    /// size 124 vtbl <c>01241B2C</c>.
+    /// Note-only + flag, not a live
+    /// 124-byte object.
+    /// </summary>
+    public const uint EightyFifthDefClassSite = 0x004F76B4;
+    public const uint EightyFifthDefClassFactory = 0x004E13AD;
+    public const uint EightyFifthDefClassCtor = 0x004DEF86;
+    public const uint EightyFifthDefClassVtbl = 0x01241B2C;
+    public const int EightyFifthDefClassSize = 124;
+    public const string EightyFifthDefClassName = "CKrakenDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CKrakenDef</c>:
+    /// <c>004F775E</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F7765</c>
+    /// <c>CKrakenTentacleDef</c>
+    /// factory <c>0x4D9224</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(96)</c>
+    /// <c>0044C0C0</c>
+    /// size 96 vtbl <c>0123DA24</c>.
+    /// Note-only + flag, not a live
+    /// 96-byte object.
+    /// </summary>
+    public const uint EightySixthDefClassSite = 0x004F775E;
+    public const uint EightySixthDefClassFactory = 0x004D9224;
+    public const uint EightySixthDefClassCtor = 0x0044C0C0;
+    public const uint EightySixthDefClassVtbl = 0x0123DA24;
+    public const int EightySixthDefClassSize = 96;
+    public const string EightySixthDefClassName = "CKrakenTentacleDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// tentacle:
+    /// <c>004F7808</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F780F</c>
+    /// <c>CHeroSpecialMovementDef</c>
+    /// factory <c>0x4D9198</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(56)</c>
+    /// <c>0044C0C0</c>
+    /// size 56 vtbl <c>0123D92C</c>.
+    /// Note-only + flag, not a live
+    /// 56-byte object.
+    /// </summary>
+    public const uint EightySeventhDefClassSite = 0x004F7808;
+    public const uint EightySeventhDefClassFactory = 0x004D9198;
+    public const uint EightySeventhDefClassCtor = 0x0044C0C0;
+    public const uint EightySeventhDefClassVtbl = 0x0123D92C;
+    public const int EightySeventhDefClassSize = 56;
+    public const string EightySeventhDefClassName = "CHeroSpecialMovementDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// special movement:
+    /// <c>004F7911</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F7918</c>
+    /// <c>CIdleSchedulerDef</c>
+    /// factory <c>0x4E6232</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(72)</c>
+    /// <c>jmp 004E3F21</c>
+    /// <c>00430370</c>
+    /// size 72 vtbl <c>01243124</c>.
+    /// Note-only + flag, not a live
+    /// 72-byte object.
+    /// </summary>
+    public const uint EightyEighthDefClassSite = 0x004F7911;
+    public const uint EightyEighthDefClassFactory = 0x004E6232;
+    public const uint EightyEighthDefClassCtor = 0x004E3F21;
+    public const uint EightyEighthDefClassVtbl = 0x01243124;
+    public const int EightyEighthDefClassSize = 72;
+    public const string EightyEighthDefClassName = "CIdleSchedulerDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// idle scheduler:
+    /// <c>004F79BB</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F79C2</c>
+    /// <c>CCarriedReadableDef</c>
+    /// factory <c>0x4D92B0</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(48)</c>
+    /// <c>jmp 004D5ECA</c>
+    /// <c>0044C0C0</c>
+    /// size 48 vtbl <c>0123DB94</c>.
+    /// Note-only + flag, not a live
+    /// 48-byte object.
+    /// </summary>
+    public const uint EightyNinthDefClassSite = 0x004F79BB;
+    public const uint EightyNinthDefClassFactory = 0x004D92B0;
+    public const uint EightyNinthDefClassCtor = 0x004D5ECA;
+    public const uint EightyNinthDefClassVtbl = 0x0123DB94;
+    public const int EightyNinthDefClassSize = 48;
+    public const string EightyNinthDefClassName = "CCarriedReadableDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// carried readable:
+    /// <c>004F7A65</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F7A6C</c>
+    /// <c>CJackOfBladesBattleDef</c>
+    /// factory <c>0x4E4748</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(128)</c>
+    /// <c>00430370</c>
+    /// size 128 vtbl <c>01242E3C</c>.
+    /// Note-only + flag, not a live
+    /// 128-byte object.
+    /// </summary>
+    public const uint NinetiethDefClassSite = 0x004F7A65;
+    public const uint NinetiethDefClassFactory = 0x004E4748;
+    public const uint NinetiethDefClassCtor = 0x00430370;
+    public const uint NinetiethDefClassVtbl = 0x01242E3C;
+    public const int NinetiethDefClassSize = 128;
+    public const string NinetiethDefClassName = "CJackOfBladesBattleDef";
+    /// <summary>
+    /// Zero-CTC battle cluster after Jack.
+    /// All <c>00430370</c>. Registrar only.
+    /// <c>CMazeBattleDef</c> is not the
+    /// childhood Maze arrival.
+    /// </summary>
+    public const uint NinetyFirstDefClassSite = 0x004F7AB0;
+    public const uint NinetyFirstDefClassFactory = 0x004E47BF;
+    public const uint NinetyFirstDefClassCtor = 0x00430370;
+    public const uint NinetyFirstDefClassVtbl = 0x01242EA4;
+    public const int NinetyFirstDefClassSize = 96;
+    public const string NinetyFirstDefClassName = "CScorpionKingBattleDef";
+    public const uint NinetySecondDefClassSite = 0x004F7AFB;
+    public const uint NinetySecondDefClassFactory = 0x004E4624;
+    public const uint NinetySecondDefClassCtor = 0x00430370;
+    public const uint NinetySecondDefClassVtbl = 0x01242D04;
+    public const int NinetySecondDefClassSize = 76;
+    public const string NinetySecondDefClassName = "CThunderBattleDef";
+    public const uint NinetyThirdDefClassSite = 0x004F7B46;
+    public const uint NinetyThirdDefClassFactory = 0x004E4667;
+    public const uint NinetyThirdDefClassCtor = 0x00430370;
+    public const uint NinetyThirdDefClassVtbl = 0x01242D6C;
+    public const int NinetyThirdDefClassSize = 68;
+    public const string NinetyThirdDefClassName = "CWhisperBattleDef";
+    public const uint NinetyFourthDefClassSite = 0x004F7B91;
+    public const uint NinetyFourthDefClassFactory = 0x004E46A4;
+    public const uint NinetyFourthDefClassCtor = 0x00430370;
+    public const uint NinetyFourthDefClassVtbl = 0x01242DD4;
+    public const int NinetyFourthDefClassSize = 64;
+    public const string NinetyFourthDefClassName = "CWaspQueenBattleDef";
+    public const uint NinetyFifthDefClassSite = 0x004F7BDC;
+    public const uint NinetyFifthDefClassFactory = 0x004E45CE;
+    public const uint NinetyFifthDefClassCtor = 0x00430370;
+    public const uint NinetyFifthDefClassVtbl = 0x01242C9C;
+    public const int NinetyFifthDefClassSize = 96;
+    public const string NinetyFifthDefClassName = "CMazeBattleDef";
+    public const uint NinetySixthDefClassSite = 0x004F7C27;
+    public const uint NinetySixthDefClassFactory = 0x004E4833;
+    public const uint NinetySixthDefClassCtor = 0x00430370;
+    public const uint NinetySixthDefClassVtbl = 0x01242F0C;
+    public const int NinetySixthDefClassSize = 96;
+    public const string NinetySixthDefClassName = "CTrollBattleDef";
+    public const uint NinetySeventhDefClassSite = 0x004F7C72;
+    public const uint NinetySeventhDefClassFactory = 0x004E4883;
+    public const uint NinetySeventhDefClassCtor = 0x00430370;
+    public const uint NinetySeventhDefClassVtbl = 0x01242F74;
+    public const int NinetySeventhDefClassSize = 72;
+    public const string NinetySeventhDefClassName = "CBalverineBattleDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CBalverineBattleDef</c> and one
+    /// unnamed CTC: <c>004F7D1C</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F7D23</c>
+    /// <c>CAreaOfEffectAttackDef</c>
+    /// factory <c>0x4E6CF3</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(76)</c>
+    /// <c>00430370</c>
+    /// size 76 vtbl <c>0124318C</c>.
+    /// Note-only + flag, not a live
+    /// 76-byte object. Registrar only.
+    /// Does not
+    /// <c>ActivateQuest</c>.
+    /// </summary>
+    public const uint NinetyEighthDefClassSite = 0x004F7D1C;
+    public const uint NinetyEighthDefClassFactory = 0x004E6CF3;
+    public const uint NinetyEighthDefClassCtor = 0x00430370;
+    public const uint NinetyEighthDefClassVtbl = 0x0124318C;
+    public const int NinetyEighthDefClassSize = 76;
+    public const string NinetyEighthDefClassName = "CAreaOfEffectAttackDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CAreaOfEffectAttackDef</c>:
+    /// <c>004F7DC6</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F7DCD</c>
+    /// <c>CFishingRodDef</c>
+    /// factory <c>0x4D9321</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(60)</c>
+    /// <c>0044C0C0</c>
+    /// size 60 vtbl <c>0123DCA4</c>.
+    /// Note-only + flag, not a live
+    /// 60-byte object.
+    /// </summary>
+    public const uint NinetyNinthDefClassSite = 0x004F7DC6;
+    public const uint NinetyNinthDefClassFactory = 0x004D9321;
+    public const uint NinetyNinthDefClassCtor = 0x0044C0C0;
+    public const uint NinetyNinthDefClassVtbl = 0x0123DCA4;
+    public const int NinetyNinthDefClassSize = 60;
+    public const string NinetyNinthDefClassName = "CFishingRodDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CFishingRodDef</c>:
+    /// <c>004F7F2A</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F7F31</c>
+    /// <c>CRumbleDef</c>
+    /// factory <c>0x4E3290</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(64)</c>
+    /// <c>jmp 004E1722</c>
+    /// <c>0044C0C0</c>
+    /// size 64 vtbl <c>0124273C</c>.
+    /// Note-only + flag, not a live
+    /// 64-byte object.
+    /// </summary>
+    public const uint HundredthDefClassSite = 0x004F7F2A;
+    public const uint HundredthDefClassFactory = 0x004E3290;
+    public const uint HundredthDefClassCtor = 0x004E1722;
+    public const uint HundredthDefClassVtbl = 0x0124273C;
+    public const int HundredthDefClassSize = 64;
+    public const string HundredthDefClassName = "CRumbleDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CRumbleDef</c>:
+    /// <c>004F820A</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F8211</c>
+    /// <c>CShipDef</c>
+    /// factory <c>0x4D8799</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(68)</c>
+    /// <c>0044C0C0</c>
+    /// size 68 vtbl <c>0123C0A4</c>.
+    /// Note-only + flag, not a live
+    /// 68-byte object.
+    /// </summary>
+    public const uint HundredFirstDefClassSite = 0x004F820A;
+    public const uint HundredFirstDefClassFactory = 0x004D8799;
+    public const uint HundredFirstDefClassCtor = 0x0044C0C0;
+    public const uint HundredFirstDefClassVtbl = 0x0123C0A4;
+    public const int HundredFirstDefClassSize = 68;
+    public const string HundredFirstDefClassName = "CShipDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CShipDef</c>:
+    /// <c>004F8255</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F825C</c>
+    /// <c>CShopItemDef</c>
+    /// factory <c>0x4D8411</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(72)</c>
+    /// <c>jmp 004D405A</c>
+    /// <c>0044C0C0</c>
+    /// size 72 vtbl <c>0123B644</c>.
+    /// Note-only + flag, not a live
+    /// 72-byte object.
+    /// </summary>
+    public const uint HundredSecondDefClassSite = 0x004F8255;
+    public const uint HundredSecondDefClassFactory = 0x004D8411;
+    public const uint HundredSecondDefClassCtor = 0x004D405A;
+    public const uint HundredSecondDefClassVtbl = 0x0123B644;
+    public const int HundredSecondDefClassSize = 72;
+    public const string HundredSecondDefClassName = "CShopItemDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CShopItemDef</c>:
+    /// <c>004F82A0</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F82A7</c>
+    /// <c>CSoundAtmospheresDef</c>
+    /// factory <c>0x4E32E3</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(52)</c>
+    /// <c>jmp 004E1748</c>
+    /// <c>0044C0C0</c>
+    /// size 52 vtbl <c>012427A4</c>.
+    /// Note-only + flag, not a live
+    /// 52-byte object. Not Oakvale
+    /// atmosphere spawn.
+    /// </summary>
+    public const uint HundredThirdDefClassSite = 0x004F82A0;
+    public const uint HundredThirdDefClassFactory = 0x004E32E3;
+    public const uint HundredThirdDefClassCtor = 0x004E1748;
+    public const uint HundredThirdDefClassVtbl = 0x012427A4;
+    public const int HundredThirdDefClassSize = 52;
+    public const string HundredThirdDefClassName = "CSoundAtmospheresDef";
+    /// <summary>
+    /// Next <c>009B0AC0</c> after
+    /// <c>CSoundAtmospheresDef</c>:
+    /// <c>004F8420</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F8427</c>
+    /// <c>CNymphDef</c>
+    /// factory <c>0x4D93A0</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(80)</c>
+    /// <c>0044C0C0</c>
+    /// size 80 vtbl <c>0123DE3C</c>.
+    /// Note-only + flag, not a live
+    /// 80-byte object.
+    /// </summary>
+    public const uint HundredFourthDefClassSite = 0x004F8420;
+    public const uint HundredFourthDefClassFactory = 0x004D93A0;
+    public const uint HundredFourthDefClassCtor = 0x0044C0C0;
+    public const uint HundredFourthDefClassVtbl = 0x0123DE3C;
+    public const int HundredFourthDefClassSize = 80;
+    public const string HundredFourthDefClassName = "CNymphDef";
+    public const uint HundredFifthDefClassSite = 0x004F84D6;
+    public const uint HundredFifthDefClassFactory = 0x004D93E6;
+    public const uint HundredFifthDefClassCtor = 0x0044C0C0;
+    public const uint HundredFifthDefClassVtbl = 0x0123DEB4;
+    public const int HundredFifthDefClassSize = 76;
+    public const string HundredFifthDefClassName = "CSummonDef";
+    public const uint HundredSixthDefClassSite = 0x004F85F7;
+    public const uint HundredSixthDefClassFactory = 0x004D9465;
+    public const uint HundredSixthDefClassCtor = 0x0044C0C0;
+    public const uint HundredSixthDefClassVtbl = 0x0123DFBC;
+    public const int HundredSixthDefClassSize = 44;
+    public const string HundredSixthDefClassName = "CCameraCollisionDef";
+    public const uint HundredSeventhDefClassSite = 0x004F899A;
+    public const uint HundredSeventhDefClassFactory = 0x004D96DD;
+    public const uint HundredSeventhDefClassCtor = 0x0044C0C0;
+    public const uint HundredSeventhDefClassVtbl = 0x0123E3B4;
+    public const int HundredSeventhDefClassSize = 88;
+    public const string HundredSeventhDefClassName = "CBettingDef";
+    public const uint HundredEighthDefClassSite = 0x004F8B91;
+    public const uint HundredEighthDefClassFactory = 0x004D97E9;
+    public const uint HundredEighthDefClassCtor = 0x0044C0C0;
+    public const uint HundredEighthDefClassVtbl = 0x0123E504;
+    public const int HundredEighthDefClassSize = 92;
+    public const string HundredEighthDefClassName = "COracleMinigameDef";
+    public const uint HundredNinthDefClassSite = 0x004F8C47;
+    public const uint HundredNinthDefClassFactory = 0x004D982F;
+    public const uint HundredNinthDefClassCtor = 0x004D6638;
+    public const uint HundredNinthDefClassVtbl = 0x0123E584;
+    public const int HundredNinthDefClassSize = 60;
+    public const string HundredNinthDefClassName = "CFireheartMinigameDef";
+    public const uint HundredTenthDefClassSite = 0x004F8D68;
+    public const uint HundredTenthDefClassFactory = 0x004D9882;
+    public const uint HundredTenthDefClassCtor = 0x0044C0C0;
+    public const uint HundredTenthDefClassVtbl = 0x0123E5EC;
+    public const int HundredTenthDefClassSize = 60;
+    public const string HundredTenthDefClassName = "CLightningOrbDef";
+    /// <summary>
+    /// Last <c>009B0AC0</c> on
+    /// <c>004EE23F</c>:
+    /// <c>004F8E89</c>
+    /// <c>0044C6B0</c>
+    /// <c>004F8E90</c>
+    /// <c>CHasNameDef</c>
+    /// factory <c>0x4D98C8</c>
+    /// pack <c>0042DAE0</c>
+    /// <c>00BFEA1A(52)</c>
+    /// <c>0044C0C0</c>
+    /// size 52 vtbl <c>0123E67C</c>.
+    /// Six unnamed <c>004D2EF0</c> then
+    /// <c>ret 004F9144</c>. Registrar
+    /// only. Not
+    /// <c>ActivateQuest</c>.
+    /// </summary>
+    public const uint HundredEleventhDefClassSite = 0x004F8E89;
+    public const uint HundredEleventhDefClassFactory = 0x004D98C8;
+    public const uint HundredEleventhDefClassCtor = 0x0044C0C0;
+    public const uint HundredEleventhDefClassVtbl = 0x0123E67C;
+    public const int HundredEleventhDefClassSize = 52;
+    public const string HundredEleventhDefClassName = "CHasNameDef";
+    /// <summary>
+    /// Only <c>E8</c> of <c>0073B130</c>
+    /// is <c>004F9129</c> after
+    /// <c>CHasNameDef</c>. Unrolled
+    /// 8-byte <c>{tag, thunk}</c>
+    /// bump vs limit
+    /// <c>0x13BAD4C</c>. Grow
+    /// <c>00743270</c>; second family
+    /// <c>00743B30</c>; table commit
+    /// <c>007441D0</c>; <c>ret
+    /// 0073CB40</c>. First record tag
+    /// 0 thunk <c>00742430</c>.
+    /// Global bump, not the
+    /// <c>esi</c> def map. Not
+    /// <c>ActivateQuest</c>.
+    /// </summary>
+    public const uint ThingComponentsFillSite = 0x004F9129;
+    public const uint ThingComponentsFillFn = 0x0073B130;
+    public const uint ThingComponentsFillRet = 0x0073CB40;
+    public const uint ThingComponentsFillLimitVa = 0x013BAD4C;
+    public const uint ThingComponentsFillGrowFn = 0x00743270;
+    public const uint ThingComponentsFillSecondFn = 0x00743B30;
+    public const uint ThingComponentsFillCommitFn = 0x007441D0;
+    public const uint ThingComponentsFillFirstThunk = 0x00742430;
+    public const int ThingComponentsFillFirstTag = 0;
+    public const uint ThingComponentsFillFirstCtor = 0x0073EAC0;
+    public const uint ThingComponentsFillFirstVtbl = 0x01267588;
+    public const int ThingComponentsFillFirstSize = 28;
+    public const int ThingComponentsTailCtcCount = 6;
+    public const uint ThingComponentsTailCtcFirstSite = 0x004F8ECE;
+    public const uint ThingComponentsTailCtcFirstFactory = 0x004D66DA;
+    public const uint ThingComponentsTailCtcLastSite = 0x004F90E1;
+    public const uint ThingComponentsTailCtcLastFactory = 0x004DAF85;
+    public const bool ThingComponentsFillIsQuestActivate = false;
+    /// <summary>
+    /// <c>004F9112</c> stores 1 into
+    /// the IAT-adjacent flag immediately
+    /// before <c>0073B130</c>, so
+    /// <c>004F9139 004EBACE</c> runs
+    /// on this walk (<c>ecx=esi</c>
+    /// map). <c>004EBACE</c> reads
+    /// <c>[esi]</c> / <c>[esi+4]</c> /
+    /// <c>[esi+12]</c> u8, calls
+    /// <c>004EB9A6</c>, zeros
+    /// <c>[esi+13]</c>. Not
+    /// <c>ActivateQuest</c>.
+    /// </summary>
+    public const uint ThingComponentsCommitFlagSetSite = 0x004F9112;
+    public const uint ThingComponentsCommitSite = 0x004F9139;
+    public const uint ThingComponentsCommitFn = 0x004EBACE;
+    public const uint ThingComponentsCommitApplyFn = 0x004EB9A6;
+    public const int ThingComponentsCommitPlus12 = 12;
+    public const int ThingComponentsCommitPlus13 = 13;
+    public const bool ThingComponentsCommitRunsThisWalk = true;
+    public const uint ThingComponentsRet = 0x004F9144;
+    /// <summary>
     /// <c>00416005</c> parent
     /// <c>push 1</c>:
     /// <c>0044C6B0</c>
@@ -1228,6 +3226,19 @@ public sealed class EngineLifecycle : IDisposable
     public const uint DefinitionManagerResetApply = 0x009E5250;
     public const int DefinitionManagerPlus88 = 88;
     public const int DefinitionManagerArg = 1;
+    /// <summary>
+    /// <c>0044C72B</c> Compile after the
+    /// path list. Opens the compiled-def
+    /// analog (<c>009B08C0</c>). Host
+    /// Notes the open. Does not parse
+    /// <c>game.bin</c>.
+    /// </summary>
+    public const uint DefinitionManagerCompileFn = 0x009B08C0;
+    public const uint DefinitionManagerPathPrefixVa = 0x0122DAA4;
+    public const string DefinitionManagerPathPrefix = "pc\\";
+    public const uint DefinitionManagerFirstGlobVa = 0x01236094;
+    public const string DefinitionManagerFirstGlob = "*.h";
+    public const string DefinitionManagerCompileFirstClass = "CHeroPostcardGeneratorDef";
     public const uint PlayerManagerVa = 0x013B879C;
     public const uint PlayerManagerApply = 0x0044A530;
     public const uint CreatePlayerSlotFn = 0x0044A1A0;
@@ -1806,14 +3817,169 @@ public sealed class EngineLifecycle : IDisposable
     public const uint FiberTickFn = 0x00A44880;
     public const uint FiberResumeFn = 0x00A44660;
     public const uint FiberEntryFn = 0x00A446A0;
+    /// <summary>
+    /// <c>00A446A0</c> calls watcher
+    /// <c>+16</c> then loops
+    /// <c>[vtbl+8]</c> until <c>+5</c>.
+    /// Persist bind <c>00DAADA0</c> and
+    /// run <c>00DABAC0</c> are not the
+    /// same <c>this</c> as that fiber
+    /// entry. PARITY “fiber calls persist
+    /// then run” is DISPROVEN.
+    /// </summary>
+    public const bool FiberCallsPersistThenRun = false;
+    /// <summary>
+    /// After yield, resume is
+    /// <c>00A44921</c> <c>00A44660</c>
+    /// → <c>009D87F0([fiber+16])</c>.
+    /// It does not re-enter
+    /// <c>00DABAC0</c> via
+    /// <c>[S_QNOVI.vtbl+8]</c>. First
+    /// enter of slot 2 is
+    /// <c>00DAAD76</c> → <c>00CDD440</c>
+    /// <c>jmp [eax+8]</c>.
+    /// </summary>
+    public const bool SqnoviReentersRunAfterYield = false;
+    public const uint SqnoviMainWatcherThunk = 0x00CDD440;
     public const uint FiberYieldFn = 0x009D8650;
     public const uint WatcherRunFn = 0x00CE7640;
     public const uint GameflowTickFn = 0x00CE7670;
     public const uint GameflowState0Fn = 0x00CE77D7;
     public const uint GameflowYieldThunk = 0x006E7410;
     public const uint WatcherYieldVtbl8 = 0x00A44840;
-    public const uint QuestIsActiveFn = 0x00893610;
-    public const uint QuestCardBindFn = 0x00896A30;
+    /// <summary>
+    /// <c>00CE7670</c> wait is
+    /// <c>[esi+64].vtbl+100</c>
+    /// slot 25 <c>00893570</c> (name
+    /// compare via type-<c>0x33</c>
+    /// <c>008ABED0</c>). Sibling
+    /// <c>00893610</c> is slot 26
+    /// <c>vtbl+104</c> GET copy-out.
+    /// First-seen both miss.
+    /// </summary>
+    public const uint QuestIsActiveFn = 0x00893570;
+    public const int QuestIsActiveVtbl = 100;
+    public const uint QuestIsGetFn = 0x00893610;
+    public const int QuestIsGetVtbl = 104;
+    /// <summary>
+    /// <c>01260F0C</c> slot 288
+    /// <c>vtbl+1152</c> <c>00892F80</c>
+    /// → <c>004B1D30</c> posts kind
+    /// <c>0x33</c> on <c>[world+96]</c>.
+    /// Give / visible, not construct
+    /// (<c>004B3CE0</c> posts
+    /// <c>0x37</c>). <c>00DBDE40</c>
+    /// calls this only after
+    /// <c>AttackOver</c>.
+    /// </summary>
+    public const uint QuestGiveFn = 0x00892F80;
+    public const int QuestGiveVtbl = 1152;
+    public const uint QuestGiveBody = 0x004B1D30;
+    public const int QuestGiveEventKind = 0x33;
+    public const int QuestConstructEventKind = 0x37;
+    /// <summary>
+    /// <c>005E7B77</c> in
+    /// <c>CTCQuestCompletionUI</c>
+    /// tick <c>005E78F0</c>. Mode 1
+    /// second Give after
+    /// <c>004B1D30</c> already posted
+    /// <c>0x33</c>. Empty <c>+80</c>
+    /// skips. Not no-save first-seen.
+    /// </summary>
+    public const uint QuestCompletionUiGiveFn = 0x005E7B77;
+    public const bool QuestCompletionUiGiveIsFirstSeen = false;
+    public const uint QuestGiveAfterAttackOver = 0x00DBE295;
+    /// <summary>
+    /// Gameflow state 0 waits
+    /// <c>vtbl+100</c> for type-<c>0x33</c>
+    /// Give of <c>Q_NewOakValeIntro</c>
+    /// on <c>[world+96]</c>. No-save
+    /// never posts that Give. Construct
+    /// posts <c>0x37</c> and cannot
+    /// satisfy the wait. Later Give is
+    /// <c>00DBE295</c> after AttackOver.
+    /// Do not invent
+    /// <c>ActivateQuest</c> to leave
+    /// the yield.
+    /// </summary>
+    public const bool GameflowWaitsForeverOnNoSave = true;
+    public const bool ActivateQuestSatisfiesGameflowWait = false;
+    /// <summary>
+    /// <c>CTCExpression</c> is 20 bytes
+    /// (<c>004DC7E8</c>). Offset
+    /// <c>+120</c> is on nested
+    /// <c>EXPRESSION</c> (factory
+    /// <c>0045D70B</c> size <c>0x90</c>).
+    /// First CString intern at that
+    /// slot is persist compile
+    /// <c>00456A54</c> <c>0045228F</c>,
+    /// before New Game. Tick
+    /// <c>007EF200</c> reads then
+    /// <c>004B4A10</c>; it does not
+    /// store <c>Q_NewOakValeIntro</c>
+    /// intern <c>0x012C5D14</c>.
+    /// </summary>
+    public const uint CtcExpressionFactory = 0x004DC7E8;
+    public const int CtcExpressionSize = 20;
+    public const uint ExpressionFactory = 0x0045D70B;
+    public const int ExpressionSize = 0x90;
+    public const uint ExpressionPlus120Persist = 0x00456A54;
+    public const uint ExpressionPlus120Call = 0x00456A5A;
+    public const uint ExpressionPersistFn = 0x004569A7;
+    /// <summary>
+    /// File payload at compiled
+    /// <c>EXPRESSION+120</c> is a
+    /// names.bin offset or <c>-1</c>,
+    /// CRC <c>0x1FB35A1B</c> (same dword
+    /// as <c>CActivateQuestDef+40</c>).
+    /// Not CString helper
+    /// <c>00431143</c>. 36 of 39 rows
+    /// are <c>-1</c>; three are
+    /// <c>Expression_Pickpocket</c> /
+    /// <c>Picklock</c> / <c>Steal</c>.
+    /// Never <c>Q_NewOakValeIntro</c>.
+    /// </summary>
+    public const uint ExpressionPlus120Crc = 0x1FB35A1B;
+    public const int ExpressionPlus120EmptySentinel = -1;
+    public const bool ExpressionPlus120IsOakvaleIntern = false;
+    public const uint ExpressionTickFn = 0x007EF200;
+    public const bool ExpressionTickWritesOakvaleIntern = false;
+    public const uint OakvaleQuestIntern = 0x012C5D14;
+    /// <summary>
+    /// Live <c>FableCrc</c> of
+    /// <c>Q_NewOakValeIntro</c>. Not
+    /// the PE intern. Not in
+    /// <c>CActivateQuestDef</c> 16-byte
+    /// payloads. <c>names.bin</c> has
+    /// no quest row.
+    /// </summary>
+    public const uint OakvaleQuestFableCrc = 0x8D19C362;
+    public const bool CActivateQuestDefInternsOakvale = false;
+    public const bool CActivateQuestDefInOakvaleTng = false;
+    /// <summary>
+    /// <c>00430340</c> <c>[retail+8]=1</c>
+    /// does not change Init Quests.
+    /// <c>0049F24E</c> always
+    /// <c>lea edx,[esi+172]</c>.
+    /// </summary>
+    public const bool RetailPlus8ChangesInitQuests = false;
+    /// <summary>
+    /// Gameflow state 0 binds the Oakvale
+    /// card via <c>vtbl+1180</c>
+    /// <c>00CE7957</c>
+    /// <c>call [edx+1180]</c> on
+    /// <c>[esi+64]</c> iface
+    /// <c>01260F0C</c> dest
+    /// <c>008968C0</c> (<c>ret 12</c>).
+    /// Sibling <c>00896A30</c> is slot
+    /// 296 (<c>+1184</c>, <c>ret 16</c>),
+    /// not this call. Not
+    /// <c>00CB5AD0</c>.
+    /// </summary>
+    public const uint QuestCardBindFn = 0x008968C0;
+    public const int QuestCardBindVtbl = 1180;
+    public const uint QuestCardBindSiblingFn = 0x00896A30;
+    public const int QuestCardBindSiblingVtbl = 1184;
     public const uint GiveNamedObjectFn = 0x008902E0;
     public const uint PlayAviFlagFn = 0x00408340;
     public const uint StoryLogFn = 0x00CBE87F;
@@ -1872,6 +4038,31 @@ public sealed class EngineLifecycle : IDisposable
     public const int DisplayPlus232Ctor = 0x1E;
     public const uint DisplayCtorFn = 0x00434E10;
     public const uint DisplayVtbl = 0x01231574;
+    /// <summary>
+    /// <c>00417418</c> <c>00BFEA1A(0x100)</c>
+    /// then <c>00434E10</c> then
+    /// <c>0041940C</c> <c>[game+40]</c>.
+    /// Not frontend
+    /// <see cref="DisplayObjectAllocFn"/>.
+    /// Blob <c>+20/+24/+28</c> device
+    /// helpers are omitted.
+    /// </summary>
+    public const uint DisplayAllocFn = 0x00BFEA1A;
+    public const int DisplaySize = 0x100;
+    public const uint DisplayBlobZeroFn = 0x00419270;
+    public const int DisplayBlobSize = 36;
+    public const uint DisplayStoreFn = 0x0041940C;
+    public const int GameDisplayOffset = 40;
+    public const int DisplayPlus4Offset = 4;
+    public const int DisplayPlus4Ctor = 1;
+    public const int GameDisplayPlus8Offset = 8;
+    public const int DisplayPlus12Offset = 12;
+    public const int DisplayPlus16Offset = 16;
+    public const int DisplayPlus20Offset = 20;
+    public const int DisplayPlus24Offset = 24;
+    public const int DisplayPlus248Offset = 248;
+    public const int GameGraphicBankOffset = 90568;
+    public const int WorldMeshBankOffset = 60;
     public const uint DisplayFadeDestFn = 0x00434CD0;
     public const uint DisplayFadeDestStub = 0x009D8250;
     public const uint DisplayFadeDestFlagVa = 0x01375CDC;
@@ -2017,6 +4208,16 @@ public sealed class EngineLifecycle : IDisposable
     public const uint DisplayQueueCountMagic = 0x88888889;
     public const int DisplayVertexBufferOffset = 16008;
     public const uint DisplayQueueEnqueueFn = 0x009DB700;
+    /// <summary>
+    /// First-seen frontend has no
+    /// <c>E8 009DB700</c>. Only recovered
+    /// sites are <c>009DC00E</c> and HUD
+    /// <c>009DD93D</c>. Nonempty dest is
+    /// <c>00BAE2D0</c> DIPUP, not
+    /// <c>+16020</c>. Leftover #36 dest
+    /// numbers stay UNREAD.
+    /// </summary>
+    public const bool FirstSeenFrontendE8Enqueue = false;
     public const uint DisplayPrimitiveFn = 0x00A058C0;
     public const int DisplayDipStride = 32;
     public const int DisplayDipPrimLines = 2;
@@ -2282,8 +4483,74 @@ public sealed class EngineLifecycle : IDisposable
     public const uint PlayerCreatureFactoryFn = 0x0052B880;
     public const uint HolySiteFactoryFn = 0x0052AC90;
     public const uint CreateCharacterFn = 0x00489D40;
+    /// <summary>
+    /// BSS <c>[0x13B866C]</c> is the
+    /// <c>SetStartingHolySite</c> CString
+    /// (also <see cref="WorldPathAltGlobalVa"/>).
+    /// Readers are inside <c>00488B20</c>.
+    /// First post-Leave take misses; live
+    /// Lookout pose is <c>GuildArrivalHSP</c>,
+    /// not <c>NOVStartHSP</c>.
+    /// <c>00DBDE40</c> does not read this slot.
+    /// </summary>
+    public const uint StartingHolySiteFindFn = 0x00488B20;
+    public const uint StartingHolySiteReadName = 0x00488B68;
+    public const uint SetStartingHolySiteFn = 0x00413840;
+    public const bool StartingHolySiteIsNovStartOnNoSave = false;
+    /// <summary>
+    /// <c>userst.ini</c> stores
+    /// <c>NOVStartHSP</c> before
+    /// frontend. First post-Leave
+    /// <c>00488B20</c> misses. Live
+    /// pose is still
+    /// <c>GuildArrivalHSP</c>.
+    /// </summary>
+    public const string StartingHolySiteStoredName = "NOVStartHSP";
+    public const bool StartingHolySiteFinderMissesOnNoSave = true;
     public const uint InitCharactersFn = 0x0049F180;
     public const uint InitGuiFn = 0x0043A380;
+    /// <summary>
+    /// Unique <c>push 0x338</c> is
+    /// Create Players <c>00487FC3</c>.
+    /// Init GUI does not alloc.
+    /// After no-save Init GUI nobody
+    /// writes a new size.
+    /// </summary>
+    public const bool InitGuiIsCtor = false;
+    public const bool PlayerGuiSizeWrittenAfterInitGui = false;
+    /// <summary>
+    /// Create Players constructs the
+    /// <c>PLAYER_GUI_PC</c> singleton.
+    /// Init GUI <c>0043A380</c> is reset
+    /// on that object, not a widget
+    /// factory and not first HUD DIP.
+    /// </summary>
+    public const uint PlayerGuiAllocFn = 0x00487FB0;
+    public const uint PlayerGuiCtorFn = 0x0043B570;
+    public const uint PlayerGuiStoreFn = 0x004195AF;
+    public const uint PlayerGuiVtbl = 0x0123177C;
+    public const int PlayerGuiObjectSize = 0x338;
+    public const uint PlayerGuiSingletonVa = 0x013B8790;
+    public const uint PlayerGuiDefVa = 0x013B878C;
+    public const string PlayerGuiPcName = "PLAYER_GUI_PC";
+    /// <summary>
+    /// <c>CPlayerGuiDef</c> persist
+    /// <c>+0x338</c> is <c>[esi+824]</c>
+    /// i32 via <c>004736C4</c>
+    /// <c>00431102</c>. Not instance
+    /// field (size is <c>0x338</c>).
+    /// Not first HUD dest. First
+    /// Present after Leave still
+    /// empty-skips overlay.
+    /// </summary>
+    public const uint PlayerGuiDefFactory = 0x00462F93;
+    public const uint PlayerGuiDefCtor = 0x00459BB6;
+    public const uint PlayerGuiDefVtbl = 0x012352DC;
+    public const int PlayerGuiDefSize = 0xAB4;
+    public const uint PlayerGuiDefPersistFn = 0x004736C4;
+    public const int PlayerGuiDefPlus338 = 824;
+    public const bool PlayerGuiDefPlus338IsHud = false;
+    public const bool PlayerGuiFirstPresentDrawsHud = false;
     public const uint InitQuestsFn = 0x004B4260;
     public const uint ActivateQuestFn = 0x00CB5AD0;
     public const uint QuestRegisterFn = QuestFactoryTable.Register;
@@ -2323,11 +4590,59 @@ public sealed class EngineLifecycle : IDisposable
     public const uint OakvaleBindSite = 0x00CD6E27;
     public const uint OakvaleFactoryFn = 0x00DBEF70;
     /// <summary>
+    /// Childhood TNG has no
+    /// <c>CActivateQuestDef</c> /
+    /// <c>CTCActionUseActivateQuest</c>
+    /// component. <c>Q_NewOakValeIntro</c>
+    /// in <c>StartOakValeWest.tng</c> is
+    /// only <c>XXXSectionStart</c>.
+    /// </summary>
+    public const bool ChildhoodTngQueuesActivateQuest = false;
+    /// <summary>
+    /// CWorld+212 u8
+    /// <c>CreatureGenerationEnabled</c>.
+    /// Ctor <c>004A68EA</c> writes 1.
+    /// <c>0049EA40</c> reads this slot.
+    /// Not frontend persist+212.
+    /// </summary>
+    public const int WorldCreatureGenerationEnabledOffset = 212;
+    /// <summary>
     /// Save-stream parser. One <c>E8</c>
     /// (<c>004B58F3</c> self). Not on
     /// no-save New Game.
     /// </summary>
     public const uint StartNewQuestParseFn = 0x004B5080;
+    /// <summary>
+    /// Fresh-profile New Game is the
+    /// no-save walk. <c>+90584</c>
+    /// empty skips <c>004B4A10</c>.
+    /// Profile <c>0x126</c> does not
+    /// write a FableSav quest list.
+    /// </summary>
+    public const bool NewGameIsNoSaveWalk = true;
+    public const bool NewGameWritesSaveQuestList = false;
+    /// <summary>
+    /// Second <c>004B4260</c> site
+    /// (<c>0049EAD1</c>). Listing
+    /// <c>0049EAC0</c> is
+    /// <c>push 1</c> /
+    /// <c>add ecx, 0xAC</c> /
+    /// <c>004B4260</c> /
+    /// <c>jmp 004B2890</c>.
+    /// Same <c>this+172</c> TRUE
+    /// vector as Init Quests.
+    /// <c>functions.tsv</c> parent
+    /// <c>0049EA40</c> is a different
+    /// fn (<c>ret 4</c> at
+    /// <c>0049EABD</c>). Zero
+    /// <c>E8</c> / vtbl inbound.
+    /// Not a no-save Oakvale
+    /// activator.
+    /// </summary>
+    public const uint QuestActivatePlus172SiblingFn = 0x0049EAC0;
+    public const uint QuestActivatePlus172SiblingCall = 0x0049EAD1;
+    public const int QuestActivatePlus172SiblingListOffset = 0xAC;
+    public const bool QuestActivatePlus172SiblingHasInbound = false;
     /// <summary>
     /// <c>00896A30</c> first <c>E8</c>.
     /// Finds a card thing; requires
@@ -2336,6 +4651,31 @@ public sealed class EngineLifecycle : IDisposable
     public const uint QuestCardFindFn = 0x004B0D30;
     public const uint AddTestQuestStoreFn = 0x004A113B;
     public const int WorldAddTestQuestOffset = 196;
+    /// <summary>
+    /// Inventory-quests UI confirm
+    /// <c>0061AB30</c> is
+    /// <c>CTCInventoryQuests</c>.
+    /// Gated on <c>[this+343]</c>.
+    /// Not persist +228 / not
+    /// <c>[retail+41]</c>. Zero
+    /// construct on no-save New
+    /// Game. Oakvale card <c>+24</c>
+    /// nonempty takes <c>004B4C50</c>
+    /// not <c>004B4A10</c>.
+    /// </summary>
+    public const uint InventoryQuestsConfirmFn = 0x0061AB30;
+    public const bool InventoryQuestsConfirmIsNewGame = false;
+    /// <summary>
+    /// Second <c>E8</c> of Give body
+    /// <c>004B1D30</c> is leftover
+    /// <c>CTCInventoryQuests</c>
+    /// <c>0061ACB3</c>. Unique caller
+    /// <c>0061B5FD</c>. Not first-seen.
+    /// Does not post <c>0x33</c> on
+    /// no-save.
+    /// </summary>
+    public const uint InventoryQuestsGiveFn = 0x0061ACB3;
+    public const bool InventoryQuestsGiveIsFirstSeen = false;
     public const int WorldQuestListOffset = 172;
     public const int WorldQuestDefListOffset = 184;
     public const uint InitHeroDefFn = 0x00449D90;
@@ -2401,11 +4741,23 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>00487C20</c>: <c>004FC210</c> then
     /// <c>00500540(index,0,1)</c> async.
     /// Caller <c>00449E60</c> reads persist
-    /// <c>PlayerRegionName</c> (HEADER) —
-    /// continue, not no-save New Game.
+    /// <c>PlayerRegionName</c> from the FableSav
+    /// <c>PLAYER</c> blob — continue, not
+    /// no-save New Game. HEADER is
+    /// <c>CurrentRegionName</c>, not this key.
+    /// Save write is <c>00449F90</c> only
+    /// (<c>0049FB5C</c> inside <c>0049F4C0</c>).
+    /// Zero no-save writer.
     /// </summary>
     public const uint LoadRegionByNameFn = 0x00487C20;
     public const uint LoadRegionByNamePersist = 0x00449E60;
+    public const uint SavePlayerRegionNameFn = 0x00449F90;
+    public const uint SavePlayerRegionNameSite = 0x0049FB5C;
+    public const uint FableSavPlayerWriter = 0x0049F4C0;
+    public const uint PersistCStringTransfer = 0x004109A0;
+    public const string PlayerRegionNameKey = "PlayerRegionName";
+    public const string FableSavPlayerSection = "PLAYER";
+    public const bool PlayerRegionNameWrittenOnNewGame = false;
     /// <summary>
     /// <c>00501450</c>: player
     /// <c>00449970</c>/<c>00487DC0</c>,
@@ -2432,10 +4784,43 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>004162B5</c> / <c>00418289</c>).
     /// </summary>
     public const uint LoadFromFirstRealRegionFn = 0x00501450;
+    /// <summary>
+    /// Named inbound encodings to
+    /// <c>00501450</c> remain 0
+    /// (E8/E9/imm/vtbl/call r32/jmp r32/
+    /// VA dword/RVA dword). Pump never
+    /// calls it. Live native entry still
+    /// UNREAD. Next unread is two-immediate
+    /// ALU / get-PC add.
+    /// </summary>
+    public const int LoadFromFirstRealRegionNamedInbound = 0;
+    public const bool PumpCallsLoadFromFirstRealRegion = false;
     public const uint CollectRegionThingsFn = 0x0048D400;
     public const uint CollectThingsListFn = 0x0049C770;
     public const uint CollectThingsBitTestFn = 0x006A80A0;
     public const int CollectThingsBitIndex = 0x64;
+    /// <summary>
+    /// Bit <c>0x64</c> is dword 3 at
+    /// <c>thing+44</c>. Collect filter
+    /// only. Do not name it collidable.
+    /// </summary>
+    public const int CollectThingsBitDword = 3;
+    public const int CollectThingsBitThingOffset = 44;
+    public const bool CollectThingsBitMeansCollidable = false;
+    public const bool HeroAddsPhysicsControlledOnly = true;
+    /// <summary>
+    /// First-seen after Leave is pose
+    /// persist + a Thing bitset collect,
+    /// not a collision solver. Do not
+    /// invent Unity-style physics.
+    /// </summary>
+    public const bool FirstSeenCollisionIsSolver = false;
+    public const uint CtcPhysicsStandardFactory = 0x004D297B;
+    public const uint CtcPhysicsStandardCtor = 0x00723FD0;
+    public const int CtcPhysicsStandardSize = 0x88;
+    public const uint CtcPhysicsStandardPersist = 0x00724290;
+    public const int CtcPhysicsStandardPosOffset = 80;
+    public const int CtcPhysicsStandardAxisOffset = 92;
     public const int ThingCollectFlagsOffset = 145;
     public const int ThingCollectFlagsNeed = 0x0C;
     public const int ThingCollectFlagsForbid = 0x21;
@@ -2443,6 +4828,22 @@ public sealed class EngineLifecycle : IDisposable
     public const uint ScriptedHookCollectFn = 0x00518DC0;
     public const string ScriptedHookName = "CTCActionUseScriptedHook";
     public const int ScriptedHookKey = 0xC2;
+    public const int ScriptedHookThingOffset = 56;
+    public const int ScriptedHookThingBit = 4;
+    /// <summary>
+    /// Lookout no-save collect walks
+    /// <c>CTCActionUseScriptedHook</c>
+    /// key <c>0xC2</c>. Childhood barrels
+    /// / gold / doors live on
+    /// <c>StartOakValeWest</c> +
+    /// <c>00DBDE40</c>, not this walk.
+    /// Host Notes the collect; it does
+    /// not attach or fire world Use.
+    /// Frontend actions 25–27 are UI.
+    /// </summary>
+    public const bool WorldUseAttachedOnNoSave = false;
+    public const bool LookoutHasBarrels = false;
+    public const bool FrontendActionsAreWorldUse = false;
     public const uint EmptyNameVa = 0x0122D70E;
     public const uint RegionGraphNameVa = 0x0124467C;
     public const string RegionGraphName = "RegionGraph.txt";
@@ -2672,6 +5073,194 @@ public sealed class EngineLifecycle : IDisposable
     public string? SeventeenthDefClass { get; private set; }
     public bool EighteenthDefClassRegistered { get; private set; }
     public string? EighteenthDefClass { get; private set; }
+    public bool NineteenthDefClassRegistered { get; private set; }
+    public string? NineteenthDefClass { get; private set; }
+    public bool TwentiethDefClassRegistered { get; private set; }
+    public string? TwentiethDefClass { get; private set; }
+    public bool TwentyFirstDefClassRegistered { get; private set; }
+    public string? TwentyFirstDefClass { get; private set; }
+    public bool TwentySecondDefClassRegistered { get; private set; }
+    public string? TwentySecondDefClass { get; private set; }
+    public bool TwentyThirdDefClassRegistered { get; private set; }
+    public string? TwentyThirdDefClass { get; private set; }
+    public bool TwentyFourthDefClassRegistered { get; private set; }
+    public string? TwentyFourthDefClass { get; private set; }
+    public bool TwentyFifthDefClassRegistered { get; private set; }
+    public string? TwentyFifthDefClass { get; private set; }
+    public bool TwentySixthDefClassRegistered { get; private set; }
+    public string? TwentySixthDefClass { get; private set; }
+    public bool TwentySeventhDefClassRegistered { get; private set; }
+    public string? TwentySeventhDefClass { get; private set; }
+    public bool TwentyEighthDefClassRegistered { get; private set; }
+    public string? TwentyEighthDefClass { get; private set; }
+    public bool TwentyNinthDefClassRegistered { get; private set; }
+    public string? TwentyNinthDefClass { get; private set; }
+    public bool ThirtiethDefClassRegistered { get; private set; }
+    public string? ThirtiethDefClass { get; private set; }
+    public bool ThirtyFirstDefClassRegistered { get; private set; }
+    public string? ThirtyFirstDefClass { get; private set; }
+    public bool ThirtySecondDefClassRegistered { get; private set; }
+    public string? ThirtySecondDefClass { get; private set; }
+    public bool ThirtyThirdDefClassRegistered { get; private set; }
+    public string? ThirtyThirdDefClass { get; private set; }
+    public bool ThirtyFourthDefClassRegistered { get; private set; }
+    public string? ThirtyFourthDefClass { get; private set; }
+    public bool ThirtyFifthDefClassRegistered { get; private set; }
+    public string? ThirtyFifthDefClass { get; private set; }
+    public bool ThirtySixthDefClassRegistered { get; private set; }
+    public string? ThirtySixthDefClass { get; private set; }
+    public bool ThirtySeventhDefClassRegistered { get; private set; }
+    public string? ThirtySeventhDefClass { get; private set; }
+    public bool ThirtyEighthDefClassRegistered { get; private set; }
+    public string? ThirtyEighthDefClass { get; private set; }
+    public bool ThirtyNinthDefClassRegistered { get; private set; }
+    public string? ThirtyNinthDefClass { get; private set; }
+    public bool FortiethDefClassRegistered { get; private set; }
+    public string? FortiethDefClass { get; private set; }
+    public bool FortyFirstDefClassRegistered { get; private set; }
+    public string? FortyFirstDefClass { get; private set; }
+    public bool FortySecondDefClassRegistered { get; private set; }
+    public string? FortySecondDefClass { get; private set; }
+    public bool FortyThirdDefClassRegistered { get; private set; }
+    public string? FortyThirdDefClass { get; private set; }
+    public bool FortyFourthDefClassRegistered { get; private set; }
+    public string? FortyFourthDefClass { get; private set; }
+    public bool FortyFifthDefClassRegistered { get; private set; }
+    public string? FortyFifthDefClass { get; private set; }
+    public bool FortySixthDefClassRegistered { get; private set; }
+    public string? FortySixthDefClass { get; private set; }
+    public bool FortySeventhDefClassRegistered { get; private set; }
+    public string? FortySeventhDefClass { get; private set; }
+    public bool FortyEighthDefClassRegistered { get; private set; }
+    public string? FortyEighthDefClass { get; private set; }
+    public bool FortyNinthDefClassRegistered { get; private set; }
+    public string? FortyNinthDefClass { get; private set; }
+    public bool FiftiethDefClassRegistered { get; private set; }
+    public string? FiftiethDefClass { get; private set; }
+    public bool FiftyFirstDefClassRegistered { get; private set; }
+    public string? FiftyFirstDefClass { get; private set; }
+    public bool FiftySecondDefClassRegistered { get; private set; }
+    public string? FiftySecondDefClass { get; private set; }
+    public bool FiftyThirdDefClassRegistered { get; private set; }
+    public string? FiftyThirdDefClass { get; private set; }
+    public bool FiftyFourthDefClassRegistered { get; private set; }
+    public string? FiftyFourthDefClass { get; private set; }
+    public bool FiftyFifthDefClassRegistered { get; private set; }
+    public string? FiftyFifthDefClass { get; private set; }
+    public bool FiftySixthDefClassRegistered { get; private set; }
+    public string? FiftySixthDefClass { get; private set; }
+    public bool FiftySeventhDefClassRegistered { get; private set; }
+    public string? FiftySeventhDefClass { get; private set; }
+    public bool FiftyEighthDefClassRegistered { get; private set; }
+    public string? FiftyEighthDefClass { get; private set; }
+    public bool FiftyNinthDefClassRegistered { get; private set; }
+    public string? FiftyNinthDefClass { get; private set; }
+    public bool SixtiethDefClassRegistered { get; private set; }
+    public string? SixtiethDefClass { get; private set; }
+    public bool SixtyFirstDefClassRegistered { get; private set; }
+    public string? SixtyFirstDefClass { get; private set; }
+    public bool SixtySecondDefClassRegistered { get; private set; }
+    public string? SixtySecondDefClass { get; private set; }
+    public bool SixtyThirdDefClassRegistered { get; private set; }
+    public string? SixtyThirdDefClass { get; private set; }
+    public bool SixtyFourthDefClassRegistered { get; private set; }
+    public string? SixtyFourthDefClass { get; private set; }
+    public bool SixtyFifthDefClassRegistered { get; private set; }
+    public string? SixtyFifthDefClass { get; private set; }
+    public bool SixtySixthDefClassRegistered { get; private set; }
+    public string? SixtySixthDefClass { get; private set; }
+    public bool SixtySeventhDefClassRegistered { get; private set; }
+    public string? SixtySeventhDefClass { get; private set; }
+    public bool SixtyEighthDefClassRegistered { get; private set; }
+    public string? SixtyEighthDefClass { get; private set; }
+    public bool SixtyNinthDefClassRegistered { get; private set; }
+    public string? SixtyNinthDefClass { get; private set; }
+    public bool SeventiethDefClassRegistered { get; private set; }
+    public string? SeventiethDefClass { get; private set; }
+    public bool SeventyFirstDefClassRegistered { get; private set; }
+    public string? SeventyFirstDefClass { get; private set; }
+    public bool SeventySecondDefClassRegistered { get; private set; }
+    public string? SeventySecondDefClass { get; private set; }
+    public bool SeventyThirdDefClassRegistered { get; private set; }
+    public string? SeventyThirdDefClass { get; private set; }
+    public bool SeventyFourthDefClassRegistered { get; private set; }
+    public string? SeventyFourthDefClass { get; private set; }
+    public bool SeventyFifthDefClassRegistered { get; private set; }
+    public string? SeventyFifthDefClass { get; private set; }
+    public bool SeventySixthDefClassRegistered { get; private set; }
+    public string? SeventySixthDefClass { get; private set; }
+    public bool SeventySeventhDefClassRegistered { get; private set; }
+    public string? SeventySeventhDefClass { get; private set; }
+    public bool SeventyEighthDefClassRegistered { get; private set; }
+    public string? SeventyEighthDefClass { get; private set; }
+    public bool SeventyNinthDefClassRegistered { get; private set; }
+    public string? SeventyNinthDefClass { get; private set; }
+    public bool EightiethDefClassRegistered { get; private set; }
+    public string? EightiethDefClass { get; private set; }
+    public bool EightyFirstDefClassRegistered { get; private set; }
+    public string? EightyFirstDefClass { get; private set; }
+    public bool EightySecondDefClassRegistered { get; private set; }
+    public string? EightySecondDefClass { get; private set; }
+    public bool EightyThirdDefClassRegistered { get; private set; }
+    public string? EightyThirdDefClass { get; private set; }
+    public bool EightyFourthDefClassRegistered { get; private set; }
+    public string? EightyFourthDefClass { get; private set; }
+    public bool EightyFifthDefClassRegistered { get; private set; }
+    public string? EightyFifthDefClass { get; private set; }
+    public bool EightySixthDefClassRegistered { get; private set; }
+    public string? EightySixthDefClass { get; private set; }
+    public bool EightySeventhDefClassRegistered { get; private set; }
+    public string? EightySeventhDefClass { get; private set; }
+    public bool EightyEighthDefClassRegistered { get; private set; }
+    public string? EightyEighthDefClass { get; private set; }
+    public bool EightyNinthDefClassRegistered { get; private set; }
+    public string? EightyNinthDefClass { get; private set; }
+    public bool NinetiethDefClassRegistered { get; private set; }
+    public string? NinetiethDefClass { get; private set; }
+    public bool NinetyFirstDefClassRegistered { get; private set; }
+    public string? NinetyFirstDefClass { get; private set; }
+    public bool NinetySecondDefClassRegistered { get; private set; }
+    public string? NinetySecondDefClass { get; private set; }
+    public bool NinetyThirdDefClassRegistered { get; private set; }
+    public string? NinetyThirdDefClass { get; private set; }
+    public bool NinetyFourthDefClassRegistered { get; private set; }
+    public string? NinetyFourthDefClass { get; private set; }
+    public bool NinetyFifthDefClassRegistered { get; private set; }
+    public string? NinetyFifthDefClass { get; private set; }
+    public bool NinetySixthDefClassRegistered { get; private set; }
+    public string? NinetySixthDefClass { get; private set; }
+    public bool NinetySeventhDefClassRegistered { get; private set; }
+    public string? NinetySeventhDefClass { get; private set; }
+    public bool NinetyEighthDefClassRegistered { get; private set; }
+    public string? NinetyEighthDefClass { get; private set; }
+    public bool NinetyNinthDefClassRegistered { get; private set; }
+    public string? NinetyNinthDefClass { get; private set; }
+    public bool HundredthDefClassRegistered { get; private set; }
+    public string? HundredthDefClass { get; private set; }
+    public bool HundredFirstDefClassRegistered { get; private set; }
+    public string? HundredFirstDefClass { get; private set; }
+    public bool HundredSecondDefClassRegistered { get; private set; }
+    public string? HundredSecondDefClass { get; private set; }
+    public bool HundredThirdDefClassRegistered { get; private set; }
+    public string? HundredThirdDefClass { get; private set; }
+    public bool HundredFourthDefClassRegistered { get; private set; }
+    public string? HundredFourthDefClass { get; private set; }
+    public bool HundredFifthDefClassRegistered { get; private set; }
+    public string? HundredFifthDefClass { get; private set; }
+    public bool HundredSixthDefClassRegistered { get; private set; }
+    public string? HundredSixthDefClass { get; private set; }
+    public bool HundredSeventhDefClassRegistered { get; private set; }
+    public string? HundredSeventhDefClass { get; private set; }
+    public bool HundredEighthDefClassRegistered { get; private set; }
+    public string? HundredEighthDefClass { get; private set; }
+    public bool HundredNinthDefClassRegistered { get; private set; }
+    public string? HundredNinthDefClass { get; private set; }
+    public bool HundredTenthDefClassRegistered { get; private set; }
+    public string? HundredTenthDefClass { get; private set; }
+    public bool HundredEleventhDefClassRegistered { get; private set; }
+    public string? HundredEleventhDefClass { get; private set; }
+    public bool ThingComponentsFilled { get; private set; }
+    public bool ThingComponentsCommitted { get; private set; }
     /// <summary>
     /// After <c>00416005</c>
     /// <c>0044C72B</c> /
@@ -2844,6 +5433,13 @@ public sealed class EngineLifecycle : IDisposable
     public float GamePlus132 { get; private set; }
     public float GamePlus136 { get; private set; }
     public float GamePlus140 { get; private set; }
+    /// <summary>
+    /// <c>00417A58</c> tail
+    /// <c>00991840(1)</c> →
+    /// <c>[game+16]</c>. Register lookup,
+    /// not a music player.
+    /// </summary>
+    public int GamePlus16 { get; private set; }
     public int GamePlus160 { get; private set; }
     public int CameraBodySteps { get; private set; }
     public int LastCameraLoopCount { get; private set; }
@@ -2968,6 +5564,22 @@ public sealed class EngineLifecycle : IDisposable
     /// Not Create Players.
     /// </summary>
     public bool PlayerOwnerPresent { get; private set; }
+    /// <summary>
+    /// <c>[game+40]</c> after
+    /// <c>00417418</c>
+    /// <c>00BFEA1A(0x100)</c>
+    /// <c>00434E10</c>
+    /// <c>0041940C</c>.
+    /// Not a region and not HUD.
+    /// </summary>
+    public bool DisplayPresent { get; private set; }
+    public int DisplayPlus4 { get; private set; }
+    public bool DisplayPlus8Game { get; private set; }
+    public bool DisplayPlus12Owner { get; private set; }
+    public bool DisplayPlus16Manager { get; private set; }
+    public bool DisplayPlus20GraphicBank { get; private set; }
+    public bool DisplayPlus24MeshBank { get; private set; }
+    public bool DisplayPlus248World { get; private set; }
     public IReadOnlyList<string> PlayerOwnerHeroSwap =>
         _playerOwnerHeroSwap;
     private string[] _playerOwnerHeroSwap = [];
@@ -2995,6 +5607,7 @@ public sealed class EngineLifecycle : IDisposable
     public int FrontendPresentHeight { get; private set; }
     public FrontendSubmitBatch? FrontendBatch { get; private set; }
     private List<FrontendDx9DrawRecord> _frontendDx9Records = [];
+    private List<GpuTexture> _frontendDx9Textures = [];
     public IReadOnlyList<FrontendWidget> FrontendWidgets => _frontendWidgets;
     /// <summary>
     /// Frontend virtual-space pointer
@@ -3076,6 +5689,7 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>0x122DE80</c> "Default".
     /// </summary>
     public string FrontendEditBoxName { get; private set; } = "";
+    private int _editBoxCursor;
     /// <summary>
     /// <c>004067C0</c> /
     /// <c>00999AB0</c> writable
@@ -3763,9 +6377,17 @@ public sealed class EngineLifecycle : IDisposable
     {
         if (Stage != EngineStage.Frontend)
             return;
+        TickType11Type38Hover(_frontendWidgets);
         foreach (var (type, key) in Input.Applied)
         {
             var action = FrontendInputMap.ActionFromEvent(type, key);
+            if (type == EngineInput.Type15 ||
+                action == FrontendInputMap.ActionType15)
+            {
+                ApplyEditBoxWmChar(key);
+                continue;
+            }
+
             if (action == FrontendInputMap.ActionType4)
                 ArmType34Widgets();
             var mapped = action is int act
@@ -4044,9 +6666,10 @@ public sealed class EngineLifecycle : IDisposable
         // 0042E3EE then 0042DC94: 0xE5
         // lands before 00599E3F so
         // 00595845 and 00596917 are
-        // the same frame. Action 26
-        // reads +352 from last tick's
-        // 0055ACB0 → vtbl+580.
+        // the same frame. Hover
+        // 0055BF10 is dest AABB of
+        // the current pointer, not
+        // TypeMouse-only.
         MaybeActivateNewGameFromInput();
         Note(FrontendUpdateFn, "Frontend", "UI", "0042DC94");
         Note(FrontendUiTickFn, "Frontend", "UI", "00599E3F");
@@ -4111,6 +6734,12 @@ public sealed class EngineLifecycle : IDisposable
         var frame = FrontendDx9Submit.FrontendFrame();
         device.Clear(Dx9Clear.WhenArgZero, frame.ClearColorArgb, 1f, 0);
         device.BeginScene();
+        if (device is VulkanDx9Device vk)
+            vk.BindFrontendTextures(_frontendDx9Textures);
+        device.SetViewport(new Dx9Viewport(
+            0, 0, BackBufferWidth > 0 ? BackBufferWidth : DisplayDefaultWidth,
+            BackBufferHeight > 0 ? BackBufferHeight : DisplayDefaultHeight,
+            frame.ViewportMinZ, frame.ViewportMaxZ));
         FrontendDx9Submit.IssueRecoveredDraws(device, _frontendDx9Records);
         device.EndScene();
         device.Present();
@@ -4437,6 +7066,8 @@ public sealed class EngineLifecycle : IDisposable
             return;
         Note(FrontendNewGameApply, "Frontend", "UI",
             "0059A2DA [ui+28] vtbl+16");
+        Note(RetailPlus8StoreFn, "Frontend", "UI",
+            $"00430340 [retail+{RetailPlus8Offset}]=1");
         Note(FrontendNewGameThunk, "Frontend", "UI",
             $"00594F28 [retail+{RetailNewGameFlagOffset}]=1");
         RetailNewGameFlag = true;
@@ -4532,6 +7163,7 @@ public sealed class EngineLifecycle : IDisposable
         var seed = LookupFrontendText(FrontendProfileDefaultText)
             ?? FrontendProfileDefaultFallback;
         FrontendEditBoxName = seed;
+        _editBoxCursor = 0;
         ResolveFrontendDef(FrontendNewProfileMenu);
         SwitchFrontendSlot(FrontendNewProfileSlot);
         AttachFrontendTree(FrontendNewProfileMenu, FrontendNewProfileSlot);
@@ -4563,6 +7195,55 @@ public sealed class EngineLifecycle : IDisposable
                 if (!string.IsNullOrEmpty(child.Text))
                     continue;
                 _frontendWidgets[kid] = child with { Text = seed };
+            }
+        }
+    }
+
+    /// <summary>
+    /// <c>0053FE50</c> action 34 /
+    /// WM_CHAR. Cursor is widget
+    /// <c>+364</c> (0 after bind).
+    /// </summary>
+    private void ApplyEditBoxWmChar(int code)
+    {
+        if (!FrontendEditBoxBound || !FrontendUi96Present)
+            return;
+        Note(EditBoxInsertFn, "Frontend", "UI",
+            $"0053FE50 code={code}");
+        var name = FrontendEditBoxName ?? "";
+        var cursor = Math.Clamp(_editBoxCursor, 0, name.Length);
+        if (code == 8)
+        {
+            if (cursor <= 0)
+                return;
+            FrontendEditBoxName = name.Remove(cursor - 1, 1);
+            _editBoxCursor = cursor - 1;
+        }
+        else if (code == 32 || code is >= 32 and <= 126)
+        {
+            if (name.Length >= EditBoxCap)
+                return;
+            FrontendEditBoxName = name.Insert(cursor, char.ConvertFromUtf32(code));
+            _editBoxCursor = cursor + 1;
+        }
+        else
+            return;
+
+        SetEditBoxGlyphs(FrontendEditBoxName);
+    }
+
+    private void SetEditBoxGlyphs(string text)
+    {
+        for (var i = 0; i < _frontendWidgets.Count; i++)
+        {
+            if (_frontendWidgets[i].Type != FrontendWidgetType.EditBox)
+                continue;
+            foreach (var kid in FrontendWidgetFactory.ChildrenOf(_frontendWidgets, i))
+            {
+                var child = _frontendWidgets[kid];
+                if (child.Type != FrontendWidgetType.Text)
+                    continue;
+                _frontendWidgets[kid] = child with { Text = text };
             }
         }
     }
@@ -4672,6 +7353,8 @@ public sealed class EngineLifecycle : IDisposable
         Stage = EngineStage.LeaveFrontend;
         FrontendBatch = null;
         FrontendPresentRgba = null;
+        if (Device is VulkanDx9Device vk)
+            vk.OwnsSwapchainPresent = false;
         Timing.Add("frontend NG", ng.Elapsed.TotalMilliseconds, FinalAlbionWld);
     }
 
@@ -4735,20 +7418,12 @@ public sealed class EngineLifecycle : IDisposable
             if (name == "Init Player Manager")
                 ApplyPlayerOwner();
             if (name == "Init Display Engine")
-            {
-                DisplayPlus232 = DisplayPlus232Ctor;
-                Note(DisplayCtorFn, "InitGame", "Display",
-                    $"00434E10 vtbl 0x{DisplayVtbl:X} +{DisplayPlus232Offset}={DisplayPlus232Ctor}");
-            }
+                ApplyDisplayEngine();
             if (name == "Init Player Interface")
             {
                 Player.Construct();
                 Note(PlayerInterfaceCtor, "InitGame", "Input",
                     "004473A0 size 0x898 vtbl 01231BDC game+32");
-                Note(PlayerListenerFactoryFn, "InitGame", "Input",
-                    "00488D20 00687A30 vtbl 0123758C +4");
-                Note(PlayerListenerRegisterFn, "InitGame", "Input",
-                    "00687A70 00A0D2B0 00A0D4F0");
             }
 
             if (name == "Init World")
@@ -4769,6 +7444,8 @@ public sealed class EngineLifecycle : IDisposable
 
             if (name == "Create Players")
                 CreatePlayers();
+            if (name == "Init Sound")
+                ApplyInitSound();
             if (name == "Load Particles")
                 Note(SkipParticlesVa, "InitGame", "InitGame",
                     $"013B8648={SkipParticlesFirstSeen} run 004174F1");
@@ -5274,17 +7951,19 @@ public sealed class EngineLifecycle : IDisposable
         var loaded = new List<ThingInstance>();
         // 004FDBC0 ebx=1 skips dummy slot 0.
         // First 004FBF60 is LookoutPoint (NewMap 1).
-        // Later proximity maps stay closed until
-        // 00501450 / ContainsMap. Parsing every
-        // LoadedOnPlayerProximity .tng here is
-        // leftover and OOMs the New Game pump.
+        // Native then inc ebx through every filled
+        // LoadedOnPlayerProximity slot (1..count-1).
+        // Host break after the first prox file is
+        // leftover #50 (ThingFile.Parse OOM), not a
+        // recovered NewMap-1 lock and not 00501450.
         WorldMap? first = null;
+        var prox = 0;
         foreach (var map in World.Maps)
         {
             if (!map.LoadedOnPlayerProximity)
                 continue;
-            first = map;
-            break;
+            prox++;
+            first ??= map;
         }
 
         if (first is { } lookout)
@@ -5297,6 +7976,10 @@ public sealed class EngineLifecycle : IDisposable
                 loaded.AddRange(tng.Things);
                 GlobalThingMapsLoaded = 1;
             }
+
+            if (prox > 1)
+                Note(LoadGlobalThingsMapFile, "Loading global things", "WLD",
+                    $"004FDC00 leftover host break ebx=2..{prox} unparsed={prox - 1}");
         }
 
         if (loaded.Count == 0)
@@ -5372,6 +8055,77 @@ public sealed class EngineLifecycle : IDisposable
             $"004193A0 [game+{PlayerOwnerOffset}]");
         _playerOwnerHeroSwap = PlayerOwnerHeroSwapNames;
         PlayerOwnerPresent = true;
+    }
+
+    /// <summary>
+    /// <summary>
+    /// <c>00417A58</c> first-seen after
+    /// Leave: register localised / main /
+    /// atmos banks. Not play, not
+    /// <c>MUSIC_SET_*</c>, not
+    /// <c>00A01A4F</c> first-seen.
+    /// </summary>
+    private void ApplyInitSound()
+    {
+        if (GamePlus16 != 0)
+            return;
+        Note(RetailAudioEngineVa, "Init Sound", "Audio",
+            "013B8394 live skip je 00418286");
+        Note(InitSoundLocaleFn, "Init Sound", "Audio",
+            $"00415550 {InitSoundLocaleName}");
+        Note(PlayerManagerGetter, "Init Sound", "Audio",
+            "0044C6B0 [0x13B879C]");
+        Note(InitSoundLookupFn, "Init Sound", "Audio",
+            $"004196B2 {InitSoundMainName}");
+        Note(InitSoundRegisterFn, "Init Sound", "Audio",
+            "009919C0 Registering Localised Sound Bank");
+        Note(InitSoundSymbolsCompiledFn, "Init Sound", "Audio",
+            "00A38C20 compiled symbols not 00A01A4F");
+        Note(InitSoundRegisterFn, "Init Sound", "Audio",
+            "009919C0 Registering Sound Bank");
+        Note(InitSoundAtmosRegisterFn, "Init Sound", "Audio",
+            "00991C10 Registering Atmos Sound Bank");
+        Note(InitSoundMapLookupFn, "Init Sound", "Audio",
+            "00991840(1) [game+16]");
+        GamePlus16 = 1;
+    }
+
+    /// <summary>
+    /// <c>00417418</c> after Init World:
+    /// zero 36-byte blob, alloc
+    /// <c>0x100</c>, ctor copies six
+    /// identities, store
+    /// <c>[game+40]</c>. Does not fill
+    /// blob <c>+20/+24/+28</c>. Does not
+    /// spawn Things.
+    /// </summary>
+    private void ApplyDisplayEngine()
+    {
+        if (DisplayPresent)
+            return;
+        Note(DisplayBlobZeroFn, "Init Display Engine", "Display",
+            $"00419270 blob {DisplayBlobSize}");
+        Note(PlayerManagerGetter, "Init Display Engine", "Display",
+            "0044C6B0 [0x13B879C]");
+        Note(DisplayAllocFn, "Init Display Engine", "Display",
+            $"00BFEA1A size 0x{DisplaySize:X}");
+        DisplayPlus232 = DisplayPlus232Ctor;
+        DisplayPlus4 = DisplayPlus4Ctor;
+        Note(DisplayCtorFn, "Init Display Engine", "Display",
+            $"00434E10 vtbl 0x{DisplayVtbl:X} +{DisplayPlus4Offset}={DisplayPlus4Ctor} " +
+            $"+{GameDisplayPlus8Offset}/game +{DisplayPlus12Offset}/owner " +
+            $"+{DisplayPlus16Offset}/manager +{DisplayPlus20Offset}/GBANK_MAIN " +
+            $"+{DisplayPlus24Offset}/mesh +{DisplayPlus248Offset}/world " +
+            $"+{DisplayPlus232Offset}={DisplayPlus232Ctor}");
+        Note(DisplayStoreFn, "Init Display Engine", "Display",
+            $"0041940C [game+{GameDisplayOffset}]");
+        DisplayPlus8Game = true;
+        DisplayPlus12Owner = PlayerOwnerPresent;
+        DisplayPlus16Manager = PlayerManagerPresent;
+        DisplayPlus20GraphicBank = true;
+        DisplayPlus24MeshBank = true;
+        DisplayPlus248World = true;
+        DisplayPresent = true;
     }
 
     private void EnsurePlayerManagerSingleton()
@@ -5672,22 +8426,1617 @@ public sealed class EngineLifecycle : IDisposable
             SeventeenthDefClass = SeventeenthDefClassName;
             SeventeenthDefClassRegistered = true;
         }
-        if (EighteenthDefClassRegistered)
+        if (!EighteenthDefClassRegistered)
+        {
+            Note(EighteenthDefClassSite, "Init Thing Components", "Defs",
+                $"004F0918 0044C6B0 {EighteenthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {EighteenthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {EighteenthDefClassName}");
+            Note(EighteenthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D7CFF 0044C0C0 size {EighteenthDefClassSize} vtbl 0x{EighteenthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {EighteenthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            EighteenthDefClass = EighteenthDefClassName;
+            EighteenthDefClassRegistered = true;
+        }
+        if (!NineteenthDefClassRegistered)
+        {
+            Note(NineteenthDefClassSite, "Init Thing Components", "Defs",
+                $"004F0D26 0044C6B0 {NineteenthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {NineteenthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {NineteenthDefClassName}");
+            Note(NineteenthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E0B4B 004DE7DC 0044C0C0 size {NineteenthDefClassSize} vtbl 0x{NineteenthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {NineteenthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            NineteenthDefClass = NineteenthDefClassName;
+            NineteenthDefClassRegistered = true;
+        }
+        if (!TwentiethDefClassRegistered)
+        {
+            Note(TwentiethDefClassSite, "Init Thing Components", "Defs",
+                $"004F0DDC 0044C6B0 {TwentiethDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {TwentiethDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {TwentiethDefClassName}");
+            Note(TwentiethDefClassFactory, "Init Thing Components", "Defs",
+                $"004D7EB6 0044C0C0 size {TwentiethDefClassSize} vtbl 0x{TwentiethDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {TwentiethDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            TwentiethDefClass = TwentiethDefClassName;
+            TwentiethDefClassRegistered = true;
+        }
+        if (!TwentyFirstDefClassRegistered)
+        {
+            Note(TwentyFirstDefClassSite, "Init Thing Components", "Defs",
+                $"004F0E92 0044C6B0 {TwentyFirstDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {TwentyFirstDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {TwentyFirstDefClassName}");
+            Note(TwentyFirstDefClassFactory, "Init Thing Components", "Defs",
+                $"004DA7F3 004D7A25 0044C0C0 size {TwentyFirstDefClassSize} vtbl 0x{TwentyFirstDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {TwentyFirstDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            TwentyFirstDefClass = TwentyFirstDefClassName;
+            TwentyFirstDefClassRegistered = true;
+        }
+        if (!TwentySecondDefClassRegistered)
+        {
+            Note(TwentySecondDefClassSite, "Init Thing Components", "Defs",
+                $"004F0F48 0044C6B0 {TwentySecondDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {TwentySecondDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {TwentySecondDefClassName}");
+            Note(TwentySecondDefClassFactory, "Init Thing Components", "Defs",
+                $"004D7EFC 0044C0C0 size {TwentySecondDefClassSize} vtbl 0x{TwentySecondDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {TwentySecondDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            TwentySecondDefClass = TwentySecondDefClassName;
+            TwentySecondDefClassRegistered = true;
+        }
+        if (!TwentyThirdDefClassRegistered)
+        {
+            Note(TwentyThirdDefClassSite, "Init Thing Components", "Defs",
+                $"004F10D4 0044C6B0 {TwentyThirdDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {TwentyThirdDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {TwentyThirdDefClassName}");
+            Note(TwentyThirdDefClassFactory, "Init Thing Components", "Defs",
+                $"004D7F7B 004D36FE 0044C0C0 size {TwentyThirdDefClassSize} vtbl 0x{TwentyThirdDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {TwentyThirdDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            TwentyThirdDefClass = TwentyThirdDefClassName;
+            TwentyThirdDefClassRegistered = true;
+        }
+        if (!TwentyFourthDefClassRegistered)
+        {
+            Note(TwentyFourthDefClassSite, "Init Thing Components", "Defs",
+                $"004F11F5 0044C6B0 {TwentyFourthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {TwentyFourthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {TwentyFourthDefClassName}");
+            Note(TwentyFourthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E0513 004DE1DF 0044C0C0 size {TwentyFourthDefClassSize} vtbl 0x{TwentyFourthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {TwentyFourthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            TwentyFourthDefClass = TwentyFourthDefClassName;
+            TwentyFourthDefClassRegistered = true;
+        }
+        if (!TwentyFifthDefClassRegistered)
+        {
+            Note(TwentyFifthDefClassSite, "Init Thing Components", "Defs",
+                $"004F12AB 0044C6B0 {TwentyFifthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {TwentyFifthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {TwentyFifthDefClassName}");
+            Note(TwentyFifthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D805C 004D3826 0044C0C0 size {TwentyFifthDefClassSize} vtbl 0x{TwentyFifthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {TwentyFifthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            TwentyFifthDefClass = TwentyFifthDefClassName;
+            TwentyFifthDefClassRegistered = true;
+        }
+        if (!TwentySixthDefClassRegistered)
+        {
+            Note(TwentySixthDefClassSite, "Init Thing Components", "Defs",
+                $"004F14A2 0044C6B0 {TwentySixthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {TwentySixthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {TwentySixthDefClassName}");
+            Note(TwentySixthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D809E 0044C0C0 size {TwentySixthDefClassSize} vtbl 0x{TwentySixthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {TwentySixthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            TwentySixthDefClass = TwentySixthDefClassName;
+            TwentySixthDefClassRegistered = true;
+        }
+        if (!TwentySeventhDefClassRegistered)
+        {
+            Note(TwentySeventhDefClassSite, "Init Thing Components", "Defs",
+                $"004F1558 0044C6B0 {TwentySeventhDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {TwentySeventhDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {TwentySeventhDefClassName}");
+            Note(TwentySeventhDefClassFactory, "Init Thing Components", "Defs",
+                $"004E3C81 004E247A 0044C0C0 size {TwentySeventhDefClassSize} vtbl 0x{TwentySeventhDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {TwentySeventhDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            TwentySeventhDefClass = TwentySeventhDefClassName;
+            TwentySeventhDefClassRegistered = true;
+        }
+        if (!TwentyEighthDefClassRegistered)
+        {
+            Note(TwentyEighthDefClassSite, "Init Thing Components", "Defs",
+                $"004F1CBA 0044C6B0 {TwentyEighthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {TwentyEighthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {TwentyEighthDefClassName}");
+            Note(TwentyEighthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E3D15 004E2612 0044C0C0 size {TwentyEighthDefClassSize} vtbl 0x{TwentyEighthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {TwentyEighthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            TwentyEighthDefClass = TwentyEighthDefClassName;
+            TwentyEighthDefClassRegistered = true;
+        }
+        if (!TwentyNinthDefClassRegistered)
+        {
+            Note(TwentyNinthDefClassSite, "Init Thing Components", "Defs",
+                $"004F1D70 0044C6B0 {TwentyNinthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {TwentyNinthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {TwentyNinthDefClassName}");
+            Note(TwentyNinthDefClassFactory, "Init Thing Components", "Defs",
+                $"004DFE62 004DD8FF 0044C0C0 size {TwentyNinthDefClassSize} vtbl 0x{TwentyNinthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {TwentyNinthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            TwentyNinthDefClass = TwentyNinthDefClassName;
+            TwentyNinthDefClassRegistered = true;
+        }
+        if (!ThirtiethDefClassRegistered)
+        {
+            Note(ThirtiethDefClassSite, "Init Thing Components", "Defs",
+                $"004F1E26 0044C6B0 {ThirtiethDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {ThirtiethDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {ThirtiethDefClassName}");
+            Note(ThirtiethDefClassFactory, "Init Thing Components", "Defs",
+                $"004DA767 0044C0C0 size {ThirtiethDefClassSize} vtbl 0x{ThirtiethDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {ThirtiethDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            ThirtiethDefClass = ThirtiethDefClassName;
+            ThirtiethDefClassRegistered = true;
+        }
+        if (!ThirtyFirstDefClassRegistered)
+        {
+            Note(ThirtyFirstDefClassSite, "Init Thing Components", "Defs",
+                $"004F1EDC 0044C6B0 {ThirtyFirstDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {ThirtyFirstDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {ThirtyFirstDefClassName}");
+            Note(ThirtyFirstDefClassFactory, "Init Thing Components", "Defs",
+                $"004D835A 0044C0C0 size {ThirtyFirstDefClassSize} vtbl 0x{ThirtyFirstDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {ThirtyFirstDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            ThirtyFirstDefClass = ThirtyFirstDefClassName;
+            ThirtyFirstDefClassRegistered = true;
+        }
+        if (!ThirtySecondDefClassRegistered)
+        {
+            Note(ThirtySecondDefClassSite, "Init Thing Components", "Defs",
+                $"004F22E6 0044C6B0 {ThirtySecondDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {ThirtySecondDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {ThirtySecondDefClassName}");
+            Note(ThirtySecondDefClassFactory, "Init Thing Components", "Defs",
+                $"004D83D9 004D3F83 0044C0C0 size {ThirtySecondDefClassSize} vtbl 0x{ThirtySecondDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {ThirtySecondDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            ThirtySecondDefClass = ThirtySecondDefClassName;
+            ThirtySecondDefClassRegistered = true;
+        }
+        if (!ThirtyThirdDefClassRegistered)
+        {
+            Note(ThirtyThirdDefClassSite, "Init Thing Components", "Defs",
+                $"004F2472 0044C6B0 {ThirtyThirdDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {ThirtyThirdDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {ThirtyThirdDefClassName}");
+            Note(ThirtyThirdDefClassFactory, "Init Thing Components", "Defs",
+                $"004E26BC 004E06C3 0044C0C0 size {ThirtyThirdDefClassSize} vtbl 0x{ThirtyThirdDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {ThirtyThirdDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            ThirtyThirdDefClass = ThirtyThirdDefClassName;
+            ThirtyThirdDefClassRegistered = true;
+        }
+        if (!ThirtyFourthDefClassRegistered)
+        {
+            Note(ThirtyFourthDefClassSite, "Init Thing Components", "Defs",
+                $"004F2593 0044C6B0 {ThirtyFourthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {ThirtyFourthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {ThirtyFourthDefClassName}");
+            Note(ThirtyFourthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D8482 0044C0C0 size {ThirtyFourthDefClassSize} vtbl 0x{ThirtyFourthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {ThirtyFourthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            ThirtyFourthDefClass = ThirtyFourthDefClassName;
+            ThirtyFourthDefClassRegistered = true;
+        }
+        if (!ThirtyFifthDefClassRegistered)
+        {
+            Note(ThirtyFifthDefClassSite, "Init Thing Components", "Defs",
+                $"004F2649 0044C6B0 {ThirtyFifthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {ThirtyFifthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {ThirtyFifthDefClassName}");
+            Note(ThirtyFifthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D8547 0044C0C0 size {ThirtyFifthDefClassSize} vtbl 0x{ThirtyFifthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {ThirtyFifthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            ThirtyFifthDefClass = ThirtyFifthDefClassName;
+            ThirtyFifthDefClassRegistered = true;
+        }
+        if (!ThirtySixthDefClassRegistered)
+        {
+            Note(ThirtySixthDefClassSite, "Init Thing Components", "Defs",
+                $"004F27CD 0044C6B0 {ThirtySixthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {ThirtySixthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {ThirtySixthDefClassName}");
+            Note(ThirtySixthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E2809 004E0900 0044C0C0 size {ThirtySixthDefClassSize} vtbl 0x{ThirtySixthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {ThirtySixthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            ThirtySixthDefClass = ThirtySixthDefClassName;
+            ThirtySixthDefClassRegistered = true;
+        }
+        if (!ThirtySeventhDefClassRegistered)
+        {
+            Note(ThirtySeventhDefClassSite, "Init Thing Components", "Defs",
+                $"004F2C36 0044C6B0 {ThirtySeventhDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {ThirtySeventhDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {ThirtySeventhDefClassName}");
+            Note(ThirtySeventhDefClassFactory, "Init Thing Components", "Defs",
+                $"004EBAE7 004EB9E8 0044C0C0 size {ThirtySeventhDefClassSize} vtbl 0x{ThirtySeventhDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {ThirtySeventhDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            ThirtySeventhDefClass = ThirtySeventhDefClassName;
+            ThirtySeventhDefClassRegistered = true;
+        }
+        if (!ThirtyEighthDefClassRegistered)
+        {
+            Note(ThirtyEighthDefClassSite, "Init Thing Components", "Defs",
+                $"004F2CE8 0044C6B0 {ThirtyEighthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {ThirtyEighthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {ThirtyEighthDefClassName}");
+            Note(ThirtyEighthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E27AE 004E0860 0044C0C0 size {ThirtyEighthDefClassSize} vtbl 0x{ThirtyEighthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {ThirtyEighthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            ThirtyEighthDefClass = ThirtyEighthDefClassName;
+            ThirtyEighthDefClassRegistered = true;
+        }
+        if (!ThirtyNinthDefClassRegistered)
+        {
+            Note(ThirtyNinthDefClassSite, "Init Thing Components", "Defs",
+                $"004F2FB5 0044C6B0 {ThirtyNinthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {ThirtyNinthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {ThirtyNinthDefClassName}");
+            Note(ThirtyNinthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E60D8 004E3E4C 0044C0C0 size {ThirtyNinthDefClassSize} vtbl 0x{ThirtyNinthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {ThirtyNinthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            ThirtyNinthDefClass = ThirtyNinthDefClassName;
+            ThirtyNinthDefClassRegistered = true;
+        }
+        if (!FortiethDefClassRegistered)
+        {
+            Note(FortiethDefClassSite, "Init Thing Components", "Defs",
+                $"004F306B 0044C6B0 {FortiethDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FortiethDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FortiethDefClassName}");
+            Note(FortiethDefClassFactory, "Init Thing Components", "Defs",
+                $"004E31FA 004E1516 0044C0C0 size {FortiethDefClassSize} vtbl 0x{FortiethDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FortiethDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FortiethDefClass = FortiethDefClassName;
+            FortiethDefClassRegistered = true;
+        }
+        if (!FortyFirstDefClassRegistered)
+        {
+            Note(FortyFirstDefClassSite, "Init Thing Components", "Defs",
+                $"004F3338 0044C6B0 {FortyFirstDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FortyFirstDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FortyFirstDefClassName}");
+            Note(FortyFirstDefClassFactory, "Init Thing Components", "Defs",
+                $"004D86F0 0044C0C0 size {FortyFirstDefClassSize} vtbl 0x{FortyFirstDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FortyFirstDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FortyFirstDefClass = FortyFirstDefClassName;
+            FortyFirstDefClassRegistered = true;
+        }
+        if (!FortySecondDefClassRegistered)
+        {
+            Note(FortySecondDefClassSite, "Init Thing Components", "Defs",
+                $"004F34C4 0044C6B0 {FortySecondDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FortySecondDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FortySecondDefClassName}");
+            Note(FortySecondDefClassFactory, "Init Thing Components", "Defs",
+                $"004E2333 004E00BC 0044C0C0 size {FortySecondDefClassSize} vtbl 0x{FortySecondDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FortySecondDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FortySecondDefClass = FortySecondDefClassName;
+            FortySecondDefClassRegistered = true;
+        }
+        if (!FortyThirdDefClassRegistered)
+        {
+            Note(FortyThirdDefClassSite, "Init Thing Components", "Defs",
+                $"004F357A 0044C6B0 {FortyThirdDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FortyThirdDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FortyThirdDefClassName}");
+            Note(FortyThirdDefClassFactory, "Init Thing Components", "Defs",
+                $"004E3DC3 004E284B 0044C0C0 size {FortyThirdDefClassSize} vtbl 0x{FortyThirdDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FortyThirdDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FortyThirdDefClass = FortyThirdDefClassName;
+            FortyThirdDefClassRegistered = true;
+        }
+        if (!FortyFourthDefClassRegistered)
+        {
+            Note(FortyFourthDefClassSite, "Init Thing Components", "Defs",
+                $"004F3630 0044C6B0 {FortyFourthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FortyFourthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FortyFourthDefClassName}");
+            Note(FortyFourthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D8736 0044C0C0 size {FortyFourthDefClassSize} vtbl 0x{FortyFourthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FortyFourthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FortyFourthDefClass = FortyFourthDefClassName;
+            FortyFourthDefClassRegistered = true;
+        }
+        if (!FortyFifthDefClassRegistered)
+        {
+            Note(FortyFifthDefClassSite, "Init Thing Components", "Defs",
+                $"004F3892 0044C6B0 {FortyFifthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FortyFifthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FortyFifthDefClassName}");
+            Note(FortyFifthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D94C8 0044C0C0 size {FortyFifthDefClassSize} vtbl 0x{FortyFifthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FortyFifthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FortyFifthDefClass = FortyFifthDefClassName;
+            FortyFifthDefClassRegistered = true;
+        }
+        if (!FortySixthDefClassRegistered)
+        {
+            Note(FortySixthDefClassSite, "Init Thing Components", "Defs",
+                $"004F3E4C 0044C6B0 {FortySixthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FortySixthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FortySixthDefClassName}");
+            Note(FortySixthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D8D56 0044C0C0 size {FortySixthDefClassSize} vtbl 0x{FortySixthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FortySixthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FortySixthDefClass = FortySixthDefClassName;
+            FortySixthDefClassRegistered = true;
+        }
+        if (!FortySeventhDefClassRegistered)
+        {
+            Note(FortySeventhDefClassSite, "Init Thing Components", "Defs",
+                $"004F3F02 0044C6B0 {FortySeventhDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FortySeventhDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FortySeventhDefClassName}");
+            Note(FortySeventhDefClassFactory, "Init Thing Components", "Defs",
+                $"004D8D10 0044C0C0 size {FortySeventhDefClassSize} vtbl 0x{FortySeventhDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FortySeventhDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FortySeventhDefClass = FortySeventhDefClassName;
+            FortySeventhDefClassRegistered = true;
+        }
+        if (!FortyEighthDefClassRegistered)
+        {
+            Note(FortyEighthDefClassSite, "Init Thing Components", "Defs",
+                $"004F40F9 0044C6B0 {FortyEighthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FortyEighthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FortyEighthDefClassName}");
+            Note(FortyEighthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E3DD9 004E2895 0044C0C0 size {FortyEighthDefClassSize} vtbl 0x{FortyEighthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FortyEighthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FortyEighthDefClass = FortyEighthDefClassName;
+            FortyEighthDefClassRegistered = true;
+        }
+        if (!FortyNinthDefClassRegistered)
+        {
+            Note(FortyNinthDefClassSite, "Init Thing Components", "Defs",
+                $"004F43C6 0044C6B0 {FortyNinthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FortyNinthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FortyNinthDefClassName}");
+            Note(FortyNinthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E5CF2 004E3E2A 0044C0C0 size {FortyNinthDefClassSize} vtbl 0x{FortyNinthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FortyNinthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FortyNinthDefClass = FortyNinthDefClassName;
+            FortyNinthDefClassRegistered = true;
+        }
+        if (!FiftiethDefClassRegistered)
+        {
+            Note(FiftiethDefClassSite, "Init Thing Components", "Defs",
+                $"004F4628 0044C6B0 {FiftiethDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FiftiethDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FiftiethDefClassName}");
+            Note(FiftiethDefClassFactory, "Init Thing Components", "Defs",
+                $"004E2AFA 004E0B9C 0044C0C0 size {FiftiethDefClassSize} vtbl 0x{FiftiethDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FiftiethDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FiftiethDefClass = FiftiethDefClassName;
+            FiftiethDefClassRegistered = true;
+        }
+        if (!FiftyFirstDefClassRegistered)
+        {
+            Note(FiftyFirstDefClassSite, "Init Thing Components", "Defs",
+                $"004F46DE 0044C6B0 {FiftyFirstDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FiftyFirstDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FiftyFirstDefClassName}");
+            Note(FiftyFirstDefClassFactory, "Init Thing Components", "Defs",
+                $"004EBA6E 004EA1F0 0044C0C0 size {FiftyFirstDefClassSize} vtbl 0x{FiftyFirstDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FiftyFirstDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FiftyFirstDefClass = FiftyFirstDefClassName;
+            FiftyFirstDefClassRegistered = true;
+        }
+        if (!FiftySecondDefClassRegistered)
+        {
+            Note(FiftySecondDefClassSite, "Init Thing Components", "Defs",
+                $"004F4A16 0044C6B0 {FiftySecondDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FiftySecondDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FiftySecondDefClassName}");
+            Note(FiftySecondDefClassFactory, "Init Thing Components", "Defs",
+                $"004D8818 0044C0C0 size {FiftySecondDefClassSize} vtbl 0x{FiftySecondDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FiftySecondDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FiftySecondDefClass = FiftySecondDefClassName;
+            FiftySecondDefClassRegistered = true;
+        }
+        if (!FiftyThirdDefClassRegistered)
+        {
+            Note(FiftyThirdDefClassSite, "Init Thing Components", "Defs",
+                $"004F4DB9 0044C6B0 {FiftyThirdDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FiftyThirdDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FiftyThirdDefClassName}");
+            Note(FiftyThirdDefClassFactory, "Init Thing Components", "Defs",
+                $"004D9629 0044C0C0 size {FiftyThirdDefClassSize} vtbl 0x{FiftyThirdDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FiftyThirdDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FiftyThirdDefClass = FiftyThirdDefClassName;
+            FiftyThirdDefClassRegistered = true;
+        }
+        if (!FiftyFourthDefClassRegistered)
+        {
+            Note(FiftyFourthDefClassSite, "Init Thing Components", "Defs",
+                $"004F4F45 0044C6B0 {FiftyFourthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FiftyFourthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FiftyFourthDefClassName}");
+            Note(FiftyFourthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E0F9C 004DEBA3 0044C0C0 size {FiftyFourthDefClassSize} vtbl 0x{FiftyFourthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FiftyFourthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FiftyFourthDefClass = FiftyFourthDefClassName;
+            FiftyFourthDefClassRegistered = true;
+        }
+        if (!FiftyFifthDefClassRegistered)
+        {
+            Note(FiftyFifthDefClassSite, "Init Thing Components", "Defs",
+                $"004F4FFB 0044C6B0 {FiftyFifthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FiftyFifthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FiftyFifthDefClassName}");
+            Note(FiftyFifthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D885E 004D4C3E 0044C0C0 size {FiftyFifthDefClassSize} vtbl 0x{FiftyFifthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FiftyFifthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FiftyFifthDefClass = FiftyFifthDefClassName;
+            FiftyFifthDefClassRegistered = true;
+        }
+        if (!FiftySixthDefClassRegistered)
+        {
+            Note(FiftySixthDefClassSite, "Init Thing Components", "Defs",
+                $"004F55B5 0044C6B0 {FiftySixthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FiftySixthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FiftySixthDefClassName}");
+            Note(FiftySixthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D4E07 007ABB30 009FBEC0 size {FiftySixthDefClassSize} vtbl 0x{FiftySixthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FiftySixthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FiftySixthDefClass = FiftySixthDefClassName;
+            FiftySixthDefClassRegistered = true;
+        }
+        if (!FiftySeventhDefClassRegistered)
+        {
+            Note(FiftySeventhDefClassSite, "Init Thing Components", "Defs",
+                $"004F566B 0044C6B0 {FiftySeventhDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FiftySeventhDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FiftySeventhDefClassName}");
+            Note(FiftySeventhDefClassFactory, "Init Thing Components", "Defs",
+                $"004D88FC 0044C0C0 size {FiftySeventhDefClassSize} vtbl 0x{FiftySeventhDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FiftySeventhDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FiftySeventhDefClass = FiftySeventhDefClassName;
+            FiftySeventhDefClassRegistered = true;
+        }
+        if (!FiftyEighthDefClassRegistered)
+        {
+            Note(FiftyEighthDefClassSite, "Init Thing Components", "Defs",
+                $"004F5721 0044C6B0 {FiftyEighthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FiftyEighthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FiftyEighthDefClassName}");
+            Note(FiftyEighthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E0D4C 004DE8C2 0044C0C0 size {FiftyEighthDefClassSize} vtbl 0x{FiftyEighthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FiftyEighthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FiftyEighthDefClass = FiftyEighthDefClassName;
+            FiftyEighthDefClassRegistered = true;
+        }
+        if (!FiftyNinthDefClassRegistered)
+        {
+            Note(FiftyNinthDefClassSite, "Init Thing Components", "Defs",
+                $"004F5918 0044C6B0 {FiftyNinthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {FiftyNinthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {FiftyNinthDefClassName}");
+            Note(FiftyNinthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E0DB9 004DE8F5 0044C0C0 size {FiftyNinthDefClassSize} vtbl 0x{FiftyNinthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {FiftyNinthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            FiftyNinthDefClass = FiftyNinthDefClassName;
+            FiftyNinthDefClassRegistered = true;
+        }
+        if (!SixtiethDefClassRegistered)
+        {
+            Note(SixtiethDefClassSite, "Init Thing Components", "Defs",
+                $"004F5A39 0044C6B0 {SixtiethDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SixtiethDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SixtiethDefClassName}");
+            Note(SixtiethDefClassFactory, "Init Thing Components", "Defs",
+                $"004D89EC 0044C0C0 size {SixtiethDefClassSize} vtbl 0x{SixtiethDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SixtiethDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SixtiethDefClass = SixtiethDefClassName;
+            SixtiethDefClassRegistered = true;
+        }
+        if (!SixtyFirstDefClassRegistered)
+        {
+            Note(SixtyFirstDefClassSite, "Init Thing Components", "Defs",
+                $"004F5AEF 0044C6B0 {SixtyFirstDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SixtyFirstDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SixtyFirstDefClassName}");
+            Note(SixtyFirstDefClassFactory, "Init Thing Components", "Defs",
+                $"004D89B4 004D4FCF 0044C0C0 size {SixtyFirstDefClassSize} vtbl 0x{SixtyFirstDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SixtyFirstDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SixtyFirstDefClass = SixtyFirstDefClassName;
+            SixtyFirstDefClassRegistered = true;
+        }
+        if (!SixtySecondDefClassRegistered)
+        {
+            Note(SixtySecondDefClassSite, "Init Thing Components", "Defs",
+                $"004F5BA5 0044C6B0 {SixtySecondDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SixtySecondDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SixtySecondDefClassName}");
+            Note(SixtySecondDefClassFactory, "Init Thing Components", "Defs",
+                $"004D8A32 004D5056 0044C0C0 size {SixtySecondDefClassSize} vtbl 0x{SixtySecondDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SixtySecondDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SixtySecondDefClass = SixtySecondDefClassName;
+            SixtySecondDefClassRegistered = true;
+        }
+        if (!SixtyThirdDefClassRegistered)
+        {
+            Note(SixtyThirdDefClassSite, "Init Thing Components", "Defs",
+                $"004F5CC6 0044C6B0 {SixtyThirdDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SixtyThirdDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SixtyThirdDefClassName}");
+            Note(SixtyThirdDefClassFactory, "Init Thing Components", "Defs",
+                $"004D8A6A 0044C0C0 size {SixtyThirdDefClassSize} vtbl 0x{SixtyThirdDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SixtyThirdDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SixtyThirdDefClass = SixtyThirdDefClassName;
+            SixtyThirdDefClassRegistered = true;
+        }
+        if (!SixtyFourthDefClassRegistered)
+        {
+            Note(SixtyFourthDefClassSite, "Init Thing Components", "Defs",
+                $"004F5D7C 0044C6B0 {SixtyFourthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SixtyFourthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SixtyFourthDefClassName}");
+            Note(SixtyFourthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D8AB0 0044C0C0 size {SixtyFourthDefClassSize} vtbl 0x{SixtyFourthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SixtyFourthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SixtyFourthDefClass = SixtyFourthDefClassName;
+            SixtyFourthDefClassRegistered = true;
+        }
+        if (!SixtyFifthDefClassRegistered)
+        {
+            Note(SixtyFifthDefClassSite, "Init Thing Components", "Defs",
+                $"004F5E32 0044C6B0 {SixtyFifthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SixtyFifthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SixtyFifthDefClassName}");
+            Note(SixtyFifthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D8AF6 0044C0C0 size {SixtyFifthDefClassSize} vtbl 0x{SixtyFifthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SixtyFifthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SixtyFifthDefClass = SixtyFifthDefClassName;
+            SixtyFifthDefClassRegistered = true;
+        }
+        if (!SixtySixthDefClassRegistered)
+        {
+            Note(SixtySixthDefClassSite, "Init Thing Components", "Defs",
+                $"004F6029 0044C6B0 {SixtySixthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SixtySixthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SixtySixthDefClassName}");
+            Note(SixtySixthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D8BE1 0044C0C0 size {SixtySixthDefClassSize} vtbl 0x{SixtySixthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SixtySixthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SixtySixthDefClass = SixtySixthDefClassName;
+            SixtySixthDefClassRegistered = true;
+        }
+        if (!SixtySeventhDefClassRegistered)
+        {
+            Note(SixtySeventhDefClassSite, "Init Thing Components", "Defs",
+                $"004F60DF 0044C6B0 {SixtySeventhDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SixtySeventhDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SixtySeventhDefClassName}");
+            Note(SixtySeventhDefClassFactory, "Init Thing Components", "Defs",
+                $"004EC526 004EBBA3 0044C0C0 size {SixtySeventhDefClassSize} vtbl 0x{SixtySeventhDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SixtySeventhDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SixtySeventhDefClass = SixtySeventhDefClassName;
+            SixtySeventhDefClassRegistered = true;
+        }
+        if (!SixtyEighthDefClassRegistered)
+        {
+            Note(SixtyEighthDefClassSite, "Init Thing Components", "Defs",
+                $"004F63AC 0044C6B0 {SixtyEighthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SixtyEighthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SixtyEighthDefClassName}");
+            Note(SixtyEighthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D8C91 0044C0C0 size {SixtyEighthDefClassSize} vtbl 0x{SixtyEighthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SixtyEighthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SixtyEighthDefClass = SixtyEighthDefClassName;
+            SixtyEighthDefClassRegistered = true;
+        }
+        if (!SixtyNinthDefClassRegistered)
+        {
+            Note(SixtyNinthDefClassSite, "Init Thing Components", "Defs",
+                $"004F67BA 0044C6B0 {SixtyNinthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SixtyNinthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SixtyNinthDefClassName}");
+            Note(SixtyNinthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D8EC5 0044C0C0 size {SixtyNinthDefClassSize} vtbl 0x{SixtyNinthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SixtyNinthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SixtyNinthDefClass = SixtyNinthDefClassName;
+            SixtyNinthDefClassRegistered = true;
+        }
+        if (!SeventiethDefClassRegistered)
+        {
+            Note(SeventiethDefClassSite, "Init Thing Components", "Defs",
+                $"004F6946 0044C6B0 {SeventiethDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SeventiethDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SeventiethDefClassName}");
+            Note(SeventiethDefClassFactory, "Init Thing Components", "Defs",
+                $"004D926A 0044C0C0 size {SeventiethDefClassSize} vtbl 0x{SeventiethDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SeventiethDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SeventiethDefClass = SeventiethDefClassName;
+            SeventiethDefClassRegistered = true;
+        }
+        if (!SeventyFirstDefClassRegistered)
+        {
+            Note(SeventyFirstDefClassSite, "Init Thing Components", "Defs",
+                $"004F6991 0044C6B0 {SeventyFirstDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SeventyFirstDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SeventyFirstDefClassName}");
+            Note(SeventyFirstDefClassFactory, "Init Thing Components", "Defs",
+                $"004D7C2D 0044C0C0 size {SeventyFirstDefClassSize} vtbl 0x{SeventyFirstDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SeventyFirstDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SeventyFirstDefClass = SeventyFirstDefClassName;
+            SeventyFirstDefClassRegistered = true;
+        }
+        if (!SeventySecondDefClassRegistered)
+        {
+            Note(SeventySecondDefClassSite, "Init Thing Components", "Defs",
+                $"004F69DC 0044C6B0 {SeventySecondDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SeventySecondDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SeventySecondDefClassName}");
+            Note(SeventySecondDefClassFactory, "Init Thing Components", "Defs",
+                $"004E2D3B 004E1049 0044C0C0 size {SeventySecondDefClassSize} vtbl 0x{SeventySecondDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SeventySecondDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SeventySecondDefClass = SeventySecondDefClassName;
+            SeventySecondDefClassRegistered = true;
+        }
+        if (!SeventyThirdDefClassRegistered)
+        {
+            Note(SeventyThirdDefClassSite, "Init Thing Components", "Defs",
+                $"004F6A27 0044C6B0 {SeventyThirdDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SeventyThirdDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SeventyThirdDefClassName}");
+            Note(SeventyThirdDefClassFactory, "Init Thing Components", "Defs",
+                $"004E2DB2 004E1195 0044C0C0 size {SeventyThirdDefClassSize} vtbl 0x{SeventyThirdDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SeventyThirdDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SeventyThirdDefClass = SeventyThirdDefClassName;
+            SeventyThirdDefClassRegistered = true;
+        }
+        if (!SeventyFourthDefClassRegistered)
+        {
+            Note(SeventyFourthDefClassSite, "Init Thing Components", "Defs",
+                $"004F6A72 0044C6B0 {SeventyFourthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SeventyFourthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SeventyFourthDefClassName}");
+            Note(SeventyFourthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D8F51 0044C0C0 size {SeventyFourthDefClassSize} vtbl 0x{SeventyFourthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SeventyFourthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SeventyFourthDefClass = SeventyFourthDefClassName;
+            SeventyFourthDefClassRegistered = true;
+        }
+        if (!SeventyFifthDefClassRegistered)
+        {
+            Note(SeventyFifthDefClassSite, "Init Thing Components", "Defs",
+                $"004F6B28 0044C6B0 {SeventyFifthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SeventyFifthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SeventyFifthDefClassName}");
+            Note(SeventyFifthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E2D70 004E1105 size {SeventyFifthDefClassSize} vtbl 0x{SeventyFifthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SeventyFifthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SeventyFifthDefClass = SeventyFifthDefClassName;
+            SeventyFifthDefClassRegistered = true;
+        }
+        if (!SeventySixthDefClassRegistered)
+        {
+            Note(SeventySixthDefClassSite, "Init Thing Components", "Defs",
+                $"004F6BDE 0044C6B0 {SeventySixthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SeventySixthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SeventySixthDefClassName}");
+            Note(SeventySixthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D8F97 0044C0C0 size {SeventySixthDefClassSize} vtbl 0x{SeventySixthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SeventySixthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SeventySixthDefClass = SeventySixthDefClassName;
+            SeventySixthDefClassRegistered = true;
+        }
+        if (!SeventySeventhDefClassRegistered)
+        {
+            Note(SeventySeventhDefClassSite, "Init Thing Components", "Defs",
+                $"004F6D6A 0044C6B0 {SeventySeventhDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SeventySeventhDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SeventySeventhDefClassName}");
+            Note(SeventySeventhDefClassFactory, "Init Thing Components", "Defs",
+                $"004E11C3 004DED22 0044C0C0 size {SeventySeventhDefClassSize} vtbl 0x{SeventySeventhDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SeventySeventhDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SeventySeventhDefClass = SeventySeventhDefClassName;
+            SeventySeventhDefClassRegistered = true;
+        }
+        if (!SeventyEighthDefClassRegistered)
+        {
+            Note(SeventyEighthDefClassSite, "Init Thing Components", "Defs",
+                $"004F6EF6 0044C6B0 {SeventyEighthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SeventyEighthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SeventyEighthDefClassName}");
+            Note(SeventyEighthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D9047 0044C0C0 size {SeventyEighthDefClassSize} vtbl 0x{SeventyEighthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SeventyEighthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SeventyEighthDefClass = SeventyEighthDefClassName;
+            SeventyEighthDefClassRegistered = true;
+        }
+        if (!SeventyNinthDefClassRegistered)
+        {
+            Note(SeventyNinthDefClassSite, "Init Thing Components", "Defs",
+                $"004F6FAC 0044C6B0 {SeventyNinthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {SeventyNinthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {SeventyNinthDefClassName}");
+            Note(SeventyNinthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D8F0B 0044C0C0 size {SeventyNinthDefClassSize} vtbl 0x{SeventyNinthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {SeventyNinthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            SeventyNinthDefClass = SeventyNinthDefClassName;
+            SeventyNinthDefClassRegistered = true;
+        }
+        if (!EightiethDefClassRegistered)
+        {
+            Note(EightiethDefClassSite, "Init Thing Components", "Defs",
+                $"004F71EA 0044C6B0 {EightiethDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {EightiethDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {EightiethDefClassName}");
+            Note(EightiethDefClassFactory, "Init Thing Components", "Defs",
+                $"004D90C6 0044C0C0 size {EightiethDefClassSize} vtbl 0x{EightiethDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {EightiethDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            EightiethDefClass = EightiethDefClassName;
+            EightiethDefClassRegistered = true;
+        }
+        if (!EightyFirstDefClassRegistered)
+        {
+            Note(EightyFirstDefClassSite, "Init Thing Components", "Defs",
+                $"004F7294 0044C6B0 {EightyFirstDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {EightyFirstDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {EightyFirstDefClassName}");
+            Note(EightyFirstDefClassFactory, "Init Thing Components", "Defs",
+                $"004D910C 0044C0C0 size {EightyFirstDefClassSize} vtbl 0x{EightyFirstDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {EightyFirstDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            EightyFirstDefClass = EightyFirstDefClassName;
+            EightyFirstDefClassRegistered = true;
+        }
+        if (!EightySecondDefClassRegistered)
+        {
+            Note(EightySecondDefClassSite, "Init Thing Components", "Defs",
+                $"004F733E 0044C6B0 {EightySecondDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {EightySecondDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {EightySecondDefClassName}");
+            Note(EightySecondDefClassFactory, "Init Thing Components", "Defs",
+                $"004D9152 0044C0C0 size {EightySecondDefClassSize} vtbl 0x{EightySecondDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {EightySecondDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            EightySecondDefClass = EightySecondDefClassName;
+            EightySecondDefClassRegistered = true;
+        }
+        if (!EightyThirdDefClassRegistered)
+        {
+            Note(EightyThirdDefClassSite, "Init Thing Components", "Defs",
+                $"004F7443 0044C6B0 {EightyThirdDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {EightyThirdDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {EightyThirdDefClassName}");
+            Note(EightyThirdDefClassFactory, "Init Thing Components", "Defs",
+                $"004E3096 004E1341 0044C0C0 size {EightyThirdDefClassSize} vtbl 0x{EightyThirdDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {EightyThirdDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            EightyThirdDefClass = EightyThirdDefClassName;
+            EightyThirdDefClassRegistered = true;
+        }
+        if (!EightyFourthDefClassRegistered)
+        {
+            Note(EightyFourthDefClassSite, "Init Thing Components", "Defs",
+                $"004F760A 0044C6B0 {EightyFourthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {EightyFourthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {EightyFourthDefClassName}");
+            Note(EightyFourthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D91DE 0044C0C0 size {EightyFourthDefClassSize} vtbl 0x{EightyFourthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {EightyFourthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            EightyFourthDefClass = EightyFourthDefClassName;
+            EightyFourthDefClassRegistered = true;
+        }
+        if (!EightyFifthDefClassRegistered)
+        {
+            Note(EightyFifthDefClassSite, "Init Thing Components", "Defs",
+                $"004F76B4 0044C6B0 {EightyFifthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {EightyFifthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {EightyFifthDefClassName}");
+            Note(EightyFifthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E13AD 004DEF86 0044C0C0 size {EightyFifthDefClassSize} vtbl 0x{EightyFifthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {EightyFifthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            EightyFifthDefClass = EightyFifthDefClassName;
+            EightyFifthDefClassRegistered = true;
+        }
+        if (!EightySixthDefClassRegistered)
+        {
+            Note(EightySixthDefClassSite, "Init Thing Components", "Defs",
+                $"004F775E 0044C6B0 {EightySixthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {EightySixthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {EightySixthDefClassName}");
+            Note(EightySixthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D9224 0044C0C0 size {EightySixthDefClassSize} vtbl 0x{EightySixthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {EightySixthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            EightySixthDefClass = EightySixthDefClassName;
+            EightySixthDefClassRegistered = true;
+        }
+        if (!EightySeventhDefClassRegistered)
+        {
+            Note(EightySeventhDefClassSite, "Init Thing Components", "Defs",
+                $"004F7808 0044C6B0 {EightySeventhDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {EightySeventhDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {EightySeventhDefClassName}");
+            Note(EightySeventhDefClassFactory, "Init Thing Components", "Defs",
+                $"004D9198 0044C0C0 size {EightySeventhDefClassSize} vtbl 0x{EightySeventhDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {EightySeventhDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            EightySeventhDefClass = EightySeventhDefClassName;
+            EightySeventhDefClassRegistered = true;
+        }
+        if (!EightyEighthDefClassRegistered)
+        {
+            Note(EightyEighthDefClassSite, "Init Thing Components", "Defs",
+                $"004F7911 0044C6B0 {EightyEighthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {EightyEighthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {EightyEighthDefClassName}");
+            Note(EightyEighthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E6232 004E3F21 00430370 size {EightyEighthDefClassSize} vtbl 0x{EightyEighthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {EightyEighthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            EightyEighthDefClass = EightyEighthDefClassName;
+            EightyEighthDefClassRegistered = true;
+        }
+        if (!EightyNinthDefClassRegistered)
+        {
+            Note(EightyNinthDefClassSite, "Init Thing Components", "Defs",
+                $"004F79BB 0044C6B0 {EightyNinthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {EightyNinthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {EightyNinthDefClassName}");
+            Note(EightyNinthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D92B0 004D5ECA 0044C0C0 size {EightyNinthDefClassSize} vtbl 0x{EightyNinthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {EightyNinthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            EightyNinthDefClass = EightyNinthDefClassName;
+            EightyNinthDefClassRegistered = true;
+        }
+        if (!NinetiethDefClassRegistered)
+        {
+            Note(NinetiethDefClassSite, "Init Thing Components", "Defs",
+                $"004F7A65 0044C6B0 {NinetiethDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {NinetiethDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {NinetiethDefClassName}");
+            Note(NinetiethDefClassFactory, "Init Thing Components", "Defs",
+                $"004E4748 00430370 size {NinetiethDefClassSize} vtbl 0x{NinetiethDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {NinetiethDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            NinetiethDefClass = NinetiethDefClassName;
+            NinetiethDefClassRegistered = true;
+        }
+        if (!NinetyFirstDefClassRegistered)
+        {
+            Note(NinetyFirstDefClassSite, "Init Thing Components", "Defs",
+                $"004F7AB0 0044C6B0 {NinetyFirstDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {NinetyFirstDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {NinetyFirstDefClassName}");
+            Note(NinetyFirstDefClassFactory, "Init Thing Components", "Defs",
+                $"004E47BF 00430370 size {NinetyFirstDefClassSize} vtbl 0x{NinetyFirstDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {NinetyFirstDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            NinetyFirstDefClass = NinetyFirstDefClassName;
+            NinetyFirstDefClassRegistered = true;
+        }
+        if (!NinetySecondDefClassRegistered)
+        {
+            Note(NinetySecondDefClassSite, "Init Thing Components", "Defs",
+                $"004F7AFB 0044C6B0 {NinetySecondDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {NinetySecondDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {NinetySecondDefClassName}");
+            Note(NinetySecondDefClassFactory, "Init Thing Components", "Defs",
+                $"004E4624 00430370 size {NinetySecondDefClassSize} vtbl 0x{NinetySecondDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {NinetySecondDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            NinetySecondDefClass = NinetySecondDefClassName;
+            NinetySecondDefClassRegistered = true;
+        }
+        if (!NinetyThirdDefClassRegistered)
+        {
+            Note(NinetyThirdDefClassSite, "Init Thing Components", "Defs",
+                $"004F7B46 0044C6B0 {NinetyThirdDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {NinetyThirdDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {NinetyThirdDefClassName}");
+            Note(NinetyThirdDefClassFactory, "Init Thing Components", "Defs",
+                $"004E4667 00430370 size {NinetyThirdDefClassSize} vtbl 0x{NinetyThirdDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {NinetyThirdDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            NinetyThirdDefClass = NinetyThirdDefClassName;
+            NinetyThirdDefClassRegistered = true;
+        }
+        if (!NinetyFourthDefClassRegistered)
+        {
+            Note(NinetyFourthDefClassSite, "Init Thing Components", "Defs",
+                $"004F7B91 0044C6B0 {NinetyFourthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {NinetyFourthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {NinetyFourthDefClassName}");
+            Note(NinetyFourthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E46A4 00430370 size {NinetyFourthDefClassSize} vtbl 0x{NinetyFourthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {NinetyFourthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            NinetyFourthDefClass = NinetyFourthDefClassName;
+            NinetyFourthDefClassRegistered = true;
+        }
+        if (!NinetyFifthDefClassRegistered)
+        {
+            Note(NinetyFifthDefClassSite, "Init Thing Components", "Defs",
+                $"004F7BDC 0044C6B0 {NinetyFifthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {NinetyFifthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {NinetyFifthDefClassName}");
+            Note(NinetyFifthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E45CE 00430370 size {NinetyFifthDefClassSize} vtbl 0x{NinetyFifthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {NinetyFifthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            NinetyFifthDefClass = NinetyFifthDefClassName;
+            NinetyFifthDefClassRegistered = true;
+        }
+        if (!NinetySixthDefClassRegistered)
+        {
+            Note(NinetySixthDefClassSite, "Init Thing Components", "Defs",
+                $"004F7C27 0044C6B0 {NinetySixthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {NinetySixthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {NinetySixthDefClassName}");
+            Note(NinetySixthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E4833 00430370 size {NinetySixthDefClassSize} vtbl 0x{NinetySixthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {NinetySixthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            NinetySixthDefClass = NinetySixthDefClassName;
+            NinetySixthDefClassRegistered = true;
+        }
+        if (!NinetySeventhDefClassRegistered)
+        {
+            Note(NinetySeventhDefClassSite, "Init Thing Components", "Defs",
+                $"004F7C72 0044C6B0 {NinetySeventhDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {NinetySeventhDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {NinetySeventhDefClassName}");
+            Note(NinetySeventhDefClassFactory, "Init Thing Components", "Defs",
+                $"004E4883 00430370 size {NinetySeventhDefClassSize} vtbl 0x{NinetySeventhDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {NinetySeventhDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            NinetySeventhDefClass = NinetySeventhDefClassName;
+            NinetySeventhDefClassRegistered = true;
+        }
+        if (!NinetyEighthDefClassRegistered)
+        {
+            Note(NinetyEighthDefClassSite, "Init Thing Components", "Defs",
+                $"004F7D1C 0044C6B0 {NinetyEighthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {NinetyEighthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {NinetyEighthDefClassName}");
+            Note(NinetyEighthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E6CF3 00430370 size {NinetyEighthDefClassSize} vtbl 0x{NinetyEighthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {NinetyEighthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            NinetyEighthDefClass = NinetyEighthDefClassName;
+            NinetyEighthDefClassRegistered = true;
+        }
+        if (!NinetyNinthDefClassRegistered)
+        {
+            Note(NinetyNinthDefClassSite, "Init Thing Components", "Defs",
+                $"004F7DC6 0044C6B0 {NinetyNinthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {NinetyNinthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {NinetyNinthDefClassName}");
+            Note(NinetyNinthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D9321 0044C0C0 size {NinetyNinthDefClassSize} vtbl 0x{NinetyNinthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {NinetyNinthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            NinetyNinthDefClass = NinetyNinthDefClassName;
+            NinetyNinthDefClassRegistered = true;
+        }
+        if (!HundredthDefClassRegistered)
+        {
+            Note(HundredthDefClassSite, "Init Thing Components", "Defs",
+                $"004F7F2A 0044C6B0 {HundredthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {HundredthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {HundredthDefClassName}");
+            Note(HundredthDefClassFactory, "Init Thing Components", "Defs",
+                $"004E3290 004E1722 0044C0C0 size {HundredthDefClassSize} vtbl 0x{HundredthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {HundredthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            HundredthDefClass = HundredthDefClassName;
+            HundredthDefClassRegistered = true;
+        }
+        if (!HundredFirstDefClassRegistered)
+        {
+            Note(HundredFirstDefClassSite, "Init Thing Components", "Defs",
+                $"004F820A 0044C6B0 {HundredFirstDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {HundredFirstDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {HundredFirstDefClassName}");
+            Note(HundredFirstDefClassFactory, "Init Thing Components", "Defs",
+                $"004D8799 0044C0C0 size {HundredFirstDefClassSize} vtbl 0x{HundredFirstDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {HundredFirstDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            HundredFirstDefClass = HundredFirstDefClassName;
+            HundredFirstDefClassRegistered = true;
+        }
+        if (!HundredSecondDefClassRegistered)
+        {
+            Note(HundredSecondDefClassSite, "Init Thing Components", "Defs",
+                $"004F8255 0044C6B0 {HundredSecondDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {HundredSecondDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {HundredSecondDefClassName}");
+            Note(HundredSecondDefClassFactory, "Init Thing Components", "Defs",
+                $"004D8411 004D405A 0044C0C0 size {HundredSecondDefClassSize} vtbl 0x{HundredSecondDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {HundredSecondDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            HundredSecondDefClass = HundredSecondDefClassName;
+            HundredSecondDefClassRegistered = true;
+        }
+        if (!HundredThirdDefClassRegistered)
+        {
+            Note(HundredThirdDefClassSite, "Init Thing Components", "Defs",
+                $"004F82A0 0044C6B0 {HundredThirdDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {HundredThirdDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {HundredThirdDefClassName}");
+            Note(HundredThirdDefClassFactory, "Init Thing Components", "Defs",
+                $"004E32E3 004E1748 0044C0C0 size {HundredThirdDefClassSize} vtbl 0x{HundredThirdDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {HundredThirdDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            HundredThirdDefClass = HundredThirdDefClassName;
+            HundredThirdDefClassRegistered = true;
+        }
+        if (!HundredFourthDefClassRegistered)
+        {
+            Note(HundredFourthDefClassSite, "Init Thing Components", "Defs",
+                $"004F8420 0044C6B0 {HundredFourthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {HundredFourthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {HundredFourthDefClassName}");
+            Note(HundredFourthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D93A0 0044C0C0 size {HundredFourthDefClassSize} vtbl 0x{HundredFourthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {HundredFourthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            HundredFourthDefClass = HundredFourthDefClassName;
+            HundredFourthDefClassRegistered = true;
+        }
+        if (!HundredFifthDefClassRegistered)
+        {
+            Note(HundredFifthDefClassSite, "Init Thing Components", "Defs",
+                $"004F84D6 0044C6B0 {HundredFifthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {HundredFifthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {HundredFifthDefClassName}");
+            Note(HundredFifthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D93E6 0044C0C0 size {HundredFifthDefClassSize} vtbl 0x{HundredFifthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {HundredFifthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            HundredFifthDefClass = HundredFifthDefClassName;
+            HundredFifthDefClassRegistered = true;
+        }
+        if (!HundredSixthDefClassRegistered)
+        {
+            Note(HundredSixthDefClassSite, "Init Thing Components", "Defs",
+                $"004F85F7 0044C6B0 {HundredSixthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {HundredSixthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {HundredSixthDefClassName}");
+            Note(HundredSixthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D9465 0044C0C0 size {HundredSixthDefClassSize} vtbl 0x{HundredSixthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {HundredSixthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            HundredSixthDefClass = HundredSixthDefClassName;
+            HundredSixthDefClassRegistered = true;
+        }
+        if (!HundredSeventhDefClassRegistered)
+        {
+            Note(HundredSeventhDefClassSite, "Init Thing Components", "Defs",
+                $"004F899A 0044C6B0 {HundredSeventhDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {HundredSeventhDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {HundredSeventhDefClassName}");
+            Note(HundredSeventhDefClassFactory, "Init Thing Components", "Defs",
+                $"004D96DD 0044C0C0 size {HundredSeventhDefClassSize} vtbl 0x{HundredSeventhDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {HundredSeventhDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            HundredSeventhDefClass = HundredSeventhDefClassName;
+            HundredSeventhDefClassRegistered = true;
+        }
+        if (!HundredEighthDefClassRegistered)
+        {
+            Note(HundredEighthDefClassSite, "Init Thing Components", "Defs",
+                $"004F8B91 0044C6B0 {HundredEighthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {HundredEighthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {HundredEighthDefClassName}");
+            Note(HundredEighthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D97E9 0044C0C0 size {HundredEighthDefClassSize} vtbl 0x{HundredEighthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {HundredEighthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            HundredEighthDefClass = HundredEighthDefClassName;
+            HundredEighthDefClassRegistered = true;
+        }
+        if (!HundredNinthDefClassRegistered)
+        {
+            Note(HundredNinthDefClassSite, "Init Thing Components", "Defs",
+                $"004F8C47 0044C6B0 {HundredNinthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {HundredNinthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {HundredNinthDefClassName}");
+            Note(HundredNinthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D982F 004D6638 0044C0C0 size {HundredNinthDefClassSize} vtbl 0x{HundredNinthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {HundredNinthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            HundredNinthDefClass = HundredNinthDefClassName;
+            HundredNinthDefClassRegistered = true;
+        }
+        if (!HundredTenthDefClassRegistered)
+        {
+            Note(HundredTenthDefClassSite, "Init Thing Components", "Defs",
+                $"004F8D68 0044C6B0 {HundredTenthDefClassName}");
+            Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
+                $"0042DAE0 {HundredTenthDefClassName}");
+            Note(AddDefClassFn, "Init Thing Components", "Defs",
+                $"009B0AC0 Add Def Class {HundredTenthDefClassName}");
+            Note(HundredTenthDefClassFactory, "Init Thing Components", "Defs",
+                $"004D9882 0044C0C0 size {HundredTenthDefClassSize} vtbl 0x{HundredTenthDefClassVtbl:X}");
+            Note(LoadDefFn, "Init Thing Components", "Defs",
+                $"009AD6E0 {HundredTenthDefClassName}");
+            Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
+                $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
+            HundredTenthDefClass = HundredTenthDefClassName;
+            HundredTenthDefClassRegistered = true;
+        }
+        if (HundredEleventhDefClassRegistered)
             return;
-        Note(EighteenthDefClassSite, "Init Thing Components", "Defs",
-            $"004F0918 0044C6B0 {EighteenthDefClassName}");
+        Note(HundredEleventhDefClassSite, "Init Thing Components", "Defs",
+            $"004F8E89 0044C6B0 {HundredEleventhDefClassName}");
         Note(NinthDefClassPackFn, "Init Thing Components", "Defs",
-            $"0042DAE0 {EighteenthDefClassName}");
+            $"0042DAE0 {HundredEleventhDefClassName}");
         Note(AddDefClassFn, "Init Thing Components", "Defs",
-            $"009B0AC0 Add Def Class {EighteenthDefClassName}");
-        Note(EighteenthDefClassFactory, "Init Thing Components", "Defs",
-            $"004D7CFF 0044C0C0 size {EighteenthDefClassSize} vtbl 0x{EighteenthDefClassVtbl:X}");
+            $"009B0AC0 Add Def Class {HundredEleventhDefClassName}");
+        Note(HundredEleventhDefClassFactory, "Init Thing Components", "Defs",
+            $"004D98C8 0044C0C0 size {HundredEleventhDefClassSize} vtbl 0x{HundredEleventhDefClassVtbl:X}");
         Note(LoadDefFn, "Init Thing Components", "Defs",
-            $"009AD6E0 {EighteenthDefClassName}");
+            $"009AD6E0 {HundredEleventhDefClassName}");
         Note(LoadDefBudgetFn, "Init Thing Components", "Defs",
             $"009FC4F0 [this+40]={PlayerManagerPlus40Cap:X}");
-        EighteenthDefClass = EighteenthDefClassName;
-        EighteenthDefClassRegistered = true;
+        Note(ThingComponentsFillSite, "Init Thing Components", "Defs",
+            $"004F9129 {ThingComponentsFillFn:X8} tag {ThingComponentsFillFirstTag} thunk 0x{ThingComponentsFillFirstThunk:X} limit 0x{ThingComponentsFillLimitVa:X}");
+        Note(ThingComponentsFillFn, "Init Thing Components", "Defs",
+            $"0073B130 00743270 00743B30 007441D0 ret 0073CB40");
+        ThingComponentsFilled = true;
+        Note(ThingComponentsCommitFlagSetSite, "Init Thing Components", "Defs",
+            "004F9112 flag=1 before 0073B130");
+        Note(ThingComponentsCommitSite, "Init Thing Components", "Defs",
+            $"004F9139 {ThingComponentsCommitFn:X8} ecx=esi 004EB9A6 +{ThingComponentsCommitPlus12}/+{ThingComponentsCommitPlus13}");
+        Note(ThingComponentsCommitFn, "Init Thing Components", "Defs",
+            "004EBACE map commit this walk");
+        ThingComponentsCommitted = true;
+        Note(ThingComponentsRet, "Init Thing Components", "Defs",
+            "004F9144 ret after CHasNameDef");
+        HundredEleventhDefClass = HundredEleventhDefClassName;
+        HundredEleventhDefClassRegistered = true;
     }
 
     /// <summary>
@@ -5707,6 +10056,14 @@ public sealed class EngineLifecycle : IDisposable
             "0044C6B0 [0x13B879C]");
         Note(DefinitionManagerVtbl8Fn, "Init Definition Manager", "Defs",
             $"0044C72B [vtbl+{DefinitionManagerVtbl8}]");
+        Note(DefinitionManagerPathPrefixVa, "Init Definition Manager", "Defs",
+            "0099B6B0 " + DefinitionManagerPathPrefix);
+        Note(DefinitionManagerFirstGlobVa, "Init Definition Manager", "Defs",
+            "009A76A0 " + DefinitionManagerFirstGlob);
+        Note(AddDefClassFn, "Init Definition Manager", "Defs",
+            $"009B0AC0 {DefinitionManagerCompileFirstClass}");
+        Note(DefinitionManagerCompileFn, "Init Definition Manager", "Defs",
+            "009B08C0 Game Definition Manager: Compile leftover body");
         Note(DefinitionManagerResetFn, "Init Definition Manager", "Defs",
             $"009ACB10 [this+{DefinitionManagerPlus88}] arg={DefinitionManagerArg}");
         Note(DefinitionManagerResetApply, "Init Definition Manager", "Defs",
@@ -5730,8 +10087,19 @@ public sealed class EngineLifecycle : IDisposable
         PlayerObjectReady = true;
         Note(PlayerObjectInit, "Create Players", "Player",
             $"+{PlayerActionFlagOffset}=1 +9824=1");
+        Note(PlayerGuiAllocFn, "Create Players", "UI",
+            $"00487FB0 alloc 0x{PlayerGuiObjectSize:X}");
+        Note(PlayerGuiCtorFn, "Create Players", "UI",
+            $"0043B570 vtbl {PlayerGuiVtbl:X} {PlayerGuiPcName}");
+        Note(PlayerGuiStoreFn, "Create Players", "UI",
+            $"004195AF [0x{PlayerGuiSingletonVa:X}]");
         Note(ThingTypeRegistrarFn, "Create Players", "Thing",
             "00522A20 PlayerCreature CREATURE 0052B880");
+        Player.Register(new ActionInputListener());
+        Note(PlayerListenerFactoryFn, "Create Players", "Input",
+            "00488D10 00687A30 vtbl 0123758C +4");
+        Note(PlayerListenerRegisterFn, "Create Players", "Input",
+            "00687A70 00A0D2B0 00A0D4F0");
         Note(CreatePlayersFn, "Create Players", "Player",
             $"slots={PlayerSlotsCreated} active={PlayerActiveCount}");
     }
@@ -6464,6 +10832,18 @@ public sealed class EngineLifecycle : IDisposable
         var output = WorldCamera.Blend(tBlend);
         Note(CameraManagerBlendFn, "GamePump", "Camera",
             $"006B42F0 t={tBlend} out={output.V0}");
+        // 006B42F0 writes WorldCamera
+        // +6296/+6312/+6328. It does not
+        // unbind camera+12. UseCamera
+        // 00B23B50 sticks until the next
+        // bind / ResetCamera 00CC9DF1.
+        if (Camera.ScriptCameraActive)
+        {
+            Note(WorldCameraApplyFn, "GamePump", "Camera",
+                "0049E080 skip helper write; UseCamera sticks");
+            return;
+        }
+
         // 00B314E0 copies helper +0/+12/+24
         // as eye / forward / up and
         // 00A14440-normalises the dirs.
@@ -6855,9 +11235,9 @@ public sealed class EngineLifecycle : IDisposable
         Note(StoryLogFn, "GamePump", "Quest",
             $"00CBE87F TEXT_QST_LOG_STORY_{StoryLogFirstSeen}");
         Note(QuestCardBindFn, "GamePump", "Quest",
-            "00896A30 " + GameflowWaitCard + " 004B0C80 miss");
+            "008968C0 vtbl+1180 " + GameflowWaitCard + " ret 12");
         Note(QuestIsActiveFn, "GamePump", "Quest",
-            "00893610 " + GameflowWaitQuest + " 0");
+            "00893570 vtbl+100 " + GameflowWaitQuest + " 0");
         Note(GameflowYieldThunk, "GamePump", "Quest",
             "006E7410 vtbl+8 00A44840 009D8650");
         Note(WatcherYieldVtbl8, "GamePump", "Quest", "00A44840 yield");
@@ -6875,7 +11255,7 @@ public sealed class EngineLifecycle : IDisposable
     /// → <c>vtbl+4</c> <c>00A44880</c>
     /// → <c>00A44660</c> resume.
     /// <c>00CE7670</c> is still in the
-    /// <c>00893610</c> wait;
+    /// <c>00893570</c> wait;
     /// quest miss → <c>00CB7940</c>
     /// / <c>006E7410</c> yield.
     /// Does not re-attach Core/Barrow
@@ -6891,7 +11271,7 @@ public sealed class EngineLifecycle : IDisposable
         Note(FiberResumeFn, "GamePump", "Quest",
             "00A44660 009D87F0 resume");
         Note(QuestIsActiveFn, "GamePump", "Quest",
-            "00893610 " + GameflowWaitQuest + " 0");
+            "00893570 vtbl+100 " + GameflowWaitQuest + " 0");
         Note(GameflowYieldThunk, "GamePump", "Quest",
             "006E7410 vtbl+8 00A44840 009D8650");
         Note(FiberYieldFn, "GamePump", "Quest",
@@ -7202,7 +11582,7 @@ public sealed class EngineLifecycle : IDisposable
     {
         if (Runtime is null || Hero is null)
             return;
-        Runtime.BindScene(_regionThings, null);
+        Runtime.BindScene(_regionThings, Camera);
         Runtime.Bindings.BindHero(Hero);
         if (Hero.PositionX is not null)
         {
@@ -8005,8 +12385,10 @@ public sealed class EngineLifecycle : IDisposable
 
     /// <summary>
     /// <c>004A1840</c> child: QST
-    /// <c>004A0D90</c> AddQuest /
-    /// AddTestQuest into world+184.
+    /// <c>004A0D90</c> AddQuest into
+    /// world+184 (TRUE also +172).
+    /// AddTestQuest is world+196
+    /// only — not this catalog.
     /// Not <c>0049F180</c>.
     /// </summary>
     /// <summary>
@@ -8032,8 +12414,14 @@ public sealed class EngineLifecycle : IDisposable
             "00CD6E27 00CB5C90 S_QNOVI 00DBEF70 bind not 00CB5AD0");
         Note(AddTestQuestStoreFn, "Load Quests", "Quest",
             $"004A113B AddTestQuest [world+{WorldAddTestQuestOffset}] store not 004B4A10");
+        Note(InventoryQuestsConfirmFn, "Load Quests", "Quest",
+            "0061AB30 CTCInventoryQuests leftover not New Game");
+        Note(InventoryQuestsGiveFn, "Load Quests", "Quest",
+            "0061ACB3 CTCInventoryQuests Give leftover not first-seen");
         Note(StartNewQuestParseFn, "Load Quests", "Quest",
             "004B5080 START_NEW_QUEST save parse 0 E8 no-save");
+        Note(QuestActivatePlus172SiblingFn, "Load Quests", "Quest",
+            "0049EAC0 [this+172] 0 inbound skip not 00CB5AD0");
         _worldPlus172.Clear();
         _worldPlus184.Clear();
         Quests = null;
@@ -8100,13 +12488,14 @@ public sealed class EngineLifecycle : IDisposable
         Note(PlayerCreatureBindFn, "Init Characters", "Player",
             "00449970 / 00487DC0");
         Note(InitGuiFn, "Init GUI", "UI",
-            "0043A380 PLAYER_GUI_PC [0x13B8790]");
+            "0043A380 reset PLAYER_GUI_PC [0x13B8790] not ctor");
         PlayerGuiReady = true;
 
         var names = _worldPlus172;
         Note(InitQuestsFn, "Init Quests", "Quest",
             $"004B4260 [world+{WorldQuestListOffset}] QST TRUE count={names.Count} not WLD START_INITIAL_QUESTS");
         Runtime = ScriptRuntime.Detached();
+        Runtime.BindScene(_regionThings, Camera);
         if (Install?.FindCompiledDef("script.bin") is not null)
             Runtime.Load(ScriptBank.Load(Install), Install);
 
@@ -8143,6 +12532,8 @@ public sealed class EngineLifecycle : IDisposable
         if (!inTable)
             return;
         Runtime ??= ScriptRuntime.Detached();
+        if (Runtime.Camera is null)
+            Runtime.BindScene(_regionThings, Camera);
         if (Install?.FindCompiledDef("script.bin") is not null &&
             Runtime.Bank is null)
             Runtime.Load(ScriptBank.Load(Install), Install);
@@ -8516,9 +12907,10 @@ public sealed class EngineLifecycle : IDisposable
     /// through type-10
     /// <c>vtbl+284</c>
     /// <c>0054E4F0</c>. Host
-    /// still collapses
-    /// <c>[packet+0]</c> onto
-    /// <see cref="FrontendWidget.MessageId"/>.
+    /// stores packet first dword at
+    /// widget <c>+352</c>. Persist
+    /// <see cref="FrontendWidget.MessageId"/>
+    /// stays 0.
     /// </summary>
     private void WriteType10AttachMessage()
     {
@@ -8529,7 +12921,7 @@ public sealed class EngineLifecycle : IDisposable
         if (!_frontendSlotTrees.TryGetValue(FrontendPressStartSlot, out var tree) ||
             tree.Count == 0)
             return;
-        tree[0] = tree[0] with { MessageId = FrontendPressStartMessage };
+        tree[0] = tree[0] with { Type10Packet = FrontendPressStartMessage };
     }
 
     public bool TryGetFrontendSlot(int slot, out FrontendWidget widget)
@@ -8577,24 +12969,15 @@ public sealed class EngineLifecycle : IDisposable
     /// Type 11/38 <c>vtbl+4</c>
     /// <c>0055ACB0</c> → <c>0055B890</c>
     /// → <c>vtbl+580</c> <c>0055BF10</c>
-    /// when action 25 is live.
-    /// <c>+352</c> then action 26.
+    /// on dest AABB of the current
+    /// pointer. <c>+352</c> then
+    /// action 26. Not TypeMouse-only.
     /// <c>vtbl+532</c> is list unlink
     /// <c>0055BBF0</c>, not a texture
     /// suffix.
     /// </summary>
     private void TickType11Type38Hover(List<FrontendWidget> tree)
     {
-        var action25 = false;
-        foreach (var (type, _) in Input.Applied)
-        {
-            if (type == FrontendInputMap.TypeMouse)
-            {
-                action25 = true;
-                break;
-            }
-        }
-
         Note(FrontendHitTest.HoverSelectFn, "Frontend", "UI",
             "0055ACB0 vtbl+580 0055BF10");
         for (var i = 0; i < tree.Count; i++)
@@ -8602,8 +12985,6 @@ public sealed class EngineLifecycle : IDisposable
             var widget = tree[i];
             if (widget.Type != FrontendInputMap.TypeButton &&
                 widget.Type != FrontendInputMap.TypeAccept)
-                continue;
-            if (!action25 && !widget.Hovered)
                 continue;
             var hit = FrontendHitTest.Contains(
                 tree, i, FrontendPointerX, FrontendPointerY)
@@ -8956,13 +13337,11 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
-    /// <c>0055B8F0</c> AABB is dest
-    /// origin plus dest size. Type
-    /// 16/37 <c>0041AFA0</c> dest is a
-    /// point; size comes from the
-    /// packed type-2 leftover in the
-    /// same list row (rightmost table).
-    /// Draw dest stays the point.
+    /// Leftover #48: type-16/37 dest is a
+    /// point. Native sibling type-2
+    /// leftover is not a child dest.
+    /// Do not treat this size as
+    /// <c>0055B8F0</c> recovered.
     /// </summary>
     private static void TryChromeHit(
         List<FrontendWidget> widgets,
@@ -9058,17 +13437,17 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     private void CompositeFrontendPresent()
     {
-        if (Dx9OwnsFrontendPresent)
-        {
-            FrontendBatch = null;
-            _frontendDx9Records = [];
-            return;
-        }
-
         var width = BackBufferWidth > 0 ? BackBufferWidth : DisplayDefaultWidth;
         var height = BackBufferHeight > 0 ? BackBufferHeight : DisplayDefaultHeight;
         var (records, textures) = CollectFrontendRecords();
         _frontendDx9Records = records;
+        _frontendDx9Textures = textures;
+        if (Dx9OwnsFrontendPresent)
+        {
+            FrontendBatch = null;
+            return;
+        }
+
         FrontendBatch = Dx9VulkanFrontend.BuildBatch(records, textures, 0, 0, width, height);
         DumpFrontendPresentRgba(records, textures, width, height);
     }

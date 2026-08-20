@@ -101,6 +101,25 @@ internal sealed class AssemblyTextMap
         return null;
     }
 
+    public uint? VtblDest(uint table, int slot)
+    {
+        var path = Path.Combine(Root, "00-index", "vtbl.tsv");
+        if (!File.Exists(path))
+            return null;
+        var key = $"0x{table:X8}\t{slot}\t";
+        foreach (var line in File.ReadLines(path))
+        {
+            if (!line.StartsWith(key, StringComparison.Ordinal))
+                continue;
+            var parts = line.Split('\t');
+            if (parts.Length < 3)
+                return null;
+            return ParseHex(parts[2]);
+        }
+
+        return null;
+    }
+
     public string Utf16FromVtbl(uint va)
     {
         var path = Path.Combine(Root, "00-index", "vtbl.tsv");

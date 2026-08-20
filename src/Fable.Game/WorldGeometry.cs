@@ -514,29 +514,10 @@ public sealed class WorldGeometry
             var before = list.Count;
             foreach (var cell in levels.LoadCells(name))
             {
-                if (cell.Faces.Count == 0)
+                if (cell.Faces.Count == 0 &&
+                    (cell.ExtraStrips is null || cell.ExtraStrips.Count == 0))
                     continue;
-                if (offset == Vector3.Zero)
-                    list.Add(cell);
-                else
-                {
-                    var faces = new MeshTriangle[cell.Faces.Count];
-                    for (var i = 0; i < cell.Faces.Count; i++)
-                    {
-                        var f = cell.Faces[i];
-                        faces[i] = f with
-                        {
-                            A = f.A + offset, B = f.B + offset, C = f.C + offset,
-                        };
-                    }
-
-                    list.Add(cell with
-                    {
-                        Min = cell.Min + offset,
-                        Max = cell.Max + offset,
-                        Faces = faces,
-                    });
-                }
+                list.Add(offset == Vector3.Zero ? cell : OffsetCell(cell, offset));
             }
 
             if (list.Count > before)
@@ -544,6 +525,65 @@ public sealed class WorldGeometry
         }
 
         return list;
+    }
+
+    private static LandscapeCell OffsetCell(LandscapeCell cell, Vector3 offset) =>
+        cell with
+        {
+            Min = cell.Min + offset,
+            Max = cell.Max + offset,
+            Faces = OffsetFaces(cell.Faces, offset),
+            Points = OffsetPoints(cell.Points, offset),
+            ExtraStrips = OffsetExtraStrips(cell.ExtraStrips, offset),
+        };
+
+    private static IReadOnlyList<MeshTriangle> OffsetFaces(
+        IReadOnlyList<MeshTriangle> faces, Vector3 offset)
+    {
+        if (faces.Count == 0)
+            return faces;
+        var copy = new MeshTriangle[faces.Count];
+        for (var i = 0; i < faces.Count; i++)
+        {
+            var f = faces[i];
+            copy[i] = f with { A = f.A + offset, B = f.B + offset, C = f.C + offset };
+        }
+
+        return copy;
+    }
+
+    private static IReadOnlyList<LandscapePoint>? OffsetPoints(
+        IReadOnlyList<LandscapePoint>? points, Vector3 offset)
+    {
+        if (points is not { Count: > 0 })
+            return points;
+        var copy = new LandscapePoint[points.Count];
+        for (var i = 0; i < points.Count; i++)
+        {
+            var p = points[i];
+            copy[i] = p with { P = p.P + offset };
+        }
+
+        return copy;
+    }
+
+    private static IReadOnlyList<LandscapeExtraStrip>? OffsetExtraStrips(
+        IReadOnlyList<LandscapeExtraStrip>? extras, Vector3 offset)
+    {
+        if (extras is not { Count: > 0 })
+            return extras;
+        var copy = new LandscapeExtraStrip[extras.Count];
+        for (var i = 0; i < extras.Count; i++)
+        {
+            var extra = extras[i];
+            copy[i] = extra with
+            {
+                Points = OffsetPoints(extra.Points, offset) ?? extra.Points,
+                Faces = OffsetFaces(extra.Faces, offset),
+            };
+        }
+
+        return copy;
     }
 
     /// <summary>

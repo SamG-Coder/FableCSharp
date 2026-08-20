@@ -299,6 +299,7 @@ public static class FrontendDx9Submit
 
     public static void IssueSpriteUp(IDirect3DDevice9 device, FrontendDx9DrawRecord rec)
     {
+        device.SetTexture(0, rec.TextureId);
         var vertices = PackSpriteUpVertices(rec);
         var indices = PackQuadIndexBytes();
         device.DrawIndexedPrimitiveUP(
@@ -314,6 +315,7 @@ public static class FrontendDx9Submit
 
     public static void IssueGlyphUp(IDirect3DDevice9 device, FrontendDx9DrawRecord rec)
     {
+        device.SetTexture(0, rec.TextureId);
         var vertices = PackGlyphUpVertices(rec);
         device.DrawPrimitiveUP(
             Dx9PrimitiveType.TriangleList,

@@ -44,6 +44,17 @@ public static class RegionTravel
     /// <c>12.0f</c> at vtbl+2584, lookup <c>HerosOldHouse</c>.
     /// </summary>
     public const uint StartOakValeSetup = 0x00DBDE40;
+    /// <summary>
+    /// <c>00DBDE40</c> interns
+    /// <c>"StartOakVale"</c> and waits
+    /// on context <c>vtbl+48</c>. It
+    /// does not <c>00500540</c> load
+    /// WLD index 4. Activator is still
+    /// UNREAD. Do not invent
+    /// <c>PlayerRegionName</c>.
+    /// </summary>
+    public const bool StartOakValeSetupLoadsRegion = false;
+    public const int StartOakValeWaitVtbl = 48;
     public const uint WatchBarrelsCtor = 0x00CDD450;
     public const uint WatchBarrelsCallback = 0x00DBE890;
     public const uint WatchForGotGoldCallback = 0x00DBE2E0;
@@ -173,6 +184,16 @@ public static class RegionTravel
     public const int PlayAviPresentVtbl = 68;
     public const bool FirstSeenPlayAviBlocksUpdatePump = true;
     public const bool FirstSeenPlayAviDrawsWorld = false;
+    /// <summary>
+    /// Native Game <c>PlayAVI</c> owns
+    /// <c>006286F0</c> (blit-only Present).
+    /// Host <c>PumpGame</c> still walks
+    /// <c>00435530</c> after
+    /// <c>WorldFrame&gt;1</c> because
+    /// <c>PumpScripts</c> is Note-only.
+    /// Leftover #20.
+    /// </summary>
+    public const bool GamePlayAviOwnsPump = false;
     public const bool FirstSeenPlayAviPresentIsDevicePresent = true;
     /// <summary>
     /// <c>009BEEB0</c> is device Present, not a
@@ -774,6 +795,19 @@ public static class RegionTravel
     public const int SpeakApplyVtbl = 52;
     public const int SpeakPollVtbl = 104;
     public const bool FirstSeenSpeakYieldsOnce = true;
+    /// <summary>
+    /// Speak apply is thing
+    /// <c>vtbl+52</c> then leftover
+    /// <c>vtbl+104</c>. Father
+    /// <c>+52</c> is stub
+    /// <c>004CD1B0</c>. <c>vtbl+1472</c>
+    /// is DialogSpeak wait, not Speak.
+    /// Host records ids + yield; no
+    /// subtitle Present / voice /
+    /// <c>dialogue.big</c> lipsync.
+    /// </summary>
+    public const bool SpeakUsesVtbl1472 = false;
+    public const bool SpeakPresentIsLive = false;
     public const string IntroFatherSpeak = "TEXT_QST_048_FATHER_INTRO_10";
     /// <summary>
     /// <c>00CC2EAA</c> <c>.InteractiveSpeak</c>.
@@ -881,6 +915,7 @@ public static class RegionTravel
     public const uint SneakToDefaultSpeedBits = 0x3E99999A;
     public const bool FirstSeenSneakToWaitsForArrival = false;
     public const bool FirstSeenSneakToAppliesMove = false;
+    public const bool FirstSeenSneakToIsStub = true;
     public const string IntroSneakMarker = "MK_OVIF_HERO4";
     public const float IntroSneakSpeed = 0f;
     /// <summary>
@@ -906,11 +941,17 @@ public static class RegionTravel
     /// and <c>00432EE9</c> copy. <c>00CBEB7E</c> is
     /// <c>[0x143E8F4]</c> ? <c>vtbl+168</c>
     /// <c>00894440</c> : <c>vtbl+176</c>
-    /// <c>00893B00</c>. <c>00CD17FD</c> end-of-list
+    /// <c>00893BA0</c> (kind <c>0x32</c>).
+    /// Neighbour <c>vtbl+172</c> is
+    /// <c>00893B00</c> (kind <c>0x2A</c>,
+    /// <c>ret 4</c>) and is not this
+    /// predicate. Event kinds are not
+    /// DIKs. Enter is not skip.
+    /// <c>00CD17FD</c> end-of-list
     /// recopies <c>+60</c> only when
     /// <c>[ebp+120]==1</c>; it does not walk +72.
     /// First-seen skip is false so vector 1 does not
-    /// run. Skip-key bodies UNREAD.
+    /// run. Who posts those kinds is UNREAD.
     /// </summary>
     public const int IntroCutsceneVector1Offset = 72;
     public const int IntroCutsceneVector1Count = 7;
@@ -920,8 +961,12 @@ public static class RegionTravel
     public const uint CutsceneSkipGlobal = 0x0143E8F4;
     public const int CutsceneSkipVtblA = 168;
     public const int CutsceneSkipVtblB = 176;
+    public const int CutsceneSkipVtblNeighbour = 172;
     public const uint CutsceneSkipFnA = 0x00894440;
-    public const uint CutsceneSkipFnB = 0x00893B00;
+    public const uint CutsceneSkipFnB = 0x00893BA0;
+    public const uint CutsceneSkipFnNeighbour = 0x00893B00;
+    public const int CutsceneSkipKindAtoSkip = 0x4B;
+    public const int CutsceneSkipKindDefault = 0x32;
     public const bool FirstSeenCutsceneVector1AutoRuns = false;
     public const bool FirstSeenCutsceneSkipFires = false;
     /// <summary>
@@ -949,13 +994,25 @@ public static class RegionTravel
     /// name required else <c>jmp 00CD17FD</c>. Apply
     /// context <c>vtbl+364</c> <c>008A9100</c> then
     /// <c>jmp 00CD17F8</c>. No interpreter yield.
-    /// Spawn body UNREAD — record only.
+    /// No <c>E8 008A9100</c>; slot 91 on
+    /// <c>01260F0C</c>. Always
+    /// <c>CThingAICreature</c> <c>0x1D8</c>
+    /// via <c>00833800</c> / <c>00831F80</c>.
+    /// Graphic <c>.msh</c> id UNREAD. Host
+    /// records type/name/pos only.
     /// </summary>
     public const uint CreateOpcode = 0x00CCC246;
     public const uint CreateApply = 0x00CCC3E6;
     public const uint CreateJoin = 0x00CD17F8;
     public const int CreateApplyVtbl = 364;
     public const uint CreateApplyFn = 0x008A9100;
+    public const uint CreateThingFn = 0x00833800;
+    public const uint CreateThingCtor = 0x00831F80;
+    public const uint CreateThingInsert = 0x00662880;
+    public const uint CreateThingActivate = 0x004C9CA0;
+    public const int CreateThingSize = 0x1D8;
+    public const int CreateThingPoseOffset = 232;
+    public const bool CreateApplyIsMeshFile = false;
     public const bool FirstSeenCreateDoesNotYield = true;
     public const string IntroCreateType = "CREATURE_OAKVALE_VILLAGER_FEMALE_NORMAL_MESH";
     public const string IntroCreateMarker = "MK_OVI_ID_VS1";
@@ -1078,6 +1135,46 @@ public static class RegionTravel
     public const bool FirstSeenCameraNameInExe = false;
     public const string WatchBarrelsThing = "NOVI_Barrel";
     /// <summary>
+    /// WatchBarrels polls quest <c>+116</c>.
+    /// Writer is <c>NOVI_Barrel</c>
+    /// <c>vtbl+20</c> <c>00DB7DB0</c>
+    /// after live kill <c>004C9B80</c>
+    /// and gone <c>00F35A00</c> then
+    /// <c>00CB7950</c>. Not physics.
+    /// Radius <c>2.0</c> is
+    /// <c>00DB7E10</c> instruction
+    /// text, not smash. Direct
+    /// <c>E8 00DB7DB0</c> is 0;
+    /// <c>FF</c> site still UNREAD.
+    /// </summary>
+    public const int WatchBarrelsSmashFlagOffset = 116;
+    public const uint WatchBarrelsSmashFlagWriter = 0x00DB7DB0;
+    public const int WatchBarrelsSmashFlagVtbl = 20;
+    public const uint WatchBarrelsInstructionFn = 0x00DB7E10;
+    public const bool WatchBarrelsSmashHasDistance = false;
+    public const bool WatchBarrelsSmashIsRadius = false;
+    /// <summary>
+    /// Childhood HUD first-push sites
+    /// <c>listing-00d80000</c>. Same
+    /// <c>vtbl+2620</c> / <c>+1184</c>
+    /// shape. <c>05</c> Theresa
+    /// <c>MEET_YES</c> is last before
+    /// raid <c>AttackOver</c>. <c>06</c>
+    /// is PostAttack. Extra <c>01</c>
+    /// <c>00DB91A8</c> / extra <c>05</c>
+    /// <c>00DBA277</c> <c>00DBA766</c>
+    /// are not these consts. Host does
+    /// not run this chain. Do not
+    /// <c>ActivateQuest</c>.
+    /// </summary>
+    public const uint ChildhoodObjective01Fn = 0x00DAC1BA;
+    public const uint ChildhoodObjective02Fn = 0x00DB080A;
+    public const uint ChildhoodObjective03Fn = 0x00DBE34F;
+    public const uint ChildhoodObjective04Fn = 0x00DB4A93;
+    public const uint ChildhoodObjective05Fn = 0x00DB9DE6;
+    public const uint ChildhoodObjective06Fn = 0x00DBE478;
+    public const bool ChildhoodObjectivesRunOnNoSave = false;
+    /// <summary>
     /// Text-script camera matcher <c>00CBF29F</c> strcmp-walks
     /// <c>UseCamera</c> / <c>CameraLookAt</c> /
     /// <c>CameraLookBetween</c> / <c>CameraFOVLookBetween</c>
@@ -1108,6 +1205,48 @@ public static class RegionTravel
     public const bool FirstSeenCallsPlayAnimationDispatcher = false;
     public const bool FirstSeenScriptBinHasSqnovi = false;
     public const string IntroCutscene = "CS_OAKVALE_INTRO_FATHER";
+    public const string TheresaMeetCutscene = "CS_OAKVALE_INTRO_THERESA_MEET";
+    public const string TheresaMeetYesCutscene = "CS_OAKVALE_INTRO_THERESA_MEET_YES";
+    public const string TheresaCutscene = "CS_OAKVALE_INTRO_THERESA";
+    public const uint TheresaMeetStart = 0x00DB97A0;
+    public const uint TheresaMeetSite = 0x00DB9B02;
+    public const uint TheresaMeetYesSite = 0x00DB9D5B;
+    public const uint TheresaRaidAviSite = 0x00DBB21B;
+    public const uint TheresaRaidPlayAviSite = 0x00DBB249;
+    public const string DeadFatherCutscene = "CS_DEAD_DAD";
+    public const string RaidPlayAvi = "1_raid_on_oak_vale_comp.xmv";
+    public const string RaidPlayAviRewritten = "1_raid_on_oak_vale_comp.wmv";
+    public const string MazeCutscene = "CS_OAKVALEINTRO_HESDEADJIM";
+    public const uint MazeCutsceneStart = 0x00DBEB20;
+    public const uint MazeCutsceneStop = 0x00CC8EAC;
+    /// <summary>
+    /// Persist vector 0 last line. Interpreter
+    /// returns <c>00DBEE7F</c>. Do not then
+    /// run <c>00D3BC60</c> Guild take.
+    /// </summary>
+    public const string MazeCutsceneLastCommand = "PlayMusic MUSIC_SET_NULL,FALSE";
+    public const uint GuildTakeFn = 0x00D3BC60;
+    public const bool MilestoneEntersGuildTake = false;
+    public const string PostAttackQuest = "Q__OakValeIntro_PostAttack";
+    public const string PostAttackEnvironment = "ENVIRONMENT_OV_POSTATTACK";
+    public const uint AttackOverStore = 0x00DBB2A7;
+    public const int AttackOverPlus80 = 80;
+    public const byte AttackOverStoredValue = 1;
+    /// <summary>
+    /// Native writer is later
+    /// <c>00DB97A0</c> after MEET /
+    /// <c>CS_OAKVALE_INTRO_THERESA</c>
+    /// then PlayAVI
+    /// <c>1_raid_on_oak_vale_comp.xmv</c>
+    /// then <c>00DBB2A7</c>. First-seen
+    /// <c>00DBDE40</c> only <c>reads</c>
+    /// <c>+80</c>. <c>CS_BANDITRAID_*</c>
+    /// is the adult raid, not this AVI.
+    /// Do not invent <c>AttackOver=1</c>.
+    /// </summary>
+    public const bool FirstSeenAttackOverStoreRuns = false;
+    public const bool RaidAviIsBanditRaid = false;
+    public const bool AttackOverStoreAfterRaidAvi = true;
     public const bool FirstSeenScriptBinHasIntroCutscene = true;
     /// <summary>
     /// Xref <c>00DB88DE</c> sits in <c>00DB86B0</c>, not

@@ -1,4 +1,5 @@
 using System.Numerics;
+using Silk.NET.Vulkan;
 using Fable.Core;
 using Fable.Formats;
 using Fable.Formats.Defs;
@@ -376,7 +377,10 @@ public sealed class WorldPipelineTests
         Assert.Contains(mesh.Draws, d => d.PassBit == 0x4);
         Assert.Contains(mesh.Draws, d => d.PassBit == 0x40);
         Assert.Contains(mesh.Draws, d => d.PassBit == 0x20);
+        Assert.Contains(mesh.Draws, d => d.PassBit == 0x100);
         Assert.Contains(mesh.Draws, d => d.PassBit == 0x2000);
+        Assert.Contains(mesh.Draws, d => d.PassBit == 0x200);
+        Assert.DoesNotContain(mesh.Draws, d => d.PassBit == 0x80);
         Assert.DoesNotContain(mesh.Draws, d => d.PassBit == 0x20000);
         var ranks = mesh.Draws.Select(d => ScenePasses.Rank(d.PassBit)).ToList();
         Assert.Equal(ranks.OrderBy(r => r), ranks);
@@ -413,7 +417,8 @@ public sealed class WorldPipelineTests
 
         Assert.False(WorldShading.FirstSeenBindsC3dBump);
         Assert.Equal("PSHADER_TEXTURE_DIFFUSE", WorldShading.FirstSeenStaticPsName);
-        Assert.Equal(1f, Dx9VulkanSamplerState.MaxLod);
+        Assert.Equal(0f, Dx9VulkanSamplerState.MaxLod);
+        Assert.Equal(Filter.Nearest, Dx9VulkanSamplerState.MagFilter);
     }
 
     [Fact]
@@ -435,7 +440,7 @@ public sealed class WorldPipelineTests
         Assert.Equal(0x4u, a[0].Layer.Bit);
         Assert.Equal(0x20u, a[1].Layer.Bit);
         Assert.Equal(0x20u, a[2].Layer.Bit);
-        Assert.Equal(0x20u, a[3].Layer.Bit);
+        Assert.Equal(0x100u, a[3].Layer.Bit);
         Assert.Equal(0x2000u, a[4].Layer.Bit);
         Assert.Contains("UNREAD", a[4].Layer.PixelShader);
         Assert.Contains("register offsets", a[3].SourceBytes);
@@ -462,7 +467,7 @@ public sealed class WorldPipelineTests
             (Vector3.Transform(a[3].Decoded, fatherXform) - invented).Length() < 1e-4f,
             "ObjectTransform is the client W path");
         Assert.Contains(scene.Geometry.Triangles, t =>
-            t.Layer == SceneLayer.Prop &&
+            t.Layer == SceneLayer.Palskin &&
             WorldSpaces.DistanceXy((t.A + t.B + t.C) / 3f, a[3].World) < 8f);
         Assert.True(a[0].NativeClip is { } native &&
                     WorldSpaces.NearlyEqual(native, a[0].Clip, 1e-3f));

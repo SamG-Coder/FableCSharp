@@ -99,12 +99,23 @@ public static class ScenePasses
         _ => 1f,
     };
 
-    public static IReadOnlyList<ScenePass> DrawnPasses(Meshes.SceneLayer layer)
+    public static IReadOnlyList<ScenePass> DrawnPasses(Meshes.SceneLayer layer) =>
+        DrawnPasses(layer, 0);
+
+    /// <summary>
+    /// Type 0 body drains slot 8 on <c>0x100</c> (<c>00BD780D</c> /
+    /// <c>00B84720</c>). Flag1 adds slot 9, drained on <c>0x200</c>
+    /// after sky (<c>00B33010</c>). Type1 slot 14 / <c>0x80</c>
+    /// stays off unless <c>[inst+104]+8==1</c>.
+    /// </summary>
+    public static IReadOnlyList<ScenePass> DrawnPasses(Meshes.SceneLayer layer, byte flag1)
     {
         var submit = layer switch
         {
             Meshes.SceneLayer.Landscape => (SceneSubmit[]) [SceneSubmit.LandscapeBit4, SceneSubmit.LandscapeBit40],
             Meshes.SceneLayer.Sky => [SceneSubmit.SkyElse],
+            Meshes.SceneLayer.Palskin when flag1 != 0 =>
+                [SceneSubmit.PalskinBit100, SceneSubmit.PalskinBit200],
             Meshes.SceneLayer.Palskin => [SceneSubmit.PalskinBit100],
             _ => [SceneSubmit.Primitives],
         };

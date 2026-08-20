@@ -29,6 +29,21 @@ public sealed class FrontendInputTests
         Assert.Equal(0x00A03C80u, FrontendInputMap.Type4RecordCtor);
         Assert.Equal(0x00AB5420u, FrontendInputMap.Type4TranslateFn);
         Assert.False(FrontendInputMap.DikPosterUnread);
+        Assert.True(FrontendInputMap.NativeLmbPostsPressStart);
+        Assert.False(FrontendInputMap.NativeKeyPostsE5);
+        Assert.False(FrontendInputMap.NativeKeyNPostsNewGame);
+        Assert.False(FrontendInputMap.NativeEnterPostsNewGame);
+        Assert.True(FrontendInputMap.Leftover14OpenForDestPresentNotes);
+        Assert.True(FrontendInputMap.NativeType4UsesCurrentInner);
+        Assert.False(FrontendInputMap.NativeType4UsesDestAabb);
+        Assert.Equal(0x0055ACB0u, FrontendInputMap.Type4InnerHoverTick);
+        Assert.Equal(4, FrontendInputMap.Type4CurrentInnerOffset);
+        Assert.Equal(12, FrontendInputMap.Type4DimofsButton0);
+        Assert.Equal(1, FrontendInputMap.Type4RawDown);
+        Assert.Equal(4, FrontendInputMap.Type6RawUp);
+        Assert.Equal(12, EngineInput.Type4DimofsButton0);
+        Assert.Equal(1, EngineInput.Type4RawDown);
+        Assert.Equal(4, EngineInput.Type6RawUp);
         Assert.Equal(0x0059A238u, FrontendMessages.UiMessageFn);
         Assert.Equal(0x00599D5Cu, FrontendMessages.PressStartAcceptFn);
         Assert.Equal(0x00595845u, FrontendMessages.NoProfileFn);
@@ -162,7 +177,7 @@ public sealed class FrontendInputTests
             EngineLifecycle.FrontendPressStartMenu, life.FrontendMenuRoot);
         Assert.Contains(life.FrontendWidgets, w =>
             w.Type == FrontendInputMap.Type10 &&
-            w.MessageId == FrontendMessages.PressStart);
+            w.Type10Packet == FrontendMessages.PressStart);
         Assert.Contains(life.FrontendWidgets, w =>
             w.Type == FrontendInputMap.TypeButton &&
             w.MessageId == FrontendMessages.PressStart);
@@ -184,6 +199,62 @@ public sealed class FrontendInputTests
             w.Name == "UI_FRONTEND_BUTTON_NEW_GAME" &&
             w.MessageId == FrontendMessages.NewGame);
         ClickNamed(life, "UI_FRONTEND_BUTTON_NEW_GAME");
+        Assert.True(life.RetailNewGameFlag);
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.Equal("FinalAlbion.wld", life.WorldFileName);
+    }
+
+    [Fact]
+    public void Type15_WM_CHAR_inserts_at_edit_box_cursor_not_DIK()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.QueueInput(FrontendInputMap.Type4, 0);
+        life.QueueInput(FrontendInputMap.Type6, 0);
+        Assert.True(life.Pump());
+        Assert.Equal("Default", life.FrontendEditBoxName);
+        Assert.Equal(15, EngineInput.Type15);
+        Assert.Equal(34, FrontendInputMap.ActionType15);
+        Assert.Equal(0x0053FE50u, EngineLifecycle.EditBoxInsertFn);
+        Assert.Equal(356, EngineLifecycle.EditBoxTextOffset);
+        Assert.Equal(0x32, EngineLifecycle.EditBoxCap);
+        Assert.False(EngineLifecycle.EditBoxTypesFromDik);
+        life.QueueInput(EngineInput.Type15, 'H');
+        Assert.True(life.Pump());
+        Assert.Equal("HDefault", life.FrontendEditBoxName);
+        life.QueueInput(EngineInput.Type15, 8);
+        Assert.True(life.Pump());
+        Assert.Equal("Default", life.FrontendEditBoxName);
+    }
+
+    [Fact]
+    public void Main_Menu_Type4_Type6_posts_15_from_current_pointer_without_TypeMouse()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.QueueInput(FrontendInputMap.Type4, 0);
+        life.QueueInput(FrontendInputMap.Type6, 0);
+        Assert.True(life.Pump());
+        ClickNamed(life, "UI_ACCEPT_NEW_PROFILE");
+        Assert.Equal(
+            EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
+        Assert.False(life.RetailNewGameFlag);
+        var index = IndexOf(life, "UI_FRONTEND_BUTTON_NEW_GAME");
+        Assert.True(
+            FrontendHitTest.TryDestPoint(life.FrontendWidgets, index, out var x, out var y),
+            "UI_FRONTEND_BUTTON_NEW_GAME dest empty");
+        life.SetFrontendPointer(x, y);
+        life.QueueInput(FrontendInputMap.Type4, 0);
+        life.QueueInput(FrontendInputMap.Type6, 0);
+        Assert.True(life.Pump());
         Assert.True(life.RetailNewGameFlag);
         Assert.Equal(EngineStage.Game, life.Stage);
         Assert.Equal("FinalAlbion.wld", life.WorldFileName);
@@ -236,7 +307,7 @@ public sealed class FrontendInputTests
         var press = new List<FrontendWidget>
         {
             new("UI_FRONTEND_PRESS_START_MENU", 10, 0, 0, 0, 0, null, null,
-                MessageId: FrontendMessages.PressStart),
+                Type10Packet: FrontendMessages.PressStart),
         };
         Assert.Equal(
             FrontendMessages.PressStart,

@@ -15,10 +15,12 @@ using Fable.Formats.World;
 namespace Fable.Game;
 
 /// <summary>
-/// First New Game Oakvale world built the same way as
-/// <c>Fable.Client</c>: <c>StartOakValeWest</c>, SHOT2 helper,
-/// frustum planes, <c>ScriptRuntime.StartNewGame</c> actor
-/// positions, <see cref="WorldGeometry.Build"/>.
+/// Reconstructed intro-view fixture:
+/// <c>StartOakValeWest</c> / <c>CAM_OVIF_SHOT2</c> /
+/// <c>ScriptRuntime.StartNewGame</c> /
+/// <see cref="WorldGeometry.Build"/>.
+/// Not <c>EngineLifecycle.Pump</c> (no-save Present
+/// is LookoutPoint). Do not collapse leftover #4.
 /// </summary>
 public sealed class FirstSceneWorld
 {
@@ -224,11 +226,11 @@ public sealed class FirstSceneWorld
         var xform = WorldGeometry.ObjectTransform(FatherThing);
         var world = Vector3.Transform(skinned, xform);
         var submitted = Geometry.Triangles
-            .Where(t => t.Layer == SceneLayer.Prop)
+            .Where(t => t.Layer == SceneLayer.Palskin)
             .OrderBy(t => WorldSpaces.DistanceXy((t.A + t.B + t.C) / 3f, world))
             .First();
         var clip = WorldSpaces.Clip(world, w, v, p);
-        var layer = ScenePasses.FirstSeenLayers.First(l => l.Bit == 0x20);
+        var layer = ScenePasses.FirstSeenLayers.First(l => l.Bit == 0x100);
         _ = mesh;
         return new WorldPrimitiveTrace(
             "D", "PALSKIN father", "graphics.big CREATURE_HERO_FATHER",
@@ -498,7 +500,7 @@ public sealed class FirstSceneWorld
             var resolved = WorldGeometry.ResolveSubmit(defs, enums, thing);
             var submittedInWorld = resolved.Submitted &&
                 geometry.Triangles.Any(t =>
-                    t.Layer == SceneLayer.Prop &&
+                    t.Layer is SceneLayer.Prop or SceneLayer.Palskin &&
                     WorldSpaces.DistanceXy((t.A + t.B + t.C) / 3f, PositionOf(thing)) < 8f);
             var submitted = resolved.Submitted && submittedInWorld;
             var reason = submitted

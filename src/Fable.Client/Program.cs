@@ -49,11 +49,16 @@ window.Load += () =>
         throw new NotSupportedException("This window backend cannot create a Vulkan surface.");
 
     host.Renderer = new VulkanLineRenderer(window);
-    // Shadow: records Clear/Present.
-    // OwnsSwapchainPresent stays false
-    // until frontend sprites and glyphs
-    // are NativeSemantic.
-    life.Device = new VulkanDx9Device { Renderer = host.Renderer };
+    life.SubmitCapabilities = new Dx9SubmitCapabilities
+    {
+        CanRenderFrontendSprites = true,
+        CanRenderFrontendGlyphs = true,
+    };
+    life.Device = new VulkanDx9Device
+    {
+        Renderer = host.Renderer,
+        OwnsSwapchainPresent = true,
+    };
     life.CompleteRetailLoop();
     // After Device: skip AVI still issues
     // 0042EFF7 Clear+Present.
@@ -65,6 +70,9 @@ window.Load += () =>
     }
 
     input = window.CreateInput();
+    var keys = input.Keyboards.Count > 0 ? input.Keyboards[0] : null;
+    if (keys is not null)
+        keys.KeyChar += (_, ch) => SilkNativeInput.QueueChar(life, ch);
     mouse = input.Mice.Count > 0 ? input.Mice[0] : null;
     if (mouse is not null)
         mouse.MouseMove += (_, point) =>
@@ -98,7 +106,10 @@ window.Update += dt =>
         SilkNativeInput.QueueKeys(life, keyboard, skipEnter: altDown);
 
     var f2Down = keyboard.IsKeyPressed(Key.F2);
-    if (f2Down && !f2WasDown)
+    // F2 is in-game FlyCamera debug, not
+    // frontend. Toggling on Press Start
+    // stole NativeSemantic Present.
+    if (f2Down && !f2WasDown && life.Stage == EngineStage.Game)
     {
         debugFly = !debugFly;
         var cam = host.LastFrame.Camera;
@@ -106,6 +117,8 @@ window.Update += dt =>
         debugCam.FovDegrees = cam.FovDegrees;
         debugCam.LookAt(cam.LookAt);
     }
+    else if (life.Stage != EngineStage.Game)
+        debugFly = false;
 
     f2WasDown = f2Down;
     if (mouse is not null)
@@ -157,7 +170,11 @@ window.Render += _ =>
     if (window.FramebufferSize.X == 0 || host.Renderer is null)
         return;
     var aspect = window.FramebufferSize.X / (float)window.FramebufferSize.Y;
-    if (debugFly)
+    // 006286F0 blit+Present only. No 3D,
+    // no frontend, no F2 fly under logos.
+    if (life.Stage == EngineStage.StartupVideos)
+        host.Renderer.Draw(default);
+    else if (debugFly)
     {
         var fog = Fable.Formats.WorldShading.LinearFogPlane(debugCam.Position, debugCam.Forward);
         host.Renderer.Draw(

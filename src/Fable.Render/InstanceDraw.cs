@@ -71,8 +71,15 @@ public sealed class InstanceDraw
 
     /// <summary>
     /// Type-1 second slot (14). Registration index 25, after sky.
+    /// Not first-seen 4300 (<c>[inst+104]+8</c> unread as 1).
     /// </summary>
     public const uint PalskinPassBit80 = 0x80;
+
+    /// <summary>
+    /// Flag1 extra slot 9. Registration index 26, after sky
+    /// (<c>00BD780D</c> / <c>00B33010</c>).
+    /// </summary>
+    public const uint PalskinPassBit200 = 0x200;
 
     public required uint MeshId { get; init; }
     public required int PrimitiveIndex { get; init; }

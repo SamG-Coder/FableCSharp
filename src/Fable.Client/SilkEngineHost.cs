@@ -184,7 +184,8 @@ public sealed class SilkEngineHost : IEngineHost
             return;
 
         var cam = _frame.Camera;
-        if (cam is null)
+        // 006286F0 does not compose a 3D WVP.
+        if (cam is null || _frame.AviPlaying)
         {
             Renderer.Draw(default);
             return;

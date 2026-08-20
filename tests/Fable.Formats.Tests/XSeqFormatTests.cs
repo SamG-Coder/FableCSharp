@@ -27,10 +27,22 @@ public sealed class XSeqFormatTests
         Assert.Equal(0x00A4EFC0u, XSeqFile.CompressFn);
         Assert.Equal(0x00AAF1E0u, XSeqFile.LocalCopyFn);
         Assert.Equal(0x00AA0090u, XSeqFile.HierarchyFn);
+        Assert.Equal(0x00A52650u, WorldShading.TimeToKeyFn);
+        Assert.Equal(80, WorldShading.ClipRateOffset);
+        Assert.Equal(84, WorldShading.ClipWrapOffset);
+        Assert.Equal(0, WorldShading.TimeToKey(0f, 15f, 8).Key);
+        Assert.Equal(0f, WorldShading.TimeToKey(0f, 15f, 8).Frac, 5);
+        var mid = WorldShading.TimeToKey(0.1f, 15f, 30);
+        Assert.Equal(1, mid.Key);
+        Assert.InRange(mid.Frac, 0.4f, 0.6f);
+        Assert.Equal(0, WorldShading.TimeToKey(2f, 15f, 15).Key);
         Assert.Equal(44, XSeqFile.ClipRecordBytes);
         Assert.Equal(MeshFile.BoneLocalBytes, XSeqFile.BoneLocalBytes);
         Assert.False(WorldShading.FirstSeenPlaysAnim);
         Assert.False(RegionTravel.FirstSeenPlayAnimationAppliesPose);
+        Assert.True(WorldShading.NativeXseqRotationIsSlerp);
+        Assert.False(WorldShading.FirstSeenXseqAppliesFrac);
+        Assert.Equal(0x00A4C1F0u, WorldShading.XseqSlerpFn);
     }
 
     [Fact]

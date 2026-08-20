@@ -201,6 +201,43 @@ public static class FrontendWidgetType
     /// </summary>
     public static bool DrawsChildList(int type) =>
         type is Group or Menu or 11 or List or TextSlider or Swap or 38;
+    /// <summary>
+    /// Native <c>00530260</c> walks every
+    /// <c>+176</c> child. Skip is
+    /// <c>vtbl+400</c> / <c>vtbl+420</c>
+    /// (host <c>Visible</c> / <c>Clip</c>).
+    /// Exclusive <c>ActiveChild</c> walk
+    /// is DISPROVEN. Leftover #46 is
+    /// those skip VAs as method calls,
+    /// not a sibling-index hide.
+    /// </summary>
+    public const bool ContainerDrawWalksEveryChild = true;
+    public const bool ExclusiveWalkSelectsChild = false;
+    /// <summary>
+    /// Leftover #46 exclusive-walk is
+    /// STALE. First-seen persist
+    /// <c>+504</c> / <c>+392</c> are 0
+    /// on Press Start / New Profile, so
+    /// skip bits do not hide siblings.
+    /// Skip VAs stay field checks, not
+    /// <c>DrawContainerWalk</c> calls.
+    /// </summary>
+    public const bool Leftover46ExclusiveWalkIsStale = true;
+    public const bool SkipVtblsAreMethodCalls = false;
+    /// <summary>
+    /// <c>SelectState(6)</c>
+    /// (<c>0052CF40</c>) writes
+    /// <c>+332=6</c>. It does not
+    /// <c>or [+302],1</c> and type-8
+    /// <c>+188</c> skip is args
+    /// 1/3/4 only. Arg 6 is a
+    /// style-key leave, not a
+    /// Present filter. Native hide
+    /// of a State=6 tree is UNREAD.
+    /// Host walks resident trees
+    /// without a State test.
+    /// </summary>
+    public const bool SelectStateArg6SkipsDraw = false;
 
     /// <summary>
     /// Type 18 <c>CSwappingStateComponent</c>

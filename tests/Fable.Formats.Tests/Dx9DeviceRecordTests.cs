@@ -63,13 +63,15 @@ public sealed class Dx9DeviceRecordTests
         var presents = host.PresentCalls;
         Assert.True(life.Pump());
         Assert.Equal(
-            ["Clear", "Present", "Clear", "BeginScene", "EndScene", "Present"],
+            ["Clear", "Present", "Clear", "BeginScene", "SetViewport", "EndScene", "Present"],
             rec.Names.ToList());
         var frameClear = Assert.IsType<Dx9ClearCall>(rec.Calls[2]);
         Assert.Equal(Dx9Clear.WhenArgZero, frameClear.Flags);
         Assert.Equal(0xFF000000u, frameClear.ColorArgb);
         var vp = rec.Calls.OfType<Dx9SetViewportCall>().ToList();
-        Assert.Empty(vp);
+        Assert.Single(vp);
+        Assert.Equal(life.BackBufferWidth, vp[0].Viewport.Width);
+        Assert.Equal(life.BackBufferHeight, vp[0].Viewport.Height);
         Assert.False(life.Frontend2dDipIssued);
         Assert.DoesNotContain(rec.Calls, c => c is Dx9DrawIndexedPrimitiveCall);
         Assert.DoesNotContain(rec.Calls, c => c is Dx9DrawIndexedPrimitiveUpCall { PrimitiveCount: <= 0 });
@@ -182,6 +184,20 @@ public sealed class Dx9DeviceRecordTests
             Dx9PrimitiveType.TriangleList, 2,
             new byte[FrontendDx9Submit.GlyphUpVertsPerQuad * FrontendDx9Submit.GlyphUpVertexStride],
             FrontendDx9Submit.GlyphUpVertexStride);
+        device.BeginScene();
+        var rec = new FrontendDx9DrawRecord(
+            0, 0, 128, 64, 0, 0, 1, 1, 0xFFFFFFFFu, 0, 2);
+        device.DrawIndexedPrimitiveUP(
+            Dx9PrimitiveType.TriangleList, 0, 4, 2,
+            FrontendDx9Submit.PackQuadIndexBytes(),
+            FrontendDx9Submit.Index16Format,
+            FrontendDx9Submit.PackSpriteUpVertices(rec),
+            FrontendDx9Submit.SpriteUpVertexStride);
+        device.EndScene();
+        device.Present();
+        Assert.False(device.LastBatch.IsEmpty);
+        Assert.Equal(4, device.LastBatch.Vertices.Length);
+        Assert.Equal(6, device.LastBatch.Indices.Length);
     }
 
     [Fact]
@@ -310,6 +326,40 @@ public sealed class Dx9DeviceRecordTests
     }
 
     [Fact]
+    public void Native_semantic_frontend_present_builds_device_batch()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var device = new VulkanDx9Device { OwnsSwapchainPresent = false };
+        var host = new FakeEngineHost();
+        using var life = new EngineLifecycle
+        {
+            Device = device,
+            SubmitCapabilities = new Dx9SubmitCapabilities
+            {
+                CanRenderFrontendSprites = true,
+                CanRenderFrontendGlyphs = true,
+            },
+        };
+        life.AttachHost(host);
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        var presents = host.PresentCalls;
+        Assert.True(life.Pump());
+        Assert.True(life.Dx9OwnsFrontendPresent);
+        Assert.True(EngineLifecycle.FrontendPresentBodyIsLive);
+        Assert.True(EngineLifecycle.DisplayFlushQueueIsNoteOnly);
+        Assert.Null(life.FrontendBatch);
+        Assert.Equal(presents, host.PresentCalls);
+        Assert.False(device.LastBatch.IsEmpty);
+        Assert.True(device.LastBatch.Vertices.Length >= 4);
+        Assert.Contains(device.LastBatch.Draws, d => d.IndexCount == 6);
+        Assert.Contains(device.LastBatch.Draws, d => d.IndexCount == 0 && d.VertexCount == 6);
+        Assert.Equal(EngineLifecycle.FrontendPressStartMenu, life.FrontendMenuRoot);
+    }
+
+    [Fact]
     public void Shadow_frontend_pump_records_nonempty_sprite_and_glyph_draws()
     {
         var install = GameInstall.TryLocate();
@@ -366,6 +416,71 @@ public sealed class Dx9DeviceRecordTests
         Assert.Same(frame.Vertices, life.SubmittedLandscape!.Vertices);
         Assert.Same(frame.ObjectVertices, life.SubmittedObjects!.Vertices);
         Assert.True(host.PresentCalls > 0);
+        Assert.Equal("LookoutPoint", life.FirstSceneMapName);
+        Assert.Contains(life.RegionThings, t =>
+            t.DefinitionType == RegionTravel.PlayerStartType &&
+            t.ScriptName == EngineLifecycle.GuildArrivalHsp);
+        Assert.True(life.HeroSpawned);
+        Assert.Contains(life.SubmittedMesh!.Draws, d => d.PassBit == 0x2000);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(life.ActivatedQuests, q => q == RegionTravel.IntroQuest);
+        Assert.DoesNotContain(life.ActivatedQuests, q => q == RegionTravel.IntroScriptName);
+    }
+
+    [Fact]
+    public void No_save_guild_arrival_slice_native_semantic_frontend_then_3d()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var device = new VulkanDx9Device { OwnsSwapchainPresent = true };
+        var host = new FakeEngineHost();
+        using var life = new EngineLifecycle
+        {
+            Device = device,
+            SubmitCapabilities = new Dx9SubmitCapabilities
+            {
+                CanRenderFrontendSprites = true,
+                CanRenderFrontendGlyphs = true,
+            },
+        };
+        life.AttachHost(host);
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.True(life.Pump());
+        Assert.True(life.Dx9OwnsFrontendPresent);
+        Assert.Null(life.FrontendBatch);
+        Assert.False(device.LastBatch.IsEmpty);
+        Assert.Contains(device.LastBatch.Draws, d => d.IndexCount == 6);
+        Assert.Contains(device.LastBatch.Draws, d => d.IndexCount == 0 && d.VertexCount == 6);
+        Assert.Equal(EngineLifecycle.FrontendPressStartMenu, life.FrontendMenuRoot);
+
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.False(life.Dx9OwnsFrontendPresent);
+        Assert.False(device.OwnsSwapchainPresent);
+        Assert.True(host.PresentCalls > 0);
+        life.LoadFromFirstRealRegion();
+        Assert.True(life.Pump());
+        Assert.False(life.Dx9OwnsFrontendPresent);
+        Assert.Equal("LookoutPoint", life.FirstSceneMapName);
+        Assert.Contains(life.RegionThings, t =>
+            t.DefinitionType == RegionTravel.PlayerStartType &&
+            t.ScriptName == EngineLifecycle.GuildArrivalHsp);
+        Assert.True(life.HeroSpawned);
+        Assert.True(life.WorldSubmitted);
+        Assert.True(life.SubmittedLandscapeCells > 0);
+        Assert.NotNull(life.SubmittedLandscape);
+        Assert.NotNull(life.SubmittedObjects);
+        Assert.True(life.SubmittedHeroPalskin);
+        Assert.Contains(life.SubmittedMesh!.Draws, d => d.PassBit == 0x2000);
+        Assert.NotNull(life.BuildFrame().Vertices);
+        Assert.NotNull(life.BuildFrame().ObjectVertices);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(life.ActivatedQuests, q => q == RegionTravel.IntroQuest);
+        Assert.DoesNotContain("StartOakVale", life.FirstSceneMapName);
     }
 
     private static void AssertNonemptyShadowDraws(RecordingDx9Device rec)

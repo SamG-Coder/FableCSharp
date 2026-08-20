@@ -181,6 +181,16 @@ public static class QuestFactoryTable
             "00CD9A12 Global_WatchForHeroDeath empty " +
             "0x122D70E; factory 00EE90A0 run ebx not " +
             "00CDBD20 persist bl; 00CB5C90"),
+        new(RegionTravel.IntroQuest, RegionTravel.IntroScriptName,
+            RegionTravel.IntroQuestFactory, RegionTravel.IntroQuestRun,
+            RegionTravel.IntroQuestMainWatcher,
+            RegionTravel.IntroQuestVtbl, RegionTravel.IntroQuestSize, false,
+            BindingKind.ProvenGeneric,
+            "00CD6E27 00CB5C90 Q_NewOakValeIntro / S_QNOVI " +
+            "factory 00DBEF70 ctor 00DAAC00 size 0x10C vtbl " +
+            "012D7A28; slot 1 00DAACE0 Main; slot 2 00DABAC0 " +
+            "E8 00DBDE40; not 00CD52D0; no-save 004B4260 " +
+            "does not construct"),
     ];
 
     public static QuestNameFactory? Find(string questName)

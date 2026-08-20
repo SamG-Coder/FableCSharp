@@ -142,6 +142,37 @@ public sealed class FrontendInputMap
     /// </summary>
     public const bool DikPosterUnread = false;
     public const int Type4Device = 3;
+    /// <summary>
+    /// Leftover #14: native poster of
+    /// Press Start <c>0xE5</c> / New
+    /// Profile <c>0x126</c> / New Game
+    /// 15 is LMB (type 4 down / type 6
+    /// up), not Return / <c>Key.N</c>.
+    /// Remaining leftover is dest /
+    /// Present Notes, not a missing
+    /// LMB translator.
+    /// </summary>
+    public const bool NativeLmbPostsPressStart = true;
+    public const bool NativeKeyPostsE5 = false;
+    public const bool NativeKeyNPostsNewGame = false;
+    public const bool NativeEnterPostsNewGame = false;
+    public const bool Leftover14OpenForDestPresentNotes = true;
+    /// <summary>
+    /// Native Type4 apply is
+    /// <c>0055CB10(26)</c> on current
+    /// inners (<c>widget+4</c>). Dest
+    /// AABB is the hover tick
+    /// (<c>0055ACB0</c>), not the Type4
+    /// apply. Host still arms via dest
+    /// AABB hover.
+    /// </summary>
+    public const bool NativeType4UsesCurrentInner = true;
+    public const bool NativeType4UsesDestAabb = false;
+    public const uint Type4InnerHoverTick = 0x0055ACB0;
+    public const int Type4CurrentInnerOffset = 4;
+    public const int Type4DimofsButton0 = 12;
+    public const int Type4RawDown = 1;
+    public const int Type6RawUp = 4;
 
     private readonly Queue<int> _messages = new();
 
@@ -238,10 +269,10 @@ public sealed class FrontendInputMap
         ArgumentNullException.ThrowIfNull(widgets);
         foreach (var widget in widgets)
         {
-            if (!widget.Visible || widget.Clip || widget.MessageId == 0)
+            if (!widget.Visible || widget.Clip || widget.Type10Packet == 0)
                 continue;
             if (widget.Type == FrontendWidgetType.Menu)
-                return widget.MessageId;
+                return widget.Type10Packet;
         }
 
         return null;

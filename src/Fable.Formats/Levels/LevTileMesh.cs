@@ -111,7 +111,14 @@ public sealed class LevTileMesh
     {
         var all = new List<MeshTriangle>(Tiles.Count * 512);
         foreach (var cell in ToCells(originX, originY, cells, materials, textures))
+        {
             all.AddRange(cell.Faces);
+            if (cell.ExtraStrips is not { Count: > 0 } extras)
+                continue;
+            foreach (var extra in extras)
+                all.AddRange(extra.Faces);
+        }
+
         return all;
     }
 
@@ -173,61 +180,105 @@ public sealed class LevTileMesh
             else if (tile.Indices.Count >= 3)
                 AddStrip(faces, tile.Vertices, points, tile.Indices, cells, bySlot, textures);
 
+            var extraStrips = new List<LandscapeExtraStrip>(tile.Extras.Count);
             foreach (var extra in tile.Extras)
             {
+                if (extra.Indices.Count < 3)
+                    continue;
                 var extraPoints = new Vector3[extra.Vertices.Count];
                 for (var i = 0; i < extra.Vertices.Count; i++)
                     extraPoints[i] = WorldSpaces.StbFileToRegionLocal(extra.Vertices[i], originX, originY);
 
-                AddStrip(faces, extra.Vertices, extraPoints, extra.Indices, cells, bySlot, textures);
+                var extraFaces = new List<MeshTriangle>(extra.Indices.Count);
+                AddStrip(extraFaces, extra.Vertices, extraPoints, extra.Indices, cells, bySlot, textures);
+                if (!TryPackStrip(extra.Vertices, extraPoints, extra.Indices, out var extraPacked, out var extraIdx, out var extraPrims))
+                    continue;
+                extraStrips.Add(new LandscapeExtraStrip(
+                    extraPacked, extraIdx, extraPrims, extraFaces,
+                    extraFaces.Count > 0 ? extraFaces[0].TextureId : LandscapeTextures.DefaultId,
+                    extraFaces.Count > 0 ? extraFaces[0].TextureId1 : LandscapeTextures.DefaultId));
             }
 
-            if (faces.Count == 0)
+            if (faces.Count == 0 && extraStrips.Count == 0)
                 continue;
-            var min = faces[0].A;
-            var max = min;
+            var seed = faces.Count > 0
+                ? faces[0].A
+                : extraStrips[0].Faces.Count > 0
+                    ? extraStrips[0].Faces[0].A
+                    : extraStrips[0].Points[0].P;
+            var min = seed;
+            var max = seed;
             foreach (var f in faces)
             {
                 min = Vector3.Min(min, Vector3.Min(f.A, Vector3.Min(f.B, f.C)));
                 max = Vector3.Max(max, Vector3.Max(f.A, Vector3.Max(f.B, f.C)));
             }
 
-            var tex0 = faces[0].TextureId;
-            var tex1 = faces[0].TextureId1;
-            ushort[] strip = [];
-            var prims = 0;
-            var packed = Array.Empty<LandscapePoint>();
-            if (!useGrid && tile.Indices.Count >= 3)
+            foreach (var extra in extraStrips)
             {
-                packed = new LandscapePoint[tile.Vertices.Count];
-                for (var i = 0; i < tile.Vertices.Count; i++)
-                    packed[i] = new LandscapePoint(points[i], tile.Vertices[i].Normal, tile.Vertices[i].ExtraRgb);
-                strip = new ushort[tile.Indices.Count];
-                var ok = true;
-                for (var i = 0; i < tile.Indices.Count; i++)
+                foreach (var f in extra.Faces)
                 {
-                    var idx = tile.Indices[i];
-                    if ((uint)idx > 65535)
-                    {
-                        ok = false;
-                        break;
-                    }
-
-                    strip[i] = (ushort)idx;
+                    min = Vector3.Min(min, Vector3.Min(f.A, Vector3.Min(f.B, f.C)));
+                    max = Vector3.Max(max, Vector3.Max(f.A, Vector3.Max(f.B, f.C)));
                 }
 
-                if (ok)
-                    prims = Math.Max(0, strip.Length - 2);
-                else
-                    strip = [];
+                if (extra.Faces.Count > 0)
+                    continue;
+                foreach (var p in extra.Points)
+                {
+                    min = Vector3.Min(min, p.P);
+                    max = Vector3.Max(max, p.P);
+                }
             }
+
+            var tex0 = faces.Count > 0 ? faces[0].TextureId : extraStrips[0].TextureId;
+            var tex1 = faces.Count > 0 ? faces[0].TextureId1 : extraStrips[0].TextureId1;
+            var packed = Array.Empty<LandscapePoint>();
+            ushort[] strip = [];
+            var prims = 0;
+            if (!useGrid)
+                TryPackStrip(tile.Vertices, points, tile.Indices, out packed, out strip, out prims);
 
             list.Add(new LandscapeCell(
                 map, tile.CellX, tile.CellY, min, max, faces, tex0, tex1,
-                packed, strip, prims));
+                packed, strip, prims, extraStrips));
         }
 
         return list;
+    }
+
+    private static bool TryPackStrip(
+        IReadOnlyList<LevTileVertex> verts,
+        Vector3[] points,
+        IReadOnlyList<int> indices,
+        out LandscapePoint[] packed,
+        out ushort[] strip,
+        out int prims)
+    {
+        packed = [];
+        strip = [];
+        prims = 0;
+        if (indices.Count < 3 || verts.Count == 0 || verts.Count != points.Length)
+            return false;
+        packed = new LandscapePoint[verts.Count];
+        for (var i = 0; i < verts.Count; i++)
+            packed[i] = new LandscapePoint(points[i], verts[i].Normal, verts[i].ExtraRgb);
+        strip = new ushort[indices.Count];
+        for (var i = 0; i < indices.Count; i++)
+        {
+            var idx = indices[i];
+            if ((uint)idx > 65535)
+            {
+                packed = [];
+                strip = [];
+                return false;
+            }
+
+            strip[i] = (ushort)idx;
+        }
+
+        prims = Math.Max(0, strip.Length - 2);
+        return prims > 0;
     }
 
     private static void AddStrip(

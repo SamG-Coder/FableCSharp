@@ -166,9 +166,12 @@ public sealed class MeshFile
             try
             {
             var materialIndex = ReadI32(data, ref cursor);
-            var textureId = materialIndex >= 0 && materialIndex < materials.Count
-                ? materials[materialIndex].DiffuseMapId
-                : 0;
+            var hasMat = materialIndex >= 0 && materialIndex < materials.Count;
+            var textureId = hasMat ? materials[materialIndex].DiffuseMapId : 0;
+            // Bone C3Ds are PALSKIN (00BD71B0), not static 00BB2540.
+            // Flag1 is extra drain slot 9 / 0x200 after sky.
+            var layer = boneCount > 0 ? SceneLayer.Palskin : SceneLayer.Prop;
+            var flag1 = boneCount > 0 && hasMat ? materials[materialIndex].Flag1 : (byte)0;
             var declaredBefore = declaredTriangles;
             var emitBefore = triangles.Count;
             var degBefore = degenerateSkipped;
@@ -371,9 +374,10 @@ public sealed class MeshFile
                 n = Vector3.Normalize(n);
                 triangles.Add(new MeshTriangle(pa, pb, pc, n, uvs[a], uvs[b], uvs[c], textureId,
                     SrcAlphaBlend: hasBones,
-                    NormalA: normals[a], NormalB: normals[b], NormalC: normals[c]));
+                    NormalA: normals[a], NormalB: normals[b], NormalC: normals[c],
+                    Layer: layer, Flag1: flag1));
                 if (skinned)
-                    skinFaces.Add(new MeshSkinFace(skinBase + a, skinBase + b, skinBase + c, textureId));
+                    skinFaces.Add(new MeshSkinFace(skinBase + a, skinBase + b, skinBase + c, textureId, flag1));
             }
 
             if (blocks.Count == 0)
@@ -516,7 +520,8 @@ public sealed class MeshFile
                 SkinVertices[face.A].Uv, SkinVertices[face.B].Uv, SkinVertices[face.C].Uv,
                 face.TextureId,
                 SrcAlphaBlend: true,
-                NormalA: nrm[face.A], NormalB: nrm[face.B], NormalC: nrm[face.C]));
+                NormalA: nrm[face.A], NormalB: nrm[face.B], NormalC: nrm[face.C],
+                Layer: SceneLayer.Palskin, Flag1: face.Flag1));
         }
 
         return tris;
@@ -872,7 +877,8 @@ public readonly record struct MeshSkinFace(
     int A,
     int B,
     int C,
-    int TextureId);
+    int TextureId,
+    byte Flag1 = 0);
 
 /// <summary>
 /// One live C3D PALSKIN vertex: packed dwords plus the
@@ -949,6 +955,7 @@ public readonly record struct MeshTriangle(
     Vector3 NormalB = default,
     Vector3 NormalC = default,
     SceneLayer Layer = SceneLayer.Prop,
+    byte Flag1 = 0,
     bool SrcAlphaBlend = false,
     Vector3 ExtraA = default,
     Vector3 ExtraB = default,
@@ -959,7 +966,8 @@ public readonly record struct MeshTriangle(
 
 /// <summary>
 /// Geometry bucket. <see cref="Fable.Formats.Scene.ScenePasses"/> maps these
-/// onto exe layer bits (landscape 4 / 0x40, sky 0x2000, props 0x20).
+/// onto exe layer bits (landscape 4 / 0x40, sky 0x2000, props 0x20,
+/// PALSKIN 0x100, Flag1 extra 0x200 after sky).
 /// </summary>
 public enum SceneLayer
 {

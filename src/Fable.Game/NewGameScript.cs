@@ -21,6 +21,25 @@ public sealed class NewGameScript
     public const int WaitFlagPtrOffset = 76;
     public const uint WaitFlagVtbl = 2592;
     public const uint StartQuestVtbl = 1104;
+    /// <summary>
+    /// Give / visible <c>vtbl+1152</c>.
+    /// Not construct. S_QNOVI posts it
+    /// at <c>00DBE295</c> after
+    /// <c>AttackOver</c>.
+    /// </summary>
+    public const uint GiveQuestVtbl = 1152;
+    /// <summary>
+    /// PreAttack start is
+    /// <c>vtbl+1104</c>, not Give.
+    /// Give <c>00DBE295</c> is after
+    /// raid AVI, PostAttack, and Maze.
+    /// Barrel timer callback
+    /// <c>00DB4F70</c> is first-seen
+    /// on <c>00DABAC0</c>, not smash.
+    /// </summary>
+    public const uint StartBarrelTimerCallback = 0x00DB4F70;
+    public const bool GiveAfterPostAttackAndMaze = true;
+    public const string ChocolateBoxDef = "OBJECT_CHOCOLATE_BOX_UNGIVEABLE";
     public const uint UpdateFn = 0x00A44880;
     public const uint FiberEntry = 0x00A446A0;
     public const uint ResumeFn = 0x00A44660;

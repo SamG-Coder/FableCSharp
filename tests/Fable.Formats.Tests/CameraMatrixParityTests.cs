@@ -1,5 +1,6 @@
 using System.Numerics;
 using Fable.Formats.Levels;
+using Fable.Formats.Tng;
 using Fable.Game;
 
 namespace Fable.Formats.Tests;
@@ -225,7 +226,7 @@ public sealed class CameraMatrixParityTests
     }
 
     [Fact]
-    public void Scripted_bind_survives_until_host_apply_stomps()
+    public void Helper_write_does_not_clear_ScriptCameraActive()
     {
         var cam = new ScriptedCamera();
         cam.Bind("CAM_OVIF_SHOT2",
@@ -250,5 +251,69 @@ public sealed class CameraMatrixParityTests
         Assert.True(cam.ScriptCameraActive);
         Assert.Equal(Vector3.Zero, cam.Position);
         Assert.Equal(70f, cam.FovDegrees);
+    }
+
+    [Fact]
+    public void ApplyWorldCamera_does_not_stomp_UseCamera_bind()
+    {
+        var life = new EngineLifecycle();
+        life.InitWorldCameras();
+        life.WorldCamera.SeedHero();
+        var pos = new Vector3(40f, 130f, 16f);
+        var look = new Vector3(34f, 135f, 14f);
+        life.Camera.Bind(
+            "CAM_OVIF_SHOT2", pos, look,
+            LandscapeFrustum.FirstSeenCameraUp,
+            RegionTravel.IntroCameraFovDegrees);
+        life.ApplyWorldCamera(1f);
+        Assert.True(life.Camera.ScriptCameraActive);
+        Assert.False(life.Camera.Playing);
+        Assert.False(LandscapeFrustum.FirstSeenSplineEnabled);
+        Assert.Equal(0x00B2FC10u, LandscapeFrustum.SplineEnable);
+        Assert.Equal(0x00B31160u, LandscapeFrustum.SplineUpdate);
+        Assert.Equal("CAM_OVIF_SHOT2", life.Camera.ActiveName);
+        Assert.Equal(pos, life.Camera.Position);
+        Assert.Equal(look, life.Camera.LookAt);
+        Assert.Equal(72f, life.Camera.FovDegrees);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.WorldCameraApplyFn &&
+            e.Action.Contains("UseCamera sticks", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ApplyWorldCamera_still_writes_when_script_camera_inactive()
+    {
+        var life = new EngineLifecycle();
+        life.InitWorldCameras();
+        life.WorldCamera.SeedHero();
+        Assert.False(life.Camera.ScriptCameraActive);
+        life.ApplyWorldCamera(1f);
+        Assert.False(life.Camera.ScriptCameraActive);
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Action.Contains("UseCamera sticks", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.WorldCameraApplyFn &&
+            e.Action == "0049E080");
+    }
+
+    [Fact]
+    public void Script_UseCamera_shares_lifecycle_camera_and_survives_world_apply()
+    {
+        var life = new EngineLifecycle();
+        life.InitWorldCameras();
+        life.WorldCamera.SeedHero();
+        var runtime = ScriptRuntime.Detached();
+        runtime.BindScene(Array.Empty<ThingInstance>(), life.Camera);
+        Assert.Same(life.Camera, runtime.Camera);
+        life.Camera.Bind(
+            "CAM_OVIF_SHOT2",
+            new Vector3(40f, 130f, 16f),
+            new Vector3(34f, 135f, 14f),
+            LandscapeFrustum.FirstSeenCameraUp,
+            RegionTravel.IntroCameraFovDegrees);
+        life.ApplyWorldCamera(1f);
+        Assert.True(life.Camera.ScriptCameraActive);
+        Assert.Equal(72f, life.Camera.FovDegrees);
+        Assert.True(runtime.Camera!.ScriptCameraActive);
     }
 }

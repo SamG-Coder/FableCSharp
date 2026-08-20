@@ -323,6 +323,21 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x0042E98Fu, EngineLifecycle.RetailAfterAviFn);
         Assert.Equal(0x0042DB40u, EngineLifecycle.FrontendHelperCtor);
         Assert.Equal(0x0042DED5u, EngineLifecycle.RetailAudioFadeFn);
+        Assert.Equal(0x013B8394u, EngineLifecycle.RetailAudioEngineVa);
+        Assert.Equal(68, EngineLifecycle.RetailAudioStartVtbl);
+        Assert.Equal(72, EngineLifecycle.RetailAudioFadeVtbl);
+        Assert.Equal(0x00417A58u, EngineLifecycle.InitSoundFn);
+        Assert.False(EngineLifecycle.RequestNewGameStartsMusicSet);
+        Assert.False(EngineLifecycle.InitSoundPlaysMusicSet);
+        Assert.False(EngineLifecycle.InitSoundOpensBank);
+        Assert.False(EngineLifecycle.FrontendClickStartsSnd);
+        Assert.Equal(0x009919C0u, EngineLifecycle.InitSoundRegisterFn);
+        Assert.Equal(0x00991C10u, EngineLifecycle.InitSoundAtmosRegisterFn);
+        Assert.Equal(0x00991840u, EngineLifecycle.InitSoundMapLookupFn);
+        Assert.Equal(0x00A38C20u, EngineLifecycle.InitSoundSymbolsCompiledFn);
+        Assert.Equal(0x00A01A4Fu, EngineLifecycle.InitSoundSymbolsTextFn);
+        Assert.Equal("ENGLISH_SOUND_SETUP", EngineLifecycle.InitSoundLocaleName);
+        Assert.Equal("MAIN_SOUND_SETUP", EngineLifecycle.InitSoundMainName);
         Assert.Equal(0x009BFF40u, EngineLifecycle.DisplayModeFn);
         Assert.Equal(0x400, EngineLifecycle.DisplayModeWidth);
         Assert.Equal(0x300, EngineLifecycle.DisplayModeHeight);
@@ -400,6 +415,8 @@ public sealed class EngineLifecycleTests
         Assert.Equal(4, EngineLifecycle.DisplayFlushPrimitive(true));
         Assert.Equal(60, EngineLifecycle.DisplayQueueRecordSize);
         Assert.Equal(0x009DB700u, EngineLifecycle.DisplayQueueEnqueueFn);
+        Assert.False(EngineLifecycle.FirstSeenFrontendE8Enqueue);
+        Assert.False(EngineLifecycle.FiberCallsPersistThenRun);
         var life = new EngineLifecycle();
         life.Bootstrap(null);
         while (life.Stage == EngineStage.StartupVideos)
@@ -430,6 +447,11 @@ public sealed class EngineLifecycleTests
             e.Action.Contains("msg=15", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendNewGameApply);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FrontendNewGameThunk);
+        Assert.Equal(0x00430340u, EngineLifecycle.RetailPlus8StoreFn);
+        Assert.Equal(8, EngineLifecycle.RetailPlus8Offset);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.RetailPlus8StoreFn &&
+            e.Action.Contains("[retail+8]=1", StringComparison.Ordinal));
         Assert.True(life.Pump());
         Assert.Equal(EngineStage.Game, life.Stage);
         Assert.Equal("FinalAlbion.wld", life.WorldFileName);
@@ -547,7 +569,7 @@ public sealed class EngineLifecycleTests
             e.Va == FrontendInputMap.AttachWriteE5 &&
             e.Action.Contains("slot 0x14", StringComparison.Ordinal));
         Assert.DoesNotContain(empty.FrontendWidgets, w =>
-            w.MessageId == EngineLifecycle.FrontendPressStartMessage);
+            w.Type10Packet == EngineLifecycle.FrontendPressStartMessage);
 
         var install = GameInstall.TryLocate();
         Assert.NotNull(install);
@@ -559,7 +581,8 @@ public sealed class EngineLifecycleTests
             EngineLifecycle.FrontendPressStartSlot, out var slot));
         Assert.Equal(EngineLifecycle.FrontendPressStartMenu, slot.Name);
         Assert.Equal(10, slot.Type);
-        Assert.Equal(EngineLifecycle.FrontendPressStartMessage, slot.MessageId);
+        Assert.Equal(0, slot.MessageId);
+        Assert.Equal(EngineLifecycle.FrontendPressStartMessage, slot.Type10Packet);
         Assert.Equal(5, slot.State);
         Assert.Equal(0x005952C3u, EngineLifecycle.FrontendInitSelectFn);
         Assert.Contains(life.Trace.Events, e =>
@@ -581,7 +604,8 @@ public sealed class EngineLifecycleTests
         Assert.True(life.TryGetFrontendSlot(
             EngineLifecycle.FrontendPressStartSlot, out var kept));
         Assert.Equal(EngineLifecycle.FrontendPressStartMenu, kept.Name);
-        Assert.Equal(EngineLifecycle.FrontendPressStartMessage, kept.MessageId);
+        Assert.Equal(0, kept.MessageId);
+        Assert.Equal(EngineLifecycle.FrontendPressStartMessage, kept.Type10Packet);
         Assert.True(life.TryGetFrontendSlot(
             EngineLifecycle.FrontendNewProfileSlot, out var profile));
         Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, profile.Name);
@@ -660,7 +684,8 @@ public sealed class EngineLifecycleTests
             EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
         Assert.True(life.TryGetFrontendSlot(
             EngineLifecycle.FrontendPressStartSlot, out var press));
-        Assert.Equal(EngineLifecycle.FrontendPressStartMessage, press.MessageId);
+        Assert.Equal(0, press.MessageId);
+        Assert.Equal(EngineLifecycle.FrontendPressStartMessage, press.Type10Packet);
         Assert.True(life.TryGetFrontendSlot(
             EngineLifecycle.FrontendNewProfileSlot, out var profile));
         Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, profile.Name);
@@ -889,6 +914,73 @@ public sealed class EngineLifecycleTests
         Assert.True(worldCtor >= 0 && worldInit > worldCtor);
         Assert.True(display > worldInit, "004A6E30 before 00417418");
         Assert.True(particles > display, "00417418 before 004174F1");
+        Assert.True(life.DisplayPresent);
+        Assert.True(life.DisplayPlus248World);
+        Assert.True(life.DisplayPlus24MeshBank);
+        var store = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.DisplayStoreFn);
+        Assert.True(store > display && particles > store);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Display_Engine_00417418_stores_0x100_at_game_plus40()
+    {
+        Assert.Equal(0x00BFEA1Au, EngineLifecycle.DisplayAllocFn);
+        Assert.Equal(0x100, EngineLifecycle.DisplaySize);
+        Assert.Equal(0x00419270u, EngineLifecycle.DisplayBlobZeroFn);
+        Assert.Equal(36, EngineLifecycle.DisplayBlobSize);
+        Assert.Equal(0x0041940Cu, EngineLifecycle.DisplayStoreFn);
+        Assert.Equal(40, EngineLifecycle.GameDisplayOffset);
+        Assert.Equal(1, EngineLifecycle.DisplayPlus4Ctor);
+        Assert.Equal(248, EngineLifecycle.DisplayPlus248Offset);
+        Assert.Equal(24, EngineLifecycle.DisplayPlus24Offset);
+        Assert.NotEqual(EngineLifecycle.DisplayObjectAllocFn, EngineLifecycle.DisplayAllocFn);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        Assert.False(life.DisplayPresent);
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.True(life.DisplayPresent);
+        Assert.Equal(EngineLifecycle.DisplayPlus4Ctor, life.DisplayPlus4);
+        Assert.InRange(life.DisplayPlus232, 0, EngineLifecycle.DisplayPlus232Ctor);
+        Assert.True(life.DisplayPlus8Game);
+        Assert.True(life.DisplayPlus12Owner);
+        Assert.True(life.DisplayPlus16Manager);
+        Assert.True(life.DisplayPlus20GraphicBank);
+        Assert.True(life.DisplayPlus24MeshBank);
+        Assert.True(life.DisplayPlus248World);
+        var worldInit = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.InitWorldInitFn);
+        var mesh = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.InitMeshBankFn);
+        var alloc = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.DisplayAllocFn);
+        var ctor = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.DisplayCtorFn);
+        var store = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.DisplayStoreFn);
+        var particles = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SkipParticlesVa &&
+            e.Action.Contains("run 004174F1", StringComparison.Ordinal));
+        Assert.True(worldInit >= 0 && mesh > worldInit);
+        Assert.True(alloc > mesh && ctor > alloc && store > ctor);
+        Assert.True(particles > store, "0041940C before 004174F1");
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DisplayCtorFn &&
+            e.Action.Contains("+248", StringComparison.Ordinal) &&
+            e.Action.Contains("+24", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DisplayStoreFn &&
+            e.Action.Contains("[game+40]", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == 0x009F2F90u);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == 0x00415BF0u);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == 0x009F2F60u);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == 0x00A0BF20u);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == 0x004350D0u);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
     }
 
@@ -1669,6 +1761,2312 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
+    public void Init_Thing_Components_004F0D2D_adds_CCreatureModeDef()
+    {
+        Assert.Equal(0x004F0D26u, EngineLifecycle.NineteenthDefClassSite);
+        Assert.Equal(0x004E0B4Bu, EngineLifecycle.NineteenthDefClassFactory);
+        Assert.Equal(0x004DE7DCu, EngineLifecycle.NineteenthDefClassCtor);
+        Assert.Equal(0x01241704u, EngineLifecycle.NineteenthDefClassVtbl);
+        Assert.Equal(64, EngineLifecycle.NineteenthDefClassSize);
+        Assert.Equal("CCreatureModeDef", EngineLifecycle.NineteenthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.EighteenthDefClassRegistered);
+        Assert.True(life.NineteenthDefClassRegistered);
+        Assert.Equal("CCreatureModeDef", life.NineteenthDefClass);
+        var eighteenth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EighteenthDefClassSite);
+        var nineteenth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.NineteenthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(eighteenth >= 0 && nineteenth > eighteenth && defs > nineteenth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F0DE3_adds_CPerceivedThingDef()
+    {
+        Assert.Equal(0x004F0DDCu, EngineLifecycle.TwentiethDefClassSite);
+        Assert.Equal(0x004D7EB6u, EngineLifecycle.TwentiethDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.TwentiethDefClassCtor);
+        Assert.Equal(0x0123AA9Cu, EngineLifecycle.TwentiethDefClassVtbl);
+        Assert.Equal(80, EngineLifecycle.TwentiethDefClassSize);
+        Assert.Equal("CPerceivedThingDef", EngineLifecycle.TwentiethDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.NineteenthDefClassRegistered);
+        Assert.True(life.TwentiethDefClassRegistered);
+        Assert.Equal("CPerceivedThingDef", life.TwentiethDefClass);
+        var nineteenth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.NineteenthDefClassSite);
+        var twentieth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentiethDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(nineteenth >= 0 && twentieth > nineteenth && defs > twentieth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F0E99_adds_CBedDef()
+    {
+        Assert.Equal(0x004F0E92u, EngineLifecycle.TwentyFirstDefClassSite);
+        Assert.Equal(0x004DA7F3u, EngineLifecycle.TwentyFirstDefClassFactory);
+        Assert.Equal(0x004D7A25u, EngineLifecycle.TwentyFirstDefClassCtor);
+        Assert.Equal(0x0123E8BCu, EngineLifecycle.TwentyFirstDefClassVtbl);
+        Assert.Equal(60, EngineLifecycle.TwentyFirstDefClassSize);
+        Assert.Equal("CBedDef", EngineLifecycle.TwentyFirstDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.TwentiethDefClassRegistered);
+        Assert.True(life.TwentyFirstDefClassRegistered);
+        Assert.Equal("CBedDef", life.TwentyFirstDefClass);
+        var twentieth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentiethDefClassSite);
+        var twentyFirst = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentyFirstDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(twentieth >= 0 && twentyFirst > twentieth && defs > twentyFirst);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F0F4F_adds_CStealthDef()
+    {
+        Assert.Equal(0x004F0F48u, EngineLifecycle.TwentySecondDefClassSite);
+        Assert.Equal(0x004D7EFCu, EngineLifecycle.TwentySecondDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.TwentySecondDefClassCtor);
+        Assert.Equal(0x0123AB1Cu, EngineLifecycle.TwentySecondDefClassVtbl);
+        Assert.Equal(72, EngineLifecycle.TwentySecondDefClassSize);
+        Assert.Equal("CStealthDef", EngineLifecycle.TwentySecondDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.TwentyFirstDefClassRegistered);
+        Assert.True(life.TwentySecondDefClassRegistered);
+        Assert.Equal("CStealthDef", life.TwentySecondDefClass);
+        var twentyFirst = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentyFirstDefClassSite);
+        var twentySecond = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentySecondDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(twentyFirst >= 0 && twentySecond > twentyFirst && defs > twentySecond);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F10DB_adds_CTrophyDef()
+    {
+        Assert.Equal(0x004F10D4u, EngineLifecycle.TwentyThirdDefClassSite);
+        Assert.Equal(0x004D7F7Bu, EngineLifecycle.TwentyThirdDefClassFactory);
+        Assert.Equal(0x004D36FEu, EngineLifecycle.TwentyThirdDefClassCtor);
+        Assert.Equal(0x0123AC1Cu, EngineLifecycle.TwentyThirdDefClassVtbl);
+        Assert.Equal(100, EngineLifecycle.TwentyThirdDefClassSize);
+        Assert.Equal("CTrophyDef", EngineLifecycle.TwentyThirdDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.TwentySecondDefClassRegistered);
+        Assert.True(life.TwentyThirdDefClassRegistered);
+        Assert.Equal("CTrophyDef", life.TwentyThirdDefClass);
+        var twentySecond = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentySecondDefClassSite);
+        var twentyThird = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentyThirdDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(twentySecond >= 0 && twentyThird > twentySecond && defs > twentyThird);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F11FC_adds_CCreatureGeneratorDef()
+    {
+        Assert.Equal(0x004F11F5u, EngineLifecycle.TwentyFourthDefClassSite);
+        Assert.Equal(0x004E0513u, EngineLifecycle.TwentyFourthDefClassFactory);
+        Assert.Equal(0x004DE1DFu, EngineLifecycle.TwentyFourthDefClassCtor);
+        Assert.Equal(0x01241384u, EngineLifecycle.TwentyFourthDefClassVtbl);
+        Assert.Equal(64, EngineLifecycle.TwentyFourthDefClassSize);
+        Assert.Equal("CCreatureGeneratorDef", EngineLifecycle.TwentyFourthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.TwentyThirdDefClassRegistered);
+        Assert.True(life.TwentyFourthDefClassRegistered);
+        Assert.Equal("CCreatureGeneratorDef", life.TwentyFourthDefClass);
+        var twentyThird = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentyThirdDefClassSite);
+        var twentyFourth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentyFourthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(twentyThird >= 0 && twentyFourth > twentyThird && defs > twentyFourth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F12B2_adds_CChestDef()
+    {
+        Assert.Equal(0x004F12ABu, EngineLifecycle.TwentyFifthDefClassSite);
+        Assert.Equal(0x004D805Cu, EngineLifecycle.TwentyFifthDefClassFactory);
+        Assert.Equal(0x004D3826u, EngineLifecycle.TwentyFifthDefClassCtor);
+        Assert.Equal(0x0123ACDCu, EngineLifecycle.TwentyFifthDefClassVtbl);
+        Assert.Equal(60, EngineLifecycle.TwentyFifthDefClassSize);
+        Assert.Equal("CChestDef", EngineLifecycle.TwentyFifthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.TwentyFourthDefClassRegistered);
+        Assert.True(life.TwentyFifthDefClassRegistered);
+        Assert.Equal("CChestDef", life.TwentyFifthDefClass);
+        var twentyFourth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentyFourthDefClassSite);
+        var twentyFifth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentyFifthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(twentyFourth >= 0 && twentyFifth > twentyFourth && defs > twentyFifth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F14A9_adds_CExplodingObjectDef()
+    {
+        Assert.Equal(0x004F14A2u, EngineLifecycle.TwentySixthDefClassSite);
+        Assert.Equal(0x004D809Eu, EngineLifecycle.TwentySixthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.TwentySixthDefClassCtor);
+        Assert.Equal(0x0123AD7Cu, EngineLifecycle.TwentySixthDefClassVtbl);
+        Assert.Equal(52, EngineLifecycle.TwentySixthDefClassSize);
+        Assert.Equal("CExplodingObjectDef", EngineLifecycle.TwentySixthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.TwentyFifthDefClassRegistered);
+        Assert.True(life.TwentySixthDefClassRegistered);
+        Assert.Equal("CExplodingObjectDef", life.TwentySixthDefClass);
+        var twentyFifth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentyFifthDefClassSite);
+        var twentySixth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentySixthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(twentyFifth >= 0 && twentySixth > twentyFifth && defs > twentySixth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F155F_adds_CContainerRewardHeroDef()
+    {
+        Assert.Equal(0x004F1558u, EngineLifecycle.TwentySeventhDefClassSite);
+        Assert.Equal(0x004E3C81u, EngineLifecycle.TwentySeventhDefClassFactory);
+        Assert.Equal(0x004E247Au, EngineLifecycle.TwentySeventhDefClassCtor);
+        Assert.Equal(0x012428B4u, EngineLifecycle.TwentySeventhDefClassVtbl);
+        Assert.Equal(52, EngineLifecycle.TwentySeventhDefClassSize);
+        Assert.Equal("CContainerRewardHeroDef", EngineLifecycle.TwentySeventhDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.TwentySixthDefClassRegistered);
+        Assert.True(life.TwentySeventhDefClassRegistered);
+        Assert.Equal("CContainerRewardHeroDef", life.TwentySeventhDefClass);
+        var twentySixth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentySixthDefClassSite);
+        var twentySeventh = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentySeventhDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(twentySixth >= 0 && twentySeventh > twentySixth && defs > twentySeventh);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F1CC1_adds_CWeaponDef()
+    {
+        Assert.Equal(0x004F1CBAu, EngineLifecycle.TwentyEighthDefClassSite);
+        Assert.Equal(0x004E3D15u, EngineLifecycle.TwentyEighthDefClassFactory);
+        Assert.Equal(0x004E2612u, EngineLifecycle.TwentyEighthDefClassCtor);
+        Assert.Equal(0x0124291Cu, EngineLifecycle.TwentyEighthDefClassVtbl);
+        Assert.Equal(228, EngineLifecycle.TwentyEighthDefClassSize);
+        Assert.Equal("CWeaponDef", EngineLifecycle.TwentyEighthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.TwentySeventhDefClassRegistered);
+        Assert.True(life.TwentyEighthDefClassRegistered);
+        Assert.Equal("CWeaponDef", life.TwentyEighthDefClass);
+        var twentySeventh = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentySeventhDefClassSite);
+        var twentyEighth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentyEighthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(twentySeventh >= 0 && twentyEighth > twentySeventh && defs > twentyEighth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F1D77_adds_CCarryingDef()
+    {
+        Assert.Equal(0x004F1D70u, EngineLifecycle.TwentyNinthDefClassSite);
+        Assert.Equal(0x004DFE62u, EngineLifecycle.TwentyNinthDefClassFactory);
+        Assert.Equal(0x004DD8FFu, EngineLifecycle.TwentyNinthDefClassCtor);
+        Assert.Equal(0x01241194u, EngineLifecycle.TwentyNinthDefClassVtbl);
+        Assert.Equal(56, EngineLifecycle.TwentyNinthDefClassSize);
+        Assert.Equal("CCarryingDef", EngineLifecycle.TwentyNinthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.TwentyEighthDefClassRegistered);
+        Assert.True(life.TwentyNinthDefClassRegistered);
+        Assert.Equal("CCarryingDef", life.TwentyNinthDefClass);
+        var twentyEighth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentyEighthDefClassSite);
+        var twentyNinth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentyNinthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(twentyEighth >= 0 && twentyNinth > twentyEighth && defs > twentyNinth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F1E2D_adds_CCarryableDef()
+    {
+        Assert.Equal(0x004F1E26u, EngineLifecycle.ThirtiethDefClassSite);
+        Assert.Equal(0x004DA767u, EngineLifecycle.ThirtiethDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.ThirtiethDefClassCtor);
+        Assert.Equal(0x0123E7ECu, EngineLifecycle.ThirtiethDefClassVtbl);
+        Assert.Equal(80, EngineLifecycle.ThirtiethDefClassSize);
+        Assert.Equal("CCarryableDef", EngineLifecycle.ThirtiethDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.TwentyNinthDefClassRegistered);
+        Assert.True(life.ThirtiethDefClassRegistered);
+        Assert.Equal("CCarryableDef", life.ThirtiethDefClass);
+        var twentyNinth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.TwentyNinthDefClassSite);
+        var thirtieth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtiethDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(twentyNinth >= 0 && thirtieth > twentyNinth && defs > thirtieth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F1EE3_adds_CEnemyDef()
+    {
+        Assert.Equal(0x004F1EDCu, EngineLifecycle.ThirtyFirstDefClassSite);
+        Assert.Equal(0x004D835Au, EngineLifecycle.ThirtyFirstDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.ThirtyFirstDefClassCtor);
+        Assert.Equal(0x0123B3F4u, EngineLifecycle.ThirtyFirstDefClassVtbl);
+        Assert.Equal(44, EngineLifecycle.ThirtyFirstDefClassSize);
+        Assert.Equal("CEnemyDef", EngineLifecycle.ThirtyFirstDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.ThirtiethDefClassRegistered);
+        Assert.True(life.ThirtyFirstDefClassRegistered);
+        Assert.Equal("CEnemyDef", life.ThirtyFirstDefClass);
+        var thirtieth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtiethDefClassSite);
+        var thirtyFirst = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtyFirstDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(thirtieth >= 0 && thirtyFirst > thirtieth && defs > thirtyFirst);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F22ED_adds_COpinionOfHeroDef()
+    {
+        Assert.Equal(0x004F22E6u, EngineLifecycle.ThirtySecondDefClassSite);
+        Assert.Equal(0x004D83D9u, EngineLifecycle.ThirtySecondDefClassFactory);
+        Assert.Equal(0x004D3F83u, EngineLifecycle.ThirtySecondDefClassCtor);
+        Assert.Equal(0x0123B59Cu, EngineLifecycle.ThirtySecondDefClassVtbl);
+        Assert.Equal(60, EngineLifecycle.ThirtySecondDefClassSize);
+        Assert.Equal("COpinionOfHeroDef", EngineLifecycle.ThirtySecondDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.ThirtyFirstDefClassRegistered);
+        Assert.True(life.ThirtySecondDefClassRegistered);
+        Assert.Equal("COpinionOfHeroDef", life.ThirtySecondDefClass);
+        var thirtyFirst = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtyFirstDefClassSite);
+        var thirtySecond = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtySecondDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(thirtyFirst >= 0 && thirtySecond > thirtyFirst && defs > thirtySecond);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F2479_adds_CShopDef()
+    {
+        Assert.Equal(0x004F2472u, EngineLifecycle.ThirtyThirdDefClassSite);
+        Assert.Equal(0x004E26BCu, EngineLifecycle.ThirtyThirdDefClassFactory);
+        Assert.Equal(0x004E06C3u, EngineLifecycle.ThirtyThirdDefClassCtor);
+        Assert.Equal(0x01241F9Cu, EngineLifecycle.ThirtyThirdDefClassVtbl);
+        Assert.Equal(208, EngineLifecycle.ThirtyThirdDefClassSize);
+        Assert.Equal("CShopDef", EngineLifecycle.ThirtyThirdDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.ThirtySecondDefClassRegistered);
+        Assert.True(life.ThirtyThirdDefClassRegistered);
+        Assert.Equal("CShopDef", life.ThirtyThirdDefClass);
+        var thirtySecond = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtySecondDefClassSite);
+        var thirtyThird = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtyThirdDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(thirtySecond >= 0 && thirtyThird > thirtySecond && defs > thirtyThird);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F259A_adds_CStockItemDef()
+    {
+        Assert.Equal(0x004F2593u, EngineLifecycle.ThirtyFourthDefClassSite);
+        Assert.Equal(0x004D8482u, EngineLifecycle.ThirtyFourthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.ThirtyFourthDefClassCtor);
+        Assert.Equal(0x0123B74Cu, EngineLifecycle.ThirtyFourthDefClassVtbl);
+        Assert.Equal(64, EngineLifecycle.ThirtyFourthDefClassSize);
+        Assert.Equal("CStockItemDef", EngineLifecycle.ThirtyFourthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.ThirtyThirdDefClassRegistered);
+        Assert.True(life.ThirtyFourthDefClassRegistered);
+        Assert.Equal("CStockItemDef", life.ThirtyFourthDefClass);
+        var thirtyThird = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtyThirdDefClassSite);
+        var thirtyFourth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtyFourthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(thirtyThird >= 0 && thirtyFourth > thirtyThird && defs > thirtyFourth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F2650_adds_CGiftDef()
+    {
+        Assert.Equal(0x004F2649u, EngineLifecycle.ThirtyFifthDefClassSite);
+        Assert.Equal(0x004D8547u, EngineLifecycle.ThirtyFifthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.ThirtyFifthDefClassCtor);
+        Assert.Equal(0x0123B8B4u, EngineLifecycle.ThirtyFifthDefClassVtbl);
+        Assert.Equal(48, EngineLifecycle.ThirtyFifthDefClassSize);
+        Assert.Equal("CGiftDef", EngineLifecycle.ThirtyFifthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.ThirtyFourthDefClassRegistered);
+        Assert.True(life.ThirtyFifthDefClassRegistered);
+        Assert.Equal("CGiftDef", life.ThirtyFifthDefClass);
+        var thirtyFourth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtyFourthDefClassSite);
+        var thirtyFifth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtyFifthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(thirtyFourth >= 0 && thirtyFifth > thirtyFourth && defs > thirtyFifth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F27D4_adds_CHeroSuitDef()
+    {
+        Assert.Equal(0x004F27CDu, EngineLifecycle.ThirtySixthDefClassSite);
+        Assert.Equal(0x004E2809u, EngineLifecycle.ThirtySixthDefClassFactory);
+        Assert.Equal(0x004E0900u, EngineLifecycle.ThirtySixthDefClassCtor);
+        Assert.Equal(0x0124216Cu, EngineLifecycle.ThirtySixthDefClassVtbl);
+        Assert.Equal(52, EngineLifecycle.ThirtySixthDefClassSize);
+        Assert.Equal("CHeroSuitDef", EngineLifecycle.ThirtySixthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.ThirtyFifthDefClassRegistered);
+        Assert.True(life.ThirtySixthDefClassRegistered);
+        Assert.Equal("CHeroSuitDef", life.ThirtySixthDefClass);
+        var thirtyFifth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtyFifthDefClassSite);
+        var thirtySixth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtySixthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(thirtyFifth >= 0 && thirtySixth > thirtyFifth && defs > thirtySixth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F2C3D_adds_CHeroExperienceDef()
+    {
+        Assert.Equal(0x004F2C36u, EngineLifecycle.ThirtySeventhDefClassSite);
+        Assert.Equal(0x004EBAE7u, EngineLifecycle.ThirtySeventhDefClassFactory);
+        Assert.Equal(0x004EB9E8u, EngineLifecycle.ThirtySeventhDefClassCtor);
+        Assert.Equal(0x0124390Cu, EngineLifecycle.ThirtySeventhDefClassVtbl);
+        Assert.Equal(180, EngineLifecycle.ThirtySeventhDefClassSize);
+        Assert.Equal("CHeroExperienceDef", EngineLifecycle.ThirtySeventhDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.ThirtySixthDefClassRegistered);
+        Assert.True(life.ThirtySeventhDefClassRegistered);
+        Assert.Equal("CHeroExperienceDef", life.ThirtySeventhDefClass);
+        var thirtySixth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtySixthDefClassSite);
+        var thirtySeventh = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtySeventhDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(thirtySixth >= 0 && thirtySeventh > thirtySixth && defs > thirtySeventh);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F2CEF_adds_CExperienceDef()
+    {
+        Assert.Equal(0x004F2CE8u, EngineLifecycle.ThirtyEighthDefClassSite);
+        Assert.Equal(0x004E27AEu, EngineLifecycle.ThirtyEighthDefClassFactory);
+        Assert.Equal(0x004E0860u, EngineLifecycle.ThirtyEighthDefClassCtor);
+        Assert.Equal(0x01242104u, EngineLifecycle.ThirtyEighthDefClassVtbl);
+        Assert.Equal(80, EngineLifecycle.ThirtyEighthDefClassSize);
+        Assert.Equal("CExperienceDef", EngineLifecycle.ThirtyEighthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.ThirtySeventhDefClassRegistered);
+        Assert.True(life.ThirtyEighthDefClassRegistered);
+        Assert.Equal("CExperienceDef", life.ThirtyEighthDefClass);
+        var thirtySeventh = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtySeventhDefClassSite);
+        var thirtyEighth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtyEighthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(thirtySeventh >= 0 && thirtyEighth > thirtySeventh && defs > thirtyEighth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F2FBC_adds_CReplaceableMeshDef()
+    {
+        Assert.Equal(0x004F2FB5u, EngineLifecycle.ThirtyNinthDefClassSite);
+        Assert.Equal(0x004E60D8u, EngineLifecycle.ThirtyNinthDefClassFactory);
+        Assert.Equal(0x004E3E4Cu, EngineLifecycle.ThirtyNinthDefClassCtor);
+        Assert.Equal(0x012430BCu, EngineLifecycle.ThirtyNinthDefClassVtbl);
+        Assert.Equal(52, EngineLifecycle.ThirtyNinthDefClassSize);
+        Assert.Equal("CReplaceableMeshDef", EngineLifecycle.ThirtyNinthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.ThirtyEighthDefClassRegistered);
+        Assert.True(life.ThirtyNinthDefClassRegistered);
+        Assert.Equal("CReplaceableMeshDef", life.ThirtyNinthDefClass);
+        var thirtyEighth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtyEighthDefClassSite);
+        var thirtyNinth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtyNinthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(thirtyEighth >= 0 && thirtyNinth > thirtyEighth && defs > thirtyNinth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F3072_adds_CMultiStaticMeshDef()
+    {
+        Assert.Equal(0x004F306Bu, EngineLifecycle.FortiethDefClassSite);
+        Assert.Equal(0x004E31FAu, EngineLifecycle.FortiethDefClassFactory);
+        Assert.Equal(0x004E1516u, EngineLifecycle.FortiethDefClassCtor);
+        Assert.Equal(0x0124265Cu, EngineLifecycle.FortiethDefClassVtbl);
+        Assert.Equal(52, EngineLifecycle.FortiethDefClassSize);
+        Assert.Equal("CMultiStaticMeshDef", EngineLifecycle.FortiethDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.ThirtyNinthDefClassRegistered);
+        Assert.True(life.FortiethDefClassRegistered);
+        Assert.Equal("CMultiStaticMeshDef", life.FortiethDefClass);
+        var thirtyNinth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThirtyNinthDefClassSite);
+        var fortieth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortiethDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(thirtyNinth >= 0 && fortieth > thirtyNinth && defs > fortieth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F333F_adds_CHeroCentreDef()
+    {
+        Assert.Equal(0x004F3338u, EngineLifecycle.FortyFirstDefClassSite);
+        Assert.Equal(0x004D86F0u, EngineLifecycle.FortyFirstDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.FortyFirstDefClassCtor);
+        Assert.Equal(0x0123BE54u, EngineLifecycle.FortyFirstDefClassVtbl);
+        Assert.Equal(37, EngineLifecycle.FortyFirstDefClassSize);
+        Assert.Equal("CHeroCentreDef", EngineLifecycle.FortyFirstDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FortiethDefClassRegistered);
+        Assert.True(life.FortyFirstDefClassRegistered);
+        Assert.Equal("CHeroCentreDef", life.FortyFirstDefClass);
+        var fortieth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortiethDefClassSite);
+        var fortyFirst = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortyFirstDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fortieth >= 0 && fortyFirst > fortieth && defs > fortyFirst);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F34CB_adds_CQuestCardDef()
+    {
+        Assert.Equal(0x004F34C4u, EngineLifecycle.FortySecondDefClassSite);
+        Assert.Equal(0x004E2333u, EngineLifecycle.FortySecondDefClassFactory);
+        Assert.Equal(0x004E00BCu, EngineLifecycle.FortySecondDefClassCtor);
+        Assert.Equal(0x01241E44u, EngineLifecycle.FortySecondDefClassVtbl);
+        Assert.Equal(116, EngineLifecycle.FortySecondDefClassSize);
+        Assert.Equal("CQuestCardDef", EngineLifecycle.FortySecondDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FortyFirstDefClassRegistered);
+        Assert.True(life.FortySecondDefClassRegistered);
+        Assert.Equal("CQuestCardDef", life.FortySecondDefClass);
+        var fortyFirst = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortyFirstDefClassSite);
+        var fortySecond = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortySecondDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fortyFirst >= 0 && fortySecond > fortyFirst && defs > fortySecond);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == "Q_NewOakValeIntro");
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F3581_adds_CFlammableDef()
+    {
+        Assert.Equal(0x004F357Au, EngineLifecycle.FortyThirdDefClassSite);
+        Assert.Equal(0x004E3DC3u, EngineLifecycle.FortyThirdDefClassFactory);
+        Assert.Equal(0x004E284Bu, EngineLifecycle.FortyThirdDefClassCtor);
+        Assert.Equal(0x01242984u, EngineLifecycle.FortyThirdDefClassVtbl);
+        Assert.Equal(76, EngineLifecycle.FortyThirdDefClassSize);
+        Assert.Equal("CFlammableDef", EngineLifecycle.FortyThirdDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FortySecondDefClassRegistered);
+        Assert.True(life.FortyThirdDefClassRegistered);
+        Assert.Equal("CFlammableDef", life.FortyThirdDefClass);
+        var fortySecond = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortySecondDefClassSite);
+        var fortyThird = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortyThirdDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fortySecond >= 0 && fortyThird > fortySecond && defs > fortyThird);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F3637_adds_CBoastingPodiumDef()
+    {
+        Assert.Equal(0x004F3630u, EngineLifecycle.FortyFourthDefClassSite);
+        Assert.Equal(0x004D8736u, EngineLifecycle.FortyFourthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.FortyFourthDefClassCtor);
+        Assert.Equal(0x0123BF0Cu, EngineLifecycle.FortyFourthDefClassVtbl);
+        Assert.Equal(44, EngineLifecycle.FortyFourthDefClassSize);
+        Assert.Equal("CBoastingPodiumDef", EngineLifecycle.FortyFourthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FortyThirdDefClassRegistered);
+        Assert.True(life.FortyFourthDefClassRegistered);
+        Assert.Equal("CBoastingPodiumDef", life.FortyFourthDefClass);
+        var fortyThird = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortyThirdDefClassSite);
+        var fortyFourth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortyFourthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fortyThird >= 0 && fortyFourth > fortyThird && defs > fortyFourth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F3899_adds_CTCVolumeContainmentTrackerDef()
+    {
+        Assert.Equal(0x004F3892u, EngineLifecycle.FortyFifthDefClassSite);
+        Assert.Equal(0x004D94C8u, EngineLifecycle.FortyFifthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.FortyFifthDefClassCtor);
+        Assert.Equal(0x0123E0C4u, EngineLifecycle.FortyFifthDefClassVtbl);
+        Assert.Equal(48, EngineLifecycle.FortyFifthDefClassSize);
+        Assert.Equal("CTCVolumeContainmentTrackerDef", EngineLifecycle.FortyFifthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FortyFourthDefClassRegistered);
+        Assert.True(life.FortyFifthDefClassRegistered);
+        Assert.Equal("CTCVolumeContainmentTrackerDef", life.FortyFifthDefClass);
+        var fortyFourth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortyFourthDefClassSite);
+        var fortyFifth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortyFifthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fortyFourth >= 0 && fortyFifth > fortyFourth && defs > fortyFifth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F3E53_adds_CThingDrainLifeShotDef()
+    {
+        Assert.Equal(0x004F3E4Cu, EngineLifecycle.FortySixthDefClassSite);
+        Assert.Equal(0x004D8D56u, EngineLifecycle.FortySixthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.FortySixthDefClassCtor);
+        Assert.Equal(0x0123CCA4u, EngineLifecycle.FortySixthDefClassVtbl);
+        Assert.Equal(60, EngineLifecycle.FortySixthDefClassSize);
+        Assert.Equal("CThingDrainLifeShotDef", EngineLifecycle.FortySixthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FortyFifthDefClassRegistered);
+        Assert.True(life.FortySixthDefClassRegistered);
+        Assert.Equal("CThingDrainLifeShotDef", life.FortySixthDefClass);
+        var fortyFifth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortyFifthDefClassSite);
+        var fortySixth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortySixthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fortyFifth >= 0 && fortySixth > fortyFifth && defs > fortySixth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F3F09_adds_CFireballSpellLevelDef()
+    {
+        Assert.Equal(0x004F3F02u, EngineLifecycle.FortySeventhDefClassSite);
+        Assert.Equal(0x004D8D10u, EngineLifecycle.FortySeventhDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.FortySeventhDefClassCtor);
+        Assert.Equal(0x0123CC3Cu, EngineLifecycle.FortySeventhDefClassVtbl);
+        Assert.Equal(44, EngineLifecycle.FortySeventhDefClassSize);
+        Assert.Equal("CFireballSpellLevelDef", EngineLifecycle.FortySeventhDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FortySixthDefClassRegistered);
+        Assert.True(life.FortySeventhDefClassRegistered);
+        Assert.Equal("CFireballSpellLevelDef", life.FortySeventhDefClass);
+        var fortySixth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortySixthDefClassSite);
+        var fortySeventh = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortySeventhDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fortySixth >= 0 && fortySeventh > fortySixth && defs > fortySeventh);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F4100_adds_CSkeletalMorphDef()
+    {
+        Assert.Equal(0x004F40F9u, EngineLifecycle.FortyEighthDefClassSite);
+        Assert.Equal(0x004E3DD9u, EngineLifecycle.FortyEighthDefClassFactory);
+        Assert.Equal(0x004E2895u, EngineLifecycle.FortyEighthDefClassCtor);
+        Assert.Equal(0x012429ECu, EngineLifecycle.FortyEighthDefClassVtbl);
+        Assert.Equal(52, EngineLifecycle.FortyEighthDefClassSize);
+        Assert.Equal("CSkeletalMorphDef", EngineLifecycle.FortyEighthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FortySeventhDefClassRegistered);
+        Assert.True(life.FortyEighthDefClassRegistered);
+        Assert.Equal("CSkeletalMorphDef", life.FortyEighthDefClass);
+        var fortySeventh = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortySeventhDefClassSite);
+        var fortyEighth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortyEighthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fortySeventh >= 0 && fortyEighth > fortySeventh && defs > fortyEighth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F43CD_adds_CTrapDef()
+    {
+        Assert.Equal(0x004F43C6u, EngineLifecycle.FortyNinthDefClassSite);
+        Assert.Equal(0x004E5CF2u, EngineLifecycle.FortyNinthDefClassFactory);
+        Assert.Equal(0x004E3E2Au, EngineLifecycle.FortyNinthDefClassCtor);
+        Assert.Equal(0x01243054u, EngineLifecycle.FortyNinthDefClassVtbl);
+        Assert.Equal(100, EngineLifecycle.FortyNinthDefClassSize);
+        Assert.Equal("CTrapDef", EngineLifecycle.FortyNinthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FortyEighthDefClassRegistered);
+        Assert.True(life.FortyNinthDefClassRegistered);
+        Assert.Equal("CTrapDef", life.FortyNinthDefClass);
+        var fortyEighth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortyEighthDefClassSite);
+        var fortyNinth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortyNinthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fortyEighth >= 0 && fortyNinth > fortyEighth && defs > fortyNinth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F462F_adds_CParticleAttacherDef()
+    {
+        Assert.Equal(0x004F4628u, EngineLifecycle.FiftiethDefClassSite);
+        Assert.Equal(0x004E2AFAu, EngineLifecycle.FiftiethDefClassFactory);
+        Assert.Equal(0x004E0B9Cu, EngineLifecycle.FiftiethDefClassCtor);
+        Assert.Equal(0x01242364u, EngineLifecycle.FiftiethDefClassVtbl);
+        Assert.Equal(52, EngineLifecycle.FiftiethDefClassSize);
+        Assert.Equal("CParticleAttacherDef", EngineLifecycle.FiftiethDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FortyNinthDefClassRegistered);
+        Assert.True(life.FiftiethDefClassRegistered);
+        Assert.Equal("CParticleAttacherDef", life.FiftiethDefClass);
+        Assert.False(EngineLifecycle.FirstSeenCanRenderParticles);
+        var fortyNinth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FortyNinthDefClassSite);
+        var fiftieth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftiethDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fortyNinth >= 0 && fiftieth > fortyNinth && defs > fiftieth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F46E5_adds_CAnimatingObjectDef()
+    {
+        Assert.Equal(0x004F46DEu, EngineLifecycle.FiftyFirstDefClassSite);
+        Assert.Equal(0x004EBA6Eu, EngineLifecycle.FiftyFirstDefClassFactory);
+        Assert.Equal(0x004EA1F0u, EngineLifecycle.FiftyFirstDefClassCtor);
+        Assert.Equal(0x0124376Cu, EngineLifecycle.FiftyFirstDefClassVtbl);
+        Assert.Equal(72, EngineLifecycle.FiftyFirstDefClassSize);
+        Assert.Equal("CAnimatingObjectDef", EngineLifecycle.FiftyFirstDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FiftiethDefClassRegistered);
+        Assert.True(life.FiftyFirstDefClassRegistered);
+        Assert.Equal("CAnimatingObjectDef", life.FiftyFirstDefClass);
+        var fiftieth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftiethDefClassSite);
+        var fiftyFirst = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftyFirstDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fiftieth >= 0 && fiftyFirst > fiftieth && defs > fiftyFirst);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F4A1D_adds_CExpressionSubDef()
+    {
+        Assert.Equal(0x004F4A16u, EngineLifecycle.FiftySecondDefClassSite);
+        Assert.Equal(0x004D8818u, EngineLifecycle.FiftySecondDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.FiftySecondDefClassCtor);
+        Assert.Equal(0x0123C2E4u, EngineLifecycle.FiftySecondDefClassVtbl);
+        Assert.Equal(44, EngineLifecycle.FiftySecondDefClassSize);
+        Assert.Equal("CExpressionSubDef", EngineLifecycle.FiftySecondDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FiftyFirstDefClassRegistered);
+        Assert.True(life.FiftySecondDefClassRegistered);
+        Assert.Equal("CExpressionSubDef", life.FiftySecondDefClass);
+        var fiftyFirst = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftyFirstDefClassSite);
+        var fiftySecond = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftySecondDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fiftyFirst >= 0 && fiftySecond > fiftyFirst && defs > fiftySecond);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == "Q_NewOakValeIntro");
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F4DC0_adds_CWillResponseDef()
+    {
+        Assert.Equal(0x004F4DB9u, EngineLifecycle.FiftyThirdDefClassSite);
+        Assert.Equal(0x004D9629u, EngineLifecycle.FiftyThirdDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.FiftyThirdDefClassCtor);
+        Assert.Equal(0x0123E324u, EngineLifecycle.FiftyThirdDefClassVtbl);
+        Assert.Equal(45, EngineLifecycle.FiftyThirdDefClassSize);
+        Assert.Equal("CWillResponseDef", EngineLifecycle.FiftyThirdDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FiftySecondDefClassRegistered);
+        Assert.True(life.FiftyThirdDefClassRegistered);
+        Assert.Equal("CWillResponseDef", life.FiftyThirdDefClass);
+        var fiftySecond = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftySecondDefClassSite);
+        var fiftyThird = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftyThirdDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fiftySecond >= 0 && fiftyThird > fiftySecond && defs > fiftyThird);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F4F4C_adds_CTurncoatDef()
+    {
+        Assert.Equal(0x004F4F45u, EngineLifecycle.FiftyFourthDefClassSite);
+        Assert.Equal(0x004E0F9Cu, EngineLifecycle.FiftyFourthDefClassFactory);
+        Assert.Equal(0x004DEBA3u, EngineLifecycle.FiftyFourthDefClassCtor);
+        Assert.Equal(0x0124193Cu, EngineLifecycle.FiftyFourthDefClassVtbl);
+        Assert.Equal(84, EngineLifecycle.FiftyFourthDefClassSize);
+        Assert.Equal("CTurncoatDef", EngineLifecycle.FiftyFourthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FiftyThirdDefClassRegistered);
+        Assert.True(life.FiftyFourthDefClassRegistered);
+        Assert.Equal("CTurncoatDef", life.FiftyFourthDefClass);
+        var fiftyThird = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftyThirdDefClassSite);
+        var fiftyFourth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftyFourthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fiftyThird >= 0 && fiftyFourth > fiftyThird && defs > fiftyFourth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F5002_adds_CSummonableCreatureDef()
+    {
+        Assert.Equal(0x004F4FFBu, EngineLifecycle.FiftyFifthDefClassSite);
+        Assert.Equal(0x004D885Eu, EngineLifecycle.FiftyFifthDefClassFactory);
+        Assert.Equal(0x004D4C3Eu, EngineLifecycle.FiftyFifthDefClassCtor);
+        Assert.Equal(0x0123C3A4u, EngineLifecycle.FiftyFifthDefClassVtbl);
+        Assert.Equal(48, EngineLifecycle.FiftyFifthDefClassSize);
+        Assert.Equal("CSummonableCreatureDef", EngineLifecycle.FiftyFifthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FiftyFourthDefClassRegistered);
+        Assert.True(life.FiftyFifthDefClassRegistered);
+        Assert.Equal("CSummonableCreatureDef", life.FiftyFifthDefClass);
+        var fiftyFourth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftyFourthDefClassSite);
+        var fiftyFifth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftyFifthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fiftyFourth >= 0 && fiftyFifth > fiftyFourth && defs > fiftyFifth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F55BC_adds_CAIScratchpadDef()
+    {
+        Assert.Equal(0x004F55B5u, EngineLifecycle.FiftySixthDefClassSite);
+        Assert.Equal(0x004D4E07u, EngineLifecycle.FiftySixthDefClassFactory);
+        Assert.Equal(0x007ABB30u, EngineLifecycle.FiftySixthDefClassCtor);
+        Assert.Equal(0x0126D014u, EngineLifecycle.FiftySixthDefClassVtbl);
+        Assert.Equal(156, EngineLifecycle.FiftySixthDefClassSize);
+        Assert.Equal("CAIScratchpadDef", EngineLifecycle.FiftySixthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FiftyFifthDefClassRegistered);
+        Assert.True(life.FiftySixthDefClassRegistered);
+        Assert.Equal("CAIScratchpadDef", life.FiftySixthDefClass);
+        var fiftyFifth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftyFifthDefClassSite);
+        var fiftySixth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftySixthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fiftyFifth >= 0 && fiftySixth > fiftyFifth && defs > fiftySixth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F5672_adds_COccupiableDef()
+    {
+        Assert.Equal(0x004F566Bu, EngineLifecycle.FiftySeventhDefClassSite);
+        Assert.Equal(0x004D88FCu, EngineLifecycle.FiftySeventhDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.FiftySeventhDefClassCtor);
+        Assert.Equal(0x0123C514u, EngineLifecycle.FiftySeventhDefClassVtbl);
+        Assert.Equal(44, EngineLifecycle.FiftySeventhDefClassSize);
+        Assert.Equal("COccupiableDef", EngineLifecycle.FiftySeventhDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FiftySixthDefClassRegistered);
+        Assert.True(life.FiftySeventhDefClassRegistered);
+        Assert.Equal("COccupiableDef", life.FiftySeventhDefClass);
+        var fiftySixth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftySixthDefClassSite);
+        var fiftySeventh = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftySeventhDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fiftySixth >= 0 && fiftySeventh > fiftySixth && defs > fiftySeventh);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F5728_adds_CBossDef()
+    {
+        Assert.Equal(0x004F5721u, EngineLifecycle.FiftyEighthDefClassSite);
+        Assert.Equal(0x004E0D4Cu, EngineLifecycle.FiftyEighthDefClassFactory);
+        Assert.Equal(0x004DE8C2u, EngineLifecycle.FiftyEighthDefClassCtor);
+        Assert.Equal(0x0124185Cu, EngineLifecycle.FiftyEighthDefClassVtbl);
+        Assert.Equal(84, EngineLifecycle.FiftyEighthDefClassSize);
+        Assert.Equal("CBossDef", EngineLifecycle.FiftyEighthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FiftySeventhDefClassRegistered);
+        Assert.True(life.FiftyEighthDefClassRegistered);
+        Assert.Equal("CBossDef", life.FiftyEighthDefClass);
+        var fiftySeventh = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftySeventhDefClassSite);
+        var fiftyEighth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftyEighthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fiftySeventh >= 0 && fiftyEighth > fiftySeventh && defs > fiftyEighth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F591F_adds_CFishingDef()
+    {
+        Assert.Equal(0x004F5918u, EngineLifecycle.FiftyNinthDefClassSite);
+        Assert.Equal(0x004E0DB9u, EngineLifecycle.FiftyNinthDefClassFactory);
+        Assert.Equal(0x004DE8F5u, EngineLifecycle.FiftyNinthDefClassCtor);
+        Assert.Equal(0x012418C4u, EngineLifecycle.FiftyNinthDefClassVtbl);
+        Assert.Equal(124, EngineLifecycle.FiftyNinthDefClassSize);
+        Assert.Equal("CFishingDef", EngineLifecycle.FiftyNinthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FiftyEighthDefClassRegistered);
+        Assert.True(life.FiftyNinthDefClassRegistered);
+        Assert.Equal("CFishingDef", life.FiftyNinthDefClass);
+        var fiftyEighth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftyEighthDefClassSite);
+        var fiftyNinth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftyNinthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fiftyEighth >= 0 && fiftyNinth > fiftyEighth && defs > fiftyNinth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F5A40_adds_CGuardDef()
+    {
+        Assert.Equal(0x004F5A39u, EngineLifecycle.SixtiethDefClassSite);
+        Assert.Equal(0x004D89ECu, EngineLifecycle.SixtiethDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.SixtiethDefClassCtor);
+        Assert.Equal(0x0123C75Cu, EngineLifecycle.SixtiethDefClassVtbl);
+        Assert.Equal(80, EngineLifecycle.SixtiethDefClassSize);
+        Assert.Equal("CGuardDef", EngineLifecycle.SixtiethDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.FiftyNinthDefClassRegistered);
+        Assert.True(life.SixtiethDefClassRegistered);
+        Assert.Equal("CGuardDef", life.SixtiethDefClass);
+        var fiftyNinth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.FiftyNinthDefClassSite);
+        var sixtieth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtiethDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(fiftyNinth >= 0 && sixtieth > fiftyNinth && defs > sixtieth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F5AF6_adds_CInterestingToVillagersDef()
+    {
+        Assert.Equal(0x004F5AEFu, EngineLifecycle.SixtyFirstDefClassSite);
+        Assert.Equal(0x004D89B4u, EngineLifecycle.SixtyFirstDefClassFactory);
+        Assert.Equal(0x004D4FCFu, EngineLifecycle.SixtyFirstDefClassCtor);
+        Assert.Equal(0x0123C6D4u, EngineLifecycle.SixtyFirstDefClassVtbl);
+        Assert.Equal(44, EngineLifecycle.SixtyFirstDefClassSize);
+        Assert.Equal("CInterestingToVillagersDef", EngineLifecycle.SixtyFirstDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SixtiethDefClassRegistered);
+        Assert.True(life.SixtyFirstDefClassRegistered);
+        Assert.Equal("CInterestingToVillagersDef", life.SixtyFirstDefClass);
+        var sixtieth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtiethDefClassSite);
+        var sixtyFirst = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtyFirstDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(sixtieth >= 0 && sixtyFirst > sixtieth && defs > sixtyFirst);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == "Q_NewOakValeIntro");
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F5BAC_adds_CActivateQuestDef()
+    {
+        Assert.Equal(0x004F5BA5u, EngineLifecycle.SixtySecondDefClassSite);
+        Assert.Equal(0x004D8A32u, EngineLifecycle.SixtySecondDefClassFactory);
+        Assert.Equal(0x004D5056u, EngineLifecycle.SixtySecondDefClassCtor);
+        Assert.Equal(0x0123C7F4u, EngineLifecycle.SixtySecondDefClassVtbl);
+        Assert.Equal(48, EngineLifecycle.SixtySecondDefClassSize);
+        Assert.Equal("CActivateQuestDef", EngineLifecycle.SixtySecondDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SixtyFirstDefClassRegistered);
+        Assert.True(life.SixtySecondDefClassRegistered);
+        Assert.Equal("CActivateQuestDef", life.SixtySecondDefClass);
+        var sixtyFirst = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtyFirstDefClassSite);
+        var sixtySecond = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtySecondDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(sixtyFirst >= 0 && sixtySecond > sixtyFirst && defs > sixtySecond);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == "Q_NewOakValeIntro");
+        Assert.False(EngineLifecycle.ActivateQuestSatisfiesGameflowWait);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F5CCD_adds_CCrateStackDef()
+    {
+        Assert.Equal(0x004F5CC6u, EngineLifecycle.SixtyThirdDefClassSite);
+        Assert.Equal(0x004D8A6Au, EngineLifecycle.SixtyThirdDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.SixtyThirdDefClassCtor);
+        Assert.Equal(0x0123C86Cu, EngineLifecycle.SixtyThirdDefClassVtbl);
+        Assert.Equal(48, EngineLifecycle.SixtyThirdDefClassSize);
+        Assert.Equal("CCrateStackDef", EngineLifecycle.SixtyThirdDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SixtySecondDefClassRegistered);
+        Assert.True(life.SixtyThirdDefClassRegistered);
+        Assert.Equal("CCrateStackDef", life.SixtyThirdDefClass);
+        var sixtySecond = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtySecondDefClassSite);
+        var sixtyThird = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtyThirdDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(sixtySecond >= 0 && sixtyThird > sixtySecond && defs > sixtyThird);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F5D83_adds_COverheadDisplayDef()
+    {
+        Assert.Equal(0x004F5D7Cu, EngineLifecycle.SixtyFourthDefClassSite);
+        Assert.Equal(0x004D8AB0u, EngineLifecycle.SixtyFourthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.SixtyFourthDefClassCtor);
+        Assert.Equal(0x0123C8FCu, EngineLifecycle.SixtyFourthDefClassVtbl);
+        Assert.Equal(40, EngineLifecycle.SixtyFourthDefClassSize);
+        Assert.Equal("COverheadDisplayDef", EngineLifecycle.SixtyFourthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SixtyThirdDefClassRegistered);
+        Assert.True(life.SixtyFourthDefClassRegistered);
+        Assert.Equal("COverheadDisplayDef", life.SixtyFourthDefClass);
+        var sixtyThird = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtyThirdDefClassSite);
+        var sixtyFourth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtyFourthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(sixtyThird >= 0 && sixtyFourth > sixtyThird && defs > sixtyFourth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F5E39_adds_CTavernTableDef()
+    {
+        Assert.Equal(0x004F5E32u, EngineLifecycle.SixtyFifthDefClassSite);
+        Assert.Equal(0x004D8AF6u, EngineLifecycle.SixtyFifthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.SixtyFifthDefClassCtor);
+        Assert.Equal(0x0123C964u, EngineLifecycle.SixtyFifthDefClassVtbl);
+        Assert.Equal(39, EngineLifecycle.SixtyFifthDefClassSize);
+        Assert.Equal("CTavernTableDef", EngineLifecycle.SixtyFifthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SixtyFourthDefClassRegistered);
+        Assert.True(life.SixtyFifthDefClassRegistered);
+        Assert.Equal("CTavernTableDef", life.SixtyFifthDefClass);
+        var sixtyFourth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtyFourthDefClassSite);
+        var sixtyFifth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtyFifthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(sixtyFourth >= 0 && sixtyFifth > sixtyFourth && defs > sixtyFifth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F6030_adds_CTavernDef()
+    {
+        Assert.Equal(0x004F6029u, EngineLifecycle.SixtySixthDefClassSite);
+        Assert.Equal(0x004D8BE1u, EngineLifecycle.SixtySixthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.SixtySixthDefClassCtor);
+        Assert.Equal(0x0123CA8Cu, EngineLifecycle.SixtySixthDefClassVtbl);
+        Assert.Equal(44, EngineLifecycle.SixtySixthDefClassSize);
+        Assert.Equal("CTavernDef", EngineLifecycle.SixtySixthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SixtyFifthDefClassRegistered);
+        Assert.True(life.SixtySixthDefClassRegistered);
+        Assert.Equal("CTavernDef", life.SixtySixthDefClass);
+        var sixtyFifth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtyFifthDefClassSite);
+        var sixtySixth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtySixthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(sixtyFifth >= 0 && sixtySixth > sixtyFifth && defs > sixtySixth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == "Q_NewOakValeIntro");
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F60E6_adds_CObjectAugmentationsDef()
+    {
+        Assert.Equal(0x004F60DFu, EngineLifecycle.SixtySeventhDefClassSite);
+        Assert.Equal(0x004EC526u, EngineLifecycle.SixtySeventhDefClassFactory);
+        Assert.Equal(0x004EBBA3u, EngineLifecycle.SixtySeventhDefClassCtor);
+        Assert.Equal(0x01243974u, EngineLifecycle.SixtySeventhDefClassVtbl);
+        Assert.Equal(140, EngineLifecycle.SixtySeventhDefClassSize);
+        Assert.Equal("CObjectAugmentationsDef", EngineLifecycle.SixtySeventhDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SixtySixthDefClassRegistered);
+        Assert.True(life.SixtySeventhDefClassRegistered);
+        Assert.Equal("CObjectAugmentationsDef", life.SixtySeventhDefClass);
+        var sixtySixth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtySixthDefClassSite);
+        var sixtySeventh = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtySeventhDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(sixtySixth >= 0 && sixtySeventh > sixtySixth && defs > sixtySeventh);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F63B3_adds_CDrunkennessDef()
+    {
+        Assert.Equal(0x004F63ACu, EngineLifecycle.SixtyEighthDefClassSite);
+        Assert.Equal(0x004D8C91u, EngineLifecycle.SixtyEighthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.SixtyEighthDefClassCtor);
+        Assert.Equal(0x0123CB3Cu, EngineLifecycle.SixtyEighthDefClassVtbl);
+        Assert.Equal(44, EngineLifecycle.SixtyEighthDefClassSize);
+        Assert.Equal("CDrunkennessDef", EngineLifecycle.SixtyEighthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SixtySeventhDefClassRegistered);
+        Assert.True(life.SixtyEighthDefClassRegistered);
+        Assert.Equal("CDrunkennessDef", life.SixtyEighthDefClass);
+        var sixtySeventh = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtySeventhDefClassSite);
+        var sixtyEighth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtyEighthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(sixtySeventh >= 0 && sixtyEighth > sixtySeventh && defs > sixtyEighth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F67C1_adds_CGoldDef()
+    {
+        Assert.Equal(0x004F67BAu, EngineLifecycle.SixtyNinthDefClassSite);
+        Assert.Equal(0x004D8EC5u, EngineLifecycle.SixtyNinthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.SixtyNinthDefClassCtor);
+        Assert.Equal(0x0123D2ECu, EngineLifecycle.SixtyNinthDefClassVtbl);
+        Assert.Equal(44, EngineLifecycle.SixtyNinthDefClassSize);
+        Assert.Equal("CGoldDef", EngineLifecycle.SixtyNinthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SixtyEighthDefClassRegistered);
+        Assert.True(life.SixtyNinthDefClassRegistered);
+        Assert.Equal("CGoldDef", life.SixtyNinthDefClass);
+        var sixtyEighth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtyEighthDefClassSite);
+        var sixtyNinth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtyNinthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(sixtyEighth >= 0 && sixtyNinth > sixtyEighth && defs > sixtyNinth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F694D_adds_CAICreatureWillPowerIndicatorDef()
+    {
+        Assert.Equal(0x004F6946u, EngineLifecycle.SeventiethDefClassSite);
+        Assert.Equal(0x004D926Au, EngineLifecycle.SeventiethDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.SeventiethDefClassCtor);
+        Assert.Equal(0x0123DAA4u, EngineLifecycle.SeventiethDefClassVtbl);
+        Assert.Equal(44, EngineLifecycle.SeventiethDefClassSize);
+        Assert.Equal("CAICreatureWillPowerIndicatorDef", EngineLifecycle.SeventiethDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SixtyNinthDefClassRegistered);
+        Assert.True(life.SeventiethDefClassRegistered);
+        Assert.Equal("CAICreatureWillPowerIndicatorDef", life.SeventiethDefClass);
+        var sixtyNinth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SixtyNinthDefClassSite);
+        var seventieth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventiethDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(sixtyNinth >= 0 && seventieth > sixtyNinth && defs > seventieth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F6998_adds_CKickableDef()
+    {
+        Assert.Equal(0x004F6991u, EngineLifecycle.SeventyFirstDefClassSite);
+        Assert.Equal(0x004D7C2Du, EngineLifecycle.SeventyFirstDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.SeventyFirstDefClassCtor);
+        Assert.Equal(0x0123A7ACu, EngineLifecycle.SeventyFirstDefClassVtbl);
+        Assert.Equal(84, EngineLifecycle.SeventyFirstDefClassSize);
+        Assert.Equal("CKickableDef", EngineLifecycle.SeventyFirstDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SeventiethDefClassRegistered);
+        Assert.True(life.SeventyFirstDefClassRegistered);
+        Assert.Equal("CKickableDef", life.SeventyFirstDefClass);
+        var seventieth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventiethDefClassSite);
+        var seventyFirst = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventyFirstDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(seventieth >= 0 && seventyFirst > seventieth && defs > seventyFirst);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F69E3_adds_CTavernGameDef()
+    {
+        Assert.Equal(0x004F69DCu, EngineLifecycle.SeventySecondDefClassSite);
+        Assert.Equal(0x004E2D3Bu, EngineLifecycle.SeventySecondDefClassFactory);
+        Assert.Equal(0x004E1049u, EngineLifecycle.SeventySecondDefClassCtor);
+        Assert.Equal(0x012424BCu, EngineLifecycle.SeventySecondDefClassVtbl);
+        Assert.Equal(420, EngineLifecycle.SeventySecondDefClassSize);
+        Assert.Equal("CTavernGameDef", EngineLifecycle.SeventySecondDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SeventyFirstDefClassRegistered);
+        Assert.True(life.SeventySecondDefClassRegistered);
+        Assert.Equal("CTavernGameDef", life.SeventySecondDefClass);
+        var seventyFirst = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventyFirstDefClassSite);
+        var seventySecond = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventySecondDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(seventyFirst >= 0 && seventySecond > seventyFirst && defs > seventySecond);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F6A2E_adds_CTavernGameCardBaseDef()
+    {
+        Assert.Equal(0x004F6A27u, EngineLifecycle.SeventyThirdDefClassSite);
+        Assert.Equal(0x004E2DB2u, EngineLifecycle.SeventyThirdDefClassFactory);
+        Assert.Equal(0x004E1195u, EngineLifecycle.SeventyThirdDefClassCtor);
+        Assert.Equal(0x0124258Cu, EngineLifecycle.SeventyThirdDefClassVtbl);
+        Assert.Equal(132, EngineLifecycle.SeventyThirdDefClassSize);
+        Assert.Equal("CTavernGameCardBaseDef", EngineLifecycle.SeventyThirdDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SeventySecondDefClassRegistered);
+        Assert.True(life.SeventyThirdDefClassRegistered);
+        Assert.Equal("CTavernGameCardBaseDef", life.SeventyThirdDefClass);
+        var seventySecond = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventySecondDefClassSite);
+        var seventyThird = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventyThirdDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(seventySecond >= 0 && seventyThird > seventySecond && defs > seventyThird);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F6A79_adds_CTavernGameCoinBaseDef()
+    {
+        Assert.Equal(0x004F6A72u, EngineLifecycle.SeventyFourthDefClassSite);
+        Assert.Equal(0x004D8F51u, EngineLifecycle.SeventyFourthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.SeventyFourthDefClassCtor);
+        Assert.Equal(0x0123D44Cu, EngineLifecycle.SeventyFourthDefClassVtbl);
+        Assert.Equal(68, EngineLifecycle.SeventyFourthDefClassSize);
+        Assert.Equal("CTavernGameCoinBaseDef", EngineLifecycle.SeventyFourthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SeventyThirdDefClassRegistered);
+        Assert.True(life.SeventyFourthDefClassRegistered);
+        Assert.Equal("CTavernGameCoinBaseDef", life.SeventyFourthDefClass);
+        var seventyThird = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventyThirdDefClassSite);
+        var seventyFourth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventyFourthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(seventyThird >= 0 && seventyFourth > seventyThird && defs > seventyFourth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == "Q_NewOakValeIntro");
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F6B2F_adds_CTavernGameShoveHaPennyDef()
+    {
+        Assert.Equal(0x004F6B28u, EngineLifecycle.SeventyFifthDefClassSite);
+        Assert.Equal(0x004E2D70u, EngineLifecycle.SeventyFifthDefClassFactory);
+        Assert.Equal(0x004E1105u, EngineLifecycle.SeventyFifthDefClassCtor);
+        Assert.Equal(0x01242524u, EngineLifecycle.SeventyFifthDefClassVtbl);
+        Assert.Equal(512, EngineLifecycle.SeventyFifthDefClassSize);
+        Assert.Equal("CTavernGameShoveHaPennyDef", EngineLifecycle.SeventyFifthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SeventyFourthDefClassRegistered);
+        Assert.True(life.SeventyFifthDefClassRegistered);
+        Assert.Equal("CTavernGameShoveHaPennyDef", life.SeventyFifthDefClass);
+        var seventyFourth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventyFourthDefClassSite);
+        var seventyFifth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventyFifthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(seventyFourth >= 0 && seventyFifth > seventyFourth && defs > seventyFifth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F6BE5_adds_CTavernGameCoinGolfDef()
+    {
+        Assert.Equal(0x004F6BDEu, EngineLifecycle.SeventySixthDefClassSite);
+        Assert.Equal(0x004D8F97u, EngineLifecycle.SeventySixthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.SeventySixthDefClassCtor);
+        Assert.Equal(0x0123D4D4u, EngineLifecycle.SeventySixthDefClassVtbl);
+        Assert.Equal(92, EngineLifecycle.SeventySixthDefClassSize);
+        Assert.Equal("CTavernGameCoinGolfDef", EngineLifecycle.SeventySixthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SeventyFifthDefClassRegistered);
+        Assert.True(life.SeventySixthDefClassRegistered);
+        Assert.Equal("CTavernGameCoinGolfDef", life.SeventySixthDefClass);
+        var seventyFifth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventyFifthDefClassSite);
+        var seventySixth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventySixthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(seventyFifth >= 0 && seventySixth > seventyFifth && defs > seventySixth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F6D71_adds_CTavernGameSpotTheAdditionDef()
+    {
+        Assert.Equal(0x004F6D6Au, EngineLifecycle.SeventySeventhDefClassSite);
+        Assert.Equal(0x004E11C3u, EngineLifecycle.SeventySeventhDefClassFactory);
+        Assert.Equal(0x004DED22u, EngineLifecycle.SeventySeventhDefClassCtor);
+        Assert.Equal(0x01241A4Cu, EngineLifecycle.SeventySeventhDefClassVtbl);
+        Assert.Equal(144, EngineLifecycle.SeventySeventhDefClassSize);
+        Assert.Equal("CTavernGameSpotTheAdditionDef", EngineLifecycle.SeventySeventhDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SeventySixthDefClassRegistered);
+        Assert.True(life.SeventySeventhDefClassRegistered);
+        Assert.Equal("CTavernGameSpotTheAdditionDef", life.SeventySeventhDefClass);
+        var seventySixth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventySixthDefClassSite);
+        var seventySeventh = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventySeventhDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(seventySixth >= 0 && seventySeventh > seventySixth && defs > seventySeventh);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F6EFD_adds_CDecapitationDef()
+    {
+        Assert.Equal(0x004F6EF6u, EngineLifecycle.SeventyEighthDefClassSite);
+        Assert.Equal(0x004D9047u, EngineLifecycle.SeventyEighthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.SeventyEighthDefClassCtor);
+        Assert.Equal(0x0123D5E4u, EngineLifecycle.SeventyEighthDefClassVtbl);
+        Assert.Equal(48, EngineLifecycle.SeventyEighthDefClassSize);
+        Assert.Equal("CDecapitationDef", EngineLifecycle.SeventyEighthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SeventySeventhDefClassRegistered);
+        Assert.True(life.SeventyEighthDefClassRegistered);
+        Assert.Equal("CDecapitationDef", life.SeventyEighthDefClass);
+        var seventySeventh = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventySeventhDefClassSite);
+        var seventyEighth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventyEighthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(seventySeventh >= 0 && seventyEighth > seventySeventh && defs > seventyEighth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F6FB3_adds_CCoinGameObstacleDef()
+    {
+        Assert.Equal(0x004F6FACu, EngineLifecycle.SeventyNinthDefClassSite);
+        Assert.Equal(0x004D8F0Bu, EngineLifecycle.SeventyNinthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.SeventyNinthDefClassCtor);
+        Assert.Equal(0x0123D3E4u, EngineLifecycle.SeventyNinthDefClassVtbl);
+        Assert.Equal(44, EngineLifecycle.SeventyNinthDefClassSize);
+        Assert.Equal("CCoinGameObstacleDef", EngineLifecycle.SeventyNinthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SeventyEighthDefClassRegistered);
+        Assert.True(life.SeventyNinthDefClassRegistered);
+        Assert.Equal("CCoinGameObstacleDef", life.SeventyNinthDefClass);
+        var seventyEighth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventyEighthDefClassSite);
+        var seventyNinth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventyNinthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(seventyEighth >= 0 && seventyNinth > seventyEighth && defs > seventyNinth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F71F1_adds_CWallMountEffectsDef()
+    {
+        Assert.Equal(0x004F71EAu, EngineLifecycle.EightiethDefClassSite);
+        Assert.Equal(0x004D90C6u, EngineLifecycle.EightiethDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.EightiethDefClassCtor);
+        Assert.Equal(0x0123D74Cu, EngineLifecycle.EightiethDefClassVtbl);
+        Assert.Equal(52, EngineLifecycle.EightiethDefClassSize);
+        Assert.Equal("CWallMountEffectsDef", EngineLifecycle.EightiethDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.SeventyNinthDefClassRegistered);
+        Assert.True(life.EightiethDefClassRegistered);
+        Assert.Equal("CWallMountEffectsDef", life.EightiethDefClass);
+        var seventyNinth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.SeventyNinthDefClassSite);
+        var eightieth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightiethDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(seventyNinth >= 0 && eightieth > seventyNinth && defs > eightieth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F729B_adds_CFishDef()
+    {
+        Assert.Equal(0x004F7294u, EngineLifecycle.EightyFirstDefClassSite);
+        Assert.Equal(0x004D910Cu, EngineLifecycle.EightyFirstDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.EightyFirstDefClassCtor);
+        Assert.Equal(0x0123D7BCu, EngineLifecycle.EightyFirstDefClassVtbl);
+        Assert.Equal(88, EngineLifecycle.EightyFirstDefClassSize);
+        Assert.Equal("CFishDef", EngineLifecycle.EightyFirstDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.EightiethDefClassRegistered);
+        Assert.True(life.EightyFirstDefClassRegistered);
+        Assert.Equal("CFishDef", life.EightyFirstDefClass);
+        var eightieth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightiethDefClassSite);
+        var eightyFirst = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightyFirstDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(eightieth >= 0 && eightyFirst > eightieth && defs > eightyFirst);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F7345_adds_CTeleporterDef()
+    {
+        Assert.Equal(0x004F733Eu, EngineLifecycle.EightySecondDefClassSite);
+        Assert.Equal(0x004D9152u, EngineLifecycle.EightySecondDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.EightySecondDefClassCtor);
+        Assert.Equal(0x0123D834u, EngineLifecycle.EightySecondDefClassVtbl);
+        Assert.Equal(52, EngineLifecycle.EightySecondDefClassSize);
+        Assert.Equal("CTeleporterDef", EngineLifecycle.EightySecondDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.EightyFirstDefClassRegistered);
+        Assert.True(life.EightySecondDefClassRegistered);
+        Assert.Equal("CTeleporterDef", life.EightySecondDefClass);
+        var eightyFirst = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightyFirstDefClassSite);
+        var eightySecond = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightySecondDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(eightyFirst >= 0 && eightySecond > eightyFirst && defs > eightySecond);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == "Q_NewOakValeIntro");
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F744A_adds_CExplosionDef()
+    {
+        Assert.Equal(0x004F7443u, EngineLifecycle.EightyThirdDefClassSite);
+        Assert.Equal(0x004E3096u, EngineLifecycle.EightyThirdDefClassFactory);
+        Assert.Equal(0x004E1341u, EngineLifecycle.EightyThirdDefClassCtor);
+        Assert.Equal(0x012425F4u, EngineLifecycle.EightyThirdDefClassVtbl);
+        Assert.Equal(112, EngineLifecycle.EightyThirdDefClassSize);
+        Assert.Equal("CExplosionDef", EngineLifecycle.EightyThirdDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.EightySecondDefClassRegistered);
+        Assert.True(life.EightyThirdDefClassRegistered);
+        Assert.Equal("CExplosionDef", life.EightyThirdDefClass);
+        var eightySecond = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightySecondDefClassSite);
+        var eightyThird = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightyThirdDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(eightySecond >= 0 && eightyThird > eightySecond && defs > eightyThird);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F7611_adds_CResurrectionItemDef()
+    {
+        Assert.Equal(0x004F760Au, EngineLifecycle.EightyFourthDefClassSite);
+        Assert.Equal(0x004D91DEu, EngineLifecycle.EightyFourthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.EightyFourthDefClassCtor);
+        Assert.Equal(0x0123D9ACu, EngineLifecycle.EightyFourthDefClassVtbl);
+        Assert.Equal(44, EngineLifecycle.EightyFourthDefClassSize);
+        Assert.Equal("CResurrectionItemDef", EngineLifecycle.EightyFourthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.EightyThirdDefClassRegistered);
+        Assert.True(life.EightyFourthDefClassRegistered);
+        Assert.Equal("CResurrectionItemDef", life.EightyFourthDefClass);
+        var eightyThird = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightyThirdDefClassSite);
+        var eightyFourth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightyFourthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(eightyThird >= 0 && eightyFourth > eightyThird && defs > eightyFourth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F76BB_adds_CKrakenDef()
+    {
+        Assert.Equal(0x004F76B4u, EngineLifecycle.EightyFifthDefClassSite);
+        Assert.Equal(0x004E13ADu, EngineLifecycle.EightyFifthDefClassFactory);
+        Assert.Equal(0x004DEF86u, EngineLifecycle.EightyFifthDefClassCtor);
+        Assert.Equal(0x01241B2Cu, EngineLifecycle.EightyFifthDefClassVtbl);
+        Assert.Equal(124, EngineLifecycle.EightyFifthDefClassSize);
+        Assert.Equal("CKrakenDef", EngineLifecycle.EightyFifthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.EightyFourthDefClassRegistered);
+        Assert.True(life.EightyFifthDefClassRegistered);
+        Assert.Equal("CKrakenDef", life.EightyFifthDefClass);
+        var eightyFourth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightyFourthDefClassSite);
+        var eightyFifth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightyFifthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(eightyFourth >= 0 && eightyFifth > eightyFourth && defs > eightyFifth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F7765_adds_CKrakenTentacleDef()
+    {
+        Assert.Equal(0x004F775Eu, EngineLifecycle.EightySixthDefClassSite);
+        Assert.Equal(0x004D9224u, EngineLifecycle.EightySixthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.EightySixthDefClassCtor);
+        Assert.Equal(0x0123DA24u, EngineLifecycle.EightySixthDefClassVtbl);
+        Assert.Equal(96, EngineLifecycle.EightySixthDefClassSize);
+        Assert.Equal("CKrakenTentacleDef", EngineLifecycle.EightySixthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.EightyFifthDefClassRegistered);
+        Assert.True(life.EightySixthDefClassRegistered);
+        Assert.Equal("CKrakenTentacleDef", life.EightySixthDefClass);
+        var eightyFifth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightyFifthDefClassSite);
+        var eightySixth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightySixthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(eightyFifth >= 0 && eightySixth > eightyFifth && defs > eightySixth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F780F_adds_CHeroSpecialMovementDef()
+    {
+        Assert.Equal(0x004F7808u, EngineLifecycle.EightySeventhDefClassSite);
+        Assert.Equal(0x004D9198u, EngineLifecycle.EightySeventhDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.EightySeventhDefClassCtor);
+        Assert.Equal(0x0123D92Cu, EngineLifecycle.EightySeventhDefClassVtbl);
+        Assert.Equal(56, EngineLifecycle.EightySeventhDefClassSize);
+        Assert.Equal("CHeroSpecialMovementDef", EngineLifecycle.EightySeventhDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.EightySixthDefClassRegistered);
+        Assert.True(life.EightySeventhDefClassRegistered);
+        Assert.Equal("CHeroSpecialMovementDef", life.EightySeventhDefClass);
+        var eightySixth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightySixthDefClassSite);
+        var eightySeventh = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightySeventhDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(eightySixth >= 0 && eightySeventh > eightySixth && defs > eightySeventh);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F7918_adds_CIdleSchedulerDef()
+    {
+        Assert.Equal(0x004F7911u, EngineLifecycle.EightyEighthDefClassSite);
+        Assert.Equal(0x004E6232u, EngineLifecycle.EightyEighthDefClassFactory);
+        Assert.Equal(0x004E3F21u, EngineLifecycle.EightyEighthDefClassCtor);
+        Assert.Equal(0x01243124u, EngineLifecycle.EightyEighthDefClassVtbl);
+        Assert.Equal(72, EngineLifecycle.EightyEighthDefClassSize);
+        Assert.Equal("CIdleSchedulerDef", EngineLifecycle.EightyEighthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.EightySeventhDefClassRegistered);
+        Assert.True(life.EightyEighthDefClassRegistered);
+        Assert.Equal("CIdleSchedulerDef", life.EightyEighthDefClass);
+        var eightySeventh = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightySeventhDefClassSite);
+        var eightyEighth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightyEighthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(eightySeventh >= 0 && eightyEighth > eightySeventh && defs > eightyEighth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F79C2_adds_CCarriedReadableDef()
+    {
+        Assert.Equal(0x004F79BBu, EngineLifecycle.EightyNinthDefClassSite);
+        Assert.Equal(0x004D92B0u, EngineLifecycle.EightyNinthDefClassFactory);
+        Assert.Equal(0x004D5ECAu, EngineLifecycle.EightyNinthDefClassCtor);
+        Assert.Equal(0x0123DB94u, EngineLifecycle.EightyNinthDefClassVtbl);
+        Assert.Equal(48, EngineLifecycle.EightyNinthDefClassSize);
+        Assert.Equal("CCarriedReadableDef", EngineLifecycle.EightyNinthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.EightyEighthDefClassRegistered);
+        Assert.True(life.EightyNinthDefClassRegistered);
+        Assert.Equal("CCarriedReadableDef", life.EightyNinthDefClass);
+        var eightyEighth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightyEighthDefClassSite);
+        var eightyNinth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightyNinthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(eightyEighth >= 0 && eightyNinth > eightyEighth && defs > eightyNinth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F7A6C_adds_CJackOfBladesBattleDef()
+    {
+        Assert.Equal(0x004F7A65u, EngineLifecycle.NinetiethDefClassSite);
+        Assert.Equal(0x004E4748u, EngineLifecycle.NinetiethDefClassFactory);
+        Assert.Equal(0x00430370u, EngineLifecycle.NinetiethDefClassCtor);
+        Assert.Equal(0x01242E3Cu, EngineLifecycle.NinetiethDefClassVtbl);
+        Assert.Equal(128, EngineLifecycle.NinetiethDefClassSize);
+        Assert.Equal("CJackOfBladesBattleDef", EngineLifecycle.NinetiethDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.EightyNinthDefClassRegistered);
+        Assert.True(life.NinetiethDefClassRegistered);
+        Assert.Equal("CJackOfBladesBattleDef", life.NinetiethDefClass);
+        var eightyNinth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.EightyNinthDefClassSite);
+        var ninetieth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.NinetiethDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(eightyNinth >= 0 && ninetieth > eightyNinth && defs > ninetieth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F7AB7_to_004F7C79_adds_battle_cluster()
+    {
+        Assert.Equal("CScorpionKingBattleDef", EngineLifecycle.NinetyFirstDefClassName);
+        Assert.Equal(0x004E47BFu, EngineLifecycle.NinetyFirstDefClassFactory);
+        Assert.Equal(0x01242EA4u, EngineLifecycle.NinetyFirstDefClassVtbl);
+        Assert.Equal(96, EngineLifecycle.NinetyFirstDefClassSize);
+        Assert.Equal("CThunderBattleDef", EngineLifecycle.NinetySecondDefClassName);
+        Assert.Equal(76, EngineLifecycle.NinetySecondDefClassSize);
+        Assert.Equal("CWhisperBattleDef", EngineLifecycle.NinetyThirdDefClassName);
+        Assert.Equal(68, EngineLifecycle.NinetyThirdDefClassSize);
+        Assert.Equal("CWaspQueenBattleDef", EngineLifecycle.NinetyFourthDefClassName);
+        Assert.Equal(64, EngineLifecycle.NinetyFourthDefClassSize);
+        Assert.Equal("CMazeBattleDef", EngineLifecycle.NinetyFifthDefClassName);
+        Assert.Equal(0x004E45CEu, EngineLifecycle.NinetyFifthDefClassFactory);
+        Assert.Equal(96, EngineLifecycle.NinetyFifthDefClassSize);
+        Assert.Equal("CTrollBattleDef", EngineLifecycle.NinetySixthDefClassName);
+        Assert.Equal(96, EngineLifecycle.NinetySixthDefClassSize);
+        Assert.Equal("CBalverineBattleDef", EngineLifecycle.NinetySeventhDefClassName);
+        Assert.Equal(0x004E4883u, EngineLifecycle.NinetySeventhDefClassFactory);
+        Assert.Equal(72, EngineLifecycle.NinetySeventhDefClassSize);
+        Assert.Equal(0x00430370u, EngineLifecycle.NinetyFirstDefClassCtor);
+        Assert.Equal(EngineLifecycle.NinetyFirstDefClassCtor, EngineLifecycle.NinetySeventhDefClassCtor);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.NinetiethDefClassRegistered);
+        Assert.True(life.NinetyFirstDefClassRegistered);
+        Assert.True(life.NinetySeventhDefClassRegistered);
+        Assert.Equal("CScorpionKingBattleDef", life.NinetyFirstDefClass);
+        Assert.Equal("CMazeBattleDef", life.NinetyFifthDefClass);
+        Assert.Equal("CBalverineBattleDef", life.NinetySeventhDefClass);
+        var jack = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.NinetiethDefClassSite);
+        var scorpion = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.NinetyFirstDefClassSite);
+        var maze = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.NinetyFifthDefClassSite);
+        var balverine = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.NinetySeventhDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(jack >= 0 && scorpion > jack && maze > scorpion &&
+            balverine > maze && defs > balverine);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == "Q_NewOakValeIntro");
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F7D1C_adds_CAreaOfEffectAttackDef()
+    {
+        Assert.Equal(0x004F7D1Cu, EngineLifecycle.NinetyEighthDefClassSite);
+        Assert.Equal(0x004E6CF3u, EngineLifecycle.NinetyEighthDefClassFactory);
+        Assert.Equal(0x00430370u, EngineLifecycle.NinetyEighthDefClassCtor);
+        Assert.Equal(0x0124318Cu, EngineLifecycle.NinetyEighthDefClassVtbl);
+        Assert.Equal(76, EngineLifecycle.NinetyEighthDefClassSize);
+        Assert.Equal("CAreaOfEffectAttackDef", EngineLifecycle.NinetyEighthDefClassName);
+        Assert.Equal(EngineLifecycle.NinetySeventhDefClassCtor, EngineLifecycle.NinetyEighthDefClassCtor);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.NinetySeventhDefClassRegistered);
+        Assert.True(life.NinetyEighthDefClassRegistered);
+        Assert.Equal("CBalverineBattleDef", life.NinetySeventhDefClass);
+        Assert.Equal("CAreaOfEffectAttackDef", life.NinetyEighthDefClass);
+        var balverine = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.NinetySeventhDefClassSite);
+        var aoe = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.NinetyEighthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(balverine >= 0 && aoe > balverine && defs > aoe);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == "Q_NewOakValeIntro");
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F7DCD_adds_CFishingRodDef()
+    {
+        Assert.Equal(0x004F7DC6u, EngineLifecycle.NinetyNinthDefClassSite);
+        Assert.Equal(0x004D9321u, EngineLifecycle.NinetyNinthDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.NinetyNinthDefClassCtor);
+        Assert.Equal(0x0123DCA4u, EngineLifecycle.NinetyNinthDefClassVtbl);
+        Assert.Equal(60, EngineLifecycle.NinetyNinthDefClassSize);
+        Assert.Equal("CFishingRodDef", EngineLifecycle.NinetyNinthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.NinetyEighthDefClassRegistered);
+        Assert.True(life.NinetyNinthDefClassRegistered);
+        Assert.Equal("CFishingRodDef", life.NinetyNinthDefClass);
+        var ninetyEighth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.NinetyEighthDefClassSite);
+        var ninetyNinth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.NinetyNinthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(ninetyEighth >= 0 && ninetyNinth > ninetyEighth && defs > ninetyNinth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F7F31_adds_CRumbleDef()
+    {
+        Assert.Equal(0x004F7F2Au, EngineLifecycle.HundredthDefClassSite);
+        Assert.Equal(0x004E3290u, EngineLifecycle.HundredthDefClassFactory);
+        Assert.Equal(0x004E1722u, EngineLifecycle.HundredthDefClassCtor);
+        Assert.Equal(0x0124273Cu, EngineLifecycle.HundredthDefClassVtbl);
+        Assert.Equal(64, EngineLifecycle.HundredthDefClassSize);
+        Assert.Equal("CRumbleDef", EngineLifecycle.HundredthDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.NinetyNinthDefClassRegistered);
+        Assert.True(life.HundredthDefClassRegistered);
+        Assert.Equal("CRumbleDef", life.HundredthDefClass);
+        var ninetyNinth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.NinetyNinthDefClassSite);
+        var hundredth = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.HundredthDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(ninetyNinth >= 0 && hundredth > ninetyNinth && defs > hundredth);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == "Q_NewOakValeIntro");
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F8211_to_004F82A7_adds_ship_shop_atmos()
+    {
+        Assert.Equal(0x004F820Au, EngineLifecycle.HundredFirstDefClassSite);
+        Assert.Equal(0x004D8799u, EngineLifecycle.HundredFirstDefClassFactory);
+        Assert.Equal(0x0044C0C0u, EngineLifecycle.HundredFirstDefClassCtor);
+        Assert.Equal(0x0123C0A4u, EngineLifecycle.HundredFirstDefClassVtbl);
+        Assert.Equal(68, EngineLifecycle.HundredFirstDefClassSize);
+        Assert.Equal("CShipDef", EngineLifecycle.HundredFirstDefClassName);
+        Assert.Equal(0x004F8255u, EngineLifecycle.HundredSecondDefClassSite);
+        Assert.Equal(0x004D8411u, EngineLifecycle.HundredSecondDefClassFactory);
+        Assert.Equal(0x004D405Au, EngineLifecycle.HundredSecondDefClassCtor);
+        Assert.Equal(0x0123B644u, EngineLifecycle.HundredSecondDefClassVtbl);
+        Assert.Equal(72, EngineLifecycle.HundredSecondDefClassSize);
+        Assert.Equal("CShopItemDef", EngineLifecycle.HundredSecondDefClassName);
+        Assert.Equal(0x004F82A0u, EngineLifecycle.HundredThirdDefClassSite);
+        Assert.Equal(0x004E32E3u, EngineLifecycle.HundredThirdDefClassFactory);
+        Assert.Equal(0x004E1748u, EngineLifecycle.HundredThirdDefClassCtor);
+        Assert.Equal(0x012427A4u, EngineLifecycle.HundredThirdDefClassVtbl);
+        Assert.Equal(52, EngineLifecycle.HundredThirdDefClassSize);
+        Assert.Equal("CSoundAtmospheresDef", EngineLifecycle.HundredThirdDefClassName);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.HundredthDefClassRegistered);
+        Assert.True(life.HundredFirstDefClassRegistered);
+        Assert.True(life.HundredSecondDefClassRegistered);
+        Assert.True(life.HundredThirdDefClassRegistered);
+        Assert.Equal("CShipDef", life.HundredFirstDefClass);
+        Assert.Equal("CShopItemDef", life.HundredSecondDefClass);
+        Assert.Equal("CSoundAtmospheresDef", life.HundredThirdDefClass);
+        var rumble = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.HundredthDefClassSite);
+        var ship = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.HundredFirstDefClassSite);
+        var shop = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.HundredSecondDefClassSite);
+        var atmos = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.HundredThirdDefClassSite);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(rumble >= 0 && ship > rumble && shop > ship &&
+            atmos > shop && defs > atmos);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == "Q_NewOakValeIntro");
+    }
+
+    [Fact]
+    public void Init_Thing_Components_004F8427_to_004F8E90_finishes_004EE23F()
+    {
+        Assert.Equal("CNymphDef", EngineLifecycle.HundredFourthDefClassName);
+        Assert.Equal(80, EngineLifecycle.HundredFourthDefClassSize);
+        Assert.Equal(0x0123DE3Cu, EngineLifecycle.HundredFourthDefClassVtbl);
+        Assert.Equal("CSummonDef", EngineLifecycle.HundredFifthDefClassName);
+        Assert.Equal(76, EngineLifecycle.HundredFifthDefClassSize);
+        Assert.Equal("CCameraCollisionDef", EngineLifecycle.HundredSixthDefClassName);
+        Assert.Equal(44, EngineLifecycle.HundredSixthDefClassSize);
+        Assert.Equal(0x004D9465u, EngineLifecycle.HundredSixthDefClassFactory);
+        Assert.Equal("CBettingDef", EngineLifecycle.HundredSeventhDefClassName);
+        Assert.Equal(88, EngineLifecycle.HundredSeventhDefClassSize);
+        Assert.Equal("COracleMinigameDef", EngineLifecycle.HundredEighthDefClassName);
+        Assert.Equal(92, EngineLifecycle.HundredEighthDefClassSize);
+        Assert.Equal("CFireheartMinigameDef", EngineLifecycle.HundredNinthDefClassName);
+        Assert.Equal(60, EngineLifecycle.HundredNinthDefClassSize);
+        Assert.Equal(0x004D6638u, EngineLifecycle.HundredNinthDefClassCtor);
+        Assert.Equal("CLightningOrbDef", EngineLifecycle.HundredTenthDefClassName);
+        Assert.Equal(60, EngineLifecycle.HundredTenthDefClassSize);
+        Assert.Equal(0x0123E5ECu, EngineLifecycle.HundredTenthDefClassVtbl);
+        Assert.Equal("CHasNameDef", EngineLifecycle.HundredEleventhDefClassName);
+        Assert.Equal(52, EngineLifecycle.HundredEleventhDefClassSize);
+        Assert.Equal(0x004F8E89u, EngineLifecycle.HundredEleventhDefClassSite);
+        Assert.Equal(0x004D98C8u, EngineLifecycle.HundredEleventhDefClassFactory);
+        Assert.Equal(0x0123E67Cu, EngineLifecycle.HundredEleventhDefClassVtbl);
+        Assert.Equal(0x004F9144u, EngineLifecycle.ThingComponentsRet);
+        Assert.Equal(0x004F9129u, EngineLifecycle.ThingComponentsFillSite);
+        Assert.Equal(0x0073B130u, EngineLifecycle.ThingComponentsFillFn);
+        Assert.Equal(0x0073CB40u, EngineLifecycle.ThingComponentsFillRet);
+        Assert.Equal(0x013BAD4Cu, EngineLifecycle.ThingComponentsFillLimitVa);
+        Assert.Equal(0x00743270u, EngineLifecycle.ThingComponentsFillGrowFn);
+        Assert.Equal(0x00743B30u, EngineLifecycle.ThingComponentsFillSecondFn);
+        Assert.Equal(0x007441D0u, EngineLifecycle.ThingComponentsFillCommitFn);
+        Assert.Equal(0x00742430u, EngineLifecycle.ThingComponentsFillFirstThunk);
+        Assert.Equal(0, EngineLifecycle.ThingComponentsFillFirstTag);
+        Assert.Equal(0x0073EAC0u, EngineLifecycle.ThingComponentsFillFirstCtor);
+        Assert.Equal(0x01267588u, EngineLifecycle.ThingComponentsFillFirstVtbl);
+        Assert.Equal(28, EngineLifecycle.ThingComponentsFillFirstSize);
+        Assert.Equal(6, EngineLifecycle.ThingComponentsTailCtcCount);
+        Assert.Equal(0x004F8ECEu, EngineLifecycle.ThingComponentsTailCtcFirstSite);
+        Assert.Equal(0x004D66DAu, EngineLifecycle.ThingComponentsTailCtcFirstFactory);
+        Assert.Equal(0x004F90E1u, EngineLifecycle.ThingComponentsTailCtcLastSite);
+        Assert.Equal(0x004DAF85u, EngineLifecycle.ThingComponentsTailCtcLastFactory);
+        Assert.False(EngineLifecycle.ThingComponentsFillIsQuestActivate);
+        Assert.Equal(80, RegionTravel.AttackOverPlus80);
+        Assert.Equal((byte)1, RegionTravel.AttackOverStoredValue);
+        Assert.False(RegionTravel.FirstSeenAttackOverStoreRuns);
+        Assert.Equal(0x004F9112u, EngineLifecycle.ThingComponentsCommitFlagSetSite);
+        Assert.Equal(0x004F9139u, EngineLifecycle.ThingComponentsCommitSite);
+        Assert.Equal(0x004EBACEu, EngineLifecycle.ThingComponentsCommitFn);
+        Assert.Equal(0x004EB9A6u, EngineLifecycle.ThingComponentsCommitApplyFn);
+        Assert.Equal(12, EngineLifecycle.ThingComponentsCommitPlus12);
+        Assert.Equal(13, EngineLifecycle.ThingComponentsCommitPlus13);
+        Assert.True(EngineLifecycle.ThingComponentsCommitRunsThisWalk);
+        var life = new EngineLifecycle();
+        life.Bootstrap(null);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.ActivateNewGame();
+        Assert.True(life.Pump());
+        Assert.True(life.HundredThirdDefClassRegistered);
+        Assert.True(life.HundredFourthDefClassRegistered);
+        Assert.True(life.HundredSixthDefClassRegistered);
+        Assert.True(life.HundredEleventhDefClassRegistered);
+        Assert.True(life.ThingComponentsFilled);
+        Assert.True(life.ThingComponentsCommitted);
+        Assert.Equal("CNymphDef", life.HundredFourthDefClass);
+        Assert.Equal("CCameraCollisionDef", life.HundredSixthDefClass);
+        Assert.Equal("CHasNameDef", life.HundredEleventhDefClass);
+        var atmos = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.HundredThirdDefClassSite);
+        var nymph = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.HundredFourthDefClassSite);
+        var hasName = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.HundredEleventhDefClassSite);
+        var fill = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThingComponentsFillSite);
+        var commit = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThingComponentsCommitSite);
+        var ret = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.ThingComponentsRet);
+        var defs = life.Trace.Events.FindIndex(e =>
+            e.Action == "Init Definition Manager");
+        Assert.True(atmos >= 0 && nymph > atmos && hasName > nymph &&
+            fill > hasName && commit > fill && ret > commit && defs > ret);
+        Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == "Q_NewOakValeIntro");
+        Assert.True(EngineLifecycle.GameflowWaitsForeverOnNoSave);
+        Assert.False(EngineLifecycle.ActivateQuestSatisfiesGameflowWait);
+    }
+
+    [Fact]
     public void Init_Definition_Manager_00416005_resets_plus88_via_vtbl8()
     {
         Assert.Equal(0x00416005u, EngineLifecycle.InitDefinitionManagerFn);
@@ -1678,7 +4076,16 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x009E5250u, EngineLifecycle.DefinitionManagerResetApply);
         Assert.Equal(88, EngineLifecycle.DefinitionManagerPlus88);
         Assert.Equal(1, EngineLifecycle.DefinitionManagerArg);
+        Assert.Equal(0x009B08C0u, EngineLifecycle.DefinitionManagerCompileFn);
+        Assert.Equal("pc\\", EngineLifecycle.DefinitionManagerPathPrefix);
+        Assert.Equal("*.h", EngineLifecycle.DefinitionManagerFirstGlob);
+        Assert.Equal("CHeroPostcardGeneratorDef", EngineLifecycle.DefinitionManagerCompileFirstClass);
         Assert.Equal(0x01232C24u, EngineLifecycle.PlayerManagerVtbl);
+        var map = AssemblyTextMap.TryLocate();
+        Assert.NotNull(map);
+        Assert.Equal(
+            EngineLifecycle.DefinitionManagerVtbl8Fn,
+            map.VtblDest(EngineLifecycle.PlayerManagerVtbl, 2));
         var life = new EngineLifecycle();
         life.Bootstrap(null);
         while (life.Stage == EngineStage.StartupVideos)
@@ -1696,6 +4103,8 @@ public sealed class EngineLifecycleTests
             e.Stage == "Init Definition Manager");
         var vtbl8 = life.Trace.Events.FindIndex(e =>
             e.Va == EngineLifecycle.DefinitionManagerVtbl8Fn);
+        var compile = life.Trace.Events.FindIndex(e =>
+            e.Va == EngineLifecycle.DefinitionManagerCompileFn);
         var reset = life.Trace.Events.FindIndex(e =>
             e.Va == EngineLifecycle.DefinitionManagerResetFn);
         var apply = life.Trace.Events.FindIndex(e =>
@@ -1703,7 +4112,14 @@ public sealed class EngineLifecycleTests
         var graphics = life.Trace.Events.FindIndex(e =>
             e.Va == EngineLifecycle.InitGraphicsFn);
         Assert.True(add >= 0 && getter > add);
-        Assert.True(vtbl8 > getter && reset > vtbl8 && apply > reset);
+        Assert.True(vtbl8 > getter && compile > vtbl8 && reset > compile && apply > reset);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.AddDefClassFn &&
+            e.Stage == "Init Definition Manager" &&
+            e.Action.Contains("CHeroPostcardGeneratorDef", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.DefinitionManagerCompileFn &&
+            e.Action.Contains("parse", StringComparison.OrdinalIgnoreCase));
         Assert.True(graphics > apply, "00416005 before Init Graphics");
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
     }
@@ -1984,6 +4400,8 @@ public sealed class EngineLifecycleTests
         Assert.Contains(EngineLifecycle.FrontendInputFn, vas);
         Assert.Contains(EngineLifecycle.FrontendRecordFillFn, vas);
         Assert.Contains(EngineLifecycle.FrontendDrawFn, vas);
+        Assert.True(EngineLifecycle.FrontendPresentBodyIsLive);
+        Assert.True(EngineLifecycle.DisplayFlushQueueIsNoteOnly);
         Assert.Contains(EngineLifecycle.BeginSceneFn, vas);
         Assert.Contains(EngineLifecycle.EndSceneFn, vas);
         Assert.Contains(EngineLifecycle.PresentFn, vas);
@@ -2489,6 +4907,15 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.NewThingParseFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.AllocateClassFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.HolySiteFactoryFn);
+        Assert.Equal(0x00488B20u, EngineLifecycle.StartingHolySiteFindFn);
+        Assert.Equal(0x00488B68u, EngineLifecycle.StartingHolySiteReadName);
+        Assert.Equal(0x00413840u, EngineLifecycle.SetStartingHolySiteFn);
+        Assert.Equal(0x013B866Cu, EngineLifecycle.WorldPathAltGlobalVa);
+        Assert.False(EngineLifecycle.StartingHolySiteIsNovStartOnNoSave);
+        Assert.True(EngineLifecycle.StartingHolySiteFinderMissesOnNoSave);
+        Assert.Equal("NOVStartHSP", EngineLifecycle.StartingHolySiteStoredName);
+        Assert.NotEqual(RegionTravel.NewGameStartScript, EngineLifecycle.GuildArrivalHsp);
+        Assert.NotEqual(RegionTravel.NewGameStartScript, life.Hero.ScriptName);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerCreatureCreateFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.CreateCharacterFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.ActivateAfterLoadingFn);
@@ -2636,6 +5063,8 @@ public sealed class EngineLifecycleTests
         life.RequestNewGame();
         life.EnterGame();
         Assert.True(life.QuestsInitDone);
+        Assert.NotNull(life.Runtime);
+        Assert.Same(life.Camera, life.Runtime.Camera);
         Assert.Equal(
             new[]
             {
@@ -3031,7 +5460,7 @@ public sealed class EngineLifecycleTests
               00A0D4A0 zeros +4 list
               [+1788] = game+28 (0044A3B0)
                 +12 empty; +24 default 0
-              00488D20 00687A30 vtbl 0123758C
+              Create Players 00488D10 00687A30 vtbl 0123758C
               00687A70 → 00A0D2B0 → 00A0D4F0
             00416E78 vtbl+24 after WorldFrame>1:
               004457F0 [+2196]=0
@@ -3218,6 +5647,9 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0, life.WorldFrame);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerObjectInit);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerObjectInitPredicate);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerGuiAllocFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerGuiCtorFn);
+        Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerGuiStoreFn);
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.PlayerCatchupFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.GameUpdateWorldFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
@@ -3607,6 +6039,31 @@ public sealed class EngineLifecycleTests
         Assert.Equal(10, life.EventPumpWalked);
         Assert.Equal(50, EngineLifecycle.EventPostDelay);
         Assert.Equal(55, EngineLifecycle.EventPostKind);
+        Assert.Equal(0x37, EngineLifecycle.QuestConstructEventKind);
+        Assert.Equal(EngineLifecycle.QuestConstructEventKind, EngineLifecycle.EventPostKind);
+        Assert.Equal(0x33, EngineLifecycle.QuestGiveEventKind);
+        Assert.NotEqual(EngineLifecycle.QuestGiveEventKind, EngineLifecycle.EventPostKind);
+        Assert.Equal(0x00892F80u, EngineLifecycle.QuestGiveFn);
+        Assert.Equal(1152, EngineLifecycle.QuestGiveVtbl);
+        Assert.Equal(0x004B1D30u, EngineLifecycle.QuestGiveBody);
+        Assert.Equal(0x00DBE295u, EngineLifecycle.QuestGiveAfterAttackOver);
+        Assert.True(EngineLifecycle.GameflowWaitsForeverOnNoSave);
+        Assert.False(EngineLifecycle.ActivateQuestSatisfiesGameflowWait);
+        Assert.False(RegionTravel.FirstSeenAttackOverStoreRuns);
+        Assert.False(RegionTravel.RaidAviIsBanditRaid);
+        Assert.True(RegionTravel.AttackOverStoreAfterRaidAvi);
+        Assert.Equal("1_raid_on_oak_vale_comp.xmv", RegionTravel.RaidPlayAvi);
+        Assert.Equal(0x00DB97A0u, RegionTravel.TheresaMeetStart);
+        Assert.Equal(0x00DBB2A7u, RegionTravel.AttackOverStore);
+        Assert.Equal(1152u, NewGameScript.GiveQuestVtbl);
+        Assert.Equal(1104u, NewGameScript.StartQuestVtbl);
+        Assert.True(NewGameScript.GiveAfterPostAttackAndMaze);
+        Assert.Equal(0x00DB4F70u, NewGameScript.StartBarrelTimerCallback);
+        Assert.Equal("OBJECT_CHOCOLATE_BOX_UNGIVEABLE", NewGameScript.ChocolateBoxDef);
+        Assert.Equal(1180, EngineLifecycle.QuestCardBindVtbl);
+        Assert.Equal(0x008968C0u, EngineLifecycle.QuestCardBindFn);
+        Assert.Equal(0x00896A30u, EngineLifecycle.QuestCardBindSiblingFn);
+        Assert.Equal(1184, EngineLifecycle.QuestCardBindSiblingVtbl);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.SunnyvaleMainTick &&
             e.Action.Contains("00CDD360", StringComparison.Ordinal));
@@ -3703,6 +6160,10 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.GiveNamedObjectFn &&
             e.Action.Contains("miss", StringComparison.Ordinal));
+        Assert.Equal(0x00893570u, EngineLifecycle.QuestIsActiveFn);
+        Assert.Equal(100, EngineLifecycle.QuestIsActiveVtbl);
+        Assert.Equal(0x00893610u, EngineLifecycle.QuestIsGetFn);
+        Assert.Equal(104, EngineLifecycle.QuestIsGetVtbl);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.QuestIsActiveFn &&
             e.Action.Contains(EngineLifecycle.GameflowWaitQuest, StringComparison.Ordinal));
@@ -3727,7 +6188,7 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
-    public void Type1_resume_00CB8220_is_00A44880_then_00893610_yield()
+    public void Type1_resume_00CB8220_is_00A44880_then_00893570_yield()
     {
         var install = GameInstall.TryLocate();
         Assert.NotNull(install);
@@ -3770,6 +6231,19 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0, life.GameflowState);
         Assert.Equal(0x00A44880u, EngineLifecycle.FiberTickFn);
         Assert.Equal(0x00A44660u, EngineLifecycle.FiberResumeFn);
+        Assert.False(EngineLifecycle.SqnoviReentersRunAfterYield);
+        Assert.Equal(0x00CDD440u, EngineLifecycle.SqnoviMainWatcherThunk);
+        Assert.Equal(20, EngineLifecycle.CtcExpressionSize);
+        Assert.Equal(0x90, EngineLifecycle.ExpressionSize);
+        Assert.Equal(0x00456A54u, EngineLifecycle.ExpressionPlus120Persist);
+        Assert.Equal(0x00456A5Au, EngineLifecycle.ExpressionPlus120Call);
+        Assert.Equal(0x004569A7u, EngineLifecycle.ExpressionPersistFn);
+        Assert.Equal(0x1FB35A1Bu, EngineLifecycle.ExpressionPlus120Crc);
+        Assert.Equal(-1, EngineLifecycle.ExpressionPlus120EmptySentinel);
+        Assert.False(EngineLifecycle.ExpressionPlus120IsOakvaleIntern);
+        Assert.Equal(0x007EF200u, EngineLifecycle.ExpressionTickFn);
+        Assert.False(EngineLifecycle.ExpressionTickWritesOakvaleIntern);
+        Assert.Equal(0x012C5D14u, EngineLifecycle.OakvaleQuestIntern);
         Assert.DoesNotContain(life.Trace.Events, e =>
             e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
         Assert.Null(life.CurrentRegion);
@@ -3805,9 +6279,24 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.AddTestQuestStoreFn &&
             e.Action.Contains("store not 004B4A10", StringComparison.Ordinal));
+        Assert.False(EngineLifecycle.InventoryQuestsConfirmIsNewGame);
+        Assert.Equal(0x0061AB30u, EngineLifecycle.InventoryQuestsConfirmFn);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.InventoryQuestsConfirmFn &&
+            e.Action.Contains("not New Game", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.StartNewQuestParseFn &&
             e.Action.Contains("0 E8 no-save", StringComparison.Ordinal));
+        Assert.Equal(0x0049EAC0u, EngineLifecycle.QuestActivatePlus172SiblingFn);
+        Assert.Equal(0x0049EAD1u, EngineLifecycle.QuestActivatePlus172SiblingCall);
+        Assert.Equal(0xAC, EngineLifecycle.QuestActivatePlus172SiblingListOffset);
+        Assert.False(EngineLifecycle.QuestActivatePlus172SiblingHasInbound);
+        Assert.False(EngineLifecycle.ChildhoodTngQueuesActivateQuest);
+        Assert.Equal(212, EngineLifecycle.WorldCreatureGenerationEnabledOffset);
+        Assert.False(EngineLifecycle.FirstSeenCanRenderParticles);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.QuestActivatePlus172SiblingFn &&
+            e.Action.Contains("0 inbound skip", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.ActivateInitialQuestsSite &&
             e.Action.Contains("skip 004B4A10", StringComparison.Ordinal));
@@ -3820,6 +6309,60 @@ public sealed class EngineLifecycleTests
             e.Va == RegionTravel.StartOakValeSetup);
         Assert.Equal(0x00CD6E27u, EngineLifecycle.OakvaleBindSite);
         Assert.Equal(0x00DBEF70u, EngineLifecycle.OakvaleFactoryFn);
+        var oakvale = QuestFactoryTable.Find("Q_NewOakValeIntro");
+        Assert.NotNull(oakvale);
+        Assert.Equal(RegionTravel.IntroScriptName, oakvale.Value.ScriptName);
+        Assert.Equal(RegionTravel.IntroQuestFactory, oakvale.Value.Factory);
+        Assert.Equal(RegionTravel.IntroQuestRun, oakvale.Value.Run);
+        Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == "Q_NewOakValeIntro");
+        Assert.True(string.IsNullOrEmpty(life.Runtime.LastMusic));
+        Assert.False(EngineLifecycle.RequestNewGameStartsMusicSet);
+        Assert.False(EngineLifecycle.InitSoundPlaysMusicSet);
+        Assert.False(EngineLifecycle.ScriptPlayMusicAppliesBank);
+        Assert.Equal(0x00CC8EACu, EngineLifecycle.ScriptPlayMusicApplyFn);
+        Assert.Equal(2784, EngineLifecycle.ScriptPlayMusicVtbl);
+        Assert.False(EngineLifecycle.QuestCompletionUiGiveIsFirstSeen);
+        Assert.Equal(0x005E7B77u, EngineLifecycle.QuestCompletionUiGiveFn);
+        Assert.Equal(0x0061ACB3u, EngineLifecycle.InventoryQuestsGiveFn);
+        Assert.False(EngineLifecycle.InventoryQuestsGiveIsFirstSeen);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.InventoryQuestsGiveFn &&
+            e.Action.Contains("not first-seen", StringComparison.Ordinal));
+        Assert.Equal(0x004B1D30u, EngineLifecycle.QuestGiveBody);
+        Assert.Equal(0x33, EngineLifecycle.QuestGiveEventKind);
+        Assert.Equal(0x37, EngineLifecycle.QuestConstructEventKind);
+        Assert.False(RegionTravel.WatchBarrelsSmashHasDistance);
+        Assert.False(RegionTravel.WatchBarrelsSmashIsRadius);
+        Assert.False(RegionTravel.ChildhoodObjectivesRunOnNoSave);
+        Assert.Equal(0x00DB7E10u, RegionTravel.WatchBarrelsInstructionFn);
+        Assert.Equal(0x00DAC1BAu, RegionTravel.ChildhoodObjective01Fn);
+        Assert.Equal(0x00DB080Au, RegionTravel.ChildhoodObjective02Fn);
+        Assert.Equal(0x00DBE34Fu, RegionTravel.ChildhoodObjective03Fn);
+        Assert.Equal(0x00DB4A93u, RegionTravel.ChildhoodObjective04Fn);
+        Assert.Equal(0x00DB9DE6u, RegionTravel.ChildhoodObjective05Fn);
+        Assert.Equal(0x00DBE478u, RegionTravel.ChildhoodObjective06Fn);
+        Assert.Equal(0x338, EngineLifecycle.PlayerGuiObjectSize);
+        Assert.Equal(0xAB4, EngineLifecycle.PlayerGuiDefSize);
+        Assert.Equal(824, EngineLifecycle.PlayerGuiDefPlus338);
+        Assert.False(EngineLifecycle.PlayerGuiDefPlus338IsHud);
+        Assert.False(EngineLifecycle.PlayerGuiFirstPresentDrawsHud);
+        Assert.False(EngineLifecycle.InitGuiIsCtor);
+        Assert.False(EngineLifecycle.PlayerGuiSizeWrittenAfterInitGui);
+        Assert.False(EngineLifecycle.HostFadesLeaveFrontendAudio);
+        Assert.True(EngineLifecycle.NewGameIsNoSaveWalk);
+        Assert.False(EngineLifecycle.NewGameWritesSaveQuestList);
+        Assert.Equal(0x004B5080u, EngineLifecycle.StartNewQuestParseFn);
+        Assert.False(RegionTravel.GamePlayAviOwnsPump);
+        Assert.False(FrontendLayout.TryChromeHitIsNativeHit);
+        Assert.False(EngineLifecycle.RetailPlus8ChangesInitQuests);
+        Assert.False(EngineLifecycle.CActivateQuestDefInternsOakvale);
+        Assert.Equal(0x8D19C362u, EngineLifecycle.OakvaleQuestFableCrc);
+        Assert.Equal(1, life.GamePlus16);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.InitSoundRegisterFn &&
+            e.Action.Contains("009919C0", StringComparison.Ordinal));
+        Assert.DoesNotContain(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.InitSoundSymbolsTextFn);
         Assert.Equal(0x004B5080u, EngineLifecycle.StartNewQuestParseFn);
         Assert.Equal(0x004B0D30u, EngineLifecycle.QuestCardFindFn);
         Assert.Equal(0x004A113Bu, EngineLifecycle.AddTestQuestStoreFn);
@@ -4041,6 +6584,7 @@ public sealed class EngineLifecycleTests
         life.RequestNewGame();
         Assert.True(life.Pump());
         Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.True(life.DisplayPresent);
         Assert.False(life.GamePumpFirstDone);
         Assert.False(life.PlayAviSingletonReady);
         Assert.True(life.Pump());
@@ -4102,6 +6646,12 @@ public sealed class EngineLifecycleTests
         Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.LoadRegionFn);
         Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
+        Assert.False(EngineLifecycle.PumpCallsLoadFromFirstRealRegion);
+        Assert.Equal(0, EngineLifecycle.LoadFromFirstRealRegionNamedInbound);
+        Assert.True(EngineLifecycle.FirstSeenRunningParticleListEmpty);
+        Assert.False(EngineLifecycle.FirstSeenCanRenderParticles);
+        Assert.Equal(47, EngineLifecycle.OakvalePlaceableEmitterCount);
+        Assert.Equal(0x004174F1u, EngineLifecycle.LoadParticlesFn);
     }
 
     [Fact]
@@ -4491,6 +7041,17 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x0049C770u, EngineLifecycle.CollectThingsListFn);
         Assert.Equal(0x006A80A0u, EngineLifecycle.CollectThingsBitTestFn);
         Assert.Equal(0x64, EngineLifecycle.CollectThingsBitIndex);
+        Assert.Equal(3, EngineLifecycle.CollectThingsBitDword);
+        Assert.Equal(44, EngineLifecycle.CollectThingsBitThingOffset);
+        Assert.False(EngineLifecycle.CollectThingsBitMeansCollidable);
+        Assert.True(EngineLifecycle.HeroAddsPhysicsControlledOnly);
+        Assert.False(EngineLifecycle.FirstSeenCollisionIsSolver);
+        Assert.Equal(0x004D297Bu, EngineLifecycle.CtcPhysicsStandardFactory);
+        Assert.Equal(0x00723FD0u, EngineLifecycle.CtcPhysicsStandardCtor);
+        Assert.Equal(0x88, EngineLifecycle.CtcPhysicsStandardSize);
+        Assert.Equal(0x00724290u, EngineLifecycle.CtcPhysicsStandardPersist);
+        Assert.Equal(80, EngineLifecycle.CtcPhysicsStandardPosOffset);
+        Assert.Equal(92, EngineLifecycle.CtcPhysicsStandardAxisOffset);
         Assert.Equal(145, EngineLifecycle.ThingCollectFlagsOffset);
         Assert.Equal(0x0C, EngineLifecycle.ThingCollectFlagsNeed);
         Assert.Equal(0x21, EngineLifecycle.ThingCollectFlagsForbid);
@@ -4498,6 +7059,13 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x00518DC0u, EngineLifecycle.ScriptedHookCollectFn);
         Assert.Equal("CTCActionUseScriptedHook", EngineLifecycle.ScriptedHookName);
         Assert.Equal(0xC2, EngineLifecycle.ScriptedHookKey);
+        Assert.Equal(56, EngineLifecycle.ScriptedHookThingOffset);
+        Assert.Equal(4, EngineLifecycle.ScriptedHookThingBit);
+        Assert.False(EngineLifecycle.WorldUseAttachedOnNoSave);
+        Assert.False(EngineLifecycle.LookoutHasBarrels);
+        Assert.False(EngineLifecycle.FrontendActionsAreWorldUse);
+        Assert.False(EngineInput.ActionType10IsWorldUse);
+        Assert.True(EngineInput.ActionType10IsRmbHover);
         Assert.Equal("RegionGraph.txt", EngineLifecycle.RegionGraphName);
         Assert.Contains(events, e =>
             e.Va == EngineLifecycle.CollectScriptedHookThingsFn &&
@@ -4799,6 +7367,7 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x013B7D6Cu, EngineLifecycle.DisplayPlus104CopyVa);
         Assert.Equal(104, EngineLifecycle.DisplayPlus104Offset);
         Assert.Equal(0, EngineLifecycle.DisplayPlus104FirstSeen);
+        Assert.True(life.DisplayPresent);
     }
 
     [Fact]
@@ -5217,6 +7786,11 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x009BEEB0u, EngineLifecycle.DisplaySubmitStages[^1].Va);
         Assert.Equal(0xD0, EngineInput.ObjectSize);
         Assert.Equal(0x6F, EngineInput.KeyMove0);
+        Assert.False(EngineInput.ActionApplyIsLocomotion);
+        Assert.Equal(19, EngineInput.TypePadA);
+        Assert.Equal(22, EngineInput.ActionPadA);
+        Assert.False(EngineInput.TypeAnalogPostsActionApply);
+        Assert.False(RegionTravel.FirstSeenHandsPlayerControl);
         Assert.Equal(0x1E, EngineInput.KeyDikA);
         Assert.Equal(0x004023F0u, EngineLifecycle.WindowTitleFn);
         Assert.Equal(0x0122D83Cu, EngineLifecycle.WindowTitleVa);
@@ -5270,6 +7844,16 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.Trace.Events, e => e.Va == EngineLifecycle.FindRegionByNameFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+        Assert.Equal(0x00449E60u, EngineLifecycle.LoadRegionByNamePersist);
+        Assert.Equal(0x00449F90u, EngineLifecycle.SavePlayerRegionNameFn);
+        Assert.Equal(0x0049FB5Cu, EngineLifecycle.SavePlayerRegionNameSite);
+        Assert.Equal(0x0049F4C0u, EngineLifecycle.FableSavPlayerWriter);
+        Assert.Equal(0x004109A0u, EngineLifecycle.PersistCStringTransfer);
+        Assert.Equal("PlayerRegionName", EngineLifecycle.PlayerRegionNameKey);
+        Assert.Equal("PLAYER", EngineLifecycle.FableSavPlayerSection);
+        Assert.False(EngineLifecycle.PlayerRegionNameWrittenOnNewGame);
+        Assert.False(RegionTravel.StartOakValeSetupLoadsRegion);
+        Assert.Equal(48, RegionTravel.StartOakValeWaitVtbl);
     }
 
     [Fact]
@@ -5296,6 +7880,14 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x004AE940u, EngineLifecycle.PlayerObjectInit);
         Assert.Equal(0x0044C6B0u, EngineLifecycle.PlayerManagerGetter);
         Assert.NotEqual(0x0044A3B0u, EngineLifecycle.CreatePlayersFn);
+        Assert.Equal(0x00487FB0u, EngineLifecycle.PlayerGuiAllocFn);
+        Assert.Equal(0x0043B570u, EngineLifecycle.PlayerGuiCtorFn);
+        Assert.Equal(0x004195AFu, EngineLifecycle.PlayerGuiStoreFn);
+        Assert.Equal(0x0123177Cu, EngineLifecycle.PlayerGuiVtbl);
+        Assert.Equal(0x338, EngineLifecycle.PlayerGuiObjectSize);
+        Assert.Equal(0x013B8790u, EngineLifecycle.PlayerGuiSingletonVa);
+        Assert.Equal("PLAYER_GUI_PC", EngineLifecycle.PlayerGuiPcName);
+        Assert.NotEqual(EngineLifecycle.PlayerGuiCtorFn, EngineLifecycle.InitGuiFn);
     }
 
     [Fact]
@@ -5307,6 +7899,9 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x01244BDCu, EngineLifecycle.GtgExtVa);
         Assert.Equal(0x004FE2A0u, EngineLifecycle.LoadGlobalThingsSingle);
         Assert.Equal(0x004FDBC0u, EngineLifecycle.LoadGlobalThingsPerMap);
+        Assert.Equal(1, EngineLifecycle.LoadGlobalThingsEbxStart);
+        Assert.Equal(203, EngineLifecycle.StartOakValeWestTngEbx);
+        Assert.True(EngineLifecycle.LoadGlobalThingsHostBreaksAfterFirstProx);
         Assert.Equal(0, EngineLifecycle.DefaultSingleGlobalThingsFlag);
         Assert.False(new EngineLifecycle().SingleGlobalThingsFile);
     }

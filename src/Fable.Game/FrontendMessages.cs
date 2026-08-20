@@ -57,6 +57,14 @@ public static class FrontendMessages
     /// </summary>
     public const int NewGame = 15;
 
+    /// <summary>
+    /// frontend.bin <c>UI_CANCEL</c> persist
+    /// <c>0x53C644E4</c> +228. Host dump
+    /// type-38 point posts this id. No
+    /// recovered <c>0059A238</c> branch.
+    /// </summary>
+    public const int CancelNewProfile = 86;
+
     public const int PressStartSlot = 0x14;
     public const int NewProfileSlot = 0x17;
     /// <summary>

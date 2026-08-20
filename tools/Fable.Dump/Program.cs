@@ -543,6 +543,7 @@ static void DumpGameBin(GameInstall install, string? query)
     {
         Console.WriteLine(
             $"#{entry.Index} type={entry.TypeName} inst={entry.InstanceName} src={entry.SourceName} mesh={entry.MeshId} subs={entry.SubDefs.Count} raw={entry.Raw.Length}");
+        Console.WriteLine("    hex " + Convert.ToHexString(entry.Raw));
         foreach (var sub in entry.SubDefs.Take(8))
         {
             var child = sub.DefIndex >= 0 && sub.DefIndex < bin.Entries.Count ? bin.Entries[sub.DefIndex] : null;

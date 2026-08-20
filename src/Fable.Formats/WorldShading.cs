@@ -107,6 +107,14 @@ public static class WorldShading
     public const uint SseMatrixFlag = 0x013D2880;
     public const uint BoneDestX87 = 0x00BD2F91;
     public const uint BoneHierarchyBuild = 0x00AA0090;
+    /// <summary>
+    /// <c>00A52650</c>: <c>time * [clip+80]</c> →
+    /// integer key + frac; <c>key %= [clip+84]</c>.
+    /// Rate/wrap units stay PARTIAL.
+    /// </summary>
+    public const uint TimeToKeyFn = 0x00A52650;
+    public const int ClipRateOffset = 80;
+    public const int ClipWrapOffset = 84;
     public const byte FirstSeenSseMatrixFlag = 1;
     public const bool FirstSeenBoneDestUsesSsePath = true;
 
@@ -165,11 +173,14 @@ public static class WorldShading
     /// <c>0070D580</c> starts playback.
     /// Type-6 XSEQ first stored local replaces the
     /// 48-byte mesh TRS; hierarchy + IBM stay
-    /// <see cref="FirstSeenPalettes"/>. Time
-    /// interpolation (<c>00AA0090</c>) is UNREAD —
-    /// this samples the first stored key.
-    /// First-seen New Game still does not play a
-    /// clip (<see cref="FirstSeenPlaysAnim"/>).
+    /// <see cref="FirstSeenPalettes"/>. Native
+    /// live clip interp is slerp
+    /// (<c>00A4C1F0</c>) plus small-angle
+    /// unnormalized lerp, not nlerp.
+    /// Host still floors the key and drops
+    /// frac. First-seen New Game still does
+    /// not play a clip
+    /// (<see cref="FirstSeenPlaysAnim"/>).
     /// </summary>
     public static Matrix4x4[] PaletteForPose(
         IReadOnlyList<MeshBone> bones, string? clip, float time) =>
@@ -183,10 +194,28 @@ public static class WorldShading
         IReadOnlyList<MeshBone> bones, string? clip, float time, XSeqFile? sequence)
     {
         _ = clip;
-        _ = time;
         if (sequence is null || sequence.Tracks.Count == 0)
             return FirstSeenPalettes(bones);
-        return FirstSeenPalettes(sequence.ApplyFirstLocals(bones));
+        return FirstSeenPalettes(sequence.ApplyLocals(bones, sequence.FloorKey(time)));
+    }
+
+    /// <summary>
+    /// <c>00A52650</c> listing. Does not map
+    /// XSEQ fps onto <c>[clip+80]</c>.
+    /// </summary>
+    public static (int Key, float Frac) TimeToKey(float time, float rate, int wrap)
+    {
+        if (wrap <= 0)
+            return (0, 0f);
+        var scaled = time * rate;
+        var key = (int)MathF.Floor(scaled);
+        if (scaled == key + 1f)
+            key++;
+        var frac = scaled - key;
+        var rem = key % wrap;
+        if (rem < 0)
+            rem += wrap;
+        return (rem, frac);
     }
 
     public static Matrix4x4[] FirstSeenPalettes(IReadOnlyList<MeshBone> bones)
@@ -959,6 +988,18 @@ public static class WorldShading
     /// Create <c>006AC910</c> does not call it.
     /// </summary>
     public const bool FirstSeenPlaysAnim = false;
+    /// <summary>
+    /// Live mixer rotation is slerp
+    /// <c>00A4C1F0</c> with a small-angle
+    /// unnormalized lerp branch. Host
+    /// <see cref="PaletteForPose"/> still
+    /// floors the key. Do not ship
+    /// <c>Quaternion.Slerp</c> or nlerp
+    /// until that kernel is ported.
+    /// </summary>
+    public const uint XseqSlerpFn = 0x00A4C1F0;
+    public const bool NativeXseqRotationIsSlerp = true;
+    public const bool FirstSeenXseqAppliesFrac = false;
     public const uint AppearanceDefaultPlay = 0x005B37F7;
     public const uint AppearanceDefaultRequest = 0x0070C050;
     public const uint AppearanceDefaultInnerPlay = 0x0070D580;

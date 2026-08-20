@@ -94,7 +94,6 @@ public sealed class PlayerInterface
         Disabled = false;
         FallbackArmed = false;
         OwnerDefaultResult = 0;
-        Register(new ActionInputListener());
     }
 
     /// <summary>
@@ -349,8 +348,8 @@ public interface IPlayerInputListener
 }
 
 /// <summary>
-/// <c>0123758C</c> first
-/// <c>00488D20</c> handler.
+/// <c>0123758C</c> from Create Players
+/// <c>00488D10</c> (not Init Player Interface).
 /// Accept <c>00687DB0</c>, apply
 /// <c>00687FD0</c>, gate
 /// <c>004863A0</c>, fallback
@@ -364,7 +363,7 @@ public sealed class ActionInputListener : IPlayerInputListener
     public const uint GateFn = 0x004863A0;
     public const uint FallbackFn = 0x00486390;
     public const uint CtorFn = 0x00687A30;
-    public const uint FactoryFn = 0x00488D20;
+    public const uint FactoryFn = 0x00488D10;
     public const int DeviceKeyboard = 1;
 
     public uint Vtbl => VtblVa;

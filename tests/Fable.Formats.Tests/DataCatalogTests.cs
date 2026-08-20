@@ -43,6 +43,8 @@ public sealed class DataCatalogTests
         Assert.Contains(script.Entries, e => e.InstanceName == "CS_ATTRACT_1");
         Assert.Contains(script.Entries, e => e.InstanceName == "CS_OAKVALE_INTRO_FATHER");
         Assert.Contains(script.Entries, e => e.InstanceName == RegionTravel.IntroCutscene);
+        Assert.Contains(script.Entries, e => e.InstanceName == RegionTravel.TheresaCutscene);
+        Assert.Contains(script.Entries, e => e.InstanceName == RegionTravel.MazeCutscene);
         Assert.DoesNotContain(script.Entries, e =>
             e.InstanceName == RegionTravel.IntroScriptName
             || e.TypeName == RegionTravel.IntroScriptName);

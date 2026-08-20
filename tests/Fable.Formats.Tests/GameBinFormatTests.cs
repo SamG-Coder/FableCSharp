@@ -222,6 +222,102 @@ public sealed class GameBinFormatTests
     }
 
     [Fact]
+    public void CActivateQuestDef_payloads_are_16_bytes_and_do_not_intern_Q_NewOakValeIntro()
+    {
+        var (_, names, bin) = Load();
+        var rows = bin.Entries
+            .Where(entry => entry.TypeName == "CActivateQuestDef")
+            .ToList();
+        Assert.Equal(
+            new[] { 61, 9241, 9248, 12277, 12857, 12874 },
+            rows.Select(entry => entry.Index));
+        Assert.Equal("NULLDEF_CActivateQuestDef", rows[0].InstanceName);
+        Assert.Equal("0000001B5AB31FFFFFFFFF784B39BF01", Convert.ToHexString(rows[0].Raw));
+        Assert.Equal("0100011B5AB31F8D1F0500784B39BF00", Convert.ToHexString(rows[1].Raw));
+        Assert.Equal("0100011B5AB31F8D1F0500784B39BF00", Convert.ToHexString(rows[2].Raw));
+        Assert.Equal("0100011B5AB31FEFA10500784B39BF00", Convert.ToHexString(rows[3].Raw));
+        Assert.Equal("0100011B5AB31F51A60500784B39BF00", Convert.ToHexString(rows[4].Raw));
+        Assert.Equal("0100011B5AB31FD0A60500784B39BF00", Convert.ToHexString(rows[5].Raw));
+        const uint oakvaleIntern = 0x012C5D14;
+        const uint nameCrc = 0x1FB35A1B;
+        const uint flagCrc = 0xBF394B78;
+        Assert.Equal(0x8D19C362u, FableCrc.Hash("Q_NewOakValeIntro"));
+        Assert.Equal(EngineLifecycle.OakvaleQuestFableCrc, FableCrc.Hash("Q_NewOakValeIntro"));
+        Assert.False(EngineLifecycle.CActivateQuestDefInternsOakvale);
+        Assert.False(EngineLifecycle.CActivateQuestDefInOakvaleTng);
+        foreach (var row in rows)
+        {
+            Assert.Equal(16, row.Raw.Length);
+            Assert.Equal(nameCrc, BitConverter.ToUInt32(row.Raw, 3));
+            Assert.Equal(flagCrc, BitConverter.ToUInt32(row.Raw, 11));
+            for (var i = 0; i + 4 <= row.Raw.Length; i++)
+            {
+                Assert.NotEqual(oakvaleIntern, BitConverter.ToUInt32(row.Raw, i));
+                Assert.NotEqual(EngineLifecycle.OakvaleQuestFableCrc,
+                    BitConverter.ToUInt32(row.Raw, i));
+            }
+        }
+
+        Assert.Equal(unchecked((uint)-1), BitConverter.ToUInt32(rows[0].Raw, 7));
+        Assert.Equal(1, rows[0].Raw[15]);
+        Assert.Equal("Global_OpenChest", names.Get(BitConverter.ToUInt32(rows[1].Raw, 7)));
+        Assert.Equal("Global_OpenChest", names.Get(BitConverter.ToUInt32(rows[2].Raw, 7)));
+        Assert.Equal("Global_GiveHeroItemsFromRewardChest", names.Get(BitConverter.ToUInt32(rows[3].Raw, 7)));
+        Assert.Equal("Global_TeleportToHeroGuild", names.Get(BitConverter.ToUInt32(rows[4].Raw, 7)));
+        Assert.Equal("Global_ToggleTimeDisplay", names.Get(BitConverter.ToUInt32(rows[5].Raw, 7)));
+        Assert.All(rows.Skip(1), row => Assert.Equal(0, row.Raw[15]));
+        Assert.NotEqual("Q_NewOakValeIntro", names.Get(BitConverter.ToUInt32(rows[4].Raw, 7)));
+        Assert.NotEqual(nameCrc, FableCrc.Hash("QuestName"));
+        Assert.NotEqual(flagCrc, FableCrc.Hash("AlwaysActive"));
+    }
+
+    [Fact]
+    public void Script_bin_payloads_do_not_intern_Q_NewOakValeIntro()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var names = NamesBin.Load(install.FindCompiledDef("names.bin")!);
+        var path = install.FindCompiledDef("script.bin");
+        Assert.NotNull(path);
+        var bin = GameBin.Load(path, names);
+        const uint oakvaleIntern = EngineLifecycle.OakvaleQuestIntern;
+        foreach (var row in bin.Entries)
+        {
+            for (var i = 0; i + 4 <= row.Raw.Length; i++)
+                Assert.NotEqual(oakvaleIntern, BitConverter.ToUInt32(row.Raw, i));
+        }
+
+        Assert.Null(names.Find("Q_NewOakValeIntro"));
+    }
+
+    [Fact]
+    public void Expression_plus120_persist_is_not_Q_NewOakValeIntro()
+    {
+        var (_, names, bin) = Load();
+        var rows = bin.Entries
+            .Where(entry => entry.TypeName == "EXPRESSION")
+            .ToList();
+        Assert.Equal(39, rows.Count);
+        Assert.Equal(0x1FB35A1Bu, EngineLifecycle.ExpressionPlus120Crc);
+        Assert.False(EngineLifecycle.ExpressionPlus120IsOakvaleIntern);
+        const uint oakvaleIntern = EngineLifecycle.OakvaleQuestIntern;
+        foreach (var row in rows)
+        {
+            for (var i = 0; i + 4 <= row.Raw.Length; i++)
+                Assert.NotEqual(oakvaleIntern, BitConverter.ToUInt32(row.Raw, i));
+        }
+
+        Assert.Null(names.Find("Q_NewOakValeIntro"));
+        foreach (var name in new[]
+                 {
+                     "Expression_Pickpocket",
+                     "Expression_Picklock",
+                     "Expression_Steal",
+                 })
+            Assert.NotNull(names.Find(name));
+    }
+
+    [Fact]
     public void Lookout_instances_most_placeable_objects()
     {
         var install = GameInstall.TryLocate();

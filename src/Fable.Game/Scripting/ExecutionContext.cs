@@ -931,9 +931,13 @@ public sealed class AnimationRuntime
     /// <c>0070C050</c> request then
     /// <c>0070D580</c> on the type-90 inner
     /// (<c>0070B460</c> <c>[comp+12]</c>).
-    /// Mode &lt;=0 skips the time walk
-    /// (<c>jle 0070D71D</c>); channel
-    /// duration is <c>[clip+44]/max(mode,1)</c>.
+    /// Mode 6 is request class
+    /// <c>[inner+80]</c>, not the
+    /// <c>0070D580</c> divisor (DEFAULT
+    /// arg1 is 1). Host still divides
+    /// Duration by mode (leftover).
+    /// Clip seconds UNREAD. Do not
+    /// invent Duration=1.
     /// </summary>
     public void ApplyInner(AnimationState state, AnimationClipRecord clip, int mode)
     {
@@ -1286,7 +1290,9 @@ public sealed class MovementRuntime
         string? actor, string marker, float speed, bool wait, Vector3? dest)
     {
         Sneaks.Add(new ScriptSneakTo(actor, marker, speed, wait));
-        return Queue(actor, EntityTaskKind.Sneak, marker, dest, ResolveSpeed(actor, speed, false));
+        // 004C72B0 stub: keep script 0.0. Do not
+        // invent ResolveSpeed(0→0.3) locomotion.
+        return Queue(actor, EntityTaskKind.Sneak, marker, dest, speed);
     }
 
     public PendingOperation Walk(

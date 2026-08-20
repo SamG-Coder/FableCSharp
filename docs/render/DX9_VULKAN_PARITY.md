@@ -10,17 +10,15 @@ Translations live in `src/Fable.Render/Parity/Dx9Vulkan/`.
 
 Present ownership is per submission unit
 (`Dx9SubmitMode`: Compatibility / Shadow /
-NativeSemantic). Attaching
-`IDirect3DDevice9` is Shadow: the device
-records Clear/Begin/End/Present and does
-**not** discard `FrontendBatch` or skip
-`host.Draw`. `VulkanDx9Device.OwnsSwapchainPresent`
-defaults false so Shadow is not a second
-swapchain Present. NativeSemantic requires
-proven `Dx9SubmitCapabilities` for that unit
-(frontend sprites **and** glyphs before the
-frontend path owns Present). All capabilities
-default false.
+NativeSemantic). Tests default capabilities
+false (Shadow records). The live client sets
+frontend sprite+glyph capabilities and
+`OwnsSwapchainPresent`: DIPUP/glyph UP
+accumulate a batch on `VulkanDx9Device` and
+that Present owns the swapchain. 3D stays
+Compatibility `host.Draw` after Leave.
+Sprite `TextureId` is the host atlas index,
+not a proven native bank id.
 
 | Semantic | Fable evidence | DX9 value | Vulkan equivalent | Status | Notes |
 |---|---|---|---|---|---|

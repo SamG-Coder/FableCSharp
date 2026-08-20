@@ -48,13 +48,47 @@ public sealed class EngineInput
     /// not the Press Start click.
     /// </summary>
     public const int TypeMouse = 13;
+    /// <summary>
+    /// WM_CHAR harvest <c>00A03CB0</c>
+    /// → action 34. Not a DIK.
+    /// </summary>
+    public const int Type15 = 15;
+    public const int ActionType15 = 34;
     public const int Type4Device = 3;
+    public const int Type4DimofsButton0 = 12;
+    public const int Type4RawDown = 1;
+    public const int Type6RawUp = 4;
     public const int TypeAnalog = 17;
     public const int ActionFromKey = 33;
     public const int ActionType4 = 26;
     public const int ActionType6 = 28;
     public const int ActionType10 = 27;
+    /// <summary>
+    /// Action 27 is RMB hover-in
+    /// (<c>0055AE01</c> / <c>vtbl+592</c>),
+    /// not persist release and not
+    /// <c>CTCActionUse*</c> barrels /
+    /// gold / doors.
+    /// </summary>
+    public const bool ActionType10IsWorldUse = false;
+    public const bool ActionType10IsRmbHover = true;
     public const int ActionMouse = 25;
+    /// <summary>
+    /// <c>0055CB10</c> records/broadcasts
+    /// classified actions. First-seen
+    /// consumers are frontend type 11 /
+    /// type 32. Not a locomotion apply.
+    /// Pad A is type 19 action 22, not
+    /// type 4. Stick type 17 sets NESW
+    /// bits and does not
+    /// <c>0055CB10</c>. Movement slots
+    /// are <c>0x6F/0x70/0x72/0x6D</c>,
+    /// not WASD.
+    /// </summary>
+    public const bool ActionApplyIsLocomotion = false;
+    public const int TypePadA = 19;
+    public const int ActionPadA = 22;
+    public const bool TypeAnalogPostsActionApply = false;
 
     /// <summary>
     /// <c>0041DF10(0)</c> keyboard defaults.

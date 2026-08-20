@@ -392,9 +392,9 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
 
     /// <summary>
     /// One swapchain Present for a
-    /// NativeSemantic DX9 frame. Do
-    /// not call while Compatibility
-    /// or Shadow still draws.
+    /// NativeSemantic DX9 frame.
+    /// Frontend DIPUP batch is drawn;
+    /// 3D mesh stays off this path.
     /// </summary>
     public void PresentDx9()
     {
@@ -1340,7 +1340,8 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             _vk.CmdDraw(commandBuffer, 3, 1, 0, 0);
         }
 
-        DrawFrontend(commandBuffer);
+        if (!playAviOnly)
+            DrawFrontend(commandBuffer);
 
         if (_videoReady && _videoPipeline.Handle != 0 && _videoTexture.Set.Handle != 0)
         {

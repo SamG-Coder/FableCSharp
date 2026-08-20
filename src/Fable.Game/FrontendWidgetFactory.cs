@@ -136,59 +136,6 @@ public static class FrontendWidgetFactory
         return IsPresented(tree, parent);
     }
 
-    /// <summary>
-    /// <c>0052CF40</c> writes
-    /// <c>+332</c> then child
-    /// <c>vtbl+188</c>. Type 18/16
-    /// keep persist child
-    /// <paramref name="state"/>.
-    /// </summary>
-    public static void ApplySelectState(List<FrontendWidget> tree, int state)
-    {
-        if (tree.Count == 0)
-            return;
-        tree[0] = tree[0] with { State = state };
-        for (var i = 0; i < tree.Count; i++)
-        {
-            if (!FrontendWidgetType.SelectsChild(tree[i].Type))
-                continue;
-            tree[i] = tree[i] with { ActiveChild = state, State = state };
-            var kids = ChildrenOf(tree, i);
-            for (var k = 0; k < kids.Count; k++)
-            {
-                var child = tree[kids[k]];
-                var style = state;
-                if (tree[i].Type == FrontendWidgetType.TextSlider)
-                {
-                    style = k == tree[i].ActiveChild
-                        ? FrontendWidgetType.TextSliderFirstSeenSelect
-                        : FrontendWidgetType.FirstSeenState;
-                }
-
-                tree[kids[k]] = child with
-                {
-                    State = style,
-                    StyleIndex = style,
-                };
-            }
-        }
-
-        var byName = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-        for (var i = 0; i < tree.Count; i++)
-            byName.TryAdd(tree[i].Name, i);
-        for (var i = 0; i < tree.Count; i++)
-        {
-            if (tree[i].ParentName is not { } parentName ||
-                !byName.TryGetValue(parentName, out var parent))
-                continue;
-            var inherit = tree[parent];
-            tree[i] = tree[i] with
-            {
-                Visible = tree[i].Visible && inherit.Visible,
-            };
-        }
-    }
-
     public static List<int> ChildrenOf(IReadOnlyList<FrontendWidget> widgets, string? parent)
     {
         var kids = new List<int>();

@@ -138,6 +138,15 @@ public sealed class EntityTask
 
     public void TickMove(float dt, WorldRuntime world)
     {
+        // 004C72B0: mov al,1; ret 4. Intro
+        // SneakTo records dest and yields;
+        // it does not lerp XYZ.
+        if (Kind == EntityTaskKind.Sneak)
+        {
+            Complete = true;
+            return;
+        }
+
         if (Actor is not { Length: > 0 } || Destination is not { } dest)
         {
             Complete = true;

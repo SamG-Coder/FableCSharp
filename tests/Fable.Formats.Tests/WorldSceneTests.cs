@@ -387,6 +387,8 @@ public sealed class WorldSceneTests
         Assert.Equal("Fable Texture Renderer Filter", RegionTravel.PlayAviFilterName);
         Assert.Equal(new Guid("56a868b1-0ad4-11ce-b03a-0020af0ba770"), RegionTravel.PlayAviMediaControlIid);
         Assert.Equal(new Guid("56a868b6-0ad4-11ce-b03a-0020af0ba770"), RegionTravel.PlayAviMediaEventIid);
+        Assert.Equal(new Guid("56a868b3-0ad4-11ce-b03a-0020af0ba770"), RegionTravel.PlayAviBasicAudioIid);
+        Assert.Equal(0x012AA054u, RegionTravel.PlayAviBasicAudioIidVa);
         Assert.Equal(0x8004022Au, RegionTravel.PlayAviTypeNotAccepted);
         Assert.True(RegionTravel.FirstSeenPlayAviCheckMediaTypeReadsVih);
         Assert.Equal(1, RegionTravel.PlayAviFilterMiscIsRenderer);
@@ -419,6 +421,20 @@ public sealed class WorldSceneTests
         Assert.False(RegionTravel.FirstSeenHandsPlayerControl);
         Assert.False(RegionTravel.FirstSeenCameraNameInExe);
         Assert.Equal("NOVI_Barrel", RegionTravel.WatchBarrelsThing);
+        Assert.Equal(116, RegionTravel.WatchBarrelsSmashFlagOffset);
+        Assert.Equal(0x00DB7DB0u, RegionTravel.WatchBarrelsSmashFlagWriter);
+        Assert.Equal(20, RegionTravel.WatchBarrelsSmashFlagVtbl);
+        Assert.False(RegionTravel.WatchBarrelsSmashHasDistance);
+        Assert.False(RegionTravel.WatchBarrelsSmashIsRadius);
+        Assert.False(RegionTravel.ChildhoodObjectivesRunOnNoSave);
+        Assert.Equal(0x00DAC1BAu, RegionTravel.ChildhoodObjective01Fn);
+        Assert.Equal(0x00DB080Au, RegionTravel.ChildhoodObjective02Fn);
+        Assert.Equal(0x00DBE34Fu, RegionTravel.ChildhoodObjective03Fn);
+        Assert.Equal(0x00DB4A93u, RegionTravel.ChildhoodObjective04Fn);
+        Assert.Equal(0x00DB9DE6u, RegionTravel.ChildhoodObjective05Fn);
+        Assert.Equal(0x00DBE478u, RegionTravel.ChildhoodObjective06Fn);
+        Assert.Equal(0x00DB7E10u, RegionTravel.WatchBarrelsInstructionFn);
+        Assert.Equal("CS_DEAD_DAD", RegionTravel.DeadFatherCutscene);
         Assert.Equal(0x00CBF29Fu, RegionTravel.ScriptCameraHooks);
         Assert.Equal(0x00CBF3ACu, RegionTravel.ScriptUseCameraToken);
         Assert.Equal(0x00CBF3FEu, RegionTravel.ScriptCameraLookAtToken);
@@ -470,6 +486,8 @@ public sealed class WorldSceneTests
         Assert.Equal(52, RegionTravel.SpeakApplyVtbl);
         Assert.Equal(104, RegionTravel.SpeakPollVtbl);
         Assert.True(RegionTravel.FirstSeenSpeakYieldsOnce);
+        Assert.False(RegionTravel.SpeakUsesVtbl1472);
+        Assert.False(RegionTravel.SpeakPresentIsLive);
         Assert.Equal("TEXT_QST_048_FATHER_INTRO_10", RegionTravel.IntroFatherSpeak);
         Assert.Equal(0x00CC2EAAu, RegionTravel.InteractiveSpeakOpcode);
         Assert.Equal(1456, RegionTravel.InteractiveSpeakBeginVtbl);
@@ -513,6 +531,7 @@ public sealed class WorldSceneTests
         Assert.False(RegionTravel.FirstSeenCutsceneSkipFires);
         Assert.Equal(0f, RegionTravel.IntroSneakSpeed);
         Assert.Equal(0x00CC15E3u, RegionTravel.PlayCombatAnimationOpcode);
+        Assert.Equal(0x00CC16FDu, RegionTravel.PlayCombatAnimationApply);
         Assert.Equal(76, RegionTravel.PlayCombatAnimationApplyVtbl);
         Assert.Equal(0x00834760u, RegionTravel.PlayCombatAnimationFatherFn);
         Assert.True(RegionTravel.FirstSeenPlayCombatAnimationYields);
@@ -521,6 +540,9 @@ public sealed class WorldSceneTests
         Assert.Equal(0x00CCC246u, RegionTravel.CreateOpcode);
         Assert.Equal(364, RegionTravel.CreateApplyVtbl);
         Assert.Equal(0x008A9100u, RegionTravel.CreateApplyFn);
+        Assert.Equal(0x00833800u, RegionTravel.CreateThingFn);
+        Assert.Equal(0x1D8, RegionTravel.CreateThingSize);
+        Assert.False(RegionTravel.CreateApplyIsMeshFile);
         Assert.True(RegionTravel.FirstSeenCreateDoesNotYield);
         Assert.Equal("CREATURE_OAKVALE_VILLAGER_FEMALE_NORMAL_MESH", RegionTravel.IntroCreateType);
         Assert.Equal("MK_OVI_ID_VS1", RegionTravel.IntroCreateMarker);
@@ -790,6 +812,36 @@ public sealed class WorldSceneTests
     }
 
     [Fact]
+    public void First_seen_interpreters_are_only_father_cutscene()
+    {
+        var install = Require();
+        using var levels = new LevelLibrary(install);
+        var things = levels.LoadThings("StartOakValeWest").Things.ToList();
+        Assert.Contains(things, t => t.ScriptName == RegionTravel.LiveFatherScript);
+        Assert.Contains(things, t => t.ScriptName == "NOVI_Theresa");
+        Assert.Contains(things, t => t.ScriptName == "OVI_DeadFather");
+        Assert.True(ScriptFactoryTable.Find(RegionTravel.LiveFatherScript)!.Value.ConstructStartsCutscene);
+        Assert.False(ScriptFactoryTable.Find("NOVI_Theresa")!.Value.ConstructStartsCutscene);
+        Assert.False(ScriptFactoryTable.Find("OVI_DeadFather")!.Value.ConstructStartsCutscene);
+        Assert.Equal(RegionTravel.TheresaCutscene, ScriptFactoryTable.Find("NOVI_Theresa")!.Value.CutsceneName);
+        Assert.Equal(RegionTravel.DeadFatherCutscene, ScriptFactoryTable.Find("OVI_DeadFather")!.Value.CutsceneName);
+        var runtime = ScriptRuntime.StartNewGame(install, things);
+        Assert.Equal(
+            new[] { RegionTravel.IntroCutscene },
+            runtime.Interpreters.Select(i => i.Name).ToArray());
+        Assert.Equal(RegionTravel.IntroCutscene, runtime.ActiveCutscene);
+        Assert.False(runtime.HasStarted(RegionTravel.TheresaCutscene));
+        Assert.False(runtime.HasStarted(RegionTravel.TheresaMeetCutscene));
+        Assert.False(runtime.HasStarted(RegionTravel.DeadFatherCutscene));
+        Assert.Equal(0, runtime.WaitActiveDialogCount);
+        Assert.Equal(0x00DB86B0u, ScriptFactoryTable.LiveFatherStart);
+        Assert.Equal(0x00DB97A0u, ScriptFactoryTable.TheresaStart);
+        Assert.Equal(0x00DB9B02u, RegionTravel.TheresaMeetSite);
+        Assert.Equal(0x00DBB21Bu, RegionTravel.TheresaRaidAviSite);
+        Assert.Equal(0x00DB8300u, ScriptFactoryTable.DeadFatherStart);
+    }
+
+    [Fact]
     public void New_game_intro_runs_through_generic_script_runtime()
     {
         var install = Require();
@@ -803,6 +855,12 @@ public sealed class WorldSceneTests
         var intro = runtime.FindInterpreter(RegionTravel.IntroCutscene);
         Assert.NotNull(intro);
         Assert.Equal(RegionTravel.IntroCutscene, intro.Name);
+        Assert.Equal(
+            new[] { RegionTravel.IntroCutscene },
+            runtime.Interpreters.Select(i => i.Name).ToArray());
+        Assert.False(runtime.HasStarted(RegionTravel.TheresaCutscene));
+        Assert.False(runtime.HasStarted(RegionTravel.TheresaMeetCutscene));
+        Assert.False(runtime.HasStarted(RegionTravel.DeadFatherCutscene));
         Assert.True(script.CutsceneStarted);
         Assert.False(script.FadeSpecialCaseApplied);
         Assert.True(script.PlayMusicRan);
@@ -1180,6 +1238,11 @@ public sealed class WorldSceneTests
         Assert.True(intro.Yielded);
         Assert.Null(intro.UnsupportedCommand);
         Assert.Equal(1, runtime.WaitActiveDialogCount);
+        Assert.Equal(
+            new[] { RegionTravel.IntroCutscene },
+            runtime.Interpreters.Select(i => i.Name).ToArray());
+        Assert.False(runtime.HasStarted(RegionTravel.TheresaCutscene));
+        Assert.False(runtime.HasStarted(RegionTravel.DeadFatherCutscene));
         Assert.False(intro.ExecutedVerb("Remove"));
         Assert.Equal(0x00CD0116u, RegionTravel.RemoveOpcode);
         Assert.True(RegionTravel.FirstSeenRemoveDoesNotYield);
@@ -1613,6 +1676,13 @@ public sealed class WorldSceneTests
         Assert.Equal(0x00CCC246u, RegionTravel.CreateOpcode);
         Assert.Equal(364, RegionTravel.CreateApplyVtbl);
         Assert.Equal(0x008A9100u, RegionTravel.CreateApplyFn);
+        Assert.Equal(0x00833800u, RegionTravel.CreateThingFn);
+        Assert.Equal(0x00831F80u, RegionTravel.CreateThingCtor);
+        Assert.Equal(0x00662880u, RegionTravel.CreateThingInsert);
+        Assert.Equal(0x004C9CA0u, RegionTravel.CreateThingActivate);
+        Assert.Equal(0x1D8, RegionTravel.CreateThingSize);
+        Assert.Equal(232, RegionTravel.CreateThingPoseOffset);
+        Assert.False(RegionTravel.CreateApplyIsMeshFile);
         Assert.True(RegionTravel.FirstSeenCreateDoesNotYield);
         var interpreter = new ScriptInterpreter("create", [command]);
         interpreter.RunUntilYield();
@@ -1670,6 +1740,8 @@ public sealed class WorldSceneTests
         Assert.Equal(2, RegionTravel.SneakToMode);
         Assert.False(RegionTravel.FirstSeenSneakToAppliesMove);
         Assert.False(RegionTravel.FirstSeenSneakToWaitsForArrival);
+        Assert.True(RegionTravel.FirstSeenSneakToIsStub);
+        Assert.Equal(0x004C72B0u, RegionTravel.SneakToApplyStub);
         var interpreter = new ScriptInterpreter("sneak", [command, "GamePause 1.0"]);
         interpreter.RunUntilYield();
         Assert.True(interpreter.Yielded);
@@ -1891,7 +1963,16 @@ public sealed class WorldSceneTests
         Assert.Equal(168, RegionTravel.CutsceneSkipVtblA);
         Assert.Equal(176, RegionTravel.CutsceneSkipVtblB);
         Assert.Equal(0x00894440u, RegionTravel.CutsceneSkipFnA);
-        Assert.Equal(0x00893B00u, RegionTravel.CutsceneSkipFnB);
+        Assert.Equal(0x00893BA0u, RegionTravel.CutsceneSkipFnB);
+        Assert.Equal(172, RegionTravel.CutsceneSkipVtblNeighbour);
+        Assert.Equal(0x00893B00u, RegionTravel.CutsceneSkipFnNeighbour);
+        Assert.Equal(0x4B, RegionTravel.CutsceneSkipKindAtoSkip);
+        Assert.Equal(0x32, RegionTravel.CutsceneSkipKindDefault);
+        var map = AssemblyTextMap.TryLocate();
+        Assert.NotNull(map);
+        Assert.Equal(RegionTravel.CutsceneSkipFnA, map.VtblDest(0x01260F0Cu, 42));
+        Assert.Equal(RegionTravel.CutsceneSkipFnNeighbour, map.VtblDest(0x01260F0Cu, 43));
+        Assert.Equal(RegionTravel.CutsceneSkipFnB, map.VtblDest(0x01260F0Cu, 44));
         Assert.DoesNotContain(father.Commands, line => line.Equals("CCutsceneDef", StringComparison.Ordinal));
         Assert.True(father.Commands.Count >= 60);
         Assert.True(father.Vectors[0].Count == father.Commands.Count);
@@ -2007,6 +2088,9 @@ public sealed class WorldSceneTests
         Assert.Equal(68, RegionTravel.PlayAviPresentVtbl);
         Assert.True(RegionTravel.FirstSeenPlayAviBlocksUpdatePump);
         Assert.False(RegionTravel.FirstSeenPlayAviDrawsWorld);
+        Assert.False(RegionTravel.GamePlayAviOwnsPump);
+        Assert.False(RegionTravel.StartOakValeSetupLoadsRegion);
+        Assert.Equal(48, RegionTravel.StartOakValeWaitVtbl);
         Assert.True(RegionTravel.FirstSeenPlayAviPresentIsDevicePresent);
         Assert.False(RegionTravel.FirstSeenPlayAviPresentIsMailbox);
         var serial = player.RecvSerial;
@@ -2062,6 +2146,8 @@ public sealed class WorldSceneTests
         runtime.Update(0.1f);
         Assert.Contains("PlayAVI dream_sequence_comp.xmv", intro.Executed);
         Assert.True(runtime.AviPlaying, WmvPlayer.LastError ?? "PlayAVI open failed");
+        Assert.True(WmvPlayer.LastBasicAudioQi, WmvPlayer.LastError ?? "IBasicAudio QI missed");
+        Assert.Equal(0, WmvPlayer.LastBasicAudioVolume);
         Assert.NotNull(runtime.AviRgba);
         Assert.True(runtime.AviWidth >= 16 && runtime.AviHeight >= 16);
         Assert.Equal(file, runtime.AviFile, StringComparer.OrdinalIgnoreCase);

@@ -16,12 +16,45 @@ public static class FrontendLayout
     public const uint DestOriginFn = 0x0052FFD0;
     public const uint SubmitDestFn = 0x0041AFA0;
     /// <summary>
+    /// Type-12 list layout <c>0054D660</c>.
+    /// Persist size 0 and leftover 0 → dest
+    /// point. Cell fill <c>count==3</c> and
+    /// <c>TryChromeHit</c> are not this formula.
+    /// </summary>
+    public const uint Type12LayoutFn = 0x0054D660;
+    public const uint NativeHitFn = 0x0055B8F0;
+    public const bool Type12DestIsPointWhenSizeZero = true;
+    public const bool PlaceTableCellCount3IsNative = false;
+    public const bool TryChromeHitIsNativeHit = false;
+    /// <summary>
+    /// Native <c>0055B8F0</c> does not
+    /// walk siblings or copy the
+    /// rightmost type-2 dest size.
+    /// Type 11/38 AABB is dest origin
+    /// + dest scale × extra AABB of
+    /// <c>+176</c> children.
+    /// </summary>
+    public const bool NativeHitWalksRightmostType2 = false;
+    /// <summary>
     /// <c>0041AC20</c> leftover
     /// <c>+204/+208</c> from bank
     /// vtbl+84/+88 when
     /// <c>+376</c> GraphicIndex != 0.
+    /// Not a dest-rect writer. Type-0
+    /// dest is stack-only
+    /// <c>0041AFA0</c> <c>fistp [esp]</c>.
+    /// Type-6 <c>0054EF00</c> uses
+    /// <c>+248</c> as a pen, not
+    /// <c>X0,Y0,X1,Y1</c>. Native dest
+    /// 4-tuple dump is UNREAD
+    /// (leftover #36 dest-lock).
     /// </summary>
     public const uint LeftoverFn = 0x0041AC20;
+    public const bool LeftoverAc20WritesDestRect = false;
+    public const bool SubmitDestStoresOnWidget = false;
+    public const bool Type6DrawWritesDestRect = false;
+    public const bool NativeDestTupleUnread = true;
+    public const uint Type6DrawFn = 0x0054EF00;
     public const int GraphicIndexOffset = 376;
     public const int BankFrameWVtbl = 84;
     public const int BankFrameHVtbl = 88;

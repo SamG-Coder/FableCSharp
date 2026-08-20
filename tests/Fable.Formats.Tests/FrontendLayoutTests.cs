@@ -44,6 +44,26 @@ public sealed class FrontendLayoutTests
     }
 
     [Fact]
+    public void Dest_writers_are_0041AFA0_stack_not_0041AC20()
+    {
+        Assert.Equal(0x0041AC20u, FrontendLayout.LeftoverFn);
+        Assert.Equal(0x0041AFA0u, FrontendLayout.SubmitDestFn);
+        Assert.Equal(0x0052FFD0u, FrontendLayout.DestOriginFn);
+        Assert.Equal(0x0052F5C0u, FrontendLayout.DestScaleFn);
+        Assert.Equal(0x0054EF00u, FrontendLayout.Type6DrawFn);
+        Assert.False(FrontendLayout.LeftoverAc20WritesDestRect);
+        Assert.False(FrontendLayout.SubmitDestStoresOnWidget);
+        Assert.False(FrontendLayout.Type6DrawWritesDestRect);
+        Assert.True(FrontendLayout.NativeDestTupleUnread);
+        Assert.Equal(248, FrontendLayout.OriginXOffset);
+        var point = FrontendLayout.ComputeSubmitDest(0, 0, 0f, 0f, 64f, 240f, 1f, 1f, center: false);
+        Assert.Equal(64f, point.X0);
+        Assert.Equal(240f, point.Y0);
+        Assert.Equal(64f, point.X1);
+        Assert.Equal(240f, point.Y1);
+    }
+
+    [Fact]
     public void Press_Start_type6_dest_is_a_point()
     {
         var root = FrontendLayout.Compute(
@@ -178,6 +198,15 @@ public sealed class FrontendLayoutTests
         Assert.Equal((95f, 95f, 105f, 105f), centered);
         Assert.Equal(0.5f, FrontendLayout.Half);
         Assert.Equal(0x0052F1E0u, FrontendLayout.CenterFn);
+        var type12Point = FrontendLayout.ComputeSubmitDest(
+            0, 0, 0f, 0f, 64f, 240f, 1f, 1f, center: false);
+        Assert.Equal((64f, 240f, 64f, 240f), type12Point);
+        Assert.True(FrontendLayout.Type12DestIsPointWhenSizeZero);
+        Assert.Equal(0x0054D660u, FrontendLayout.Type12LayoutFn);
+        Assert.Equal(0x0055B8F0u, FrontendLayout.NativeHitFn);
+        Assert.False(FrontendLayout.PlaceTableCellCount3IsNative);
+        Assert.False(FrontendLayout.TryChromeHitIsNativeHit);
+        Assert.False(FrontendLayout.NativeHitWalksRightmostType2);
     }
 
     [Fact]
@@ -672,6 +701,9 @@ public sealed class FrontendLayoutTests
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.LoadGlobalThingsPerMap &&
             e.Action.Contains("LookoutPoint", StringComparison.Ordinal));
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == EngineLifecycle.LoadGlobalThingsMapFile &&
+            e.Action.Contains("004FDC00 leftover host break", StringComparison.Ordinal));
         Assert.DoesNotContain(life.Trace.Events, e =>
             e.Va == EngineLifecycle.LoadGlobalThingsPerMap &&
             e.Action.Contains("Bowerstone", StringComparison.Ordinal));

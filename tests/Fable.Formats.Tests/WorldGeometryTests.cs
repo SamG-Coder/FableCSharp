@@ -4,6 +4,7 @@ using Fable.Formats;
 using Fable.Formats.Defs;
 using Fable.Formats.Levels;
 using Fable.Formats.Meshes;
+using Fable.Formats.Scene;
 using Fable.Formats.Sky;
 using Fable.Game;
 using Fable.Render;
@@ -290,7 +291,7 @@ public sealed class WorldGeometryTests
             var my = (t.A.Y + t.B.Y + t.C.Y) / 3f;
             var dx = mx - start.PositionX!.Value;
             var dy = my - start.PositionY!.Value;
-            return dx * dx + dy * dy < 4f && t.Layer == Fable.Formats.Meshes.SceneLayer.Prop;
+            return dx * dx + dy * dy < 4f && t.Layer == Fable.Formats.Meshes.SceneLayer.Palskin;
         });
         Assert.True(nearKid > 10, $"kid mesh missing at NOVStartHSP nearKid={nearKid}");
 
@@ -706,11 +707,21 @@ public sealed class WorldGeometryTests
         Assert.True(stripped > 0, "Lookout stores 00BFE050 strips");
         Assert.All(visible.Where(c => c.PrimitiveCount > 0), c =>
             Assert.Equal(c.PrimitiveCount + 2, c.StripIndices!.Length));
-        Assert.True(mesh.Vertices.Length < visible.Sum(c => c.Faces.Count * 3),
-            $"indexed verts={mesh.Vertices.Length} soup={visible.Sum(c => c.Faces.Count * 3)}");
+        var extras = visible.Sum(MeshBatches.ExtraFaceCount);
+        Assert.True(extras > 0, "Lookout stores 00BF4E90 edge strips");
+        var extraDraws = visible.Sum(c =>
+            c.ExtraStrips?.Count(s => s.PrimitiveCount > 0) ?? 0);
+        Assert.True(extraDraws > 0, "each CPatchTesselationEdgeStrip is its own DIP");
+        var soup = visible.Sum(c => (c.Faces.Count + MeshBatches.ExtraFaceCount(c)) * 3);
+        Assert.True(mesh.Vertices.Length < soup,
+            $"indexed verts={mesh.Vertices.Length} soup={soup}");
+        Assert.True(
+            mesh.Indices.Length / 3 >= extras,
+            $"edge strips dropped extras={extras} tris={mesh.Indices.Length / 3}");
         Assert.True(mesh.Indices.Length > 0);
         Assert.Contains(mesh.Draws, d => d.Indexed);
-        Assert.Equal(visible.Count, mesh.Draws.Length);
+        Assert.Equal(visible.Count + extraDraws, mesh.Draws.Length);
+        Assert.True(mesh.Draws.Count(d => d.Indexed) >= extraDraws);
         Assert.Contains(mesh.Draws, d => d.PassBit == LandscapeCells.LayerForeground);
         Assert.DoesNotContain(mesh.Draws, d => d.PassBit == LandscapeCells.LayerBackground);
     }
@@ -780,6 +791,27 @@ public sealed class WorldGeometryTests
     }
 
     [Fact]
+    public void Kid_4300_flag1_hair_drains_0x200_after_sky()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var bank = new MeshBank();
+        bank.Open(install);
+        var mesh = bank.Get(4300);
+        Assert.NotNull(mesh);
+        Assert.True(mesh.BoneCount > 0);
+        Assert.Contains(mesh.Triangles, t => t.Layer == SceneLayer.Palskin && t.Flag1 == 1);
+        var built = MeshBatches.BuildMeshes([(mesh, Matrix4x4.Identity)]);
+        Assert.Contains(built.Draws, d => d.PassBit == 0x100);
+        Assert.Contains(built.Draws, d => d.PassBit == 0x200);
+        Assert.DoesNotContain(built.Draws, d => d.PassBit == 0x80);
+        Assert.All(built.Draws, d => Assert.True(d.PassBit is 0x100 or 0x200));
+        Assert.True(ScenePasses.Rank(0x100) < ScenePasses.Rank(0x2000));
+        Assert.True(ScenePasses.Rank(0x2000) < ScenePasses.Rank(0x200));
+        Assert.False(WorldShading.FirstSeenPalskinBindUsesHelperTypeIndex);
+    }
+
+    [Fact]
     public void Palskin_submit_uses_file_triangles_not_repose()
     {
         var install = GameInstall.TryLocate();
@@ -791,7 +823,9 @@ public sealed class WorldGeometryTests
         Assert.True(mesh.BoneCount > 0);
         var built = MeshBatches.BuildMeshes([(mesh, Matrix4x4.Identity)]);
         Assert.Equal(mesh.Triangles.Count * 3, built.Vertices.Length);
-        Assert.All(built.Draws, d => Assert.Equal(0x100u, d.PassBit));
+        Assert.Contains(built.Draws, d => d.PassBit == 0x100);
+        Assert.DoesNotContain(built.Draws, d => d.PassBit == 0x80);
+        Assert.All(built.Draws, d => Assert.True(d.PassBit is 0x100 or 0x200));
     }
 
     [Fact]

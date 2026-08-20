@@ -12,6 +12,17 @@ namespace Fable.Client;
 /// </summary>
 public static class SilkNativeInput
 {
+    /// <summary>
+    /// WM_CHAR analog: type 15 / action 34.
+    /// Not a DIK→char table.
+    /// </summary>
+    public static void QueueChar(EngineLifecycle life, char ch)
+    {
+        if (ch == 0)
+            return;
+        life.QueueInput(EngineInput.Type15, ch);
+    }
+
     public static void QueueKeys(
         EngineLifecycle life, IKeyboard keyboard, bool skipEnter = false)
     {

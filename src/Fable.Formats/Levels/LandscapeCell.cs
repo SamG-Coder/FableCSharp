@@ -5,12 +5,26 @@ namespace Fable.Formats.Levels;
 
 /// <summary>
 /// One native 16 m landscape cell. <c>00BF4570</c>
-/// walks cell+8 mesh nodes (VB mesh+56 stride 24,
-/// IB mesh+52). Host keeps the unwound faces as a
-/// backend translation of the stored strip, not
+/// DIPs the primary mesh at cell+8, then walks
+/// mesh+60 (<c>00BF4E90</c>) for each
+/// <c>CPatchTesselationEdgeStrip</c> as its own
+/// INDEX16 TRIANGLESTRIP. Host keeps unwound faces
+/// as a backend translation, not
 /// <c>TessellatePrimary</c>.
 /// </summary>
 public readonly record struct LandscapePoint(Vector3 P, Vector3 N, Vector3 Extra);
+
+/// <summary>
+/// One stored extra mesh node. Native binds and
+/// DIPs this separately from the primary strip.
+/// </summary>
+public readonly record struct LandscapeExtraStrip(
+    IReadOnlyList<LandscapePoint> Points,
+    ushort[] StripIndices,
+    int PrimitiveCount,
+    IReadOnlyList<MeshTriangle> Faces,
+    int TextureId,
+    int TextureId1);
 
 public readonly record struct LandscapeCell(
     string Map,
@@ -23,7 +37,8 @@ public readonly record struct LandscapeCell(
     int TextureId1,
     IReadOnlyList<LandscapePoint>? Points = null,
     ushort[]? StripIndices = null,
-    int PrimitiveCount = 0);
+    int PrimitiveCount = 0,
+    IReadOnlyList<LandscapeExtraStrip>? ExtraStrips = null);
 
 public static class LandscapeCells
 {

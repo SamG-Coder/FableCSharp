@@ -4,6 +4,7 @@ using Fable.Formats;
 using Fable.Formats.Banks;
 using Fable.Formats.Defs;
 using Fable.Formats.Meshes;
+using Fable.Formats.Scene;
 using Fable.Formats.Textures;
 using Fable.Game;
 
@@ -310,6 +311,14 @@ public sealed class MeshFormatTests
         Assert.Equal(0x00BD3C04u, WorldShading.PalskinType4JumpTarget);
         Assert.Equal(0x00BD3C04u, WorldShading.PalskinJumpTarget(4));
         Assert.DoesNotContain(mesh.Materials, m => m.Flag1 == 1 && m != hair);
+        Assert.Contains(mesh.Triangles, t => t.Layer == SceneLayer.Palskin && t.Flag1 == 1);
+        Assert.Contains(mesh.Triangles, t => t.Layer == SceneLayer.Palskin && t.Flag1 == 0);
+        Assert.DoesNotContain(mesh.Triangles, t => t.Layer != SceneLayer.Palskin);
+        var hairPasses = ScenePasses.DrawnPasses(SceneLayer.Palskin, 1);
+        Assert.Equal(new uint[] { 0x100, 0x200 }, hairPasses.Select(p => p.Bit).ToArray());
+        Assert.Equal(new uint[] { 0x100 }, ScenePasses.DrawnPasses(SceneLayer.Palskin).Select(p => p.Bit).ToArray());
+        Assert.DoesNotContain(hairPasses, p => p.Bit == 0x80);
+        Assert.False(WorldShading.FirstSeenPalskinBindUsesHelperTypeIndex);
         Assert.False(WorldShading.FirstSeenAppliesCullNoneFromFlag1);
         Assert.False(WorldShading.FirstSeenStaticPass2ReadsFlag1);
         Assert.False(WorldShading.FirstSeenFlag1WritesLayerType20);

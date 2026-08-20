@@ -323,10 +323,14 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// <c>QuestFactoryTable</c>, then
     /// <c>004BB720</c> / <c>004B3CE0</c>
     /// factory + run + fiber
-    /// <c>00A447D0</c>. Script-named
-    /// factories start their
-    /// <c>CCutsceneDef</c>. Does not
-    /// install S_QNOVI / <c>00DBDE40</c>.
+    /// <c>00A447D0</c>. Oakvale factory
+    /// <c>00DBEF70</c> binds persist
+    /// <c>00DAADA0</c> and <c>00DABAC0</c>
+    /// name-table; it does not load
+    /// StartOakVale or run <c>00DBDE40</c>
+    /// until the map-wait is ready.
+    /// No-save Pump must not call this
+    /// for <c>Q_NewOakValeIntro</c>.
     /// </summary>
     public QuestInstance ActivateQuest(string name, bool persistent = false)
     {
@@ -346,9 +350,24 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
             // 00CB7900 calls factory vtbl+12 then vtbl+4
             // (00CE75B0 / 00CE1A30 Main watcher via
             // 00CDD450). Not CCutsceneDef StartCutscene.
+            if (bind.Factory == RegionTravel.IntroQuestFactory)
+                BindSqnoviFactory();
         }
 
         return quest;
+    }
+
+    /// <summary>
+    /// <c>00DAADA0</c> persist bind then
+    /// <c>00DABAC0</c> <c>00CB8230</c> name
+    /// table. Does not <c>E8 00DBDE40</c>
+    /// (map-wait leftover).
+    /// </summary>
+    private void BindSqnoviFactory()
+    {
+        Persist.InstallRecovered();
+        foreach (var row in ScriptFactoryTable.Recovered)
+            RegisterNamedScript(row.ScriptName, row.CutsceneName);
     }
 
     public ScriptFiber CreateFiber(string name, string? persistField = null)
@@ -374,8 +393,13 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
         Persist.Slots.ToDictionary(p => p.Key, p => p.Value.Bool, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
-    /// <c>004C97B0</c> / <c>00CB8960</c>: start the named
-    /// script only when the name is in the registry.
+    /// <c>004C97B0</c> / <c>00CB8960</c>: construct the
+    /// named factory when the name is in the registry.
+    /// Factory bodies (<c>00DAC2C0</c> / <c>00DAC420</c>)
+    /// do not call <c>00CBFB7D</c>. Start is object
+    /// <c>vtbl+4</c>. Only LiveFather <c>00DB86B0</c>
+    /// first <c>00CBFB7D</c> is
+    /// <c>CS_OAKVALE_INTRO_FATHER</c> (<c>00DB88F8</c>).
     /// </summary>
     public ScriptInterpreter? ActivateThing(ThingInstance thing)
     {
@@ -393,6 +417,16 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     public ScriptInterpreter? StartNamedScript(string scriptName)
     {
         if (!_named.TryGetValue(scriptName, out var cutscene))
+            return null;
+        if (string.IsNullOrEmpty(cutscene))
+            return null;
+        // Theresa 00DB97A0 first named work is
+        // M_TriggerOutro; first 00CBFB7D is MEET
+        // (00DB9B28), raid THERESA is 00DBB238.
+        // DeadFather 00DB8300 uses 007E73F0, not
+        // 00CBFB7D. Do not StartCutscene those at
+        // construct.
+        if (ScriptFactoryTable.Find(scriptName) is { ConstructStartsCutscene: false })
             return null;
         return StartCutscene(cutscene);
     }
