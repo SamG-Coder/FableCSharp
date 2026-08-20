@@ -12,6 +12,9 @@ namespace Fable.Game;
 /// </summary>
 public readonly record struct FrontendSpriteDraw
 {
+    public const uint CursorDrawFn = 0x0041A980;
+    public const uint CursorInputFn = 0x0041E5F2;
+    public const uint CursorSubmitFn = 0x009DD210;
     public const uint PackerFn = 0x0041BEB0;
     public const uint TexturedPackerFn = 0x0041BF60;
     public const uint InstanceSubmitFn = 0x00BAD8A0;
@@ -31,6 +34,18 @@ public readonly record struct FrontendSpriteDraw
     public const int WidgetBlendOffset = 372;
     public const int DefaultBlend = 2;
     public const string Shader = "VSHADER_2D_SPRITE";
+
+    /// <summary>
+    /// Type-32 <c>0041A980</c> preserves the widget's computed
+    /// size, then submits it at the live input position read after
+    /// <c>0041E5F2</c>.
+    /// </summary>
+    public static (float X0, float Y0, float X1, float Y1) CursorDest(
+        float widgetX0, float widgetY0, float widgetX1, float widgetY1,
+        float pointerX, float pointerY) =>
+        (pointerX, pointerY,
+            pointerX + widgetX1 - widgetX0,
+            pointerY + widgetY1 - widgetY0);
 
     public const int TypeOffset = 0;
     public const int ArgOffset = 4;

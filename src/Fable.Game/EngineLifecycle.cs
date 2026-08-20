@@ -13469,6 +13469,20 @@ public sealed class EngineLifecycle : IDisposable
         for (var i = 0; i < tree.Count; i++)
         {
             var widget = tree[i];
+            var drawX0 = widget.DestX0;
+            var drawY0 = widget.DestY0;
+            var drawX1 = widget.DestX1;
+            var drawY1 = widget.DestY1;
+            // 0041A980 is the type-32 vtbl+8 body. Unlike
+            // 0041AFA0, it reads the live input position
+            // immediately before submitting the cursor rect.
+            if (widget.Type == FrontendWidgetType.Mouse)
+            {
+                (drawX0, drawY0, drawX1, drawY1) = FrontendSpriteDraw.CursorDest(
+                    drawX0, drawY0, drawX1, drawY1,
+                    FrontendPointerX, FrontendPointerY);
+            }
+
             var u0 = widget.U0;
             var v0 = widget.V0;
             var u1 = widget.U1;
@@ -13479,7 +13493,7 @@ public sealed class EngineLifecycle : IDisposable
             var recordStart = slot.Count;
             if (FrontendWidgetFactory.IsPresented(tree, i) &&
                 !FrontendWidgetType.LeafDipSkipped(colour) &&
-                widget.DestX1 > widget.DestX0 && widget.DestY1 > widget.DestY0)
+                drawX1 > drawX0 && drawY1 > drawY0)
             {
                 if (widget.TextureName is { } texName &&
                     _frontendSprites?.TryLoad(texName) is { } tex)
@@ -13496,7 +13510,7 @@ public sealed class EngineLifecycle : IDisposable
                         0f, 0f, 0f, 0f,
                         frame.U0, frame.V0, frame.U1, frame.V1);
                     slot.Add(new FrontendDx9DrawRecord(
-                        widget.DestX0, widget.DestY0, widget.DestX1, widget.DestY1,
+                        drawX0, drawY0, drawX1, drawY1,
                         uv.U0, uv.V0, uv.U1, uv.V1, colour, id,
                         Dx9VulkanFrontend.WidgetBlendDefault,
                         (int)Dx9VulkanFrontend.RecordType,
@@ -13534,12 +13548,11 @@ public sealed class EngineLifecycle : IDisposable
                     // widget field, not dest width.
                     // First-seen type-6 GraphicIndex=0
                     // never writes +204.
-                    var leftover204 = widget.Leftover204;
-                    var (penX, penY) = FrontendTextDraw.Type6Pen(
-                        widget.DestX0, widget.DestY0, leftover204, widget.DestScaleX,
-                        FrontendTextDraw.AlignFromFlag302(widget.Flag302));
-                    foreach (var glyph in FrontendTextDraw.Layout(
-                        face, widget.Text, penX, penY, colour))
+                    var align = FrontendTextDraw.AlignFromFlag302(widget.Flag302);
+                    var penY = widget.DestY0 + FrontendTextDraw.Type6OriginPad;
+                    var anchorX = widget.DestX0 + FrontendTextDraw.Type6OriginPad;
+                    foreach (var glyph in FrontendTextDraw.LayoutFormatted(
+                        face, widget.Text, anchorX, penY, align, colour))
                     {
                         slot.Add(new FrontendDx9DrawRecord(
                             glyph.DestX0, glyph.DestY0, glyph.DestX1, glyph.DestY1,

@@ -37,6 +37,12 @@ public static class FrontendTextDraw
     public const int AlignRight = 2;
     public const int Flag302CentreBit = 0x10;
     public const int Flag302RightBit = 0x20;
+    /// <summary>
+    /// Retail type-6 frontend text extent. The text setter
+    /// <c>0054FBC0</c> computes <c>+204/+208</c>; its fit path
+    /// <c>0054F8E0</c> lays text into the frontend rectangle.
+    /// </summary>
+    public const float FrontendLineWidth = 640f;
     public const int WidgetColourOffset = 148;
     public const uint DefaultColor = 0xFFFFFFFFu;
     public const string PressButtonTag = "TEXT_GUI_MENU_PRESS_BUTTON";
@@ -178,5 +184,107 @@ public static class FrontendTextDraw
         }
 
         return quads;
+    }
+
+    /// <summary>
+    /// Type-6 formatted text: emulate the <c>0054FBC0</c> setter's
+    /// measured <c>+204/+208</c> result and <c>0054F8E0</c> fit,
+    /// then apply <c>0054FFF0</c> alignment to each line. The
+    /// widget destination is an anchor point, not the top-left
+    /// corner of the whole string.
+    /// </summary>
+    public static List<GlyphQuad> LayoutFormatted(
+        FontFile font,
+        string text,
+        float anchorX,
+        float y,
+        int align,
+        uint color = DefaultColor,
+        float maxLineWidth = FrontendLineWidth,
+        float scale = 1f)
+    {
+        var lines = WrapLines(font, text, maxLineWidth, scale);
+        var quads = new List<GlyphQuad>(text.Length);
+        for (var lineIndex = 0; lineIndex < lines.Count; lineIndex++)
+        {
+            var line = lines[lineIndex];
+            var width = font.MeasureWidth(line) * scale;
+            var x = align switch
+            {
+                AlignCentre => anchorX - width * HalfPixel,
+                AlignRight => anchorX - width,
+                _ => anchorX,
+            };
+            quads.AddRange(Layout(
+                font,
+                line,
+                x,
+                y + lineIndex * font.CellHeight * scale,
+                color,
+                scale));
+        }
+
+        return quads;
+    }
+
+    public static IReadOnlyList<string> WrapLines(
+        FontFile font,
+        string text,
+        float maxLineWidth = FrontendLineWidth,
+        float scale = 1f)
+    {
+        if (string.IsNullOrEmpty(text))
+            return [""];
+
+        var lines = new List<string>();
+        foreach (var paragraph in text.Replace("\r\n", "\n", StringComparison.Ordinal)
+                     .Replace('\r', '\n').Split('\n'))
+        {
+            var remaining = paragraph.AsSpan();
+            if (remaining.Length == 0)
+            {
+                lines.Add("");
+                continue;
+            }
+
+            while (remaining.Length > 0)
+            {
+                if (font.MeasureWidth(remaining.ToString()) * scale <= maxLineWidth)
+                {
+                    lines.Add(remaining.Trim().ToString());
+                    break;
+                }
+
+                var lastBreak = -1;
+                for (var i = 0; i < remaining.Length; i++)
+                {
+                    if (!char.IsWhiteSpace(remaining[i]))
+                        continue;
+                    var candidate = remaining[..i].TrimEnd();
+                    if (candidate.Length > 0 &&
+                        font.MeasureWidth(candidate.ToString()) * scale <= maxLineWidth)
+                        lastBreak = i;
+                    else if (candidate.Length > 0)
+                        break;
+                }
+
+                if (lastBreak < 0)
+                {
+                    var split = 1;
+                    while (split < remaining.Length &&
+                           font.MeasureWidth(remaining[..(split + 1)].ToString()) * scale <= maxLineWidth)
+                        split++;
+                    lines.Add(remaining[..split].ToString());
+                    remaining = remaining[split..].TrimStart();
+                }
+                else
+                {
+                    lines.Add(remaining[..lastBreak].TrimEnd().ToString());
+                    remaining = remaining[(lastBreak + 1)..].TrimStart();
+                }
+            }
+        }
+
+        return lines;
     }
 }

@@ -312,6 +312,36 @@ public sealed class FontFileTests
     }
 
     [Fact]
+    public void Type6_setter_centres_press_start_and_wraps_legal_notice()
+    {
+        var (big, entry) = OpenMain(FontFile.PersistType6Face);
+        using (big)
+        {
+            var font = FontFile.Parse(entry.Name, big.Read(entry));
+            var press = FrontendTextDraw.LayoutFormatted(
+                font, FrontendTextDraw.PressButtonText,
+                512f, 384f, FrontendTextDraw.AlignCentre);
+            Assert.NotEmpty(press);
+            var pressLeft = press.Min(q => q.DestX0);
+            var pressRight = press.Max(q => q.DestX1);
+            Assert.InRange((pressLeft + pressRight) * 0.5f, 510f, 514f);
+
+            const string legal = "Fable: The Lost Chapters © 2005 Lionhead Studios Ltd.  " +
+                "(P) 2005 Microsoft Corporation.  All rights reserved.  " +
+                "Developed by Lionhead Studios Ltd.";
+            var lines = FrontendTextDraw.WrapLines(font, legal);
+            Assert.Equal(3, lines.Count);
+            Assert.All(lines, line =>
+                Assert.True(font.MeasureWidth(line) <= FrontendTextDraw.FrontendLineWidth,
+                    $"{font.MeasureWidth(line)}: {line}"));
+
+            var legalQuads = FrontendTextDraw.LayoutFormatted(
+                font, legal, 512f, 544f, FrontendTextDraw.AlignCentre);
+            Assert.Equal(3, legalQuads.Select(q => q.DestY0).Distinct().Count());
+        }
+    }
+
+    [Fact]
     public void Press_Start_glyph_table_is_monotonic_00AB7C20()
     {
         var (big, entry) = OpenMain(FontFile.UiFace);

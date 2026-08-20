@@ -150,10 +150,11 @@ public sealed class FontFile
     /// </summary>
     public FontGlyph? GlyphAt(int ch)
     {
-        if (ch < MinChar || ch > MaxChar)
+        var pageIndex = PageIndex(ch);
+        if ((uint)pageIndex >= (uint)Pages.Count)
             return null;
-        var page = Pages[PageIndex(ch)];
-        if (page.Glyphs.Count == 0)
+        var page = Pages[pageIndex];
+        if (page.Glyphs is null || page.Glyphs.Count == 0)
             return null;
         var i = SlotIndex(ch) - page.First;
         if ((uint)i >= (uint)page.Glyphs.Count)

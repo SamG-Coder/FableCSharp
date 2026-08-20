@@ -4656,7 +4656,10 @@ public sealed class EngineLifecycleTests
         var text = Assert.Single(life.FrontendWidgets, w => w.Name == "UI_PRESS_START_TEXT");
         Assert.Equal("TEXT_GUI_MENU_PRESS_BUTTON", text.TextTag);
         Assert.Equal(6, text.Type);
+        life.SetFrontendPointer(347f, 276f);
         Assert.True(life.Pump());
+        Assert.Equal(347f, life.FrontendPointerX);
+        Assert.Equal(276f, life.FrontendPointerY);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.FrontendContainerDrawFn &&
             e.Action.Contains("00530260", StringComparison.Ordinal));

@@ -8,6 +8,16 @@ namespace Fable.Formats.Tests;
 
 public sealed class FrontendSpriteTests
 {
+    [Fact]
+    public void Type32_cursor_preserves_size_at_live_input_position()
+    {
+        Assert.Equal(0x0041A980u, FrontendSpriteDraw.CursorDrawFn);
+        Assert.Equal(0x0041E5F2u, FrontendSpriteDraw.CursorInputFn);
+        Assert.Equal(0x009DD210u, FrontendSpriteDraw.CursorSubmitFn);
+        Assert.Equal((347f, 276f, 379f, 308f),
+            FrontendSpriteDraw.CursorDest(0f, 0f, 32f, 32f, 347f, 276f));
+    }
+
     private static GameInstall Require()
     {
         var install = GameInstall.TryLocate();

@@ -144,7 +144,13 @@ window.Update += dt =>
 
     looking = debugFly && mouse is not null && mouse.IsButtonPressed(MouseButton.Right);
     if (mouse is not null)
-        mouse.Cursor.CursorMode = looking ? CursorMode.Disabled : CursorMode.Normal;
+    {
+        mouse.Cursor.CursorMode = looking
+            ? CursorMode.Disabled
+            : life.Stage == EngineStage.Frontend
+                ? CursorMode.Hidden
+                : CursorMode.Normal;
+    }
     if (debugFly)
     {
         var move = Vector3.Zero;
