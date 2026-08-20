@@ -1067,19 +1067,19 @@
           <td><code>7b2d2ab</code> / <code>Press_Start_type18_lists_match_00547500</code> / <code>Frontend_type18_primes_then_cycles_zero_dwell_forest_states</code> / <code>Frontend_PRESS_START_is_type_10_with_text_child</code> / <code>Type6_text_has_native_black_underlay_and_colour_pass</code> / <code>Forward_lifecycle_trace_is_bounded_and_can_be_disabled</code> / <code>Native_semantic_frontend_present_builds_device_batch</code></td>
         </tr>
         <tr>
-          <td>Recover complete frontend UI schema and parity behavior. New <code>FrontendUiFieldCatalog.cs</code> + <code>FrontendUiSchema.cs</code>. Cite only tests that exist: <code>FrontendUiDefTests</code> (<code>Every_frontend_UI_entry_matches_the_complete_native_CUIDef_schema</code>, <code>Complete_CUIDef_catalog_uses_original_names_and_matching_file_CRCs</code>), <code>FrontendLayoutTests</code>, <code>FrontendInputTests</code>. <code>NativeDestTupleUnread</code> stays true at HEAD. dest still invented. leave #14 and #20 open</td>
+          <td>Recover complete frontend UI schema and parity behavior. New <code>FrontendUiFieldCatalog.cs</code> + <code>FrontendUiSchema.cs</code>. Schema names/order recovered — dest/DIP/Present are not. Tests: <code>Every_frontend_UI_entry_matches_the_complete_native_CUIDef_schema</code>, <code>Complete_CUIDef_catalog_uses_original_names_and_matching_file_CRCs</code> (names+CRCs; only offsets 224/228/392/545 locked), <code>Height_crc_is_fable_crc_of_Height</code>. <code>NativeDestTupleUnread</code> stays true at HEAD. dest still invented. leave #14 and #20 open</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>0374d7b</code> / <code>FrontendUiDefTests</code> / <code>FrontendLayoutTests</code> / <code>FrontendInputTests</code></td>
+          <td><code>0374d7b</code> / <code>Every_frontend_UI_entry_matches_the_complete_native_CUIDef_schema</code> / <code>Complete_CUIDef_catalog_uses_original_names_and_matching_file_CRCs</code> / <code>Height_crc_is_fable_crc_of_Height</code></td>
         </tr>
         <tr>
-          <td>Map frontend states to recovered UI fields. Hovered / LeftClicked / RightClicked persist CRCs and widget copies. No new test method; assertions landed in <code>FrontendUiDefTests</code>. dest still invented. leave #14 and #20 open</td>
+          <td>Map frontend states to recovered UI fields. Test <code>Persist_00631C60_plus189_plus190_are_u8_and_font_is_names_offset</code> locks HoveredState/Left/Right CRCs; UI_ACCEPT_NEW_PROFILE persist states == 3. dest still invented. leave #14 and #20 open</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>b9d37c8</code> / <code>FrontendUiDefTests</code></td>
+          <td><code>b9d37c8</code> / <code>Persist_00631C60_plus189_plus190_are_u8_and_font_is_names_offset</code></td>
         </tr>
         <tr>
-          <td>Map frontend UI controls from native definitions. Hit-test still host: HEAD <code>FrontendLayoutTests</code> still <code>TryChromeHitIsNativeHit == false</code>, <code>PlaceTableCellCount3IsNative == false</code>. Tests that landed: <code>Silk_backspace_is_queued_as_the_native_type15_character</code>, <code>Frontend_batch_reuses_exact_size_arrays_between_frames</code>, <code>New_profile_sliders_construct_persisted_arrow_controls_and_ranges</code>. dest still invented. leave #14 and #20 open</td>
+          <td>Map frontend UI controls from native definitions. Tests: <code>New_profile_sliders_construct_persisted_arrow_controls_and_ranges</code>, <code>New_Profile_per_control_LMB_uses_dest_not_empty_space</code>, <code>New_Profile_apply_cancel_hit_rects_are_disjoint</code>, <code>Silk_backspace_is_queued_as_the_native_type15_character</code>. TryChromeHit removal is leftover #48 cleanup — <code>PlaceTableCellCount3IsNative</code> still false. <code>Leftover14OpenForDestPresentNotes</code> still true (<code>Native_ids_slots_and_attach_names_match_exe</code>). dest still invented. leave #14 and #20 open</td>
           <td><span class="badge PROVEN">PROVEN</span></td>
-          <td><code>168317a</code> / <code>FrontendLayoutTests</code> / <code>New_profile_sliders_construct_persisted_arrow_controls_and_ranges</code></td>
+          <td><code>168317a</code> / <code>New_profile_sliders_construct_persisted_arrow_controls_and_ranges</code> / <code>New_Profile_per_control_LMB_uses_dest_not_empty_space</code> / <code>New_Profile_apply_cancel_hit_rects_are_disjoint</code> / <code>Silk_backspace_is_queued_as_the_native_type15_character</code></td>
         </tr>
         <tr>
           <td>Fix frontend hover stalls and UI field parity. Sprite2DFlag persist +548 → widget +372; LayerIndependant; persist Angle; dual linear/point frontend samplers (<code>Dx9VulkanParityTests.Sampler_and_blend_translations</code> locks FrontendType22(2) Linear vs FrontendType22(0) Point and PreservesPerFrameFilter). Resident texture set to avoid DeviceWaitIdle on hover. BindDefaultNewProfileValues hardcodes 0.5 camera sensitivity (host). FirstSeenState now 0 not a magic style. dest still invented. leave #14 and #20 open</td>
