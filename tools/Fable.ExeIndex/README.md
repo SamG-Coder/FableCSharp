@@ -73,3 +73,27 @@ Each dump family lives in `out/01-sections/<family>/` as one markdown file per V
 Pass `--out <dir>` only if that directory is also ignored.
 
 Do not invent formats or constants that the listing does not show.
+
+## One-file frontend behavior export
+
+Generate a grep-first UI evidence file containing every `frontend.bin` UI
+definition field, widget relationship, native widget constructor/vtable, the
+reachable assembly, and mechanical pseudocode annotations:
+
+```powershell
+dotnet run --project tools/Fable.ExeIndex -- export-ui `
+  --ui-out tools/Fable.ExeIndex/out/frontend-ui-grep.txt
+```
+
+`--max-depth 3` controls native direct-call traversal. All constructors and
+recovered vtable methods are always seeds. `--max-functions 5000` controls the
+safety ceiling; reaching it writes an explicit `UNRESOLVED` record.
+
+Useful queries:
+
+```powershell
+rg '^WIDGET.*UI_SLIDER_CAMERA_SENSITIVITY' tools/Fable.ExeIndex/out/frontend-ui-grep.txt
+rg 'field=Slider(Left|Right)' tools/Fable.ExeIndex/out/frontend-ui-grep.txt
+rg 'function=0x00549B20|target=0x00549B20' tools/Fable.ExeIndex/out/frontend-ui-grep.txt
+rg '^UNRESOLVED' tools/Fable.ExeIndex/out/frontend-ui-grep.txt
+```
