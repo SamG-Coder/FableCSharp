@@ -13301,12 +13301,11 @@ public sealed class EngineLifecycle : IDisposable
 
             if (hit)
             {
-                // 0055BAE0 saves +332 in +348, reads vtbl+516 from the first
-                // authored child, and selects that state on the button.
-                var firstChild = FrontendWidgetFactory.FirstChild(tree, i);
-                var hoverState = firstChild >= 0
-                    ? tree[firstChild].HoveredState
-                    : widget.State;
+                // 0055BAE0 saves +332 in +348 and selects the interactive
+                // object's authored +516 state.  Propagating the first
+                // graphic child's value is incorrect for type-38 arrows:
+                // their button state is 1 while their leaf metadata is 3.
+                var hoverState = widget.HoveredState;
                 tree[i] = widget with
                 {
                     Hovered = true,
@@ -13332,9 +13331,10 @@ public sealed class EngineLifecycle : IDisposable
         List<FrontendWidget> tree, int button, bool entering)
     {
         // 0055AEB0/0055AEF0 publish actions 26/31/27/32 after the button
-        // transition. The authored descendants subscribe to that pair. Model
-        // the recovered result with each descendant's CUIDef+516 state; keep
-        // its prior +332 value for the matching leave notification.
+        // transition. The authored descendants subscribe to that pair and
+        // receive the button's selected state.  Selecting each descendant's
+        // own +516 value makes the arrow ON graphics remain invisible.
+        var selectedState = tree[button].State;
         for (var child = 0; child < tree.Count; child++)
         {
             if (!IsFrontendDescendant(tree, child, button))
@@ -13343,7 +13343,7 @@ public sealed class EngineLifecycle : IDisposable
             if (entering)
             {
                 tree[child] = visual with { ActiveChild = visual.State };
-                ForwardSelectState(tree, child, visual.HoveredState);
+                ForwardSelectState(tree, child, selectedState);
             }
             else
             {
@@ -13848,6 +13848,31 @@ public sealed class EngineLifecycle : IDisposable
                     HitX1 = area.DestX1,
                     HitY1 = area.DestY1,
                 };
+                assigned = true;
+                break;
+            }
+
+            if (assigned)
+                continue;
+
+            // Type-38 arrow buttons also have a point-sized parent and no
+            // MOUSE_AREA.  Their authored graphic child is the native AABB.
+            // Keep this generic fallback last so table-backed type-11 buttons
+            // continue to use their full selectable face.
+            for (var child = 0; child < widgets.Count; child++)
+            {
+                var area = widgets[child];
+                if (!area.Name.Contains("GRAPHIC", StringComparison.OrdinalIgnoreCase) ||
+                    !IsFrontendDescendant(widgets, child, i) ||
+                    area.DestX1 <= area.DestX0 || area.DestY1 <= area.DestY0)
+                    continue;
+                widgets[i] = widgets[i] with
+                {
+                    HitX0 = area.DestX0,
+                    HitY0 = area.DestY0,
+                    HitX1 = area.DestX1,
+                    HitY1 = area.DestY1,
+                };
                 break;
             }
         }
@@ -14140,14 +14165,17 @@ public sealed class EngineLifecycle : IDisposable
         for (var i = 0; i < tree.Count; i++)
         {
             var widget = tree[i];
-            if (widget.TextureName is { } textureName &&
-                !textureIndex.ContainsKey(textureName) &&
-                _frontendSprites?.TryLoad(textureName) is { } sprite)
+            // Keep every authored style texture resident in deterministic
+            // order.  Hover only changes TextureName; it must never alter the
+            // Vulkan descriptor set and force DeviceWaitIdle/DestroyTextures.
+            if (widget.StyleTextureNames is { } styleTextures)
             {
-                var id = textures.Count;
-                textureIndex.Add(textureName, id);
-                textures.Add(new GpuTexture(id, sprite.Width, sprite.Height, sprite.Rgba));
+                for (var style = 0; style < styleTextures.Count; style++)
+                    CollectResidentFrontendTexture(
+                        styleTextures[style], textures, textureIndex);
             }
+            CollectResidentFrontendTexture(
+                widget.TextureName, textures, textureIndex);
 
             if (widget.Type != FrontendWidgetType.Text ||
                 string.IsNullOrEmpty(widget.Text))
@@ -14165,6 +14193,20 @@ public sealed class EngineLifecycle : IDisposable
             textures.Add(new GpuTexture(
                 atlasId, face.UvWidth, face.UvHeight, face.Atlas));
         }
+    }
+
+    private void CollectResidentFrontendTexture(
+        string? textureName,
+        List<GpuTexture> textures,
+        Dictionary<string, int> textureIndex)
+    {
+        if (string.IsNullOrEmpty(textureName) ||
+            textureIndex.ContainsKey(textureName) ||
+            _frontendSprites?.TryLoad(textureName) is not { } sprite)
+            return;
+        var id = textures.Count;
+        textureIndex.Add(textureName, id);
+        textures.Add(new GpuTexture(id, sprite.Width, sprite.Height, sprite.Rgba));
     }
 
     private int[] FrontendRecordOrder(List<FrontendWidget> tree)
@@ -14187,6 +14229,7 @@ public sealed class EngineLifecycle : IDisposable
         IReadOnlyList<FrontendWidget> tree, int index)
     {
         var layer = 0;
+        var independentLayer = false;
         var remaining = tree.Count + 1;
         while ((uint)index < (uint)tree.Count && remaining-- > 0)
         {
@@ -14195,10 +14238,16 @@ public sealed class EngineLifecycle : IDisposable
             // 0041B1B7 vtbl+404 and 0041B1C3 vtbl+416: either bit makes
             // widget+303 an independent root layer.
             if (widget.Independant || widget.LayerIndependant)
+            {
+                independentLayer = widget.LayerIndependant;
                 break;
+            }
             index = widget.ParentIndex;
         }
-        return layer;
+        // The independent render queue is submitted after ordinary buckets.
+        // Only suppressing inherited layer leaves the New Profile title under
+        // its title-bar table even though its authored flag is set.
+        return independentLayer ? layer - 1024 : layer;
     }
 
     private string EditBoxTextWithCaret(

@@ -451,6 +451,37 @@ public sealed class FrontendInputTests
                    current.GraphicId != pair.Value.GraphicId ||
                    current.TextureName != pair.Value.TextureName;
         });
+
+        var title = life.FrontendWidgets.First(w =>
+            w.Name == "UI_TEXT_NEW_PROFILE_MENU_TITLE");
+        Assert.True(title.Visible);
+        Assert.False(string.IsNullOrEmpty(title.Text));
+        Assert.True(title.GlyphCount > 0);
+        Assert.True(title.DrawOrder > life.FrontendWidgets
+            .Where(w => w.Name.StartsWith("UI_TABLE_TITLE", StringComparison.Ordinal))
+            .Max(w => w.DrawOrder));
+    }
+
+    [Fact]
+    public void New_Profile_arrow_hover_uses_button_state_and_authored_graphic_bounds()
+    {
+        var life = ReachNewProfile();
+        var slider = IndexOf(life, "UI_OPTIONS_CONTROL_METHOD_TEXT_SLIDER");
+        var arrow = life.FrontendWidgets
+            .Select((widget, index) => (widget, index))
+            .First(pair => pair.widget.Name == "UI_OPTIONS_LEFT_ARROW_TEXT" &&
+                           pair.widget.ControlOwnerIndex == slider).index;
+        Assert.Equal(1, life.FrontendWidgets[arrow].HoveredState);
+        Assert.True(FrontendHitTest.TryDestPoint(
+            life.FrontendWidgets, arrow, out var x, out var y));
+        life.SetFrontendPointer(x, y);
+        life.QueueInput(FrontendInputMap.TypeMouse, 0);
+        Assert.True(life.Pump());
+        Assert.True(life.FrontendWidgets[arrow].Hovered);
+        Assert.All(life.FrontendWidgets
+            .Select((widget, index) => (widget, index))
+            .Where(pair => IsDescendant(life.FrontendWidgets, pair.index, arrow)),
+            pair => Assert.Equal(1, pair.widget.State));
     }
 
     [Fact]
