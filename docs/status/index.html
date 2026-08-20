@@ -74,26 +74,35 @@
     </div>
 
     <p>
-      Snapshot: <strong>2026-08-20</strong> ~1:59pm AEST, previous snapshot
-      runtime HEAD <code>b216990</code> via PR #52 merge
-      <code>b70fcad</code> (~7:58pm AEST), runtime HEAD
-      <code>131e34d</code> (<em>PE-entry bootstrap,
-      CreateDevice-split frontend Present, windowed +
-      Alt+Enter, shadow-record <code>00A0AEA0</code>/<code>00A0ABE0</code>,
-      NativeSemantic OwnsSwapchainPresent + exclusive-walk
-      STALE</em>).
-      Just locked: 5 runtime commits since <code>b216990</code>.
-      Headline locks in order: PE-entry bootstrap
-      (<code>6314dad</code>); CreateDevice-split frontend Present
-      (<code>e9af3a8</code>); windowed + Alt+Enter
-      (<code>70709c1</code>); shadow-record
-      <code>00A0AEA0</code>/<code>00A0ABE0</code>
-      (<code>be8d987</code>); NativeSemantic
-      OwnsSwapchainPresent + exclusive-walk STALE
-      (<code>131e34d</code>).
-      Ignore merge <code>db08150</code> and ExeIndex-only
-      <code>e01e3c5</code>. CSS unchanged. Freeze at
-      <code>131e34d</code>. Do not include any later runtime if
+      Snapshot: <strong>2026-08-21</strong> morning AEST (~8am), previous snapshot
+      runtime HEAD <code>131e34d</code> via PR #53 merge
+      <code>0175f99</code> (~2:13pm AEST 20 Aug), runtime HEAD
+      <code>4f1819d</code> (<em>menu parity + custom cursor,
+      colors/text underlay, compositing/upload stalls,
+      type-18 swap + type-6 underlay order, frontend UI
+      schema, map states to recovered fields, map UI
+      controls, Sprite2DFlag/Angle/sampler + hover
+      residency, authored controls + host frontend audio,
+      hover stalls, visible frontend logos, live sprite
+      rotation, profile hover no texture rebuild</em>).
+      Just locked: 13 runtime commits since <code>131e34d</code>.
+      Headline locks in order: menu parity + custom cursor
+      (<code>b03756c</code>); colors/text underlay
+      (<code>e7eac64</code>); compositing/upload stalls
+      (<code>32588e0</code>); type-18 swap + type-6 underlay
+      order (<code>7b2d2ab</code>); frontend UI schema
+      (<code>0374d7b</code>); map states to recovered fields
+      (<code>b9d37c8</code>); map UI controls
+      (<code>168317a</code>); Sprite2DFlag/Angle/sampler +
+      hover residency (<code>e852b52</code>); authored
+      controls + host frontend audio (<code>16cf83b</code>);
+      hover stalls (<code>094478b</code>); visible frontend
+      logos (<code>86b8ff4</code>); live sprite rotation
+      (<code>29c88e9</code>); profile hover no texture rebuild
+      (<code>4f1819d</code>).
+      Ignore ExeIndex-only <code>b6012d3</code> and gitignore
+      <code>56f5f93</code>. CSS unchanged. Freeze at
+      <code>4f1819d</code>. Do not include any later runtime if
       master moves. dest still invented 512,384,512,384; DIP
       <code>(0,0)</code> stand-in;
       <code>DisplayFlushShouldDip(0, 0)</code> always false;
@@ -114,7 +123,9 @@
       leave #20 open. dest <code>0044C72B</code> as
       <code>[01232C24+8]</code> is not rdata-locked. leave #42
       open. New Profile dest/hit is host stand-in
-      (<code>TryChromeHit</code> invents type-16/37 hit). leave
+      (<code>TryChromeHit</code> invents type-16/37 hit;
+      GRAPHIC-name AABB is also host).
+      <code>NativeDestTupleUnread</code> stays true. leave
       #48 open. First-proximity TNG is host OOM workaround, not
       locked <code>004FDBC0</code> NewMap 1. leave #50 open.
       dest invented 512,384,512,384. leave #36 open.
@@ -308,20 +319,25 @@
 
     <h3>Phase 1 in progress — boot / world clock (current master)</h3>
     <p>
-      Recent commits (<code>6314dad</code> … <code>131e34d</code>) lock
-      PE-entry bootstrap from the dumped PE listing,
-      CreateDevice-split frontend Present through
-      IDirect3DDevice9, windowed + Alt+Enter, shadow-record
-      recovered <code>00A0AEA0</code> DIPUP and
-      <code>00A0ABE0</code> glyph verts, and NativeSemantic
-      OwnsSwapchainPresent + exclusive-walk STALE. Previous
-      snapshot <code>b216990</code> via PR #52 <code>b70fcad</code>
-      (~7:58pm AEST).
-      Just locked this batch: PE-entry bootstrap,
-      CreateDevice-split frontend Present, windowed +
-      Alt+Enter, shadow-record <code>00A0AEA0</code>/<code>00A0ABE0</code>,
-      NativeSemantic OwnsSwapchainPresent + exclusive-walk
-      STALE. MATCH for named-stage Add Def Class is still
+      Recent commits (<code>b03756c</code> … <code>4f1819d</code>) lock
+      menu parity + custom cursor, colors/text underlay,
+      compositing/upload stalls, type-18 swap + type-6
+      underlay order, frontend UI schema, map states to
+      recovered fields, map UI controls,
+      Sprite2DFlag/Angle/sampler + hover residency, authored
+      controls + host frontend audio, hover stalls, visible
+      frontend logos, live sprite rotation, and profile hover
+      no texture rebuild. Previous snapshot
+      <code>131e34d</code> via PR #53 <code>0175f99</code>
+      (~2:13pm AEST 20 Aug).
+      Just locked this batch: menu parity + custom cursor,
+      colors/text underlay, compositing/upload stalls,
+      type-18 swap + type-6 underlay order, frontend UI
+      schema, map states to recovered fields, map UI
+      controls, Sprite2DFlag/Angle/sampler + hover
+      residency, authored controls + host frontend audio,
+      hover stalls, visible frontend logos, live sprite
+      rotation, profile hover no texture rebuild. MATCH for named-stage Add Def Class is still
       Note-only + <code>*DefClassRegistered</code> flag, not a
       live constructed object. dest <code>0044C72B</code> as
       <code>[01232C24+8]</code> is not rdata-locked. leave #42
@@ -343,7 +359,9 @@
       does not own that pump. Do not treat
       <code>FABLE_SKIP_STARTUP_AVI</code> as a 3D Draw fix.
       leave #20 open. New Profile dest/hit is host stand-in
-      (<code>TryChromeHit</code> invents type-16/37 hit). leave
+      (<code>TryChromeHit</code> invents type-16/37 hit;
+      GRAPHIC-name AABB is also host).
+      <code>NativeDestTupleUnread</code> stays true. leave
       #48 open. First-proximity TNG is host OOM workaround, not
       locked <code>004FDBC0</code> NewMap 1. leave #50 open.
       dest invented 512,384,512,384. leave #36 open.
@@ -354,6 +372,10 @@
       not exclusive-walk. Do not invent DrawContainerWalk calls
       of those VAs. Do not file a new leftover for that unread
       gap. #5 grok-goal dump still written — do not re-file.
+      Host NAudio FrontendAudioPlayer (<code>Intro.ogg</code> /
+      <code>Frontend.lug</code> CS_GUI_1/2) does not lock leftover #15
+      (Init Sound <code>00417A58</code>) or leftover #9
+      (<code>WmvPlayer</code> <code>IBasicAudio</code>).
       3D stays Compatibility <code>host.Draw</code> after Leave.
       F2 fly is Game-only. WM_CHAR is type 15; Press Start /
       New Profile / New Game are LMB type 4/6. Type-10 packet
@@ -1025,6 +1047,71 @@
           <td><code>131e34d</code> / <code>Factory_builds_press_start_then_main_menu_from_the_same_walk</code> / <code>Frontend_0042EC7C_frame_is_input_then_0042DF9E_Present</code> / <code>Native_semantic_frontend_present_builds_device_batch</code></td>
         </tr>
         <tr>
+          <td>Fix frontend menu parity and custom cursor. Silk cursor Hidden on frontend; CursorDest arithmetic; type-6 LayoutFormatted wrap/centre at draw; FontFile.GlyphAt null-page fix. Tests lock helper math + pointer fields (<code>Type6_setter_centres_press_start_and_wraps_legal_notice</code>, <code>Type32_cursor_preserves_size_at_live_input_position</code>). <code>FrontendDisplayCursorRan</code> stays false; leftover+204 stays 0. Comments pin <code>0041A980</code> / <code>0054FBC0</code> / <code>0054F8E0</code> on host helpers (same pattern as leftover #36 — do not file a leftover). dest still invented. leave #14 and #20 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>b03756c</code> / <code>Type6_setter_centres_press_start_and_wraps_legal_notice</code> / <code>Type32_cursor_preserves_size_at_live_input_position</code></td>
+        </tr>
+        <tr>
+          <td>Fix frontend colors and text underlay. TextureFile / FrontendTextDraw / LineShaders / Dx9VulkanFrontend. Tests that landed here: <code>Frontend_ps_keeps_clock_sprites_white_and_applies_glyph_diffuse</code>, <code>Type6_text_has_native_black_underlay_and_colour_pass</code>, <code>A8R8G8B8_surface_bytes_are_decoded_from_bgra_to_rgba</code>. dest still invented. leave #14 and #20 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>e7eac64</code> / <code>Frontend_ps_keeps_clock_sprites_white_and_applies_glyph_diffuse</code> / <code>Type6_text_has_native_black_underlay_and_colour_pass</code> / <code>A8R8G8B8_surface_bytes_are_decoded_from_bgra_to_rgba</code></td>
+        </tr>
+        <tr>
+          <td>Fix frontend compositing and upload stalls. VulkanLineRenderer.Frontend/Textures + FrontendWidgetFactory. Test that landed here: <code>Frontend_texture_sets_reuse_cached_pixel_storage</code>. dest still invented. leave #14 and #20 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>32588e0</code> / <code>Frontend_texture_sets_reuse_cached_pixel_storage</code></td>
+        </tr>
+        <tr>
+          <td>Match native frontend animation and text rendering. Type-18 swap dwell (<code>Frontend_type18_primes_then_cycles_zero_dwell_forest_states</code>); type-6 black underlay then colour pass with Type6OriginPad, mouse last in <code>Frontend_PRESS_START_is_type_10_with_text_child</code>; vsync FIFO when window.VSync; live client trace opt-in <code>FABLE_LIFECYCLE_TRACE</code>. Also <code>Press_Start_type18_lists_match_00547500</code>. VA comments on <code>00547380</code> / <code>0052CF40</code> / <code>0054EF00</code> are host helpers — do not file leftover. dest still invented. leave #14 and #20 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>7b2d2ab</code> / <code>Frontend_type18_primes_then_cycles_zero_dwell_forest_states</code> / <code>Frontend_PRESS_START_is_type_10_with_text_child</code> / <code>Press_Start_type18_lists_match_00547500</code></td>
+        </tr>
+        <tr>
+          <td>Recover complete frontend UI schema and parity behavior. New <code>FrontendUiFieldCatalog.cs</code> + <code>FrontendUiSchema.cs</code>. Cite only tests that exist: <code>FrontendUiDefTests</code> (<code>Every_frontend_UI_entry_matches_the_complete_native_CUIDef_schema</code>, <code>Complete_CUIDef_catalog_uses_original_names_and_matching_file_CRCs</code>), <code>FrontendLayoutTests</code>, <code>FrontendInputTests</code>. <code>NativeDestTupleUnread</code> stays true at HEAD. dest still invented. leave #14 and #20 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>0374d7b</code> / <code>FrontendUiDefTests</code> / <code>FrontendLayoutTests</code> / <code>FrontendInputTests</code></td>
+        </tr>
+        <tr>
+          <td>Map frontend states to recovered UI fields. Hovered / LeftClicked / RightClicked persist CRCs and widget copies. No new test method; assertions landed in <code>FrontendUiDefTests</code>. dest still invented. leave #14 and #20 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>b9d37c8</code> / <code>FrontendUiDefTests</code></td>
+        </tr>
+        <tr>
+          <td>Map frontend UI controls from native definitions. Hit-test still host: HEAD <code>FrontendLayoutTests</code> still <code>TryChromeHitIsNativeHit == false</code>, <code>PlaceTableCellCount3IsNative == false</code>. Tests that landed: <code>Silk_backspace_is_queued_as_the_native_type15_character</code>, <code>Frontend_batch_reuses_exact_size_arrays_between_frames</code>, <code>New_profile_sliders_construct_persisted_arrow_controls_and_ranges</code>. dest still invented. leave #14 and #20 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>168317a</code> / <code>FrontendLayoutTests</code> / <code>New_profile_sliders_construct_persisted_arrow_controls_and_ranges</code></td>
+        </tr>
+        <tr>
+          <td>Fix frontend hover stalls and UI field parity. Sprite2DFlag persist +548 → widget +372; LayerIndependant; persist Angle; dual linear/point frontend samplers (<code>Dx9VulkanParityTests.Sampler_and_blend_translations</code> locks FrontendType22(2) Linear vs FrontendType22(0) Point and PreservesPerFrameFilter). Resident texture set to avoid DeviceWaitIdle on hover. BindDefaultNewProfileValues hardcodes 0.5 camera sensitivity (host). FirstSeenState now 0 not a magic style. dest still invented. leave #14 and #20 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>e852b52</code> / <code>Sampler_and_blend_translations</code> / <code>Persist_quarter_turn_rotates_sprite_corners_without_allocating_geometry</code></td>
+        </tr>
+        <tr>
+          <td>Restore authored frontend controls and audio. Host NAudio FrontendAudioPlayer plays <code>Sound/Intro.ogg</code> + <code>Frontend.lug</code> RIFF CS_GUI_1/2. This does not lock leftover #15 (Init Sound <code>00417A58</code>) or leftover #9 (<code>WmvPlayer</code> <code>IBasicAudio</code>). Tests: <code>New_Profile_name_hover_reaches_nested_authored_panel_styles</code>, <code>New_Profile_Apply_and_Cancel_follow_their_authored_messages</code>. dest still invented. leave #14 and #20 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>16cf83b</code> / <code>New_Profile_name_hover_reaches_nested_authored_panel_styles</code> / <code>New_Profile_Apply_and_Cancel_follow_their_authored_messages</code></td>
+        </tr>
+        <tr>
+          <td>Eliminate frontend hover stalls. HoveredState on the button (not first child); GRAPHIC-name hit AABB fallback is host heuristic (same family as leftover #48). Independent layer -1024 later reverted. Test: <code>New_Profile_arrow_hover_uses_button_state_and_authored_graphic_bounds</code>. dest still invented. leave #14 and #20 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>094478b</code> / <code>New_Profile_arrow_hover_uses_button_state_and_authored_graphic_bounds</code></td>
+        </tr>
+        <tr>
+          <td>Restore visible frontend rendering. Reverts style-texture residency and independent-layer offset so logos draw (<code>Native_semantic_frontend_present_builds_device_batch</code> locks 256×128 logo textures). Does not re-enable world Draw under frontend/AVI. dest still invented. leave #14 and #20 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>86b8ff4</code> / <code>Native_semantic_frontend_present_builds_device_batch</code></td>
+        </tr>
+        <tr>
+          <td>Apply frontend sprite rotation in live path. DestCorners used by FrontendDx9Submit FillSpriteVertices and BuildDx9Quad; Y-down sign flip. <code>Persist_quarter_turn_rotates_sprite_corners_without_allocating_geometry</code> locks live quad (15,-5)/(15,15)/(5,-5). Dest rects themselves still from layout. dest still invented. leave #14 and #20 open</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>29c88e9</code> / <code>Persist_quarter_turn_rotates_sprite_corners_without_allocating_geometry</code></td>
+        </tr>
+        <tr>
+          <td>Eliminate profile hover texture rebuilds. Hover broadcasts only to immediate children (<code>New_Profile_name_hover_updates_authored_components_without_replacing_nested_sprites</code>). Comments pin <code>0055AEB0</code>/<code>0055AEF0</code> on host helpers — do not file leftover. dest still invented 512,384,512,384 in <code>Press_Start_first_seen_dest_table_matches_0041AFA0</code>; <code>NativeDestTupleUnread == true</code>. DIP <code>(0,0)</code> stand-in: <code>Empty_dest_does_not_issue_dipup</code>; <code>DisplayFlushQueueIsNoteOnly == true</code>; <code>FrontendPresentBodyIsLive == true</code> (Clear/Begin/recovered DIPUP/Present when Device set — does not dest-lock leftover #14). <code>Device_does_not_own_game_host_present</code>; 3D stays Compatibility host.Draw after Leave. Startup AVI blit-only; leftover #20 Game-stage PumpGame <code>00435530</code> remains. grok-goal dump still written in FrontendLayoutTests (leftover #5 — do not re-file). GRAPHIC-name AABB is host (leftover #48). Host frontend audio does not lock leftover #15 or leftover #9. leave #14 open. Startup AVI client Present is blit-only <code>006286F0</code> MATCH (<code>Draw(default)</code> / playAviOnly). Remaining leftover #20 is Game-stage: <code>PumpGame</code> still walks <code>00435530</code> because <code>006286F0</code> does not own that pump. leave #20 open. dest <code>0044C72B</code> as <code>[01232C24+8]</code> is not rdata-locked. leave #42 open. New Profile dest/hit is host stand-in (<code>TryChromeHit</code> invents type-16/37 hit; GRAPHIC-name AABB is also host). HEAD <code>FrontendLayoutTests</code> still <code>TryChromeHitIsNativeHit == false</code>, <code>PlaceTableCellCount3IsNative == false</code>. leave #48 open. First-proximity TNG is host OOM workaround, not locked <code>004FDBC0</code> NewMap 1. leave #50 open. dest invented 512,384,512,384. leave #36 open. Exclusive-walk leftover is STALE (tracker already done). Skip VAs <code>0052F180</code>/<code>0052F1D0</code> stay named constants. Do not collapse no-save first region LookoutPoint vs first-scene Oakvale intro view. #5 grok-goal dump still written. Do not re-file. MATCH named-stage Add Def Class is still Note-only + <code>*DefClassRegistered</code> flag</td>
+          <td><span class="badge PROVEN">PROVEN</span></td>
+          <td><code>4f1819d</code> / <code>New_Profile_name_hover_updates_authored_components_without_replacing_nested_sprites</code></td>
+        </tr>
+        <tr>
           <td><code>[node+20]</code> is <code>0041DB1D</code>/<code>0041D21B</code> type0 <code>0041B800</code> vtbl <code>0122F5D4</code>; draw <code>0041AFA0</code> not <code>0052D900</code></td>
           <td><span class="badge DISPROVEN">DISPROVEN</span></td>
           <td>PRESS_START Type=10. Type 0 is <code>UI_FRONTEND_BUTTON</code>.</td>
@@ -1334,7 +1421,7 @@
         <tr>
           <td>Frontend <code>00595222</code> widget DIP body</td>
           <td><span class="badge DISPROVEN">DISPROVEN</span> as DIP</td>
-          <td><code>00595222</code> calls <code>[node+20].vtbl+8</code>. Types 5/10/11/12/16/18/38 are <code>00530260</code> DrawsChildList (<code>7adf621</code> / later <code>e3208eb</code> type 11/38). Tick/draw walk every resident <code>[ui+84]</code> slot (<code>b4a2c89</code> / <code>Frontend_tick_and_draw_walk_resident_ui84_slots</code>). Resident slots 0 / <code>0x14</code> / <code>0x17</code> still MATCH <code>00595222</code> (<code>405b1e8</code> / <code>Frontend_dumps_press_start_new_profile_main_menu_after_avi_skip</code>). Exclusive-walk leftover is STALE (tracker already done): <code>DrawContainerWalk</code> foreach <code>ChildrenOf</code>, <code>IsPresented</code> parent-chain Visible/Clip, <code>ApplyFirstSeenState</code> Visible=true on every widget (<code>131e34d</code> / <code>Factory_builds_press_start_then_main_menu_from_the_same_walk</code> locks <code>ContainerDrawWalksEveryChild</code>, <code>ExclusiveWalkSelectsChild == false</code>, <code>Leftover46ExclusiveWalkIsStale</code>). Skip VAs <code>0052F180</code> / <code>0052F1D0</code> stay named constants (<code>SkipVtblsAreMethodCalls == false</code>); that is not exclusive-walk. Do not invent DrawContainerWalk calls of those VAs. Do not file a new leftover for that unread gap. <code>FrontendPresentBodyIsLive = true</code> means Clear/Begin/recovered DIPUP/Present when Device is set — it does not dest-lock #14 (<code>Native_semantic_frontend_present_builds_device_batch</code>). <code>009DA9F0</code> flush is still Note-only (<code>DisplayFlushQueueIsNoteOnly</code>). dest still invented 512,384,512,384; DIP <code>(0,0)</code> stand-in; <code>DisplayFlushShouldDip(0, 0)</code> always false. Point dest still skips DIPUP (<code>00BADB36</code>). Type4 apply is still host dest AABB hover, not recovered current-inner <code>0055CB10</code>. Clicks now exist (<code>ClickNamed</code> / host hit midpoint). New Profile dest/hit is host stand-in (<code>TryChromeHit</code> invents type-16/37 hit; leave #48 open). 3D stays Compatibility <code>host.Draw</code> after Leave. leave #14 open.</td>
+          <td><code>00595222</code> calls <code>[node+20].vtbl+8</code>. Types 5/10/11/12/16/18/38 are <code>00530260</code> DrawsChildList (<code>7adf621</code> / later <code>e3208eb</code> type 11/38). Tick/draw walk every resident <code>[ui+84]</code> slot (<code>b4a2c89</code> / <code>Frontend_tick_and_draw_walk_resident_ui84_slots</code>). Resident slots 0 / <code>0x14</code> / <code>0x17</code> still MATCH <code>00595222</code> (<code>405b1e8</code> / <code>Frontend_dumps_press_start_new_profile_main_menu_after_avi_skip</code>). Exclusive-walk leftover is STALE (tracker already done): <code>DrawContainerWalk</code> foreach <code>ChildrenOf</code>, <code>IsPresented</code> parent-chain Visible/Clip, <code>ApplyFirstSeenState</code> Visible=true on every widget (<code>131e34d</code> / <code>Factory_builds_press_start_then_main_menu_from_the_same_walk</code> locks <code>ContainerDrawWalksEveryChild</code>, <code>ExclusiveWalkSelectsChild == false</code>, <code>Leftover46ExclusiveWalkIsStale</code>). Skip VAs <code>0052F180</code> / <code>0052F1D0</code> stay named constants (<code>SkipVtblsAreMethodCalls == false</code>); that is not exclusive-walk. Do not invent DrawContainerWalk calls of those VAs. Do not file a new leftover for that unread gap. <code>FrontendPresentBodyIsLive = true</code> means Clear/Begin/recovered DIPUP/Present when Device is set — it does not dest-lock #14 (<code>Native_semantic_frontend_present_builds_device_batch</code>). <code>009DA9F0</code> flush is still Note-only (<code>DisplayFlushQueueIsNoteOnly</code>). dest still invented 512,384,512,384; DIP <code>(0,0)</code> stand-in; <code>DisplayFlushShouldDip(0, 0)</code> always false. Point dest still skips DIPUP (<code>00BADB36</code>). Type4 apply is still host dest AABB hover, not recovered current-inner <code>0055CB10</code>. Clicks now exist (<code>ClickNamed</code> / host hit midpoint). New Profile dest/hit is host stand-in (<code>TryChromeHit</code> invents type-16/37 hit; GRAPHIC-name AABB is also host; leave #48 open). <code>NativeDestTupleUnread</code> stays true. 3D stays Compatibility <code>host.Draw</code> after Leave. leave #14 open.</td>
         </tr>
         <tr>
           <td><code>00B324A0</code> type-0x22 handler vtbl+20</td>
@@ -1344,7 +1431,7 @@
         <tr>
           <td><code>0041AC20</code> dest rect from +204/+248</td>
           <td><span class="badge PROVEN">PROVEN</span> ctor 0,0,0,0; type-6 dest (512,384,512,384)</td>
-          <td>leftover+204 GraphicIndex gate recovered (<code>76edbbd</code> / <code>Leftover204_is_0041AC20_graphic_index_not_persist_size</code>): index 0 → leftover 0. dest still invented 512,384,512,384; tests lock that dest (<code>Frontend_0041AC20_dest_and_0xE5_new_profile_0x126_main_menu_15</code>). Leftover <code>+204</code> is widget +204, not dest width (<code>b1d6877</code> / <code>Type6_leftover204_is_widget_plus204_not_dest_width</code>). Type-6 leftover 16×16 is gone (0 first-seen). Type-6 dest is a point at remapped origin (512,384,512,384), not ctor 0,0,0,0 (<code>Press_Start_type6_dest_is_a_point</code> / <code>Frontend_PRESS_START_is_type_10_with_text_child</code>). <code>UI_TITLE_01</code> dest still from texture FrameWidth 256 (<code>Press_Start_first_seen_dest_table_matches_0041AFA0</code>). Leftover <code>+204/+208</code> only when <code>GraphicIndex != 0</code> (<code>1a08cc0</code>). New Profile type-2 leftover (180,0) and <code>PlaceTableCell</code> n==3 fill are host heuristics, not dest lock; persist-size skip / <code>TryChromeHit</code> are #48 family (leave #48 open). <code>DisplayFlushShouldDip(0, 0)</code> stand-in. leave #36 open.</td>
+          <td>leftover+204 GraphicIndex gate recovered (<code>76edbbd</code> / <code>Leftover204_is_0041AC20_graphic_index_not_persist_size</code>): index 0 → leftover 0. dest still invented 512,384,512,384; tests lock that dest (<code>Frontend_0041AC20_dest_and_0xE5_new_profile_0x126_main_menu_15</code>). Leftover <code>+204</code> is widget +204, not dest width (<code>b1d6877</code> / <code>Type6_leftover204_is_widget_plus204_not_dest_width</code>). Type-6 leftover 16×16 is gone (0 first-seen). Type-6 dest is a point at remapped origin (512,384,512,384), not ctor 0,0,0,0 (<code>Press_Start_type6_dest_is_a_point</code> / <code>Frontend_PRESS_START_is_type_10_with_text_child</code>). <code>UI_TITLE_01</code> dest still from texture FrameWidth 256 (<code>Press_Start_first_seen_dest_table_matches_0041AFA0</code>). Leftover <code>+204/+208</code> only when <code>GraphicIndex != 0</code> (<code>1a08cc0</code>). New Profile type-2 leftover (180,0) and <code>PlaceTableCell</code> n==3 fill are host heuristics, not dest lock; persist-size skip / <code>TryChromeHit</code> / GRAPHIC-name AABB are #48 family (leave #48 open). <code>NativeDestTupleUnread</code> stays true (<code>Press_Start_first_seen_dest_table_matches_0041AFA0</code> still 512,384,512,384). <code>DisplayFlushShouldDip(0, 0)</code> stand-in. leave #36 open.</td>
         </tr>
         <tr>
           <td>New Game keyboard N/Enter (host stand-in)</td>
@@ -1434,7 +1521,7 @@
         <tr>
           <td>New Profile dest/hit (#48)</td>
           <td>leftover #48</td>
-          <td>New Profile dest/hit is host stand-in (<code>TryChromeHit</code> invents type-16/37 hit). dest still not dest-locked (<code>b075dd3</code> … <code>131e34d</code>). Persist parse of type-12 <code>+326=30</code> / Sprites / <code>SpriteKeys == [0,1,4]</code> is real file recover. <code>PlaceTableCell</code> n==3 leftover fill still host. Persist-size skip is extra host heuristic on the same helper — #48 family, not a new leftover. leave #48 open.</td>
+          <td>New Profile dest/hit is host stand-in (<code>TryChromeHit</code> invents type-16/37 hit; GRAPHIC-name AABB is also host). dest still not dest-locked (<code>b075dd3</code> … <code>4f1819d</code>). HEAD <code>FrontendLayoutTests</code> still <code>TryChromeHitIsNativeHit == false</code>, <code>PlaceTableCellCount3IsNative == false</code>. <code>NativeDestTupleUnread</code> stays true. Persist parse of type-12 <code>+326=30</code> / Sprites / <code>SpriteKeys == [0,1,4]</code> is real file recover. <code>PlaceTableCell</code> n==3 leftover fill still host. Persist-size skip is extra host heuristic on the same helper — #48 family, not a new leftover. leave #48 open.</td>
         </tr>
         <tr>
           <td>First-proximity TNG pump (#50)</td>
@@ -1537,7 +1624,7 @@
         <tr>
           <td><code>WmvPlayer</code> never QIs <code>IBasicAudio</code> (native <code>00A3B9D0</code> does)</td>
           <td><span class="badge PARTIAL">PARTIAL</span></td>
-          <td>issue #9</td>
+          <td>leftover #9. Host NAudio FrontendAudioPlayer (<code>Intro.ogg</code> / <code>Frontend.lug</code> CS_GUI_1/2) does not lock leftover #9 or leftover #15 (Init Sound <code>00417A58</code>)</td>
         </tr>
       </tbody>
     </table>
@@ -1556,7 +1643,9 @@
       <code>006286F0</code> does not own that pump. Do not treat
       <code>FABLE_SKIP_STARTUP_AVI</code> as a 3D Draw fix. leave #20
       open. <code>IBasicAudio</code> (#9) stays a
-      <span class="badge PARTIAL">PARTIAL</span> leftover. Do not invent
+      <span class="badge PARTIAL">PARTIAL</span> leftover. Host
+      frontend audio (<code>Intro.ogg</code> / <code>Frontend.lug</code>)
+      does not lock leftover #9 or leftover #15. Do not invent
       fade/AVI/wake playback beyond those bodies.
     </p>
 
@@ -1591,6 +1680,9 @@
       because <code>006286F0</code> does not own that pump. Do not treat
       <code>FABLE_SKIP_STARTUP_AVI</code> as a 3D Draw fix. leave #20 open.
       <code>IBasicAudio</code> (#9) stays a PARTIAL leftover.
+      Host frontend audio (<code>Intro.ogg</code> /
+      <code>Frontend.lug</code>) does not lock leftover #9 or
+      leftover #15.
       Steam timing is PARITY Open item 0, not a first-scene 3D invent.
     </p>
 
@@ -1690,12 +1782,16 @@
         (<code>b8a2b21</code>). Init World <code>004A67D0</code>
         / <code>004A6E30</code> run inside <code>0041735A</code>
         before <code>00417418</code>.
-        Recent commits <code>6314dad</code> …
-        <code>131e34d</code> lock PE-entry bootstrap,
-        CreateDevice-split frontend Present, windowed +
-        Alt+Enter, shadow-record <code>00A0AEA0</code>/<code>00A0ABE0</code>,
-        and NativeSemantic OwnsSwapchainPresent + exclusive-walk
-        STALE. MATCH for named-stage Add Def Class is still
+        Recent commits <code>b03756c</code> …
+        <code>4f1819d</code> lock menu parity + custom
+        cursor, colors/text underlay, compositing/upload
+        stalls, type-18 swap + type-6 underlay order,
+        frontend UI schema, map states to recovered
+        fields, map UI controls,
+        Sprite2DFlag/Angle/sampler + hover residency,
+        authored controls + host frontend audio, hover
+        stalls, visible frontend logos, live sprite
+        rotation, and profile hover no texture rebuild. MATCH for named-stage Add Def Class is still
         Note-only + <code>*DefClassRegistered</code> flag, not a
         live constructed object. dest <code>0044C72B</code> as
         <code>[01232C24+8]</code> is not rdata-locked. leave #42
@@ -1716,7 +1812,10 @@
         (<code>SkipVtblsAreMethodCalls == false</code>); that
         is not exclusive-walk. New Profile dest/hit is host
         stand-in (<code>TryChromeHit</code> invents type-16/37
-        hit). leave #48 open. First-proximity TNG is host OOM
+        hit; GRAPHIC-name AABB is also host).
+        <code>NativeDestTupleUnread</code> stays true. Host
+        frontend audio does not lock leftover #15 or leftover
+        #9. leave #48 open. First-proximity TNG is host OOM
         workaround, not locked <code>004FDBC0</code> NewMap 1.
         leave #50 open. Do not collapse no-save first region
         LookoutPoint vs first-scene Oakvale intro view
