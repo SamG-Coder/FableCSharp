@@ -307,12 +307,13 @@ public static class Dx9VulkanFrontend
     public static FrontendDx9Vertex[] BuildDx9Quad(FrontendDx9DrawRecord rec)
     {
         var argb = rec.DiffuseArgb == 0 ? 0xFFFFFFFFu : rec.DiffuseArgb;
+        var corners = DestCorners(rec);
         return
         [
-            new(rec.DestX0, rec.DestY0, 0f, RecoveredRhw, argb, rec.U0, rec.V0),
-            new(rec.DestX1, rec.DestY0, 0f, RecoveredRhw, argb, rec.U1, rec.V0),
-            new(rec.DestX0, rec.DestY1, 0f, RecoveredRhw, argb, rec.U0, rec.V1),
-            new(rec.DestX1, rec.DestY1, 0f, RecoveredRhw, argb, rec.U1, rec.V1),
+            new(corners.Tlx, corners.Tly, 0f, RecoveredRhw, argb, rec.U0, rec.V0),
+            new(corners.Trx, corners.Try, 0f, RecoveredRhw, argb, rec.U1, rec.V0),
+            new(corners.Blx, corners.Bly, 0f, RecoveredRhw, argb, rec.U0, rec.V1),
+            new(corners.Brx, corners.Bry, 0f, RecoveredRhw, argb, rec.U1, rec.V1),
         ];
     }
 
@@ -371,7 +372,7 @@ public static class Dx9VulkanFrontend
     /// four submitted corners around the destination centre; -0.25 is the
     /// authored quarter-turn used by the horizontal option arrows.
     /// </summary>
-    private static (float Tlx, float Tly, float Trx, float Try,
+    public static (float Tlx, float Tly, float Trx, float Try,
         float Blx, float Bly, float Brx, float Bry) DestCorners(
         FrontendDx9DrawRecord rec)
     {
@@ -383,7 +384,12 @@ public static class Dx9VulkanFrontend
         var cy = (rec.DestY0 + rec.DestY1) * 0.5f;
         var hx = (rec.DestX1 - rec.DestX0) * 0.5f;
         var hy = (rec.DestY1 - rec.DestY0) * 0.5f;
-        var radians = rec.Angle * MathF.Tau;
+        // Persist/D3D frontend coordinates increase downward.  The usual
+        // rotation matrix is Y-up, so converting the authored turn to Vulkan
+        // screen coordinates requires the opposite sign.  Without this,
+        // LEFT_ARROW_GRAPHIC (source down) and RIGHT_ARROW_GRAPHIC (source up)
+        // remain oriented as vertical controls instead of left and right.
+        var radians = -rec.Angle * MathF.Tau;
         var (sin, cos) = MathF.SinCos(radians);
 
         static (float X, float Y) Rotate(

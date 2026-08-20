@@ -63,12 +63,17 @@ public sealed class Dx9VulkanFrontendTests
             [rec], [GpuTexture.White()], vpW: 100, vpH: 100);
 
         Assert.Equal(4, batch.Vertices.Length);
-        Assert.Equal(-0.9f, batch.Vertices[0].Position.X, 4); // (5, 15)
-        Assert.Equal(-0.7f, batch.Vertices[0].Position.Y, 4);
-        Assert.Equal(-0.9f, batch.Vertices[1].Position.X, 4); // (5, -5)
-        Assert.Equal(-1.1f, batch.Vertices[1].Position.Y, 4);
-        Assert.Equal(-0.7f, batch.Vertices[2].Position.X, 4); // (15, 15)
-        Assert.Equal(-0.7f, batch.Vertices[2].Position.Y, 4);
+        Assert.Equal(-0.7f, batch.Vertices[0].Position.X, 4); // (15, -5)
+        Assert.Equal(-1.1f, batch.Vertices[0].Position.Y, 4);
+        Assert.Equal(-0.7f, batch.Vertices[1].Position.X, 4); // (15, 15)
+        Assert.Equal(-0.7f, batch.Vertices[1].Position.Y, 4);
+        Assert.Equal(-0.9f, batch.Vertices[2].Position.X, 4); // (5, -5)
+        Assert.Equal(-1.1f, batch.Vertices[2].Position.Y, 4);
+
+        var liveQuad = Dx9VulkanFrontend.BuildDx9Quad(rec);
+        Assert.Equal((15f, -5f), (liveQuad[0].X, liveQuad[0].Y));
+        Assert.Equal((15f, 15f), (liveQuad[1].X, liveQuad[1].Y));
+        Assert.Equal((5f, -5f), (liveQuad[2].X, liveQuad[2].Y));
     }
 
     [Fact]

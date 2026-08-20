@@ -336,17 +336,18 @@ public static class FrontendDx9Submit
         FrontendDx9DrawRecord rec, Span<FrontendDx9Vertex> vertices)
     {
         var argb = rec.DiffuseArgb == 0 ? 0xFFFFFFFFu : rec.DiffuseArgb;
+        var corners = Dx9VulkanFrontend.DestCorners(rec);
         vertices[0] = new FrontendDx9Vertex(
-            rec.DestX0, rec.DestY0, 0f, Dx9VulkanFrontend.RecoveredRhw,
+            corners.Tlx, corners.Tly, 0f, Dx9VulkanFrontend.RecoveredRhw,
             argb, rec.U0, rec.V0);
         vertices[1] = new FrontendDx9Vertex(
-            rec.DestX1, rec.DestY0, 0f, Dx9VulkanFrontend.RecoveredRhw,
+            corners.Trx, corners.Try, 0f, Dx9VulkanFrontend.RecoveredRhw,
             argb, rec.U1, rec.V0);
         vertices[2] = new FrontendDx9Vertex(
-            rec.DestX0, rec.DestY1, 0f, Dx9VulkanFrontend.RecoveredRhw,
+            corners.Blx, corners.Bly, 0f, Dx9VulkanFrontend.RecoveredRhw,
             argb, rec.U0, rec.V1);
         vertices[3] = new FrontendDx9Vertex(
-            rec.DestX1, rec.DestY1, 0f, Dx9VulkanFrontend.RecoveredRhw,
+            corners.Brx, corners.Bry, 0f, Dx9VulkanFrontend.RecoveredRhw,
             argb, rec.U1, rec.V1);
     }
 
