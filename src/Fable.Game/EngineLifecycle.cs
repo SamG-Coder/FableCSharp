@@ -13490,7 +13490,9 @@ public sealed class EngineLifecycle : IDisposable
             var v1 = widget.V1;
             var haveUv = false;
             var glyphs = 0;
-            var colour = widget.Colour;
+            // 0052FE3C..0052FFA2 composes the local style colour with the
+            // inherited parent colour before 0041AFA0/0054EF00 reads +148.
+            var colour = FrontendWidgetFactory.EffectiveColour(tree, i);
             var recordStart = slot.Count;
             if (FrontendWidgetFactory.IsPresented(tree, i) &&
                 !FrontendWidgetType.LeafDipSkipped(colour) &&

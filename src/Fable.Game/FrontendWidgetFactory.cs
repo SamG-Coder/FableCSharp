@@ -331,6 +331,48 @@ public static class FrontendWidgetFactory
     public static uint ColourAtStyle(FrontendWidget widget, int style) =>
         ColourAtStyle(widget.StyleColours, style, def: null, fallback: widget.Colour);
 
+    /// <summary>
+    /// Native <c>0052FE3C..0052FFA2</c> writes the final draw colour at
+    /// <c>+148</c> by multiplying the widget colour by its inherited parent
+    /// colour.  <c>vtbl+404</c> (persist absolute, <c>+300</c> bit 6) breaks
+    /// that inheritance.  This is what makes the zero-alpha blending groups
+    /// under the forest/sunbeam swaps suppress their otherwise opaque tiles.
+    /// </summary>
+    public static uint EffectiveColour(IReadOnlyList<FrontendWidget> widgets, int index)
+    {
+        if ((uint)index >= (uint)widgets.Count)
+            return 0;
+
+        var colour = widgets[index].Colour;
+        var current = index;
+        while (!widgets[current].Absolute)
+        {
+            var parent = widgets[current].ParentIndex;
+            if ((uint)parent >= (uint)widgets.Count)
+                break;
+            // The resident slot root is the outer draw boundary. Its menu
+            // fade is handled by the slot/state path; descendants inherit
+            // colours from containers below it.
+            if (widgets[parent].ParentIndex < 0)
+                break;
+            colour = MultiplyArgb(colour, widgets[parent].Colour);
+            current = parent;
+        }
+
+        return colour;
+    }
+
+    private static uint MultiplyArgb(uint child, uint parent)
+    {
+        static uint Channel(uint a, uint b) => (a * b + 127u) / 255u;
+
+        var a = Channel(child >> 24, parent >> 24);
+        var r = Channel((child >> 16) & 0xFFu, (parent >> 16) & 0xFFu);
+        var g = Channel((child >> 8) & 0xFFu, (parent >> 8) & 0xFFu);
+        var b = Channel(child & 0xFFu, parent & 0xFFu);
+        return (a << 24) | (r << 16) | (g << 8) | b;
+    }
+
     public static uint ColourAtStyle(
         IReadOnlyList<uint>? colours, int style, FrontendUiDef? def, uint fallback = 0)
     {

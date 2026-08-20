@@ -9,14 +9,18 @@ public sealed unsafe partial class VulkanLineRenderer
 {
     private PipelineLayout _frontendLayout;
     private Pipeline _frontendPipeline;
-    private Buffer _frontendVertexBuffer;
-    private DeviceMemory _frontendVertexMemory;
-    private Buffer _frontendIndexBuffer;
-    private DeviceMemory _frontendIndexMemory;
+    private readonly Buffer[] _frontendVertexBuffers = new Buffer[MaxFrames];
+    private readonly DeviceMemory[] _frontendVertexMemories = new DeviceMemory[MaxFrames];
+    private readonly Buffer[] _frontendIndexBuffers = new Buffer[MaxFrames];
+    private readonly DeviceMemory[] _frontendIndexMemories = new DeviceMemory[MaxFrames];
     private uint _frontendVertexCount;
     private uint _frontendIndexCount;
-    private uint _frontendVertexCapacity;
-    private uint _frontendIndexCapacity;
+    private readonly uint[] _frontendVertexCapacities = new uint[MaxFrames];
+    private readonly uint[] _frontendIndexCapacities = new uint[MaxFrames];
+    private readonly int[] _frontendUploadedVersions = new int[MaxFrames];
+    private FrontendGpuVertex[] _frontendVertices = [];
+    private ushort[] _frontendIndices = [];
+    private int _frontendVersion;
     private FrontendDraw[] _frontendDraws = [];
     private bool _frontendReady;
 
@@ -30,10 +34,13 @@ public sealed unsafe partial class VulkanLineRenderer
         }
 
         var value = batch.Value;
-        if (value.Textures.Length > 0)
+        if (value.Textures.Length > 0 && !SameTextureSet(value.Textures))
             SetTextures(value.Textures);
-        UploadFrontendVertices(value.Vertices);
-        UploadFrontendIndices(value.Indices);
+        _frontendVertices = value.Vertices;
+        _frontendIndices = value.Indices;
+        _frontendVertexCount = (uint)value.Vertices.Length;
+        _frontendIndexCount = (uint)value.Indices.Length;
+        _frontendVersion++;
         _frontendDraws = value.Draws;
         _frontendReady = _frontendVertexCount > 0 && _frontendPipeline.Handle != 0;
     }
@@ -116,23 +123,48 @@ public sealed unsafe partial class VulkanLineRenderer
             _vk.DestroyPipeline(_device, _frontendPipeline, null);
         if (_frontendLayout.Handle != 0)
             _vk.DestroyPipelineLayout(_device, _frontendLayout, null);
-        if (_frontendVertexBuffer.Handle != 0)
+        for (var i = 0; i < MaxFrames; i++)
         {
-            _vk.DestroyBuffer(_device, _frontendVertexBuffer, null);
-            _vk.FreeMemory(_device, _frontendVertexMemory, null);
-        }
+            if (_frontendVertexBuffers[i].Handle != 0)
+            {
+                _vk.DestroyBuffer(_device, _frontendVertexBuffers[i], null);
+                _vk.FreeMemory(_device, _frontendVertexMemories[i], null);
+            }
 
-        if (_frontendIndexBuffer.Handle != 0)
-        {
-            _vk.DestroyBuffer(_device, _frontendIndexBuffer, null);
-            _vk.FreeMemory(_device, _frontendIndexMemory, null);
+            if (_frontendIndexBuffers[i].Handle != 0)
+            {
+                _vk.DestroyBuffer(_device, _frontendIndexBuffers[i], null);
+                _vk.FreeMemory(_device, _frontendIndexMemories[i], null);
+            }
+
+            _frontendVertexBuffers[i] = default;
+            _frontendVertexMemories[i] = default;
+            _frontendIndexBuffers[i] = default;
+            _frontendIndexMemories[i] = default;
+            _frontendVertexCapacities[i] = 0;
+            _frontendIndexCapacities[i] = 0;
+            _frontendUploadedVersions[i] = 0;
         }
 
         _frontendPipeline = default;
         _frontendLayout = default;
-        _frontendVertexBuffer = default;
-        _frontendIndexBuffer = default;
+        _frontendVertices = [];
+        _frontendIndices = [];
         _frontendReady = false;
+    }
+
+    /// <summary>
+    /// Called only after the fence for <see cref="_frame"/> has completed.
+    /// Each in-flight frame owns its frontend buffers, so cursor movement can
+    /// update vertices without waiting for or overwriting the other frame.
+    /// </summary>
+    internal void UploadPendingFrontend()
+    {
+        if (!_frontendReady || _frontendUploadedVersions[_frame] == _frontendVersion)
+            return;
+        UploadFrontendVertices(_frontendVertices, _frame);
+        UploadFrontendIndices(_frontendIndices, _frame);
+        _frontendUploadedVersions[_frame] = _frontendVersion;
     }
 
     internal void DrawFrontend(CommandBuffer commandBuffer)
@@ -141,10 +173,10 @@ public sealed unsafe partial class VulkanLineRenderer
             return;
         _vk.CmdBindPipeline(commandBuffer, PipelineBindPoint.Graphics, _frontendPipeline);
         ulong offset = 0;
-        var vb = _frontendVertexBuffer;
+        var vb = _frontendVertexBuffers[_frame];
         _vk.CmdBindVertexBuffers(commandBuffer, 0, 1, in vb, in offset);
         if (_frontendIndexCount > 0)
-            _vk.CmdBindIndexBuffer(commandBuffer, _frontendIndexBuffer, 0, IndexType.Uint16);
+            _vk.CmdBindIndexBuffer(commandBuffer, _frontendIndexBuffers[_frame], 0, IndexType.Uint16);
         foreach (var draw in _frontendDraws)
         {
             BindFrontendTexture(commandBuffer, draw.TextureId);
@@ -174,61 +206,61 @@ public sealed unsafe partial class VulkanLineRenderer
             0, null);
     }
 
-    private void UploadFrontendVertices(FrontendGpuVertex[] vertices)
+    private void UploadFrontendVertices(FrontendGpuVertex[] vertices, int frame)
     {
         _frontendVertexCount = (uint)vertices.Length;
         if (_frontendVertexCount == 0)
             return;
         var bytes = (ulong)(vertices.Length * Unsafe.SizeOf<FrontendGpuVertex>());
-        if (_frontendVertexCapacity < _frontendVertexCount)
+        if (_frontendVertexCapacities[frame] < _frontendVertexCount)
         {
-            if (_frontendVertexBuffer.Handle != 0)
+            if (_frontendVertexBuffers[frame].Handle != 0)
             {
-                _vk.DestroyBuffer(_device, _frontendVertexBuffer, null);
-                _vk.FreeMemory(_device, _frontendVertexMemory, null);
+                _vk.DestroyBuffer(_device, _frontendVertexBuffers[frame], null);
+                _vk.FreeMemory(_device, _frontendVertexMemories[frame], null);
             }
 
             CreateBuffer(
                 bytes,
                 BufferUsageFlags.VertexBufferBit,
                 MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
-                out _frontendVertexBuffer,
-                out _frontendVertexMemory);
-            _frontendVertexCapacity = _frontendVertexCount;
+                out _frontendVertexBuffers[frame],
+                out _frontendVertexMemories[frame]);
+            _frontendVertexCapacities[frame] = _frontendVertexCount;
         }
 
         void* mapped;
-        Check(_vk.MapMemory(_device, _frontendVertexMemory, 0, bytes, 0, &mapped));
+        Check(_vk.MapMemory(_device, _frontendVertexMemories[frame], 0, bytes, 0, &mapped));
         vertices.CopyTo(new Span<FrontendGpuVertex>(mapped, vertices.Length));
-        _vk.UnmapMemory(_device, _frontendVertexMemory);
+        _vk.UnmapMemory(_device, _frontendVertexMemories[frame]);
     }
 
-    private void UploadFrontendIndices(ushort[] indices)
+    private void UploadFrontendIndices(ushort[] indices, int frame)
     {
         _frontendIndexCount = (uint)indices.Length;
         if (_frontendIndexCount == 0)
             return;
         var bytes = (ulong)(indices.Length * sizeof(ushort));
-        if (_frontendIndexCapacity < _frontendIndexCount)
+        if (_frontendIndexCapacities[frame] < _frontendIndexCount)
         {
-            if (_frontendIndexBuffer.Handle != 0)
+            if (_frontendIndexBuffers[frame].Handle != 0)
             {
-                _vk.DestroyBuffer(_device, _frontendIndexBuffer, null);
-                _vk.FreeMemory(_device, _frontendIndexMemory, null);
+                _vk.DestroyBuffer(_device, _frontendIndexBuffers[frame], null);
+                _vk.FreeMemory(_device, _frontendIndexMemories[frame], null);
             }
 
             CreateBuffer(
                 bytes,
                 BufferUsageFlags.IndexBufferBit,
                 MemoryPropertyFlags.HostVisibleBit | MemoryPropertyFlags.HostCoherentBit,
-                out _frontendIndexBuffer,
-                out _frontendIndexMemory);
-            _frontendIndexCapacity = _frontendIndexCount;
+                out _frontendIndexBuffers[frame],
+                out _frontendIndexMemories[frame]);
+            _frontendIndexCapacities[frame] = _frontendIndexCount;
         }
 
         void* mapped;
-        Check(_vk.MapMemory(_device, _frontendIndexMemory, 0, bytes, 0, &mapped));
+        Check(_vk.MapMemory(_device, _frontendIndexMemories[frame], 0, bytes, 0, &mapped));
         indices.CopyTo(new Span<ushort>(mapped, indices.Length));
-        _vk.UnmapMemory(_device, _frontendIndexMemory);
+        _vk.UnmapMemory(_device, _frontendIndexMemories[frame]);
     }
 }

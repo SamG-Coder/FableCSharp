@@ -7,6 +7,8 @@ namespace Fable.Render;
 
 public sealed unsafe partial class VulkanLineRenderer
 {
+    private GpuTexture[] _residentTextureSources = [];
+
     private struct DeviceTexture
     {
         public int Id;
@@ -44,6 +46,35 @@ public sealed unsafe partial class VulkanLineRenderer
                 continue;
             _textures[texture.Id] = UploadTexture(texture);
         }
+
+        _residentTextureSources = [.. textures];
+    }
+
+    private bool SameTextureSet(IReadOnlyList<GpuTexture> textures) =>
+        TextureSetsShareStorage(_residentTextureSources, textures);
+
+    /// <summary>
+    /// Frontend collection rebuilds lightweight <see cref="GpuTexture"/>
+    /// values each frame, but cached bank textures retain the same RGBA
+    /// arrays. Matching their identity avoids a device-idle texture teardown
+    /// for cursor-only vertex changes.
+    /// </summary>
+    public static bool TextureSetsShareStorage(
+        IReadOnlyList<GpuTexture> left,
+        IReadOnlyList<GpuTexture> right)
+    {
+        if (left.Count != right.Count)
+            return false;
+        for (var i = 0; i < left.Count; i++)
+        {
+            var a = left[i];
+            var b = right[i];
+            if (a.Id != b.Id || a.Width != b.Width || a.Height != b.Height ||
+                !ReferenceEquals(a.Rgba, b.Rgba))
+                return false;
+        }
+
+        return true;
     }
 
     private void DrawMeshBatches(CommandBuffer commandBuffer)

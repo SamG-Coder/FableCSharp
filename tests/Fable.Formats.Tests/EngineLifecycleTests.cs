@@ -4656,6 +4656,18 @@ public sealed class EngineLifecycleTests
         var text = Assert.Single(life.FrontendWidgets, w => w.Name == "UI_PRESS_START_TEXT");
         Assert.Equal("TEXT_GUI_MENU_PRESS_BUTTON", text.TextTag);
         Assert.Equal(6, text.Type);
+        var forestOne = life.FrontendWidgets
+            .Select((widget, index) => (widget, index))
+            .Single(pair => pair.widget.Name == "UI_FRONTEND_BG_FORREST_1_1").index;
+        var forestTwo = life.FrontendWidgets
+            .Select((widget, index) => (widget, index))
+            .Single(pair => pair.widget.Name == "UI_FRONTEND_BG_FORREST_2_1").index;
+        Assert.True(forestOne >= 0);
+        Assert.True(forestTwo >= 0);
+        Assert.Equal(0xFFFFFFFFu,
+            FrontendWidgetFactory.EffectiveColour(life.FrontendWidgets, forestOne));
+        Assert.Equal(0x00FFFFFFu,
+            FrontendWidgetFactory.EffectiveColour(life.FrontendWidgets, forestTwo));
         life.SetFrontendPointer(347f, 276f);
         Assert.True(life.Pump());
         Assert.Equal(347f, life.FrontendPointerX);

@@ -442,6 +442,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         if (_playAviPump || _videoReady)
             PlayAviTimeline.Note("beginscene", PlayAviTimeline.SiteBeginScene, _videoSerial);
         _vk.WaitForFences(_device, 1, in _inFlight[_frame], true, ulong.MaxValue);
+        UploadPendingFrontend();
         var other = (_frame + 1) % MaxFrames;
         VideoOtherFenceStatus = (int)_vk.GetFenceStatus(_device, _inFlight[other]);
 

@@ -17,6 +17,18 @@ namespace Fable.Formats.Tests;
 public sealed class Dx9VulkanFrontendTests
 {
     [Fact]
+    public void Frontend_texture_sets_reuse_cached_pixel_storage()
+    {
+        var pixels = new byte[] { 1, 2, 3, 4 };
+        GpuTexture[] first = [new(7, 1, 1, pixels)];
+        GpuTexture[] rebuilt = [new(7, 1, 1, pixels)];
+        GpuTexture[] changed = [new(7, 1, 1, [1, 2, 3, 4])];
+
+        Assert.True(VulkanLineRenderer.TextureSetsShareStorage(first, rebuilt));
+        Assert.False(VulkanLineRenderer.TextureSetsShareStorage(first, changed));
+    }
+
+    [Fact]
     public void Primitive_topology_is_triangle_list_from_00A0AEA0()
     {
         Assert.Equal(4, Dx9VulkanFrontend.D3dptTriangleList);
