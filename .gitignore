@@ -18,3 +18,5 @@ client-err.txt
 /export
 /implementer/frontend/*.txt
 /src/tools/Fable.ExeIndex/out/01-sections/playavi-timeline
+/tools/_ids.csx
+/implementer/frontend/manifest.json
