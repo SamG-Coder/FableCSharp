@@ -384,6 +384,16 @@ public sealed class Dx9DeviceRecordTests
         life.QueueInput(EngineInput.Type6, 0);
         Assert.True(life.Pump());
         Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        var residentTextures = device.LastBatch.Textures.ToArray();
+        var cancel = Enumerable.Range(0, life.FrontendWidgets.Count)
+            .First(index => life.FrontendWidgets[index].Name == "UI_CANCEL");
+        Assert.True(FrontendHitTest.TryDestPoint(
+            life.FrontendWidgets, cancel, out var hoverX, out var hoverY));
+        life.SetFrontendPointer(hoverX, hoverY);
+        life.QueueInput(EngineInput.TypeMouse, 0);
+        Assert.True(life.Pump());
+        Assert.True(VulkanLineRenderer.TextureSetsShareStorage(
+            residentTextures, device.LastBatch.Textures));
         Assert.True(life.Pump());
         var profileAllocationStart = GC.GetAllocatedBytesForCurrentThread();
         for (var frameIndex = 0; frameIndex < 60; frameIndex++)

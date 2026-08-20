@@ -135,7 +135,7 @@ public static class FrontendUiFieldCatalog
         F("UseViewArea", 0xCA2D971D, Storage.Bool8, 544, 656),
         F("PartOfListTree", 0xE59C9B55, Storage.Bool8, 522, 626),
         F("PCStyle", 0x9E47F106, Storage.Bool8, 545, 657),
-        F("Sprite2DFlag", 0xF26C87EA, Storage.Int32, 548, 660),
+        F("Sprite2DFlag", FrontendUiDef.Sprite2DFlagCrc, Storage.Int32, 548, 660),
     ];
 
     public static IReadOnlyList<Field> StateFields { get; } =

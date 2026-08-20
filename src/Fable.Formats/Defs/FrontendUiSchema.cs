@@ -153,7 +153,7 @@ public static class FrontendUiSchema
         reader.U8(0xCA2D971D, "UseViewArea");
         reader.U8(0xE59C9B55, "PartOfListTree");
         reader.U8(0x9E47F106, "PCStyle");
-        reader.I32(0xF26C87EA, "Sprite2DFlag");
+        reader.I32(FrontendUiDef.Sprite2DFlagCrc, "Sprite2DFlag");
 
         end = reader.Cursor;
         if (!reader.Ok)

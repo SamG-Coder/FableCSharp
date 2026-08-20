@@ -145,6 +145,7 @@ public sealed class FrontendSpriteTests
         Assert.Equal(12, FrontendSpriteDraw.DestOffset);
         Assert.Equal(68, FrontendSpriteDraw.U0Offset);
         Assert.Equal(2, FrontendSpriteDraw.DefaultBlend);
+        Assert.Equal(2, FrontendSpriteDraw.DefaultSprite2DFlag);
         Assert.Equal(0, rec.SizeFromFrame);
         var bytes = rec.ToRecord();
         Assert.Equal(0xC0, bytes.Length);
@@ -153,11 +154,13 @@ public sealed class FrontendSpriteTests
         Assert.Equal(3, BitConverter.ToInt32(bytes, 64));
         Assert.Equal(1f, BitConverter.ToSingle(bytes, 76));
         Assert.Equal(2, BitConverter.ToInt32(bytes, 48));
+        Assert.Equal(2, BitConverter.ToInt32(bytes, 60));
         Assert.Equal(0, bytes[56]);
         var back = FrontendSpriteDraw.Read(bytes);
         Assert.Equal(3, back.TextureId);
         Assert.Equal(70f, back.DestX0);
         Assert.Equal(1f, back.U1);
+        Assert.Equal(2, back.Sprite2DFlag);
 
         var bare = FrontendSpriteDraw.PackUntextured(
             0, 0, 0, 0, fontOrIndex: 224,

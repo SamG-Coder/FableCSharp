@@ -31,6 +31,7 @@ public sealed class FrontendUiDefTests
         Assert.Equal(FableCrc.Hash("PositionY"), FrontendUiDef.PositionYCrc);
         Assert.Equal(FableCrc.Hash("Font"), FrontendUiDef.FontCrc);
         Assert.Equal(FableCrc.Hash("Sprites"), FrontendUiDef.SpritesCrc);
+        Assert.Equal(FableCrc.Hash("Sprite2DFlag"), FrontendUiDef.Sprite2DFlagCrc);
         Assert.Equal(FableCrc.Hash("States"), FrontendUiDef.StatesCrc);
         Assert.Equal(FableCrc.Hash("ColourR"), FrontendUiDef.ColourRCrc);
         Assert.Equal(FableCrc.Hash("ColourG"), FrontendUiDef.ColourGCrc);
@@ -81,6 +82,7 @@ public sealed class FrontendUiDefTests
             Assert.NotNull(parsed);
             Assert.True(parsed.SchemaComplete, $"{entry.InstanceName}: {parsed.SchemaError}");
             Assert.Null(parsed.SchemaError);
+            Assert.Equal(2, parsed.Sprite2DFlag);
         }
     }
 
@@ -97,6 +99,17 @@ public sealed class FrontendUiDefTests
         Assert.Equal(0.1f, sliderDef.StepX);
         Assert.Equal(361, sliderDef.SliderLeft);
         Assert.Equal(365, sliderDef.SliderRight);
+
+        var leftArrow = FrontendUiDef.TryParse(bin.FindEntry("LEFT_ARROW_GRAPHIC")!);
+        var rightArrow = FrontendUiDef.TryParse(bin.FindEntry("RIGHT_ARROW_GRAPHIC")!);
+        Assert.NotNull(leftArrow);
+        Assert.NotNull(rightArrow);
+        Assert.Equal(-0.25f, leftArrow.Angle);
+        Assert.Equal(-0.25f, rightArrow.Angle);
+
+        var title = FrontendUiDef.TryParse(bin.FindEntry("UI_TEXT_SCREEN_TITLE")!);
+        Assert.NotNull(title);
+        Assert.True(title.LayerIndependant);
 
         var tree = FrontendWidgetFactory.Build(
             bin, EngineLifecycle.FrontendNewProfileMenu);

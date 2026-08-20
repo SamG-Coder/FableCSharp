@@ -158,4 +158,7 @@ public readonly record struct FrontendWidget(
     int Action = 0,
     int ActionOnSelected = 0,
     int ActionOnUnselected = 0,
-    float SliderValueX = 0);
+    float SliderValueX = 0,
+    int Sprite2DFlag = 0,
+    float Angle = 0,
+    bool LayerIndependant = false);

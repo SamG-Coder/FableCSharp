@@ -31,8 +31,9 @@ public readonly record struct FrontendSpriteDraw
     public const int EnqueueBytes = 60;
     public const int SubmitDestOffset = 0x15C;
     public const int WidgetTextureOffset = 380;
-    public const int WidgetBlendOffset = 372;
+    public const int WidgetSprite2DFlagOffset = 372;
     public const int DefaultBlend = 2;
+    public const int DefaultSprite2DFlag = 2;
     public const string Shader = "VSHADER_2D_SPRITE";
 
     /// <summary>
@@ -86,6 +87,7 @@ public readonly record struct FrontendSpriteDraw
     public byte ColourR { get; init; }
     public byte ColourA { get; init; }
     public int Blend { get; init; }
+    public int Sprite2DFlag { get; init; }
     public byte SizeFromFrame { get; init; }
 
     /// <summary>
@@ -118,6 +120,7 @@ public readonly record struct FrontendSpriteDraw
             ColourR = colourR,
             ColourA = colourA,
             Blend = blend,
+            Sprite2DFlag = DefaultSprite2DFlag,
             SizeFromFrame = 0,
         };
 
@@ -150,6 +153,7 @@ public readonly record struct FrontendSpriteDraw
             ColourR = colourR,
             ColourA = colourA,
             Blend = blend,
+            Sprite2DFlag = DefaultSprite2DFlag,
             SizeFromFrame = 0,
         };
 
@@ -175,6 +179,7 @@ public readonly record struct FrontendSpriteDraw
         BitConverter.TryWriteBytes(rec.Slice(DestOffset + 12), DestY1);
         BitConverter.TryWriteBytes(rec.Slice(FontOrIndexOffset), FontOrIndex);
         BitConverter.TryWriteBytes(rec.Slice(BlendOffset), Blend);
+        BitConverter.TryWriteBytes(rec.Slice(Field60Offset), Sprite2DFlag);
         rec[ColourBOffset] = ColourB;
         rec[ColourGOffset] = ColourG;
         rec[ColourROffset] = ColourR;
@@ -201,6 +206,7 @@ public readonly record struct FrontendSpriteDraw
             DestY1 = BitConverter.ToSingle(rec.Slice(DestOffset + 12)),
             FontOrIndex = BitConverter.ToInt32(rec.Slice(FontOrIndexOffset)),
             Blend = BitConverter.ToInt32(rec.Slice(BlendOffset)),
+            Sprite2DFlag = BitConverter.ToInt32(rec.Slice(Field60Offset)),
             ColourB = rec[ColourBOffset],
             ColourG = rec[ColourGOffset],
             ColourR = rec[ColourROffset],

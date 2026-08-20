@@ -19,7 +19,8 @@ public readonly record struct FrontendDraw(
     int D3dSrcBlend,
     int D3dDestBlend,
     bool BlendEnable,
-    int D3dPrimitiveType);
+    int D3dPrimitiveType,
+    bool LinearSampling = true);
 
 /// <summary>
 /// Native dest+UV record after layout.
@@ -44,7 +45,9 @@ public readonly record struct FrontendDx9DrawRecord(
     int RecordType = 0x22,
     int VertexStride = 32,
     int NativeUsedBytes = 28,
-    bool AppliesHalfPixel = false);
+    bool AppliesHalfPixel = false,
+    int Sprite2DFlag = 0,
+    float Angle = 0);
 
 /// <summary>
 /// Display VB stride <c>32</c>

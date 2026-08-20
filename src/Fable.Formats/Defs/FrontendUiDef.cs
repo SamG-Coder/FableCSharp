@@ -30,6 +30,13 @@ public sealed class FrontendUiDef
     public const uint ExpansionTypeCrc = 0x38BB7ED4;
     public const uint SpritesCrc = 0x5E5D8A25;
     /// <summary>
+    /// CUIDef persist <c>+548</c>. <c>0041AC64</c> copies it to
+    /// widget <c>+372</c>; <c>0041B4C2</c> passes it to type-0x22
+    /// record <c>+60</c>. <c>00BAD90B</c> extracts bit 1 into the
+    /// sampler-filter control byte later read at <c>00BAF362</c>.
+    /// </summary>
+    public const uint Sprite2DFlagCrc = 0xF26C87EA;
+    /// <summary>
     /// CUIDef persist <c>+326</c> <c>00431061</c>
     /// (<c>00631DE1</c>).
     /// Type-12 New Profile list stores 30.
@@ -266,10 +273,17 @@ public sealed class FrontendUiDef
     public string? TextValue { get; init; }
     public int Font { get; init; }
     public int Layer { get; init; }
+    /// <summary>
+    /// Persist <c>LayerIndependant</c> at def <c>+476</c>. 005331A0 maps
+    /// it to widget <c>+300</c> bit 5; 0041B1C3 suppresses inherited layer
+    /// addition when this bit is set.
+    /// </summary>
+    public bool LayerIndependant { get; init; }
     public float Angle { get; init; }
     public int GraphicId { get; init; }
     public int GraphicBankId { get; init; }
     public int Sprites { get; init; }
+    public int Sprite2DFlag { get; init; }
     /// <summary>
     /// <c>006327A0</c> / <c>006327E0</c>:
     /// count then <c>n</c> <c>(key, defIndex)</c>
@@ -448,6 +462,7 @@ public sealed class FrontendUiDef
         var graphic = 0;
         var haveGraphic = false;
         var sprites = 0;
+        var sprite2DFlag = ReadPersistI32(raw, Sprite2DFlagCrc);
         var spriteDefs = new List<int>();
         var spriteKeys = new List<int>();
         var expansionType = 0;
@@ -821,6 +836,7 @@ public sealed class FrontendUiDef
 
         var centreByte = ReadPersistU8(raw, PositionIsCenterCrc);
         var independentByte = ReadPersistU8(raw, IndependantCrc);
+        var layerIndependentByte = ReadPersistU8(raw, LayerIndependantCrc);
         var relativeZoomByte = ReadPersistU8(raw, UseRelativeZoomCrc);
         var relativePositionByte = ReadPersistU8(raw, UseRelativePositionCrc);
         var actionOnLeftUnclicked = ReadPersistI32(raw, ActionOnLeftUnclickedCrc);
@@ -855,6 +871,12 @@ public sealed class FrontendUiDef
         var scanned322 = ReadPersistF32(raw, PositionOffsetXCrc);
         if (float.IsFinite(scanned322))
             positionOffsetX = scanned322;
+        // Angle is serialized after the repeated style records. The linear
+        // cursor can stop at an unfamiliar nested field before reaching it,
+        // so use the schema-known CRC lookup just like the other tail fields.
+        var scannedAngle = ReadPersistF32(raw, AngleCrc);
+        if (float.IsFinite(scannedAngle))
+            angle = scannedAngle;
         drawFromViewport = ReadPersistU8(raw, DrawFromViewportCrc);
         bastardChild = ReadPersistU8(raw, BastardChildCrc);
         alignement = ReadPersistI32(raw, AlignementCrc);
@@ -888,10 +910,12 @@ public sealed class FrontendUiDef
             TextValue = text,
             Font = font,
             Layer = layer,
+            LayerIndependant = layerIndependentByte != 0,
             Angle = angle,
             GraphicId = graphic,
             GraphicBankId = graphic,
             Sprites = sprites,
+            Sprite2DFlag = sprite2DFlag,
             SpriteDefIndices = spriteDefs,
             SpriteKeys = spriteKeys,
             ExpansionType = expansionType,

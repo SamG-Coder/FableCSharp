@@ -18,6 +18,7 @@ public sealed unsafe partial class VulkanLineRenderer
         public ImageView View;
         public DescriptorSet Set;
         public DescriptorSet FrontendSet;
+        public DescriptorSet FrontendPointSet;
     }
 
     public void SetTextures(IReadOnlyList<GpuTexture> textures)
@@ -25,7 +26,7 @@ public sealed unsafe partial class VulkanLineRenderer
         _vk.DeviceWaitIdle(_device);
         DestroyTextures();
 
-        var count = (2 + textures.Count) * 2;
+        var count = (2 + textures.Count) * 3;
         var poolSizes = stackalloc DescriptorPoolSize[]
         {
             new() { Type = DescriptorType.CombinedImageSampler, DescriptorCount = (uint)count },
@@ -174,12 +175,15 @@ public sealed unsafe partial class VulkanLineRenderer
 
     private void CreateSamplerAndLayout()
     {
-        // Fable DX9: UNREAD first-seen D3DSAMP_* writes.
-        // D3D9 default POINT / NONE / WRAP.
         var samplerInfo = Parity.Dx9Vulkan.Dx9VulkanSamplerState.FirstSeenTemporary();
         Check(_vk.CreateSampler(_device, in samplerInfo, null, out _sampler));
-        var frontendSamplerInfo = Parity.Dx9Vulkan.Dx9VulkanSamplerState.FrontendType22();
+        // Both native branches exist. Each draw selects from its parsed
+        // frontend.bin Sprite2DFlag instead of baking one assumed mode.
+        var frontendSamplerInfo = Parity.Dx9Vulkan.Dx9VulkanSamplerState.FrontendType22(2);
         Check(_vk.CreateSampler(_device, in frontendSamplerInfo, null, out _frontendSampler));
+        var frontendPointSamplerInfo = Parity.Dx9Vulkan.Dx9VulkanSamplerState.FrontendType22(0);
+        Check(_vk.CreateSampler(
+            _device, in frontendPointSamplerInfo, null, out _frontendPointSampler));
 
         var binding = new DescriptorSetLayoutBinding
         {
@@ -261,6 +265,7 @@ public sealed unsafe partial class VulkanLineRenderer
 
         var set = AllocateTextureSet(view, _sampler);
         var frontendSet = AllocateTextureSet(view, _frontendSampler);
+        var frontendPointSet = AllocateTextureSet(view, _frontendPointSampler);
 
         return new DeviceTexture
         {
@@ -270,6 +275,7 @@ public sealed unsafe partial class VulkanLineRenderer
             View = view,
             Set = set,
             FrontendSet = frontendSet,
+            FrontendPointSet = frontendPointSet,
         };
     }
 

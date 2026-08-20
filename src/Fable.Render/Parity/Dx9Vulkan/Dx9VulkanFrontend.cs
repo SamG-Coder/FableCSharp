@@ -361,7 +361,40 @@ public static class Dx9VulkanFrontend
             src,
             dst,
             BlendEnable: true,
-            D3dptTriangleList);
+            D3dptTriangleList,
+            LinearSampling: glyph ||
+                Dx9VulkanSamplerState.PreservesPerFrameFilter(rec.Sprite2DFlag));
+    }
+
+    /// <summary>
+    /// Persist Angle is expressed in turns. The type-0x22 packer rotates the
+    /// four submitted corners around the destination centre; -0.25 is the
+    /// authored quarter-turn used by the horizontal option arrows.
+    /// </summary>
+    private static (float Tlx, float Tly, float Trx, float Try,
+        float Blx, float Bly, float Brx, float Bry) DestCorners(
+        FrontendDx9DrawRecord rec)
+    {
+        if (rec.Angle == 0f)
+            return (rec.DestX0, rec.DestY0, rec.DestX1, rec.DestY0,
+                rec.DestX0, rec.DestY1, rec.DestX1, rec.DestY1);
+
+        var cx = (rec.DestX0 + rec.DestX1) * 0.5f;
+        var cy = (rec.DestY0 + rec.DestY1) * 0.5f;
+        var hx = (rec.DestX1 - rec.DestX0) * 0.5f;
+        var hy = (rec.DestY1 - rec.DestY0) * 0.5f;
+        var radians = rec.Angle * MathF.Tau;
+        var (sin, cos) = MathF.SinCos(radians);
+
+        static (float X, float Y) Rotate(
+            float x, float y, float cx, float cy, float sin, float cos) =>
+            (cx + x * cos - y * sin, cy + x * sin + y * cos);
+
+        var tl = Rotate(-hx, -hy, cx, cy, sin, cos);
+        var tr = Rotate(hx, -hy, cx, cy, sin, cos);
+        var bl = Rotate(-hx, hy, cx, cy, sin, cos);
+        var br = Rotate(hx, hy, cx, cy, sin, cos);
+        return (tl.X, tl.Y, tr.X, tr.Y, bl.X, bl.Y, br.X, br.Y);
     }
 
     /// <summary>
@@ -386,14 +419,15 @@ public static class Dx9VulkanFrontend
         var firstVertex = (uint)vertices.Count;
         var firstIndex = (uint)indices.Count;
         var argb = rec.DiffuseArgb == 0 ? 0xFFFFFFFFu : rec.DiffuseArgb;
+        var corners = DestCorners(rec);
         var tl = new FrontendDx9Vertex(
-            rec.DestX0, rec.DestY0, 0f, RecoveredRhw, argb, rec.U0, rec.V0);
+            corners.Tlx, corners.Tly, 0f, RecoveredRhw, argb, rec.U0, rec.V0);
         var tr = new FrontendDx9Vertex(
-            rec.DestX1, rec.DestY0, 0f, RecoveredRhw, argb, rec.U1, rec.V0);
+            corners.Trx, corners.Try, 0f, RecoveredRhw, argb, rec.U1, rec.V0);
         var bl = new FrontendDx9Vertex(
-            rec.DestX0, rec.DestY1, 0f, RecoveredRhw, argb, rec.U0, rec.V1);
+            corners.Blx, corners.Bly, 0f, RecoveredRhw, argb, rec.U0, rec.V1);
         var br = new FrontendDx9Vertex(
-            rec.DestX1, rec.DestY1, 0f, RecoveredRhw, argb, rec.U1, rec.V1);
+            corners.Brx, corners.Bry, 0f, RecoveredRhw, argb, rec.U1, rec.V1);
         if (rec.RecordType == (int)GlyphRecordType)
         {
             vertices.Add(ToGpuVertex(tl, vpX, vpY, vpW, vpH, useDiffuseColor: true));
@@ -469,14 +503,15 @@ public static class Dx9VulkanFrontend
             var firstVertex = (uint)vertex;
             var firstIndex = (uint)index;
             var argb = rec.DiffuseArgb == 0 ? 0xFFFFFFFFu : rec.DiffuseArgb;
+            var corners = DestCorners(rec);
             var tl = new FrontendDx9Vertex(
-                rec.DestX0, rec.DestY0, 0f, RecoveredRhw, argb, rec.U0, rec.V0);
+                corners.Tlx, corners.Tly, 0f, RecoveredRhw, argb, rec.U0, rec.V0);
             var tr = new FrontendDx9Vertex(
-                rec.DestX1, rec.DestY0, 0f, RecoveredRhw, argb, rec.U1, rec.V0);
+                corners.Trx, corners.Try, 0f, RecoveredRhw, argb, rec.U1, rec.V0);
             var bl = new FrontendDx9Vertex(
-                rec.DestX0, rec.DestY1, 0f, RecoveredRhw, argb, rec.U0, rec.V1);
+                corners.Blx, corners.Bly, 0f, RecoveredRhw, argb, rec.U0, rec.V1);
             var br = new FrontendDx9Vertex(
-                rec.DestX1, rec.DestY1, 0f, RecoveredRhw, argb, rec.U1, rec.V1);
+                corners.Brx, corners.Bry, 0f, RecoveredRhw, argb, rec.U1, rec.V1);
             var glyph = rec.RecordType == (int)GlyphRecordType;
             if (glyph)
             {

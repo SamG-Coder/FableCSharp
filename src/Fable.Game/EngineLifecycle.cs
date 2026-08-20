@@ -613,7 +613,7 @@ public sealed class EngineLifecycle : IDisposable
     public const uint FrontendConstructSwitchVa = 0x0041D7F8;
     public const string FrontendBinFile = "frontend.bin";
     public const int FrontendWidgetReadyOffset = 368;
-    public const int FrontendWidgetBlendOffset = 372;
+    public const int FrontendWidgetSprite2DFlagOffset = 372;
     public const int FrontendWidgetFontOffset = 376;
     public const int FrontendWidgetTextureOffset = 380;
     public const int FrontendWidgetSubmitDestOffset = 0x15C;
@@ -5614,6 +5614,7 @@ public sealed class EngineLifecycle : IDisposable
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<FrontendTextLayoutKey, List<FrontendTextDraw.GlyphQuad>>
         _frontendTextLayouts = [];
+    private FrontendTextLayoutKey? _frontendEditLayoutKey;
     private string? _frontendCaretSource;
     private string? _frontendCaretText;
     private int _frontendCaretCursor = -1;
@@ -6640,7 +6641,7 @@ public sealed class EngineLifecycle : IDisposable
         else
         {
             Note(FrontendWidgetType0Ctor, "Frontend", "UI",
-                $"0041B800 vtbl 0x{FrontendWidgetVtbl:X} +{FrontendWidgetBlendOffset}={FrontendWidgetBlendDefault}");
+                $"0041B800 vtbl 0x{FrontendWidgetVtbl:X} +{FrontendWidgetSprite2DFlagOffset}={FrontendWidgetBlendDefault}");
         }
 
         Note(FrontendWidgetPostCtorFn, "Frontend", "UI",
@@ -7072,7 +7073,7 @@ public sealed class EngineLifecycle : IDisposable
         Note(packer, "Frontend", "UI",
             sibling
                 ? $"0041BF60 type 0x{Frontend2dRecordType:X} [+380]"
-                : $"0041BEB0 type 0x{Frontend2dRecordType:X} +{FrontendWidgetBlendOffset}={FrontendWidgetBlend}");
+                : $"0041BEB0 type 0x{Frontend2dRecordType:X} +{FrontendWidgetSprite2DFlagOffset}={FrontendWidgetBlend}");
         Note(packer, "Frontend", "UI",
             $"[edx+{Frontend2dSubmitVtbl}] dest +{FrontendWidgetSubmitDestOffset:X} 0x{Frontend2dRecordBytes:X} {destX0},{destY0},{destX1},{destY1}");
         Note(FrontendEngineAllocFn, "Frontend", "UI",
@@ -13422,6 +13423,8 @@ public sealed class EngineLifecycle : IDisposable
         var built = FrontendWidgetFactory.Build(
             FrontendDefs, rootName, _frontendSprites, LookupFrontendText, names);
         _frontendWidgets.AddRange(built);
+        if (rootName.Equals(FrontendNewProfileMenu, StringComparison.OrdinalIgnoreCase))
+            BindDefaultNewProfileValues();
         if (_frontendWidgets.Count > 0)
             FrontendRootType = _frontendWidgets[0].Type;
         FrontendChildCount = Math.Max(0, _frontendWidgets.Count - 1);
@@ -13435,6 +13438,30 @@ public sealed class EngineLifecycle : IDisposable
 
         if (slot is int key)
             BindFrontendSlot(key);
+    }
+
+    /// <summary>
+    /// The profile options initializer at 0040C0F7 writes 0x3F000000 before
+    /// loading <c>CameraSensitivity</c>. New Profile binds that value to the
+    /// type-15 slider after the frontend definition tree is constructed.
+    /// </summary>
+    private void BindDefaultNewProfileValues()
+    {
+        const float defaultCameraSensitivity = 0.5f;
+        for (var i = 0; i < _frontendWidgets.Count; i++)
+        {
+            var widget = _frontendWidgets[i];
+            if (!widget.Name.Equals(
+                    "UI_SLIDER_CAMERA_SENSITIVITY",
+                    StringComparison.OrdinalIgnoreCase))
+                continue;
+            _frontendWidgets[i] = widget with
+            {
+                SliderValueX = Math.Clamp(
+                    defaultCameraSensitivity, widget.MinX, widget.MaxX),
+            };
+            break;
+        }
     }
 
     private void ApplyFrontendScaleInit()
@@ -13740,6 +13767,13 @@ public sealed class EngineLifecycle : IDisposable
         textureIndex.Clear();
         _frontendSubmitCounts.Clear();
         RebuildResidentTrees();
+        // A style/hover transition only changes which resident child submits.
+        // Keeping every texture referenced by the resident trees in a stable
+        // set prevents VulkanLineRenderer.SetTextures from doing a
+        // DeviceWaitIdle + full image/descriptor teardown on every hover.
+        for (var treeIndex = 0; treeIndex < _frontendResidentTrees.Count; treeIndex++)
+            CollectResidentFrontendTextures(
+                _frontendResidentTrees[treeIndex], textures, textureIndex);
         for (var treeIndex = 0; treeIndex < _frontendResidentTrees.Count; treeIndex++)
         {
         var tree = _frontendResidentTrees[treeIndex];
@@ -13813,7 +13847,9 @@ public sealed class EngineLifecycle : IDisposable
                         Dx9VulkanFrontend.WidgetBlendDefault,
                         (int)Dx9VulkanFrontend.RecordType,
                         Dx9VulkanFrontend.VertexStride,
-                        (int)FrontendDx9Vertex.NativeUsedBytes));
+                        (int)FrontendDx9Vertex.NativeUsedBytes,
+                        Sprite2DFlag: widget.Sprite2DFlag,
+                        Angle: widget.Angle));
                     u0 = uv.U0;
                     v0 = uv.V0;
                     u1 = uv.U1;
@@ -13852,6 +13888,16 @@ public sealed class EngineLifecycle : IDisposable
                     var drawText = EditBoxTextWithCaret(tree, i, widget.Text);
                     var layoutKey = new FrontendTextLayoutKey(
                         atlasKey, drawText, anchorX, penY, align);
+                    // The edit-box caret string changes on every key press.
+                    // Retain only its current geometry instead of leaking one
+                    // cached glyph list per historical profile-name value.
+                    if (!ReferenceEquals(drawText, widget.Text))
+                    {
+                        if (_frontendEditLayoutKey is { } oldEditKey &&
+                            oldEditKey != layoutKey)
+                            _frontendTextLayouts.Remove(oldEditKey);
+                        _frontendEditLayoutKey = layoutKey;
+                    }
                     if (!_frontendTextLayouts.TryGetValue(layoutKey, out var glyphQuads))
                     {
                         // Geometry depends on the parsed face/text/layout only.
@@ -13878,7 +13924,8 @@ public sealed class EngineLifecycle : IDisposable
                             FrontendTextDraw.Type6RecordType,
                             FrontendTextDraw.VertexStride,
                             FrontendTextDraw.VertexStride,
-                            AppliesHalfPixel: true));
+                            AppliesHalfPixel: true,
+                            Sprite2DFlag: widget.Sprite2DFlag));
                     }
                     foreach (var glyph in glyphQuads)
                     {
@@ -13890,7 +13937,8 @@ public sealed class EngineLifecycle : IDisposable
                             FrontendTextDraw.Type6RecordType,
                             FrontendTextDraw.VertexStride,
                             FrontendTextDraw.VertexStride,
-                            AppliesHalfPixel: true));
+                            AppliesHalfPixel: true,
+                            Sprite2DFlag: widget.Sprite2DFlag));
                     }
 
                     foreach (var glyph in glyphQuads)
@@ -13939,6 +13987,41 @@ public sealed class EngineLifecycle : IDisposable
         records.AddRange(_frontendCursorRecords);
     }
 
+    private void CollectResidentFrontendTextures(
+        IReadOnlyList<FrontendWidget> tree,
+        List<GpuTexture> textures,
+        Dictionary<string, int> textureIndex)
+    {
+        for (var i = 0; i < tree.Count; i++)
+        {
+            var widget = tree[i];
+            if (widget.TextureName is { } textureName &&
+                !textureIndex.ContainsKey(textureName) &&
+                _frontendSprites?.TryLoad(textureName) is { } sprite)
+            {
+                var id = textures.Count;
+                textureIndex.Add(textureName, id);
+                textures.Add(new GpuTexture(id, sprite.Width, sprite.Height, sprite.Rgba));
+            }
+
+            if (widget.Type != FrontendWidgetType.Text ||
+                string.IsNullOrEmpty(widget.Text))
+                continue;
+            var atlasKey = widget.FontFace ?? FrontendUiFontFace;
+            if (textureIndex.ContainsKey(atlasKey))
+                continue;
+            var face = widget.FontFace is { } faceName
+                ? _frontendFonts?.TryLoad(faceName)
+                : _frontendFonts?.TryLoad(FrontendUiFontFace);
+            if (face is null)
+                continue;
+            var atlasId = textures.Count;
+            textureIndex.Add(atlasKey, atlasId);
+            textures.Add(new GpuTexture(
+                atlasId, face.UvWidth, face.UvHeight, face.Atlas));
+        }
+    }
+
     private int[] FrontendRecordOrder(List<FrontendWidget> tree)
     {
         if (_frontendRecordOrders.TryGetValue(tree, out var order) &&
@@ -13962,8 +14045,13 @@ public sealed class EngineLifecycle : IDisposable
         var remaining = tree.Count + 1;
         while ((uint)index < (uint)tree.Count && remaining-- > 0)
         {
-            layer += tree[index].Layer;
-            index = tree[index].ParentIndex;
+            var widget = tree[index];
+            layer += widget.Layer;
+            // 0041B1B7 vtbl+404 and 0041B1C3 vtbl+416: either bit makes
+            // widget+303 an independent root layer.
+            if (widget.Independant || widget.LayerIndependant)
+                break;
+            index = widget.ParentIndex;
         }
         return layer;
     }

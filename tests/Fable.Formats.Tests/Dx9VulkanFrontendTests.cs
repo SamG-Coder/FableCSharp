@@ -54,6 +54,24 @@ public sealed class Dx9VulkanFrontendTests
     }
 
     [Fact]
+    public void Persist_quarter_turn_rotates_sprite_corners_without_allocating_geometry()
+    {
+        var rec = new FrontendDx9DrawRecord(
+            0, 0, 20, 10, 0, 0, 1, 1, 0xFFFFFFFF, 0, 2,
+            Angle: -0.25f);
+        var batch = Dx9VulkanFrontend.BuildBatch(
+            [rec], [GpuTexture.White()], vpW: 100, vpH: 100);
+
+        Assert.Equal(4, batch.Vertices.Length);
+        Assert.Equal(-0.9f, batch.Vertices[0].Position.X, 4); // (5, 15)
+        Assert.Equal(-0.7f, batch.Vertices[0].Position.Y, 4);
+        Assert.Equal(-0.9f, batch.Vertices[1].Position.X, 4); // (5, -5)
+        Assert.Equal(-1.1f, batch.Vertices[1].Position.Y, 4);
+        Assert.Equal(-0.7f, batch.Vertices[2].Position.X, 4); // (15, 15)
+        Assert.Equal(-0.7f, batch.Vertices[2].Position.Y, 4);
+    }
+
+    [Fact]
     public void Frontend_texture_sets_reuse_cached_pixel_storage()
     {
         var pixels = new byte[] { 1, 2, 3, 4 };

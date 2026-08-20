@@ -179,7 +179,7 @@ public sealed unsafe partial class VulkanLineRenderer
             _vk.CmdBindIndexBuffer(commandBuffer, _frontendIndexBuffers[_frame], 0, IndexType.Uint16);
         foreach (var draw in _frontendDraws)
         {
-            BindFrontendTexture(commandBuffer, draw.TextureId);
+            BindFrontendTexture(commandBuffer, draw.TextureId, draw.LinearSampling);
             if (draw.IndexCount > 0)
             {
                 _vk.CmdDrawIndexed(
@@ -191,11 +191,13 @@ public sealed unsafe partial class VulkanLineRenderer
         }
     }
 
-    private void BindFrontendTexture(CommandBuffer commandBuffer, int textureId)
+    private void BindFrontendTexture(
+        CommandBuffer commandBuffer, int textureId, bool linearSampling)
     {
-        var set = _textures.TryGetValue(textureId, out var texture)
-            ? texture.FrontendSet
-            : _fallbackTexture.FrontendSet;
+        var texture = _textures.TryGetValue(textureId, out var found)
+            ? found
+            : _fallbackTexture;
+        var set = linearSampling ? texture.FrontendSet : texture.FrontendPointSet;
         if (set.Handle == 0)
             return;
         _vk.CmdBindDescriptorSets(

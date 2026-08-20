@@ -59,10 +59,10 @@ public static class FrontendWidgetFactory
             {
                 Visible = true,
                 Enabled = true,
-                ActiveChild = FrontendWidgetType.FirstSeenState,
-                State = FrontendWidgetType.FirstSeenState,
-                StyleIndex = FrontendWidgetType.FirstSeenState,
-                Colour = ColourAtStyle(widget, FrontendWidgetType.FirstSeenState),
+                ActiveChild = 0,
+                State = 0,
+                StyleIndex = 0,
+                Colour = ColourAtStyle(widget, 0),
             };
         }
 
@@ -366,7 +366,7 @@ public static class FrontendWidgetFactory
             Visible: true,
             Enabled: true,
             DrawFromViewport: def?.DrawFromViewport ?? 0,
-            ActiveChild: FrontendWidgetType.FirstSeenState,
+            ActiveChild: 0,
             Font: font,
             FontFace: ResolveFontFace(font, names),
             ActionOnLeftUnclicked: def?.ActionOnLeftUnclicked ?? 0,
@@ -380,7 +380,7 @@ public static class FrontendWidgetFactory
             EditBoxCharLimit: def?.EditBoxCharLimit ?? 0,
             EditBoxUsesIme: def?.EditBoxUsesIme ?? false,
             DisallowSpaceAsFirstChar: def?.DisallowSpaceAsFirstChar ?? false,
-            Colour: ColourAtStyle(styleColours, FrontendWidgetType.FirstSeenState,
+            Colour: ColourAtStyle(styleColours, 0,
                 def),
             Layer: def?.Layer ?? 0,
             PositionOffsetY: def?.PositionOffsetY ?? 0f,
@@ -388,7 +388,7 @@ public static class FrontendWidgetFactory
             ExpansionType: def?.ExpansionType ?? 0,
             HorizontalSeparations: def?.HorizontalSeparations,
             VerticalSeparations: def?.VerticalSeparations,
-            StyleIndex: FrontendWidgetType.FirstSeenState,
+            StyleIndex: 0,
             Flag302: PackFlag302(def),
             Alignement: def?.Alignement ?? 0,
             StyleColours: styleColours,
@@ -409,7 +409,10 @@ public static class FrontendWidgetFactory
             Action: def?.Action ?? 0,
             ActionOnSelected: def?.ActionOnSelected ?? 0,
             ActionOnUnselected: def?.ActionOnUnselected ?? 0,
-            SliderValueX: def?.MinX ?? 0f));
+            SliderValueX: def?.MinX ?? 0f,
+            Sprite2DFlag: def?.Sprite2DFlag ?? 0,
+            Angle: def?.Angle ?? 0f,
+            LayerIndependant: def?.LayerIndependant ?? false));
     }
 
     /// <summary>

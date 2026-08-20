@@ -31,6 +31,8 @@ foreach (var entry in bin.Entries.Where(e => e.TypeName == "UI"))
         $"actionLeftClicked={parsed.ActionOnLeftClicked}\t" +
         $"actionLeftUnclicked={parsed.ActionOnLeftUnclicked}\t" +
         $"drawFromViewport={parsed.DrawFromViewport}\talignement={parsed.Alignement}\t" +
+        $"sprite2DFlag={parsed.Sprite2DFlag}\tangle={parsed.Angle:R}\t" +
+        $"layerIndependent={parsed.LayerIndependant}\t" +
         $"schemaComplete={parsed.SchemaComplete}");
     count++;
 }

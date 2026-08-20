@@ -274,12 +274,20 @@ public sealed class Dx9VulkanParityTests
         Assert.Equal(SamplerAddressMode.Repeat, sampler.AddressModeU);
         Assert.Equal(0f, sampler.MaxLod);
 
-        var frontend = Dx9VulkanSamplerState.FrontendType22();
-        Assert.Equal(Filter.Nearest, frontend.MagFilter);
-        Assert.Equal(Filter.Nearest, frontend.MinFilter);
+        var frontend = Dx9VulkanSamplerState.FrontendType22(2);
+        Assert.Equal(Filter.Linear, frontend.MagFilter);
+        Assert.Equal(Filter.Linear, frontend.MinFilter);
+        Assert.Equal(SamplerMipmapMode.Linear, frontend.MipmapMode);
         Assert.Equal(SamplerAddressMode.ClampToEdge, frontend.AddressModeU);
         Assert.Equal(SamplerAddressMode.ClampToEdge, frontend.AddressModeV);
         Assert.Equal(0f, frontend.MaxLod);
+
+        var pointFrontend = Dx9VulkanSamplerState.FrontendType22(0);
+        Assert.Equal(Filter.Nearest, pointFrontend.MagFilter);
+        Assert.Equal(Filter.Nearest, pointFrontend.MinFilter);
+        Assert.Equal(SamplerMipmapMode.Nearest, pointFrontend.MipmapMode);
+        Assert.True(Dx9VulkanSamplerState.PreservesPerFrameFilter(2));
+        Assert.False(Dx9VulkanSamplerState.PreservesPerFrameFilter(0));
 
         Assert.Equal(BlendFactor.SrcAlpha, Dx9VulkanBlendState.FirstSeenPalskinSrc);
         Assert.Equal(BlendFactor.OneMinusSrcAlpha, Dx9VulkanBlendState.FirstSeenPalskinDst);
