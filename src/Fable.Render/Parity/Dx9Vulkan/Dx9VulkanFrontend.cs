@@ -339,11 +339,12 @@ public static class Dx9VulkanFrontend
 
     public static FrontendGpuVertex ToGpuVertex(
         FrontendDx9Vertex src,
-        int vpX, int vpY, int vpW, int vpH)
+        int vpX, int vpY, int vpW, int vpH,
+        bool useDiffuseColor = false)
     {
         var ndc = DestPixelToVulkanNdc(src.X, src.Y, src.Z, vpX, vpY, vpW, vpH);
         return new FrontendGpuVertex(ndc, Dx9VulkanColor.FromD3dArgb(src.DiffuseArgb),
-            new Vector2(src.U, src.V));
+            new Vector2(src.U, src.V), useDiffuseColor ? 1f : 0f);
     }
 
     public static FrontendDraw BuildDraw(
@@ -387,7 +388,7 @@ public static class Dx9VulkanFrontend
         if (rec.RecordType == (int)GlyphRecordType)
         {
             foreach (var dx9 in BuildDx9GlyphList(rec))
-                vertices.Add(ToGpuVertex(dx9, vpX, vpY, vpW, vpH));
+                vertices.Add(ToGpuVertex(dx9, vpX, vpY, vpW, vpH, useDiffuseColor: true));
         }
         else
         {
@@ -455,6 +456,13 @@ public static class Dx9VulkanFrontend
             Binding = 0,
             Format = Format.R32G32Sfloat,
             Offset = FrontendGpuVertex.UvOffset,
+        },
+        new()
+        {
+            Location = 3,
+            Binding = 0,
+            Format = Format.R32Sfloat,
+            Offset = FrontendGpuVertex.UseDiffuseColorOffset,
         },
     ];
 

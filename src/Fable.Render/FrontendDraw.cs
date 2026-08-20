@@ -87,15 +87,18 @@ public readonly struct FrontendDx9Vertex(
 /// <c>Position.xy</c> is Vulkan NDC.
 /// </summary>
 [StructLayout(LayoutKind.Sequential)]
-public readonly struct FrontendGpuVertex(Vector4 position, Vector4 color, Vector2 uv)
+public readonly struct FrontendGpuVertex(
+    Vector4 position, Vector4 color, Vector2 uv, float useDiffuseColor)
 {
     public readonly Vector4 Position = position;
     public readonly Vector4 Color = color;
     public readonly Vector2 Uv = uv;
+    public readonly float UseDiffuseColor = useDiffuseColor;
 
-    public const uint Stride = 40;
+    public const uint Stride = 44;
     public const uint ColorOffset = 16;
     public const uint UvOffset = 32;
+    public const uint UseDiffuseColorOffset = 40;
 }
 
 /// <summary>

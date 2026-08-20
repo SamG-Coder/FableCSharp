@@ -26,6 +26,8 @@ public static class FrontendTextDraw
     public const int VerticesPerGlyph = 6;
     public const int TrianglesPerGlyph = 2;
     public const int D3dPrimitiveTriangleList = 4;
+    public const int Type6PassCount = 2;
+    public const bool Type6UsesDiffuseColour = true;
     public const float HalfPixel = 0.5f;
     public const uint HalfPixelVa = 0x0122F59C;
     public const uint OneVa = 0x0122DED8;
@@ -73,6 +75,14 @@ public static class FrontendTextDraw
         float Y,
         float U,
         float V);
+
+    /// <summary>
+    /// <c>0054EF00</c> builds two type-0x27 records. The first receives
+    /// zero RGB and the widget alpha at stack bytes +36..+39; the second
+    /// receives the widget colour at +32..+35.
+    /// </summary>
+    public static uint BlackUnderlayColor(uint widgetArgb) =>
+        widgetArgb & 0xFF000000u;
 
     /// <summary>
     /// <c>0054FFF0</c>: bit4 → centre (1), else

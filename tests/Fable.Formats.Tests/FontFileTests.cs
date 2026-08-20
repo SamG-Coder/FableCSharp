@@ -8,6 +8,15 @@ namespace Fable.Formats.Tests;
 
 public sealed class FontFileTests
 {
+    [Fact]
+    public void Type6_text_has_native_black_underlay_and_colour_pass()
+    {
+        Assert.Equal(2, FrontendTextDraw.Type6PassCount);
+        Assert.True(FrontendTextDraw.Type6UsesDiffuseColour);
+        Assert.Equal(0xAB000000u,
+            FrontendTextDraw.BlackUnderlayColor(0xABCDEF12u));
+    }
+
     private static (BigArchive Big, BankEntry Entry) OpenMain(string name)
     {
         var install = GameInstall.TryLocate();

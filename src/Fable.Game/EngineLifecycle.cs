@@ -6954,9 +6954,10 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
-    /// Type-6 <c>0054EF00</c> packs
-    /// via <c>00543910</c> type
-    /// <c>0x27</c> size 64. Not
+    /// Type-6 <c>0054EF00</c> packs two records
+    /// via <c>00543910</c>, each type
+    /// <c>0x27</c> size 64: black underlay then
+    /// widget colour. Not
     /// <c>0041BEB0</c> / <c>0x22</c>.
     /// </summary>
     private void QueueType6Record(FrontendWidget widget)
@@ -6968,7 +6969,7 @@ public sealed class EngineLifecycle : IDisposable
             $"00543910 type 0x{pack.Type:X} size {pack.Bytes}");
         Frontend2dLastType = pack.Type;
         Frontend2dLastPacker = pack.Packer;
-        Frontend2dRecordsQueued++;
+        Frontend2dRecordsQueued += FrontendTextDraw.Type6PassCount;
     }
 
     /// <summary>
@@ -13551,18 +13552,33 @@ public sealed class EngineLifecycle : IDisposable
                     var align = FrontendTextDraw.AlignFromFlag302(widget.Flag302);
                     var penY = widget.DestY0 + FrontendTextDraw.Type6OriginPad;
                     var anchorX = widget.DestX0 + FrontendTextDraw.Type6OriginPad;
-                    foreach (var glyph in FrontendTextDraw.LayoutFormatted(
-                        face, widget.Text, anchorX, penY, align, colour))
+                    var glyphQuads = FrontendTextDraw.LayoutFormatted(
+                        face, widget.Text, anchorX, penY, align, colour);
+                    // 0054EF00 submits two complete type-0x27 records:
+                    // black RGB/widget alpha first, then widget colour at
+                    // the next layer. Keep each whole string contiguous.
+                    foreach (var passColour in new[]
                     {
-                        slot.Add(new FrontendDx9DrawRecord(
-                            glyph.DestX0, glyph.DestY0, glyph.DestX1, glyph.DestY1,
-                            glyph.U0, glyph.V0, glyph.U1, glyph.V1,
-                            glyph.Color, atlasId,
-                            Dx9VulkanFrontend.WidgetBlendDefault,
-                            FrontendTextDraw.Type6RecordType,
-                            FrontendTextDraw.VertexStride,
-                            FrontendTextDraw.VertexStride,
-                            AppliesHalfPixel: true));
+                        FrontendTextDraw.BlackUnderlayColor(colour),
+                        colour,
+                    })
+                    {
+                        foreach (var glyph in glyphQuads)
+                        {
+                            slot.Add(new FrontendDx9DrawRecord(
+                                glyph.DestX0, glyph.DestY0, glyph.DestX1, glyph.DestY1,
+                                glyph.U0, glyph.V0, glyph.U1, glyph.V1,
+                                passColour, atlasId,
+                                Dx9VulkanFrontend.WidgetBlendDefault,
+                                FrontendTextDraw.Type6RecordType,
+                                FrontendTextDraw.VertexStride,
+                                FrontendTextDraw.VertexStride,
+                                AppliesHalfPixel: true));
+                        }
+                    }
+
+                    foreach (var glyph in glyphQuads)
+                    {
                         if (!haveUv)
                         {
                             u0 = glyph.U0;
@@ -13582,9 +13598,9 @@ public sealed class EngineLifecycle : IDisposable
                             if (glyph.V1 > v1)
                                 v1 = glyph.V1;
                         }
-
-                        glyphs++;
                     }
+
+                    glyphs = glyphQuads.Count;
                 }
             }
 
@@ -13735,22 +13751,32 @@ public sealed class EngineLifecycle : IDisposable
                 var sx = Math.Clamp((int)(u * tex.Width), 0, Math.Max(0, tex.Width - 1));
                 var s = srcRow + sx * 4;
                 var a = tex.Rgba[s + 3];
+                var sr = tex.Rgba[s];
+                var sg = tex.Rgba[s + 1];
+                var sb = tex.Rgba[s + 2];
+                if (rec.RecordType == FrontendTextDraw.Type6RecordType)
+                {
+                    sr = (byte)(sr * ((rec.DiffuseArgb >> 16) & 0xFF) / 255);
+                    sg = (byte)(sg * ((rec.DiffuseArgb >> 8) & 0xFF) / 255);
+                    sb = (byte)(sb * (rec.DiffuseArgb & 0xFF) / 255);
+                    a = (byte)(a * (rec.DiffuseArgb >> 24) / 255);
+                }
                 if (a == 0)
                     continue;
                 var d = row + dx * 4;
                 if (a == 255)
                 {
-                    rgba[d] = tex.Rgba[s];
-                    rgba[d + 1] = tex.Rgba[s + 1];
-                    rgba[d + 2] = tex.Rgba[s + 2];
+                    rgba[d] = sr;
+                    rgba[d + 1] = sg;
+                    rgba[d + 2] = sb;
                     rgba[d + 3] = 255;
                     continue;
                 }
 
                 var ia = 255 - a;
-                rgba[d] = (byte)((tex.Rgba[s] * a + rgba[d] * ia) / 255);
-                rgba[d + 1] = (byte)((tex.Rgba[s + 1] * a + rgba[d + 1] * ia) / 255);
-                rgba[d + 2] = (byte)((tex.Rgba[s + 2] * a + rgba[d + 2] * ia) / 255);
+                rgba[d] = (byte)((sr * a + rgba[d] * ia) / 255);
+                rgba[d + 1] = (byte)((sg * a + rgba[d + 1] * ia) / 255);
+                rgba[d + 2] = (byte)((sb * a + rgba[d + 2] * ia) / 255);
                 rgba[d + 3] = 255;
             }
         }

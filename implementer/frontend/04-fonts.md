@@ -106,6 +106,14 @@ of 28 bytes (XYZRHW + diffuse + uv). Flush through
 Type-6 adds +2.0 (`0x122DCDC`) to widget x/y before the
 record; that pad is widget-level, not `00AB7C20`.
 
+`0054EF00` constructs and submits **two** 64-byte type `0x27`
+records. Stack bytes `+36..+39` are zero RGB plus the widget
+alpha; `+32..+35` are the widget RGBA. The black record is
+submitted first, followed by the normal-colour record on the
+next layer. Both contain the complete string. With the font
+atlas alpha and SRCALPHA/INVSRCALPHA blending, the first pass
+forms the black antialiased edge visible behind the white text.
+
 ## Localisation / colour / tags
 
 `UI_PRESS_START_TEXT` TextTag `TEXT_GUI_MENU_PRESS_BUTTON`

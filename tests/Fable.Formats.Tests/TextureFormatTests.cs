@@ -69,6 +69,14 @@ public sealed class TextureFormatTests
     }
 
     [Fact]
+    public void A8R8G8B8_surface_bytes_are_decoded_from_bgra_to_rgba()
+    {
+        var rgba = TextureFile.DecodeA8R8G8B8(
+            new byte[] { 0x11, 0x22, 0xE3, 0xF4 }, 1, 1);
+        Assert.Equal(new byte[] { 0xE3, 0x22, 0x11, 0xF4 }, rgba);
+    }
+
+    [Fact]
     public void Landscape_grass_plain_decodes_to_512_rgba()
     {
         var (big, entries) = OpenMain();

@@ -342,14 +342,13 @@ public sealed class Dx9VulkanFrontendTests
     }
 
     [Fact]
-    public void Clock_sprite_ps_is_texture_times_white()
+    public void Frontend_ps_keeps_clock_sprites_white_and_applies_glyph_diffuse()
     {
         Assert.Contains("vec4 c0 = vec4(1.0)", LineShaders.FrontendFragment, StringComparison.Ordinal);
-        Assert.Contains("texture(sprite, fragUv) * c0", LineShaders.FrontendFragment, StringComparison.Ordinal);
-        Assert.DoesNotContain(
-            "texture(sprite, fragUv) * fragColor",
-            LineShaders.FrontendFragment,
-            StringComparison.Ordinal);
+        Assert.Contains("mix(c0, fragColor, fragUseDiffuseColor)",
+            LineShaders.FrontendFragment, StringComparison.Ordinal);
+        Assert.Contains("texture(sprite, fragUv) * tint",
+            LineShaders.FrontendFragment, StringComparison.Ordinal);
         Assert.Equal("PSHADER_2D_CLOCK_SPRITE", Dx9VulkanFrontend.PixelShaderName);
         Assert.True(Dx9VulkanFrontend.PixelShaderC0TemporaryWhite);
         Assert.False(Dx9VulkanFrontend.AppliesScissor);

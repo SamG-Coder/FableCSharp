@@ -100,12 +100,15 @@ internal static class LineShaders
         layout(location = 0) in vec4 inPos;
         layout(location = 1) in vec4 inColor;
         layout(location = 2) in vec2 inUv;
+        layout(location = 3) in float inUseDiffuseColor;
         layout(location = 0) out vec4 fragColor;
         layout(location = 1) out vec2 fragUv;
+        layout(location = 2) out float fragUseDiffuseColor;
         void main() {
             gl_Position = inPos;
             fragColor = inColor;
             fragUv = inUv;
+            fragUseDiffuseColor = inUseDiffuseColor;
         }
         """;
 
@@ -123,11 +126,13 @@ internal static class LineShaders
         #version 450
         layout(location = 0) in vec4 fragColor;
         layout(location = 1) in vec2 fragUv;
+        layout(location = 2) in float fragUseDiffuseColor;
         layout(location = 0) out vec4 outColor;
         layout(set = 0, binding = 0) uniform sampler2D sprite;
         void main() {
             vec4 c0 = vec4(1.0);
-            outColor = texture(sprite, fragUv) * c0;
+            vec4 tint = mix(c0, fragColor, fragUseDiffuseColor);
+            outColor = texture(sprite, fragUv) * tint;
         }
         """;
 

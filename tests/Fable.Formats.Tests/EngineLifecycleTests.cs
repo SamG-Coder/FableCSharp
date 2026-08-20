@@ -4686,6 +4686,17 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0f, drawn.Leftover204);
         Assert.NotNull(life.FrontendBatch);
         Assert.False(life.FrontendBatch.Value.IsEmpty);
+        var frontendBatch = life.FrontendBatch.Value;
+        var glyphDraws = frontendBatch.Draws
+            .Where(draw => draw.IndexCount == 0 && draw.VertexCount == 6)
+            .ToArray();
+        Assert.NotEmpty(glyphDraws);
+        Assert.All(glyphDraws, draw => Assert.Equal(1f,
+            frontendBatch.Vertices[(int)draw.FirstVertex].UseDiffuseColor));
+        Assert.Contains(glyphDraws, draw =>
+            frontendBatch.Vertices[(int)draw.FirstVertex].Color == new Vector4(0f, 0f, 0f, 1f));
+        Assert.Contains(glyphDraws, draw =>
+            frontendBatch.Vertices[(int)draw.FirstVertex].Color == Vector4.One);
         Assert.Equal(4, life.FrontendBatch.Value.Draws[0].D3dPrimitiveType);
         Assert.Equal(5, life.FrontendBatch.Value.Draws[0].D3dSrcBlend);
         Assert.Equal(6, life.FrontendBatch.Value.Draws[0].D3dDestBlend);

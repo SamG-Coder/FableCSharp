@@ -124,7 +124,7 @@ public sealed class TextureFile
         var rgba = compression switch
         {
             TextureCompression.Rgba8 => payload.Length >= header.Width * header.Height * 4
-                ? payload[..(header.Width * header.Height * 4)]
+                ? DecodeA8R8G8B8(payload, header.Width, header.Height)
                 : new byte[header.Width * header.Height * 4],
             TextureCompression.Dxt1 => Dxt.Decode(payload, header.Width, header.Height, DxtKind.Dxt1),
             TextureCompression.Dxt3 => Dxt.Decode(payload, header.Width, header.Height, DxtKind.Dxt3),
@@ -147,6 +147,27 @@ public sealed class TextureFile
             LeftoverBytes = lower.Length,
             LowerMips = lower,
         };
+    }
+
+    /// <summary>
+    /// Format-code 1 is the native D3D9 <c>D3DFMT_A8R8G8B8</c>
+    /// surface. Its little-endian memory bytes are BGRA; the host-facing
+    /// texture contract is RGBA. This is visible in the Press Start title
+    /// and mouse assets (blue/gold in Fable, red/cyan if copied verbatim).
+    /// </summary>
+    public static byte[] DecodeA8R8G8B8(ReadOnlySpan<byte> payload, int width, int height)
+    {
+        var bytes = checked(width * height * 4);
+        var rgba = new byte[bytes];
+        for (var i = 0; i < bytes; i += 4)
+        {
+            rgba[i] = payload[i + 2];
+            rgba[i + 1] = payload[i + 1];
+            rgba[i + 2] = payload[i];
+            rgba[i + 3] = payload[i + 3];
+        }
+
+        return rgba;
     }
 
     /// <summary>
