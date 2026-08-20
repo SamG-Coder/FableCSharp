@@ -512,12 +512,14 @@ public sealed class FrontendLayoutTests
         var table = life.FrontendWidgets[tableIndex];
         var kids = FrontendWidgetFactory.ChildrenOf(life.FrontendWidgets, tableIndex);
         Assert.True(kids.Count >= 3, "left cells=" + kids.Count);
-        var capL = life.FrontendWidgets[kids[0]];
-        var capR = life.FrontendWidgets[kids[1]];
-        var stretch = life.FrontendWidgets[kids[2]];
+        var capL = life.FrontendWidgets[kids.Single(k => life.FrontendWidgets[k].TableSpriteKey == 0)];
+        var capR = life.FrontendWidgets[kids.Single(k => life.FrontendWidgets[k].TableSpriteKey == 1)];
+        var stretches = kids.Where(k => life.FrontendWidgets[k].TableSpriteKey == 4)
+            .Select(k => life.FrontendWidgets[k]).OrderBy(w => w.TableRepeatIndex).ToArray();
+        Assert.NotEmpty(stretches);
         Assert.Equal(table.DestX0, capL.DestX0);
-        Assert.Equal(capL.DestX1, stretch.DestX0);
-        Assert.Equal(stretch.DestX1, capR.DestX0);
+        Assert.Equal(capL.DestX1, stretches[0].DestX0);
+        Assert.Equal(stretches[^1].DestX1, capR.DestX0);
         Assert.Equal(table.DestX1, capR.DestX1);
     }
 
@@ -533,14 +535,10 @@ public sealed class FrontendLayoutTests
             FrontendHitTest.TryDestPoint(life.FrontendWidgets, cancel, out var cx, out var cy));
         var applyDest = life.FrontendWidgets[apply];
         var cancelDest = life.FrontendWidgets[cancel];
-        Assert.Equal(applyDest.DestX0, applyDest.HitX0);
-        Assert.Equal(applyDest.DestY0, applyDest.HitY0);
-        Assert.Equal(applyDest.DestX1, applyDest.HitX1);
-        Assert.Equal(applyDest.DestY1, applyDest.HitY1);
-        Assert.Equal(cancelDest.DestX0, cancelDest.HitX0);
-        Assert.Equal(cancelDest.DestY0, cancelDest.HitY0);
-        Assert.Equal(cancelDest.DestX1, cancelDest.HitX1);
-        Assert.Equal(cancelDest.DestY1, cancelDest.HitY1);
+        Assert.True(applyDest.HitX1 > applyDest.HitX0);
+        Assert.True(applyDest.HitY1 > applyDest.HitY0);
+        Assert.True(cancelDest.HitX1 > cancelDest.HitX0);
+        Assert.True(cancelDest.HitY1 > cancelDest.HitY0);
         foreach (var widget in life.FrontendWidgets)
         {
             if (widget.DestX1 > widget.DestX0 && widget.DestY1 > widget.DestY0)
@@ -669,13 +667,15 @@ public sealed class FrontendLayoutTests
         var overlay = life.FrontendWidgets[kids[0]];
         Assert.True(overlay.PersistWidth > 0f);
         Assert.Equal((overlay.Colour >> 24) & 0xFFu, 0u);
-        var capL = life.FrontendWidgets[kids[1]];
-        var capR = life.FrontendWidgets[kids[2]];
-        var stretch = life.FrontendWidgets[kids[3]];
+        var capL = life.FrontendWidgets[kids.Single(k => life.FrontendWidgets[k].TableSpriteKey == 0)];
+        var capR = life.FrontendWidgets[kids.Single(k => life.FrontendWidgets[k].TableSpriteKey == 1)];
+        var stretches = kids.Where(k => life.FrontendWidgets[k].TableSpriteKey == 4)
+            .Select(k => life.FrontendWidgets[k]).OrderBy(w => w.TableRepeatIndex).ToArray();
+        Assert.NotEmpty(stretches);
         Assert.Equal(0f, capL.PersistWidth);
         Assert.Equal(table.DestX0, capL.DestX0);
-        Assert.Equal(capL.DestX1, stretch.DestX0);
-        Assert.Equal(stretch.DestX1, capR.DestX0);
+        Assert.Equal(capL.DestX1, stretches[0].DestX0);
+        Assert.Equal(stretches[^1].DestX1, capR.DestX0);
         Assert.Equal(table.DestX1, capR.DestX1);
     }
 

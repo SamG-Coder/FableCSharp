@@ -1,5 +1,20 @@
 using Fable.Core;
 using Fable.Formats.Defs;
+using Fable.Game;
+
+if (args.Contains("--new-profile-frame"))
+{
+    var frameInstall = GameInstall.TryLocate() ?? throw new InvalidOperationException("no install");
+    using var life = new EngineLifecycle();
+    life.Bootstrap(frameInstall);
+    while (life.Stage == EngineStage.StartupVideos)
+        life.FinishStartupVideo();
+    life.QueueInput(FrontendInputMap.Type4, 0);
+    life.QueueInput(FrontendInputMap.Type6, 0);
+    life.Pump();
+    Console.Write(FrontendFrameDump.FormatNewProfile(life.FrontendWidgets));
+    return;
+}
 
 if (args.Contains("--catalog"))
 {
@@ -10,6 +25,7 @@ if (args.Contains("--catalog"))
 var install = GameInstall.TryLocate() ?? throw new InvalidOperationException("no install");
 var names = NamesBin.Load(install.FindCompiledDef("names.bin")!);
 var bin = GameBin.Load(install.FindCompiledDef("frontend.bin")!, names);
+using var spriteBank = new FrontendSpriteBank(install);
 var requested = args.Where(a => a != "--catalog").ToHashSet(StringComparer.OrdinalIgnoreCase);
 var count = 0;
 
@@ -31,9 +47,31 @@ foreach (var entry in bin.Entries.Where(e => e.TypeName == "UI"))
         $"actionLeftClicked={parsed.ActionOnLeftClicked}\t" +
         $"actionLeftUnclicked={parsed.ActionOnLeftUnclicked}\t" +
         $"drawFromViewport={parsed.DrawFromViewport}\talignement={parsed.Alignement}\t" +
+        $"relativePosition={parsed.UseRelativePosition}\trelativeZoom={parsed.UseRelativeZoom}\t" +
+        $"positionIsCenter={parsed.PositionIsCenter}\texpansionType={parsed.ExpansionType}\t" +
+        $"hoveredState={parsed.HoveredState}\tleftClickedState={parsed.LeftClickedState}\t" +
+        $"rightClickedState={parsed.RightClickedState}\t" +
+        $"styleR={string.Join(',', parsed.StyleColourR)}\tstyleG={string.Join(',', parsed.StyleColourG)}\t" +
+        $"styleB={string.Join(',', parsed.StyleColourB)}\tstyleA={string.Join(',', parsed.StyleColourA)}\t" +
+        $"styleDurations={string.Join(',', parsed.StyleDurations.Select(value => value.ToString("R")))}\t" +
+        $"styleGraphics={string.Join(',', parsed.StyleGraphicIds)}\t" +
+        $"spriteKeys={string.Join(',', parsed.SpriteKeys)}\t" +
+        $"spriteDefs={string.Join(',', parsed.SpriteDefIndices)}\t" +
+        $"horizontalSeparations={string.Join(',', parsed.HorizontalSeparations ?? [])}\t" +
+        $"verticalSeparations={string.Join(',', parsed.VerticalSeparations ?? [])}\t" +
         $"sprite2DFlag={parsed.Sprite2DFlag}\tangle={parsed.Angle:R}\t" +
         $"layerIndependent={parsed.LayerIndependant}\t" +
         $"schemaComplete={parsed.SchemaComplete}");
+    foreach (var spriteDefIndex in parsed.SpriteDefIndices)
+    {
+        var spriteDef = FrontendUiDef.TryParse(bin.Entries[spriteDefIndex]);
+        var textureName = spriteDef is null
+            ? null
+            : spriteBank.NameForWidget(spriteDef.InstanceName, spriteDef.GraphicBankId);
+        var texture = textureName is null ? null : spriteBank.TryLoad(textureName);
+        Console.WriteLine($"  spriteDef={spriteDefIndex}\tname={spriteDef?.InstanceName}\t" +
+            $"texture={textureName}\tframe={texture?.FrameWidth}x{texture?.FrameHeight}");
+    }
     count++;
 }
 

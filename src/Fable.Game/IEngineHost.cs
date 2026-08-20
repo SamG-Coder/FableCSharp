@@ -92,6 +92,8 @@ public readonly record struct FrontendWidget(
     int Alignement = 0,
     IReadOnlyList<uint>? StyleColours = null,
     IReadOnlyList<float>? StyleDurations = null,
+    IReadOnlyList<int>? StyleGraphicIds = null,
+    IReadOnlyList<string?>? StyleTextureNames = null,
     uint ColourTransitionFrom = 0,
     uint ColourTransitionTo = 0,
     float ColourTransitionElapsed = 0,
@@ -161,4 +163,7 @@ public readonly record struct FrontendWidget(
     float SliderValueX = 0,
     int Sprite2DFlag = 0,
     float Angle = 0,
-    bool LayerIndependant = false);
+    bool LayerIndependant = false,
+    int TableSpriteKey = -1,
+    int TableRepeatIndex = 0,
+    int TableRepeatCount = 1);

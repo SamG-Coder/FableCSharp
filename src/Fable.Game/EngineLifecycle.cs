@@ -5629,6 +5629,14 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public float FrontendPointerX { get; private set; }
     public float FrontendPointerY { get; private set; }
+    public string FrontendAudioCue { get; private set; } = "";
+    public int FrontendAudioSerial { get; private set; }
+
+    private void PublishFrontendAudio(string cue)
+    {
+        FrontendAudioCue = cue;
+        FrontendAudioSerial++;
+    }
 
     /// <summary>
     /// Mouse position in dest space
@@ -5673,6 +5681,11 @@ public sealed class EngineLifecycle : IDisposable
     {
         public FrontendDest[] Dests { get; } = new FrontendDest[count];
         public int[] SiblingCounts { get; } = new int[count];
+        public float[] TableLeftWidths { get; } = new float[count];
+        public float[] TableRightWidths { get; } = new float[count];
+        public float[] TableMiddleWidths { get; } = new float[count];
+        public float[] TableMaxHeights { get; } = new float[count];
+        public int[] TableMiddleCounts { get; } = new int[count];
     }
     private FrontendSpriteBank? _frontendSprites;
     private FontBank? _frontendFonts;
@@ -6411,7 +6424,11 @@ public sealed class EngineLifecycle : IDisposable
             }
 
             if (action == FrontendInputMap.ActionType4)
+            {
                 ArmType34Widgets();
+                if (_frontendWidgets.Any(widget => widget.Armed))
+                    PublishFrontendAudio("CS_GUI_2");
+            }
             var mapped = action is int act
                 ? FrontendInputMap.MessageFromWidgets(act, _frontendWidgets)
                 : null;
@@ -7222,6 +7239,12 @@ public sealed class EngineLifecycle : IDisposable
             return;
         }
 
+        if (msg == FrontendMessages.CancelNewProfile)
+        {
+            CancelNewProfileMessage();
+            return;
+        }
+
         if (msg != FrontendNewGameMessage)
             return;
         Note(FrontendNewGameApply, "Frontend", "UI",
@@ -7231,6 +7254,21 @@ public sealed class EngineLifecycle : IDisposable
         Note(FrontendNewGameThunk, "Frontend", "UI",
             $"00594F28 [retail+{RetailNewGameFlagOffset}]=1");
         RetailNewGameFlag = true;
+    }
+
+    private void CancelNewProfileMessage()
+    {
+        if (FrontendMenuRoot != FrontendNewProfileMenu ||
+            !_frontendSlotTrees.TryGetValue(FrontendPressStartSlot, out var pressStart))
+            return;
+        SwitchFrontendSlot(FrontendPressStartSlot);
+        _frontendWidgets = pressStart;
+        FrontendMenuRoot = FrontendPressStartMenu;
+        FrontendUi96Present = false;
+        FrontendUi96Accept = false;
+        FrontendUi96Armed = false;
+        FrontendEditBoxBound = false;
+        SelectFrontendState(FrontendPressStartSlot, 5);
     }
 
     /// <summary>
@@ -13070,6 +13108,16 @@ public sealed class EngineLifecycle : IDisposable
         var targetColour = haveStyle
             ? FrontendWidgetFactory.ColourAtStyle(widget, state)
             : widget.Colour;
+        var graphicStyles = widget.StyleGraphicIds;
+        var haveGraphicStyle = graphicStyles is not null &&
+            (uint)state < (uint)graphicStyles.Count && graphicStyles[state] != 0;
+        var targetGraphic = haveGraphicStyle ? graphicStyles![state] : widget.GraphicId;
+        var targetTexture = haveGraphicStyle &&
+            widget.StyleTextureNames is { } textureStyles &&
+            (uint)state < (uint)textureStyles.Count &&
+            textureStyles[state] is { Length: > 0 } styleTexture
+                ? styleTexture
+                : widget.TextureName;
         var transition = haveStyle && duration > 0f && targetColour != widget.Colour;
         tree[index] = widget with
         {
@@ -13081,6 +13129,8 @@ public sealed class EngineLifecycle : IDisposable
             ColourTransitionElapsed = 0f,
             ColourTransitionDuration = transition ? duration : 0f,
             ColourTransitionActive = transition,
+            GraphicId = targetGraphic,
+            TextureName = targetTexture,
         };
 
         // 00548FA2..00549075: CTextSlider state 5 first selects every
@@ -13264,6 +13314,8 @@ public sealed class EngineLifecycle : IDisposable
                 };
                 ForwardSelectState(tree, i, hoverState);
                 ApplyAuthoredHoverVisuals(tree, i, entering: true);
+                if (ReferenceEquals(tree, _frontendWidgets))
+                    PublishFrontendAudio("CS_GUI_1");
             }
             else
             {
@@ -13285,7 +13337,7 @@ public sealed class EngineLifecycle : IDisposable
         // its prior +332 value for the matching leave notification.
         for (var child = 0; child < tree.Count; child++)
         {
-            if (tree[child].ParentIndex != button)
+            if (!IsFrontendDescendant(tree, child, button))
                 continue;
             var visual = tree[child];
             if (entering)
@@ -13298,6 +13350,19 @@ public sealed class EngineLifecycle : IDisposable
                 ForwardSelectState(tree, child, visual.ActiveChild);
             }
         }
+    }
+
+    private static bool IsFrontendDescendant(
+        IReadOnlyList<FrontendWidget> tree, int index, int ancestor)
+    {
+        var parent = tree[index].ParentIndex;
+        while ((uint)parent < (uint)tree.Count)
+        {
+            if (parent == ancestor)
+                return true;
+            parent = tree[parent].ParentIndex;
+        }
+        return false;
     }
 
     /// <summary>
@@ -13492,6 +13557,31 @@ public sealed class EngineLifecycle : IDisposable
         var dests = scratch.Dests;
         var sibling = scratch.SiblingCounts;
         Array.Clear(sibling);
+        Array.Clear(scratch.TableLeftWidths);
+        Array.Clear(scratch.TableRightWidths);
+        Array.Clear(scratch.TableMiddleWidths);
+        Array.Clear(scratch.TableMaxHeights);
+        Array.Clear(scratch.TableMiddleCounts);
+        for (var child = 0; child < widgets.Count; child++)
+        {
+            var cell = widgets[child];
+            if (cell.TableSpriteKey < 0 ||
+                (uint)cell.ParentIndex >= (uint)widgets.Count)
+                continue;
+            var size = WidgetLeftover(cell);
+            scratch.TableMaxHeights[cell.ParentIndex] = Math.Max(
+                scratch.TableMaxHeights[cell.ParentIndex], size.H);
+            if (cell.TableSpriteKey == 0)
+                scratch.TableLeftWidths[cell.ParentIndex] = size.W;
+            else if (cell.TableSpriteKey == 1)
+                scratch.TableRightWidths[cell.ParentIndex] = size.W;
+            else if (cell.TableSpriteKey == 4)
+            {
+                scratch.TableMiddleWidths[cell.ParentIndex] = size.W;
+                scratch.TableMiddleCounts[cell.ParentIndex] = Math.Max(
+                    scratch.TableMiddleCounts[cell.ParentIndex], cell.TableRepeatCount);
+            }
+        }
         for (var i = 0; i < widgets.Count; i++)
         {
             var widget = widgets[i];
@@ -13554,44 +13644,29 @@ public sealed class EngineLifecycle : IDisposable
             var spriteClone = persistW == 0 && persistH == 0;
             if (parentWidget is { Type: FrontendWidgetType.TableType } table &&
                 parentDest is { } tableDest &&
-                spriteClone)
+                spriteClone && widget.TableSpriteKey >= 0 &&
+                (table.ExpansionType & 1) != 0)
             {
-                var cellCount = 0;
-                var sliceIndex = 0;
-                var firstCapW = 0f;
-                var rightCapW = 0f;
-                for (var c = 0; c < widgets.Count; c++)
-                {
-                    if (widgets[c].ParentIndex != widget.ParentIndex)
-                        continue;
-                    if (widgets[c].PersistWidth > 0 || widgets[c].PersistHeight > 0)
-                        continue;
-                    if (c == i)
-                        sliceIndex = cellCount;
-                    var cap = WidgetLeftover(widgets[c]).W;
-                    if (cellCount == 0)
-                        firstCapW = cap;
-                    else if (cellCount == 1)
-                        rightCapW = cap;
-                    cellCount++;
-                }
+                var leftW = scratch.TableLeftWidths[widget.ParentIndex];
+                var middleW = scratch.TableMiddleWidths[widget.ParentIndex];
+                var middleCount = scratch.TableMiddleCounts[widget.ParentIndex];
 
-                var placed = FrontendLayout.PlaceTableCell(
-                    sliceIndex,
-                    cellCount,
-                    tableDest.X0,
-                    tableDest.Y0,
-                    tableDest.X1 > tableDest.X0 ? tableDest.X1 - tableDest.X0 : leftoverW,
-                    leftoverH > 0f ? leftoverH : (table.PersistHeight > 0f ? table.PersistHeight : leftoverH),
-                    leftoverW,
-                    leftoverH,
-                    table.ExpansionType,
-                    firstCapW,
-                    rightCapW);
+                var rawX = widget.TableSpriteKey switch
+                {
+                    0 => 0f,
+                    4 => leftW + widget.TableRepeatIndex * middleW,
+                    1 => leftW + middleCount * middleW,
+                    _ => 0f,
+                };
+                var x0 = tableDest.X0 + rawX * tableDest.ScaleX;
+                var y0 = tableDest.Y0;
+                var x1 = x0 + leftoverW * tableDest.ScaleX;
+                var y1 = y0 + leftoverH * tableDest.ScaleY;
                 dest = new FrontendDest(
-                    placed.X0, placed.Y0,
+                    x0, y0,
                     tableDest.ScaleX, tableDest.ScaleY,
-                    placed.X0, placed.Y0, placed.X1, placed.Y1);
+                    MathF.Round(x0), MathF.Round(y0),
+                    MathF.Round(x1), MathF.Round(y1));
             }
             else
             {
@@ -13609,6 +13684,25 @@ public sealed class EngineLifecycle : IDisposable
                     UseRelativePosition: widget.UseRelativePosition,
                     UseRelativeZoom: widget.UseRelativeZoom);
                 dest = FrontendLayout.Compute(layout, parentDest, viewport);
+                if (widget.Type == FrontendWidgetType.TableType &&
+                    (widget.ExpansionType & 1) != 0)
+                {
+                    var leftW = scratch.TableLeftWidths[i];
+                    var rightW = scratch.TableRightWidths[i];
+                    var middleW = scratch.TableMiddleWidths[i];
+                    var middleCount = scratch.TableMiddleCounts[i];
+                    var maxH = scratch.TableMaxHeights[i];
+
+                    if (middleCount > 0)
+                    {
+                        var expandedW = leftW + middleCount * middleW + rightW;
+                        dest = dest with
+                        {
+                            X1 = MathF.Round(dest.X0 + expandedW * dest.ScaleX),
+                            Y1 = MathF.Round(dest.Y0 + maxH * dest.ScaleY),
+                        };
+                    }
+                }
             }
 
             dests[i] = dest;
@@ -13705,6 +13799,57 @@ public sealed class EngineLifecycle : IDisposable
                 HitX1 = x1,
                 HitY1 = y1,
             };
+        }
+
+        for (var i = 0; i < widgets.Count; i++)
+        {
+            if (widgets[i].Type is not (FrontendInputMap.TypeButton or FrontendInputMap.TypeAccept))
+                continue;
+            var assigned = false;
+            for (var child = 0; child < widgets.Count; child++)
+            {
+                if (!widgets[child].Name.Contains("MOUSE_AREA", StringComparison.OrdinalIgnoreCase) ||
+                    !IsFrontendDescendant(widgets, child, i))
+                    continue;
+                var area = widgets[child];
+                if (area.DestX1 <= area.DestX0 || area.DestY1 <= area.DestY0)
+                    continue;
+                widgets[i] = widgets[i] with
+                {
+                    HitX0 = area.DestX0,
+                    HitY0 = area.DestY0,
+                    HitX1 = area.DestX1,
+                    HitY1 = area.DestY1,
+                };
+                assigned = true;
+                break;
+            }
+
+            if (assigned)
+                continue;
+
+            // Type-11 buttons do not necessarily author a separate MOUSE_AREA.
+            // 00551340/00551EA0 leave the button itself point-sized and obtain
+            // the selectable face from its table child. Prefer that parsed face
+            // over inventing a fixed rectangle (for example Profile Name uses
+            // UI_BUTTON_OPTIONS_LEFT while its edit-box table is a sibling).
+            for (var child = 0; child < widgets.Count; child++)
+            {
+                if (!widgets[child].Name.Contains("BUTTON_OPTIONS_LEFT", StringComparison.OrdinalIgnoreCase) ||
+                    !IsFrontendDescendant(widgets, child, i))
+                    continue;
+                var area = widgets[child];
+                if (area.DestX1 <= area.DestX0 || area.DestY1 <= area.DestY0)
+                    continue;
+                widgets[i] = widgets[i] with
+                {
+                    HitX0 = area.DestX0,
+                    HitY0 = area.DestY0,
+                    HitX1 = area.DestX1,
+                    HitY1 = area.DestY1,
+                };
+                break;
+            }
         }
     }
 

@@ -59,6 +59,13 @@ public static class FrontendHitTest
         if ((uint)index >= (uint)tree.Count)
             return false;
         var widget = tree[index];
+        if (IsInteractive(widget.Type) &&
+            widget.HitX1 > widget.HitX0 && widget.HitY1 > widget.HitY0)
+        {
+            x = (widget.HitX0 + widget.HitX1) * 0.5f;
+            y = (widget.HitY0 + widget.HitY1) * 0.5f;
+            return true;
+        }
         if (widget.DestX1 > widget.DestX0 && widget.DestY1 > widget.DestY0)
         {
             x = (widget.DestX0 + widget.DestX1) * 0.5f;
@@ -98,14 +105,20 @@ public static class FrontendHitTest
         ArgumentNullException.ThrowIfNull(tree);
         for (var i = tree.Count - 1; i >= 0; i--)
         {
-            if (!FrontendWidgetFactory.IsPresented(tree, i) || !tree[i].Enabled ||
+            var owner = tree[i].ControlOwnerIndex;
+            if ((uint)owner >= (uint)tree.Count ||
+                !FrontendWidgetFactory.IsPresented(tree, i) || !tree[i].Enabled ||
+                !Contains(tree, i, x, y) || !tree[owner].Enabled)
+                continue;
+            return owner;
+        }
+        for (var i = tree.Count - 1; i >= 0; i--)
+        {
+            if (!IsInteractive(tree[i].Type) ||
+                !FrontendWidgetFactory.IsPresented(tree, i) || !tree[i].Enabled ||
                 !Contains(tree, i, x, y))
                 continue;
-            var owner = tree[i].ControlOwnerIndex;
-            if ((uint)owner < (uint)tree.Count && tree[owner].Enabled)
-                return owner;
-            if (InteractiveAt(tree, i) is int hit)
-                return hit;
+            return i;
         }
 
         return null;

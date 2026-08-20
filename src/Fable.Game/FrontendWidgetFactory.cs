@@ -301,14 +301,27 @@ public static class FrontendWidgetFactory
     {
         if (parent.Type != FrontendWidgetType.TableType || parent.SpriteDefIndices.Count == 0)
             return;
-        foreach (var index in parent.SpriteDefIndices)
+        for (var sprite = 0; sprite < parent.SpriteDefIndices.Count; sprite++)
         {
+            var index = parent.SpriteDefIndices[sprite];
             if ((uint)index >= (uint)defs.Entries.Count)
                 continue;
             var child = FrontendUiDef.TryParse(defs.Entries[index]);
             if (child is null || child.InstanceName == parentName)
                 continue;
-            Add(widgets, child, child.InstanceName, parentName, parentIndex, sprites, lookupText, names);
+            var key = sprite < parent.SpriteKeys.Count ? parent.SpriteKeys[sprite] : -1;
+            var repeat = 1;
+            if (key == 4 && (parent.ExpansionType & 1) != 0 && parent.Width > 0f)
+            {
+                var textureName = sprites?.NameForWidget(child.InstanceName, child.GraphicBankId);
+                var frameWidth = textureName is null ? 0 : sprites?.TryLoad(textureName)?.FrameWidth ?? 0;
+                if (frameWidth > 0)
+                    repeat = Math.Max(1, (int)MathF.Round(parent.Width / frameWidth));
+            }
+
+            for (var cell = 0; cell < repeat; cell++)
+                Add(widgets, child, child.InstanceName, parentName, parentIndex,
+                    sprites, lookupText, names, key, cell, repeat);
         }
     }
 
@@ -333,7 +346,10 @@ public static class FrontendWidgetFactory
         int parentIndex,
         FrontendSpriteBank? sprites,
         Func<string, string?>? lookupText,
-        NamesBin? names)
+        NamesBin? names,
+        int tableSpriteKey = -1,
+        int tableRepeatIndex = 0,
+        int tableRepeatCount = 1)
     {
         var text = def?.TextValue;
         string? body = null;
@@ -341,6 +357,10 @@ public static class FrontendWidgetFactory
             body = lookupText(text);
         var graphicId = def?.GraphicBankId ?? 0;
         var texture = sprites?.NameForWidget(name, graphicId);
+        var styleGraphicIds = def?.StyleGraphicIds;
+        var styleTextureNames = styleGraphicIds?
+            .Select(id => sprites?.NameForWidget(name, id))
+            .ToArray();
         var font = def?.Font ?? 0;
         var styleColours = PackStyleColours(def);
         widgets.Add(new FrontendWidget(
@@ -393,6 +413,8 @@ public static class FrontendWidgetFactory
             Alignement: def?.Alignement ?? 0,
             StyleColours: styleColours,
             StyleDurations: def?.StyleDurations,
+            StyleGraphicIds: styleGraphicIds,
+            StyleTextureNames: styleTextureNames,
             SwappingStates: def?.SwappingStates,
             SwappingTimes: def?.SwappingTimes,
             SwapCurrentState: def?.SwappingStates.FirstOrDefault() ?? int.MinValue,
@@ -412,7 +434,10 @@ public static class FrontendWidgetFactory
             SliderValueX: def?.MinX ?? 0f,
             Sprite2DFlag: def?.Sprite2DFlag ?? 0,
             Angle: def?.Angle ?? 0f,
-            LayerIndependant: def?.LayerIndependant ?? false));
+            LayerIndependant: def?.LayerIndependant ?? false,
+            TableSpriteKey: tableSpriteKey,
+            TableRepeatIndex: tableRepeatIndex,
+            TableRepeatCount: tableRepeatCount));
     }
 
     /// <summary>

@@ -341,6 +341,8 @@ public sealed class FrontendUiDef
     public IReadOnlyList<float> StyleColourB { get; init; } = [];
     public IReadOnlyList<float> StyleColourA { get; init; } = [];
     public IReadOnlyList<float> StyleDurations { get; init; } = [];
+    /// <summary>GraphicIndex stored in each persist States record.</summary>
+    public IReadOnlyList<int> StyleGraphicIds { get; init; } = [];
     /// <summary>
     /// Persist style <c>+64</c>
     /// <see cref="StateChangeFlagCrc"/>. Map
@@ -481,7 +483,9 @@ public sealed class FrontendUiDef
         var styleColourB = new List<float>();
         var styleColourA = new List<float>();
         var styleDurations = new List<float>();
+        var styleGraphicIds = new List<int>();
         var styleFlags = new List<int>();
+        var readingStyles = false;
         var drawFromViewport = (byte)0;
         var bastardChild = (byte)0;
         var alignement = 0;
@@ -597,7 +601,11 @@ public sealed class FrontendUiDef
             if (crc == GraphicIndexCrc && payload + 4 <= raw.Length)
             {
                 var id = BitConverter.ToInt32(raw, payload);
-                if (!haveGraphic || (graphic == 0 && id != 0))
+                if (readingStyles)
+                {
+                    styleGraphicIds.Add(id);
+                }
+                else if (!haveGraphic || (graphic == 0 && id != 0))
                 {
                     graphic = id;
                     haveGraphic = true;
@@ -685,6 +693,7 @@ public sealed class FrontendUiDef
             if (crc == StatesCrc && payload + 4 <= raw.Length)
             {
                 states = BitConverter.ToInt32(raw, payload);
+                readingStyles = states > 0;
                 cursor = payload + 4;
                 continue;
             }
@@ -934,6 +943,7 @@ public sealed class FrontendUiDef
             StyleColourB = styleColourB,
             StyleColourA = styleColourA,
             StyleDurations = styleDurations,
+            StyleGraphicIds = styleGraphicIds,
             StyleFlags = styleFlags,
             SwappingStates = swappingStates,
             SwappingTimes = swappingTimes,

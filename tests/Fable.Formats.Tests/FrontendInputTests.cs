@@ -402,6 +402,7 @@ public sealed class FrontendInputTests
             FrontendHitTest.TryDestPoint(life.FrontendWidgets, apply, out var ax, out var ay));
         var offIdle = life.FrontendWidgets.First(w => w.Name == "UI_SPRITE_ACCEPT_OFF");
         var onIdle = life.FrontendWidgets.First(w => w.Name == "UI_SPRITE_ACCEPT_ON");
+        var hoverAudioSerial = life.FrontendAudioSerial;
         Assert.Equal(255u, offIdle.Colour >> 24);
         Assert.Equal(0u, onIdle.Colour >> 24);
         life.SetFrontendPointer(ax, ay);
@@ -412,17 +413,48 @@ public sealed class FrontendInputTests
         var onHover = life.FrontendWidgets.First(w => w.Name == "UI_SPRITE_ACCEPT_ON");
         Assert.Equal(0u, offHover.Colour >> 24);
         Assert.Equal(255u, onHover.Colour >> 24);
+        Assert.True(life.FrontendAudioSerial > hoverAudioSerial);
+        Assert.Equal("CS_GUI_1", life.FrontendAudioCue);
         Assert.Equal(apply, FrontendHitTest.HitIndex(life.FrontendWidgets, ax, ay));
         Assert.Equal(0x0055BF10u, FrontendHitTest.HoverSelectFn);
         Assert.Equal(0x00530260u, FrontendWidgetType.ContainerDrawFn);
         life.QueueInput(FrontendInputMap.Type4, 0);
+        var clickAudioSerial = life.FrontendAudioSerial;
         life.QueueInput(FrontendInputMap.Type6, 0);
         Assert.True(life.Pump());
+        Assert.True(life.FrontendAudioSerial > clickAudioSerial);
         Assert.Equal(EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
     }
 
     [Fact]
-    public void New_Profile_Apply_hit_posts_0x126_Cancel_does_not()
+    public void New_Profile_name_hover_reaches_nested_authored_panel_styles()
+    {
+        var life = ReachNewProfile();
+        var button = IndexOf(life, "UI_NEW_PROFILE_BUTTON");
+        Assert.True(FrontendHitTest.TryDestPoint(life.FrontendWidgets, button, out var x, out var y));
+        var before = life.FrontendWidgets
+            .Select((widget, index) => (widget, index))
+            .Where(pair => IsDescendant(life.FrontendWidgets, pair.index, button))
+            .ToDictionary(pair => pair.index, pair =>
+                (pair.widget.Colour, pair.widget.GraphicId, pair.widget.TextureName));
+        var hit = FrontendHitTest.HitRect(life.FrontendWidgets, button);
+        Assert.True(FrontendHitTest.Contains(life.FrontendWidgets, button, x, y),
+            $"point={x},{y} hit={hit}");
+        life.SetFrontendPointer(x, y);
+        life.QueueInput(FrontendInputMap.TypeMouse, 0);
+        Assert.True(life.Pump());
+        Assert.True(life.FrontendWidgets[button].Hovered);
+        Assert.Contains(before, pair =>
+        {
+            var current = life.FrontendWidgets[pair.Key];
+            return current.Colour != pair.Value.Colour ||
+                   current.GraphicId != pair.Value.GraphicId ||
+                   current.TextureName != pair.Value.TextureName;
+        });
+    }
+
+    [Fact]
+    public void New_Profile_Apply_and_Cancel_follow_their_authored_messages()
     {
         var install = GameInstall.TryLocate();
         Assert.NotNull(install);
@@ -434,7 +466,10 @@ public sealed class FrontendInputTests
         life.QueueInput(FrontendInputMap.Type6, 0);
         Assert.True(life.Pump());
         ClickNamed(life, "UI_CANCEL");
-        Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        Assert.Equal(EngineLifecycle.FrontendPressStartMenu, life.FrontendMenuRoot);
+        life.QueueInput(FrontendInputMap.Type4, 0);
+        life.QueueInput(FrontendInputMap.Type6, 0);
+        Assert.True(life.Pump());
         ClickNamed(life, "UI_ACCEPT_NEW_PROFILE");
         Assert.Equal(EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
     }
@@ -497,7 +532,10 @@ public sealed class FrontendInputTests
                 life.FrontendPointerY));
 
         ClickNamed(life, "UI_CANCEL");
-        Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        Assert.Equal(EngineLifecycle.FrontendPressStartMenu, life.FrontendMenuRoot);
+        life.QueueInput(FrontendInputMap.Type4, 0);
+        life.QueueInput(FrontendInputMap.Type6, 0);
+        Assert.True(life.Pump());
         ClickNamed(life, "UI_ACCEPT_NEW_PROFILE");
         Assert.Equal(EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
     }
@@ -531,6 +569,33 @@ public sealed class FrontendInputTests
         }
 
         throw new InvalidOperationException(name);
+    }
+
+    private static EngineLifecycle ReachNewProfile()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.QueueInput(FrontendInputMap.Type4, 0);
+        life.QueueInput(FrontendInputMap.Type6, 0);
+        Assert.True(life.Pump());
+        return life;
+    }
+
+    private static bool IsDescendant(
+        IReadOnlyList<FrontendWidget> widgets, int index, int ancestor)
+    {
+        var parent = widgets[index].ParentIndex;
+        while ((uint)parent < (uint)widgets.Count)
+        {
+            if (parent == ancestor)
+                return true;
+            parent = widgets[parent].ParentIndex;
+        }
+        return false;
     }
 
     [Fact]

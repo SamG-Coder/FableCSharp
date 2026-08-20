@@ -151,6 +151,15 @@ public static class FrontendMessages
             return;
         }
 
+        if (msg == CancelNewProfile && state.Screen == Screen.NewProfile)
+        {
+            state.Screen = Screen.PressStart;
+            state.Ui96Present = false;
+            state.Ui96Plus4 = false;
+            state.Ui96Plus5 = false;
+            return;
+        }
+
         if (msg == NewGame)
             state.RetailNewGameFlag = true;
     }

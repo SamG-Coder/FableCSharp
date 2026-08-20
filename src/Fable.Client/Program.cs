@@ -15,6 +15,7 @@ if (install is null)
 }
 
 using var life = new EngineLifecycle();
+using var frontendAudio = new FrontendAudioPlayer(install);
 life.BootstrapUntilGraphics(install);
 // ForwardLifecycleTrace is an assembly-parity diagnostic. Recording every
 // widget tick and draw forever retains formatted strings and eventually makes
@@ -205,6 +206,10 @@ window.Update += dt =>
     host.Height = window.FramebufferSize.Y;
     if (!life.Pump((float)dt) || life.Stage == EngineStage.Shutdown)
         window.Close();
+    frontendAudio.Sync(
+        life.Stage == EngineStage.Frontend,
+        life.FrontendAudioCue,
+        life.FrontendAudioSerial);
     window.Title = life.WindowTitle;
 };
 
