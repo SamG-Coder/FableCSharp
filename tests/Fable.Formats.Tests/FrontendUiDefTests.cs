@@ -399,6 +399,12 @@ public sealed class FrontendUiDefTests
         Assert.Equal(0x126, accept.ActionOnLeftUnclicked);
         Assert.Equal(0, accept.ActionOnLeftClicked);
         Assert.NotEqual(accept.ActionOnLeftUnclicked, accept.ActionOnLeftClicked);
+        Assert.Equal(FableCrc.Hash("HoveredState"), FrontendUiDef.HoveredStateCrc);
+        Assert.Equal(FableCrc.Hash("LeftClickedState"), FrontendUiDef.LeftClickedStateCrc);
+        Assert.Equal(FableCrc.Hash("RightClickedState"), FrontendUiDef.RightClickedStateCrc);
+        Assert.Equal(3, accept.HoveredState);
+        Assert.Equal(3, accept.LeftClickedState);
+        Assert.Equal(3, accept.RightClickedState);
         var newGame = FrontendUiDef.TryParse(bin.FindEntry("UI_FRONTEND_BUTTON_NEW_GAME")!)!;
         Assert.Equal(11, newGame.Type);
         Assert.Equal(15, newGame.ActionOnLeftUnclicked);
@@ -434,6 +440,12 @@ public sealed class FrontendUiDefTests
             w.Name == "UI_FRONTEND_BUTTON_NEW_GAME");
         Assert.Equal(15, newGameWidget.ActionOnLeftUnclicked);
         Assert.Equal(0, newGameWidget.ActionOnLeftClicked);
+        var acceptWidgets = FrontendWidgetFactory.Build(
+            bin, EngineLifecycle.FrontendNewProfileMenu, names: names);
+        var acceptWidget = acceptWidgets.Single(w => w.Name == "UI_ACCEPT_NEW_PROFILE");
+        Assert.Equal(accept.HoveredState, acceptWidget.HoveredState);
+        Assert.Equal(accept.LeftClickedState, acceptWidget.LeftClickedState);
+        Assert.Equal(accept.RightClickedState, acceptWidget.RightClickedState);
         var cancel = FrontendUiDef.TryParse(bin.FindEntry("UI_CANCEL")!)!;
         Assert.Equal(38, cancel.Type);
         Assert.Equal(FrontendMessages.CancelNewProfile, cancel.ActionOnLeftUnclicked);

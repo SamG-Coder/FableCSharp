@@ -188,6 +188,21 @@ public sealed class FrontendUiDef
     /// </summary>
     public const uint UseRelativePositionCrc = 0xB466D948;
     /// <summary>
+    /// CUIDef <c>+516</c>. <c>0055BAE0</c> obtains the first authored child
+    /// through vtbl+432 and passes this value to the button's vtbl+192.
+    /// </summary>
+    public const uint HoveredStateCrc = 0x180E20C5;
+    /// <summary>CUIDef <c>+524</c>, left-button pressed visual state.</summary>
+    public const uint LeftClickedStateCrc = 0xC08267F2;
+    /// <summary>CUIDef <c>+528</c>, right-button pressed visual state.</summary>
+    public const uint RightClickedStateCrc = 0x50D249C6;
+    public const uint InputDelayCrc = 0xC1C40F15;
+    public const uint EditBoxParentIsButtonCrc = 0x80E7CC0F;
+    public const uint PasswordBoxCrc = 0x85F48C10;
+    public const uint EditBoxCharLimitCrc = 0xC906BCC4;
+    public const uint EditBoxUsesImeCrc = 0x7E593159;
+    public const uint DisallowSpaceAsFirstCharCrc = 0xB5AF7F34;
+    /// <summary>
     /// <c>FableCrc("GraphicIndex")</c>. Persist i32 is
     /// <c>GBANK_FRONT_END_PC</c> <c>BankEntry.Id</c>.
     /// </summary>
@@ -363,6 +378,15 @@ public sealed class FrontendUiDef
     /// → def <c>+224</c>.
     /// </summary>
     public int ActionOnLeftClicked { get; init; }
+    public int HoveredState { get; init; }
+    public int LeftClickedState { get; init; }
+    public int RightClickedState { get; init; }
+    public float InputDelay { get; init; }
+    public bool EditBoxParentIsButton { get; init; }
+    public bool PasswordBox { get; init; }
+    public int EditBoxCharLimit { get; init; }
+    public bool EditBoxUsesIme { get; init; }
+    public bool DisallowSpaceAsFirstChar { get; init; }
     /// <summary>
     /// True when <see cref="FrontendUiSchema"/> validated every serialized
     /// field boundary and consumed the inflated entry through exact EOF.
@@ -769,6 +793,15 @@ public sealed class FrontendUiDef
         var relativePositionByte = ReadPersistU8(raw, UseRelativePositionCrc);
         var actionOnLeftUnclicked = ReadPersistI32(raw, ActionOnLeftUnclickedCrc);
         var actionOnLeftClicked = ReadPersistI32(raw, ActionOnLeftClickedCrc);
+        var hoveredState = ReadPersistI32(raw, HoveredStateCrc);
+        var leftClickedState = ReadPersistI32(raw, LeftClickedStateCrc);
+        var rightClickedState = ReadPersistI32(raw, RightClickedStateCrc);
+        var inputDelay = ReadPersistF32(raw, InputDelayCrc);
+        var editBoxParentIsButton = ReadPersistU8(raw, EditBoxParentIsButtonCrc) != 0;
+        var passwordBox = ReadPersistU8(raw, PasswordBoxCrc) != 0;
+        var editBoxCharLimit = ReadPersistI32(raw, EditBoxCharLimitCrc);
+        var editBoxUsesIme = ReadPersistU8(raw, EditBoxUsesImeCrc) != 0;
+        var disallowSpaceAsFirstChar = ReadPersistU8(raw, DisallowSpaceAsFirstCharCrc) != 0;
         var swappingStates = ReadPersistI32Vector(raw, SwappingStatesCrc);
         var swappingTimes = ReadPersistF32Vector(raw, SwappingTimesCrc);
         var scanned326 = ReadPersistF32(raw, PositionOffsetYCrc);
@@ -846,6 +879,15 @@ public sealed class FrontendUiDef
             UseRelativePositionByte = relativePositionByte,
             ActionOnLeftUnclicked = actionOnLeftUnclicked,
             ActionOnLeftClicked = actionOnLeftClicked,
+            HoveredState = hoveredState,
+            LeftClickedState = leftClickedState,
+            RightClickedState = rightClickedState,
+            InputDelay = inputDelay,
+            EditBoxParentIsButton = editBoxParentIsButton,
+            PasswordBox = passwordBox,
+            EditBoxCharLimit = editBoxCharLimit,
+            EditBoxUsesIme = editBoxUsesIme,
+            DisallowSpaceAsFirstChar = disallowSpaceAsFirstChar,
             SchemaComplete = schemaComplete,
             SchemaError = schemaError,
         };

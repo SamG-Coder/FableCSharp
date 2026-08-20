@@ -385,17 +385,36 @@ public static class Dx9VulkanFrontend
             return;
         var firstVertex = (uint)vertices.Count;
         var firstIndex = (uint)indices.Count;
+        var argb = rec.DiffuseArgb == 0 ? 0xFFFFFFFFu : rec.DiffuseArgb;
+        var tl = new FrontendDx9Vertex(
+            rec.DestX0, rec.DestY0, 0f, RecoveredRhw, argb, rec.U0, rec.V0);
+        var tr = new FrontendDx9Vertex(
+            rec.DestX1, rec.DestY0, 0f, RecoveredRhw, argb, rec.U1, rec.V0);
+        var bl = new FrontendDx9Vertex(
+            rec.DestX0, rec.DestY1, 0f, RecoveredRhw, argb, rec.U0, rec.V1);
+        var br = new FrontendDx9Vertex(
+            rec.DestX1, rec.DestY1, 0f, RecoveredRhw, argb, rec.U1, rec.V1);
         if (rec.RecordType == (int)GlyphRecordType)
         {
-            foreach (var dx9 in BuildDx9GlyphList(rec))
-                vertices.Add(ToGpuVertex(dx9, vpX, vpY, vpW, vpH, useDiffuseColor: true));
+            vertices.Add(ToGpuVertex(tl, vpX, vpY, vpW, vpH, useDiffuseColor: true));
+            vertices.Add(ToGpuVertex(tr, vpX, vpY, vpW, vpH, useDiffuseColor: true));
+            vertices.Add(ToGpuVertex(bl, vpX, vpY, vpW, vpH, useDiffuseColor: true));
+            vertices.Add(ToGpuVertex(tr, vpX, vpY, vpW, vpH, useDiffuseColor: true));
+            vertices.Add(ToGpuVertex(br, vpX, vpY, vpW, vpH, useDiffuseColor: true));
+            vertices.Add(ToGpuVertex(bl, vpX, vpY, vpW, vpH, useDiffuseColor: true));
         }
         else
         {
-            foreach (var dx9 in BuildDx9Quad(rec))
-                vertices.Add(ToGpuVertex(dx9, vpX, vpY, vpW, vpH));
-            foreach (var i in QuadIndices)
-                indices.Add(i);
+            vertices.Add(ToGpuVertex(tl, vpX, vpY, vpW, vpH));
+            vertices.Add(ToGpuVertex(tr, vpX, vpY, vpW, vpH));
+            vertices.Add(ToGpuVertex(bl, vpX, vpY, vpW, vpH));
+            vertices.Add(ToGpuVertex(br, vpX, vpY, vpW, vpH));
+            indices.Add(0);
+            indices.Add(1);
+            indices.Add(2);
+            indices.Add(1);
+            indices.Add(3);
+            indices.Add(2);
         }
 
         draws.Add(BuildDraw(rec, firstVertex, firstIndex));
@@ -409,9 +428,9 @@ public static class Dx9VulkanFrontend
         int vpW = DisplayWidth,
         int vpH = DisplayHeight)
     {
-        var vertices = new List<FrontendGpuVertex>();
-        var indices = new List<ushort>();
-        var draws = new List<FrontendDraw>();
+        var vertices = new List<FrontendGpuVertex>(records.Count * GlyphVertsPerQuad);
+        var indices = new List<ushort>(records.Count * QuadIndices.Length);
+        var draws = new List<FrontendDraw>(records.Count);
         foreach (var rec in records)
             AppendRecord(rec, vpX, vpY, vpW, vpH, vertices, indices, draws);
         return new FrontendSubmitBatch(

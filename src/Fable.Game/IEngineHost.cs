@@ -113,6 +113,12 @@ public readonly record struct FrontendWidget(
     /// </summary>
     int Type10Packet = 0,
     int ActionOnLeftClicked = 0,
+    int HoveredState = 0,
+    int LeftClickedState = 0,
+    int RightClickedState = 0,
+    float InputDelay = 0,
+    int EditBoxCharLimit = 0,
+    bool DisallowSpaceAsFirstChar = false,
     bool Armed = false,
     float U0 = 0,
     float V0 = 0,

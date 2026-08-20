@@ -180,6 +180,33 @@ public static class FrontendWidgetFactory
         return kids;
     }
 
+    /// <summary>Allocation-free equivalent of the native <c>+176</c> child walk.</summary>
+    public static int ChildCount(IReadOnlyList<FrontendWidget> widgets, int parentIndex)
+    {
+        var count = 0;
+        for (var i = 0; i < widgets.Count; i++)
+            if (widgets[i].ParentIndex == parentIndex)
+                count++;
+        return count;
+    }
+
+    public static int ChildAt(IReadOnlyList<FrontendWidget> widgets, int parentIndex, int ordinal)
+    {
+        if (ordinal < 0)
+            return -1;
+        for (var i = 0; i < widgets.Count; i++)
+        {
+            if (widgets[i].ParentIndex != parentIndex)
+                continue;
+            if (ordinal-- == 0)
+                return i;
+        }
+        return -1;
+    }
+
+    public static int FirstChild(IReadOnlyList<FrontendWidget> widgets, int parentIndex) =>
+        ChildAt(widgets, parentIndex, 0);
+
     private static void AttachChildren(
         List<FrontendWidget> widgets,
         GameBin defs,
@@ -293,6 +320,12 @@ public static class FrontendWidgetFactory
             FontFace: ResolveFontFace(font, names),
             ActionOnLeftUnclicked: def?.ActionOnLeftUnclicked ?? 0,
             ActionOnLeftClicked: def?.ActionOnLeftClicked ?? 0,
+            HoveredState: def?.HoveredState ?? 0,
+            LeftClickedState: def?.LeftClickedState ?? 0,
+            RightClickedState: def?.RightClickedState ?? 0,
+            InputDelay: def?.InputDelay ?? 0f,
+            EditBoxCharLimit: def?.EditBoxCharLimit ?? 0,
+            DisallowSpaceAsFirstChar: def?.DisallowSpaceAsFirstChar ?? false,
             Colour: ColourAtStyle(styleColours, FrontendWidgetType.FirstSeenState,
                 def),
             Layer: def?.Layer ?? 0,

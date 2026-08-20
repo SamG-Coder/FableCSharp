@@ -5614,6 +5614,9 @@ public sealed class EngineLifecycle : IDisposable
         new(StringComparer.OrdinalIgnoreCase);
     private readonly Dictionary<FrontendTextLayoutKey, List<FrontendTextDraw.GlyphQuad>>
         _frontendTextLayouts = [];
+    private string? _frontendCaretSource;
+    private string? _frontendCaretText;
+    private int _frontendCaretCursor = -1;
     private readonly Dictionary<List<FrontendWidget>, FrontendLayoutScratch>
         _frontendLayoutScratch = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<List<FrontendWidget>, int[]> _frontendRecordOrders =
@@ -5649,6 +5652,7 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     private readonly Dictionary<int, List<FrontendWidget>> _frontendSlotTrees = [];
     private int[] _frontendResidentSlotKeys = [];
+    private readonly List<List<FrontendWidget>> _frontendResidentTrees = [];
     /// <summary>
     /// <c>[ui+84]</c> keys walked
     /// last tick/draw, in-order.
@@ -6790,8 +6794,10 @@ public sealed class EngineLifecycle : IDisposable
             $"0052F5C0 +264 from +92/+272={FrontendScaleX}");
         Note(FrontendDestOriginFn, "Frontend", "UI",
             "0052FFD0 +248 from +52/+60");
-        foreach (var tree in ResidentSlotTrees())
+        RebuildResidentTrees();
+        for (var treeIndex = 0; treeIndex < _frontendResidentTrees.Count; treeIndex++)
         {
+            var tree = _frontendResidentTrees[treeIndex];
             TickFrontendColourTransitions(tree, dt);
             TickSwappingStateComponents(tree, dt);
             LayoutFrontendWidgets(tree);
@@ -6946,8 +6952,10 @@ public sealed class EngineLifecycle : IDisposable
             return;
         var drawn = 0;
         var any = false;
-        foreach (var tree in ResidentSlotTrees())
+        RebuildResidentTrees();
+        for (var treeIndex = 0; treeIndex < _frontendResidentTrees.Count; treeIndex++)
         {
+            var tree = _frontendResidentTrees[treeIndex];
             any = true;
             DrawSlotTree(tree, ref drawn);
         }
@@ -7375,7 +7383,20 @@ public sealed class EngineLifecycle : IDisposable
         }
         else if (code == 32 || code is >= 32 and <= 126)
         {
-            if (name.Length >= EditBoxCap)
+            var editBox = default(FrontendWidget);
+            for (var i = 0; i < _frontendWidgets.Count; i++)
+            {
+                if (_frontendWidgets[i].Type == FrontendWidgetType.EditBox)
+                {
+                    editBox = _frontendWidgets[i];
+                    break;
+                }
+            }
+            var limit = editBox.EditBoxCharLimit > 0
+                ? editBox.EditBoxCharLimit
+                : EditBoxCap;
+            if (name.Length >= limit ||
+                (code == 32 && name.Length == 0 && editBox.DisallowSpaceAsFirstChar))
                 return;
             FrontendEditBoxName = name.Insert(cursor, char.ConvertFromUtf32(code));
             _editBoxCursor = cursor + 1;
@@ -12995,6 +13016,7 @@ public sealed class EngineLifecycle : IDisposable
             FrontendCurrentSlot != slot)
             SelectFrontendState(FrontendCurrentSlot, 6);
         FrontendCurrentSlot = slot;
+        RebuildResidentTrees();
     }
 
     /// <summary>
@@ -13068,24 +13090,28 @@ public sealed class EngineLifecycle : IDisposable
         {
             // CSwappingStateComponent publishes its selected authored state
             // to the blending children when its completion edge advances.
-            foreach (var child in FrontendWidgetFactory.ChildrenOf(tree, index))
-                ForwardSelectState(tree, child, state, duration);
+            for (var child = 0; child < tree.Count; child++)
+                if (tree[child].ParentIndex == index)
+                    ForwardSelectState(tree, child, state, duration);
             return;
         }
 
         if (widget.Type != FrontendWidgetType.TextSlider || state != 5)
             return;
-        var children = FrontendWidgetFactory.ChildrenOf(tree, index);
-        foreach (var child in children)
+        var childCount = FrontendWidgetFactory.ChildCount(tree, index);
+        for (var child = 0; child < tree.Count; child++)
         {
+            if (tree[child].ParentIndex != index)
+                continue;
             Note(FrontendWidgetType.ForwardSelectFn, "Frontend", "UI",
                 $"00548F40 child {tree[child].Name} +332=1");
             ForwardSelectState(tree, child, 1, duration);
         }
-        if (children.Count == 0)
+        if (childCount == 0)
             return;
-        var selected = Math.Clamp(widget.ActiveChild, 0, children.Count - 1);
-        ForwardSelectState(tree, children[selected], 3, duration);
+        var selected = Math.Clamp(widget.ActiveChild, 0, childCount - 1);
+        ForwardSelectState(tree,
+            FrontendWidgetFactory.ChildAt(tree, index, selected), 3, duration);
     }
 
     /// <summary>
@@ -13107,6 +13133,7 @@ public sealed class EngineLifecycle : IDisposable
             .OrderBy(key => key)
             .ToArray();
         FrontendResidentSlots = _frontendResidentSlotKeys;
+        RebuildResidentTrees();
     }
 
     /// <summary>
@@ -13149,18 +13176,24 @@ public sealed class EngineLifecycle : IDisposable
     public IReadOnlyList<FrontendWidget> FrontendSlotTree(int slot) =>
         _frontendSlotTrees.TryGetValue(slot, out var tree) ? tree : [];
 
-    private IEnumerable<List<FrontendWidget>> ResidentSlotTrees()
+    /// <summary>
+    /// Materialises native key-order only when the resident set/current slot
+    /// changes. Frame tick, draw and submit then use indexed walks without
+    /// allocating iterator state machines.
+    /// </summary>
+    private void RebuildResidentTrees()
     {
+        _frontendResidentTrees.Clear();
         if (_frontendSlotTrees.Count == 0)
         {
             if (_frontendWidgets.Count > 0)
             {
                 FrontendResidentSlots = [];
-                yield return _frontendWidgets;
+                _frontendResidentTrees.Add(_frontendWidgets);
             }
             else
                 FrontendResidentSlots = [];
-            yield break;
+            return;
         }
 
         var keys = _frontendResidentSlotKeys;
@@ -13175,11 +13208,11 @@ public sealed class EngineLifecycle : IDisposable
             var tree = _frontendSlotTrees[key];
             if (tree.Count == 0)
                 continue;
-            yield return tree;
+            _frontendResidentTrees.Add(tree);
         }
         if (_frontendSlotTrees.TryGetValue(FrontendCurrentSlot, out var current) &&
             current.Count > 0)
-            yield return current;
+            _frontendResidentTrees.Add(current);
     }
 
     /// <summary>
@@ -13215,9 +13248,9 @@ public sealed class EngineLifecycle : IDisposable
             {
                 // 0055BAE0 saves +332 in +348, reads vtbl+516 from the first
                 // authored child, and selects that state on the button.
-                var children = FrontendWidgetFactory.ChildrenOf(tree, i);
-                var hoverState = children.Count > 0
-                    ? tree[children[0]].Alignement
+                var firstChild = FrontendWidgetFactory.FirstChild(tree, i);
+                var hoverState = firstChild >= 0
+                    ? tree[firstChild].HoveredState
                     : widget.State;
                 tree[i] = widget with
                 {
@@ -13225,7 +13258,7 @@ public sealed class EngineLifecycle : IDisposable
                     ActiveChild = widget.State,
                 };
                 ForwardSelectState(tree, i, hoverState);
-                ApplyButtonChildVisualState(tree, i, 3);
+                ApplyAuthoredHoverVisuals(tree, i, entering: true);
             }
             else
             {
@@ -13233,20 +13266,33 @@ public sealed class EngineLifecycle : IDisposable
                 var restoreState = widget.ActiveChild;
                 tree[i] = widget with { Hovered = false };
                 ForwardSelectState(tree, i, restoreState);
-                ApplyButtonChildVisualState(tree, i, 0);
+                ApplyAuthoredHoverVisuals(tree, i, entering: false);
             }
         }
     }
 
-    private void ApplyButtonChildVisualState(
-        List<FrontendWidget> tree, int button, int state)
+    private void ApplyAuthoredHoverVisuals(
+        List<FrontendWidget> tree, int button, bool entering)
     {
-        // 0055AEB0/0055AEF0 publish the authored hover on/off actions after
-        // changing the button state.  Their listeners select the matching
-        // child styles (the ON/OFF sprite definitions encode the actual
-        // alpha values), so no texture-name convention is needed here.
-        foreach (var child in FrontendWidgetFactory.ChildrenOf(tree, button))
-            ForwardSelectState(tree, child, state);
+        // 0055AEB0/0055AEF0 publish actions 26/31/27/32 after the button
+        // transition. The authored descendants subscribe to that pair. Model
+        // the recovered result with each descendant's CUIDef+516 state; keep
+        // its prior +332 value for the matching leave notification.
+        for (var child = 0; child < tree.Count; child++)
+        {
+            if (tree[child].ParentIndex != button)
+                continue;
+            var visual = tree[child];
+            if (entering)
+            {
+                tree[child] = visual with { ActiveChild = visual.State };
+                ForwardSelectState(tree, child, visual.HoveredState);
+            }
+            else
+            {
+                ForwardSelectState(tree, child, visual.ActiveChild);
+            }
+        }
     }
 
     /// <summary>
@@ -13288,20 +13334,23 @@ public sealed class EngineLifecycle : IDisposable
     private void ApplyTextSliderHit(int index)
     {
         var widget = _frontendWidgets[index];
-        var kids = FrontendWidgetFactory.ChildrenOf(_frontendWidgets, index);
-        if (kids.Count == 0)
+        var childCount = FrontendWidgetFactory.ChildCount(_frontendWidgets, index);
+        if (childCount == 0)
             return;
         var next = widget.ActiveChild;
         if (FrontendHitTest.IsLeftHalf(_frontendWidgets, index, FrontendPointerX))
-            next = next <= 0 ? kids.Count - 1 : next - 1;
+            next = next <= 0 ? childCount - 1 : next - 1;
         else
-            next = next + 1 >= kids.Count ? 0 : next + 1;
+            next = next + 1 >= childCount ? 0 : next + 1;
         _frontendWidgets[index] = widget with { ActiveChild = next, Armed = true };
         // 00548AF0 applies state 1 to the old choice and state 3 to the new
         // choice.  Both remain in the authored child list; Visible is not an
         // exclusive-selection flag.
-        ForwardSelectState(_frontendWidgets, kids[Math.Clamp(widget.ActiveChild, 0, kids.Count - 1)], 1);
-        ForwardSelectState(_frontendWidgets, kids[next], 3);
+        ForwardSelectState(_frontendWidgets,
+            FrontendWidgetFactory.ChildAt(_frontendWidgets, index,
+                Math.Clamp(widget.ActiveChild, 0, childCount - 1)), 1);
+        ForwardSelectState(_frontendWidgets,
+            FrontendWidgetFactory.ChildAt(_frontendWidgets, index, next), 3);
     }
 
     private void ApplySliderHit(int index)
@@ -13731,8 +13780,10 @@ public sealed class EngineLifecycle : IDisposable
         textures.Clear();
         textureIndex.Clear();
         _frontendSubmitCounts.Clear();
-        foreach (var tree in ResidentSlotTrees())
+        RebuildResidentTrees();
+        for (var treeIndex = 0; treeIndex < _frontendResidentTrees.Count; treeIndex++)
         {
+        var tree = _frontendResidentTrees[treeIndex];
         var submitBase = _frontendSubmitCounts.Count;
         for (var i = 0; i < tree.Count; i++)
             _frontendSubmitCounts.Add(0);
@@ -13969,7 +14020,14 @@ public sealed class EngineLifecycle : IDisposable
             tree[parent].Type != FrontendWidgetType.EditBox)
             return text;
         var cursor = Math.Clamp(_editBoxCursor, 0, text.Length);
-        return text.Insert(cursor, "|");
+        if (_frontendCaretCursor == cursor &&
+            ReferenceEquals(_frontendCaretSource, text) &&
+            _frontendCaretText is not null)
+            return _frontendCaretText;
+        _frontendCaretSource = text;
+        _frontendCaretCursor = cursor;
+        _frontendCaretText = text.Insert(cursor, "|");
+        return _frontendCaretText;
     }
 
     private readonly record struct FrontendTextLayoutKey(

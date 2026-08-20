@@ -66,8 +66,10 @@ public static class FrontendHitTest
             return true;
         }
 
-        foreach (var kid in FrontendWidgetFactory.ChildrenOf(tree, index))
+        for (var kid = 0; kid < tree.Count; kid++)
         {
+            if (tree[kid].ParentIndex != index)
+                continue;
             if (!FrontendWidgetFactory.IsPresented(tree, kid))
                 continue;
             if (TryDestPoint(tree, kid, out x, out y))
