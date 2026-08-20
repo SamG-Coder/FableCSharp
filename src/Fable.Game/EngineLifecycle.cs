@@ -13331,13 +13331,15 @@ public sealed class EngineLifecycle : IDisposable
         List<FrontendWidget> tree, int button, bool entering)
     {
         // 0055AEB0/0055AEF0 publish actions 26/31/27/32 after the button
-        // transition. The authored descendants subscribe to that pair and
-        // receive the button's selected state.  Selecting each descendant's
-        // own +516 value makes the arrow ON graphics remain invisible.
+        // transition. The authored immediate components subscribe to that
+        // pair and receive the button's selected state. Their colour/alpha
+        // then inherits through nested table cells. Broadcasting recursively
+        // rewrites every cloned table graphic and stalls Vulkan on Profile
+        // Name hover.
         var selectedState = tree[button].State;
         for (var child = 0; child < tree.Count; child++)
         {
-            if (!IsFrontendDescendant(tree, child, button))
+            if (tree[child].ParentIndex != button)
                 continue;
             var visual = tree[child];
             if (entering)

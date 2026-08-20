@@ -427,16 +427,23 @@ public sealed class FrontendInputTests
     }
 
     [Fact]
-    public void New_Profile_name_hover_reaches_nested_authored_panel_styles()
+    public void New_Profile_name_hover_updates_authored_components_without_replacing_nested_sprites()
     {
         var life = ReachNewProfile();
         var button = IndexOf(life, "UI_NEW_PROFILE_BUTTON");
         Assert.True(FrontendHitTest.TryDestPoint(life.FrontendWidgets, button, out var x, out var y));
-        var before = life.FrontendWidgets
+        var immediateChildren = life.FrontendWidgets
             .Select((widget, index) => (widget, index))
-            .Where(pair => IsDescendant(life.FrontendWidgets, pair.index, button))
+            .Where(pair => pair.widget.ParentIndex == button)
+            .Select(pair => pair.index)
+            .ToArray();
+        Assert.NotEmpty(immediateChildren);
+        var nestedSprites = life.FrontendWidgets
+            .Select((widget, index) => (widget, index))
+            .Where(pair => pair.widget.ParentIndex != button &&
+                           IsDescendant(life.FrontendWidgets, pair.index, button))
             .ToDictionary(pair => pair.index, pair =>
-                (pair.widget.Colour, pair.widget.GraphicId, pair.widget.TextureName));
+                (pair.widget.GraphicId, pair.widget.TextureName));
         var hit = FrontendHitTest.HitRect(life.FrontendWidgets, button);
         Assert.True(FrontendHitTest.Contains(life.FrontendWidgets, button, x, y),
             $"point={x},{y} hit={hit}");
@@ -444,12 +451,14 @@ public sealed class FrontendInputTests
         life.QueueInput(FrontendInputMap.TypeMouse, 0);
         Assert.True(life.Pump());
         Assert.True(life.FrontendWidgets[button].Hovered);
-        Assert.Contains(before, pair =>
+        var selectedState = life.FrontendWidgets[button].State;
+        Assert.All(immediateChildren, child =>
+            Assert.Equal(selectedState, life.FrontendWidgets[child].State));
+        Assert.All(nestedSprites, pair =>
         {
             var current = life.FrontendWidgets[pair.Key];
-            return current.Colour != pair.Value.Colour ||
-                   current.GraphicId != pair.Value.GraphicId ||
-                   current.TextureName != pair.Value.TextureName;
+            Assert.Equal(pair.Value.GraphicId, current.GraphicId);
+            Assert.Equal(pair.Value.TextureName, current.TextureName);
         });
 
         var title = life.FrontendWidgets.First(w =>

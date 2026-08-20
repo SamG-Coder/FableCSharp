@@ -402,6 +402,15 @@ public sealed class Dx9DeviceRecordTests
         Assert.True(life.Pump());
         Assert.True(VulkanLineRenderer.TextureSetsShareStorage(
             residentTextures, device.LastBatch.Textures));
+        var profile = Enumerable.Range(0, life.FrontendWidgets.Count)
+            .First(index => life.FrontendWidgets[index].Name == "UI_NEW_PROFILE_BUTTON");
+        Assert.True(FrontendHitTest.TryDestPoint(
+            life.FrontendWidgets, profile, out hoverX, out hoverY));
+        life.SetFrontendPointer(hoverX, hoverY);
+        life.QueueInput(EngineInput.TypeMouse, 0);
+        Assert.True(life.Pump());
+        Assert.True(VulkanLineRenderer.TextureSetsShareStorage(
+            residentTextures, device.LastBatch.Textures));
         Assert.True(life.Pump());
         var profileAllocationStart = GC.GetAllocatedBytesForCurrentThread();
         for (var frameIndex = 0; frameIndex < 60; frameIndex++)
