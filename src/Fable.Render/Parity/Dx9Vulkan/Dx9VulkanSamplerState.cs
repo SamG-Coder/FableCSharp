@@ -34,4 +34,22 @@ public static class Dx9VulkanSamplerState
             AddressModeW = AddressW,
             MaxLod = MaxLod,
         };
+
+    /// <summary>
+    /// Type-0x22 frontend sprites: 00BB1442/00BB144B copy the instance
+    /// fields into draw +160/+161. The first-seen zero values select POINT
+    /// at 00BAF362 and CLAMP at 00BAF1BD for both texture axes.
+    /// </summary>
+    public static SamplerCreateInfo FrontendType22() =>
+        new()
+        {
+            SType = StructureType.SamplerCreateInfo,
+            MagFilter = Filter.Nearest,
+            MinFilter = Filter.Nearest,
+            MipmapMode = SamplerMipmapMode.Nearest,
+            AddressModeU = SamplerAddressMode.ClampToEdge,
+            AddressModeV = SamplerAddressMode.ClampToEdge,
+            AddressModeW = SamplerAddressMode.ClampToEdge,
+            MaxLod = 0f,
+        };
 }

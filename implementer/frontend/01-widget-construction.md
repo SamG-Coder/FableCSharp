@@ -104,56 +104,22 @@ GameBin header is 3 bytes (`real`, `template`, `unknown`). UI body then has a u1
 
 `Graphic` / `Texture` / `Sprite` / `Visible` / `Anchor` / `ScaleX` / `ScaleY` hashes do **not** appear as top-level CRCs on PRESS_START / TITLE / FOREST / TEXT.
 
-### PARTIAL (CRC consumed, name unread)
+### Complete CUIDef schema
 
-| CRC | Type | Typical value |
-| --- | --- | --- |
-| `0x0961B216` | i32 | 0 |
-| `0xE215EF13` | UTF-16 | `TEXT_GUI_MENU_PRESS_BUTTON` on type 6. **Not** `TextTag` (`0x66D9E7F9`) |
-| `0x38BB7ED4` | i32 | 1 |
-| `0x6B1015E4` | i32 | 0 |
-| `0xF81F10A8` | i32 | 0 |
-| `0xE78E700E` | f32 | 1.0 |
-| `0x90894098` | f32 | 1.0 |
-| `0xF97D3844` | f32 | 0.2 or -1 |
-| `0xA5F8D969` | i32 | 0 |
+Retail persist writer `00631C60` fixes the serialized order and storage of all
+109 `CUIDef` fields and all 14 fields in each `CUIStateDef`. Original Lionhead
+names come from the PDB-backed donor schema and are independently locked to the
+retail file by `FableCrc(name) == serialized CRC` for every field.
 
-`Layer` `0xE338F903` and `Angle` `0x07629D10` hash correctly but are **not** in the sequential prefix. Scanner hits later in the blob are not authority.
+Previously provisional examples are now classified as `MeshIndex`, `TextValue`,
+`ExpansionType`, `HorizontalSeparations`, `VerticalSeparations`, `ZoomX`,
+`ZoomY`, `UpdateTime`, `StateChangeType`, and `LinearChange`. The full table,
+including retail and donor offsets and serialized storage, is encoded in
+`FrontendUiFieldCatalog`.
 
-### UNREAD
-
-| CRC | Why |
-| --- | --- |
-| `0x56A59976` | Nested persist after the first style prefix. Stops the sequential reader. Extra `States` records unread. |
-| Style stride 124 file layout after that nested object | `005331A0` / `00433FE0` runtime offsets known; file tail not walked. |
-| `CUIDef` persist vtbl | RTTI `CUIDef@NUISystem` at `0x0137DA64`. Persist function that writes Type to `+60` not pinned. |
-
-## Sequential prefix (PROVEN on every walked UI)
-
-```
-hdr 3 + u16 0
-Type i32
-Children count + indices
-0x0961B216 i32
-0xE215EF13 UTF-16
-Font i32
-Height f32
-Width f32
-0x38BB7ED4 i32
-Sprites i32 (0)
-0x6B1015E4 i32
-0xF81F10A8 i32
-States i32
-GraphicIndex i32          // first style
-PositionX f32
-PositionY f32
-0xE78E700E f32
-0x90894098 f32
-ColourR/G/B/A f32
-0xF97D3844 f32
-0xA5F8D969 i32
-0x56A59976  → UNREAD
-```
+`FrontendUiSchema` walks fields at exact boundaries (including every state,
+vector, map, UTF-16 value, and byte flag). All 810 UI entries consume through
+exact EOF; no CRC scanner or guessed tail boundary participates in validation.
 
 ## Hex walks (first style + children)
 
@@ -199,7 +165,9 @@ UTF-16 `TEXT_GUI_MENU_NEW_GAME`. PosX 120.
 
 ## Implementation
 
-- `src/Fable.Formats/Defs/FrontendUiDef.cs` — sequential CRC+typed walk. Stops at `0x56A59976`. `Partial=true`. No `IsSize`/`IsPos`.
+- `src/Fable.Formats/Defs/FrontendUiFieldCatalog.cs` — complete original-name field table.
+- `src/Fable.Formats/Defs/FrontendUiSchema.cs` — exact CRC+typed walk through EOF.
+- `src/Fable.Formats/Defs/FrontendUiDef.cs` — runtime-facing parsed values use original field names.
 - `src/Fable.Formats/Defs/FrontendWidgetType.cs` — full 0..43 table from the exe switch.
 - `src/Fable.Game/FrontendWidgetFactory.cs` — generic Children-index walk.
 - Tests: `tests/Fable.Formats.Tests/FrontendUiDefTests.cs`.

@@ -194,8 +194,8 @@ public sealed unsafe partial class VulkanLineRenderer
     private void BindFrontendTexture(CommandBuffer commandBuffer, int textureId)
     {
         var set = _textures.TryGetValue(textureId, out var texture)
-            ? texture.Set
-            : _fallbackTexture.Set;
+            ? texture.FrontendSet
+            : _fallbackTexture.FrontendSet;
         if (set.Handle == 0)
             return;
         _vk.CmdBindDescriptorSets(

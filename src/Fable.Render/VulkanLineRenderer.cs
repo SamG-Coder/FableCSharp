@@ -180,6 +180,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     private DescriptorSetLayout _descriptorSetLayout;
     private DescriptorPool _descriptorPool;
     private Sampler _sampler;
+    private Sampler _frontendSampler;
     private readonly Dictionary<int, DeviceTexture> _textures = new();
     private DeviceTexture _fallbackTexture;
     private MeshDraw[] _draws = [];
@@ -591,6 +592,8 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             _vk.DestroyDescriptorSetLayout(_device, _descriptorSetLayout, null);
         if (_sampler.Handle != 0)
             _vk.DestroySampler(_device, _sampler, null);
+        if (_frontendSampler.Handle != 0)
+            _vk.DestroySampler(_device, _frontendSampler, null);
         _vk.DestroyRenderPass(_device, _renderPass, null);
         _vk.DestroyDevice(_device, null);
         if (_validation)

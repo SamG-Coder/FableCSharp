@@ -103,5 +103,6 @@ public sealed class Dx9ArchitectureTests
         Assert.Null(type.GetMethod("DispatchFrontendMessage"));
         Assert.NotNull(type.GetMethod("QueueKeys"));
         Assert.NotNull(type.GetMethod("QueuePointer"));
+        Assert.NotNull(type.GetMethod("QueuePointerButton"));
     }
 }

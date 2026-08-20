@@ -83,6 +83,11 @@ public static class FrontendWidgetFactory
             {
                 State = select,
                 StyleIndex = select,
+                // 00549230 selects state 3 during construction.  The native
+                // style tick then resolves that state's colour before the
+                // first stable menu frame; keep the reconstructed stable
+                // frame at the same point rather than leaving style-0 alpha.
+                Colour = ColourAtStyle(child, select),
             };
         }
 
@@ -114,7 +119,7 @@ public static class FrontendWidgetFactory
         if ((uint)index >= (uint)tree.Count)
             return false;
         var widget = tree[index];
-        if (!widget.Visible || widget.Clip)
+        if (!widget.Visible)
             return false;
         if (widget.ParentIndex < 0 && widget.ParentName is null)
             return true;
@@ -252,7 +257,7 @@ public static class FrontendWidgetFactory
         Func<string, string?>? lookupText,
         NamesBin? names)
     {
-        var text = def?.TextTag;
+        var text = def?.TextValue;
         string? body = null;
         if (!string.IsNullOrEmpty(text) && lookupText is not null)
             body = lookupText(text);
@@ -276,37 +281,37 @@ public static class FrontendWidgetFactory
             def?.PositionY ?? 0,
             PersistScaleX: def?.ZoomX ?? 1f,
             PersistScaleY: def?.ZoomY ?? 1f,
-            Center: def?.Center ?? false,
-            Absolute: def?.Absolute ?? false,
-            ScaleOriginToViewport: def?.ScaleOriginToViewport ?? false,
-            ScaleSizeToViewport: def?.ScaleSizeToViewport ?? false,
+            PositionIsCenter: def?.PositionIsCenter ?? false,
+            Independant: def?.Independant ?? false,
+            UseRelativePosition: def?.UseRelativePosition ?? false,
+            UseRelativeZoom: def?.UseRelativeZoom ?? false,
             Visible: true,
             Enabled: true,
-            Clip: def is { Plus392: not 0 },
+            DrawFromViewport: def?.DrawFromViewport ?? 0,
             ActiveChild: FrontendWidgetType.FirstSeenState,
             Font: font,
             FontFace: ResolveFontFace(font, names),
-            MessageId: def?.MessageId ?? 0,
-            Plus224: def?.Plus224 ?? 0,
+            ActionOnLeftUnclicked: def?.ActionOnLeftUnclicked ?? 0,
+            ActionOnLeftClicked: def?.ActionOnLeftClicked ?? 0,
             Colour: ColourAtStyle(styleColours, FrontendWidgetType.FirstSeenState,
                 def),
             Layer: def?.Layer ?? 0,
-            Plus326: def?.Plus326 ?? 0f,
-            Plus322: def?.Plus322 ?? 0f,
-            Plus96: def?.Plus96 ?? 0,
+            PositionOffsetY: def?.PositionOffsetY ?? 0f,
+            PositionOffsetX: def?.PositionOffsetX ?? 0f,
+            ExpansionType: def?.ExpansionType ?? 0,
             StyleIndex: FrontendWidgetType.FirstSeenState,
             Flag302: PackFlag302(def),
-            Plus508: def?.Plus508 ?? 0,
+            Alignement: def?.Alignement ?? 0,
             StyleColours: styleColours,
             StyleDurations: def?.StyleDurations,
-            SwapStateKeys: def?.SwapStateKeys,
-            SwapStateDurations: def?.SwapStateDurations,
-            SwapCurrentState: def?.SwapStateKeys.FirstOrDefault() ?? int.MinValue));
+            SwappingStates: def?.SwappingStates,
+            SwappingTimes: def?.SwappingTimes,
+            SwapCurrentState: def?.SwappingStates.FirstOrDefault() ?? int.MinValue));
     }
 
     /// <summary>
-    /// <c>005331A0</c> clip bit 0 from
-    /// <c>+392</c>, centre bit 1 from
+    /// <c>005331A0</c> DrawFromViewport bit 0 from
+    /// <c>+392</c>, PositionIsCenter bit 1 from
     /// <c>+188</c>, remap bits 6/7 from
     /// <c>+520/+521</c>. Type-6
     /// <c>0054ED90</c> align from
@@ -317,17 +322,17 @@ public static class FrontendWidgetFactory
         if (def is null)
             return 0;
         byte flag = 0;
-        if (def.Plus392 != 0)
+        if (def.DrawFromViewport != 0)
             flag |= 1;
-        if (def.Center)
+        if (def.PositionIsCenter)
             flag |= 2;
-        if (def.Plus508 == 1)
+        if (def.Alignement == 1)
             flag |= FrontendTextDraw.Flag302CentreBit;
-        else if (def.Plus508 == 2)
+        else if (def.Alignement == 2)
             flag |= FrontendTextDraw.Flag302RightBit;
-        if (def.ScaleSizeToViewport)
+        if (def.UseRelativeZoom)
             flag |= 0x40;
-        if (def.ScaleOriginToViewport)
+        if (def.UseRelativePosition)
             flag |= 0x80;
         return flag;
     }
@@ -349,7 +354,7 @@ public static class FrontendWidgetFactory
 
         var colour = widgets[index].Colour;
         var current = index;
-        while (!widgets[current].Absolute)
+        while (!widgets[current].Independant)
         {
             var parent = widgets[current].ParentIndex;
             if ((uint)parent >= (uint)widgets.Count)

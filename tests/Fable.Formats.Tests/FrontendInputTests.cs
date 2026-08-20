@@ -180,7 +180,7 @@ public sealed class FrontendInputTests
             w.Type10Packet == FrontendMessages.PressStart);
         Assert.Contains(life.FrontendWidgets, w =>
             w.Type == FrontendInputMap.TypeButton &&
-            w.MessageId == FrontendMessages.PressStart);
+            w.ActionOnLeftUnclicked == FrontendMessages.PressStart);
         life.QueueInput(FrontendInputMap.Type4, 0);
         life.QueueInput(FrontendInputMap.Type6, 0);
         Assert.True(life.Pump());
@@ -190,14 +190,14 @@ public sealed class FrontendInputTests
         Assert.False(life.RetailNewGameFlag);
         Assert.Contains(life.FrontendWidgets, w =>
             w.Name == "UI_ACCEPT_NEW_PROFILE" &&
-            w.MessageId == FrontendMessages.AcceptNewProfile);
+            w.ActionOnLeftUnclicked == FrontendMessages.AcceptNewProfile);
         ClickNamed(life, "UI_ACCEPT_NEW_PROFILE");
         Assert.Equal(
             EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
         Assert.False(life.RetailNewGameFlag);
         Assert.Contains(life.FrontendWidgets, w =>
             w.Name == "UI_FRONTEND_BUTTON_NEW_GAME" &&
-            w.MessageId == FrontendMessages.NewGame);
+            w.ActionOnLeftUnclicked == FrontendMessages.NewGame);
         ClickNamed(life, "UI_FRONTEND_BUTTON_NEW_GAME");
         Assert.True(life.RetailNewGameFlag);
         Assert.Equal(EngineStage.Game, life.Stage);
@@ -225,7 +225,7 @@ public sealed class FrontendInputTests
         Assert.False(EngineLifecycle.EditBoxTypesFromDik);
         life.QueueInput(EngineInput.Type15, 'H');
         Assert.True(life.Pump());
-        Assert.Equal("HDefault", life.FrontendEditBoxName);
+        Assert.Equal("DefaultH", life.FrontendEditBoxName);
         life.QueueInput(EngineInput.Type15, 8);
         Assert.True(life.Pump());
         Assert.Equal("Default", life.FrontendEditBoxName);
@@ -330,19 +330,19 @@ public sealed class FrontendInputTests
         Assert.Equal(84, FrontendInputMap.SlotMapOffset);
         Assert.Equal(20, FrontendInputMap.SlotNodeValueOffset);
         Assert.Equal(352, FrontendInputMap.Type10StoredMsgOffset);
-        Assert.Equal(228, FrontendInputMap.PersistMessageDefOffset);
-        Assert.Equal(FrontendUiDef.MessageIdDefOffset, FrontendInputMap.PersistMessageDefOffset);
+        Assert.Equal(228, FrontendInputMap.ActionOnLeftUnclickedDefOffset);
+        Assert.Equal(FrontendUiDef.ActionOnLeftUnclickedRetailOffset, FrontendInputMap.ActionOnLeftUnclickedDefOffset);
         Assert.Equal(224, FrontendInputMap.Action26PostDefOffset);
         Assert.Equal(372, FrontendInputMap.Action26ListOffset);
-        Assert.Equal(380, FrontendInputMap.Plus228ListOffset);
+        Assert.Equal(380, FrontendInputMap.ActionOnLeftUnclickedListOffset);
         Assert.Equal(0x0055AF60u, FrontendInputMap.Type34ClickFn);
-        Assert.Equal(0x0055ACF0u, FrontendInputMap.Plus228PostFn);
+        Assert.Equal(0x0055ACF0u, FrontendInputMap.ActionOnLeftUnclickedPostFn);
         Assert.Equal(0x0055B9D0u, FrontendInputMap.Action26NopFn);
         var accept = new List<FrontendWidget>
         {
             new("UI_FRONTEND_NEW_PROFILE_SCREEN", 10, 0, 0, 0, 0, null, null),
             new("UI_ACCEPT_NEW_PROFILE", 38, 0, 0, 0, 0, null, null,
-                MessageId: FrontendMessages.AcceptNewProfile,
+                ActionOnLeftUnclicked: FrontendMessages.AcceptNewProfile,
                 Armed: true),
         };
         Assert.Null(FrontendInputMap.MessageFromWidgets(
@@ -408,6 +408,10 @@ public sealed class FrontendInputTests
         life.QueueInput(FrontendInputMap.TypeMouse, 0);
         Assert.True(life.Pump());
         Assert.True(life.FrontendWidgets[apply].Hovered);
+        var offHover = life.FrontendWidgets.First(w => w.Name == "UI_SPRITE_ACCEPT_OFF");
+        var onHover = life.FrontendWidgets.First(w => w.Name == "UI_SPRITE_ACCEPT_ON");
+        Assert.Equal(0u, offHover.Colour >> 24);
+        Assert.Equal(255u, onHover.Colour >> 24);
         Assert.Equal(apply, FrontendHitTest.HitIndex(life.FrontendWidgets, ax, ay));
         Assert.Equal(0x0055BF10u, FrontendHitTest.HoverSelectFn);
         Assert.Equal(0x00530260u, FrontendWidgetType.ContainerDrawFn);

@@ -274,6 +274,13 @@ public sealed class Dx9VulkanParityTests
         Assert.Equal(SamplerAddressMode.Repeat, sampler.AddressModeU);
         Assert.Equal(0f, sampler.MaxLod);
 
+        var frontend = Dx9VulkanSamplerState.FrontendType22();
+        Assert.Equal(Filter.Nearest, frontend.MagFilter);
+        Assert.Equal(Filter.Nearest, frontend.MinFilter);
+        Assert.Equal(SamplerAddressMode.ClampToEdge, frontend.AddressModeU);
+        Assert.Equal(SamplerAddressMode.ClampToEdge, frontend.AddressModeV);
+        Assert.Equal(0f, frontend.MaxLod);
+
         Assert.Equal(BlendFactor.SrcAlpha, Dx9VulkanBlendState.FirstSeenPalskinSrc);
         Assert.Equal(BlendFactor.OneMinusSrcAlpha, Dx9VulkanBlendState.FirstSeenPalskinDst);
         var alpha = Dx9VulkanBlendState.PalskinSrcAlpha();

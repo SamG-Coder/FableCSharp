@@ -313,12 +313,16 @@ public sealed class Dx9DeviceRecordTests
         Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
         Assert.NotNull(life.FrontendBatch);
         Assert.False(life.FrontendBatch.Value.IsEmpty);
-
+        var profileBatch = life.FrontendBatch.Value;
+        var lastProfileDraw = profileBatch.Draws[^1];
+        var persistentCursor = profileBatch.Textures[lastProfileDraw.TextureId];
+        Assert.Equal(32, persistentCursor.Width);
+        Assert.Equal(32, persistentCursor.Height);
         ClickNamed(life, "UI_ACCEPT_NEW_PROFILE");
         Assert.Equal(EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
         Assert.Contains(life.FrontendWidgets, w =>
             w.Name == "UI_FRONTEND_BUTTON_NEW_GAME" &&
-            w.MessageId == FrontendMessages.NewGame);
+            w.ActionOnLeftUnclicked == FrontendMessages.NewGame);
         Assert.NotNull(life.FrontendBatch);
         Assert.False(life.FrontendBatch.Value.IsEmpty);
         Assert.False(life.Dx9OwnsFrontendPresent);
@@ -358,8 +362,38 @@ public sealed class Dx9DeviceRecordTests
         Assert.Contains(device.LastBatch.Vertices, vertex =>
             vertex.UseDiffuseColor == 1f &&
             vertex.Color == new System.Numerics.Vector4(0f, 0f, 0f, 1f));
+        var vertices = device.LastBatch.Vertices;
+        var indices = device.LastBatch.Indices;
+        var draws = device.LastBatch.Draws;
+        Assert.True(life.Pump());
+        Assert.Same(vertices, device.LastBatch.Vertices);
+        Assert.Same(indices, device.LastBatch.Indices);
+        Assert.Same(draws, device.LastBatch.Draws);
+        life.Trace.Enabled = false;
+        var allocationStart = GC.GetAllocatedBytesForCurrentThread();
+        for (var frameIndex = 0; frameIndex < 60; frameIndex++)
+            Assert.True(life.Pump());
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - allocationStart;
+        Assert.InRange(allocated, 0, 750_000);
         Assert.Contains(device.LastBatch.Draws, d => d.IndexCount == 0 && d.VertexCount == 6);
         Assert.Equal(EngineLifecycle.FrontendPressStartMenu, life.FrontendMenuRoot);
+
+        life.QueueInput(EngineInput.Type4, 0);
+        Assert.True(life.Pump());
+        Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        life.QueueInput(EngineInput.Type6, 0);
+        Assert.True(life.Pump());
+        Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        Assert.True(life.Pump());
+        var profileAllocationStart = GC.GetAllocatedBytesForCurrentThread();
+        for (var frameIndex = 0; frameIndex < 60; frameIndex++)
+            Assert.True(life.Pump());
+        var profileAllocated =
+            GC.GetAllocatedBytesForCurrentThread() - profileAllocationStart;
+        // Keep the live NativeSemantic path below 1 MiB per second at the
+        // authored 60 Hz frontend rate. The old compatibility traversal was
+        // over 62 MiB for the same 60 frames.
+        Assert.InRange(profileAllocated, 0, 1_000_000);
     }
 
     [Fact]

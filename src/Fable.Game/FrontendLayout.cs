@@ -173,9 +173,9 @@ public static class FrontendLayout
     {
         float destX;
         float destY;
-        if (!widget.Absolute)
+        if (!widget.Independant)
         {
-            if (widget.ScaleSizeToViewport)
+            if (widget.UseRelativeZoom)
             {
                 var scaled = ApplyResolutionScale(
                     widget.PersistScaleX, widget.PersistScaleY, viewport);
@@ -188,7 +188,7 @@ public static class FrontendLayout
                 destY = inheritScaleY * widget.PersistScaleY;
             }
         }
-        else if (widget.ScaleSizeToViewport)
+        else if (widget.UseRelativeZoom)
         {
             var scaled = ApplyResolutionScale(
                 widget.PersistScaleX, widget.PersistScaleY, viewport);
@@ -201,7 +201,7 @@ public static class FrontendLayout
             destY = widget.PersistScaleY;
         }
 
-        if (!widget.HasParent || widget.Absolute)
+        if (!widget.HasParent || widget.Independant)
         {
             var global = GlobalUiScale(viewport);
             destX *= global.ScaleX;
@@ -225,7 +225,7 @@ public static class FrontendLayout
     {
         float x;
         float y;
-        if (widget.ScaleOriginToViewport)
+        if (widget.UseRelativePosition)
         {
             var scaled = ApplyResolutionScale(
                 widget.PositionX, widget.PositionY, viewport);
@@ -238,7 +238,7 @@ public static class FrontendLayout
             y = widget.PositionY;
         }
 
-        if (!widget.Absolute)
+        if (!widget.Independant)
         {
             x = x * inheritScaleX + parentDestX;
             y = y * inheritScaleY + parentDestY;
@@ -353,7 +353,7 @@ public static class FrontendLayout
             child.LeftoverW, child.LeftoverH,
             origin.X, origin.Y,
             scale.ScaleX, scale.ScaleY,
-            child.Center);
+            child.PositionIsCenter);
         return new FrontendDest(
             origin.X, origin.Y,
             scale.ScaleX, scale.ScaleY,
@@ -434,14 +434,14 @@ public static class FrontendLayout
         float leftoverH,
         float cellW,
         float cellH,
-        int plus96,
+        int expansionType,
         float firstCapW = 0f,
         float lastCapW = 0f)
     {
         var height = leftoverH > 0f ? leftoverH : cellH;
         if (height <= 0f)
             height = cellH;
-        if ((plus96 & 1) == 0 || count <= 0)
+        if ((expansionType & 1) == 0 || count <= 0)
         {
             var w = cellW > 0f ? cellW : leftoverW;
             return (Snap(originX), Snap(originY), Snap(originX + w), Snap(originY + height));
@@ -496,10 +496,10 @@ public readonly record struct FrontendWidgetLayout(
     int PersistHeight = 0,
     float LeftoverW = 0f,
     float LeftoverH = 0f,
-    bool Center = false,
-    bool Absolute = false,
-    bool ScaleOriginToViewport = false,
-    bool ScaleSizeToViewport = false,
+    bool PositionIsCenter = false,
+    bool Independant = false,
+    bool UseRelativePosition = false,
+    bool UseRelativeZoom = false,
     bool HasParent = false,
     int InheritScaleFlag = 0);
 

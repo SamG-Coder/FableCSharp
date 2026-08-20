@@ -23,7 +23,7 @@ public sealed class FrontendFrameDumpTests
         Assert.True(rows.Count >= 7, $"widgets={rows.Count}");
         Assert.Contains(rows, r =>
             r.Name == EngineLifecycle.FrontendPressStartText &&
-            r.TextTag == EngineLifecycle.FrontendPressStartTextTag);
+            r.TextValue == EngineLifecycle.FrontendPressStartTextValue);
         Assert.Contains(rows, r => r.Name == "UI_FRONTEND_BG_FORREST_1_1" && r.Visible);
         Assert.Contains(rows, r => r.Name == "UI_FRONTEND_BG_FORREST_2_1" && r.Visible);
         var col3 = Assert.Single(rows, r => r.Name == "UI_FRONTEND_BG_FORREST_1_3");

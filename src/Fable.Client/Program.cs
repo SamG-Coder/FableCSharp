@@ -81,6 +81,7 @@ window.Load += () =>
         keys.KeyChar += (_, ch) => SilkNativeInput.QueueChar(life, ch);
     mouse = input.Mice.Count > 0 ? input.Mice[0] : null;
     if (mouse is not null)
+    {
         mouse.MouseMove += (_, point) =>
         {
             var now = new Vector2(point.X, point.Y);
@@ -88,6 +89,33 @@ window.Load += () =>
                 debugCam.Look(now.X - lastMouse.X, now.Y - lastMouse.Y);
             lastMouse = now;
         };
+        mouse.MouseDown += (source, button) =>
+        {
+            if (button != MouseButton.Left || debugFly)
+                return;
+            var pos = source.Position;
+            SilkNativeInput.QueuePointerButton(
+                life,
+                new Vector2D<float>(pos.X, pos.Y),
+                down: true,
+                window.Size.X,
+                window.Size.Y);
+            lmbWasDown = true;
+        };
+        mouse.MouseUp += (source, button) =>
+        {
+            if (button != MouseButton.Left || debugFly)
+                return;
+            var pos = source.Position;
+            SilkNativeInput.QueuePointerButton(
+                life,
+                new Vector2D<float>(pos.X, pos.Y),
+                down: false,
+                window.Size.X,
+                window.Size.Y);
+            lmbWasDown = false;
+        };
+    }
 
     Console.WriteLine($"{install.Edition}: {install.Root}");
     Console.WriteLine($"lifecycle {life.Stage} pe=0x{EngineLifecycle.PeEntry:X8}");

@@ -757,6 +757,26 @@ static void DumpGameBinFamily(
     index.AppendLine("[entries.tsv](entries.tsv)");
     index.AppendLine();
 
+    if (parseFrontend)
+    {
+        index.AppendLine("## Complete CUIDef schema");
+        index.AppendLine();
+        index.AppendLine("Every field uses its original Lionhead name; CRCs are verified against the retail payload.");
+        index.AppendLine();
+        index.AppendLine("| field | CRC | serialized as | retail offset | donor offset |");
+        index.AppendLine("|---|---:|---|---:|---:|");
+        foreach (var field in FrontendUiFieldCatalog.Fields)
+            index.AppendLine($"| `{field.Name}` | `0x{field.Crc:X8}` | `{field.SerializedAs}` | +{field.RetailOffset} | +{field.DonorOffset} |");
+        index.AppendLine();
+        index.AppendLine("### CUIStateDef fields");
+        index.AppendLine();
+        index.AppendLine("| field | CRC | serialized as | retail offset | donor offset |");
+        index.AppendLine("|---|---:|---|---:|---:|");
+        foreach (var field in FrontendUiFieldCatalog.StateFields)
+            index.AppendLine($"| `{field.Name}` | `0x{field.Crc:X8}` | `{field.SerializedAs}` | +{field.RetailOffset} | +{field.DonorOffset} |");
+        index.AppendLine();
+    }
+
     var writeParts = parseFrontend || parseScript;
     if (writeParts)
         index.AppendLine("| # | instance | type | raw | file |");
@@ -800,24 +820,24 @@ static void DumpGameBinFamily(
 
         if (parseFrontend && FrontendUiDef.TryParse(entry) is { } ui)
         {
+            if (!ui.SchemaComplete)
+                throw new InvalidDataException($"{ui.InstanceName}: {ui.SchemaError}");
             body.AppendLine("## UI persist");
             body.AppendLine();
             body.AppendLine($"- type **{ui.Type}** layer **{ui.Layer}**");
             body.AppendLine($"- size {ui.Width}×{ui.Height} pos ({ui.PositionX},{ui.PositionY}) angle {ui.Angle}");
-            body.AppendLine($"- zoom ({ui.ZoomX},{ui.ZoomY}) centre **{ui.Center}** absolute **{ui.Absolute}**");
+            body.AppendLine($"- zoom ({ui.ZoomX},{ui.ZoomY}) positionIsCenter **{ui.PositionIsCenter}** independant **{ui.Independant}**");
             body.AppendLine($"- graphic `{ui.GraphicId}` bank `{ui.GraphicBankId}` sprites **{ui.Sprites}** states **{ui.States}**");
-            body.AppendLine($"- font `{ui.Font}` text `{ui.TextTag}` message **{ui.MessageId}**");
+            body.AppendLine($"- font `{ui.Font}` textValue `{ui.TextValue}` actionOnLeftClicked **{ui.ActionOnLeftClicked}** actionOnLeftUnclicked **{ui.ActionOnLeftUnclicked}**");
             body.AppendLine($"- colour ({ui.ColourR},{ui.ColourG},{ui.ColourB},{ui.ColourA}) haveA **{ui.HaveColourA}**");
-            body.AppendLine($"- plus96 **{ui.Plus96}** plus224 **{ui.Plus224}** plus322 **{ui.Plus322}** plus326 **{ui.Plus326}**");
-            body.AppendLine($"- plus392 **{ui.Plus392}** plus504 **{ui.Plus504}** plus508 **{ui.Plus508}**");
-            body.AppendLine($"- scale size **{ui.ScaleSizeToViewport}**/{ui.ScaleSizeByte} origin **{ui.ScaleOriginToViewport}**/{ui.ScaleOriginByte}");
-            body.AppendLine($"- partial **{ui.Partial}** unreadOffset **{ui.UnreadOffset}**");
+            body.AppendLine($"- expansionType **{ui.ExpansionType}** positionOffset ({ui.PositionOffsetX},{ui.PositionOffsetY})");
+            body.AppendLine($"- drawFromViewport **{ui.DrawFromViewport}** bastardChild **{ui.BastardChild}** alignement **{ui.Alignement}**");
+            body.AppendLine($"- useRelativeZoom **{ui.UseRelativeZoom}**/{ui.UseRelativeZoomByte} useRelativePosition **{ui.UseRelativePosition}**/{ui.UseRelativePositionByte}");
+            body.AppendLine($"- schemaComplete **{ui.SchemaComplete}**");
             if (ui.ChildIndices.Count > 0)
                 body.AppendLine("- children: " + string.Join(", ", ui.ChildIndices.Select(i => $"`{i}`")));
             if (ui.SpriteDefIndices.Count > 0)
                 body.AppendLine("- sprite defs: " + string.Join(", ", ui.SpriteDefIndices.Zip(ui.SpriteKeys, (d, k) => $"`{k}:{d}`")));
-            if (ui.UnreadCrcs.Count > 0)
-                body.AppendLine("- unread crcs: " + string.Join(", ", ui.UnreadCrcs.Select(c => $"`0x{c:X8}`")));
             body.AppendLine();
         }
 

@@ -33,7 +33,7 @@ public readonly record struct FrontendFrameDumpRow(
     float V1,
     uint Colour,
     string? Text,
-    string? TextTag,
+    string? TextValue,
     int GlyphCount,
     int DrawOrder,
     bool Offscreen,
@@ -137,7 +137,7 @@ public static class FrontendFrameDump
             u0, v0, u1, v1,
             colour,
             widget.Text,
-            widget.TextTag,
+            widget.TextValue,
             glyphs,
             widget.DrawOrder,
             offscreen,
@@ -149,7 +149,7 @@ public static class FrontendFrameDump
 
     public static int SubmittedDraws(FrontendWidget widget)
     {
-        if (!widget.Visible || widget.Clip)
+        if (!widget.Visible)
             return 0;
         var n = 0;
         if (widget.DestX1 > widget.DestX0 && widget.DestY1 > widget.DestY0 &&
@@ -193,7 +193,7 @@ public static class FrontendFrameDump
             sb.Append(' ').Append(F(row.V1));
             sb.Append(' ').Append(row.Colour.ToString("X8", CultureInfo.InvariantCulture));
             sb.Append(' ').Append(Escape(row.Text));
-            sb.Append(' ').Append(Escape(row.TextTag));
+            sb.Append(' ').Append(Escape(row.TextValue));
             sb.Append(' ').Append(row.GlyphCount);
             sb.Append(' ').Append(row.DrawOrder);
             sb.Append(' ').Append(row.FlagList);
@@ -261,7 +261,7 @@ public static class FrontendFrameDump
             sb.Append(' ').Append(alpha);
             sb.Append(' ').Append(w.Visible ? 1 : 0);
             sb.Append(' ').Append(w.Enabled ? 1 : 0);
-            sb.Append(' ').Append(w.MessageId);
+            sb.Append(' ').Append(w.ActionOnLeftUnclicked);
             sb.AppendLine();
         }
 

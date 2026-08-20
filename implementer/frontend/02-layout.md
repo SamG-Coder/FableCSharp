@@ -35,7 +35,7 @@ math. Isolated calculator: `src/Fable.Game/FrontendLayout.cs`.
 | Child dest nonempty after layout | **PROVEN** | persist PositionX/Y + leftover size; enqueue `00BAD8A0` `009DB700` |
 | Display 1024×768, viewport `009BEF80` full backbuffer | **PROVEN** | prior; UI ctor copies that into `0x13B876C/70` |
 | Type-6 H-align (left / centre / right) | **PARTIAL** | `0054EF00` `vtbl+600` `0054FFF0`: bit4=centre, bit5=right. `005331A0` does **not** write those bits. First-seen `+302` bits 4/5 stay 0 → left |
-| Persist names for def `+188/+191/+520/+521` | **UNREAD** | bytes copied; CRC names not recovered (Centre/ScaleX hits=0 in frontend.bin) |
+| Persist names for def `+188/+191/+520/+521` | **PROVEN** | `PositionIsCenter`, `Independant`, `UseRelativeZoom`, `UseRelativePosition`; original names hash to the retail CRCs |
 | Who writes leftover `+204` for type-6 text measure | **PARTIAL** | `0054EF00` multiplies `+204` by scale; writer not this pass |
 | Right-align for type-0 sprites | **DISPROVEN** | `0041AFA0` only centre via `vtbl+424` |
 | Host `parent.Dest + Position` / texture-or-font size / PlayAVI half-centre | **DISPROVEN** as native dest | see below |

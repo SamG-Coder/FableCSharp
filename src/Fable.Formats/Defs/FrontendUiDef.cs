@@ -20,23 +20,21 @@ public sealed class FrontendUiDef
     public const uint PositionXCrc = 0x1EDB8A31;
     public const uint PositionYCrc = 0x69DCBAA7;
     /// <summary>
-    /// UTF-16 localised id. Name is not
-    /// <c>TextTag</c> (<c>FableCrc("TextTag")</c>
-    /// is <c>0x66D9E7F9</c>). String UNREAD.
+    /// UTF-16 literal or localised-text symbol.
     /// </summary>
-    public const uint TextTagCrc = 0xE215EF13;
+    public const uint TextValueCrc = 0xE215EF13;
     public const uint FontCrc = 0x51E278F0;
     public const uint LayerCrc = 0xE338F903;
     public const uint AngleCrc = 0x07629D10;
-    public const uint Unknown0961Crc = 0x0961B216;
-    public const uint Unknown38BBCrc = 0x38BB7ED4;
+    public const uint MeshIndexCrc = 0x0961B216;
+    public const uint ExpansionTypeCrc = 0x38BB7ED4;
     public const uint SpritesCrc = 0x5E5D8A25;
     /// <summary>
     /// CUIDef persist <c>+326</c> <c>00431061</c>
-    /// (<c>00631DE1</c>). Lionhead name UNREAD.
+    /// (<c>00631DE1</c>).
     /// Type-12 New Profile list stores 30.
     /// </summary>
-    public const uint Plus326Crc = 0xD7495328;
+    public const uint PositionOffsetYCrc = 0xD7495328;
     /// <summary>
     /// CUIDef persist <c>+322</c> <c>00431061</c>
     /// (<c>00631DD3</c>). Type-8 ctor
@@ -44,16 +42,15 @@ public sealed class FrontendUiDef
     /// widget <c>+392</c>. New Profile
     /// list stores 0.
     /// </summary>
-    public const uint Plus322Crc = 0xA04E63BE;
+    public const uint PositionOffsetXCrc = 0xA04E63BE;
     /// <summary>
     /// CUIDef persist <c>+96</c> i32
     /// (<c>00631CCD</c> / <c>00632340</c>).
     /// Bit 0 places type-2 cells on X
     /// (<c>00551EA0</c>).
     /// </summary>
-    public const uint Plus96Crc = 0x38BB7ED4;
-    public const uint Unknown6B10Crc = 0x6B1015E4;
-    public const uint UnknownF81FCrc = 0xF81F10A8;
+    public const uint HorizontalSeparationsCrc = 0x6B1015E4;
+    public const uint VerticalSeparationsCrc = 0xF81F10A8;
     public const uint StatesCrc = 0x87ACD3D8;
     /// <summary>
     /// <c>FableCrc("ZoomX")</c>. First style
@@ -68,8 +65,6 @@ public sealed class FrontendUiDef
     /// widget <c>+96</c>.
     /// </summary>
     public const uint ZoomYCrc = 0x90894098;
-    public const uint UnknownE78ECrc = ZoomXCrc;
-    public const uint Unknown9089Crc = ZoomYCrc;
     public const uint ColourRCrc = 0x79902E65;
     public const uint ColourGCrc = 0x144DCA8E;
     public const uint ColourBCrc = 0x64273E01;
@@ -80,26 +75,23 @@ public sealed class FrontendUiDef
     /// <c>0052CF40</c> when it is non-negative.
     /// </summary>
     public const uint StyleDurationCrc = 0xF97D3844;
-    public const uint UnknownF97DCrc = StyleDurationCrc;
-    public const uint UnknownA5F8Crc = 0xA5F8D969;
+    public const uint StateChangeTypeCrc = 0xA5F8D969;
     /// <summary>
     /// Style <c>+120</c> u8. CUIDef persist
     /// <c>00631C60</c> after the style
     /// vector. Not a nested object.
     /// </summary>
-    public const uint UnreadNestedCrc = 0x56A59976;
+    public const uint LinearChangeCrc = 0x56A59976;
     /// <summary>
     /// CUIDef persist <c>00631C60</c>
     /// <c>+189</c> u8 <c>0043314A</c>.
-    /// Name UNREAD.
     /// </summary>
-    public const uint Plus189Crc = 0xBDACBABA;
+    public const uint TextLineBreakCrc = 0xBDACBABA;
     /// <summary>
     /// CUIDef persist <c>00631C60</c>
     /// <c>+190</c> u8 <c>0043314A</c>.
-    /// Name UNREAD.
     /// </summary>
-    public const uint Plus190Crc = 0xAC637D43;
+    public const uint ScaleTextCrc = 0xAC637D43;
     /// <summary>
     /// CUIDef persist writer
     /// <c>00631C60</c>.
@@ -109,98 +101,92 @@ public sealed class FrontendUiDef
     /// CUIDef persist <c>+160</c>
     /// <c>00632420</c>. Sequential stop
     /// before the flag tail. File CRC
-    /// from inflated UI. Name UNREAD.
+    /// from inflated UI.
     /// </summary>
-    public const uint Plus160Crc = 0x424AD096;
+    public const uint MeshTypeCrc = 0x424AD096;
     /// <summary>
     /// CUIDef persist <c>+164</c> f32
-    /// after <see cref="Plus160Crc"/>.
-    /// Name UNREAD.
+    /// after <see cref="MeshTypeCrc"/>.
     /// </summary>
-    public const uint Plus164Crc = 0xECB91A6A;
+    public const uint TextWindowTLXCrc = 0xECB91A6A;
     /// <summary>
     /// CUIDef persist <c>+192</c> f32
-    /// after Centre. Name UNREAD.
+    /// after PositionIsCenter.
     /// </summary>
-    public const uint Plus192Crc = 0x9B9B2628;
+    public const uint ScrollingSpeedCrc = 0x9B9B2628;
     /// <summary>
     /// CUIDef persist <c>+392</c> u8
     /// <c>0043314A</c> at <c>00632065</c>.
     /// <c>00533288</c> <c>or [+302],1</c>
     /// → <c>vtbl+420</c> <c>0052F1D0</c>.
-    /// Name UNREAD.
     /// </summary>
-    public const uint Plus392Crc = 0x8A69D67E;
+    public const uint DrawFromViewportCrc = 0x8A69D67E;
     /// <summary>
     /// CUIDef persist <c>+476</c> u8
-    /// <c>00632137</c>. Name UNREAD.
+    /// <c>00632137</c>.
     /// </summary>
-    public const uint Plus476Crc = 0xD5B65965;
+    public const uint LayerIndependantCrc = 0xD5B65965;
     /// <summary>
     /// CUIDef persist <c>+504</c> u8
     /// <c>00632161</c>. <c>0053324C</c>
     /// <c>or [+300],0x80</c> →
     /// <c>vtbl+400</c> <c>0052F180</c>.
-    /// Name UNREAD.
     /// </summary>
-    public const uint Plus504Crc = 0x2CB06C8E;
+    public const uint BastardChildCrc = 0x2CB06C8E;
     /// <summary>
     /// CUIDef persist <c>+508</c> i32
     /// <c>006325E0</c>. Type-6
     /// <c>0054ED90</c> 0/1/2 →
     /// <c>+302</c> <c>0x08/0x10/0x20</c>.
-    /// Name UNREAD.
     /// </summary>
-    public const uint Plus508Crc = 0x02F094DB;
+    public const uint AlignementCrc = 0x02F094DB;
     /// <summary>
     /// CUIDef persist <c>+512</c> u8
-    /// <c>0063217D</c>. Name UNREAD.
+    /// <c>0063217D</c>.
     /// </summary>
-    public const uint Plus512Crc = 0x7084E2DD;
+    public const uint RandomSwapCrc = 0x7084E2DD;
     /// <summary>
     /// Type-18 state keys persisted at def <c>+480</c> and copied by
     /// <c>00547500</c> into the widget <c>+348</c> key/duration list.
     /// </summary>
-    public const uint SwapStateKeysCrc = 0xDB6D4753;
+    public const uint SwappingStatesCrc = 0xDB6D4753;
     /// <summary>
     /// Type-18 dwell seconds persisted at def <c>+492</c>. Press Start's
     /// forest, sunbeam, and prompt swaps author zero for every state.
     /// </summary>
-    public const uint SwapStateDurationsCrc = 0x68CAB92E;
+    public const uint SwappingTimesCrc = 0x68CAB92E;
     /// <summary>
     /// Style <c>+64</c> after
-    /// <see cref="UnreadNestedCrc"/>.
+    /// <see cref="LinearChangeCrc"/>.
     /// </summary>
-    public const uint StylePlus64Crc = 0xF8D265DA;
+    public const uint StateChangeFlagCrc = 0xF8D265DA;
     /// <summary>
     /// Style <c>+108</c> i32 vector after
-    /// <see cref="StylePlus64Crc"/>.
+    /// <see cref="StateChangeFlagCrc"/>.
     /// </summary>
-    public const uint StylePlus108Crc = 0x2085F2AB;
+    public const uint ChildrenNotAffectedCrc = 0x2085F2AB;
     /// <summary>
     /// <c>005331A0</c> def <c>+188</c> →
     /// widget <c>+302</c> bit 1. Persist u8.
-    /// Name UNREAD.
     /// </summary>
-    public const uint CentreCrc = 0x64D3430E;
+    public const uint PositionIsCenterCrc = 0x64D3430E;
     /// <summary>
     /// <c>005331A0</c> def <c>+191</c> →
     /// widget <c>+300</c> bit 6. Persist u8.
-    /// Name UNREAD.
     /// </summary>
-    public const uint AbsoluteCrc = 0x38BBD87F;
+    public const uint IndependantCrc = 0x38BBD87F;
     /// <summary>
     /// <c>005331A0</c> def <c>+520</c> →
     /// widget <c>+302</c> bit 6 remap size.
-    /// Persist u8 <c>0043314A</c>. Name UNREAD.
+    /// Persist u8 <c>0043314A</c>.
     /// </summary>
-    public const uint ScaleSizeCrc = 0xC50CA371;
+    public const uint UseRelativeZoomCrc = 0xC50CA371;
     /// <summary>
     /// <c>005331A0</c> def <c>+521</c> →
     /// widget <c>+302</c> bit 7 remap origin.
-    /// Persist u8 <c>0043314A</c>. Name UNREAD.
+    /// Persist u8 <c>0043314A</c>.
     /// </summary>
-    public const uint ScaleOriginCrc = 0xB466D948;
+    public const uint UseRelativePositionCrc = 0xB466D948;
     /// <summary>
     /// <c>FableCrc("GraphicIndex")</c>. Persist i32 is
     /// <c>GBANK_FRONT_END_PC</c> <c>BankEntry.Id</c>.
@@ -211,11 +197,10 @@ public sealed class FrontendUiDef
     /// dest <c>+224</c>. First
     /// <c>0055B040</c> copy (vtbl+284).
     /// File CRC <c>0x230364D6</c>.
-    /// Not <see cref="MessageIdCrc"/>.
-    /// Name UNREAD.
+    /// Not <see cref="ActionOnLeftUnclickedCrc"/>.
     /// </summary>
-    public const uint Plus224Crc = 0x230364D6;
-    public const int Plus224DefOffset = 224;
+    public const uint ActionOnLeftClickedCrc = 0x230364D6;
+    public const int ActionOnLeftClickedRetailOffset = 224;
     /// <summary>
     /// Persist i32 copied by
     /// <c>0055B040</c> from def
@@ -223,12 +208,12 @@ public sealed class FrontendUiDef
     /// Type 38 <c>UI_ACCEPT_NEW_PROFILE</c>
     /// stores <c>0x126</c>; type 11
     /// <c>UI_FRONTEND_BUTTON_NEW_GAME</c>
-    /// stores 15. Name UNREAD.
+    /// stores 15.
     /// <c>+224</c> is
-    /// <see cref="Plus224Crc"/>.
+    /// <see cref="ActionOnLeftClickedCrc"/>.
     /// </summary>
-    public const uint MessageIdCrc = 0x53C644E4;
-    public const int MessageIdDefOffset = 228;
+    public const uint ActionOnLeftUnclickedCrc = 0x53C644E4;
+    public const int ActionOnLeftUnclickedRetailOffset = 228;
     /// <summary>
     /// <c>00631C60</c> tail i32 helper
     /// for <c>+196</c>…<c>+256</c>.
@@ -250,7 +235,7 @@ public sealed class FrontendUiDef
     public float Height { get; init; }
     public float PositionX { get; init; }
     public float PositionY { get; init; }
-    public string? TextTag { get; init; }
+    public string? TextValue { get; init; }
     public int Font { get; init; }
     public int Layer { get; init; }
     public float Angle { get; init; }
@@ -272,22 +257,22 @@ public sealed class FrontendUiDef
     /// </summary>
     public IReadOnlyList<int> SpriteKeys { get; init; } = [];
     /// <summary>
-    /// Persist <see cref="Plus96Crc"/> /
+    /// Persist <see cref="ExpansionTypeCrc"/> /
     /// def <c>+96</c>. Bit 0 = place
     /// type-2 cells along X.
     /// </summary>
-    public int Plus96 { get; init; }
+    public int ExpansionType { get; init; }
     /// <summary>
-    /// Persist <see cref="Plus326Crc"/> /
+    /// Persist <see cref="PositionOffsetYCrc"/> /
     /// def <c>+326</c>.
     /// </summary>
-    public float Plus326 { get; init; }
+    public float PositionOffsetY { get; init; }
     /// <summary>
-    /// Persist <see cref="Plus322Crc"/> /
+    /// Persist <see cref="PositionOffsetXCrc"/> /
     /// def <c>+322</c>. Type-8/12 item
     /// X spacing at widget <c>+392</c>.
     /// </summary>
-    public float Plus322 { get; init; }
+    public float PositionOffsetX { get; init; }
     public int States { get; init; }
     public float ColourR { get; init; }
     public float ColourG { get; init; }
@@ -295,7 +280,7 @@ public sealed class FrontendUiDef
     public float ColourA { get; init; }
     /// <summary>
     /// Persist <see cref="ColourACrc"/> was
-    /// present. Unread colour stays ctor
+    /// present. An absent colour stays at the ctor
     /// <c>005339B0</c> <c>+144..+147=0xFF</c>.
     /// Explicit <c>ColourA=0</c> is
     /// <c>0041AFA0</c> <c>+151</c> skip.
@@ -314,73 +299,76 @@ public sealed class FrontendUiDef
     public IReadOnlyList<float> StyleDurations { get; init; } = [];
     /// <summary>
     /// Persist style <c>+64</c>
-    /// <see cref="StylePlus64Crc"/>. Map
+    /// <see cref="StateChangeFlagCrc"/>. Map
     /// dword0. Tick <c>0052C7E0</c>
     /// <c>0x10/0x20/0x40</c>.
     /// </summary>
     public IReadOnlyList<int> StyleFlags { get; init; } = [];
-    public IReadOnlyList<int> SwapStateKeys { get; init; } = [];
-    public IReadOnlyList<float> SwapStateDurations { get; init; } = [];
+    public IReadOnlyList<int> SwappingStates { get; init; } = [];
+    public IReadOnlyList<float> SwappingTimes { get; init; } = [];
     /// <summary>
-    /// Persist <see cref="Plus392Crc"/> /
+    /// Persist <see cref="DrawFromViewportCrc"/> /
     /// def <c>+392</c>. Nonzero → widget
     /// <c>+302</c> bit 0.
     /// </summary>
-    public byte Plus392 { get; init; }
+    public byte DrawFromViewport { get; init; }
     /// <summary>
-    /// Persist <see cref="Plus504Crc"/> /
+    /// Persist <see cref="BastardChildCrc"/> /
     /// def <c>+504</c>. Nonzero → widget
     /// <c>+300</c> bit 7.
     /// </summary>
-    public byte Plus504 { get; init; }
+    public byte BastardChild { get; init; }
     /// <summary>
-    /// Persist <see cref="Plus508Crc"/> /
+    /// Persist <see cref="AlignementCrc"/> /
     /// def <c>+508</c>. Type-6 align.
     /// </summary>
-    public int Plus508 { get; init; }
+    public int Alignement { get; init; }
     public float ZoomX { get; init; } = 1f;
     public float ZoomY { get; init; } = 1f;
     /// <summary>
     /// <c>005331A0</c> <c>+302</c> bit 1 from
-    /// def <c>+188</c> / <see cref="CentreCrc"/>.
+    /// def <c>+188</c> / <see cref="PositionIsCenterCrc"/>.
     /// </summary>
-    public bool Center { get; init; }
+    public bool PositionIsCenter { get; init; }
     /// <summary>
     /// <c>005331A0</c> <c>+300</c> bit 6 from
-    /// def <c>+191</c> / <see cref="AbsoluteCrc"/>.
+    /// def <c>+191</c> / <see cref="IndependantCrc"/>.
     /// </summary>
-    public bool Absolute { get; init; }
+    public bool Independant { get; init; }
     /// <summary>
     /// <c>005331A0</c> <c>+302</c> bit 7 from
-    /// def <c>+521</c> / <see cref="ScaleOriginCrc"/>.
+    /// def <c>+521</c> / <see cref="UseRelativePositionCrc"/>.
     /// </summary>
-    public bool ScaleOriginToViewport { get; init; }
+    public bool UseRelativePosition { get; init; }
     /// <summary>
     /// <c>005331A0</c> <c>+302</c> bit 6 from
-    /// def <c>+520</c> / <see cref="ScaleSizeCrc"/>.
+    /// def <c>+520</c> / <see cref="UseRelativeZoomCrc"/>.
     /// </summary>
-    public bool ScaleSizeToViewport { get; init; }
+    public bool UseRelativeZoom { get; init; }
     /// <summary>
     /// Raw persist u8 at def <c>+520</c>.
     /// </summary>
-    public byte ScaleSizeByte { get; init; }
+    public byte UseRelativeZoomByte { get; init; }
     /// <summary>
     /// Raw persist u8 at def <c>+521</c>.
     /// </summary>
-    public byte ScaleOriginByte { get; init; }
+    public byte UseRelativePositionByte { get; init; }
     /// <summary>
-    /// Persist <see cref="MessageIdCrc"/>
+    /// Persist <see cref="ActionOnLeftUnclickedCrc"/>
     /// → def <c>+228</c>.
     /// </summary>
-    public int MessageId { get; init; }
+    public int ActionOnLeftUnclicked { get; init; }
     /// <summary>
-    /// Persist <see cref="Plus224Crc"/>
+    /// Persist <see cref="ActionOnLeftClickedCrc"/>
     /// → def <c>+224</c>.
     /// </summary>
-    public int Plus224 { get; init; }
-    public IReadOnlyList<uint> UnreadCrcs { get; init; } = [];
-    public int UnreadOffset { get; init; }
-    public bool Partial { get; init; }
+    public int ActionOnLeftClicked { get; init; }
+    /// <summary>
+    /// True when <see cref="FrontendUiSchema"/> validated every serialized
+    /// field boundary and consumed the inflated entry through exact EOF.
+    /// </summary>
+    public bool SchemaComplete { get; init; }
+    public string? SchemaError { get; init; }
 
     public static FrontendUiDef? TryParse(GameBinEntry entry)
     {
@@ -410,9 +398,9 @@ public sealed class FrontendUiDef
         var sprites = 0;
         var spriteDefs = new List<int>();
         var spriteKeys = new List<int>();
-        var plus96 = 0;
-        var plus326 = 0f;
-        var plus322 = 0f;
+        var expansionType = 0;
+        var positionOffsetY = 0f;
+        var positionOffsetX = 0f;
         var states = 0;
         var colourR = 0f;
         var colourG = 0f;
@@ -425,16 +413,13 @@ public sealed class FrontendUiDef
         var styleColourA = new List<float>();
         var styleDurations = new List<float>();
         var styleFlags = new List<int>();
-        var plus392 = (byte)0;
-        var plus504 = (byte)0;
-        var plus508 = 0;
+        var drawFromViewport = (byte)0;
+        var bastardChild = (byte)0;
+        var alignement = 0;
         var zoomX = 1f;
         var zoomY = 1f;
         var haveZoomX = false;
         var haveZoomY = false;
-        var unread = new List<uint>();
-        var unreadOffset = raw.Length;
-        var partial = false;
 
         while (cursor + 4 <= raw.Length)
         {
@@ -459,16 +444,13 @@ public sealed class FrontendUiDef
                 }
                 else
                 {
-                    unread.Add(crc);
-                    partial = true;
-                    unreadOffset = payload - 4;
                     break;
                 }
 
                 continue;
             }
 
-            if (crc == TextTagCrc)
+            if (crc == TextValueCrc)
             {
                 var t = payload;
                 text = ReadUtf16(raw, ref t);
@@ -556,15 +538,15 @@ public sealed class FrontendUiDef
                 continue;
             }
 
-            if (crc == Unknown0961Crc && payload + 4 <= raw.Length)
+            if (crc == MeshIndexCrc && payload + 4 <= raw.Length)
             {
                 cursor = payload + 4;
                 continue;
             }
 
-            if (crc == Unknown38BBCrc && payload + 4 <= raw.Length)
+            if (crc == ExpansionTypeCrc && payload + 4 <= raw.Length)
             {
-                plus96 = BitConverter.ToInt32(raw, payload);
+                expansionType = BitConverter.ToInt32(raw, payload);
                 cursor = payload + 4;
                 continue;
             }
@@ -602,31 +584,28 @@ public sealed class FrontendUiDef
                 }
                 else if (sprites != 0)
                 {
-                    unread.Add(crc);
-                    partial = true;
-                    unreadOffset = payload - 4;
                     break;
                 }
 
                 continue;
             }
 
-            if (crc == Plus326Crc && payload + 4 <= raw.Length)
+            if (crc == PositionOffsetYCrc && payload + 4 <= raw.Length)
             {
                 var value = BitConverter.ToSingle(raw, payload);
                 if (float.IsFinite(value))
-                    plus326 = value;
+                    positionOffsetY = value;
                 cursor = payload + 4;
                 continue;
             }
 
-            if (crc == Unknown6B10Crc && payload + 4 <= raw.Length)
+            if (crc == HorizontalSeparationsCrc && payload + 4 <= raw.Length)
             {
                 cursor = payload + 4;
                 continue;
             }
 
-            if (crc == UnknownF81FCrc && payload + 4 <= raw.Length)
+            if (crc == VerticalSeparationsCrc && payload + 4 <= raw.Length)
             {
                 cursor = payload + 4;
                 continue;
@@ -706,7 +685,7 @@ public sealed class FrontendUiDef
                 continue;
             }
 
-            if (crc == UnknownF97DCrc && payload + 4 <= raw.Length)
+            if (crc == StyleDurationCrc && payload + 4 <= raw.Length)
             {
                 var value = BitConverter.ToSingle(raw, payload);
                 styleDurations.Add(float.IsFinite(value) ? value : -1f);
@@ -714,38 +693,38 @@ public sealed class FrontendUiDef
                 continue;
             }
 
-            if (crc == UnknownA5F8Crc && payload + 4 <= raw.Length)
+            if (crc == StateChangeTypeCrc && payload + 4 <= raw.Length)
             {
                 cursor = payload + 4;
                 continue;
             }
 
-            if (crc == UnreadNestedCrc && payload < raw.Length)
+            if (crc == LinearChangeCrc && payload < raw.Length)
             {
                 cursor = payload + 1;
                 continue;
             }
 
-            if (crc is Plus189Crc or Plus190Crc && payload < raw.Length)
+            if (crc is TextLineBreakCrc or ScaleTextCrc && payload < raw.Length)
             {
                 cursor = payload + 1;
                 continue;
             }
 
-            if (crc is Plus224Crc or MessageIdCrc && payload + 4 <= raw.Length)
+            if (crc is ActionOnLeftClickedCrc or ActionOnLeftUnclickedCrc && payload + 4 <= raw.Length)
             {
                 cursor = payload + 4;
                 continue;
             }
 
-            if (crc == StylePlus64Crc && payload + 4 <= raw.Length)
+            if (crc == StateChangeFlagCrc && payload + 4 <= raw.Length)
             {
                 styleFlags.Add(BitConverter.ToInt32(raw, payload));
                 cursor = payload + 4;
                 continue;
             }
 
-            if (crc == StylePlus108Crc && payload + 4 <= raw.Length)
+            if (crc == ChildrenNotAffectedCrc && payload + 4 <= raw.Length)
             {
                 var n = BitConverter.ToInt32(raw, payload);
                 cursor = payload + 4;
@@ -754,56 +733,53 @@ public sealed class FrontendUiDef
                 continue;
             }
 
-            if (crc is CentreCrc or AbsoluteCrc or ScaleSizeCrc or ScaleOriginCrc
+            if (crc is PositionIsCenterCrc or IndependantCrc or UseRelativeZoomCrc or UseRelativePositionCrc
                 && payload < raw.Length)
             {
                 cursor = payload + 1;
                 continue;
             }
 
-            if (crc is Plus160Crc or Plus164Crc or Plus192Crc or Plus508Crc
+            if (crc is MeshTypeCrc or TextWindowTLXCrc or ScrollingSpeedCrc or AlignementCrc
                 && payload + 4 <= raw.Length)
             {
-                if (crc == Plus508Crc)
-                    plus508 = BitConverter.ToInt32(raw, payload);
+                if (crc == AlignementCrc)
+                    alignement = BitConverter.ToInt32(raw, payload);
                 cursor = payload + 4;
                 continue;
             }
 
-            if (crc is Plus392Crc or Plus476Crc or Plus504Crc or Plus512Crc
+            if (crc is DrawFromViewportCrc or LayerIndependantCrc or BastardChildCrc or RandomSwapCrc
                 && payload < raw.Length)
             {
-                if (crc == Plus392Crc)
-                    plus392 = raw[payload];
-                else if (crc == Plus504Crc)
-                    plus504 = raw[payload];
+                if (crc == DrawFromViewportCrc)
+                    drawFromViewport = raw[payload];
+                else if (crc == BastardChildCrc)
+                    bastardChild = raw[payload];
                 cursor = payload + 1;
                 continue;
             }
 
-            unread.Add(crc);
-            unreadOffset = cursor;
-            partial = true;
             break;
         }
 
-        var centreByte = ReadPersistU8(raw, CentreCrc);
-        var absoluteByte = ReadPersistU8(raw, AbsoluteCrc);
-        var scaleSizeByte = ReadPersistU8(raw, ScaleSizeCrc);
-        var scaleOriginByte = ReadPersistU8(raw, ScaleOriginCrc);
-        var messageId = ReadPersistI32(raw, MessageIdCrc);
-        var plus224 = ReadPersistI32(raw, Plus224Crc);
-        var swapStateKeys = ReadPersistI32Vector(raw, SwapStateKeysCrc);
-        var swapStateDurations = ReadPersistF32Vector(raw, SwapStateDurationsCrc);
-        var scanned326 = ReadPersistF32(raw, Plus326Crc);
+        var centreByte = ReadPersistU8(raw, PositionIsCenterCrc);
+        var independentByte = ReadPersistU8(raw, IndependantCrc);
+        var relativeZoomByte = ReadPersistU8(raw, UseRelativeZoomCrc);
+        var relativePositionByte = ReadPersistU8(raw, UseRelativePositionCrc);
+        var actionOnLeftUnclicked = ReadPersistI32(raw, ActionOnLeftUnclickedCrc);
+        var actionOnLeftClicked = ReadPersistI32(raw, ActionOnLeftClickedCrc);
+        var swappingStates = ReadPersistI32Vector(raw, SwappingStatesCrc);
+        var swappingTimes = ReadPersistF32Vector(raw, SwappingTimesCrc);
+        var scanned326 = ReadPersistF32(raw, PositionOffsetYCrc);
         if (float.IsFinite(scanned326))
-            plus326 = scanned326;
-        var scanned322 = ReadPersistF32(raw, Plus322Crc);
+            positionOffsetY = scanned326;
+        var scanned322 = ReadPersistF32(raw, PositionOffsetXCrc);
         if (float.IsFinite(scanned322))
-            plus322 = scanned322;
-        plus392 = ReadPersistU8(raw, Plus392Crc);
-        plus504 = ReadPersistU8(raw, Plus504Crc);
-        plus508 = ReadPersistI32(raw, Plus508Crc);
+            positionOffsetX = scanned322;
+        drawFromViewport = ReadPersistU8(raw, DrawFromViewportCrc);
+        bastardChild = ReadPersistU8(raw, BastardChildCrc);
+        alignement = ReadPersistI32(raw, AlignementCrc);
         if (graphic == 0)
         {
             for (var i = 0; i + 8 <= raw.Length; i++)
@@ -819,6 +795,9 @@ public sealed class FrontendUiDef
             }
         }
 
+        var schemaComplete = FrontendUiSchema.TryConsume(entry, out var schemaEnd, out var schemaError);
+        _ = schemaEnd;
+
         return new FrontendUiDef
         {
             InstanceName = entry.InstanceName ?? entry.SourceName ?? "UI",
@@ -828,7 +807,7 @@ public sealed class FrontendUiDef
             Height = height,
             PositionX = px,
             PositionY = py,
-            TextTag = text,
+            TextValue = text,
             Font = font,
             Layer = layer,
             Angle = angle,
@@ -837,9 +816,9 @@ public sealed class FrontendUiDef
             Sprites = sprites,
             SpriteDefIndices = spriteDefs,
             SpriteKeys = spriteKeys,
-            Plus96 = plus96,
-            Plus326 = plus326,
-            Plus322 = plus322,
+            ExpansionType = expansionType,
+            PositionOffsetY = positionOffsetY,
+            PositionOffsetX = positionOffsetX,
             States = states,
             ColourR = colourR,
             ColourG = colourG,
@@ -852,24 +831,23 @@ public sealed class FrontendUiDef
             StyleColourA = styleColourA,
             StyleDurations = styleDurations,
             StyleFlags = styleFlags,
-            SwapStateKeys = swapStateKeys,
-            SwapStateDurations = swapStateDurations,
-            Plus392 = plus392,
-            Plus504 = plus504,
-            Plus508 = plus508,
+            SwappingStates = swappingStates,
+            SwappingTimes = swappingTimes,
+            DrawFromViewport = drawFromViewport,
+            BastardChild = bastardChild,
+            Alignement = alignement,
             ZoomX = zoomX,
             ZoomY = zoomY,
-            Center = centreByte != 0,
-            Absolute = absoluteByte != 0,
-            ScaleSizeToViewport = scaleSizeByte != 0,
-            ScaleOriginToViewport = scaleOriginByte != 0,
-            ScaleSizeByte = scaleSizeByte,
-            ScaleOriginByte = scaleOriginByte,
-            MessageId = messageId,
-            Plus224 = plus224,
-            UnreadCrcs = unread,
-            UnreadOffset = unreadOffset,
-            Partial = partial,
+            PositionIsCenter = centreByte != 0,
+            Independant = independentByte != 0,
+            UseRelativeZoom = relativeZoomByte != 0,
+            UseRelativePosition = relativePositionByte != 0,
+            UseRelativeZoomByte = relativeZoomByte,
+            UseRelativePositionByte = relativePositionByte,
+            ActionOnLeftUnclicked = actionOnLeftUnclicked,
+            ActionOnLeftClicked = actionOnLeftClicked,
+            SchemaComplete = schemaComplete,
+            SchemaError = schemaError,
         };
     }
 

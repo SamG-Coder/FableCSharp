@@ -468,7 +468,7 @@ public sealed class EngineLifecycle : IDisposable
     public const int FrontendScaleInitVtbl = 172;
     public const float FrontendScaleOne = 1f;
     public const string FrontendPressStartText = "UI_PRESS_START_TEXT";
-    public const string FrontendPressStartTextTag = "TEXT_GUI_MENU_PRESS_BUTTON";
+    public const string FrontendPressStartTextValue = "TEXT_GUI_MENU_PRESS_BUTTON";
     /// <summary>
     /// Type-6 ctor <c>0054F5C0</c> →
     /// <c>0054ED90</c> looks up a face
@@ -5607,8 +5607,17 @@ public sealed class EngineLifecycle : IDisposable
     public int FrontendPresentWidth { get; private set; }
     public int FrontendPresentHeight { get; private set; }
     public FrontendSubmitBatch? FrontendBatch { get; private set; }
-    private List<FrontendDx9DrawRecord> _frontendDx9Records = [];
-    private List<GpuTexture> _frontendDx9Textures = [];
+    private readonly List<FrontendDx9DrawRecord> _frontendDx9Records = [];
+    private readonly List<FrontendDx9DrawRecord> _frontendCursorRecords = [];
+    private readonly List<GpuTexture> _frontendDx9Textures = [];
+    private readonly Dictionary<string, int> _frontendTextureIndex =
+        new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<FrontendTextLayoutKey, List<FrontendTextDraw.GlyphQuad>>
+        _frontendTextLayouts = [];
+    private readonly Dictionary<List<FrontendWidget>, FrontendLayoutScratch>
+        _frontendLayoutScratch = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<List<FrontendWidget>, int[]> _frontendRecordOrders =
+        new(ReferenceEqualityComparer.Instance);
     public IReadOnlyList<FrontendWidget> FrontendWidgets => _frontendWidgets;
     /// <summary>
     /// Frontend virtual-space pointer
@@ -5639,6 +5648,7 @@ public sealed class EngineLifecycle : IDisposable
     /// (input).
     /// </summary>
     private readonly Dictionary<int, List<FrontendWidget>> _frontendSlotTrees = [];
+    private int[] _frontendResidentSlotKeys = [];
     /// <summary>
     /// <c>[ui+84]</c> keys walked
     /// last tick/draw, in-order.
@@ -5653,6 +5663,12 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     public int FrontendCurrentSlot { get; private set; }
     private readonly List<int> _frontendSubmitCounts = [];
+
+    private sealed class FrontendLayoutScratch(int count)
+    {
+        public FrontendDest[] Dests { get; } = new FrontendDest[count];
+        public int[] SiblingCounts { get; } = new int[count];
+    }
     private FrontendSpriteBank? _frontendSprites;
     private FontBank? _frontendFonts;
     /// <summary>
@@ -6804,7 +6820,7 @@ public sealed class EngineLifecycle : IDisposable
         {
             var widget = tree[i];
             if (widget.Type != FrontendWidgetType.Swap ||
-                widget.SwapStateKeys is not { Count: > 0 } keys)
+                widget.SwappingStates is not { Count: > 0 } keys)
                 continue;
 
             var elapsed = widget.SwapStateElapsed + Math.Max(0f, dt);
@@ -6834,7 +6850,7 @@ public sealed class EngineLifecycle : IDisposable
             if (current < 0)
                 continue;
 
-            var dwell = widget.SwapStateDurations is { } durations &&
+            var dwell = widget.SwappingTimes is { } durations &&
                 (uint)current < (uint)durations.Count
                 ? Math.Max(0f, durations[current])
                 : 0f;
@@ -6968,8 +6984,11 @@ public sealed class EngineLifecycle : IDisposable
         {
             Note(FrontendContainerDrawFn, "Frontend", "UI",
                 $"00530260 vtbl+{FrontendWidgetDrawVtbl} +{FrontendChildListOffset} n={Math.Max(0, tree.Count - 1)}");
-            foreach (var root in FrontendWidgetFactory.ChildrenOf(tree, null))
-                DrawContainerWalk(tree, root, ref drawn);
+            for (var root = 0; root < tree.Count; root++)
+            {
+                if (tree[root].ParentIndex < 0)
+                    DrawContainerWalk(tree, root, ref drawn);
+            }
             return;
         }
 
@@ -6985,14 +7004,16 @@ public sealed class EngineLifecycle : IDisposable
         if ((uint)index >= (uint)tree.Count)
             return;
         var widget = tree[index];
-        if (!widget.Visible || widget.Clip)
+        if (!widget.Visible)
             return;
         drawn++;
         if (FrontendWidgetType.DrawsChildList(widget.Type))
         {
-            var kids = FrontendWidgetFactory.ChildrenOf(tree, index);
-            foreach (var child in kids)
-                DrawContainerWalk(tree, child, ref drawn);
+            for (var child = 0; child < tree.Count; child++)
+            {
+                if (tree[child].ParentIndex == index)
+                    DrawContainerWalk(tree, child, ref drawn);
+            }
             return;
         }
 
@@ -7293,7 +7314,10 @@ public sealed class EngineLifecycle : IDisposable
         var seed = LookupFrontendText(FrontendProfileDefaultText)
             ?? FrontendProfileDefaultFallback;
         FrontendEditBoxName = seed;
-        _editBoxCursor = 0;
+        // 00851770 seeds the bound edit control before it starts accepting
+        // WM_CHAR.  The insertion point follows the seeded run (the retail
+        // New Profile screen visibly places the caret after "Default").
+        _editBoxCursor = seed.Length;
         ResolveFrontendDef(FrontendNewProfileMenu);
         SwitchFrontendSlot(FrontendNewProfileSlot);
         AttachFrontendTree(FrontendNewProfileMenu, FrontendNewProfileSlot);
@@ -7305,7 +7329,7 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>00851770</c> writes
     /// <c>004069E0</c> into type-37
     /// <c>vtbl+572</c>. The type-6
-    /// child has no persist TextTag,
+    /// child has no persist TextValue,
     /// so the seed becomes its glyph
     /// run.
     /// </summary>
@@ -12995,10 +13019,11 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
-    /// <c>0041C5A0</c>: every persist
-    /// <c>+176</c> child whose parent
-    /// is this. Type 16/18 keep first-seen
-    /// persist child 0.
+    /// <c>0041C5A0</c> stores the forwarded duration at <c>+320</c>, then calls
+    /// this widget's virtual <c>vtbl+192</c>.  The ordinary implementation is
+    /// <c>0052CF40</c> and selects this widget only; it does not recursively
+    /// force the same state onto every descendant.  Type 16 overrides that
+    /// virtual at <c>00548F40</c> and handles its choice children explicitly.
     /// </summary>
     private void ForwardSelectState(List<FrontendWidget> tree, int index, int state) =>
         ForwardSelectState(tree, index, state, -1f);
@@ -13009,6 +13034,9 @@ public sealed class EngineLifecycle : IDisposable
         if ((uint)index >= (uint)tree.Count)
             return;
         var widget = tree[index];
+        Note(FrontendWidgetType.ForwardSelectFn, "Frontend", "UI",
+            $"0041C5A0 vtbl+188 +{FrontendWidgetType.DurationOffset} " +
+            $"widget {widget.Name} +332={state}");
         var haveStyle = widget.StyleColours is { } colours &&
             (uint)state < (uint)colours.Count;
         var ownDuration = widget.StyleDurations is { } durations &&
@@ -13031,12 +13059,33 @@ public sealed class EngineLifecycle : IDisposable
             ColourTransitionDuration = transition ? duration : 0f,
             ColourTransitionActive = transition,
         };
-        foreach (var child in FrontendWidgetFactory.ChildrenOf(tree, index))
+
+        // 00548FA2..00549075: CTextSlider state 5 first selects every
+        // authored choice to state 1, then selects +348 (ActiveChild) to
+        // state 3.  This is why WASD/Normal are visible after the menu's
+        // entrance state while their alternatives remain inactive.
+        if (widget.Type == FrontendWidgetType.Swap)
+        {
+            // CSwappingStateComponent publishes its selected authored state
+            // to the blending children when its completion edge advances.
+            foreach (var child in FrontendWidgetFactory.ChildrenOf(tree, index))
+                ForwardSelectState(tree, child, state, duration);
+            return;
+        }
+
+        if (widget.Type != FrontendWidgetType.TextSlider || state != 5)
+            return;
+        var children = FrontendWidgetFactory.ChildrenOf(tree, index);
+        foreach (var child in children)
         {
             Note(FrontendWidgetType.ForwardSelectFn, "Frontend", "UI",
-                $"0041C5A0 vtbl+188 +{FrontendWidgetType.DurationOffset} child {tree[child].Name} +332={state}");
-            ForwardSelectState(tree, child, state, duration);
+                $"00548F40 child {tree[child].Name} +332=1");
+            ForwardSelectState(tree, child, 1, duration);
         }
+        if (children.Count == 0)
+            return;
+        var selected = Math.Clamp(widget.ActiveChild, 0, children.Count - 1);
+        ForwardSelectState(tree, children[selected], 3, duration);
     }
 
     /// <summary>
@@ -13054,6 +13103,10 @@ public sealed class EngineLifecycle : IDisposable
         if (_frontendWidgets.Count == 0)
             return;
         _frontendSlotTrees[slot] = _frontendWidgets;
+        _frontendResidentSlotKeys = _frontendSlotTrees.Keys
+            .OrderBy(key => key)
+            .ToArray();
+        FrontendResidentSlots = _frontendResidentSlotKeys;
     }
 
     /// <summary>
@@ -13065,7 +13118,7 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>0054E4F0</c>. Host
     /// stores packet first dword at
     /// widget <c>+352</c>. Persist
-    /// <see cref="FrontendWidget.MessageId"/>
+    /// <see cref="FrontendWidget.ActionOnLeftUnclicked"/>
     /// stays 0.
     /// </summary>
     private void WriteType10AttachMessage()
@@ -13110,15 +13163,23 @@ public sealed class EngineLifecycle : IDisposable
             yield break;
         }
 
-        var keys = _frontendSlotTrees.Keys.OrderBy(key => key).ToArray();
-        FrontendResidentSlots = keys;
+        var keys = _frontendResidentSlotKeys;
+        // Retired resident content completes before the current screen. The
+        // current slot is therefore the final content layer even when Main
+        // Menu reuses map key 0. The type-32 pointer is registered separately
+        // and deferred by CollectFrontendRecords above all screen content.
         foreach (var key in keys)
         {
+            if (key == FrontendCurrentSlot)
+                continue;
             var tree = _frontendSlotTrees[key];
             if (tree.Count == 0)
                 continue;
             yield return tree;
         }
+        if (_frontendSlotTrees.TryGetValue(FrontendCurrentSlot, out var current) &&
+            current.Count > 0)
+            yield return current;
     }
 
     /// <summary>
@@ -13136,6 +13197,8 @@ public sealed class EngineLifecycle : IDisposable
     {
         Note(FrontendHitTest.HoverSelectFn, "Frontend", "UI",
             "0055ACB0 vtbl+580 0055BF10");
+        var hitIndex = FrontendHitTest.HitIndex(
+            tree, FrontendPointerX, FrontendPointerY);
         for (var i = 0; i < tree.Count; i++)
         {
             var widget = tree[i];
@@ -13144,10 +13207,46 @@ public sealed class EngineLifecycle : IDisposable
                 continue;
             var hit = FrontendHitTest.Contains(
                 tree, i, FrontendPointerX, FrontendPointerY)
-                || FrontendHitTest.HitIndex(
-                    tree, FrontendPointerX, FrontendPointerY) == i;
-            tree[i] = widget with { Hovered = hit };
+                || hitIndex == i;
+            if (hit == widget.Hovered)
+                continue;
+
+            if (hit)
+            {
+                // 0055BAE0 saves +332 in +348, reads vtbl+516 from the first
+                // authored child, and selects that state on the button.
+                var children = FrontendWidgetFactory.ChildrenOf(tree, i);
+                var hoverState = children.Count > 0
+                    ? tree[children[0]].Alignement
+                    : widget.State;
+                tree[i] = widget with
+                {
+                    Hovered = true,
+                    ActiveChild = widget.State,
+                };
+                ForwardSelectState(tree, i, hoverState);
+                ApplyButtonChildVisualState(tree, i, 3);
+            }
+            else
+            {
+                // 0055B9A0 restores the state saved in +348.
+                var restoreState = widget.ActiveChild;
+                tree[i] = widget with { Hovered = false };
+                ForwardSelectState(tree, i, restoreState);
+                ApplyButtonChildVisualState(tree, i, 0);
+            }
         }
+    }
+
+    private void ApplyButtonChildVisualState(
+        List<FrontendWidget> tree, int button, int state)
+    {
+        // 0055AEB0/0055AEF0 publish the authored hover on/off actions after
+        // changing the button state.  Their listeners select the matching
+        // child styles (the ON/OFF sprite definitions encode the actual
+        // alpha values), so no texture-name convention is needed here.
+        foreach (var child in FrontendWidgetFactory.ChildrenOf(tree, button))
+            ForwardSelectState(tree, child, state);
     }
 
     /// <summary>
@@ -13198,8 +13297,11 @@ public sealed class EngineLifecycle : IDisposable
         else
             next = next + 1 >= kids.Count ? 0 : next + 1;
         _frontendWidgets[index] = widget with { ActiveChild = next, Armed = true };
-        for (var k = 0; k < kids.Count; k++)
-            _frontendWidgets[kids[k]] = _frontendWidgets[kids[k]] with { Visible = k == next };
+        // 00548AF0 applies state 1 to the old choice and state 3 to the new
+        // choice.  Both remain in the authored child list; Visible is not an
+        // exclusive-selection flag.
+        ForwardSelectState(_frontendWidgets, kids[Math.Clamp(widget.ActiveChild, 0, kids.Count - 1)], 1);
+        ForwardSelectState(_frontendWidgets, kids[next], 3);
     }
 
     private void ApplySliderHit(int index)
@@ -13280,8 +13382,15 @@ public sealed class EngineLifecycle : IDisposable
         var width = BackBufferWidth > 0 ? BackBufferWidth : DisplayDefaultWidth;
         var height = BackBufferHeight > 0 ? BackBufferHeight : DisplayDefaultHeight;
         var viewport = FrontendLayout.FirstSeenFrontend(width, height);
-        var dests = new FrontendDest[widgets.Count];
-        var sibling = new Dictionary<int, int>();
+        if (!_frontendLayoutScratch.TryGetValue(widgets, out var scratch) ||
+            scratch.Dests.Length != widgets.Count)
+        {
+            scratch = new FrontendLayoutScratch(widgets.Count);
+            _frontendLayoutScratch[widgets] = scratch;
+        }
+        var dests = scratch.Dests;
+        var sibling = scratch.SiblingCounts;
+        Array.Clear(sibling);
         for (var i = 0; i < widgets.Count; i++)
         {
             var widget = widgets[i];
@@ -13302,7 +13411,7 @@ public sealed class EngineLifecycle : IDisposable
             var siblingIndex = 0;
             if (widget.ParentIndex >= 0)
             {
-                sibling.TryGetValue(widget.ParentIndex, out siblingIndex);
+                siblingIndex = sibling[widget.ParentIndex];
                 sibling[widget.ParentIndex] = siblingIndex + 1;
             }
 
@@ -13326,8 +13435,8 @@ public sealed class EngineLifecycle : IDisposable
                     siblingIndex,
                     persistX,
                     persistY,
-                    list.Plus322,
-                    list.Plus326,
+                    list.PositionOffsetX,
+                    list.PositionOffsetY,
                     firstX,
                     firstY);
             }
@@ -13367,7 +13476,7 @@ public sealed class EngineLifecycle : IDisposable
                     leftoverH > 0f ? leftoverH : (table.PersistHeight > 0f ? table.PersistHeight : leftoverH),
                     leftoverW,
                     leftoverH,
-                    table.Plus96,
+                    table.ExpansionType,
                     firstCapW,
                     rightCapW);
                 dest = new FrontendDest(
@@ -13386,10 +13495,10 @@ public sealed class EngineLifecycle : IDisposable
                     PersistHeight: persistH,
                     LeftoverW: leftoverW,
                     LeftoverH: leftoverH,
-                    Center: widget.Center,
-                    Absolute: widget.Absolute,
-                    ScaleOriginToViewport: widget.ScaleOriginToViewport,
-                    ScaleSizeToViewport: widget.ScaleSizeToViewport);
+                    PositionIsCenter: widget.PositionIsCenter,
+                    Independant: widget.Independant,
+                    UseRelativePosition: widget.UseRelativePosition,
+                    UseRelativeZoom: widget.UseRelativeZoom);
                 dest = FrontendLayout.Compute(layout, parentDest, viewport);
             }
 
@@ -13595,9 +13704,9 @@ public sealed class EngineLifecycle : IDisposable
     {
         var width = BackBufferWidth > 0 ? BackBufferWidth : DisplayDefaultWidth;
         var height = BackBufferHeight > 0 ? BackBufferHeight : DisplayDefaultHeight;
-        var (records, textures) = CollectFrontendRecords();
-        _frontendDx9Records = records;
-        _frontendDx9Textures = textures;
+        CollectFrontendRecords();
+        var records = _frontendDx9Records;
+        var textures = _frontendDx9Textures;
         if (Dx9OwnsFrontendPresent)
         {
             FrontendBatch = null;
@@ -13612,21 +13721,29 @@ public sealed class EngineLifecycle : IDisposable
             DumpFrontendPresentRgba(records, textures, width, height);
     }
 
-    private (List<FrontendDx9DrawRecord> Records, List<GpuTexture> Textures)
-        CollectFrontendRecords()
+    private void CollectFrontendRecords()
     {
-        var records = new List<FrontendDx9DrawRecord>();
-        var textures = new List<GpuTexture>();
-        var textureIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        var records = _frontendDx9Records;
+        var textures = _frontendDx9Textures;
+        var textureIndex = _frontendTextureIndex;
+        records.Clear();
+        _frontendCursorRecords.Clear();
+        textures.Clear();
+        textureIndex.Clear();
         _frontendSubmitCounts.Clear();
         foreach (var tree in ResidentSlotTrees())
         {
+        var submitBase = _frontendSubmitCounts.Count;
+        for (var i = 0; i < tree.Count; i++)
+            _frontendSubmitCounts.Add(0);
+        var drawOrder = 0;
         // 0052CF40(6) on the old current.
         // 0052C7E0 style 0x20 zeros dest
         // so 0041AFA0 submits nothing.
-        var slot = new List<FrontendDx9DrawRecord>();
-        var slotCounts = new List<int>(tree.Count);
-        for (var i = 0; i < tree.Count; i++)
+        // 0041AFA0 passes signed +303 plus the inherited layer to the
+        // frontend renderer. Lower layers are flushed later, independently
+        // of persist-list order.
+        foreach (var i in FrontendRecordOrder(tree))
         {
             var widget = tree[i];
             var drawX0 = widget.DestX0;
@@ -13651,8 +13768,17 @@ public sealed class EngineLifecycle : IDisposable
             var glyphs = 0;
             // 0052FE3C..0052FFA2 composes the local style colour with the
             // inherited parent colour before 0041AFA0/0054EF00 reads +148.
-            var colour = FrontendWidgetFactory.EffectiveColour(tree, i);
-            var recordStart = slot.Count;
+            // Type 32 has its own 0041A980 live-pointer submit path and
+            // remains registered when the Press Start slot is retired.  It
+            // must not inherit that old root's state-6 fade or it disappears
+            // from every subsequent menu.
+            var colour = widget.Type == FrontendWidgetType.Mouse
+                ? widget.Colour
+                : FrontendWidgetFactory.EffectiveColour(tree, i);
+            var targetRecords = widget.Type == FrontendWidgetType.Mouse
+                ? _frontendCursorRecords
+                : records;
+            var recordStart = targetRecords.Count;
             if (FrontendWidgetFactory.IsPresented(tree, i) &&
                 !FrontendWidgetType.LeafDipSkipped(colour) &&
                 drawX1 > drawX0 && drawY1 > drawY0)
@@ -13671,7 +13797,7 @@ public sealed class EngineLifecycle : IDisposable
                     var uv = FrontendDx9Submit.SubmittedSpriteUv(
                         0f, 0f, 0f, 0f,
                         frame.U0, frame.V0, frame.U1, frame.V1);
-                    slot.Add(new FrontendDx9DrawRecord(
+                    targetRecords.Add(new FrontendDx9DrawRecord(
                         drawX0, drawY0, drawX1, drawY1,
                         uv.U0, uv.V0, uv.U1, uv.V1, colour, id,
                         Dx9VulkanFrontend.WidgetBlendDefault,
@@ -13713,8 +13839,17 @@ public sealed class EngineLifecycle : IDisposable
                     var align = FrontendTextDraw.AlignFromFlag302(widget.Flag302);
                     var penY = widget.DestY0;
                     var anchorX = widget.DestX0;
-                    var glyphQuads = FrontendTextDraw.LayoutFormatted(
-                        face, widget.Text, anchorX, penY, align, colour);
+                    var drawText = EditBoxTextWithCaret(tree, i, widget.Text);
+                    var layoutKey = new FrontendTextLayoutKey(
+                        atlasKey, drawText, anchorX, penY, align);
+                    if (!_frontendTextLayouts.TryGetValue(layoutKey, out var glyphQuads))
+                    {
+                        // Geometry depends on the parsed face/text/layout only.
+                        // Tint is packed into each live draw record below.
+                        glyphQuads = FrontendTextDraw.LayoutFormatted(
+                            face, drawText, anchorX, penY, align);
+                        _frontendTextLayouts[layoutKey] = glyphQuads;
+                    }
                     // 0054F5C0 initializes +393 to zero. In that 0054EF00
                     // branch, the unshifted record receives widget RGBA and
                     // the (+2,+2) record receives zero RGB/widget alpha.
@@ -13722,7 +13857,7 @@ public sealed class EngineLifecycle : IDisposable
                     // coloured glyphs, so submit the underlay first here.
                     foreach (var glyph in glyphQuads)
                     {
-                        slot.Add(new FrontendDx9DrawRecord(
+                        records.Add(new FrontendDx9DrawRecord(
                             glyph.DestX0 + FrontendTextDraw.Type6OriginPad,
                             glyph.DestY0 + FrontendTextDraw.Type6OriginPad,
                             glyph.DestX1 + FrontendTextDraw.Type6OriginPad,
@@ -13737,7 +13872,7 @@ public sealed class EngineLifecycle : IDisposable
                     }
                     foreach (var glyph in glyphQuads)
                     {
-                        slot.Add(new FrontendDx9DrawRecord(
+                        records.Add(new FrontendDx9DrawRecord(
                             glyph.DestX0, glyph.DestY0, glyph.DestX1, glyph.DestY1,
                             glyph.U0, glyph.V0, glyph.U1, glyph.V1,
                             colour, atlasId,
@@ -13782,22 +13917,63 @@ public sealed class EngineLifecycle : IDisposable
                 U1 = haveUv ? u1 : widget.U1,
                 V1 = haveUv ? v1 : widget.V1,
                 GlyphCount = glyphs,
-                DrawOrder = i,
+                DrawOrder = drawOrder++,
             };
-            slotCounts.Add(slot.Count - recordStart);
+            _frontendSubmitCounts[submitBase + i] =
+                targetRecords.Count - recordStart;
         }
 
-        // 00595222 calls each widget's vtbl+8 synchronously in list/tree
-        // traversal order. Type-6 emits both text records at that point; there
-        // is no later glyph bucket. UI_MOUSE_POINTER is the final child and
-        // therefore overlays preceding text exactly as in the executable.
-        records.AddRange(slot);
-        foreach (var count in slotCounts)
-            _frontendSubmitCounts.Add(count);
+        // Type-6 emits both text records in its selected frontend layer;
+        // there is no later global glyph bucket.
         }
-
-        return (records, textures);
+        records.AddRange(_frontendCursorRecords);
     }
+
+    private int[] FrontendRecordOrder(List<FrontendWidget> tree)
+    {
+        if (_frontendRecordOrders.TryGetValue(tree, out var order) &&
+            order.Length == tree.Count)
+            return order;
+        order = Enumerable.Range(0, tree.Count).ToArray();
+        Array.Sort(order, (left, right) =>
+        {
+            var layer = EffectiveFrontendLayer(tree, right)
+                .CompareTo(EffectiveFrontendLayer(tree, left));
+            return layer != 0 ? layer : left.CompareTo(right);
+        });
+        _frontendRecordOrders[tree] = order;
+        return order;
+    }
+
+    private static int EffectiveFrontendLayer(
+        IReadOnlyList<FrontendWidget> tree, int index)
+    {
+        var layer = 0;
+        var remaining = tree.Count + 1;
+        while ((uint)index < (uint)tree.Count && remaining-- > 0)
+        {
+            layer += tree[index].Layer;
+            index = tree[index].ParentIndex;
+        }
+        return layer;
+    }
+
+    private string EditBoxTextWithCaret(
+        IReadOnlyList<FrontendWidget> tree, int index, string text)
+    {
+        if (!FrontendEditBoxBound || !FrontendUi96Present ||
+            !ReferenceEquals(tree, _frontendWidgets))
+            return text;
+        var parent = tree[index].ParentIndex;
+        if ((uint)parent >= (uint)tree.Count ||
+            tree[parent].Type != FrontendWidgetType.EditBox)
+            return text;
+        var cursor = Math.Clamp(_editBoxCursor, 0, text.Length);
+        return text.Insert(cursor, "|");
+    }
+
+    private readonly record struct FrontendTextLayoutKey(
+        string FaceName, string Text, float X, float Y, int Align);
 
     /// <summary>
     /// TEMPORARY test dump. Present must not

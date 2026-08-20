@@ -41,27 +41,70 @@ public sealed class FrontendUiDefTests
         Assert.Equal(FableCrc.Hash("ZoomY"), FrontendUiDef.ZoomYCrc);
         Assert.Equal(0x90894098u, FrontendUiDef.ZoomYCrc);
         Assert.NotEqual(FableCrc.Hash("ScaleX"), FrontendUiDef.ZoomXCrc);
-        Assert.NotEqual(FableCrc.Hash("TextTag"), FrontendUiDef.TextTagCrc);
+        Assert.Equal(FableCrc.Hash("TextValue"), FrontendUiDef.TextValueCrc);
         Assert.NotEqual(FableCrc.Hash("Graphic"), FrontendUiDef.GraphicIndexCrc);
         Assert.NotEqual(FableCrc.Hash("Texture"), FrontendUiDef.GraphicIndexCrc);
-        Assert.NotEqual(FableCrc.Hash("Centre"), FrontendUiDef.CentreCrc);
-        Assert.NotEqual(FableCrc.Hash("Absolute"), FrontendUiDef.AbsoluteCrc);
-        Assert.NotEqual(FableCrc.Hash("ScaleSize"), FrontendUiDef.ScaleSizeCrc);
-        Assert.NotEqual(FableCrc.Hash("ScaleOrigin"), FrontendUiDef.ScaleOriginCrc);
-        Assert.Equal(0xBDACBABAu, FrontendUiDef.Plus189Crc);
-        Assert.Equal(0xAC637D43u, FrontendUiDef.Plus190Crc);
-        Assert.Equal(0x424AD096u, FrontendUiDef.Plus160Crc);
-        Assert.Equal(0x8A69D67Eu, FrontendUiDef.Plus392Crc);
-        Assert.Equal(0xD5B65965u, FrontendUiDef.Plus476Crc);
-        Assert.Equal(0x2CB06C8Eu, FrontendUiDef.Plus504Crc);
-        Assert.Equal(0x02F094DBu, FrontendUiDef.Plus508Crc);
-        Assert.Equal(0x7084E2DDu, FrontendUiDef.Plus512Crc);
+        Assert.Equal(FableCrc.Hash("PositionIsCenter"), FrontendUiDef.PositionIsCenterCrc);
+        Assert.Equal(FableCrc.Hash("Independant"), FrontendUiDef.IndependantCrc);
+        Assert.Equal(FableCrc.Hash("UseRelativeZoom"), FrontendUiDef.UseRelativeZoomCrc);
+        Assert.Equal(FableCrc.Hash("UseRelativePosition"), FrontendUiDef.UseRelativePositionCrc);
+        Assert.Equal(FableCrc.Hash("TextLineBreak"), FrontendUiDef.TextLineBreakCrc);
+        Assert.Equal(FableCrc.Hash("ScaleText"), FrontendUiDef.ScaleTextCrc);
+        Assert.Equal(FableCrc.Hash("MeshType"), FrontendUiDef.MeshTypeCrc);
+        Assert.Equal(FableCrc.Hash("DrawFromViewport"), FrontendUiDef.DrawFromViewportCrc);
+        Assert.Equal(FableCrc.Hash("LayerIndependant"), FrontendUiDef.LayerIndependantCrc);
+        Assert.Equal(FableCrc.Hash("BastardChild"), FrontendUiDef.BastardChildCrc);
+        Assert.Equal(FableCrc.Hash("Alignement"), FrontendUiDef.AlignementCrc);
+        Assert.Equal(FableCrc.Hash("RandomSwap"), FrontendUiDef.RandomSwapCrc);
         Assert.Equal(0x00631C60u, FrontendUiDef.PersistFn);
         Assert.Equal(0x0041D21Bu, FrontendWidgetType.ConstructFn);
         Assert.Equal(0x0054E3D0u, FrontendWidgetType.MenuCtor);
         Assert.Equal(0x0054F5C0u, FrontendWidgetType.TextCtor);
         Assert.Equal(0x00431102u, FrontendUiDef.PersistDwordFn);
         Assert.Equal(0x00431061u, FrontendUiDef.PersistFloatFn);
+    }
+
+    [Fact]
+    public void Every_frontend_UI_entry_matches_the_complete_native_CUIDef_schema()
+    {
+        var (_, _, bin) = LoadFrontend();
+        var uiEntries = bin.Entries.Where(entry => entry.TypeName == "UI").ToList();
+        Assert.NotEmpty(uiEntries);
+
+        foreach (var entry in uiEntries)
+        {
+            var complete = FrontendUiSchema.TryConsume(entry, out var end, out var error);
+            Assert.True(complete, $"{entry.InstanceName}: {error}");
+            Assert.Equal(entry.Raw.Length, end);
+
+            var parsed = FrontendUiDef.TryParse(entry);
+            Assert.NotNull(parsed);
+            Assert.True(parsed.SchemaComplete, $"{entry.InstanceName}: {parsed.SchemaError}");
+            Assert.Null(parsed.SchemaError);
+        }
+    }
+
+    [Fact]
+    public void Complete_CUIDef_catalog_uses_original_names_and_matching_file_CRCs()
+    {
+        Assert.Equal(109, FrontendUiFieldCatalog.Fields.Count);
+        Assert.Equal(14, FrontendUiFieldCatalog.StateFields.Count);
+        Assert.Equal(109, FrontendUiFieldCatalog.Fields.Select(f => f.Name).Distinct().Count());
+        Assert.Equal(109, FrontendUiFieldCatalog.Fields.Select(f => f.Crc).Distinct().Count());
+
+        foreach (var field in FrontendUiFieldCatalog.Fields)
+            Assert.Equal(field.Crc, FableCrc.Hash(field.Name));
+        foreach (var field in FrontendUiFieldCatalog.StateFields)
+            Assert.Equal(field.Crc, FableCrc.Hash(field.Name));
+
+        Assert.Equal("ActionOnLeftClicked",
+            FrontendUiFieldCatalog.Fields.Single(f => f.RetailOffset == 224).Name);
+        Assert.Equal("ActionOnLeftUnclicked",
+            FrontendUiFieldCatalog.Fields.Single(f => f.RetailOffset == 228).Name);
+        Assert.Equal("DrawFromViewport",
+            FrontendUiFieldCatalog.Fields.Single(f => f.RetailOffset == 392).Name);
+        Assert.Equal("PCStyle",
+            FrontendUiFieldCatalog.Fields.Single(f => f.RetailOffset == 545).Name);
     }
 
     [Fact]
@@ -88,15 +131,15 @@ public sealed class FrontendUiDefTests
         var text = FrontendUiDef.TryParse(bin.FindEntry("UI_PRESS_START_TEXT")!);
         Assert.NotNull(text);
         Assert.Equal(6, text.Type);
-        Assert.Equal("TEXT_GUI_MENU_PRESS_BUTTON", text.TextTag);
+        Assert.Equal("TEXT_GUI_MENU_PRESS_BUTTON", text.TextValue);
         Assert.Equal(320f, text.PositionX);
         Assert.Equal(240f, text.PositionY);
         Assert.Equal(1f, text.ZoomX);
         Assert.Equal(1f, text.ZoomY);
-        Assert.False(text.Center);
-        Assert.False(text.Absolute);
-        Assert.False(text.ScaleOriginToViewport);
-        Assert.False(text.ScaleSizeToViewport);
+        Assert.False(text.PositionIsCenter);
+        Assert.False(text.Independant);
+        Assert.False(text.UseRelativePosition);
+        Assert.False(text.UseRelativeZoom);
         var title = FrontendUiDef.TryParse(bin.FindEntry("UI_TITLE")!);
         Assert.NotNull(title);
         Assert.Equal(5, title.Type);
@@ -111,7 +154,7 @@ public sealed class FrontendUiDefTests
         var newGame = FrontendUiDef.TryParse(bin.FindEntry("UI_TEXT_NEW_GAME")!);
         Assert.NotNull(newGame);
         Assert.Equal(6, newGame.Type);
-        Assert.Equal("TEXT_GUI_MENU_NEW_GAME", newGame.TextTag);
+        Assert.Equal("TEXT_GUI_MENU_NEW_GAME", newGame.TextValue);
     }
 
     [Fact]
@@ -122,10 +165,10 @@ public sealed class FrontendUiDefTests
         var sunbeam = FrontendUiDef.TryParse(
             bin.FindEntry("UI_SWAPPING_FORREST_SUNBEAM")!)!;
         Assert.Equal(FrontendWidgetType.Swap, forest.Type);
-        Assert.Equal([0, 1, 2, 3], forest.SwapStateKeys);
-        Assert.Equal([0f, 0f, 0f, 0f], forest.SwapStateDurations);
-        Assert.Equal([0, 1, 2], sunbeam.SwapStateKeys);
-        Assert.Equal([0f, 0f, 0f], sunbeam.SwapStateDurations);
+        Assert.Equal([0, 1, 2, 3], forest.SwappingStates);
+        Assert.Equal([0f, 0f, 0f, 0f], forest.SwappingTimes);
+        Assert.Equal([0, 1, 2], sunbeam.SwappingStates);
+        Assert.Equal([0f, 0f, 0f], sunbeam.SwappingTimes);
         var blending = FrontendUiDef.TryParse(bin.FindEntry("BLENDING_BG_FORREST_1")!);
         Assert.NotNull(blending);
         Assert.Equal([8f, 8f, 8f, 8f], blending.StyleDurations);
@@ -152,12 +195,10 @@ public sealed class FrontendUiDefTests
         Assert.True(crcOff >= 0);
         Assert.Equal(3, BitConverter.ToInt32(raw, crcOff + 4));
         Assert.Equal(3, title01.GraphicBankId);
-        Assert.Equal(0xC50CA371u, FrontendUiDef.ScaleSizeCrc);
-        Assert.Equal(0xB466D948u, FrontendUiDef.ScaleOriginCrc);
-        Assert.Equal(0x64D3430Eu, FrontendUiDef.CentreCrc);
-        Assert.Equal(0x38BBD87Fu, FrontendUiDef.AbsoluteCrc);
-        Assert.NotEqual(FrontendUiDef.UnreadNestedCrc,
-            title01.UnreadCrcs.Count == 0 ? 0 : title01.UnreadCrcs[0]);
+        Assert.Equal(0xC50CA371u, FrontendUiDef.UseRelativeZoomCrc);
+        Assert.Equal(0xB466D948u, FrontendUiDef.UseRelativePositionCrc);
+        Assert.Equal(0x64D3430Eu, FrontendUiDef.PositionIsCenterCrc);
+        Assert.Equal(0x38BBD87Fu, FrontendUiDef.IndependantCrc);
         var titleLayerOff = IndexOfU32(raw, FrontendUiDef.LayerCrc);
         Assert.True(titleLayerOff > crcOff);
     }
@@ -174,23 +215,19 @@ public sealed class FrontendUiDefTests
         var forestTile = FrontendUiDef.TryParse(bin.FindEntry("UI_FRONTEND_BG_FORREST_1_1")!)!;
         var text = FrontendUiDef.TryParse(bin.FindEntry("UI_PRESS_START_TEXT")!)!;
         var mouse = FrontendUiDef.TryParse(bin.FindEntry("UI_MOUSE_POINTER")!)!;
-        Assert.Equal(1, root.ScaleSizeByte);
-        Assert.Equal(0, root.ScaleOriginByte);
-        Assert.True(root.ScaleSizeToViewport);
-        Assert.False(root.ScaleOriginToViewport);
+        Assert.True(root.UseRelativeZoom);
+        Assert.False(root.UseRelativePosition);
         foreach (var child in new[] { title, title01, title02, forest, forestTile, text, mouse })
         {
-            Assert.Equal(0, child.ScaleSizeByte);
-            Assert.Equal(0, child.ScaleOriginByte);
-            Assert.False(child.ScaleSizeToViewport);
-            Assert.False(child.ScaleOriginToViewport);
+            Assert.False(child.UseRelativeZoom);
+            Assert.False(child.UseRelativePosition);
         }
 
-        Assert.False(title.Center);
-        Assert.True(mouse.Absolute);
+        Assert.False(title.PositionIsCenter);
+        Assert.True(mouse.Independant);
         var raw = bin.FindEntry("UI_FRONTEND_PRESS_START_MENU")!.Raw;
-        Assert.Equal(1, FrontendUiDef.ReadPersistU8(raw, FrontendUiDef.ScaleSizeCrc));
-        Assert.Equal(0, FrontendUiDef.ReadPersistU8(raw, FrontendUiDef.ScaleOriginCrc));
+        Assert.Equal(1, FrontendUiDef.ReadPersistU8(raw, FrontendUiDef.UseRelativeZoomCrc));
+        Assert.Equal(0, FrontendUiDef.ReadPersistU8(raw, FrontendUiDef.UseRelativePositionCrc));
     }
 
     [Fact]
@@ -242,7 +279,7 @@ public sealed class FrontendUiDefTests
         Assert.True(profile.Count >= 4);
         Assert.Equal(10, profile[0].Type);
         Assert.Contains(profile, w => w.Name == "UI_TEXT_NEW_PROFILE_MENU_TITLE" && w.Type == 6);
-        Assert.Contains(profile, w => w.TextTag == "TEXT_GUI_MENU_NEW_PROFILE");
+        Assert.Contains(profile, w => w.TextValue == "TEXT_GUI_MENU_NEW_PROFILE");
         var forest1 = Assert.Single(press, w => w.Name == "BLENDING_BG_FORREST_1");
         var forest2 = Assert.Single(press, w => w.Name == "BLENDING_BG_FORREST_2");
         var sunbeam1 = Assert.Single(press, w => w.Name == "BLENDING_BG_FORREST_SUNBEAM_1");
@@ -251,9 +288,9 @@ public sealed class FrontendUiDefTests
         Assert.Equal(0, swap.ActiveChild);
         Assert.True(forest1.Visible);
         Assert.True(forest1.Enabled);
-        Assert.False(forest1.Clip);
+        Assert.Equal(0, forest1.DrawFromViewport);
         Assert.True(forest2.Visible);
-        Assert.False(forest2.Clip);
+        Assert.Equal(0, forest2.DrawFromViewport);
         Assert.True(sunbeam1.Visible);
         Assert.True(sunbeam2.Visible);
         Assert.Contains(press, w => w.Name == "UI_TITLE_01" && w.Visible);
@@ -302,8 +339,8 @@ public sealed class FrontendUiDefTests
         Assert.True(wasd.Visible);
         Assert.Equal(FrontendWidgetType.TextSliderFirstSeenSelect, arrows.StyleIndex);
         Assert.Equal(FrontendWidgetType.FirstSeenState, wasd.StyleIndex);
-        Assert.Equal(arrows.Colour, wasd.Colour);
-        Assert.True(FrontendWidgetType.LeafDipSkipped(arrows.Colour));
+        Assert.NotEqual(arrows.Colour, wasd.Colour);
+        Assert.False(FrontendWidgetType.LeafDipSkipped(arrows.Colour));
         Assert.True(FrontendWidgetType.LeafDipSkipped(wasd.Colour));
         var normal = Assert.Single(profile, w => w.Name == "UI_TEXT_NORMAL");
         var inverted = Assert.Single(profile, w => w.Name == "UI_TEXT_INVERTED");
@@ -311,7 +348,7 @@ public sealed class FrontendUiDefTests
         Assert.True(inverted.Visible);
         Assert.Equal(FrontendWidgetType.TextSliderFirstSeenSelect, normal.StyleIndex);
         Assert.Equal(FrontendWidgetType.FirstSeenState, inverted.StyleIndex);
-        Assert.True(FrontendWidgetType.LeafDipSkipped(normal.Colour));
+        Assert.False(FrontendWidgetType.LeafDipSkipped(normal.Colour));
         Assert.True(FrontendWidgetType.LeafDipSkipped(inverted.Colour));
         Assert.Equal(0x0041C5C0u, FrontendWidgetType.StyleExistsFn);
         Assert.Equal(0x0052E930u, FrontendWidgetType.InheritPackedColourFn);
@@ -319,9 +356,9 @@ public sealed class FrontendUiDefTests
         var acceptOff = Assert.Single(profile, w => w.Name == "UI_SPRITE_ACCEPT_OFF");
         Assert.True(FrontendWidgetType.LeafDipSkipped(acceptOn.Colour));
         Assert.False(FrontendWidgetType.LeafDipSkipped(acceptOff.Colour));
-        Assert.Equal(0x8A69D67Eu, FrontendUiDef.Plus392Crc);
-        Assert.Equal(1, arrows.Plus508);
-        Assert.Equal(1, wasd.Plus508);
+        Assert.Equal(0x8A69D67Eu, FrontendUiDef.DrawFromViewportCrc);
+        Assert.Equal(1, arrows.Alignement);
+        Assert.Equal(1, wasd.Alignement);
         Assert.Equal(FrontendTextDraw.Flag302CentreBit, arrows.Flag302 & FrontendTextDraw.Flag302CentreBit);
     }
 
@@ -330,8 +367,8 @@ public sealed class FrontendUiDefTests
     {
         var (install, names, bin) = LoadFrontend();
         Assert.Equal(0x00631C60u, FrontendUiDef.PersistFn);
-        Assert.Equal(0xBDACBABAu, FrontendUiDef.Plus189Crc);
-        Assert.Equal(0xAC637D43u, FrontendUiDef.Plus190Crc);
+        Assert.Equal(0xBDACBABAu, FrontendUiDef.TextLineBreakCrc);
+        Assert.Equal(0xAC637D43u, FrontendUiDef.ScaleTextCrc);
         var text = FrontendUiDef.TryParse(bin.FindEntry("UI_PRESS_START_TEXT")!)!;
         Assert.Equal(26051, text.Font);
         var face = names.Get((uint)text.Font);
@@ -340,72 +377,71 @@ public sealed class FrontendUiDefTests
         Assert.Equal(face, FrontendWidgetFactory.ResolveFontFace(text.Font, names));
         Assert.Equal(FontFile.PersistType6Face, face);
         var mouse = FrontendUiDef.TryParse(bin.FindEntry("UI_MOUSE_POINTER")!)!;
-        Assert.True(mouse.Absolute);
+        Assert.True(mouse.Independant);
         Assert.Equal(1, FrontendUiDef.ReadPersistU8(
-            bin.FindEntry("UI_MOUSE_POINTER")!.Raw, FrontendUiDef.AbsoluteCrc));
+            bin.FindEntry("UI_MOUSE_POINTER")!.Raw, FrontendUiDef.IndependantCrc));
         var widgets = FrontendWidgetFactory.Build(
             bin, "UI_FRONTEND_PRESS_START_MENU", names: names);
         var textWidget = Assert.Single(
             widgets, w => w.Name == "UI_PRESS_START_TEXT");
         Assert.Equal(26051, textWidget.Font);
         Assert.Equal(face, textWidget.FontFace);
-        Assert.Equal(0x53C644E4u, FrontendUiDef.MessageIdCrc);
-        Assert.Equal(228, FrontendUiDef.MessageIdDefOffset);
-        Assert.Equal(0x230364D6u, FrontendUiDef.Plus224Crc);
-        Assert.Equal(224, FrontendUiDef.Plus224DefOffset);
+        Assert.Equal(0x53C644E4u, FrontendUiDef.ActionOnLeftUnclickedCrc);
+        Assert.Equal(228, FrontendUiDef.ActionOnLeftUnclickedRetailOffset);
+        Assert.Equal(0x230364D6u, FrontendUiDef.ActionOnLeftClickedCrc);
+        Assert.Equal(224, FrontendUiDef.ActionOnLeftClickedRetailOffset);
         Assert.Equal(0x00632500u, FrontendUiDef.PersistTailDwordFn);
-        Assert.NotEqual(FrontendUiDef.Plus224Crc, FrontendUiDef.MessageIdCrc);
-        Assert.NotEqual(FableCrc.Hash("Message"), FrontendUiDef.MessageIdCrc);
-        Assert.NotEqual(FableCrc.Hash("MessageId"), FrontendUiDef.MessageIdCrc);
-        Assert.NotEqual(FableCrc.Hash("Action"), FrontendUiDef.Plus224Crc);
+        Assert.NotEqual(FrontendUiDef.ActionOnLeftClickedCrc, FrontendUiDef.ActionOnLeftUnclickedCrc);
+        Assert.Equal(FableCrc.Hash("ActionOnLeftUnclicked"), FrontendUiDef.ActionOnLeftUnclickedCrc);
+        Assert.Equal(FableCrc.Hash("ActionOnLeftClicked"), FrontendUiDef.ActionOnLeftClickedCrc);
         var accept = FrontendUiDef.TryParse(bin.FindEntry("UI_ACCEPT_NEW_PROFILE")!)!;
         Assert.Equal(38, accept.Type);
-        Assert.Equal(0x126, accept.MessageId);
-        Assert.Equal(0, accept.Plus224);
-        Assert.NotEqual(accept.MessageId, accept.Plus224);
+        Assert.Equal(0x126, accept.ActionOnLeftUnclicked);
+        Assert.Equal(0, accept.ActionOnLeftClicked);
+        Assert.NotEqual(accept.ActionOnLeftUnclicked, accept.ActionOnLeftClicked);
         var newGame = FrontendUiDef.TryParse(bin.FindEntry("UI_FRONTEND_BUTTON_NEW_GAME")!)!;
         Assert.Equal(11, newGame.Type);
-        Assert.Equal(15, newGame.MessageId);
-        Assert.Equal(0, newGame.Plus224);
-        Assert.NotEqual(newGame.MessageId, newGame.Plus224);
+        Assert.Equal(15, newGame.ActionOnLeftUnclicked);
+        Assert.Equal(0, newGame.ActionOnLeftClicked);
+        Assert.NotEqual(newGame.ActionOnLeftUnclicked, newGame.ActionOnLeftClicked);
         var invisible = FrontendUiDef.TryParse(bin.FindEntry("UI_FRONTEND_BUTTON_INVISIBLE")!)!;
         Assert.Equal(11, invisible.Type);
-        Assert.Equal(0xE5, invisible.MessageId);
-        Assert.Equal(0, invisible.Plus224);
+        Assert.Equal(0xE5, invisible.ActionOnLeftUnclicked);
+        Assert.Equal(0, invisible.ActionOnLeftClicked);
         Assert.Equal(
             0x126,
             FrontendUiDef.ReadPersistI32(
                 bin.FindEntry("UI_ACCEPT_NEW_PROFILE")!.Raw,
-                FrontendUiDef.MessageIdCrc));
+                FrontendUiDef.ActionOnLeftUnclickedCrc));
         Assert.True(HasAdjacentPersistI32(
             bin.FindEntry("UI_ACCEPT_NEW_PROFILE")!.Raw,
-            FrontendUiDef.Plus224Crc,
-            FrontendUiDef.MessageIdCrc));
+            FrontendUiDef.ActionOnLeftClickedCrc,
+            FrontendUiDef.ActionOnLeftUnclickedCrc));
         Assert.True(HasAdjacentPersistI32(
             bin.FindEntry("UI_FRONTEND_BUTTON_NEW_GAME")!.Raw,
-            FrontendUiDef.Plus224Crc,
-            FrontendUiDef.MessageIdCrc));
-        Assert.Equal(228, FrontendInputMap.PersistMessageDefOffset);
+            FrontendUiDef.ActionOnLeftClickedCrc,
+            FrontendUiDef.ActionOnLeftUnclickedCrc));
+        Assert.Equal(228, FrontendInputMap.ActionOnLeftUnclickedDefOffset);
         var invisibleWidget = widgets.Single(w =>
             w.Name == "UI_FRONTEND_BUTTON_INVISIBLE");
-        Assert.Equal(0xE5, invisibleWidget.MessageId);
-        Assert.Equal(0, invisibleWidget.Plus224);
+        Assert.Equal(0xE5, invisibleWidget.ActionOnLeftUnclicked);
+        Assert.Equal(0, invisibleWidget.ActionOnLeftClicked);
         var main = FrontendWidgetFactory.Build(
             bin,
             "UI_FRONTEND_MAIN_MENU_NO_LIVEAWARE_NO_CONTINUE",
             names: names);
         var newGameWidget = main.Single(w =>
             w.Name == "UI_FRONTEND_BUTTON_NEW_GAME");
-        Assert.Equal(15, newGameWidget.MessageId);
-        Assert.Equal(0, newGameWidget.Plus224);
+        Assert.Equal(15, newGameWidget.ActionOnLeftUnclicked);
+        Assert.Equal(0, newGameWidget.ActionOnLeftClicked);
         var cancel = FrontendUiDef.TryParse(bin.FindEntry("UI_CANCEL")!)!;
         Assert.Equal(38, cancel.Type);
-        Assert.Equal(FrontendMessages.CancelNewProfile, cancel.MessageId);
+        Assert.Equal(FrontendMessages.CancelNewProfile, cancel.ActionOnLeftUnclicked);
         Assert.Equal(
             FrontendMessages.CancelNewProfile,
             FrontendUiDef.ReadPersistI32(
                 bin.FindEntry("UI_CANCEL")!.Raw,
-                FrontendUiDef.MessageIdCrc));
+                FrontendUiDef.ActionOnLeftUnclickedCrc));
         _ = install;
     }
 

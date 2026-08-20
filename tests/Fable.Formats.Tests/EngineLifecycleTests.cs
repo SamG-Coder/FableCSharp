@@ -581,7 +581,7 @@ public sealed class EngineLifecycleTests
             EngineLifecycle.FrontendPressStartSlot, out var slot));
         Assert.Equal(EngineLifecycle.FrontendPressStartMenu, slot.Name);
         Assert.Equal(10, slot.Type);
-        Assert.Equal(0, slot.MessageId);
+        Assert.Equal(0, slot.ActionOnLeftUnclicked);
         Assert.Equal(EngineLifecycle.FrontendPressStartMessage, slot.Type10Packet);
         Assert.Equal(5, slot.State);
         Assert.Equal(0x005952C3u, EngineLifecycle.FrontendInitSelectFn);
@@ -600,17 +600,17 @@ public sealed class EngineLifecycleTests
             EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
         Assert.DoesNotContain(life.FrontendWidgets, w =>
             w.Type == 10 &&
-            w.MessageId == EngineLifecycle.FrontendPressStartMessage);
+            w.ActionOnLeftUnclicked == EngineLifecycle.FrontendPressStartMessage);
         Assert.True(life.TryGetFrontendSlot(
             EngineLifecycle.FrontendPressStartSlot, out var kept));
         Assert.Equal(EngineLifecycle.FrontendPressStartMenu, kept.Name);
-        Assert.Equal(0, kept.MessageId);
+        Assert.Equal(0, kept.ActionOnLeftUnclicked);
         Assert.Equal(EngineLifecycle.FrontendPressStartMessage, kept.Type10Packet);
         Assert.True(life.TryGetFrontendSlot(
             EngineLifecycle.FrontendNewProfileSlot, out var profile));
         Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, profile.Name);
         Assert.Equal(10, profile.Type);
-        Assert.Equal(0, profile.MessageId);
+        Assert.Equal(0, profile.ActionOnLeftUnclicked);
         Assert.Equal(6, kept.State);
         Assert.Equal(5, profile.State);
         Assert.Equal(0x0052CF40u, FrontendWidgetType.SelectStateFn);
@@ -684,7 +684,7 @@ public sealed class EngineLifecycleTests
             EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
         Assert.True(life.TryGetFrontendSlot(
             EngineLifecycle.FrontendPressStartSlot, out var press));
-        Assert.Equal(0, press.MessageId);
+        Assert.Equal(0, press.ActionOnLeftUnclicked);
         Assert.Equal(EngineLifecycle.FrontendPressStartMessage, press.Type10Packet);
         Assert.True(life.TryGetFrontendSlot(
             EngineLifecycle.FrontendNewProfileSlot, out var profile));
@@ -693,7 +693,7 @@ public sealed class EngineLifecycleTests
             EngineLifecycle.FrontendMainMenuSlot, out var menu));
         Assert.Equal(EngineLifecycle.FrontendMainMenuNoContinue, menu.Name);
         Assert.Equal(10, menu.Type);
-        Assert.Equal(0, menu.MessageId);
+        Assert.Equal(0, menu.ActionOnLeftUnclicked);
         Assert.Equal(
             new[]
             {
@@ -704,7 +704,7 @@ public sealed class EngineLifecycleTests
             life.FrontendResidentSlots);
         Assert.DoesNotContain(life.FrontendWidgets, w =>
             w.Type == 10 &&
-            w.MessageId == EngineLifecycle.FrontendPressStartMessage);
+            w.ActionOnLeftUnclicked == EngineLifecycle.FrontendPressStartMessage);
     }
 
     [Fact]
@@ -4289,7 +4289,7 @@ public sealed class EngineLifecycleTests
         Assert.False(life.RetailNewGameFlag);
         Assert.Contains(life.FrontendWidgets, w =>
             w.Name == "UI_FRONTEND_BUTTON_NEW_GAME" &&
-            w.MessageId == FrontendMessages.NewGame);
+            w.ActionOnLeftUnclicked == FrontendMessages.NewGame);
         Assert.All(
             life.FrontendWidgets.Where(w =>
                 w.GraphicId == 0 && w.Type != FrontendWidgetType.TableType),
@@ -4602,7 +4602,7 @@ public sealed class EngineLifecycleTests
         Assert.True(life.FrontendChildCount >= 6);
         Assert.Contains(life.FrontendWidgets, w => w.Name == EngineLifecycle.FrontendPressStartText);
         Assert.Contains(life.FrontendWidgets, w =>
-            w.TextTag == EngineLifecycle.FrontendPressStartTextTag);
+            w.TextValue == EngineLifecycle.FrontendPressStartTextValue);
         Assert.True(life.FrontendDefFound);
         Assert.Equal("UI", life.FrontendDefTypeName);
         Assert.True(life.FrontendType22HandlerRegistered);
@@ -4654,7 +4654,7 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.FrontendWidgets, w => w.Name == "UI_BLENDING_BACKGROUNDS_FORREST");
         Assert.Contains(life.FrontendWidgets, w => w.Name == "UI_PRESS_START_TEXT");
         var text = Assert.Single(life.FrontendWidgets, w => w.Name == "UI_PRESS_START_TEXT");
-        Assert.Equal("TEXT_GUI_MENU_PRESS_BUTTON", text.TextTag);
+        Assert.Equal("TEXT_GUI_MENU_PRESS_BUTTON", text.TextValue);
         Assert.Equal(6, text.Type);
         var forestOne = life.FrontendWidgets
             .Select((widget, index) => (widget, index))
@@ -4847,7 +4847,7 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.FrontendWidgets, w =>
             w.Name == "UI_OPTIONS_TEXT_CONTROL_ARROWS" && w.Visible &&
             w.StyleIndex == FrontendWidgetType.TextSliderFirstSeenSelect &&
-            FrontendWidgetType.LeafDipSkipped(w.Colour));
+            !FrontendWidgetType.LeafDipSkipped(w.Colour));
         Assert.Contains(life.FrontendWidgets, w =>
             w.Name == "UI_OPTIONS_TEXT_CONTROL_WASD" && w.Visible &&
             w.StyleIndex == FrontendWidgetType.FirstSeenState &&
@@ -4867,7 +4867,7 @@ public sealed class EngineLifecycleTests
         Assert.True(life.TryGetFrontendSlot(EngineLifecycle.FrontendPressStartSlot, out var leftover));
         Assert.Equal(6, leftover.State);
         Assert.Contains(life.FrontendSlotTree(EngineLifecycle.FrontendPressStartSlot),
-            w => w.Name == "UI_PRESS_START_TEXT" && w.State == 6 && w.Visible);
+            w => w.Name == "UI_PRESS_START_TEXT" && w.State == 0 && w.Visible);
         Assert.Contains(life.FrontendSlotTree(EngineLifecycle.FrontendPressStartSlot),
             w => w.Name.Contains("FORREST_1_1", StringComparison.Ordinal) && w.Visible);
         Assert.Contains(life.Trace.Events, e =>
@@ -4878,7 +4878,7 @@ public sealed class EngineLifecycleTests
         Assert.Equal(EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
         Assert.Contains(life.FrontendWidgets, w =>
             w.Name == "UI_FRONTEND_BUTTON_NEW_GAME" &&
-            w.MessageId == FrontendMessages.NewGame);
+            w.ActionOnLeftUnclicked == FrontendMessages.NewGame);
         Assert.NotNull(life.FrontendBatch);
         Assert.False(life.FrontendBatch.Value.IsEmpty);
         WriteScreenDump(life, "main-menu");
@@ -4925,7 +4925,7 @@ public sealed class EngineLifecycleTests
         {
             sb.AppendLine(
                 $"{w.Name}\tt={w.Type}\tdest={w.DestX0},{w.DestY0},{w.DestX1},{w.DestY1}\t" +
-                $"g={w.GraphicId}\t+204={w.Leftover204}\ttex={w.TextureName}\tmsg={w.MessageId}");
+                $"g={w.GraphicId}\t+204={w.Leftover204}\ttex={w.TextureName}\taction={w.ActionOnLeftUnclicked}");
         }
 
         File.WriteAllText(ExportDir.PathFor("frontend", name + "-dests.txt"), sb.ToString());

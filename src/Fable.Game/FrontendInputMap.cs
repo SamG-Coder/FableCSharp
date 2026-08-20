@@ -89,10 +89,9 @@ public sealed class FrontendInputMap
     /// <c>0055B040</c> from def
     /// <c>+228</c> (CRC
     /// <c>0x53C644E4</c>). <c>+224</c>
-    /// is <see cref="FrontendUiDef.Plus224Crc"/>.
-    /// Name UNREAD.
+    /// is <see cref="FrontendUiDef.ActionOnLeftClickedCrc"/>.
     /// </summary>
-    public const uint MessageIdCrc = FrontendUiDef.MessageIdCrc;
+    public const uint ActionOnLeftUnclickedCrc = FrontendUiDef.ActionOnLeftUnclickedCrc;
     public const uint Type4RecordCtor = 0x00A03C80;
     public const uint Type4TranslateFn = 0x00AB5420;
     public const uint Type11ActionFn = 0x0054DBC0;
@@ -103,21 +102,21 @@ public sealed class FrontendInputMap
     /// <c>[widget+372]</c> filled from
     /// <c>[def+224]</c>. First-seen
     /// Accept / New Game
-    /// <see cref="FrontendUiDef.Plus224Crc"/>
+    /// <see cref="FrontendUiDef.ActionOnLeftClickedCrc"/>
     /// is 0 so that list is empty.
     /// </summary>
     public const uint Type34ClickFn = 0x0055AF60;
     public const int Action26ListOffset = 372;
-    public const int Action26PostDefOffset = FrontendUiDef.Plus224DefOffset;
+    public const int Action26PostDefOffset = FrontendUiDef.ActionOnLeftClickedRetailOffset;
     /// <summary>
     /// <c>0055ACF0</c> posts
     /// <c>[widget+380]</c> from
     /// <c>[def+228]</c> /
-    /// <see cref="FrontendUiDef.MessageIdCrc"/>.
+    /// <see cref="FrontendUiDef.ActionOnLeftUnclickedCrc"/>.
     /// Not action 26.
     /// </summary>
-    public const uint Plus228PostFn = 0x0055ACF0;
-    public const int Plus228ListOffset = 380;
+    public const uint ActionOnLeftUnclickedPostFn = 0x0055ACF0;
+    public const int ActionOnLeftUnclickedListOffset = 380;
     /// <summary>
     /// Action 26 tail: <c>cmp 25</c>
     /// else <c>ret 4</c>. Not a poster.
@@ -129,7 +128,7 @@ public sealed class FrontendInputMap
     /// <see cref="Type34ClickFn"/>.
     /// </summary>
     public const int Type11SelectedOffset = 352;
-    public const int PersistMessageDefOffset = FrontendUiDef.MessageIdDefOffset;
+    public const int ActionOnLeftUnclickedDefOffset = FrontendUiDef.ActionOnLeftUnclickedRetailOffset;
     public const int TypeButton = 11;
     public const int TypeAccept = 38;
 
@@ -226,7 +225,7 @@ public sealed class FrontendInputMap
     /// (attach 0xE5). Type 11/38
     /// <c>0054DBC0</c>/<c>0055AD60</c>
     /// action 26 posts persist
-    /// <see cref="MessageIdCrc"/>.
+    /// <see cref="FrontendUiDef.ActionOnLeftUnclickedCrc"/>.
     /// Action 33 is not a frontend
     /// message.
     /// </summary>
@@ -269,7 +268,7 @@ public sealed class FrontendInputMap
         ArgumentNullException.ThrowIfNull(widgets);
         foreach (var widget in widgets)
         {
-            if (!widget.Visible || widget.Clip || widget.Type10Packet == 0)
+            if (!widget.Visible || widget.Type10Packet == 0)
                 continue;
             if (widget.Type == FrontendWidgetType.Menu)
                 return widget.Type10Packet;
@@ -289,12 +288,12 @@ public sealed class FrontendInputMap
         ArgumentNullException.ThrowIfNull(widgets);
         foreach (var widget in widgets)
         {
-            if (!widget.Visible || widget.Clip || !widget.Armed)
+            if (!widget.Visible || !widget.Armed)
                 continue;
-            if (widget.MessageId == 0)
+            if (widget.ActionOnLeftUnclicked == 0)
                 continue;
             if (widget.Type == TypeButton || widget.Type == TypeAccept)
-                return widget.MessageId;
+                return widget.ActionOnLeftUnclicked;
         }
 
         return null;

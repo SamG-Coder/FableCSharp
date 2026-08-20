@@ -300,8 +300,10 @@ public static class FrontendDx9Submit
     public static void IssueSpriteUp(IDirect3DDevice9 device, FrontendDx9DrawRecord rec)
     {
         device.SetTexture(0, rec.TextureId);
-        var vertices = PackSpriteUpVertices(rec);
-        var indices = PackQuadIndexBytes();
+        Span<FrontendDx9Vertex> vertices = stackalloc FrontendDx9Vertex[SpriteUpNumVertices];
+        FillSpriteVertices(rec, vertices);
+        var vertexBytes = MemoryMarshal.AsBytes(vertices);
+        var indices = MemoryMarshal.AsBytes(QuadIndices.AsSpan());
         device.DrawIndexedPrimitiveUP(
             Dx9PrimitiveType.TriangleList,
             DipUpMinVertexIndex,
@@ -309,19 +311,56 @@ public static class FrontendDx9Submit
             SpriteUpPrimitiveCount,
             indices,
             Index16Format,
-            vertices,
+            vertexBytes,
             SpriteUpVertexStride);
     }
 
     public static void IssueGlyphUp(IDirect3DDevice9 device, FrontendDx9DrawRecord rec)
     {
         device.SetTexture(0, rec.TextureId);
-        var vertices = PackGlyphUpVertices(rec);
+        Span<FrontendDx9Vertex> vertices = stackalloc FrontendDx9Vertex[GlyphUpVertsPerQuad];
+        FillGlyphVertices(rec, vertices);
+        Span<byte> vertexBytes = stackalloc byte[GlyphUpVertsPerQuad * GlyphUpVertexStride];
+        var padded = MemoryMarshal.AsBytes(vertices);
+        for (var i = 0; i < vertices.Length; i++)
+            padded.Slice(i * SpriteUpVertexStride, GlyphUpVertexStride)
+                .CopyTo(vertexBytes.Slice(i * GlyphUpVertexStride, GlyphUpVertexStride));
         device.DrawPrimitiveUP(
             Dx9PrimitiveType.TriangleList,
             GlyphUpPrimitiveCount,
-            vertices,
+            vertexBytes,
             GlyphUpVertexStride);
+    }
+
+    private static void FillSpriteVertices(
+        FrontendDx9DrawRecord rec, Span<FrontendDx9Vertex> vertices)
+    {
+        var argb = rec.DiffuseArgb == 0 ? 0xFFFFFFFFu : rec.DiffuseArgb;
+        vertices[0] = new FrontendDx9Vertex(
+            rec.DestX0, rec.DestY0, 0f, Dx9VulkanFrontend.RecoveredRhw,
+            argb, rec.U0, rec.V0);
+        vertices[1] = new FrontendDx9Vertex(
+            rec.DestX1, rec.DestY0, 0f, Dx9VulkanFrontend.RecoveredRhw,
+            argb, rec.U1, rec.V0);
+        vertices[2] = new FrontendDx9Vertex(
+            rec.DestX0, rec.DestY1, 0f, Dx9VulkanFrontend.RecoveredRhw,
+            argb, rec.U0, rec.V1);
+        vertices[3] = new FrontendDx9Vertex(
+            rec.DestX1, rec.DestY1, 0f, Dx9VulkanFrontend.RecoveredRhw,
+            argb, rec.U1, rec.V1);
+    }
+
+    private static void FillGlyphVertices(
+        FrontendDx9DrawRecord rec, Span<FrontendDx9Vertex> vertices)
+    {
+        Span<FrontendDx9Vertex> quad = stackalloc FrontendDx9Vertex[SpriteUpNumVertices];
+        FillSpriteVertices(rec, quad);
+        vertices[0] = quad[0];
+        vertices[1] = quad[1];
+        vertices[2] = quad[2];
+        vertices[3] = quad[1];
+        vertices[4] = quad[3];
+        vertices[5] = quad[2];
     }
 
     public static byte[] PackQuadIndexBytes()

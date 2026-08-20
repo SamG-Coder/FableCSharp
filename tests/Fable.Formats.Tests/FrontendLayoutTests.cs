@@ -137,8 +137,8 @@ public sealed class FrontendLayoutTests
             PositionY: 0f,
             LeftoverW: 128f,
             LeftoverH: 256f,
-            ScaleOriginToViewport: true,
-            ScaleSizeToViewport: true);
+            UseRelativePosition: true,
+            UseRelativeZoom: true);
         var dest = FrontendLayout.Compute(tile, parent: null, FirstSeen);
         Assert.Equal(819f, dest.X0);
         Assert.Equal(1024f, dest.X1);
@@ -153,8 +153,8 @@ public sealed class FrontendLayoutTests
             PositionY: 240f,
             LeftoverW: 10f,
             LeftoverH: 10f,
-            ScaleOriginToViewport: true,
-            ScaleSizeToViewport: true);
+            UseRelativePosition: true,
+            UseRelativeZoom: true);
         var dest = FrontendLayout.Compute(remapped, parent: null, FirstSeen);
         Assert.Equal(512f, dest.OriginX);
         Assert.Equal(384f, dest.OriginY);
@@ -263,16 +263,16 @@ public sealed class FrontendLayoutTests
         var rootDef = FrontendUiDef.TryParse(bin.FindEntry("UI_FRONTEND_PRESS_START_MENU")!)!;
         var titleDef = FrontendUiDef.TryParse(bin.FindEntry("UI_TITLE")!)!;
         var textDef = FrontendUiDef.TryParse(bin.FindEntry("UI_PRESS_START_TEXT")!)!;
-        Assert.True(rootDef.ScaleSizeToViewport);
-        Assert.False(rootDef.ScaleOriginToViewport);
-        Assert.False(titleDef.ScaleSizeToViewport);
-        Assert.False(titleDef.ScaleOriginToViewport);
+        Assert.True(rootDef.UseRelativeZoom);
+        Assert.False(rootDef.UseRelativePosition);
+        Assert.False(titleDef.UseRelativeZoom);
+        Assert.False(titleDef.UseRelativePosition);
 
         var root = FrontendLayout.Compute(
             new FrontendWidgetLayout(
                 rootDef.PositionX, rootDef.PositionY,
-                ScaleSizeToViewport: rootDef.ScaleSizeToViewport,
-                ScaleOriginToViewport: rootDef.ScaleOriginToViewport),
+                UseRelativeZoom: rootDef.UseRelativeZoom,
+                UseRelativePosition: rootDef.UseRelativePosition),
             parent: null,
             FirstSeen);
         Assert.Equal(0f, root.X0);
@@ -286,8 +286,8 @@ public sealed class FrontendLayoutTests
             new FrontendWidgetLayout(
                 titleDef.PositionX, titleDef.PositionY,
                 LeftoverW: 256f, LeftoverH: 128f,
-                ScaleSizeToViewport: titleDef.ScaleSizeToViewport,
-                ScaleOriginToViewport: titleDef.ScaleOriginToViewport),
+                UseRelativeZoom: titleDef.UseRelativeZoom,
+                UseRelativePosition: titleDef.UseRelativePosition),
             root,
             FirstSeen);
         Assert.Equal(70f * scaledOne.X, title.OriginX);
@@ -297,8 +297,8 @@ public sealed class FrontendLayoutTests
             new FrontendWidgetLayout(
                 textDef.PositionX, textDef.PositionY,
                 LeftoverW: 0f, LeftoverH: 0f,
-                ScaleSizeToViewport: textDef.ScaleSizeToViewport,
-                ScaleOriginToViewport: textDef.ScaleOriginToViewport),
+                UseRelativeZoom: textDef.UseRelativeZoom,
+                UseRelativePosition: textDef.UseRelativePosition),
             root,
             FirstSeen);
         Assert.Equal(320f * scaledOne.X, text.OriginX);
@@ -343,10 +343,10 @@ public sealed class FrontendLayoutTests
             sb.Append(" layer=").Append(def.Layer);
             sb.Append(" xy=").Append(def.PositionX).Append(',').Append(def.PositionY);
             sb.Append(" wh=").Append(def.Width).Append(',').Append(def.Height);
-            sb.Append(" plus96=").Append(def.Plus96);
+            sb.Append(" expansionType=").Append(def.ExpansionType);
             sb.Append(" sprites=").Append(def.Sprites);
             sb.Append(" graphic=").Append(def.GraphicBankId);
-            sb.Append(" text=").Append(def.TextTag ?? "-");
+            sb.Append(" text=").Append(def.TextValue ?? "-");
             sb.Append(" kids=");
             foreach (var i in def.ChildIndices)
             {
@@ -408,7 +408,7 @@ public sealed class FrontendLayoutTests
             var def = FrontendUiDef.TryParse(bin.FindEntry(name)!)!;
             sb.Append(name).Append(" type=").Append(def.Type);
             sb.Append(" wh=").Append(def.Width).Append(',').Append(def.Height);
-            sb.Append(" plus96=").Append(def.Plus96);
+            sb.Append(" expansionType=").Append(def.ExpansionType);
             sb.Append(" graphic=").Append(def.GraphicBankId);
             sb.Append(" alpha=").Append(def.ColourA);
             sb.Append(" sprites=").Append(def.Sprites);
@@ -429,14 +429,14 @@ public sealed class FrontendLayoutTests
 
         File.WriteAllText(scratch, sb.ToString());
         var editText = FrontendUiDef.TryParse(bin.FindEntry("UI_SCOREBOARD_EDITBOX_TEXT_FE")!)!;
-        Assert.True(string.IsNullOrEmpty(editText.TextTag));
+        Assert.True(string.IsNullOrEmpty(editText.TextValue));
         Assert.Equal(new[] { 0, 1, 4 }, left.SpriteKeys);
         var first = FrontendLayout.PlaceTableCell(
-            0, 3, 64f, 240f, 288f, 32f, 64f, 32f, plus96: 1, firstCapW: 64f, lastCapW: 64f);
+            0, 3, 64f, 240f, 288f, 32f, 64f, 32f, expansionType: 1, firstCapW: 64f, lastCapW: 64f);
         var right = FrontendLayout.PlaceTableCell(
-            1, 3, 64f, 240f, 288f, 32f, 64f, 32f, plus96: 1, firstCapW: 64f, lastCapW: 64f);
+            1, 3, 64f, 240f, 288f, 32f, 64f, 32f, expansionType: 1, firstCapW: 64f, lastCapW: 64f);
         var mid = FrontendLayout.PlaceTableCell(
-            2, 3, 64f, 240f, 288f, 32f, 8f, 32f, plus96: 1, firstCapW: 64f, lastCapW: 64f);
+            2, 3, 64f, 240f, 288f, 32f, 8f, 32f, expansionType: 1, firstCapW: 64f, lastCapW: 64f);
         Assert.Equal(64f, first.X0);
         Assert.Equal(128f, first.X1);
         Assert.Equal(288f, right.X0);
@@ -454,18 +454,18 @@ public sealed class FrontendLayoutTests
         var bin = GameBin.Load(install.FindCompiledDef("frontend.bin")!, names);
         var list = FrontendUiDef.TryParse(bin.FindEntry("UI_NEW_PROFILE_MENU")!)!;
         Assert.Equal(12, list.Type);
-        Assert.Equal(30f, list.Plus326);
+        Assert.Equal(30f, list.PositionOffsetY);
         Assert.Equal(4, list.ChildIndices.Count);
-        Assert.Equal(0f, list.Plus322);
-        Assert.Equal(0xA04E63BEu, FrontendUiDef.Plus322Crc);
+        Assert.Equal(0f, list.PositionOffsetX);
+        Assert.Equal(0xA04E63BEu, FrontendUiDef.PositionOffsetXCrc);
         Assert.Equal((0f, 0f), FrontendLayout.ListChildAuthoredPos(0, 0f, 0f, 0f, 30f, 0f, 0f));
         Assert.Equal((0f, 30f), FrontendLayout.ListChildAuthoredPos(1, -100f, 0f, 0f, 30f, 0f, 0f));
         Assert.Equal((0f, 60f), FrontendLayout.ListChildAuthoredPos(2, -100f, 0f, 0f, 30f, 0f, 0f));
         Assert.Equal((0f, 90f), FrontendLayout.ListChildAuthoredPos(3, -100f, 70f, 0f, 30f, 0f, 0f));
-        Assert.Equal(0f, FrontendLayout.ListChildAuthoredY(0, 0f, list.Plus326));
-        Assert.Equal(30f, FrontendLayout.ListChildAuthoredY(1, 0f, list.Plus326));
-        Assert.Equal(60f, FrontendLayout.ListChildAuthoredY(2, 0f, list.Plus326));
-        Assert.Equal(90f, FrontendLayout.ListChildAuthoredY(3, 70f, list.Plus326));
+        Assert.Equal(0f, FrontendLayout.ListChildAuthoredY(0, 0f, list.PositionOffsetY));
+        Assert.Equal(30f, FrontendLayout.ListChildAuthoredY(1, 0f, list.PositionOffsetY));
+        Assert.Equal(60f, FrontendLayout.ListChildAuthoredY(2, 0f, list.PositionOffsetY));
+        Assert.Equal(90f, FrontendLayout.ListChildAuthoredY(3, 70f, list.PositionOffsetY));
 
         var life = ReachNewProfile();
         var rows = life.FrontendWidgets
@@ -495,7 +495,7 @@ public sealed class FrontendLayoutTests
         Assert.True(
             left.SpriteDefIndices.Count == 3,
             "sprites=" + string.Join(",", left.SpriteDefIndices) +
-            " n=" + left.Sprites + " partial=" + left.Partial);
+            " n=" + left.Sprites + " schemaComplete=" + left.SchemaComplete);
         Assert.Equal((180f, 0f), FrontendLayout.Type2Leftover(left.Width, left.Height));
         var tableIndex = -1;
         for (var i = 0; i < life.FrontendWidgets.Count; i++)
@@ -794,10 +794,10 @@ public sealed class FrontendLayoutTests
                     PersistHeight: widget.PersistHeight > 0 ? (int)widget.PersistHeight : 0,
                     LeftoverW: leftoverW,
                     LeftoverH: leftoverH,
-                    Center: widget.Center,
-                    Absolute: widget.Absolute,
-                    ScaleOriginToViewport: widget.ScaleOriginToViewport,
-                    ScaleSizeToViewport: widget.ScaleSizeToViewport),
+                    PositionIsCenter: widget.PositionIsCenter,
+                    Independant: widget.Independant,
+                    UseRelativePosition: widget.UseRelativePosition,
+                    UseRelativeZoom: widget.UseRelativeZoom),
                 parentDest,
                 viewport);
         }
@@ -817,8 +817,8 @@ public sealed class FrontendLayoutTests
         Assert.Equal(
             FrontendLayout.ApplyResolutionScale(1f, 1f, viewport).X,
             dests["UI_TITLE_01"].ScaleX);
-        Assert.False(widgets.First(w => w.Name == "UI_TITLE_01").Center);
-        Assert.False(widgets.First(w => w.Name == "UI_TITLE_01").ScaleOriginToViewport);
+        Assert.False(widgets.First(w => w.Name == "UI_TITLE_01").PositionIsCenter);
+        Assert.False(widgets.First(w => w.Name == "UI_TITLE_01").UseRelativePosition);
         var title01 = FrontendUiDef.TryParse(bin.FindEntry("UI_TITLE_01")!)!;
         Assert.Equal(1f, title01.ZoomX);
         Assert.Equal(3, title01.GraphicBankId);
@@ -828,8 +828,8 @@ public sealed class FrontendLayoutTests
         Assert.Equal(128, titleTex.FrameHeight);
         var textWidget = widgets.First(w => w.Name == "UI_PRESS_START_TEXT");
         Assert.Equal(0, textWidget.GraphicId);
-        Assert.False(textWidget.ScaleSizeToViewport);
-        Assert.False(textWidget.ScaleOriginToViewport);
+        Assert.False(textWidget.UseRelativeZoom);
+        Assert.False(textWidget.UseRelativePosition);
         var textDest = dests["UI_PRESS_START_TEXT"];
         Assert.Equal(textDest.X0, textDest.X1);
         Assert.Equal(textDest.Y0, textDest.Y1);

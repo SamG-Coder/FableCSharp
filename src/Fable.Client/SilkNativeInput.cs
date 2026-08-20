@@ -49,6 +49,36 @@ public static class SilkNativeInput
         int windowW,
         int windowH)
     {
+        SetPointer(life, pos, windowW, windowH);
+        if (moved)
+            life.QueueInput(EngineInput.TypeMouse, 0);
+        if (lmbDown && !lmbWasDown)
+            life.QueueInput(EngineInput.Type4, 0);
+        if (!lmbDown && lmbWasDown)
+            life.QueueInput(EngineInput.Type6, 0);
+    }
+
+    /// <summary>
+    /// Queue an actual Silk mouse-button callback. Polling alone can miss a
+    /// complete click when down and up both occur between two update frames.
+    /// </summary>
+    public static void QueuePointerButton(
+        EngineLifecycle life,
+        Vector2D<float> pos,
+        bool down,
+        int windowW,
+        int windowH)
+    {
+        SetPointer(life, pos, windowW, windowH);
+        life.QueueInput(down ? EngineInput.Type4 : EngineInput.Type6, 0);
+    }
+
+    private static void SetPointer(
+        EngineLifecycle life,
+        Vector2D<float> pos,
+        int windowW,
+        int windowH)
+    {
         var destW = life.BackBufferWidth > 0 ? life.BackBufferWidth : 1024;
         var destH = life.BackBufferHeight > 0 ? life.BackBufferHeight : 768;
         var srcW = Math.Max(1, windowW);
@@ -57,11 +87,5 @@ public static class SilkNativeInput
             life.SetFrontendPointer(pos.X, pos.Y);
         else
             life.SetFrontendPointer(pos.X / srcW * destW, pos.Y / srcH * destH);
-        if (moved)
-            life.QueueInput(EngineInput.TypeMouse, 0);
-        if (lmbDown && !lmbWasDown)
-            life.QueueInput(EngineInput.Type4, 0);
-        if (!lmbDown && lmbWasDown)
-            life.QueueInput(EngineInput.Type6, 0);
     }
 }

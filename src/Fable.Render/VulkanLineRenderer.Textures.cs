@@ -17,6 +17,7 @@ public sealed unsafe partial class VulkanLineRenderer
         public DeviceMemory Memory;
         public ImageView View;
         public DescriptorSet Set;
+        public DescriptorSet FrontendSet;
     }
 
     public void SetTextures(IReadOnlyList<GpuTexture> textures)
@@ -24,7 +25,7 @@ public sealed unsafe partial class VulkanLineRenderer
         _vk.DeviceWaitIdle(_device);
         DestroyTextures();
 
-        var count = 2 + textures.Count;
+        var count = (2 + textures.Count) * 2;
         var poolSizes = stackalloc DescriptorPoolSize[]
         {
             new() { Type = DescriptorType.CombinedImageSampler, DescriptorCount = (uint)count },
@@ -177,6 +178,8 @@ public sealed unsafe partial class VulkanLineRenderer
         // D3D9 default POINT / NONE / WRAP.
         var samplerInfo = Parity.Dx9Vulkan.Dx9VulkanSamplerState.FirstSeenTemporary();
         Check(_vk.CreateSampler(_device, in samplerInfo, null, out _sampler));
+        var frontendSamplerInfo = Parity.Dx9Vulkan.Dx9VulkanSamplerState.FrontendType22();
+        Check(_vk.CreateSampler(_device, in frontendSamplerInfo, null, out _frontendSampler));
 
         var binding = new DescriptorSetLayoutBinding
         {
@@ -256,6 +259,22 @@ public sealed unsafe partial class VulkanLineRenderer
         };
         Check(_vk.CreateImageView(_device, in viewInfo, null, out var view));
 
+        var set = AllocateTextureSet(view, _sampler);
+        var frontendSet = AllocateTextureSet(view, _frontendSampler);
+
+        return new DeviceTexture
+        {
+            Id = texture.Id,
+            Image = image,
+            Memory = memory,
+            View = view,
+            Set = set,
+            FrontendSet = frontendSet,
+        };
+    }
+
+    private DescriptorSet AllocateTextureSet(ImageView view, Sampler sampler)
+    {
         var setLayout = _descriptorSetLayout;
         var allocInfo = new DescriptorSetAllocateInfo
         {
@@ -267,7 +286,7 @@ public sealed unsafe partial class VulkanLineRenderer
         Check(_vk.AllocateDescriptorSets(_device, in allocInfo, out var set));
         var imageWrite = new DescriptorImageInfo
         {
-            Sampler = _sampler,
+            Sampler = sampler,
             ImageView = view,
             ImageLayout = ImageLayout.ShaderReadOnlyOptimal,
         };
@@ -281,15 +300,7 @@ public sealed unsafe partial class VulkanLineRenderer
             PImageInfo = &imageWrite,
         };
         _vk.UpdateDescriptorSets(_device, 1, in write, 0, null);
-
-        return new DeviceTexture
-        {
-            Id = texture.Id,
-            Image = image,
-            Memory = memory,
-            View = view,
-            Set = set,
-        };
+        return set;
     }
 
     private void Transition(Image image, ImageLayout oldLayout, ImageLayout newLayout)

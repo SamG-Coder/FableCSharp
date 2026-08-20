@@ -19,6 +19,10 @@ public sealed class VulkanDx9Device : IDirect3DDevice9
     private readonly List<FrontendDraw> _draws = [];
     private readonly Dictionary<int, GpuTexture> _textures = [];
     private readonly Dictionary<int, int> _renderState = [];
+    private FrontendGpuVertex[] _presentVertices = [];
+    private ushort[] _presentIndices = [];
+    private FrontendDraw[] _presentDraws = [];
+    private GpuTexture[] _presentTextures = [];
     private int _nextTexture = 1;
     private int _stage0;
     private Dx9Viewport _viewport = new(
@@ -241,12 +245,21 @@ public sealed class VulkanDx9Device : IDirect3DDevice9
     public void Present()
     {
         PresentCount++;
-        var textures = _textures.Values.ToArray();
+        EnsureLength(ref _presentVertices, _vertices.Count);
+        EnsureLength(ref _presentIndices, _indices.Count);
+        EnsureLength(ref _presentDraws, _draws.Count);
+        EnsureLength(ref _presentTextures, _textures.Count);
+        _vertices.CopyTo(_presentVertices);
+        _indices.CopyTo(_presentIndices);
+        _draws.CopyTo(_presentDraws);
+        var textureIndex = 0;
+        foreach (var texture in _textures.Values)
+            _presentTextures[textureIndex++] = texture;
         LastBatch = new FrontendSubmitBatch(
-            [.. _vertices],
-            [.. _indices],
-            [.. _draws],
-            textures,
+            _presentVertices,
+            _presentIndices,
+            _presentDraws,
+            _presentTextures,
             _viewport.X,
             _viewport.Y,
             _viewport.Width,
@@ -256,6 +269,12 @@ public sealed class VulkanDx9Device : IDirect3DDevice9
         Renderer?.SetFrontendBatch(LastBatch.IsEmpty ? null : LastBatch);
         if (OwnsSwapchainPresent)
             Renderer?.PresentDx9();
+    }
+
+    private static void EnsureLength<T>(ref T[] array, int length)
+    {
+        if (array.Length != length)
+            array = new T[length];
     }
 
     private FrontendGpuVertex ToGpu(
