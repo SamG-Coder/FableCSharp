@@ -1,6 +1,7 @@
 using Fable.Client;
 using Fable.Dx9;
 using Fable.Game;
+using Silk.NET.Input;
 
 namespace Fable.Formats.Tests;
 
@@ -104,5 +105,16 @@ public sealed class Dx9ArchitectureTests
         Assert.NotNull(type.GetMethod("QueueKeys"));
         Assert.NotNull(type.GetMethod("QueuePointer"));
         Assert.NotNull(type.GetMethod("QueuePointerButton"));
+    }
+
+    [Fact]
+    public void Silk_backspace_is_queued_as_the_native_type15_character()
+    {
+        var life = new EngineLifecycle();
+        SilkNativeInput.QueueEditKey(life, Key.Backspace);
+        life.PumpInput();
+        Assert.Contains(
+            life.Input.Applied,
+            item => item.Type == EngineInput.Type15 && item.Key == '\b');
     }
 }

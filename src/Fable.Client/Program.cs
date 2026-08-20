@@ -78,7 +78,10 @@ window.Load += () =>
     input = window.CreateInput();
     var keys = input.Keyboards.Count > 0 ? input.Keyboards[0] : null;
     if (keys is not null)
+    {
         keys.KeyChar += (_, ch) => SilkNativeInput.QueueChar(life, ch);
+        keys.KeyDown += (_, key, _) => SilkNativeInput.QueueEditKey(life, key);
+    }
     mouse = input.Mice.Count > 0 ? input.Mice[0] : null;
     if (mouse is not null)
     {

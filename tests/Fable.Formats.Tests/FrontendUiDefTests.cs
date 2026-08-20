@@ -85,6 +85,42 @@ public sealed class FrontendUiDefTests
     }
 
     [Fact]
+    public void New_profile_sliders_construct_persisted_arrow_controls_and_ranges()
+    {
+        var (_, _, bin) = LoadFrontend();
+        var sliderDef = FrontendUiDef.TryParse(
+            bin.FindEntry("UI_SLIDER_CAMERA_SENSITIVITY")!);
+        Assert.NotNull(sliderDef);
+        Assert.Equal(104f, sliderDef.DimensionsX);
+        Assert.Equal(0.1f, sliderDef.MinX);
+        Assert.Equal(1f, sliderDef.MaxX);
+        Assert.Equal(0.1f, sliderDef.StepX);
+        Assert.Equal(361, sliderDef.SliderLeft);
+        Assert.Equal(365, sliderDef.SliderRight);
+
+        var tree = FrontendWidgetFactory.Build(
+            bin, EngineLifecycle.FrontendNewProfileMenu);
+        var numericOwner = tree.FindIndex(
+            widget => widget.Name == "UI_SLIDER_CAMERA_SENSITIVITY");
+        var textOwner = tree.FindIndex(
+            widget => widget.Name == "UI_OPTIONS_CONTROL_METHOD_TEXT_SLIDER");
+        Assert.True(numericOwner >= 0);
+        Assert.True(textOwner >= 0);
+        Assert.Contains(tree, widget =>
+            widget.Name == "UI_OPTIONS_LEFT_ARROW" &&
+            widget.ControlOwnerIndex == numericOwner && widget.ControlDirection == -1);
+        Assert.Contains(tree, widget =>
+            widget.Name == "UI_OPTIONS_RIGHT_ARROW" &&
+            widget.ControlOwnerIndex == numericOwner && widget.ControlDirection == 1);
+        Assert.Contains(tree, widget =>
+            widget.Name == "UI_OPTIONS_LEFT_ARROW_TEXT" &&
+            widget.ControlOwnerIndex == textOwner && widget.ControlDirection == -1);
+        Assert.Contains(tree, widget =>
+            widget.Name == "UI_OPTIONS_RIGHT_ARROW_TEXT" &&
+            widget.ControlOwnerIndex == textOwner && widget.ControlDirection == 1);
+    }
+
+    [Fact]
     public void Complete_CUIDef_catalog_uses_original_names_and_matching_file_CRCs()
     {
         Assert.Equal(109, FrontendUiFieldCatalog.Fields.Count);

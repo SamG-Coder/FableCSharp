@@ -23,6 +23,13 @@ public static class SilkNativeInput
         life.QueueInput(EngineInput.Type15, ch);
     }
 
+    /// <summary>Silk reports editing keys separately from KeyChar.</summary>
+    public static void QueueEditKey(EngineLifecycle life, Key key)
+    {
+        if (key == Key.Backspace)
+            QueueChar(life, '\b');
+    }
+
     public static void QueueKeys(
         EngineLifecycle life, IKeyboard keyboard, bool skipEnter = false)
     {

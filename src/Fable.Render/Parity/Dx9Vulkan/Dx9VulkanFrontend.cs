@@ -426,18 +426,87 @@ public static class Dx9VulkanFrontend
         int vpX = 0,
         int vpY = 0,
         int vpW = DisplayWidth,
-        int vpH = DisplayHeight)
+        int vpH = DisplayHeight,
+        FrontendSubmitBatch? reuse = null)
     {
-        var vertices = new List<FrontendGpuVertex>(records.Count * GlyphVertsPerQuad);
-        var indices = new List<ushort>(records.Count * QuadIndices.Length);
-        var draws = new List<FrontendDraw>(records.Count);
-        foreach (var rec in records)
-            AppendRecord(rec, vpX, vpY, vpW, vpH, vertices, indices, draws);
+        var vertexCount = 0;
+        var indexCount = 0;
+        var drawCount = 0;
+        for (var recordIndex = 0; recordIndex < records.Count; recordIndex++)
+        {
+            var rec = records[recordIndex];
+            if (rec.DestX1 <= rec.DestX0 || rec.DestY1 <= rec.DestY0)
+                continue;
+            var glyph = rec.RecordType == (int)GlyphRecordType;
+            vertexCount += glyph ? GlyphVertsPerQuad : 4;
+            if (!glyph)
+                indexCount += QuadIndices.Length;
+            drawCount++;
+        }
+
+        var old = reuse.GetValueOrDefault();
+        var vertices = old.Vertices is { } oldVertices && oldVertices.Length == vertexCount
+            ? oldVertices
+            : new FrontendGpuVertex[vertexCount];
+        var indices = old.Indices is { } oldIndices && oldIndices.Length == indexCount
+            ? oldIndices
+            : new ushort[indexCount];
+        var draws = old.Draws is { } oldDraws && oldDraws.Length == drawCount
+            ? oldDraws
+            : new FrontendDraw[drawCount];
+        var textureArray = old.Textures is { } oldTextures && oldTextures.Length == textures.Count
+            ? oldTextures
+            : new GpuTexture[textures.Count];
+
+        var vertex = 0;
+        var index = 0;
+        var draw = 0;
+        for (var recordIndex = 0; recordIndex < records.Count; recordIndex++)
+        {
+            var rec = records[recordIndex];
+            if (rec.DestX1 <= rec.DestX0 || rec.DestY1 <= rec.DestY0)
+                continue;
+            var firstVertex = (uint)vertex;
+            var firstIndex = (uint)index;
+            var argb = rec.DiffuseArgb == 0 ? 0xFFFFFFFFu : rec.DiffuseArgb;
+            var tl = new FrontendDx9Vertex(
+                rec.DestX0, rec.DestY0, 0f, RecoveredRhw, argb, rec.U0, rec.V0);
+            var tr = new FrontendDx9Vertex(
+                rec.DestX1, rec.DestY0, 0f, RecoveredRhw, argb, rec.U1, rec.V0);
+            var bl = new FrontendDx9Vertex(
+                rec.DestX0, rec.DestY1, 0f, RecoveredRhw, argb, rec.U0, rec.V1);
+            var br = new FrontendDx9Vertex(
+                rec.DestX1, rec.DestY1, 0f, RecoveredRhw, argb, rec.U1, rec.V1);
+            var glyph = rec.RecordType == (int)GlyphRecordType;
+            if (glyph)
+            {
+                vertices[vertex++] = ToGpuVertex(tl, vpX, vpY, vpW, vpH, true);
+                vertices[vertex++] = ToGpuVertex(tr, vpX, vpY, vpW, vpH, true);
+                vertices[vertex++] = ToGpuVertex(bl, vpX, vpY, vpW, vpH, true);
+                vertices[vertex++] = ToGpuVertex(tr, vpX, vpY, vpW, vpH, true);
+                vertices[vertex++] = ToGpuVertex(br, vpX, vpY, vpW, vpH, true);
+                vertices[vertex++] = ToGpuVertex(bl, vpX, vpY, vpW, vpH, true);
+            }
+            else
+            {
+                vertices[vertex++] = ToGpuVertex(tl, vpX, vpY, vpW, vpH);
+                vertices[vertex++] = ToGpuVertex(tr, vpX, vpY, vpW, vpH);
+                vertices[vertex++] = ToGpuVertex(bl, vpX, vpY, vpW, vpH);
+                vertices[vertex++] = ToGpuVertex(br, vpX, vpY, vpW, vpH);
+                for (var q = 0; q < QuadIndices.Length; q++)
+                    indices[index++] = QuadIndices[q];
+            }
+
+            draws[draw++] = BuildDraw(rec, firstVertex, firstIndex);
+        }
+
+        for (var i = 0; i < textures.Count; i++)
+            textureArray[i] = textures[i];
         return new FrontendSubmitBatch(
-            [.. vertices],
-            [.. indices],
-            [.. draws],
-            [.. textures],
+            vertices,
+            indices,
+            draws,
+            textureArray,
             vpX,
             vpY,
             vpW,

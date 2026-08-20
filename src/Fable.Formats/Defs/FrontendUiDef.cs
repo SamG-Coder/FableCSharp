@@ -197,6 +197,19 @@ public sealed class FrontendUiDef
     /// <summary>CUIDef <c>+528</c>, right-button pressed visual state.</summary>
     public const uint RightClickedStateCrc = 0x50D249C6;
     public const uint InputDelayCrc = 0xC1C40F15;
+    public const uint DimensionsXCrc = 0xFCF7229C;
+    public const uint DimensionsYCrc = 0x8BF0120A;
+    public const uint MinXCrc = 0xB0B6EFA0;
+    public const uint MinYCrc = 0xC7B1DF36;
+    public const uint MaxXCrc = 0xA23D0BCF;
+    public const uint MaxYCrc = 0xD53A3B59;
+    public const uint StepXCrc = 0x9F7D2B2B;
+    public const uint StepYCrc = 0xE87A1BBD;
+    public const uint SliderLeftCrc = 0x78132691;
+    public const uint SliderRightCrc = 0xA2ABA4E0;
+    public const uint ActionCrc = FrontendUiSchema.ActionCrc;
+    public const uint ActionOnSelectedCrc = FrontendUiSchema.ActionOnSelectedCrc;
+    public const uint ActionOnUnselectedCrc = FrontendUiSchema.ActionOnUnselectedCrc;
     public const uint EditBoxParentIsButtonCrc = 0x80E7CC0F;
     public const uint PasswordBoxCrc = 0x85F48C10;
     public const uint EditBoxCharLimitCrc = 0xC906BCC4;
@@ -277,6 +290,8 @@ public sealed class FrontendUiDef
     /// type-2 cells along X.
     /// </summary>
     public int ExpansionType { get; init; }
+    public IReadOnlyList<int> HorizontalSeparations { get; init; } = [];
+    public IReadOnlyList<int> VerticalSeparations { get; init; } = [];
     /// <summary>
     /// Persist <see cref="PositionOffsetYCrc"/> /
     /// def <c>+326</c>.
@@ -382,6 +397,19 @@ public sealed class FrontendUiDef
     public int LeftClickedState { get; init; }
     public int RightClickedState { get; init; }
     public float InputDelay { get; init; }
+    public float DimensionsX { get; init; }
+    public float DimensionsY { get; init; }
+    public float MinX { get; init; }
+    public float MinY { get; init; }
+    public float MaxX { get; init; }
+    public float MaxY { get; init; }
+    public float StepX { get; init; }
+    public float StepY { get; init; }
+    public int SliderLeft { get; init; }
+    public int SliderRight { get; init; }
+    public int Action { get; init; }
+    public int ActionOnSelected { get; init; }
+    public int ActionOnUnselected { get; init; }
     public bool EditBoxParentIsButton { get; init; }
     public bool PasswordBox { get; init; }
     public int EditBoxCharLimit { get; init; }
@@ -423,6 +451,8 @@ public sealed class FrontendUiDef
         var spriteDefs = new List<int>();
         var spriteKeys = new List<int>();
         var expansionType = 0;
+        var horizontalSeparations = new List<int>();
+        var verticalSeparations = new List<int>();
         var positionOffsetY = 0f;
         var positionOffsetX = 0f;
         var states = 0;
@@ -625,13 +655,15 @@ public sealed class FrontendUiDef
 
             if (crc == HorizontalSeparationsCrc && payload + 4 <= raw.Length)
             {
-                cursor = payload + 4;
+                if (!TryReadI32Vector(raw, payload, horizontalSeparations, out cursor))
+                    break;
                 continue;
             }
 
             if (crc == VerticalSeparationsCrc && payload + 4 <= raw.Length)
             {
-                cursor = payload + 4;
+                if (!TryReadI32Vector(raw, payload, verticalSeparations, out cursor))
+                    break;
                 continue;
             }
 
@@ -797,6 +829,19 @@ public sealed class FrontendUiDef
         var leftClickedState = ReadPersistI32(raw, LeftClickedStateCrc);
         var rightClickedState = ReadPersistI32(raw, RightClickedStateCrc);
         var inputDelay = ReadPersistF32(raw, InputDelayCrc);
+        var dimensionsX = ReadPersistF32(raw, DimensionsXCrc);
+        var dimensionsY = ReadPersistF32(raw, DimensionsYCrc);
+        var minX = ReadPersistF32(raw, MinXCrc);
+        var minY = ReadPersistF32(raw, MinYCrc);
+        var maxX = ReadPersistF32(raw, MaxXCrc);
+        var maxY = ReadPersistF32(raw, MaxYCrc);
+        var stepX = ReadPersistF32(raw, StepXCrc);
+        var stepY = ReadPersistF32(raw, StepYCrc);
+        var sliderLeft = ReadPersistI32(raw, SliderLeftCrc);
+        var sliderRight = ReadPersistI32(raw, SliderRightCrc);
+        var action = ReadPersistI32(raw, ActionCrc);
+        var actionOnSelected = ReadPersistI32(raw, ActionOnSelectedCrc);
+        var actionOnUnselected = ReadPersistI32(raw, ActionOnUnselectedCrc);
         var editBoxParentIsButton = ReadPersistU8(raw, EditBoxParentIsButtonCrc) != 0;
         var passwordBox = ReadPersistU8(raw, PasswordBoxCrc) != 0;
         var editBoxCharLimit = ReadPersistI32(raw, EditBoxCharLimitCrc);
@@ -850,6 +895,8 @@ public sealed class FrontendUiDef
             SpriteDefIndices = spriteDefs,
             SpriteKeys = spriteKeys,
             ExpansionType = expansionType,
+            HorizontalSeparations = horizontalSeparations,
+            VerticalSeparations = verticalSeparations,
             PositionOffsetY = positionOffsetY,
             PositionOffsetX = positionOffsetX,
             States = states,
@@ -883,6 +930,19 @@ public sealed class FrontendUiDef
             LeftClickedState = leftClickedState,
             RightClickedState = rightClickedState,
             InputDelay = inputDelay,
+            DimensionsX = dimensionsX,
+            DimensionsY = dimensionsY,
+            MinX = minX,
+            MinY = minY,
+            MaxX = maxX,
+            MaxY = maxY,
+            StepX = stepX,
+            StepY = stepY,
+            SliderLeft = sliderLeft,
+            SliderRight = sliderRight,
+            Action = action,
+            ActionOnSelected = actionOnSelected,
+            ActionOnUnselected = actionOnUnselected,
             EditBoxParentIsButton = editBoxParentIsButton,
             PasswordBox = passwordBox,
             EditBoxCharLimit = editBoxCharLimit,
@@ -891,6 +951,22 @@ public sealed class FrontendUiDef
             SchemaComplete = schemaComplete,
             SchemaError = schemaError,
         };
+    }
+
+    private static bool TryReadI32Vector(
+        byte[] raw, int payload, List<int> values, out int cursor)
+    {
+        values.Clear();
+        cursor = payload;
+        if (payload + 4 > raw.Length)
+            return false;
+        var count = BitConverter.ToInt32(raw, payload);
+        cursor = payload + 4;
+        if (count is < 0 or > 256 || cursor + count * 4 > raw.Length)
+            return false;
+        for (var i = 0; i < count; i++, cursor += 4)
+            values.Add(BitConverter.ToInt32(raw, cursor));
+        return true;
     }
 
     /// <summary>

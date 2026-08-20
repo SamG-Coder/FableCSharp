@@ -17,6 +17,43 @@ namespace Fable.Formats.Tests;
 public sealed class Dx9VulkanFrontendTests
 {
     [Fact]
+    public void Frontend_batch_reuses_exact_size_arrays_between_frames()
+    {
+        var rec = new FrontendDx9DrawRecord(
+            0, 0, 32, 32, 0, 0, 1, 1, 0xFFFFFFFF, 0, 2);
+        var first = Dx9VulkanFrontend.BuildBatch([rec], [GpuTexture.White()]);
+        var second = Dx9VulkanFrontend.BuildBatch(
+            [rec with { DestX0 = 1, DestX1 = 33 }], [GpuTexture.White()],
+            reuse: first);
+
+        Assert.Same(first.Vertices, second.Vertices);
+        Assert.Same(first.Indices, second.Indices);
+        Assert.Same(first.Draws, second.Draws);
+        Assert.Same(first.Textures, second.Textures);
+        Assert.NotEqual(first.Vertices[0].Position, first.Vertices[1].Position);
+    }
+
+    [Fact]
+    public void Reused_frontend_batch_build_has_no_managed_allocations()
+    {
+        FrontendDx9DrawRecord[] records =
+        [
+            new(0, 0, 32, 32, 0, 0, 1, 1, 0xFFFFFFFF, 0, 2),
+            new(32, 0, 64, 32, 0, 0, 1, 1, 0xFFFFFFFF, 0, 2),
+        ];
+        GpuTexture[] textures = [GpuTexture.White()];
+        var batch = Dx9VulkanFrontend.BuildBatch(records, textures);
+        batch = Dx9VulkanFrontend.BuildBatch(records, textures, reuse: batch);
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        for (var i = 0; i < 32; i++)
+            batch = Dx9VulkanFrontend.BuildBatch(records, textures, reuse: batch);
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.Equal(0, allocated);
+    }
+
+    [Fact]
     public void Frontend_texture_sets_reuse_cached_pixel_storage()
     {
         var pixels = new byte[] { 1, 2, 3, 4 };

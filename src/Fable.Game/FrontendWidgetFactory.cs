@@ -231,6 +231,57 @@ public static class FrontendWidgetFactory
         }
 
         AttachSpriteCells(widgets, defs, parent, parentName, parentIndex, sprites, lookupText, names);
+        AttachSliderControls(widgets, defs, parent, parentName, parentIndex, sprites, lookupText, names);
+    }
+
+    /// <summary>
+    /// Type-15 <c>0054B4B0</c> and type-16 <c>00549B20</c> construct the
+    /// persisted SliderRight then SliderLeft definitions through the UI
+    /// factory. They are owned controls, not entries in Children.
+    /// </summary>
+    private static void AttachSliderControls(
+        List<FrontendWidget> widgets,
+        GameBin defs,
+        FrontendUiDef owner,
+        string ownerName,
+        int ownerIndex,
+        FrontendSpriteBank? sprites,
+        Func<string, string?>? lookupText,
+        NamesBin? names)
+    {
+        if (owner.Type is not (15 or FrontendWidgetType.TextSlider))
+            return;
+
+        // Text-slider arrow positions are authored in the row's coordinate
+        // system. Numeric-slider arrows are authored relative to the slider.
+        var visualParentIndex = widgets[ownerIndex].ParentIndex;
+        var visualParentName = widgets[ownerIndex].ParentName;
+
+        Attach(owner.SliderRight, +1);
+        Attach(owner.SliderLeft, -1);
+        return;
+
+        void Attach(int defIndex, int direction)
+        {
+            if ((uint)defIndex >= (uint)defs.Entries.Count)
+                return;
+            var control = FrontendUiDef.TryParse(defs.Entries[defIndex]);
+            if (control is null)
+                return;
+            var first = widgets.Count;
+            Add(widgets, control, control.InstanceName, visualParentName,
+                visualParentIndex, sprites, lookupText, names);
+            AttachChildren(widgets, defs, control, control.InstanceName, first,
+                sprites, lookupText, names);
+            for (var i = first; i < widgets.Count; i++)
+            {
+                widgets[i] = widgets[i] with
+                {
+                    ControlOwnerIndex = ownerIndex,
+                    ControlDirection = direction,
+                };
+            }
+        }
     }
 
     /// <summary>
@@ -324,7 +375,10 @@ public static class FrontendWidgetFactory
             LeftClickedState: def?.LeftClickedState ?? 0,
             RightClickedState: def?.RightClickedState ?? 0,
             InputDelay: def?.InputDelay ?? 0f,
+            EditBoxParentIsButton: def?.EditBoxParentIsButton ?? false,
+            PasswordBox: def?.PasswordBox ?? false,
             EditBoxCharLimit: def?.EditBoxCharLimit ?? 0,
+            EditBoxUsesIme: def?.EditBoxUsesIme ?? false,
             DisallowSpaceAsFirstChar: def?.DisallowSpaceAsFirstChar ?? false,
             Colour: ColourAtStyle(styleColours, FrontendWidgetType.FirstSeenState,
                 def),
@@ -332,6 +386,8 @@ public static class FrontendWidgetFactory
             PositionOffsetY: def?.PositionOffsetY ?? 0f,
             PositionOffsetX: def?.PositionOffsetX ?? 0f,
             ExpansionType: def?.ExpansionType ?? 0,
+            HorizontalSeparations: def?.HorizontalSeparations,
+            VerticalSeparations: def?.VerticalSeparations,
             StyleIndex: FrontendWidgetType.FirstSeenState,
             Flag302: PackFlag302(def),
             Alignement: def?.Alignement ?? 0,
@@ -339,7 +395,21 @@ public static class FrontendWidgetFactory
             StyleDurations: def?.StyleDurations,
             SwappingStates: def?.SwappingStates,
             SwappingTimes: def?.SwappingTimes,
-            SwapCurrentState: def?.SwappingStates.FirstOrDefault() ?? int.MinValue));
+            SwapCurrentState: def?.SwappingStates.FirstOrDefault() ?? int.MinValue,
+            DimensionsX: def?.DimensionsX ?? 0f,
+            DimensionsY: def?.DimensionsY ?? 0f,
+            MinX: def?.MinX ?? 0f,
+            MinY: def?.MinY ?? 0f,
+            MaxX: def?.MaxX ?? 0f,
+            MaxY: def?.MaxY ?? 0f,
+            StepX: def?.StepX ?? 0f,
+            StepY: def?.StepY ?? 0f,
+            SliderLeftDef: def?.SliderLeft ?? 0,
+            SliderRightDef: def?.SliderRight ?? 0,
+            Action: def?.Action ?? 0,
+            ActionOnSelected: def?.ActionOnSelected ?? 0,
+            ActionOnUnselected: def?.ActionOnUnselected ?? 0,
+            SliderValueX: def?.MinX ?? 0f));
     }
 
     /// <summary>

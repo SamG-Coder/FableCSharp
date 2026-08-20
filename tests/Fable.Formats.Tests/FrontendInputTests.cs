@@ -470,14 +470,23 @@ public sealed class FrontendInputTests
         Assert.Null(FrontendHitTest.HitIndex(life.FrontendWidgets, 96f, 304f));
         Assert.Equal(before, life.FrontendWidgets[slider].ActiveChild);
 
-        life.SetFrontendPointer(700f, 300f);
-        life.QueueInput(FrontendInputMap.Type4, 0);
-        life.QueueInput(FrontendInputMap.Type6, 0);
-        Assert.True(life.Pump());
+        var rightArrow = life.FrontendWidgets
+            .Select((widget, index) => (widget, index))
+            .First(pair => pair.widget.Name == "UI_OPTIONS_RIGHT_ARROW_TEXT" &&
+                           pair.widget.ControlOwnerIndex == slider).index;
+        ClickIndex(life, rightArrow);
         Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
         Assert.NotEqual(before, life.FrontendWidgets[slider].ActiveChild);
 
         var knob = IndexOf(life, "UI_SLIDER_CAMERA_SENSITIVITY");
+        var knobBefore = life.FrontendWidgets[knob].SliderValueX;
+        var numericRight = life.FrontendWidgets
+            .Select((widget, index) => (widget, index))
+            .First(pair => pair.widget.Name == "UI_OPTIONS_RIGHT_ARROW" &&
+                           pair.widget.ControlOwnerIndex == knob).index;
+        ClickIndex(life, numericRight);
+        Assert.Equal(knobBefore + life.FrontendWidgets[knob].StepX,
+            life.FrontendWidgets[knob].SliderValueX, 5);
         ClickIndex(life, knob);
         Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
         Assert.Equal(
@@ -501,6 +510,10 @@ public sealed class FrontendInputTests
         Assert.True(
             FrontendHitTest.TryDestPoint(life.FrontendWidgets, index, out var x, out var y),
             life.FrontendWidgets[index].Name + " dest empty");
+        var expected = life.FrontendWidgets[index].ControlOwnerIndex >= 0
+            ? life.FrontendWidgets[index].ControlOwnerIndex
+            : index;
+        Assert.Equal(expected, FrontendHitTest.HitIndex(life.FrontendWidgets, x, y));
         life.SetFrontendPointer(x, y);
         life.QueueInput(FrontendInputMap.TypeMouse, 0);
         Assert.True(life.Pump());

@@ -98,14 +98,48 @@ public static class FrontendHitTest
         ArgumentNullException.ThrowIfNull(tree);
         for (var i = tree.Count - 1; i >= 0; i--)
         {
+            if (!FrontendWidgetFactory.IsPresented(tree, i) || !tree[i].Enabled ||
+                !Contains(tree, i, x, y))
+                continue;
+            var owner = tree[i].ControlOwnerIndex;
+            if ((uint)owner < (uint)tree.Count && tree[owner].Enabled)
+                return owner;
+            if (InteractiveAt(tree, i) is int hit)
+                return hit;
+        }
+
+        return null;
+    }
+
+    /// <summary>Returns the last-drawn presented destination under the pointer.</summary>
+    public static int? VisualHitIndex(IReadOnlyList<FrontendWidget> tree, float x, float y)
+    {
+        ArgumentNullException.ThrowIfNull(tree);
+        for (var i = tree.Count - 1; i >= 0; i--)
+        {
             if (!FrontendWidgetFactory.IsPresented(tree, i))
                 continue;
             if (!tree[i].Enabled)
                 continue;
             if (!Contains(tree, i, x, y))
                 continue;
-            if (InteractiveAt(tree, i) is int hit)
-                return hit;
+            return i;
+        }
+
+        return null;
+    }
+
+    public static int? ControlVisualHitIndex(
+        IReadOnlyList<FrontendWidget> tree, int ownerIndex, float x, float y)
+    {
+        ArgumentNullException.ThrowIfNull(tree);
+        for (var i = tree.Count - 1; i >= 0; i--)
+        {
+            if (tree[i].ControlOwnerIndex != ownerIndex ||
+                !FrontendWidgetFactory.IsPresented(tree, i) || !tree[i].Enabled ||
+                !Contains(tree, i, x, y))
+                continue;
+            return i;
         }
 
         return null;

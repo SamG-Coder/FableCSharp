@@ -552,11 +552,6 @@ public sealed class FrontendLayoutTests
                 continue;
             }
 
-            if (widget.Type is FrontendWidgetType.TextSlider or FrontendWidgetType.EditBox)
-            {
-                Assert.True(widget.HitX1 > widget.HitX0 && widget.HitY1 > widget.HitY0,
-                    widget.Name + " hit empty");
-            }
         }
 
         Assert.NotEqual(ax, cx);
@@ -577,18 +572,17 @@ public sealed class FrontendLayoutTests
         var slider = IndexOf(life, "UI_OPTIONS_CONTROL_METHOD_TEXT_SLIDER");
         var before = life.FrontendWidgets[slider].ActiveChild;
         Assert.Null(FrontendHitTest.HitIndex(life.FrontendWidgets, 96f, 304f));
-        Assert.Equal(
-            slider,
-            FrontendHitTest.HitIndex(life.FrontendWidgets, 700f, 300f));
+        var sliderArrow = life.FrontendWidgets
+            .Select((widget, index) => (widget, index))
+            .First(pair => pair.widget.ControlOwnerIndex == slider).index;
+        Assert.True(FrontendHitTest.TryDestPoint(
+            life.FrontendWidgets, sliderArrow, out var sx, out var sy));
+        Assert.Equal(slider, FrontendHitTest.HitIndex(life.FrontendWidgets, sx, sy));
         var edit = IndexOf(life, "UI_NEW_PROFILE_EDIT_BOX");
-        var editHit = FrontendHitTest.HitRect(life.FrontendWidgets, edit);
-        Assert.True(editHit.X1 > editHit.X0 && editHit.Y1 > editHit.Y0);
+        Assert.True(life.FrontendWidgets[edit].EditBoxParentIsButton);
         Assert.Equal(
-            edit,
-            FrontendHitTest.HitIndex(
-                life.FrontendWidgets,
-                (editHit.X0 + editHit.X1) * 0.5f,
-                (editHit.Y0 + editHit.Y1) * 0.5f));
+            "UI_NEW_PROFILE_BUTTON",
+            life.FrontendWidgets[life.FrontendWidgets[edit].ParentIndex].Name);
         var knob = IndexOf(life, "UI_SLIDER_CAMERA_SENSITIVITY");
         Assert.Equal(
             knob,

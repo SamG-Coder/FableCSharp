@@ -13230,7 +13230,11 @@ public sealed class EngineLifecycle : IDisposable
     {
         Note(FrontendHitTest.HoverSelectFn, "Frontend", "UI",
             "0055ACB0 vtbl+580 0055BF10");
-        var hitIndex = FrontendHitTest.HitIndex(
+        // 0055ACB0 invokes the interactive widget's own AABB test. A later
+        // decorative sibling may cover the same pixels visually, but it does
+        // not suppress the button underneath. HitIndex keeps walking until it
+        // reaches an interactive owner and also maps authored slider arrows.
+        var buttonHit = FrontendHitTest.HitIndex(
             tree, FrontendPointerX, FrontendPointerY);
         for (var i = 0; i < tree.Count; i++)
         {
@@ -13240,7 +13244,7 @@ public sealed class EngineLifecycle : IDisposable
                 continue;
             var hit = FrontendHitTest.Contains(
                 tree, i, FrontendPointerX, FrontendPointerY)
-                || hitIndex == i;
+                || buttonHit == i;
             if (hit == widget.Hovered)
                 continue;
 
@@ -13311,13 +13315,23 @@ public sealed class EngineLifecycle : IDisposable
         var widget = _frontendWidgets[index];
         if (widget.Type == FrontendWidgetType.TextSlider)
         {
-            ApplyTextSliderHit(index);
+            var visual = FrontendHitTest.ControlVisualHitIndex(
+                _frontendWidgets, index, FrontendPointerX, FrontendPointerY);
+            var direction = visual is int visualIndex
+                ? _frontendWidgets[visualIndex].ControlDirection
+                : 0;
+            ApplyTextSliderHit(index, direction);
             return;
         }
 
         if (widget.Type == 15)
         {
-            ApplySliderHit(index);
+            var visual = FrontendHitTest.ControlVisualHitIndex(
+                _frontendWidgets, index, FrontendPointerX, FrontendPointerY);
+            var direction = visual is int visualIndex
+                ? _frontendWidgets[visualIndex].ControlDirection
+                : 0;
+            ApplySliderHit(index, direction);
             return;
         }
 
@@ -13331,14 +13345,16 @@ public sealed class EngineLifecycle : IDisposable
         _frontendWidgets[index] = widget with { Armed = true };
     }
 
-    private void ApplyTextSliderHit(int index)
+    private void ApplyTextSliderHit(int index, int direction)
     {
         var widget = _frontendWidgets[index];
         var childCount = FrontendWidgetFactory.ChildCount(_frontendWidgets, index);
         if (childCount == 0)
             return;
         var next = widget.ActiveChild;
-        if (FrontendHitTest.IsLeftHalf(_frontendWidgets, index, FrontendPointerX))
+        if (direction < 0 ||
+            (direction == 0 && FrontendHitTest.IsLeftHalf(
+                _frontendWidgets, index, FrontendPointerX)))
             next = next <= 0 ? childCount - 1 : next - 1;
         else
             next = next + 1 >= childCount ? 0 : next + 1;
@@ -13353,10 +13369,19 @@ public sealed class EngineLifecycle : IDisposable
             FrontendWidgetFactory.ChildAt(_frontendWidgets, index, next), 3);
     }
 
-    private void ApplySliderHit(int index)
+    private void ApplySliderHit(int index, int direction)
     {
         var widget = _frontendWidgets[index];
-        _frontendWidgets[index] = widget with { Armed = true, Hovered = true };
+        var value = widget.SliderValueX;
+        if (direction != 0 && widget.StepX > 0f)
+            value = Math.Clamp(value + direction * widget.StepX,
+                widget.MinX, widget.MaxX);
+        _frontendWidgets[index] = widget with
+        {
+            Armed = true,
+            Hovered = true,
+            SliderValueX = value,
+        };
     }
 
     private void UnarmType34Widgets()
@@ -13457,6 +13482,14 @@ public sealed class EngineLifecycle : IDisposable
 
             var persistX = widget.PersistX;
             var persistY = widget.PersistY;
+            if (widget.Type == 15 && widget.MaxX > widget.MinX &&
+                widget.DimensionsX != 0f)
+            {
+                var amount = Math.Clamp(
+                    (widget.SliderValueX - widget.MinX) /
+                    (widget.MaxX - widget.MinX), 0f, 1f);
+                persistX += amount * widget.DimensionsX;
+            }
             var siblingIndex = 0;
             if (widget.ParentIndex >= 0)
             {
@@ -13638,8 +13671,6 @@ public sealed class EngineLifecycle : IDisposable
             float y0 = widget.DestY0;
             float x1 = widget.DestX1;
             float y1 = widget.DestY1;
-            if (x1 <= x0 || y1 <= y0)
-                TryChromeHit(widgets, i, ref x0, ref y0, ref x1, ref y1);
             widgets[i] = widget with
             {
                 HitX0 = x0,
@@ -13648,79 +13679,6 @@ public sealed class EngineLifecycle : IDisposable
                 HitY1 = y1,
             };
         }
-    }
-
-    /// <summary>
-    /// Leftover #48: type-16/37 dest is a
-    /// point. Native sibling type-2
-    /// leftover is not a child dest.
-    /// Do not treat this size as
-    /// <c>0055B8F0</c> recovered.
-    /// </summary>
-    private static void TryChromeHit(
-        List<FrontendWidget> widgets,
-        int index,
-        ref float x0,
-        ref float y0,
-        ref float x1,
-        ref float y1)
-    {
-        var widget = widgets[index];
-        if (widget.Type != FrontendWidgetType.TextSlider &&
-            widget.Type != FrontendWidgetType.EditBox)
-            return;
-        var row = index;
-        while ((uint)row < (uint)widgets.Count)
-        {
-            var parent = widgets[row].ParentIndex;
-            if (parent < 0)
-                break;
-            if (widgets[parent].Type == FrontendWidgetType.List)
-                break;
-            row = parent;
-        }
-
-        var bestX0 = float.NegativeInfinity;
-        var bestW = 0f;
-        var bestH = 0f;
-        for (var c = 0; c < widgets.Count; c++)
-        {
-            if (widgets[c].Type != FrontendWidgetType.TableType)
-                continue;
-            var walk = c;
-            var under = false;
-            while ((uint)walk < (uint)widgets.Count)
-            {
-                if (walk == row)
-                {
-                    under = true;
-                    break;
-                }
-
-                walk = widgets[walk].ParentIndex;
-                if (walk < 0)
-                    break;
-            }
-
-            if (!under)
-                continue;
-            var w = widgets[c].DestX1 - widgets[c].DestX0;
-            var h = widgets[c].DestY1 - widgets[c].DestY0;
-            if (w <= 0f || h <= 0f)
-                continue;
-            if (widgets[c].DestX0 < bestX0)
-                continue;
-            bestX0 = widgets[c].DestX0;
-            bestW = w;
-            bestH = h;
-        }
-
-        if (bestW <= 0f || bestH <= 0f)
-            return;
-        x0 = widget.DestX0;
-        y0 = widget.DestY0;
-        x1 = x0 + bestW;
-        y1 = y0 + bestH;
     }
 
     private string? LookupFrontendText(string id)
@@ -13762,7 +13720,8 @@ public sealed class EngineLifecycle : IDisposable
             return;
         }
 
-        FrontendBatch = Dx9VulkanFrontend.BuildBatch(records, textures, 0, 0, width, height);
+        FrontendBatch = Dx9VulkanFrontend.BuildBatch(
+            records, textures, 0, 0, width, height, FrontendBatch);
         // The bitmap is a diagnostic/headless-test artifact. A live DX9/Vulkan
         // device consumes FrontendBatch directly; rebuilding a full RGBA
         // backbuffer here allocated ~3.1 MiB and CPU-blitted every frame.
