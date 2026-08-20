@@ -13,8 +13,40 @@ public sealed class FontFileTests
     {
         Assert.Equal(2, FrontendTextDraw.Type6PassCount);
         Assert.True(FrontendTextDraw.Type6UsesDiffuseColour);
+        Assert.Equal(2f, FrontendTextDraw.Type6OriginPad);
         Assert.Equal(0xAB000000u,
             FrontendTextDraw.BlackUnderlayColor(0xABCDEF12u));
+    }
+
+    [Fact]
+    public void Forward_lifecycle_trace_is_bounded_and_can_be_disabled()
+    {
+        var trace = new ForwardLifecycleTrace { MaxEvents = 2 };
+        trace.Add(1, "stage", "system", "one");
+        trace.Add(2, "stage", "system", "two");
+        trace.Add(3, "stage", "system", "discarded");
+        Assert.True(trace.IsSaturated);
+        Assert.Equal(2, trace.Events.Count);
+
+        trace.Enabled = false;
+        trace.MaxEvents = 3;
+        trace.Add(4, "stage", "system", "disabled");
+        Assert.Equal(2, trace.Events.Count);
+    }
+
+    [Fact]
+    public void ENG_ARIAL_16_atlas_contains_authored_antialias_coverage()
+    {
+        var (big, entry) = OpenMain(FontFile.UiFace);
+        using (big)
+        {
+            var font = FontFile.Parse(entry.Name, big.Read(entry));
+            Assert.Contains(Enumerable.Range(0, font.Atlas.Length / 4), pixel =>
+            {
+                var alpha = font.Atlas[pixel * 4 + 3];
+                return alpha is > 0 and < 255;
+            });
+        }
     }
 
     private static (BigArchive Big, BankEntry Entry) OpenMain(string name)

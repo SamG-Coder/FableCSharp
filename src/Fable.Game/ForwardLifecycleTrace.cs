@@ -9,7 +9,15 @@ namespace Fable.Game;
 /// </summary>
 public sealed class ForwardLifecycleTrace
 {
+    // Tests and explicit forensic captures need the complete forward history.
+    // The interactive client disables this trace unless FABLE_LIFECYCLE_TRACE
+    // is set; callers that want a bounded capture can set MaxEvents.
+    public const int DefaultMaxEvents = int.MaxValue;
     public readonly List<ForwardLifecycleEvent> Events = [];
+    public bool Enabled { get; set; } = true;
+    public int MaxEvents { get; set; } = DefaultMaxEvents;
+    public bool IsSaturated => Events.Count >= MaxEvents;
+    public bool CanAdd => Enabled && !IsSaturated;
 
     public void Add(
         uint va,
@@ -18,6 +26,8 @@ public sealed class ForwardLifecycleTrace
         string action,
         string? detail = null)
     {
+        if (!CanAdd)
+            return;
         Events.Add(new ForwardLifecycleEvent(va, stage, subsystem, action, detail ?? ""));
     }
 

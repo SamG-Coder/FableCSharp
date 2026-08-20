@@ -115,6 +115,23 @@ public sealed class FrontendUiDefTests
     }
 
     [Fact]
+    public void Press_Start_type18_lists_match_00547500()
+    {
+        var (_, _, bin) = LoadFrontend();
+        var forest = FrontendUiDef.TryParse(bin.FindEntry("UI_SWAPPING_FORREST")!)!;
+        var sunbeam = FrontendUiDef.TryParse(
+            bin.FindEntry("UI_SWAPPING_FORREST_SUNBEAM")!)!;
+        Assert.Equal(FrontendWidgetType.Swap, forest.Type);
+        Assert.Equal([0, 1, 2, 3], forest.SwapStateKeys);
+        Assert.Equal([0f, 0f, 0f, 0f], forest.SwapStateDurations);
+        Assert.Equal([0, 1, 2], sunbeam.SwapStateKeys);
+        Assert.Equal([0f, 0f, 0f], sunbeam.SwapStateDurations);
+        var blending = FrontendUiDef.TryParse(bin.FindEntry("BLENDING_BG_FORREST_1")!);
+        Assert.NotNull(blending);
+        Assert.Equal([8f, 8f, 8f, 8f], blending.StyleDurations);
+    }
+
+    [Fact]
     public void GraphicIndex_is_read_from_persist_not_a_name_map()
     {
         var (_, _, bin) = LoadFrontend();

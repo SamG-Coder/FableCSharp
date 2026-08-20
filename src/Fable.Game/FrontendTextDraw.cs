@@ -112,8 +112,10 @@ public static class FrontendTextDraw
     }
 
     /// <summary>
-    /// Type-6 pen before <c>00AB7C20</c>: aligned X/Y
-    /// plus <c>[0x122DCDC]=2</c>.
+    /// Offset type-6 pen before <c>00AB7C20</c>: aligned X/Y plus
+    /// <c>[0x122DCDC]=2</c>. The default constructor state writes
+    /// <c>widget+393=0</c> at <c>0054F636</c>; in that branch the unshifted
+    /// record receives the widget colour and the offset record receives black.
     /// </summary>
     public static (float X, float Y) Type6Pen(
         float originX, float originY, float leftover204, float scale, int align) =>

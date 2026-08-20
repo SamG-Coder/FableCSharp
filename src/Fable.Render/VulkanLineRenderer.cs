@@ -732,9 +732,12 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         // Mailbox returns in <1 ms and lets WaitEx(33)
         // beat the 33.3 ms sample clock (csharp timeline
         // p10 present 0.82 ms, 44% WaitEx timeout).
-        // PlayAVI uses FIFO (vsync), same role as D3D
-        // INTERVAL_ONE. 3D keeps Mailbox when present.
-        var presentMode = _playAviPump || !presents.Contains(PresentModeKHR.MailboxKhr)
+        // PlayAVI and a vsynced game window use FIFO, the Vulkan equivalent
+        // of D3D's INTERVAL_ONE. Ignoring IWindow.VSync here made the retail
+        // loop run at mailbox speed, so frame-driven UI components (and input
+        // polling) ran many times faster than Fable's presented cadence.
+        var presentMode = _playAviPump || _window.VSync ||
+            !presents.Contains(PresentModeKHR.MailboxKhr)
             ? PresentModeKHR.FifoKhr
             : PresentModeKHR.MailboxKhr;
         PlayAviTimeline.NotePresentParams(

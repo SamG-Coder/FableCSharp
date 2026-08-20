@@ -16,6 +16,12 @@ if (install is null)
 
 using var life = new EngineLifecycle();
 life.BootstrapUntilGraphics(install);
+// ForwardLifecycleTrace is an assembly-parity diagnostic. Recording every
+// widget tick and draw forever retains formatted strings and eventually makes
+// the interactive client lag. Tests keep tracing enabled; live tracing is
+// explicitly opt-in for investigations.
+life.Trace.Enabled = !string.IsNullOrEmpty(
+    Environment.GetEnvironmentVariable("FABLE_LIFECYCLE_TRACE"));
 var options = WindowOptions.DefaultVulkan with
 {
     Title = life.WindowTitle,

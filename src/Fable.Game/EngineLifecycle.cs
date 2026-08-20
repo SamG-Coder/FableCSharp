@@ -1,4 +1,5 @@
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using Fable.Core;
 using Fable.Dx9;
 using Fable.Formats.Banks;
@@ -6109,7 +6110,7 @@ public sealed class EngineLifecycle : IDisposable
             UnloadStartupAvi();
             if (!FrontendUiPresent)
                 InitFrontendUi();
-            PumpFrontendFrame();
+            PumpFrontendFrame(dt);
             if (RetailNewGameFlag)
             {
                 RequestNewGame();
@@ -6652,7 +6653,9 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>0042DF9E</c>, same device Present
     /// the Vulkan path already translates.
     /// </summary>
-    public void PumpFrontendFrame()
+    public void PumpFrontendFrame() => PumpFrontendFrame(0f);
+
+    public void PumpFrontendFrame(float dt)
     {
         Note(FrontendInputFn, "Frontend", "Input",
             "0042E3EE walk [0x13B8388]");
@@ -6680,7 +6683,7 @@ public sealed class EngineLifecycle : IDisposable
         Note(ClearColorFn, "Frontend", "D3D9", "009D8CF0 clear");
         Note(BeginSceneFn, "Frontend", "D3D9", "009BEF20 BeginScene");
         Note(FrontendUiGet, "Frontend", "UI", "00595582");
-        TickFrontendWidgets();
+        TickFrontendWidgets(dt);
         DrawFrontendWidgets();
         Note(InputActionGetter, "Frontend", "Input", "0041E5F2");
         FlushFrontendDisplay();
@@ -6753,7 +6756,7 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>0052C7E0</c>(dt) →
     /// <c>00531EC0</c> dest layout.
     /// </summary>
-    private void TickFrontendWidgets()
+    private void TickFrontendWidgets(float dt)
     {
         Note(FrontendUiTickFn, "Frontend", "UI",
             $"00599E3F [ui+{FrontendWidgetListOffset}] vtbl+{FrontendWidgetTickVtbl}");
@@ -6773,6 +6776,8 @@ public sealed class EngineLifecycle : IDisposable
             "0052FFD0 +248 from +52/+60");
         foreach (var tree in ResidentSlotTrees())
         {
+            TickFrontendColourTransitions(tree, dt);
+            TickSwappingStateComponents(tree, dt);
             LayoutFrontendWidgets(tree);
             TickType11Type38Hover(tree);
         }
@@ -6780,6 +6785,130 @@ public sealed class EngineLifecycle : IDisposable
         FrontendWidgetTickRan = true;
         FrontendDestLayoutRan = true;
         Note(FrontendWidgetNextFn, "Frontend", "UI", "004292C0");
+    }
+
+    /// <summary>
+    /// Type 18 <c>00547380</c>. The first completed tick primes
+    /// <c>+360</c>; later completed ticks compare elapsed time with the
+    /// current <c>+348</c> entry and select the next key cyclically. A state
+    /// selection clears completion; even a zero-duration style must complete
+    /// on the following base tick before <c>0041C5E0</c> raises another edge.
+    /// </summary>
+    private void TickSwappingStateComponents(List<FrontendWidget> tree, float dt)
+    {
+        // 0052CF40(6) is the slot leave state. The detached menu remains
+        // resident for draw parity but no longer receives its component tick.
+        if (tree.Count == 0 || tree[0].State == 6)
+            return;
+        for (var i = 0; i < tree.Count; i++)
+        {
+            var widget = tree[i];
+            if (widget.Type != FrontendWidgetType.Swap ||
+                widget.SwapStateKeys is not { Count: > 0 } keys)
+                continue;
+
+            var elapsed = widget.SwapStateElapsed + Math.Max(0f, dt);
+            if (!widget.SwapTickPrimed)
+            {
+                // vtbl+196 remains false while any forwarded child style is
+                // interpolating. 0041C5E0 only raises the completion edge once
+                // the whole subtree has finished.
+                if (SubtreeHasActiveColourTransition(tree, i))
+                    continue;
+                tree[i] = widget with { SwapTickPrimed = true, SwapStateElapsed = 0f };
+                continue;
+            }
+
+            var current = -1;
+            var currentState = widget.SwapCurrentState == int.MinValue
+                ? keys[0]
+                : widget.SwapCurrentState;
+            for (var k = 0; k < keys.Count; k++)
+            {
+                if (keys[k] == currentState)
+                {
+                    current = k;
+                    break;
+                }
+            }
+            if (current < 0)
+                continue;
+
+            var dwell = widget.SwapStateDurations is { } durations &&
+                (uint)current < (uint)durations.Count
+                ? Math.Max(0f, durations[current])
+                : 0f;
+            if (elapsed < dwell)
+            {
+                tree[i] = widget with { SwapStateElapsed = elapsed };
+                continue;
+            }
+
+            var nextState = keys[(current + 1) % keys.Count];
+            ForwardSelectState(tree, i, nextState);
+            tree[i] = tree[i] with
+            {
+                // 0052CF40 clears completion. 0052C7E0 applies an immediate
+                // style on the next tick and 0041C5E0 then primes +360 again;
+                // it cannot select another state on the same tick.
+                SwapTickPrimed = false,
+                SwapStateElapsed = 0f,
+                SwapCurrentState = nextState,
+            };
+        }
+    }
+
+    private static void TickFrontendColourTransitions(List<FrontendWidget> tree, float dt)
+    {
+        var step = Math.Max(0f, dt);
+        for (var i = 0; i < tree.Count; i++)
+        {
+            var widget = tree[i];
+            if (!widget.ColourTransitionActive)
+                continue;
+            var elapsed = widget.ColourTransitionElapsed + step;
+            var duration = widget.ColourTransitionDuration;
+            var t = duration > 0f ? Math.Clamp(elapsed / duration, 0f, 1f) : 1f;
+            var colour = LerpPackedColour(widget.ColourTransitionFrom,
+                widget.ColourTransitionTo, t);
+            tree[i] = widget with
+            {
+                Colour = colour,
+                ColourTransitionElapsed = elapsed,
+                ColourTransitionActive = t < 1f,
+            };
+        }
+    }
+
+    private static bool SubtreeHasActiveColourTransition(
+        IReadOnlyList<FrontendWidget> tree, int root)
+    {
+        for (var i = 0; i < tree.Count; i++)
+        {
+            var current = i;
+            while ((uint)current < (uint)tree.Count)
+            {
+                if (current == root)
+                {
+                    if (tree[i].ColourTransitionActive)
+                        return true;
+                    break;
+                }
+                current = tree[current].ParentIndex;
+            }
+        }
+        return false;
+    }
+
+    private static uint LerpPackedColour(uint from, uint to, float t)
+    {
+        static uint Channel(uint a, uint b, float amount) =>
+            (uint)Math.Clamp((int)MathF.Round(a + (b - (float)a) * amount), 0, 255);
+        var a = Channel(from >> 24, to >> 24, t);
+        var r = Channel((from >> 16) & 0xFF, (to >> 16) & 0xFF, t);
+        var g = Channel((from >> 8) & 0xFF, (to >> 8) & 0xFF, t);
+        var b = Channel(from & 0xFF, to & 0xFF, t);
+        return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
     /// <summary>
@@ -12871,16 +13000,42 @@ public sealed class EngineLifecycle : IDisposable
     /// is this. Type 16/18 keep first-seen
     /// persist child 0.
     /// </summary>
-    private void ForwardSelectState(List<FrontendWidget> tree, int index, int state)
+    private void ForwardSelectState(List<FrontendWidget> tree, int index, int state) =>
+        ForwardSelectState(tree, index, state, -1f);
+
+    private void ForwardSelectState(
+        List<FrontendWidget> tree, int index, int state, float inheritedDuration)
     {
         if ((uint)index >= (uint)tree.Count)
             return;
-        tree[index] = tree[index] with { State = state };
+        var widget = tree[index];
+        var haveStyle = widget.StyleColours is { } colours &&
+            (uint)state < (uint)colours.Count;
+        var ownDuration = widget.StyleDurations is { } durations &&
+            (uint)state < (uint)durations.Count
+            ? durations[state]
+            : -1f;
+        var duration = inheritedDuration >= 0f ? inheritedDuration : ownDuration;
+        var targetColour = haveStyle
+            ? FrontendWidgetFactory.ColourAtStyle(widget, state)
+            : widget.Colour;
+        var transition = haveStyle && duration > 0f && targetColour != widget.Colour;
+        tree[index] = widget with
+        {
+            State = state,
+            StyleIndex = haveStyle ? state : widget.StyleIndex,
+            Colour = transition ? widget.Colour : targetColour,
+            ColourTransitionFrom = transition ? widget.Colour : targetColour,
+            ColourTransitionTo = targetColour,
+            ColourTransitionElapsed = 0f,
+            ColourTransitionDuration = transition ? duration : 0f,
+            ColourTransitionActive = transition,
+        };
         foreach (var child in FrontendWidgetFactory.ChildrenOf(tree, index))
         {
             Note(FrontendWidgetType.ForwardSelectFn, "Frontend", "UI",
                 $"0041C5A0 vtbl+188 +{FrontendWidgetType.DurationOffset} child {tree[child].Name} +332={state}");
-            ForwardSelectState(tree, child, state);
+            ForwardSelectState(tree, child, state, duration);
         }
     }
 
@@ -13450,7 +13605,11 @@ public sealed class EngineLifecycle : IDisposable
         }
 
         FrontendBatch = Dx9VulkanFrontend.BuildBatch(records, textures, 0, 0, width, height);
-        DumpFrontendPresentRgba(records, textures, width, height);
+        // The bitmap is a diagnostic/headless-test artifact. A live DX9/Vulkan
+        // device consumes FrontendBatch directly; rebuilding a full RGBA
+        // backbuffer here allocated ~3.1 MiB and CPU-blitted every frame.
+        if (Device is null)
+            DumpFrontendPresentRgba(records, textures, width, height);
     }
 
     private (List<FrontendDx9DrawRecord> Records, List<GpuTexture> Textures)
@@ -13552,31 +13711,41 @@ public sealed class EngineLifecycle : IDisposable
                     // First-seen type-6 GraphicIndex=0
                     // never writes +204.
                     var align = FrontendTextDraw.AlignFromFlag302(widget.Flag302);
-                    var penY = widget.DestY0 + FrontendTextDraw.Type6OriginPad;
-                    var anchorX = widget.DestX0 + FrontendTextDraw.Type6OriginPad;
+                    var penY = widget.DestY0;
+                    var anchorX = widget.DestX0;
                     var glyphQuads = FrontendTextDraw.LayoutFormatted(
                         face, widget.Text, anchorX, penY, align, colour);
-                    // 0054EF00 submits two complete type-0x27 records:
-                    // black RGB/widget alpha first, then widget colour at
-                    // the next layer. Keep each whole string contiguous.
-                    foreach (var passColour in new[]
+                    // 0054F5C0 initializes +393 to zero. In that 0054EF00
+                    // branch, the unshifted record receives widget RGBA and
+                    // the (+2,+2) record receives zero RGB/widget alpha.
+                    // Native layer ordering leaves the latter behind the
+                    // coloured glyphs, so submit the underlay first here.
+                    foreach (var glyph in glyphQuads)
                     {
-                        FrontendTextDraw.BlackUnderlayColor(colour),
-                        colour,
-                    })
+                        slot.Add(new FrontendDx9DrawRecord(
+                            glyph.DestX0 + FrontendTextDraw.Type6OriginPad,
+                            glyph.DestY0 + FrontendTextDraw.Type6OriginPad,
+                            glyph.DestX1 + FrontendTextDraw.Type6OriginPad,
+                            glyph.DestY1 + FrontendTextDraw.Type6OriginPad,
+                            glyph.U0, glyph.V0, glyph.U1, glyph.V1,
+                            FrontendTextDraw.BlackUnderlayColor(colour), atlasId,
+                            Dx9VulkanFrontend.WidgetBlendDefault,
+                            FrontendTextDraw.Type6RecordType,
+                            FrontendTextDraw.VertexStride,
+                            FrontendTextDraw.VertexStride,
+                            AppliesHalfPixel: true));
+                    }
+                    foreach (var glyph in glyphQuads)
                     {
-                        foreach (var glyph in glyphQuads)
-                        {
-                            slot.Add(new FrontendDx9DrawRecord(
-                                glyph.DestX0, glyph.DestY0, glyph.DestX1, glyph.DestY1,
-                                glyph.U0, glyph.V0, glyph.U1, glyph.V1,
-                                passColour, atlasId,
-                                Dx9VulkanFrontend.WidgetBlendDefault,
-                                FrontendTextDraw.Type6RecordType,
-                                FrontendTextDraw.VertexStride,
-                                FrontendTextDraw.VertexStride,
-                                AppliesHalfPixel: true));
-                        }
+                        slot.Add(new FrontendDx9DrawRecord(
+                            glyph.DestX0, glyph.DestY0, glyph.DestX1, glyph.DestY1,
+                            glyph.U0, glyph.V0, glyph.U1, glyph.V1,
+                            colour, atlasId,
+                            Dx9VulkanFrontend.WidgetBlendDefault,
+                            FrontendTextDraw.Type6RecordType,
+                            FrontendTextDraw.VertexStride,
+                            FrontendTextDraw.VertexStride,
+                            AppliesHalfPixel: true));
                     }
 
                     foreach (var glyph in glyphQuads)
@@ -13618,38 +13787,16 @@ public sealed class EngineLifecycle : IDisposable
             slotCounts.Add(slot.Count - recordStart);
         }
 
-        foreach (var rec in SpritesThenGlyphs(slot))
-            records.Add(rec);
+        // 00595222 calls each widget's vtbl+8 synchronously in list/tree
+        // traversal order. Type-6 emits both text records at that point; there
+        // is no later glyph bucket. UI_MOUSE_POINTER is the final child and
+        // therefore overlays preceding text exactly as in the executable.
+        records.AddRange(slot);
         foreach (var count in slotCounts)
             _frontendSubmitCounts.Add(count);
         }
 
         return (records, textures);
-    }
-
-    /// <summary>
-    /// Per slot: <c>0054EF00</c> glyphs
-    /// after that slot's <c>0041AFA0</c>
-    /// sprites. Not a global flush
-    /// across <c>[ui+84]</c> trees.
-    /// </summary>
-    private static List<FrontendDx9DrawRecord> SpritesThenGlyphs(
-        List<FrontendDx9DrawRecord> records)
-    {
-        var ordered = new List<FrontendDx9DrawRecord>(records.Count);
-        foreach (var rec in records)
-        {
-            if (rec.RecordType != FrontendTextDraw.Type6RecordType)
-                ordered.Add(rec);
-        }
-
-        foreach (var rec in records)
-        {
-            if (rec.RecordType == FrontendTextDraw.Type6RecordType)
-                ordered.Add(rec);
-        }
-
-        return ordered;
     }
 
     /// <summary>
@@ -14010,8 +14157,53 @@ public sealed class EngineLifecycle : IDisposable
             $"009BEF80 SetViewport vtbl+{SetViewportVtbl} {width}x{height}");
     }
 
-    private void Note(uint va, string stage, string subsystem, string action) =>
-        Trace.Add(va, stage, subsystem, action);
+    private void Note(uint va, string stage, string subsystem, string action)
+    {
+        if (Trace.CanAdd)
+            Trace.Add(va, stage, subsystem, action);
+    }
+
+    private void Note(
+        uint va,
+        string stage,
+        string subsystem,
+        [InterpolatedStringHandlerArgument("")] ref TraceMessageHandler action)
+    {
+        if (Trace.CanAdd)
+            Trace.Add(va, stage, subsystem, action.GetFormattedText());
+    }
+
+    [InterpolatedStringHandler]
+    private ref struct TraceMessageHandler
+    {
+        private DefaultInterpolatedStringHandler _builder;
+
+        public TraceMessageHandler(
+            int literalLength,
+            int formattedCount,
+            EngineLifecycle lifecycle,
+            out bool shouldAppend)
+        {
+            shouldAppend = lifecycle.Trace.CanAdd;
+            _builder = shouldAppend
+                ? new DefaultInterpolatedStringHandler(literalLength, formattedCount)
+                : default;
+        }
+
+        public void AppendLiteral(string value) => _builder.AppendLiteral(value);
+        public void AppendFormatted<T>(T value) => _builder.AppendFormatted(value);
+        public void AppendFormatted<T>(T value, string? format) =>
+            _builder.AppendFormatted(value, format);
+        public void AppendFormatted<T>(T value, int alignment) =>
+            _builder.AppendFormatted(value, alignment);
+        public void AppendFormatted<T>(T value, int alignment, string? format) =>
+            _builder.AppendFormatted(value, alignment, format);
+        public void AppendFormatted(string? value) => _builder.AppendFormatted(value);
+        public void AppendFormatted(string? value, int alignment = 0, string? format = null) =>
+            _builder.AppendFormatted(value, alignment, format);
+
+        public string GetFormattedText() => _builder.ToStringAndClear();
+    }
 }
 
 public enum EngineStage

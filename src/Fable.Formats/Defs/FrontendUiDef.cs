@@ -74,7 +74,13 @@ public sealed class FrontendUiDef
     public const uint ColourGCrc = 0x144DCA8E;
     public const uint ColourBCrc = 0x64273E01;
     public const uint ColourACrc = 0xFD2E6FBB;
-    public const uint UnknownF97DCrc = 0xF97D3844;
+    /// <summary>
+    /// Style transition duration at def style <c>+104</c>. Copied by
+    /// <c>0052F440</c> to runtime style <c>+28</c> and selected by
+    /// <c>0052CF40</c> when it is non-negative.
+    /// </summary>
+    public const uint StyleDurationCrc = 0xF97D3844;
+    public const uint UnknownF97DCrc = StyleDurationCrc;
     public const uint UnknownA5F8Crc = 0xA5F8D969;
     /// <summary>
     /// Style <c>+120</c> u8. CUIDef persist
@@ -151,6 +157,16 @@ public sealed class FrontendUiDef
     /// <c>0063217D</c>. Name UNREAD.
     /// </summary>
     public const uint Plus512Crc = 0x7084E2DD;
+    /// <summary>
+    /// Type-18 state keys persisted at def <c>+480</c> and copied by
+    /// <c>00547500</c> into the widget <c>+348</c> key/duration list.
+    /// </summary>
+    public const uint SwapStateKeysCrc = 0xDB6D4753;
+    /// <summary>
+    /// Type-18 dwell seconds persisted at def <c>+492</c>. Press Start's
+    /// forest, sunbeam, and prompt swaps author zero for every state.
+    /// </summary>
+    public const uint SwapStateDurationsCrc = 0x68CAB92E;
     /// <summary>
     /// Style <c>+64</c> after
     /// <see cref="UnreadNestedCrc"/>.
@@ -295,6 +311,7 @@ public sealed class FrontendUiDef
     public IReadOnlyList<float> StyleColourG { get; init; } = [];
     public IReadOnlyList<float> StyleColourB { get; init; } = [];
     public IReadOnlyList<float> StyleColourA { get; init; } = [];
+    public IReadOnlyList<float> StyleDurations { get; init; } = [];
     /// <summary>
     /// Persist style <c>+64</c>
     /// <see cref="StylePlus64Crc"/>. Map
@@ -302,6 +319,8 @@ public sealed class FrontendUiDef
     /// <c>0x10/0x20/0x40</c>.
     /// </summary>
     public IReadOnlyList<int> StyleFlags { get; init; } = [];
+    public IReadOnlyList<int> SwapStateKeys { get; init; } = [];
+    public IReadOnlyList<float> SwapStateDurations { get; init; } = [];
     /// <summary>
     /// Persist <see cref="Plus392Crc"/> /
     /// def <c>+392</c>. Nonzero → widget
@@ -404,6 +423,7 @@ public sealed class FrontendUiDef
         var styleColourG = new List<float>();
         var styleColourB = new List<float>();
         var styleColourA = new List<float>();
+        var styleDurations = new List<float>();
         var styleFlags = new List<int>();
         var plus392 = (byte)0;
         var plus504 = (byte)0;
@@ -688,6 +708,8 @@ public sealed class FrontendUiDef
 
             if (crc == UnknownF97DCrc && payload + 4 <= raw.Length)
             {
+                var value = BitConverter.ToSingle(raw, payload);
+                styleDurations.Add(float.IsFinite(value) ? value : -1f);
                 cursor = payload + 4;
                 continue;
             }
@@ -771,6 +793,8 @@ public sealed class FrontendUiDef
         var scaleOriginByte = ReadPersistU8(raw, ScaleOriginCrc);
         var messageId = ReadPersistI32(raw, MessageIdCrc);
         var plus224 = ReadPersistI32(raw, Plus224Crc);
+        var swapStateKeys = ReadPersistI32Vector(raw, SwapStateKeysCrc);
+        var swapStateDurations = ReadPersistF32Vector(raw, SwapStateDurationsCrc);
         var scanned326 = ReadPersistF32(raw, Plus326Crc);
         if (float.IsFinite(scanned326))
             plus326 = scanned326;
@@ -826,7 +850,10 @@ public sealed class FrontendUiDef
             StyleColourG = styleColourG,
             StyleColourB = styleColourB,
             StyleColourA = styleColourA,
+            StyleDurations = styleDurations,
             StyleFlags = styleFlags,
+            SwapStateKeys = swapStateKeys,
+            SwapStateDurations = swapStateDurations,
             Plus392 = plus392,
             Plus504 = plus504,
             Plus508 = plus508,
@@ -861,6 +888,45 @@ public sealed class FrontendUiDef
         }
 
         return 0;
+    }
+
+    public static IReadOnlyList<int> ReadPersistI32Vector(byte[] raw, uint crc)
+    {
+        var offset = FindPersistField(raw, crc);
+        if (offset < 0)
+            return [];
+        var count = BitConverter.ToInt32(raw, offset + 4);
+        if (count is < 0 or > 256 || offset + 8 + count * 4 > raw.Length)
+            return [];
+        var values = new int[count];
+        for (var i = 0; i < count; i++)
+            values[i] = BitConverter.ToInt32(raw, offset + 8 + i * 4);
+        return values;
+    }
+
+    public static IReadOnlyList<float> ReadPersistF32Vector(byte[] raw, uint crc)
+    {
+        var offset = FindPersistField(raw, crc);
+        if (offset < 0)
+            return [];
+        var count = BitConverter.ToInt32(raw, offset + 4);
+        if (count is < 0 or > 256 || offset + 8 + count * 4 > raw.Length)
+            return [];
+        var values = new float[count];
+        for (var i = 0; i < count; i++)
+        {
+            var value = BitConverter.ToSingle(raw, offset + 8 + i * 4);
+            values[i] = float.IsFinite(value) ? value : 0f;
+        }
+        return values;
+    }
+
+    private static int FindPersistField(byte[] raw, uint crc)
+    {
+        for (var i = 0; i + 8 <= raw.Length; i++)
+            if (BitConverter.ToUInt32(raw, i) == crc)
+                return i;
+        return -1;
     }
 
     /// <summary>

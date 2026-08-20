@@ -297,7 +297,11 @@ public static class FrontendWidgetFactory
             StyleIndex: FrontendWidgetType.FirstSeenState,
             Flag302: PackFlag302(def),
             Plus508: def?.Plus508 ?? 0,
-            StyleColours: styleColours));
+            StyleColours: styleColours,
+            StyleDurations: def?.StyleDurations,
+            SwapStateKeys: def?.SwapStateKeys,
+            SwapStateDurations: def?.SwapStateDurations,
+            SwapCurrentState: def?.SwapStateKeys.FirstOrDefault() ?? int.MinValue));
     }
 
     /// <summary>

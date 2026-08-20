@@ -4709,6 +4709,36 @@ public sealed class EngineLifecycleTests
             frontendBatch.Vertices[(int)draw.FirstVertex].Color == new Vector4(0f, 0f, 0f, 1f));
         Assert.Contains(glyphDraws, draw =>
             frontendBatch.Vertices[(int)draw.FirstVertex].Color == Vector4.One);
+        var blackDrawIndex = Array.FindIndex(frontendBatch.Draws, draw =>
+            draw.IndexCount == 0 && draw.VertexCount == 6 &&
+            frontendBatch.Vertices[(int)draw.FirstVertex].Color ==
+                new Vector4(0f, 0f, 0f, 1f));
+        Assert.True(blackDrawIndex >= 0);
+        var blackDraw = frontendBatch.Draws[blackDrawIndex];
+        var blackVertex = frontendBatch.Vertices[(int)blackDraw.FirstVertex];
+        var colourDrawIndex = Array.FindIndex(
+            frontendBatch.Draws, blackDrawIndex + 1, draw =>
+                draw.IndexCount == 0 && draw.VertexCount == 6 &&
+                draw.TextureId == blackDraw.TextureId &&
+                frontendBatch.Vertices[(int)draw.FirstVertex].Uv == blackVertex.Uv &&
+                frontendBatch.Vertices[(int)draw.FirstVertex].Color == Vector4.One);
+        Assert.True(colourDrawIndex > blackDrawIndex);
+        var colourVertex = frontendBatch.Vertices[
+            (int)frontendBatch.Draws[colourDrawIndex].FirstVertex];
+        Assert.Equal(-FrontendTextDraw.Type6OriginPad * 2f /
+            EngineLifecycle.DisplayDefaultWidth,
+            colourVertex.Position.X - blackVertex.Position.X, 5);
+        Assert.Equal(-FrontendTextDraw.Type6OriginPad * 2f /
+            EngineLifecycle.DisplayDefaultHeight,
+            colourVertex.Position.Y - blackVertex.Position.Y, 5);
+
+        // UI_MOUSE_POINTER is the final authored child. 00595222 submits it
+        // after the two text records rather than globally bucketing glyphs.
+        var cursorDraw = frontendBatch.Draws[^1];
+        Assert.Equal(6u, cursorDraw.IndexCount);
+        Assert.True(Array.FindLastIndex(frontendBatch.Draws,
+            draw => draw.IndexCount == 0 && draw.VertexCount == 6) <
+            frontendBatch.Draws.Length - 1);
         Assert.Equal(4, life.FrontendBatch.Value.Draws[0].D3dPrimitiveType);
         Assert.Equal(5, life.FrontendBatch.Value.Draws[0].D3dSrcBlend);
         Assert.Equal(6, life.FrontendBatch.Value.Draws[0].D3dDestBlend);
@@ -4736,6 +4766,50 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.FrontendWidgets, w =>
             w.Name.Contains("FORREST_1_1", StringComparison.Ordinal) &&
             w.TextureName == "FORREST_1_1");
+    }
+
+    [Fact]
+    public void Frontend_type18_primes_then_cycles_zero_dwell_forest_states()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+
+        Assert.True(life.Pump(1f / 60f));
+        var swap = life.FrontendWidgets.First(w => w.Name == "UI_SWAPPING_FORREST");
+        Assert.True(swap.SwapTickPrimed);
+        Assert.Equal(0, swap.SwapCurrentState);
+
+        Assert.True(life.Pump(1f / 60f));
+        swap = life.FrontendWidgets.First(w => w.Name == "UI_SWAPPING_FORREST");
+        Assert.Equal(1, swap.SwapCurrentState);
+        Assert.False(swap.SwapTickPrimed);
+
+        // The swap's dwell is zero, but its blending children parse an
+        // authored eight-second style transition from frontend.bin.
+        Assert.True(life.Pump(4f));
+        var blendingForestOne = life.FrontendWidgets
+            .Single(widget => widget.Name == "BLENDING_BG_FORREST_1");
+        Assert.True(blendingForestOne.ColourTransitionActive);
+        Assert.Equal(0x80FFFFFFu, blendingForestOne.Colour);
+
+        Assert.True(life.Pump(4f));
+        swap = life.FrontendWidgets.First(w => w.Name == "UI_SWAPPING_FORREST");
+        Assert.Equal(1, swap.SwapCurrentState);
+        Assert.True(swap.SwapTickPrimed);
+        var forestOne = life.FrontendWidgets
+            .Select((widget, index) => (widget, index))
+            .Single(pair => pair.widget.Name == "UI_FRONTEND_BG_FORREST_1_1").index;
+        var forestTwo = life.FrontendWidgets
+            .Select((widget, index) => (widget, index))
+            .Single(pair => pair.widget.Name == "UI_FRONTEND_BG_FORREST_2_1").index;
+        Assert.Equal(0x00FFFFFFu,
+            FrontendWidgetFactory.EffectiveColour(life.FrontendWidgets, forestOne));
+        Assert.Equal(0xFFFFFFFFu,
+            FrontendWidgetFactory.EffectiveColour(life.FrontendWidgets, forestTwo));
     }
 
     [Fact]

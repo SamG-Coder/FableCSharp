@@ -221,7 +221,9 @@ public sealed class VulkanDx9Device : IDirect3DDevice9
             return;
         var firstVertex = (uint)_vertices.Count;
         for (var i = 0; i < count; i++)
-            _vertices.Add(ToGpu(ReadVertex(vertexData, i * vertexStride, vertexStride)));
+            _vertices.Add(ToGpu(
+                ReadVertex(vertexData, i * vertexStride, vertexStride),
+                useDiffuseColor: vertexStride == Dx9VulkanFrontend.GlyphVertexStride));
         var (src, dst) = Dx9VulkanFrontend.BlendFromHandlerMode(
             Dx9VulkanFrontend.WidgetBlendDefault);
         _draws.Add(new FrontendDraw(
@@ -256,9 +258,11 @@ public sealed class VulkanDx9Device : IDirect3DDevice9
             Renderer?.PresentDx9();
     }
 
-    private FrontendGpuVertex ToGpu(FrontendDx9Vertex src) =>
+    private FrontendGpuVertex ToGpu(
+        FrontendDx9Vertex src, bool useDiffuseColor = false) =>
         Dx9VulkanFrontend.ToGpuVertex(
-            src, _viewport.X, _viewport.Y, _viewport.Width, _viewport.Height);
+            src, _viewport.X, _viewport.Y, _viewport.Width, _viewport.Height,
+            useDiffuseColor);
 
     private static FrontendDx9Vertex ReadVertex(ReadOnlySpan<byte> data, int offset, int stride)
     {

@@ -355,6 +355,9 @@ public sealed class Dx9DeviceRecordTests
         Assert.False(device.LastBatch.IsEmpty);
         Assert.True(device.LastBatch.Vertices.Length >= 4);
         Assert.Contains(device.LastBatch.Draws, d => d.IndexCount == 6);
+        Assert.Contains(device.LastBatch.Vertices, vertex =>
+            vertex.UseDiffuseColor == 1f &&
+            vertex.Color == new System.Numerics.Vector4(0f, 0f, 0f, 1f));
         Assert.Contains(device.LastBatch.Draws, d => d.IndexCount == 0 && d.VertexCount == 6);
         Assert.Equal(EngineLifecycle.FrontendPressStartMenu, life.FrontendMenuRoot);
     }
