@@ -14165,17 +14165,14 @@ public sealed class EngineLifecycle : IDisposable
         for (var i = 0; i < tree.Count; i++)
         {
             var widget = tree[i];
-            // Keep every authored style texture resident in deterministic
-            // order.  Hover only changes TextureName; it must never alter the
-            // Vulkan descriptor set and force DeviceWaitIdle/DestroyTextures.
-            if (widget.StyleTextureNames is { } styleTextures)
+            if (widget.TextureName is { } textureName &&
+                !textureIndex.ContainsKey(textureName) &&
+                _frontendSprites?.TryLoad(textureName) is { } sprite)
             {
-                for (var style = 0; style < styleTextures.Count; style++)
-                    CollectResidentFrontendTexture(
-                        styleTextures[style], textures, textureIndex);
+                var id = textures.Count;
+                textureIndex.Add(textureName, id);
+                textures.Add(new GpuTexture(id, sprite.Width, sprite.Height, sprite.Rgba));
             }
-            CollectResidentFrontendTexture(
-                widget.TextureName, textures, textureIndex);
 
             if (widget.Type != FrontendWidgetType.Text ||
                 string.IsNullOrEmpty(widget.Text))
@@ -14193,20 +14190,6 @@ public sealed class EngineLifecycle : IDisposable
             textures.Add(new GpuTexture(
                 atlasId, face.UvWidth, face.UvHeight, face.Atlas));
         }
-    }
-
-    private void CollectResidentFrontendTexture(
-        string? textureName,
-        List<GpuTexture> textures,
-        Dictionary<string, int> textureIndex)
-    {
-        if (string.IsNullOrEmpty(textureName) ||
-            textureIndex.ContainsKey(textureName) ||
-            _frontendSprites?.TryLoad(textureName) is not { } sprite)
-            return;
-        var id = textures.Count;
-        textureIndex.Add(textureName, id);
-        textures.Add(new GpuTexture(id, sprite.Width, sprite.Height, sprite.Rgba));
     }
 
     private int[] FrontendRecordOrder(List<FrontendWidget> tree)
@@ -14229,7 +14212,6 @@ public sealed class EngineLifecycle : IDisposable
         IReadOnlyList<FrontendWidget> tree, int index)
     {
         var layer = 0;
-        var independentLayer = false;
         var remaining = tree.Count + 1;
         while ((uint)index < (uint)tree.Count && remaining-- > 0)
         {
@@ -14238,16 +14220,10 @@ public sealed class EngineLifecycle : IDisposable
             // 0041B1B7 vtbl+404 and 0041B1C3 vtbl+416: either bit makes
             // widget+303 an independent root layer.
             if (widget.Independant || widget.LayerIndependant)
-            {
-                independentLayer = widget.LayerIndependant;
                 break;
-            }
             index = widget.ParentIndex;
         }
-        // The independent render queue is submitted after ordinary buckets.
-        // Only suppressing inherited layer leaves the New Profile title under
-        // its title-bar table even though its authored flag is set.
-        return independentLayer ? layer - 1024 : layer;
+        return layer;
     }
 
     private string EditBoxTextWithCaret(

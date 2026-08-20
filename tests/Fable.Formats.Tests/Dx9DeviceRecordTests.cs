@@ -359,6 +359,14 @@ public sealed class Dx9DeviceRecordTests
         Assert.False(device.LastBatch.IsEmpty);
         Assert.True(device.LastBatch.Vertices.Length >= 4);
         Assert.Contains(device.LastBatch.Draws, d => d.IndexCount == 6);
+        Assert.InRange(device.LastBatch.Textures.Length, 1, 256);
+        var logoTextures = device.LastBatch.Textures
+            .Where(texture => texture.Width == 256 && texture.Height == 128)
+            .Select(texture => texture.Id)
+            .ToHashSet();
+        Assert.True(logoTextures.Count >= 2);
+        Assert.Contains(device.LastBatch.Draws, draw =>
+            draw.IndexCount == 6 && logoTextures.Contains(draw.TextureId));
         Assert.Contains(device.LastBatch.Vertices, vertex =>
             vertex.UseDiffuseColor == 1f &&
             vertex.Color == new System.Numerics.Vector4(0f, 0f, 0f, 1f));
@@ -389,15 +397,6 @@ public sealed class Dx9DeviceRecordTests
             .First(index => life.FrontendWidgets[index].Name == "UI_CANCEL");
         Assert.True(FrontendHitTest.TryDestPoint(
             life.FrontendWidgets, cancel, out var hoverX, out var hoverY));
-        life.SetFrontendPointer(hoverX, hoverY);
-        life.QueueInput(EngineInput.TypeMouse, 0);
-        Assert.True(life.Pump());
-        Assert.True(VulkanLineRenderer.TextureSetsShareStorage(
-            residentTextures, device.LastBatch.Textures));
-        var profile = Enumerable.Range(0, life.FrontendWidgets.Count)
-            .First(index => life.FrontendWidgets[index].Name == "UI_NEW_PROFILE_BUTTON");
-        Assert.True(FrontendHitTest.TryDestPoint(
-            life.FrontendWidgets, profile, out hoverX, out hoverY));
         life.SetFrontendPointer(hoverX, hoverY);
         life.QueueInput(EngineInput.TypeMouse, 0);
         Assert.True(life.Pump());

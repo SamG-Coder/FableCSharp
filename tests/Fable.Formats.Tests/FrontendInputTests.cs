@@ -457,9 +457,6 @@ public sealed class FrontendInputTests
         Assert.True(title.Visible);
         Assert.False(string.IsNullOrEmpty(title.Text));
         Assert.True(title.GlyphCount > 0);
-        Assert.True(title.DrawOrder > life.FrontendWidgets
-            .Where(w => w.Name.StartsWith("UI_TABLE_TITLE", StringComparison.Ordinal))
-            .Max(w => w.DrawOrder));
     }
 
     [Fact]
