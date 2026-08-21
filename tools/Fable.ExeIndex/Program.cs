@@ -6,7 +6,7 @@ using Fable.Formats.Defs;
 using Fable.Formats.Qst;
 using Fable.Formats.Shaders;
 
-var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "fn" or "trace-render" or "trace-landscape" or "trace-newgame" or "trace-script" or "export-scripts" or "export-ui" or "trace-shaders" or "trace-quartz" or "trace-playavi-live" or "trace-playavi-timeline" or "trace-frontend" or "map-newgame" or "map-text" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp" or "scan" or "datascan") ?? "all";
+var cmd = args.FirstOrDefault(a => a is "index" or "split" or "translate" or "all" or "disasm" or "fn" or "trace-render" or "trace-landscape" or "trace-newgame" or "trace-script" or "export-scripts" or "export-ui" or "export-lifecycle" or "export-systems" or "trace-shaders" or "trace-quartz" or "trace-playavi-live" or "trace-playavi-timeline" or "trace-frontend" or "map-newgame" or "map-text" or "calls" or "imm" or "vtbl" or "disp" or "scanff" or "floats" or "calldisp" or "scan" or "datascan") ?? "all";
 var force = args.Any(a => a is "--force" or "-f");
 var install = GameInstall.TryLocate();
 var exePath = args.FirstOrDefault(a =>
@@ -84,11 +84,20 @@ switch (cmd)
         if (!File.Exists(Path.Combine(outDir, "00-index", "xrefs.tsv")))
             RunIndex(pe, store);
         RunExportScriptBank(pe, store, install);
+        if (install is null)
+            throw new InvalidOperationException("Fable install not found. Set FABLE_PATH.");
+        ScriptBehaviorExport.Run(pe, install, args);
         break;
     case "export-ui":
         if (install is null)
             throw new InvalidOperationException("Fable install not found. Set FABLE_PATH.");
         UiBehaviorExport.Run(pe, install, args);
+        break;
+    case "export-lifecycle":
+        LifecycleBehaviorExport.Run(pe, install, args);
+        break;
+    case "export-systems":
+        SystemBehaviorExport.Run(pe, install, args);
         break;
     case "trace-shaders":
         RunTraceShaders(pe, store);

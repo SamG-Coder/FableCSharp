@@ -7,6 +7,7 @@ internal sealed class PeImage
     public required uint ImageBase { get; init; }
     public required uint TimeDateStamp { get; init; }
     public required uint SizeOfImage { get; init; }
+    public required uint EntryPoint { get; init; }
     public required IReadOnlyList<PeSection> Sections { get; init; }
     public required IReadOnlyList<string> Imports { get; init; }
     public IReadOnlyDictionary<uint, string> Iat { get; init; } = new Dictionary<uint, string>();
@@ -35,6 +36,7 @@ internal sealed class PeImage
         var imageBase = BitConverter.ToUInt32(data, opt + 28);
         var timeDateStamp = BitConverter.ToUInt32(data, coff + 4);
         var sizeOfImage = BitConverter.ToUInt32(data, opt + 56);
+        var entryPoint = imageBase + BitConverter.ToUInt32(data, opt + 16);
         var importRva = BitConverter.ToUInt32(data, opt + 104);
         var sectionOff = opt + optSize;
         var sections = new List<PeSection>(sectionCount);
@@ -57,6 +59,7 @@ internal sealed class PeImage
             ImageBase = imageBase,
             TimeDateStamp = timeDateStamp,
             SizeOfImage = sizeOfImage,
+            EntryPoint = entryPoint,
             Sections = sections,
             Imports = ReadImports(data, sections, importRva),
             Iat = ReadIat(data, sections, importRva, imageBase),

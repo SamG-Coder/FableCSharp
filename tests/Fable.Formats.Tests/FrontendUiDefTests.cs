@@ -204,6 +204,7 @@ public sealed class FrontendUiDefTests
         Assert.NotNull(newGame);
         Assert.Equal(6, newGame.Type);
         Assert.Equal("TEXT_GUI_MENU_NEW_GAME", newGame.TextValue);
+        Assert.Equal(-3, newGame.Layer);
     }
 
     [Fact]

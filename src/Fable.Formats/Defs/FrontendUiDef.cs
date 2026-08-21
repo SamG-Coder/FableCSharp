@@ -886,6 +886,11 @@ public sealed class FrontendUiDef
         var scannedAngle = ReadPersistF32(raw, AngleCrc);
         if (float.IsFinite(scannedAngle))
             angle = scannedAngle;
+        // Layer is also serialized after the repeated style records for
+        // widgets such as UI_TEXT_NEW_GAME. The linear reader can stop on a
+        // nested field before reaching it, so recover it from the validated
+        // field marker just like Angle and the remaining tail fields.
+        layer = ReadPersistI32(raw, LayerCrc);
         drawFromViewport = ReadPersistU8(raw, DrawFromViewportCrc);
         bastardChild = ReadPersistU8(raw, BastardChildCrc);
         alignement = ReadPersistI32(raw, AlignementCrc);

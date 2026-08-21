@@ -27,6 +27,8 @@ dotnet run --project tools/Fable.ExeIndex -- --force trace-shaders
 dotnet run --project tools/Fable.ExeIndex -- --force trace-landscape
 dotnet run --project tools/Fable.ExeIndex -- --force trace-script
 dotnet run --project tools/Fable.ExeIndex -- --force export-scripts
+dotnet run --project tools/Fable.ExeIndex -- export-lifecycle
+dotnet run --project tools/Fable.ExeIndex -- export-systems
 dotnet run --project tools/Fable.ExeIndex -- --force trace-quartz
 dotnet run --project tools/Fable.ExeIndex -- --force trace-playavi-timeline
 dotnet run --project tools/Fable.ExeIndex -- trace-playavi-live --seconds 30
@@ -73,6 +75,49 @@ Each dump family lives in `out/01-sections/<family>/` as one markdown file per V
 Pass `--out <dir>` only if that directory is also ignored.
 
 Do not invent formats or constants that the listing does not show.
+
+## One-file engine lifecycle evidence export
+
+Generate a lifecycle-only evidence file without reading or trusting the C#
+runtime implementation:
+
+```powershell
+dotnet run --project tools/Fable.ExeIndex -- export-lifecycle `
+  --lifecycle-out tools/Fable.ExeIndex/out/engine-lifecycle-grep.txt
+```
+
+The export starts at the PE entrypoint, address probes, and lifecycle-related
+string xrefs. It follows decoded direct callees, reports whole-image inbound
+call sites without recursively importing unrelated callers, expands vtables
+referenced by lifecycle roots, records object/global memory accesses and
+imported calls, and marks indirect targets as `UNRESOLVED`.
+Human-readable seed names are navigation hints only.
+The default direct-call depth is 1 because lifecycle roots are deliberately
+broad; use `--max-depth 2` or higher for a deeper (and much larger) closure.
+
+Useful queries:
+
+```powershell
+rg '^SEED|^FUNCTION' tools/Fable.ExeIndex/out/engine-lifecycle-grep.txt
+rg 'function=0x004189C2|target=0x004189C2' tools/Fable.ExeIndex/out/engine-lifecycle-grep.txt
+rg '^GLOBAL|^VCALL|^UNRESOLVED' tools/Fable.ExeIndex/out/engine-lifecycle-grep.txt
+```
+
+## Native subsystem evidence exports
+
+Generate separate grep-first retail evidence bibles for world/streaming,
+rendering, input/player, Things/components, animation, audio, persistence,
+camera, combat/inventory, AI/navigation, in-game HUD, and video/cutscenes:
+
+```powershell
+dotnet run --project tools/Fable.ExeIndex -- export-systems `
+  --systems-out tools/Fable.ExeIndex/out/systems
+```
+
+Use `--system rendering-3d` (or another slug from `INDEX.txt`) to regenerate
+one system. Every file is derived from executable decoding, native string
+xrefs, and hashes of installed retail data. Probe names remain explicitly
+`navigation_only`; they are not silently promoted to recovered semantics.
 
 ## One-file frontend behavior export
 

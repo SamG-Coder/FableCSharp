@@ -4643,6 +4643,7 @@ public sealed class EngineLifecycleTests
         while (life.Stage == EngineStage.StartupVideos)
             life.FinishStartupVideo();
         Assert.Equal(EngineStage.Frontend, life.Stage);
+        Assert.True(life.Pump(0.5f));
         Assert.Equal(10, life.FrontendRootType);
         Assert.Equal(0x0054E3D0u, EngineLifecycle.FrontendPressStartCtorFn);
         Assert.Equal(0x00530260u, EngineLifecycle.FrontendContainerDrawFn);
@@ -4842,16 +4843,22 @@ public sealed class EngineLifecycleTests
         life.QueueInput(EngineInput.Type6, 0);
         Assert.True(life.Pump());
         Assert.Equal(EngineLifecycle.FrontendNewProfileMenu, life.FrontendMenuRoot);
+        Assert.True(life.Pump(0.25f));
         Assert.Equal("Default", life.FrontendEditBoxName);
         Assert.Contains(life.FrontendWidgets, w => w.Name == "UI_ACCEPT_NEW_PROFILE");
-        Assert.Contains(life.FrontendWidgets, w =>
-            w.Name == "UI_OPTIONS_TEXT_CONTROL_ARROWS" && w.Visible &&
-            w.StyleIndex == FrontendWidgetType.TextSliderFirstSeenSelect &&
-            !FrontendWidgetType.LeafDipSkipped(w.Colour));
-        Assert.Contains(life.FrontendWidgets, w =>
-            w.Name == "UI_OPTIONS_TEXT_CONTROL_WASD" && w.Visible &&
-            w.StyleIndex == FrontendWidgetType.FirstSeenState &&
-            FrontendWidgetType.LeafDipSkipped(w.Colour));
+        var arrowsChoice = life.FrontendWidgets.Single(w =>
+            w.Name == "UI_OPTIONS_TEXT_CONTROL_ARROWS");
+        Assert.True(arrowsChoice.Visible);
+        Assert.Equal(FrontendWidgetType.TextSliderFirstSeenSelect,
+            arrowsChoice.StyleIndex);
+        Assert.False(FrontendWidgetType.LeafDipSkipped(arrowsChoice.Colour));
+        var wasdChoice = life.FrontendWidgets.Single(w =>
+            w.Name == "UI_OPTIONS_TEXT_CONTROL_WASD");
+        Assert.True(wasdChoice.Visible);
+        // 00548FA2 first sends state 1 to every authored choice, then
+        // 00549075 sends state 3 to the active choice.
+        Assert.Equal(1, wasdChoice.StyleIndex);
+        Assert.True(FrontendWidgetType.LeafDipSkipped(wasdChoice.Colour));
         Assert.Contains(life.FrontendWidgets, w =>
             w.Name.Contains("COASTAL_SUNBEAM_2_1", StringComparison.Ordinal) && w.Visible);
         Assert.Contains(life.FrontendWidgets, w =>
@@ -4867,7 +4874,7 @@ public sealed class EngineLifecycleTests
         Assert.True(life.TryGetFrontendSlot(EngineLifecycle.FrontendPressStartSlot, out var leftover));
         Assert.Equal(6, leftover.State);
         Assert.Contains(life.FrontendSlotTree(EngineLifecycle.FrontendPressStartSlot),
-            w => w.Name == "UI_PRESS_START_TEXT" && w.State == 0 && w.Visible);
+            w => w.Name == "UI_PRESS_START_TEXT" && w.State == 6 && w.Visible);
         Assert.Contains(life.FrontendSlotTree(EngineLifecycle.FrontendPressStartSlot),
             w => w.Name.Contains("FORREST_1_1", StringComparison.Ordinal) && w.Visible);
         Assert.Contains(life.Trace.Events, e =>
@@ -4879,6 +4886,13 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.FrontendWidgets, w =>
             w.Name == "UI_FRONTEND_BUTTON_NEW_GAME" &&
             w.ActionOnLeftUnclicked == FrontendMessages.NewGame);
+        Assert.True(life.Pump(0.25f));
+        var newGameText = life.FrontendWidgets
+            .Select((widget, index) => (widget, index))
+            .Single(pair => pair.widget.Name == "UI_TEXT_NEW_GAME");
+        Assert.NotEqual(0u,
+            FrontendWidgetFactory.EffectiveColour(
+                life.FrontendWidgets, newGameText.index) & 0xFF000000u);
         Assert.NotNull(life.FrontendBatch);
         Assert.False(life.FrontendBatch.Value.IsEmpty);
         WriteScreenDump(life, "main-menu");
@@ -4886,6 +4900,10 @@ public sealed class EngineLifecycleTests
         Assert.Contains(life.FrontendResidentSlots, s => s == EngineLifecycle.FrontendPressStartSlot);
         Assert.Contains(life.FrontendResidentSlots, s => s == EngineLifecycle.FrontendNewProfileSlot);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
+
+        ClickNamed(life, "UI_FRONTEND_BUTTON_NEW_GAME");
+        Assert.True(life.RetailNewGameFlag);
+        Assert.Equal(EngineStage.Game, life.Stage);
     }
 
     private static void ClickNamed(EngineLifecycle life, string name)
@@ -4921,10 +4939,13 @@ public sealed class EngineLifecycleTests
             life.FrontendPresentRgba);
         var sb = new System.Text.StringBuilder();
         sb.AppendLine($"screen={life.FrontendMenuRoot} stage={life.Stage} batch={!life.FrontendBatch!.Value.IsEmpty}");
-        foreach (var w in life.FrontendWidgets)
+        for (var index = 0; index < life.FrontendWidgets.Count; index++)
         {
+            var w = life.FrontendWidgets[index];
             sb.AppendLine(
                 $"{w.Name}\tt={w.Type}\tdest={w.DestX0},{w.DestY0},{w.DestX1},{w.DestY1}\t" +
+                $"parent={w.ParentIndex}\tlayer={w.Layer}\tstate={w.State}/{w.StyleIndex}\t" +
+                $"colour=0x{w.Colour:X8}/0x{FrontendWidgetFactory.EffectiveColour(life.FrontendWidgets, index):X8}\t" +
                 $"g={w.GraphicId}\t+204={w.Leftover204}\ttex={w.TextureName}\taction={w.ActionOnLeftUnclicked}");
         }
 

@@ -13074,17 +13074,46 @@ public sealed class EngineLifecycle : IDisposable
         if (!_frontendSlotTrees.TryGetValue(slot, out var tree) ||
             tree.Count == 0)
             return;
-        ForwardSelectState(tree, 0, state);
+        ForwardSelectTreeState(tree, 0, state, -1f);
         if (slot == FrontendCurrentSlot)
             _frontendWidgets = tree;
     }
 
     /// <summary>
+    /// <c>0052CF40</c> walks the attached child vector and forwards the
+    /// selected state through child <c>vtbl+188</c>. The duration selected
+    /// by the parent is passed to each child. This path is used for whole
+    /// menu entrance/retirement; hover continues to update only the authored
+    /// immediate visual subscribers.
+    /// </summary>
+    private void ForwardSelectTreeState(
+        List<FrontendWidget> tree, int index, int state, float inheritedDuration)
+    {
+        if ((uint)index >= (uint)tree.Count)
+            return;
+        var type = tree[index].Type;
+        ForwardSelectState(tree, index, state, inheritedDuration);
+        // These overrides perform their own authored child selection.
+        if (type == FrontendWidgetType.Swap ||
+            (type == FrontendWidgetType.TextSlider && state == 5))
+            return;
+        var duration = tree[index].ColourTransitionDuration > 0f
+            ? tree[index].ColourTransitionDuration
+            : inheritedDuration;
+        for (var child = 0; child < tree.Count; child++)
+        {
+            if (tree[child].ParentIndex != index)
+                continue;
+            ForwardSelectTreeState(tree, child, state, duration);
+        }
+    }
+
+    /// <summary>
     /// <c>0041C5A0</c> stores the forwarded duration at <c>+320</c>, then calls
-    /// this widget's virtual <c>vtbl+192</c>.  The ordinary implementation is
-    /// <c>0052CF40</c> and selects this widget only; it does not recursively
-    /// force the same state onto every descendant.  Type 16 overrides that
-    /// virtual at <c>00548F40</c> and handles its choice children explicitly.
+    /// this widget's virtual <c>vtbl+192</c>. The ordinary implementation is
+    /// <c>0052CF40</c>; its child loop forwards the selection through each
+    /// attached child's <c>vtbl+188</c>. Type 16 overrides that virtual at
+    /// <c>00548F40</c> and handles its choice children explicitly.
     /// </summary>
     private void ForwardSelectState(List<FrontendWidget> tree, int index, int state) =>
         ForwardSelectState(tree, index, state, -1f);

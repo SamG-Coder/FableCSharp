@@ -269,6 +269,7 @@ public sealed class ExeIndexX86Tests
             ImageBase = 0x00400000,
             TimeDateStamp = 0,
             SizeOfImage = (uint)code.Length,
+            EntryPoint = 0x00400000,
             Sections =
             [
                 new PeSection(".text", 0, (uint)code.Length, 0, (uint)code.Length, 0x60000020),

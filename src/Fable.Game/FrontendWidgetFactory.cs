@@ -119,10 +119,11 @@ public static class FrontendWidgetFactory
         if ((uint)index >= (uint)tree.Count)
             return false;
         var widget = tree[index];
+        var retainedMouse = widget.Type == FrontendWidgetType.Mouse;
         if (!widget.Visible)
             return false;
         if (widget.ParentIndex < 0 && widget.ParentName is null)
-            return true;
+            return widget.State != 6 || retainedMouse;
         var parent = widget.ParentIndex;
         if (parent < 0)
         {
@@ -136,9 +137,21 @@ public static class FrontendWidgetFactory
             }
         }
 
-        if (parent < 0)
-            return true;
-        return IsPresented(tree, parent);
+        while (parent >= 0)
+        {
+            var ancestor = tree[parent];
+            if (!ancestor.Visible)
+                return false;
+            // 00596763 selects state 6 on the outgoing slot. Its root style
+            // carries the recovered 0x20 zero-destination behavior, so the
+            // retired subtree no longer submits. Type 32 uses its separate
+            // 0041A980 cursor path and remains resident between menus.
+            if (ancestor.ParentIndex < 0 && ancestor.State == 6 && !retainedMouse)
+                return false;
+            parent = ancestor.ParentIndex;
+        }
+
+        return true;
     }
 
     public static List<int> ChildrenOf(IReadOnlyList<FrontendWidget> widgets, string? parent)
@@ -474,9 +487,9 @@ public static class FrontendWidgetFactory
     /// <summary>
     /// Native <c>0052FE3C..0052FFA2</c> writes the final draw colour at
     /// <c>+148</c> by multiplying the widget colour by its inherited parent
-    /// colour.  <c>vtbl+404</c> (persist absolute, <c>+300</c> bit 6) breaks
-    /// that inheritance.  This is what makes the zero-alpha blending groups
-    /// under the forest/sunbeam swaps suppress their otherwise opaque tiles.
+    /// colour. <c>vtbl+404</c> (persist absolute, <c>+300</c> bit 6) breaks
+    /// that inheritance. This is what makes zero-alpha blending groups under
+    /// the forest/sunbeam swaps suppress their otherwise opaque tiles.
     /// </summary>
     public static uint EffectiveColour(IReadOnlyList<FrontendWidget> widgets, int index)
     {
@@ -490,9 +503,8 @@ public static class FrontendWidgetFactory
             var parent = widgets[current].ParentIndex;
             if ((uint)parent >= (uint)widgets.Count)
                 break;
-            // The resident slot root is the outer draw boundary. Its menu
-            // fade is handled by the slot/state path; descendants inherit
-            // colours from containers below it.
+            // The resident slot root is the outer draw boundary. Its state-6
+            // retirement is handled by IsPresented's zero-destination path.
             if (widgets[parent].ParentIndex < 0)
                 break;
             colour = MultiplyArgb(colour, widgets[parent].Colour);
