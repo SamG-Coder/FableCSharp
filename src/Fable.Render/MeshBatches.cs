@@ -275,7 +275,7 @@ public static class MeshBatches
         return new TexturedMesh { Vertices = vertices, Draws = [.. draws] };
     }
 
-    public static TexturedMesh Concat(TexturedMesh a, TexturedMesh b)
+    public static TexturedMesh Concat(TexturedMesh a, TexturedMesh b, bool sortDraws = true)
     {
         if (a.Vertices.Length == 0)
             return b;
@@ -311,7 +311,12 @@ public static class MeshBatches
                 draws[a.Draws.Length + i] = d with { FirstIndex = d.FirstIndex + indexOff };
         }
 
-        return new TexturedMesh { Vertices = vertices, Draws = SortByPass(draws), Indices = indices };
+        return new TexturedMesh
+        {
+            Vertices = vertices,
+            Draws = sortDraws ? SortByPass(draws) : draws,
+            Indices = indices,
+        };
     }
 
     public static MeshDraw[] SortByPass(IReadOnlyList<MeshDraw> draws)

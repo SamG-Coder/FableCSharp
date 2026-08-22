@@ -477,7 +477,11 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             vkSky, vkLand);
 
         var wait = _imageAvailable[_frame];
-        var signal = _renderFinished[_frame];
+        // Presentation completion is associated with a swapchain image, not
+        // with the CPU frame slot. Reusing a frame-slot semaphore after its
+        // fence signalled could race an outstanding QueuePresent on a
+        // different image (VUID-vkQueueSubmit-pSignalSemaphores-00067).
+        var signal = _renderFinished[imageIndex];
         var buffer = _commandBuffers[_frame];
         var waitStage = PipelineStageFlags.ColorAttachmentOutputBit;
         var submit = new SubmitInfo
@@ -564,9 +568,10 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             _vk.FreeMemory(_device, _objectMemory, null);
         }
 
+        foreach (var semaphore in _renderFinished)
+            _vk.DestroySemaphore(_device, semaphore, null);
         for (var i = 0; i < MaxFrames; i++)
         {
-            _vk.DestroySemaphore(_device, _renderFinished[i], null);
             _vk.DestroySemaphore(_device, _imageAvailable[i], null);
             _vk.DestroyFence(_device, _inFlight[i], null);
         }
@@ -1241,7 +1246,7 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
     private void CreateSync()
     {
         _imageAvailable = new Semaphore[MaxFrames];
-        _renderFinished = new Semaphore[MaxFrames];
+        _renderFinished = new Semaphore[_images.Length];
         _inFlight = new Fence[MaxFrames];
         var semaphoreInfo = new SemaphoreCreateInfo { SType = StructureType.SemaphoreCreateInfo };
         var fenceInfo = new FenceCreateInfo
@@ -1252,9 +1257,10 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         for (var i = 0; i < MaxFrames; i++)
         {
             Check(_vk.CreateSemaphore(_device, in semaphoreInfo, null, out _imageAvailable[i]));
-            Check(_vk.CreateSemaphore(_device, in semaphoreInfo, null, out _renderFinished[i]));
             Check(_vk.CreateFence(_device, in fenceInfo, null, out _inFlight[i]));
         }
+        for (var i = 0; i < _renderFinished.Length; i++)
+            Check(_vk.CreateSemaphore(_device, in semaphoreInfo, null, out _renderFinished[i]));
     }
 
     private void Record(
@@ -1410,11 +1416,18 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
             _window.DoEvents();
 
         _vk.DeviceWaitIdle(_device);
+        foreach (var semaphore in _renderFinished)
+            _vk.DestroySemaphore(_device, semaphore, null);
+        _renderFinished = [];
         DestroySwapchainObjects();
         CreateSwapchain();
         CreateImageViews();
         CreateDepthResources();
         CreateFramebuffers();
+        var semaphoreInfo = new SemaphoreCreateInfo { SType = StructureType.SemaphoreCreateInfo };
+        _renderFinished = new Semaphore[_images.Length];
+        for (var i = 0; i < _renderFinished.Length; i++)
+            Check(_vk.CreateSemaphore(_device, in semaphoreInfo, null, out _renderFinished[i]));
         _resized = false;
     }
 

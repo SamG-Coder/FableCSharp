@@ -37,16 +37,35 @@ public sealed class DialogueAudioPlayer : IDisposable
 
     public void Sync(Fable.Game.Scripting.DialogueRuntime? dialogue)
     {
-        if (dialogue is null || dialogue.Serial == _serial)
+        if (dialogue is null)
             return;
+
+        if (dialogue.Session is not { Active: true })
+        {
+            _mixer?.RemoveAllMixerInputs();
+            _serial = dialogue.Serial;
+            return;
+        }
+
+        if (dialogue.Serial == _serial)
+            return;
+
+        // Resource ownership only: the player follows the one session exposed
+        // by DialogueRuntime. It must not decide when scripts or dialogue
+        // handles complete.
+        _mixer?.RemoveAllMixerInputs();
         _serial = dialogue.Serial;
         var session = dialogue.Session;
-        if (session is null || session.Text.Length == 0 || session.AudioBank.Length == 0)
+        if (session is null)
+            return;
+        if (session.Text.Length == 0 || session.AudioBank.Length == 0)
             return;
         var riff = _bank.Resolve(session.Text, session.AudioBank);
         if (riff is null || !XboxIma.TryDecode(riff, out var sound))
             return;
-        _mixer?.AddMixerInput(new DialogueSampleProvider(sound));
+        if (_mixer is null)
+            return;
+        _mixer.AddMixerInput(new DialogueSampleProvider(sound));
     }
 
     public void Dispose() => _output?.Dispose();

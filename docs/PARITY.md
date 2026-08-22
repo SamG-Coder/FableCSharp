@@ -5,6 +5,16 @@ Facts below are either asserted by tests against a live Steam install of
 retry the same wrong guess. Game assets stay in Steam. This repo only ships
 parsers and notes.
 
+## Evidence gate
+
+Parity behavior must not be invented to bridge an unexplained gap. Before a
+runtime, lifecycle, UI, audio, or rendering behavior is implemented, record the
+retail call site, data field, asset value, or observed retail trace which proves
+it. If the evidence is incomplete, leave the behavior explicitly `UNREAD` or
+`PARTIAL`; do not add a plausible queue, timer, state transition, fallback, or
+constant. Tests may lock recovered behavior, but passing tests are not evidence
+that an unrecovered retail behavior is correct.
+
 ## Worked
 
 | Piece | What we know | Locked by |

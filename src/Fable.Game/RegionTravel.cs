@@ -1268,6 +1268,17 @@ public static class RegionTravel
     public const uint IntroCutsceneStart = 0x00DB86B0;
     public const uint IntroCutsceneDtor = 0x00DB8680;
     public const uint IntroCutsceneRunner = 0x00CBFB7D;
+    /// <summary>
+    /// Native S_QNOVI continuation immediately after the child cutscene
+    /// runner returns. It clears the dialogue/cutscene mode, unmutes sounds,
+    /// completes the fade tail, resets the scripted camera, and stores
+    /// quest-state +82=1 before entering the instruction loop.
+    /// </summary>
+    public const uint IntroParentAfterCutscene = 0x00DB88FD;
+    public const uint IntroParentResetCameraStart = 0x00DB8935;
+    public const uint IntroParentResetCameraEnd = 0x00DB8946;
+    public const int IntroParentStateOffset = 82;
+    public const byte IntroParentStateAfterCutscene = 1;
     public const uint UseCameraActivate = 0x00CC9F3A;
     public const int UseCameraPreloadVtbl = 1648;
     public const int UseCameraActivateVtbl = 1656;

@@ -5783,6 +5783,7 @@ public sealed class EngineLifecycle : IDisposable
     public int QuestVtbl24Calls { get; private set; }
     public bool ScriptPumpRan { get; private set; }
     public int ScriptPumpWalked { get; private set; }
+    public bool IntroFatherPostCutsceneApplied { get; private set; }
     public bool EventPumpRan { get; private set; }
     public int EventPumpWalked { get; private set; }
     public int PlayerSlotTicks { get; private set; }
@@ -6315,7 +6316,11 @@ public sealed class EngineLifecycle : IDisposable
             () => MeshBatches.Build(SkyGeometry.Build(Install)),
             m => $"verts={m.Vertices.Length}");
         SubmittedLandscape = land;
-        var combined = MeshBatches.Concat(objects, sky);
+        // Keep instance order in the authoritative draw table. Actor bindings
+        // above are ranges in that order. Sorting here used to invalidate the
+        // ranges, so a later Teleport/WalkTo changed transforms on unrelated
+        // material draws and visually tore PALSKIN actors into pieces.
+        var combined = MeshBatches.Concat(objects, sky, sortDraws: false);
         _submittedCombinedDraws = combined.Draws;
         SubmittedObjects = new TexturedMesh
         {
@@ -11888,9 +11893,35 @@ public sealed class EngineLifecycle : IDisposable
         // the implementation of those recovered fibers/interpreters, so it
         // must advance here, once per game update, rather than in rendering.
         Runtime?.UpdateAtClock((float)FrameDtNow);
+        ApplyIntroFatherParentContinuation();
         WriteHeroFromRuntime();
         RefreshSubmittedActorTransforms();
         ScriptPumpRan = true;
+    }
+
+    /// <summary>
+    /// <c>00DB88FD</c> onward in the native S_QNOVI watcher. The compiled
+    /// CCutsceneDef is only the child; returning from it does not end the
+    /// quest fiber. The parent clears cutscene presentation state and resets
+    /// vtbl+1668/+1664 so the world camera and player-facing quest loop resume.
+    /// </summary>
+    private void ApplyIntroFatherParentContinuation()
+    {
+        if (IntroFatherPostCutsceneApplied || Runtime is null)
+            return;
+        var intro = Runtime.FindInterpreter(RegionTravel.IntroCutscene);
+        if (intro is not { Finished: true })
+            return;
+
+        Note(RegionTravel.IntroParentAfterCutscene, "GamePump", "Quest",
+            "S_QNOVI child returned; vtbl+1484(0), +2664(0), +82=1");
+        Runtime.Audio.Mute(false);
+        Runtime.CameraSys.Reset(Runtime.Camera);
+        Note(RegionTravel.IntroParentResetCameraStart, "GamePump", "Camera",
+            "vtbl+1668(0.0)");
+        Note(RegionTravel.IntroParentResetCameraEnd, "GamePump", "Camera",
+            "vtbl+1664 restore gameplay camera");
+        IntroFatherPostCutsceneApplied = true;
     }
 
     /// <summary>
