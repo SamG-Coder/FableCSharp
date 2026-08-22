@@ -23,9 +23,13 @@ public sealed unsafe partial class VulkanLineRenderer
     private int _frontendVersion;
     private FrontendDraw[] _frontendDraws = [];
     private bool _frontendReady;
+    private bool _frontendCompositesWorld;
 
-    public void SetFrontendBatch(FrontendSubmitBatch? batch)
+    public void SetFrontendBatch(
+        FrontendSubmitBatch? batch,
+        bool compositesWorld = false)
     {
+        _frontendCompositesWorld = compositesWorld;
         if (batch is null || batch.Value.IsEmpty)
         {
             _frontendReady = false;

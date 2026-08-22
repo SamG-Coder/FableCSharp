@@ -6,10 +6,21 @@ using Silk.NET.Maths;
 using Silk.NET.Windowing;
 
 var backendName = Option(args, "--backend") ?? "vulkan";
-var output = Path.GetFullPath(Option(args, "--out") ??
-    Path.Combine("tools", "Fable.SceneSlice", "out", "start-oakvale"));
+var allScenes = args.Any(arg => arg.Equals("--all", StringComparison.OrdinalIgnoreCase));
+var output = Path.GetFullPath(Option(args, "--out") ?? (allScenes
+    ? Path.Combine("tools", "Fable.SceneSlice", "out")
+    : Path.Combine("tools", "Fable.SceneSlice", "out", "start-oakvale")));
 var install = GameInstall.TryLocate()
               ?? throw new InvalidOperationException("Fable TLC not found. Set FABLE_PATH.");
+
+if (allScenes)
+{
+    var report = Path.Combine(output, "scene-corpus-grep.txt");
+    Console.WriteLine($"CORPUS\tphase=build\twld={Path.GetFileName(install.WorldPath)}\tpath={report}");
+    var summary = SceneCorpusAudit.Run(install, report);
+    Console.WriteLine($"CORPUS\tphase=complete\tscenes={summary.Scenes}\tclean={summary.Clean}\tflagged={summary.Flagged}\tissues={summary.Issues}\tpath={report}");
+    return;
+}
 
 Console.WriteLine("SLICE\tphase=build\tregion=StartOakVale\tsource=Gameflow/Q_NewOakValeIntro/S_QNOVI");
 var packet = BuildStartOakvale(install);
@@ -79,7 +90,10 @@ static SceneRenderPacket BuildStartOakvale(GameInstall install)
     life.Trace.Enabled = false;
     while (life.Stage == EngineStage.StartupVideos)
         life.FinishStartupVideo();
-    life.RequestNewGame();
+    // Enter through the recovered frontend message-15 flag path. The next
+    // lifecycle pump performs 0042F2A2 Leave and 0042F491 Init Game before
+    // the client dependency is allowed to select the playable region.
+    life.ActivateNewGame();
     var loaded = false;
     for (var frame = 0; frame < 16 && !loaded; frame++)
     {

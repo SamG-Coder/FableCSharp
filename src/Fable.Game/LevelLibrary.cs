@@ -284,27 +284,38 @@ public sealed class LevelLibrary : IDisposable
     /// </summary>
     public IReadOnlyList<LandscapeCell> LoadCells(string region)
     {
-        if (_cells.TryGetValue(region, out var cached))
+        var map = World.FindMap(region);
+        return map is null ? LoadCells(region, null) : LoadCells(map);
+    }
+
+    /// <summary>Loads cells for an exact WLD map slot without alias lookup.</summary>
+    public IReadOnlyList<LandscapeCell> LoadCells(WorldMap map) =>
+        LoadCells(map.FileStem, map);
+
+    private IReadOnlyList<LandscapeCell> LoadCells(string region, WorldMap? map)
+    {
+        var cacheKey = map?.FileStem ?? region;
+        if (_cells.TryGetValue(cacheKey, out var cached))
             return cached;
-        var height = LoadHeightField(region);
-        var compiled = LoadCompiledLev(region);
+        var height = map is null ? LoadHeightField(region) : LoadHeightField(map);
+        var compiled = map is null ? LoadCompiledLev(region) : LoadCompiledLev(map);
         if (height is null || compiled is null)
         {
-            _cells[region] = [];
+            _cells[cacheKey] = [];
             return [];
         }
 
         var grid = LevCellGrid.TryParse(compiled);
         if (grid is null)
         {
-            _cells[region] = [];
+            _cells[cacheKey] = [];
             return [];
         }
 
         var built = height.Tiles.ToCells(
             height.OriginX, height.OriginY, grid, compiled.Materials,
-            LandscapeEnums, region);
-        _cells[region] = built;
+            LandscapeEnums, map?.ScriptName ?? region);
+        _cells[cacheKey] = built;
         return built;
     }
 

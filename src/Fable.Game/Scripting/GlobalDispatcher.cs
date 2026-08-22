@@ -801,7 +801,9 @@ public static class GlobalDispatcher
             if (no.Length == 0)
                 no = "TEXT_OBJECT_HERO_ANSWER_NO";
             ctx.Cutscene.QuestionLock = true;
-            var op = ctx.Dialogue.AskQuestion(text, yes, no, ctx.Runtime.LookupText(text));
+            var record = ctx.Runtime.LookupTextRecord(text);
+            var op = ctx.Dialogue.AskQuestion(text, yes, no, record?.Body);
+            ctx.Dialogue.BindRecord(record);
             return CommandResult.Wait(
                 ExecutionKind.WaitOperation, CommandStatus.Proven, CommandFamily.Global,
                 "AskQuestion vtbl+456 poll vtbl+156", "esi>=0", op.Id, text);

@@ -17,6 +17,10 @@ public sealed class TextureLibrary : IDisposable
     private readonly Dictionary<uint, TextureFile> _cache = new();
 
     public int DecodedCount => _cache.Count;
+    public int EntryCount => _byId.Count;
+
+    /// <summary>Bank-directory lookup without decoding or retaining RGBA.</summary>
+    public bool Contains(int id) => id > 0 && _byId.ContainsKey((uint)id);
 
     public TextureLibrary(GameInstall install)
     {

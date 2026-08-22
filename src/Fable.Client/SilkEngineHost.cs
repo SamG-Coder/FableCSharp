@@ -94,7 +94,11 @@ public sealed class SilkEngineHost : IEngineHost
                 renderer.SetPlayAviPump(false);
                 renderer.VideoClearColor =
                     Dx9VulkanColor.FromD3dArgb(0xFF000000);
-                renderer.SetFrontendBatch(batch);
+                renderer.SetFrontendBatch(
+                    batch,
+                    frame.World is not null &&
+                    (frame.Vertices is { Length: > 0 } ||
+                     frame.ObjectVertices is { Length: > 0 }));
             }
             else
             {

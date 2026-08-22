@@ -29,3 +29,16 @@ changing the slice producer.
 
 The generated `out` directory is ignored because a complete capture is around
 100 MB and can always be reproduced from the installed retail data.
+
+Audit every retail WLD map without opening windows or retaining decoded banks:
+
+```powershell
+dotnet run --project tools/Fable.SceneSlice -- --all
+rg "^(ISSUE|SUMMARY)" tools/Fable.SceneSlice/out/scene-corpus-grep.txt
+```
+
+The corpus report uses exact WLD map slots and includes their owning/viewing
+regions. Geometry and C3D submission are fully built. Texture ids are checked
+against the retail bank directory without retaining every decoded RGBA image;
+camera-dependent visual slices remain separate because each authored camera is
+selected by scripts rather than by the WLD map itself.

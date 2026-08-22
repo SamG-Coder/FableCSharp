@@ -454,6 +454,12 @@ public sealed class GameBin
         var name = instanceName ?? typeName ?? "";
         if (typeName is "MARKER" or "HOLY_SITE")
             return false;
+        // TNG navigation and activation records are engine controls, not
+        // Graphic/CMultiStatic submissions. Their GameBin entries correctly
+        // contain no mesh sub-definition.
+        if (name is "REGION_ENTRANCE_POINT" or "REGION_EXIT_POINT" or
+            "SWITCH_AREA_TRIGGER" or "UNDEAD_GENERATOR")
+            return false;
         if (name.StartsWith("MARKER_", StringComparison.OrdinalIgnoreCase))
             return false;
         if (name.StartsWith("CAMERA_", StringComparison.OrdinalIgnoreCase))

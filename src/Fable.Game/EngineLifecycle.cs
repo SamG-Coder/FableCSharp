@@ -5689,6 +5689,8 @@ public sealed class EngineLifecycle : IDisposable
     }
     private FrontendSpriteBank? _frontendSprites;
     private FontBank? _frontendFonts;
+    private string? _dialogueOverlayKey;
+    private FrontendSubmitBatch? _dialogueOverlayBatch;
     /// <summary>
     /// First-seen <c>005955AB</c> is
     /// empty (same enumerator
@@ -6464,6 +6466,9 @@ public sealed class EngineLifecycle : IDisposable
         var present = PresentDestFromViewport(
             ViewportX, ViewportY, ViewportWidth, ViewportHeight,
             BackBufferWidth, BackBufferHeight);
+        var overlay = Stage == EngineStage.Game
+            ? BuildDialogueOverlay()
+            : FrontendBatch;
         return new EngineFrame(
             Camera,
             SubmittedWorld,
@@ -6488,7 +6493,85 @@ public sealed class EngineLifecycle : IDisposable
             present.Y0,
             present.X1,
             present.Y1,
-            FrontendBatch);
+            overlay);
+    }
+
+    /// <summary>
+    /// <c>006E5A00</c> queues dialogue through <c>00492E4B</c> using
+    /// <c>[game+90444]</c> (<c>ENG_ARIAL_18</c>), style 2 and the resolved
+    /// text-bank body. This is game text composited over the world, not a
+    /// frontend <c>PC_SUBTITLE</c> widget.
+    /// </summary>
+    private FrontendSubmitBatch? BuildDialogueOverlay()
+    {
+        var session = Runtime?.Dialogue.Session;
+        var body = session is { Active: true } ? session.ResolvedBody : null;
+        if (string.IsNullOrWhiteSpace(body) || Install is null)
+        {
+            _dialogueOverlayKey = null;
+            _dialogueOverlayBatch = null;
+            return null;
+        }
+
+        var width = BackBufferWidth > 0 ? BackBufferWidth : DisplayDefaultWidth;
+        var height = BackBufferHeight > 0 ? BackBufferHeight : DisplayDefaultHeight;
+        var key = session!.Text + "\n" + body + $"\n{width}x{height}";
+        if (key == _dialogueOverlayKey && _dialogueOverlayBatch is { } cached)
+            return cached;
+
+        _frontendFonts ??= new FontBank(Install);
+        var face = _frontendFonts.TryLoad(GameFontFaceName);
+        if (face is null)
+            return null;
+
+        const uint colour = 0xFFFFFFFF;
+        var anchorX = width * 0.5f;
+        var anchorY = height - face.CellHeight * 3f;
+        var glyphs = FrontendTextDraw.LayoutFormatted(
+            face, body, anchorX, anchorY, FrontendTextDraw.AlignCentre,
+            maxLineWidth: width * 0.8f);
+        var worldTextures = _submittedTextureArray ?? [];
+        var atlasId = worldTextures.Length == 0
+            ? 0
+            : worldTextures.Max(texture => texture.Id) + 1;
+        var records = new List<FrontendDx9DrawRecord>(glyphs.Count * 2);
+        foreach (var glyph in glyphs)
+            records.Add(new FrontendDx9DrawRecord(
+                glyph.DestX0 + FrontendTextDraw.Type6OriginPad,
+                glyph.DestY0 + FrontendTextDraw.Type6OriginPad,
+                glyph.DestX1 + FrontendTextDraw.Type6OriginPad,
+                glyph.DestY1 + FrontendTextDraw.Type6OriginPad,
+                glyph.U0, glyph.V0, glyph.U1, glyph.V1,
+                FrontendTextDraw.BlackUnderlayColor(colour), atlasId,
+                Dx9VulkanFrontend.WidgetBlendDefault,
+                FrontendTextDraw.Type6RecordType,
+                FrontendTextDraw.VertexStride,
+                FrontendTextDraw.VertexStride,
+                AppliesHalfPixel: true,
+                Sprite2DFlag: 0));
+        foreach (var glyph in glyphs)
+            records.Add(new FrontendDx9DrawRecord(
+                glyph.DestX0, glyph.DestY0, glyph.DestX1, glyph.DestY1,
+                glyph.U0, glyph.V0, glyph.U1, glyph.V1,
+                colour, atlasId,
+                Dx9VulkanFrontend.WidgetBlendDefault,
+                FrontendTextDraw.Type6RecordType,
+                FrontendTextDraw.VertexStride,
+                FrontendTextDraw.VertexStride,
+                AppliesHalfPixel: true,
+                Sprite2DFlag: 0));
+
+        var overlayTextures = new GpuTexture[worldTextures.Length + 1];
+        Array.Copy(worldTextures, overlayTextures, worldTextures.Length);
+        overlayTextures[^1] = new GpuTexture(
+            atlasId, face.UvWidth, face.UvHeight, face.Atlas);
+        _dialogueOverlayBatch = Dx9VulkanFrontend.BuildBatch(
+            records,
+            overlayTextures,
+            0, 0, width, height,
+            _dialogueOverlayBatch);
+        _dialogueOverlayKey = key;
+        return _dialogueOverlayBatch;
     }
 
     /// <summary>
@@ -12313,6 +12396,8 @@ public sealed class EngineLifecycle : IDisposable
             Install, primary, things,
             adjacentStaticMaps: false,
             landscapePlanes: planes,
+            actorPositions: Runtime?.ActorPositions,
+            actorPoses: Runtime?.Animation.PoseNames(),
             levels: _levels,
             onlyMaps: OpenedStaticMaps.Count > 0 ? OpenedStaticMaps : null,
             thingsByMap: byMap,
@@ -12657,6 +12742,15 @@ public sealed class EngineLifecycle : IDisposable
                     Note(PostLoadInitialiseFn, "LevelLoader", "Region",
                         "Region Level Files: Post Load Initialise 004FD020 " + map);
 
+                // The player must exist before 0051E2F0 activates Thing
+                // scripts. 00DBDE40 looks up CREATURE_HERO_CHILD before the
+                // NOVI_LiveFather activation reaches 00DB86B0. Previously the
+                // managed path started that cutscene first and only created an
+                // adult hero afterwards, so its initial actor bindings were
+                // already wrong by the first script instruction.
+                if (!HeroSpawned)
+                    SpawnHeroFromPlayerStart(_regionThings, region);
+
                 // 0051E2F0 follows the region's complete object-load pass.
                 // S_QNOVI registered NOVI_LiveFather in 00DABAC0 before its
                 // 00DBDE40 map wait; activating the authored TNG ScriptName
@@ -12681,8 +12775,6 @@ public sealed class EngineLifecycle : IDisposable
                 return RegionThingMapsLoaded;
             }, n => $"maps={n} things={_regionThings.Count}");
 
-            if (!HeroSpawned)
-                SpawnHeroFromPlayerStart(_regionThings);
         }
 
         if (index > 0)
@@ -12808,14 +12900,17 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>00489D40</c> / factory
     /// <c>0052B880</c>), not <c>00DBDE40</c>.
     /// </summary>
-    private void SpawnHeroFromPlayerStart(IReadOnlyList<ThingInstance> things)
+    private void SpawnHeroFromPlayerStart(
+        IReadOnlyList<ThingInstance> things,
+        WorldRegion? loadingRegion = null)
     {
         var starts = things
             .Where(t => string.Equals(
                 t.DefinitionType, RegionTravel.PlayerStartType,
                 StringComparison.Ordinal))
             .ToList();
-        var isOakvaleIntro = CurrentRegion?.RegionName.Equals(
+        var region = loadingRegion ?? CurrentRegion;
+        var isOakvaleIntro = region?.RegionName.Equals(
             "StartOakVale", StringComparison.OrdinalIgnoreCase) == true &&
             _activatedQuests.Contains(RegionTravel.IntroQuest);
         var start = isOakvaleIntro
@@ -12845,7 +12940,7 @@ public sealed class EngineLifecycle : IDisposable
         }
 
         FirstSceneMapName ??= CurrentRegion?.RegionName;
-        SpawnHero(start, bindExisting: false);
+        SpawnHero(start, bindExisting: false, childhood: isOakvaleIntro);
     }
 
     /// <summary>
@@ -13115,7 +13210,10 @@ public sealed class EngineLifecycle : IDisposable
         }
     }
 
-    private void SpawnHero(ThingInstance source, bool bindExisting)
+    private void SpawnHero(
+        ThingInstance source,
+        bool bindExisting,
+        bool childhood = false)
     {
         if (HeroSpawned)
             return;
@@ -13127,7 +13225,7 @@ public sealed class EngineLifecycle : IDisposable
                 : "006AC910 Create " + (source.ScriptName ?? GuildArrivalHsp));
         Note(ConstructFromParamsFn, "LevelLoader", "Player",
             "006A9DD0 ConstructFromParams");
-        HeroDefinition = ResolveHeroDefinition();
+        HeroDefinition = ResolveHeroDefinition(childhood);
         var props = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["DefinitionType"] = HeroDefinition,
@@ -13208,14 +13306,25 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
-    /// <c>00449D90</c>: <c>009AD410("PLAYER_HERO")</c>
+    /// Adult path <c>00449D90</c>: <c>009AD410("PLAYER_HERO")</c>
     /// then <c>0044BA90</c>. Miss falls back to
-    /// <c>CREATURE_HERO</c> and
-    /// <c>0048A070</c> InitCharacterAs.
-    /// Not <c>CREATURE_HERO_CHILD</c>.
+    /// <c>CREATURE_HERO</c> and <c>0048A070</c> InitCharacterAs.
+    /// The StartOakVale intro instead follows recovered
+    /// <c>00DBDF08</c> and resolves <c>CREATURE_HERO_CHILD</c>.
     /// </summary>
-    private string ResolveHeroDefinition()
+    private string ResolveHeroDefinition(bool childhood)
     {
+        if (childhood)
+        {
+            Note(RegionTravel.StartOakValeSetup, "LevelLoader", "Player",
+                "00DBDF08 CREATURE_HERO_CHILD");
+            Note(DefLookupFn, "LevelLoader", "Player",
+                "009AD410 " + RegionTravel.KidCreature);
+            Note(InitCharacterAsFn, "LevelLoader", "Player",
+                "0048A070 " + RegionTravel.KidCreature);
+            return RegionTravel.KidCreature;
+        }
+
         Note(DefLookupFn, "LevelLoader", "Player", "009AD410 PLAYER_HERO");
         var defs = EnsureDefs();
         if (defs?.FindEntry(PlayerHeroDefName) is not null &&

@@ -94,7 +94,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     private List<ThingInstance> _things = [];
     private ScriptedCamera? _camera;
     private GameInstall? _install;
-    private Dictionary<string, string>? _textLines;
+    private Dictionary<string, TextRecord>? _textLines;
     private WmvPlayer? _avi;
     private int _questId;
     private int _cutsceneId;
@@ -154,10 +154,17 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// </summary>
     public string? LookupText(string id)
     {
+        return LookupTextRecord(id)?.Body;
+    }
+
+    public TextRecord? LookupTextRecord(string id)
+    {
         if (id.Length == 0)
             return null;
         EnsureText();
-        return _textLines is not null && _textLines.TryGetValue(id, out var body) ? body : null;
+        return _textLines is not null && _textLines.TryGetValue(id, out var record)
+            ? record
+            : null;
     }
 
     /// <summary>
@@ -200,7 +207,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     {
         if (_textLines is not null || _install is null || !File.Exists(_install.TextBigPath))
             return;
-        var map = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        var map = new Dictionary<string, TextRecord>(StringComparer.OrdinalIgnoreCase);
         using var big = BigArchive.Open(_install.TextBigPath);
         foreach (var bank in big.SubBanks)
         {
@@ -208,7 +215,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
             {
                 if (entry.Name.Length == 0)
                     continue;
-                map[entry.Name] = TextPayload.ReadUtf16(big.Read(entry));
+                map[entry.Name] = TextPayload.ReadRecord(big.Read(entry));
             }
         }
 
@@ -827,8 +834,12 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// poll is busy, one <c>vtbl+28</c>, next poll idle.
     /// Do not invent dialogue UI.
     /// </summary>
-    void IScriptHost.Speak(string? actor, string target, string text, int mode) =>
-        Dialogue.Speak(actor, target, text, mode);
+    void IScriptHost.Speak(string? actor, string target, string text, int mode)
+    {
+        var record = LookupTextRecord(text);
+        Dialogue.Speak(actor, target, text, mode, body: record?.Body);
+        Dialogue.BindRecord(record);
+    }
 
     /// <summary>
     /// <c>00CC2EAA</c>: context <c>vtbl+1456/1460/1464</c>
@@ -836,16 +847,25 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// and <c>jmp 00CC707C</c>. Bodies UNREAD.
     /// </summary>
     void IScriptHost.InteractiveSpeak(
-        string? actor, string listener, string prompt, bool wait, string response) =>
-        Dialogue.InteractiveSpeak(actor, listener, prompt, wait, response);
+        string? actor, string listener, string prompt, bool wait, string response)
+    {
+        var record = LookupTextRecord(prompt);
+        Dialogue.InteractiveSpeak(
+            actor, listener, prompt, wait, response, record?.Body);
+        Dialogue.BindRecord(record);
+    }
 
     /// <summary>
     /// <c>00CC3165</c>: context <c>vtbl+1456/1460/1464</c>
     /// then one <c>vtbl+28</c> and <c>jmp 00CC707C</c>.
     /// Bodies UNREAD — record only.
     /// </summary>
-    void IScriptHost.DialogSpeak(string? actor, string listener, string text) =>
-        Dialogue.DialogSpeak(actor, listener, text);
+    void IScriptHost.DialogSpeak(string? actor, string listener, string text)
+    {
+        var record = LookupTextRecord(text);
+        Dialogue.DialogSpeak(actor, listener, text, record?.Body);
+        Dialogue.BindRecord(record);
+    }
 
     /// <summary>
     /// <c>00CC0783</c>: name unused. Poll thing
@@ -924,8 +944,12 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     /// +52 is <c>004CD1B0</c> stub. Record only —
     /// do not invent dialogue UI.
     /// </summary>
-    void IScriptHost.DialogadSpeak(string? actor, string target, string text, int mode) =>
-        Dialogue.DialogAdSpeak(actor, target, text, mode);
+    void IScriptHost.DialogadSpeak(string? actor, string target, string text, int mode)
+    {
+        var record = LookupTextRecord(text);
+        Dialogue.DialogAdSpeak(actor, target, text, mode, record?.Body);
+        Dialogue.BindRecord(record);
+    }
 
     /// <summary>
     /// <c>00CC3F73</c>: context <c>vtbl+1896</c>

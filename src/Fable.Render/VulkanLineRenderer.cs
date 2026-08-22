@@ -1299,7 +1299,8 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         // and host gizmos are 00435530.
         var playAviOnly = _playAviPump ||
             (_videoReady && _videoPipeline.Handle != 0 && _videoTexture.Set.Handle != 0);
-        var frontendOnly = _frontendReady && !playAviOnly && !_dx9PresentFrame;
+        var frontendOnly = _frontendReady && !_frontendCompositesWorld &&
+            !playAviOnly && !_dx9PresentFrame;
 
         if (!playAviOnly && !frontendOnly && !_dx9PresentFrame &&
             ((_meshCount > 0 && _meshBuffer.Handle != 0) ||

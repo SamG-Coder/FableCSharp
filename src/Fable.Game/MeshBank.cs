@@ -136,6 +136,16 @@ public sealed class MeshBank : IDisposable
         return null;
     }
 
+    /// <summary>
+    /// Drops decoded C3D/XSEQ objects while retaining the open BIG directory.
+    /// Corpus tools use this between scenes to keep memory bounded.
+    /// </summary>
+    public void ReleaseParsed()
+    {
+        _parsed.Clear();
+        _anims.Clear();
+    }
+
     public void Dispose()
     {
         _big?.Dispose();

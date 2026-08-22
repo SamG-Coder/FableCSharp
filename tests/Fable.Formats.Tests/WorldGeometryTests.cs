@@ -382,6 +382,10 @@ public sealed class WorldGeometryTests
         Assert.False(GameBin.FirstSeenInstancesAsC3d("THING", "PARTICLE_EMITTER_PLACEABLE"));
         Assert.False(GameBin.FirstSeenInstancesAsC3d("THING", "TRACK_NODE_BASIC"));
         Assert.False(GameBin.FirstSeenInstancesAsC3d("THING", "CAMERA_POINT_SCRIPTED_SPLINE"));
+        Assert.False(GameBin.FirstSeenInstancesAsC3d("THING", "REGION_ENTRANCE_POINT"));
+        Assert.False(GameBin.FirstSeenInstancesAsC3d("THING", "REGION_EXIT_POINT"));
+        Assert.False(GameBin.FirstSeenInstancesAsC3d("SWITCH", "SWITCH_AREA_TRIGGER"));
+        Assert.False(GameBin.FirstSeenInstancesAsC3d("OBJECT", "UNDEAD_GENERATOR"));
         Assert.True(GameBin.FirstSeenInstancesAsC3d("BUILDING", house.DefinitionType));
         var graphicsPath = Path.Combine(install.DataRoot, "graphics", "graphics.big");
         using (var big = Fable.Formats.Banks.BigArchive.Open(graphicsPath))

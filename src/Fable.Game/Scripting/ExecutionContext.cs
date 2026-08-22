@@ -659,6 +659,7 @@ public sealed class DialogueRuntime
     public readonly List<string> GroupLines = [];
     public int GroupSpeakVtbl { get; private set; }
     public DialogueSession? Session { get; private set; }
+    public int Serial { get; private set; }
     public int ActiveCount { get; private set; }
     public bool HasActive => ActiveCount > 0 || Session is { Active: true };
     public PendingOperation? WaitOp { get; private set; }
@@ -775,10 +776,11 @@ public sealed class DialogueRuntime
         Open(actor, "", key, mode, "DataSpeak", handle: false, hold: false, body);
     }
 
-    public void DialogAdSpeak(string? actor, string target, string text, int mode)
+    public void DialogAdSpeak(
+        string? actor, string target, string text, int mode, string? body = null)
     {
         DialogAds.Add(new ScriptDialogAdSpeech(actor, target, text, mode));
-        Open(actor, target, text, mode, "DialogadSpeak", handle: false, hold: false, null);
+        Open(actor, target, text, mode, "DialogadSpeak", handle: false, hold: false, body);
     }
 
     public void Dismiss()
@@ -791,6 +793,16 @@ public sealed class DialogueRuntime
             Session.HasHandle = false;
     }
 
+    public void BindRecord(Fable.Formats.Text.TextRecord? record)
+    {
+        if (Session is null || record is null)
+            return;
+        Session.AudioBank = record.AudioBank;
+        Session.SpeakerLabel = record.Speaker;
+        Session.RecordKey = record.TextKey;
+        Session.Animation = record.Animation;
+    }
+
     private void Open(string? speaker, string listener, string text, int mode, string verb,
         bool handle, bool hold, string? body)
     {
@@ -800,6 +812,7 @@ public sealed class DialogueRuntime
             Hold = hold,
             ResolvedBody = body ?? "",
         };
+        Serial++;
         ActiveCount++;
     }
 }
@@ -815,6 +828,10 @@ public sealed class DialogueSession
     public bool HasHandle { get; set; }
     public bool Hold { get; set; }
     public string ResolvedBody { get; set; } = "";
+    public string AudioBank { get; set; } = "";
+    public string SpeakerLabel { get; set; } = "";
+    public string RecordKey { get; set; } = "";
+    public string? Animation { get; set; }
     public string YesLabel { get; set; } = "";
     public string NoLabel { get; set; } = "";
     /// <summary>

@@ -4921,6 +4921,32 @@ public sealed class EngineLifecycleTests
         ClickNamed(life, "UI_FRONTEND_BUTTON_NEW_GAME");
         Assert.True(life.RetailNewGameFlag);
         Assert.Equal(EngineStage.Game, life.Stage);
+
+        // Continue through the same dependency that the live Silk client
+        // services after each game pump. This locks the authored UI message
+        // 15 path all the way through Gameflow, S_QNOVI, the StartOakVale
+        // load, child-player construction, and NOVI_LiveFather activation.
+        var loaded = false;
+        for (var frame = 0; frame < 16 && !loaded; frame++)
+        {
+            Assert.True(life.Pump(1f / 60f));
+            loaded = life.EnsureFirstPlayableRegionLoaded();
+        }
+
+        Assert.True(loaded);
+        Assert.Equal("StartOakVale", life.CurrentRegion?.RegionName);
+        Assert.Equal(RegionTravel.KidCreature, life.HeroDefinition);
+        Assert.Equal(4300, life.HeroMeshId);
+        Assert.NotNull(life.Runtime);
+        Assert.Same(life.Hero, life.Runtime.Bindings.Resolve("HERO")?.Thing);
+        Assert.True(life.Runtime.HasStarted(RegionTravel.IntroCutscene));
+
+        // 006C2170 completes the synchronous load first. The next 004162B5
+        // update submits that loaded world, as it does in the live client.
+        Assert.True(life.Pump(1f / 60f));
+        Assert.True(life.WorldSubmitted);
+        Assert.NotNull(life.SubmittedMesh);
+        Assert.NotEmpty(life.SubmittedMesh!.Vertices);
     }
 
     private static void ClickNamed(EngineLifecycle life, string name)
@@ -7260,7 +7286,10 @@ public sealed class EngineLifecycleTests
         Assert.Equal(4, life.CurrentRegionIndex);
         Assert.Equal("StartOakVale", life.CurrentRegion!.RegionName);
         Assert.True(life.HeroSpawned);
+        Assert.Equal(RegionTravel.KidCreature, life.HeroDefinition);
+        Assert.Equal(4300, life.HeroMeshId);
         Assert.NotNull(life.Runtime);
+        Assert.Same(life.Hero, life.Runtime.Bindings.Resolve("HERO")?.Thing);
         Assert.True(life.Runtime.HasStarted(RegionTravel.IntroCutscene));
         Assert.Contains(life.Runtime.Interpreters, interpreter =>
             interpreter.Name.Equals(

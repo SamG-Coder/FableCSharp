@@ -342,7 +342,9 @@ public static class EntityDispatcher
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
             var key = BuildDataSpeakKey(line, ctx);
             var mode = SpeakMode(line.Arg(3));
-            ctx.Dialogue.DataSpeak(line.Target, key, mode, ctx.Runtime.LookupText(key));
+            var record = ctx.Runtime.LookupTextRecord(key);
+            ctx.Dialogue.DataSpeak(line.Target, key, mode, record?.Body);
+            ctx.Dialogue.BindRecord(record);
             return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Entity,
                 "DataSpeak vtbl+52 leftover vtbl+104", key);
         }
@@ -355,8 +357,9 @@ public static class EntityDispatcher
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
             var mode = SpeakMode(line.Arg(3));
             var hold = ScriptLine.IsTrue(line.Arg(2));
-            var body = ctx.Runtime.LookupText(text);
-            ctx.Dialogue.Speak(line.Target, target, text, mode, hold, body);
+            var record = ctx.Runtime.LookupTextRecord(text);
+            ctx.Dialogue.Speak(line.Target, target, text, mode, hold, record?.Body);
+            ctx.Dialogue.BindRecord(record);
             return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Entity,
                 "Speak vtbl+52 leftover vtbl+104", text);
         }
@@ -373,8 +376,11 @@ public static class EntityDispatcher
             ScriptLine.TryInt(line.Arg(2), out var count);
             if (count < 0)
                 count = 0;
+            var first = count > 0 ? $"{prefix}_10" : prefix;
+            var record = ctx.Runtime.LookupTextRecord(first);
             var op = ctx.Dialogue.InteractiveSpeakGroup(
-                line.Target, listener, prefix, count, ctx.Runtime.LookupText(prefix));
+                line.Target, listener, prefix, count, record?.Body);
+            ctx.Dialogue.BindRecord(record);
             if (count <= 0)
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, prefix);
             if (!ctx.Cutscene.YieldEnable)
@@ -393,9 +399,10 @@ public static class EntityDispatcher
             if (listener.Length == 0 || prompt.Length == 0)
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
             var wait = ScriptLine.IsTrue(line.Arg(2));
+            var record = ctx.Runtime.LookupTextRecord(prompt);
             var op = ctx.Dialogue.InteractiveSpeak(
-                line.Target, listener, prompt, wait, line.Arg(3),
-                ctx.Runtime.LookupText(prompt));
+                line.Target, listener, prompt, wait, line.Arg(3), record?.Body);
+            ctx.Dialogue.BindRecord(record);
             if (wait)
                 return CommandResult.Wait(
                     ExecutionKind.WaitOperation, CommandStatus.Proven, CommandFamily.Entity,
@@ -410,7 +417,9 @@ public static class EntityDispatcher
             var text = line.Arg(1);
             if (listener.Length == 0 || text.Length == 0 || ScriptLine.IsNull(text))
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
-            ctx.Dialogue.DialogSpeak(line.Target, listener, text, ctx.Runtime.LookupText(text));
+            var record = ctx.Runtime.LookupTextRecord(text);
+            ctx.Dialogue.DialogSpeak(line.Target, listener, text, record?.Body);
+            ctx.Dialogue.BindRecord(record);
             return CommandResult.YieldOnce(CommandStatus.Proven, CommandFamily.Entity,
                 "DialogSpeak vtbl+28", text);
         }
@@ -421,7 +430,10 @@ public static class EntityDispatcher
             var text = line.Arg(1);
             if (target.Length == 0 || text.Length == 0)
                 return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, "");
-            ctx.Dialogue.DialogAdSpeak(line.Target, target, text, SpeakMode(line.Arg(3)));
+            var record = ctx.Runtime.LookupTextRecord(text);
+            ctx.Dialogue.DialogAdSpeak(
+                line.Target, target, text, SpeakMode(line.Arg(3)), record?.Body);
+            ctx.Dialogue.BindRecord(record);
             return CommandResult.Continue(CommandStatus.Proven, CommandFamily.Entity, text);
         }
 

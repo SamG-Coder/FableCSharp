@@ -5,6 +5,7 @@ using Fable.Formats.Defs;
 using Fable.Formats.Levels;
 using Fable.Formats.Meshes;
 using Fable.Formats.Qst;
+using Fable.Formats.Text;
 using Fable.Formats.Textures;
 using Fable.Formats.Upk;
 using Fable.Formats.Wld;
@@ -56,7 +57,7 @@ switch (command)
             Console.Error.WriteLine("Usage: Fable.Dump tng <LookoutPoint>");
             return 1;
         }
-        DumpTng(install, rest[0]);
+        DumpTng(install, rest[0], rest.Skip(1).FirstOrDefault());
         break;
     case "qst":
         DumpQuests(install);
@@ -66,6 +67,15 @@ switch (command)
         break;
     case "big":
         DumpBig(install, rest.FirstOrDefault());
+        break;
+    case "text":
+        DumpText(install, rest.FirstOrDefault());
+        break;
+    case "dialogue":
+        DumpDialogue(install, rest.FirstOrDefault());
+        break;
+    case "voice":
+        DumpVoice(install, rest.FirstOrDefault(), rest.Skip(1).FirstOrDefault());
         break;
     case "upk":
         DumpUpk(install, rest.FirstOrDefault());
@@ -110,10 +120,13 @@ static void PrintUsage()
           info                 install + data roots
           wld                  FinalAlbion.wld region graph
           wad [filter]         FinalAlbion.wad entries
-          tng <region>         things in a region (LookoutPoint)
+          tng <region> [name]  things in a region; filtered rows include properties
           qst                  quest table
           names [filter]       compiled definition names
           big [path-or-name]   BIGB / BBB bank header
+          text [id]            text.big payload and dialogue metadata bytes
+          dialogue [id]        dialogue.big lipsync directory entries
+          voice <text-id> [wav] resolve and extract authored dialogue RIFF
           upk [path-or-name]   Unreal package header (Anniversary only)
           mesh [id|name]       parse a graphics.big mesh
           anim [id|name]       hex-dump a type-6 animation entry
@@ -176,11 +189,15 @@ static void DumpWad(GameInstall install, string? filter)
         Console.WriteLine($"{entry.Size,10}  type={entry.Type,-4}  {entry.Name}");
 }
 
-static void DumpTng(GameInstall install, string region)
+static void DumpTng(GameInstall install, string region, string? filter)
 {
     using var levels = new LevelLibrary(install);
     var file = levels.LoadThings(region);
-    var things = file.Things.ToList();
+    var things = file.Things
+        .Where(thing => string.IsNullOrWhiteSpace(filter) ||
+            (thing.ScriptName?.Contains(filter, StringComparison.OrdinalIgnoreCase) ?? false) ||
+            (thing.DefinitionType?.Contains(filter, StringComparison.OrdinalIgnoreCase) ?? false))
+        .ToList();
     Console.WriteLine($"Region {region}: version={file.Version} sections={file.Sections.Count} things={things.Count}");
     foreach (var thing in things)
     {
@@ -189,7 +206,75 @@ static void DumpTng(GameInstall install, string region)
             : $" ({thing.PositionX:0.###}, {thing.PositionY:0.###}, {thing.PositionZ:0.###})";
         Console.WriteLine(
             $"{thing.Kind,-16} {(thing.DefinitionType ?? "-"),-40} {(thing.ScriptName ?? "-"),-24}{pos}");
+        if (!string.IsNullOrWhiteSpace(filter))
+        {
+            foreach (var property in thing.Properties.OrderBy(pair => pair.Key, StringComparer.Ordinal))
+                Console.WriteLine($"  PROP\t{property.Key}\t{property.Value}");
+        }
     }
+}
+
+static void DumpText(GameInstall install, string? filter)
+{
+    using var big = BigArchive.Open(install.TextBigPath);
+    var entries = big.SubBanks
+        .SelectMany(bank => big.ReadEntries(bank))
+        .Where(entry => string.IsNullOrWhiteSpace(filter) ||
+            entry.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+        .ToList();
+    Console.WriteLine($"text.big entries shown={entries.Count}");
+    foreach (var entry in entries)
+    {
+        var payload = big.Read(entry);
+        Console.WriteLine($"TEXT id={entry.Id} name={entry.Name} bytes={payload.Length}");
+        Console.WriteLine($"  body={Fable.Formats.Text.TextPayload.ReadUtf16(payload)}");
+        Console.WriteLine($"  hex={Convert.ToHexString(payload)}");
+    }
+}
+
+static void DumpDialogue(GameInstall install, string? filter)
+{
+    var path = Path.Combine(install.DataRoot, "lang", "English", "dialogue.big");
+    using var big = BigArchive.Open(path);
+    foreach (var bank in big.SubBanks)
+    {
+        var entries = big.ReadEntries(bank)
+            .Where(entry => string.IsNullOrWhiteSpace(filter) ||
+                entry.Name.Contains(filter, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (entries.Count == 0)
+            continue;
+        Console.WriteLine($"BANK name={bank.Name} shown={entries.Count} total={bank.EntryCount}");
+        foreach (var entry in entries)
+            Console.WriteLine($"  id={entry.Id} type={entry.Type} info={entry.Info} offset=0x{entry.Offset:X} size={entry.Size} name={entry.Name}");
+    }
+}
+
+static void DumpVoice(GameInstall install, string? textId, string? output)
+{
+    if (string.IsNullOrWhiteSpace(textId))
+        throw new ArgumentException("voice requires a TEXT_* id");
+    using var text = BigArchive.Open(install.TextBigPath);
+    var entry = text.SubBanks.SelectMany(text.ReadEntries).FirstOrDefault(item =>
+        item.Name.Equals(textId, StringComparison.OrdinalIgnoreCase));
+    if (entry is null)
+    {
+        Console.WriteLine($"VOICE missing text record {textId}");
+        return;
+    }
+    var record = TextPayload.ReadRecord(text.Read(entry));
+    Console.WriteLine(
+        $"VOICE key=SND_{textId} crc=0x{FableCrc.Hash("SND_" + textId):X8} " +
+        $"bank={record.AudioBank} speaker={record.Speaker} anim={record.Animation ?? "-"}");
+    var riff = new DialogueAudioBank(install).Resolve(textId, record.AudioBank);
+    if (riff is null)
+    {
+        Console.WriteLine("  authored mapping or RIFF not found");
+        return;
+    }
+    output ??= Path.Combine(Path.GetTempPath(), textId + ".wav");
+    File.WriteAllBytes(output, riff);
+    Console.WriteLine($"  bytes={riff.Length} output={Path.GetFullPath(output)}");
 }
 
 static void DumpQuests(GameInstall install)
@@ -544,11 +629,36 @@ static void DumpGameBin(GameInstall install, string? query)
         Console.WriteLine(
             $"#{entry.Index} type={entry.TypeName} inst={entry.InstanceName} src={entry.SourceName} mesh={entry.MeshId} subs={entry.SubDefs.Count} raw={entry.Raw.Length}");
         Console.WriteLine("    hex " + Convert.ToHexString(entry.Raw));
+        var namesByHash = names.Entries
+            .GroupBy(item => item.Hash)
+            .ToDictionary(group => group.Key, group => group.First().Name);
+        for (var offset = 0; offset + 4 <= entry.Raw.Length; offset++)
+        {
+            var value = BitConverter.ToUInt32(entry.Raw, offset);
+            if (namesByHash.TryGetValue(value, out var field))
+                Console.WriteLine($"    field +0x{offset:X4} crc=0x{value:X8} {field}");
+        }
         foreach (var sub in entry.SubDefs.Take(8))
         {
             var child = sub.DefIndex >= 0 && sub.DefIndex < bin.Entries.Count ? bin.Entries[sub.DefIndex] : null;
             Console.WriteLine(
                 $"    sub crc={sub.NameCrc:X8} idx={sub.DefIndex} -> {child?.TypeName} {child?.InstanceName} mesh={child?.MeshId}");
+        }
+
+        if (FrontendUiDef.TryParse(entry) is { } ui)
+        {
+            Console.WriteLine(
+                $"    ui type={ui.Type} pos={ui.PositionX:R},{ui.PositionY:R} " +
+                $"size={ui.Width:R}x{ui.Height:R} layer={ui.Layer} font={ui.Font} " +
+                $"text={ui.TextValue} children={ui.ChildIndices.Count} " +
+                $"independant={ui.Independant} layerIndependant={ui.LayerIndependant}");
+            foreach (var widget in FrontendWidgetFactory.Build(
+                         bin, entry.InstanceName ?? query, lookupText: null, names: names))
+                Console.WriteLine(
+                    $"    widget {widget.Name} type={widget.Type} parent={widget.ParentName ?? "-"} " +
+                    $"pos={widget.PersistX:R},{widget.PersistY:R} " +
+                    $"size={widget.PersistWidth:R}x{widget.PersistHeight:R} " +
+                    $"font={widget.Font} text={widget.Text}");
         }
     }
 
