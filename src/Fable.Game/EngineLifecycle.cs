@@ -985,12 +985,15 @@ public sealed class EngineLifecycle : IDisposable
     /// <c>StartOakValeWest.tng</c> is
     /// <c>ebx=203</c> during Loading
     /// world, not first Present.
-    /// Host <c>break</c> after the first
-    /// prox file is leftover #50.
+    /// Host scans the remaining proximity
+    /// files without retaining their property
+    /// dictionaries. Construct destination is
+    /// still PARTIAL.
     /// </summary>
     public const int LoadGlobalThingsEbxStart = 1;
     public const int StartOakValeWestTngEbx = 203;
-    public const bool LoadGlobalThingsHostBreaksAfterFirstProx = true;
+    public const bool LoadGlobalThingsHostBreaksAfterFirstProx = false;
+    public const bool LoadGlobalThingsRetainsOnlyFirstParsedMap = true;
     public const uint SingleGlobalThingsFlagVa = 0x013B8609;
     public const byte DefaultSingleGlobalThingsFlag = 0;
     public const uint GtngExtVa = 0x01244BB4;
@@ -3891,20 +3894,16 @@ public sealed class EngineLifecycle : IDisposable
     public const bool QuestCompletionUiGiveIsFirstSeen = false;
     public const uint QuestGiveAfterAttackOver = 0x00DBE295;
     /// <summary>
-    /// Gameflow state 0 waits
-    /// <c>vtbl+100</c> for type-<c>0x33</c>
-    /// Give of <c>Q_NewOakValeIntro</c>
-    /// on <c>[world+96]</c>. No-save
-    /// never posts that Give. Construct
-    /// posts <c>0x37</c> and cannot
-    /// satisfy the wait. Later Give is
-    /// <c>00DBE295</c> after AttackOver.
-    /// Do not invent
-    /// <c>ActivateQuest</c> to leave
-    /// the yield.
+    /// Gameflow state 0 calls context vtbl+1180
+    /// (<c>008968C0</c>) before testing vtbl+100.
+    /// The former constructs the Oakvale quest card,
+    /// writes <c>Q_NewOakValeIntro</c>, and gives it via
+    /// <c>004B4AA0</c>; that reaches <c>004B4A10</c> and
+    /// activates the quest. Consequently the immediately
+    /// following active test succeeds on a fresh game.
     /// </summary>
-    public const bool GameflowWaitsForeverOnNoSave = true;
-    public const bool ActivateQuestSatisfiesGameflowWait = false;
+    public const bool GameflowWaitsForeverOnNoSave = false;
+    public const bool ActivateQuestSatisfiesGameflowWait = true;
     /// <summary>
     /// <c>CTCExpression</c> is 20 bytes
     /// (<c>004DC7E8</c>). Offset
@@ -5015,6 +5014,7 @@ public sealed class EngineLifecycle : IDisposable
     public ThingFile? Gtng { get; private set; }
     public ThingFile? GlobalThings { get; private set; }
     public int GlobalThingMapsLoaded { get; private set; }
+    public int GlobalThingCount { get; private set; }
     /// <summary>
     /// <c>0x13B8609</c>. BSS default 0 →
     /// <c>004FDBC0</c> per-map. Nonzero →
@@ -5754,6 +5754,13 @@ public sealed class EngineLifecycle : IDisposable
     public int TickRecordWatermark { get; private set; }
     public bool LevelLoaderReady { get; private set; }
     public bool FirstRealRegionLoadDone { get; private set; }
+    /// <summary>
+    /// Host-side completion of the unresolved dispatch between the dummy
+    /// region pump and the first playable region request. This is kept
+    /// separate from <see cref="FirstRealRegionLoadDone"/> because that flag
+    /// describes the recovered full <c>00501450</c> catalogue walk.
+    /// </summary>
+    public bool FirstPlayableRegionLoadDone { get; private set; }
     public int RegionThingMapsLoaded { get; private set; }
     public IReadOnlyList<ThingInstance> RegionThings => _regionThings;
     public ThingInstance? Hero { get; private set; }
@@ -6423,20 +6430,18 @@ public sealed class EngineLifecycle : IDisposable
                 continue;
             }
 
+            int? mapped = null;
             if (action == FrontendInputMap.ActionType4)
             {
-                ArmType34Widgets();
-                if (_frontendWidgets.Any(widget => widget.Armed))
-                    PublishFrontendAudio("CS_GUI_2");
+                mapped = PressFrontendControl();
             }
-            var mapped = action is int act
+            // Type-10 menu packets are a separate vtbl+284 path. Ordinary
+            // type-11/38 controls publish their parsed action lists instead.
+            mapped ??= action is int act
                 ? FrontendInputMap.MessageFromWidgets(act, _frontendWidgets)
                 : null;
             if (action == FrontendInputMap.ActionType6)
-            {
-                mapped ??= FrontendInputMap.MessageFromPlus228List(_frontendWidgets);
-                UnarmType34Widgets();
-            }
+                mapped = ReleaseFrontendControl() ?? mapped;
             if (mapped is not int msg)
                 continue;
             DispatchFrontendMessage(msg);
@@ -6816,7 +6821,7 @@ public sealed class EngineLifecycle : IDisposable
         for (var treeIndex = 0; treeIndex < _frontendResidentTrees.Count; treeIndex++)
         {
             var tree = _frontendResidentTrees[treeIndex];
-            TickFrontendColourTransitions(tree, dt);
+            TickFrontendStateTransitions(tree, dt);
             TickSwappingStateComponents(tree, dt);
             LayoutFrontendWidgets(tree);
             TickType11Type38Hover(tree);
@@ -6898,13 +6903,15 @@ public sealed class EngineLifecycle : IDisposable
         }
     }
 
-    private static void TickFrontendColourTransitions(List<FrontendWidget> tree, float dt)
+    private static void TickFrontendStateTransitions(List<FrontendWidget> tree, float dt)
     {
         var step = Math.Max(0f, dt);
         for (var i = 0; i < tree.Count; i++)
         {
             var widget = tree[i];
-            if (!widget.ColourTransitionActive)
+            if (!widget.ColourTransitionActive &&
+                !widget.PositionTransitionActive &&
+                !widget.ScaleTransitionActive)
                 continue;
             var elapsed = widget.ColourTransitionElapsed + step;
             var duration = widget.ColourTransitionDuration;
@@ -6913,12 +6920,29 @@ public sealed class EngineLifecycle : IDisposable
                 widget.ColourTransitionTo, t);
             tree[i] = widget with
             {
-                Colour = colour,
+                Colour = widget.ColourTransitionActive ? colour : widget.Colour,
+                PersistX = widget.PositionTransitionActive
+                    ? Lerp(widget.TransformFromX, widget.TransformToX, t)
+                    : widget.PersistX,
+                PersistY = widget.PositionTransitionActive
+                    ? Lerp(widget.TransformFromY, widget.TransformToY, t)
+                    : widget.PersistY,
+                PersistScaleX = widget.ScaleTransitionActive
+                    ? Lerp(widget.TransformFromScaleX, widget.TransformToScaleX, t)
+                    : widget.PersistScaleX,
+                PersistScaleY = widget.ScaleTransitionActive
+                    ? Lerp(widget.TransformFromScaleY, widget.TransformToScaleY, t)
+                    : widget.PersistScaleY,
                 ColourTransitionElapsed = elapsed,
-                ColourTransitionActive = t < 1f,
+                ColourTransitionActive = widget.ColourTransitionActive && t < 1f,
+                PositionTransitionActive = widget.PositionTransitionActive && t < 1f,
+                ScaleTransitionActive = widget.ScaleTransitionActive && t < 1f,
             };
         }
     }
+
+    private static float Lerp(float from, float to, float t) =>
+        from + (to - from) * t;
 
     private static bool SubtreeHasActiveColourTransition(
         IReadOnlyList<FrontendWidget> tree, int root)
@@ -6930,7 +6954,9 @@ public sealed class EngineLifecycle : IDisposable
             {
                 if (current == root)
                 {
-                    if (tree[i].ColourTransitionActive)
+                    if (tree[i].ColourTransitionActive ||
+                        tree[i].PositionTransitionActive ||
+                        tree[i].ScaleTransitionActive)
                         return true;
                     break;
                 }
@@ -7245,6 +7271,41 @@ public sealed class EngineLifecycle : IDisposable
             return;
         }
 
+        if (msg == FrontendMessages.ChangeProfile)
+        {
+            ActivateFrontendDefinition(
+                FrontendMessages.ProfilesSlot, FrontendMessages.ProfilesMenu);
+            return;
+        }
+
+        if (msg == FrontendMessages.Credits)
+        {
+            ActivateFrontendDefinition(
+                FrontendMessages.CreditsSlot, FrontendMessages.CreditsMenu);
+            return;
+        }
+
+        if (msg == FrontendMessages.Options)
+        {
+            ActivateFrontendDefinition(
+                FrontendMessages.OptionsSlot, FrontendMessages.OptionsMenu);
+            return;
+        }
+
+        if (msg == FrontendMessages.Quit)
+        {
+            ActivateFrontendDefinition(
+                FrontendMessages.QuitSlot, FrontendMessages.QuitMenu);
+            return;
+        }
+
+        if (msg == FrontendMessages.About)
+        {
+            ActivateFrontendDefinition(
+                FrontendMessages.AboutSlot, FrontendMessages.AboutMenu);
+            return;
+        }
+
         if (msg != FrontendNewGameMessage)
             return;
         Note(FrontendNewGameApply, "Frontend", "UI",
@@ -7254,6 +7315,31 @@ public sealed class EngineLifecycle : IDisposable
         Note(FrontendNewGameThunk, "Frontend", "UI",
             $"00594F28 [retail+{RetailNewGameFlagOffset}]=1");
         RetailNewGameFlag = true;
+    }
+
+    /// <summary>
+    /// Native <c>00598A1C</c> constructs the slot table from frontend.bin and
+    /// <c>0059A238</c> switches to those authored roots. The host constructs a
+    /// slot lazily, but uses the same slot/root pairs and generic factory; no
+    /// screen geometry or child behavior is reproduced here.
+    /// </summary>
+    private void ActivateFrontendDefinition(int slot, string rootName)
+    {
+        SwitchFrontendSlot(slot);
+        if (!_frontendSlotTrees.TryGetValue(slot, out var tree) || tree.Count == 0)
+        {
+            ResolveFrontendDef(rootName);
+            AttachFrontendTree(rootName, slot);
+            tree = _frontendWidgets;
+        }
+        else
+        {
+            _frontendWidgets = tree;
+            RebuildResidentTrees();
+        }
+
+        FrontendMenuRoot = rootName;
+        SelectFrontendState(slot, 5);
     }
 
     private void CancelNewProfileMessage()
@@ -7323,6 +7409,7 @@ public sealed class EngineLifecycle : IDisposable
         ResolveFrontendDef(name);
         SwitchFrontendSlot(FrontendMainMenuSlot);
         AttachFrontendTree(name, FrontendMainMenuSlot);
+        BindMainMenuProfileText();
         SelectFrontendState(FrontendMainMenuSlot, 5);
     }
 
@@ -7516,7 +7603,35 @@ public sealed class EngineLifecycle : IDisposable
         ResolveFrontendDef(FrontendMainMenuNoContinue);
         SwitchFrontendSlot(FrontendMainMenuSlot);
         AttachFrontendTree(FrontendMainMenuNoContinue, FrontendMainMenuSlot);
+        BindMainMenuProfileText();
         SelectFrontendState(FrontendMainMenuSlot, 5);
+    }
+
+    /// <summary>
+    /// <c>00595B24</c> finds <c>UI_TEXT_NEW_GAME</c> and passes the active
+    /// profile string to type-6 <c>0054F580</c>.  That routine combines the
+    /// argument with the authored/localised run, producing retail's
+    /// "Default - New Game" label.
+    /// </summary>
+    private void BindMainMenuProfileText()
+    {
+        var profile = string.IsNullOrWhiteSpace(FrontendEditBoxName)
+            ? FrontendProfileDefaultFallback
+            : FrontendEditBoxName.Trim();
+        for (var i = 0; i < _frontendWidgets.Count; i++)
+        {
+            var widget = _frontendWidgets[i];
+            if (!string.Equals(widget.Name, "UI_TEXT_NEW_GAME",
+                    StringComparison.Ordinal))
+                continue;
+            var label = widget.Text;
+            if (string.IsNullOrWhiteSpace(label) &&
+                !string.IsNullOrWhiteSpace(widget.TextValue))
+                label = LookupFrontendText(widget.TextValue) ?? widget.TextValue;
+            if (string.IsNullOrWhiteSpace(label))
+                continue;
+            _frontendWidgets[i] = widget with { Text = $"{profile} - {label}" };
+        }
     }
 
     /// <summary>
@@ -8167,33 +8282,32 @@ public sealed class EngineLifecycle : IDisposable
         // First 004FBF60 is LookoutPoint (NewMap 1).
         // Native then inc ebx through every filled
         // LoadedOnPlayerProximity slot (1..count-1).
-        // Host break after the first prox file is
-        // leftover #50 (ThingFile.Parse OOM), not a
-        // recovered NewMap-1 lock and not 00501450.
-        WorldMap? first = null;
-        var prox = 0;
+        // Fully parsing and caching all 151 files retains hundreds of
+        // thousands of property strings. Native still opens the full walk,
+        // so keep the first parsed file (needed immediately by the host) and
+        // scan subsequent files directly from their bytes without caching.
         foreach (var map in World.Maps)
         {
             if (!map.LoadedOnPlayerProximity)
                 continue;
-            prox++;
-            first ??= map;
-        }
-
-        if (first is { } lookout)
-        {
             Note(LoadGlobalThingsPerMap, "Loading global things", "WLD",
-                "004FBF60 " + lookout.ScriptName + ".tng");
-            var tng = _levels?.TryLoadThings(lookout.ScriptName);
-            if (tng is not null)
+                "004FBF60 " + map.ScriptName + ".tng");
+            if (GlobalThingMapsLoaded == 0)
             {
+                var tng = _levels?.TryLoadThings(map);
+                if (tng is null)
+                    continue;
                 loaded.AddRange(tng.Things);
-                GlobalThingMapsLoaded = 1;
+                GlobalThingCount += loaded.Count;
             }
-
-            if (prox > 1)
-                Note(LoadGlobalThingsMapFile, "Loading global things", "WLD",
-                    $"004FDC00 leftover host break ebx=2..{prox} unparsed={prox - 1}");
+            else
+            {
+                var summary = _levels?.TryScanThings(map);
+                if (summary is null)
+                    continue;
+                GlobalThingCount += summary.Value.ThingCount;
+            }
+            GlobalThingMapsLoaded++;
         }
 
         if (loaded.Count == 0)
@@ -8204,7 +8318,7 @@ public sealed class EngineLifecycle : IDisposable
 
         GlobalThings = new ThingFile { Version = 2, Sections = [new ThingSection { Name = "GLOBAL", Things = loaded }] };
         Note(LoadGlobalThingsMapFile, "Load global things", "WLD",
-            $"maps={GlobalThingMapsLoaded} things={loaded.Count}");
+            $"maps={GlobalThingMapsLoaded} things={GlobalThingCount} retained={loaded.Count}");
     }
 
     /// <summary>
@@ -11431,6 +11545,8 @@ public sealed class EngineLifecycle : IDisposable
     /// </summary>
     private void TickGameflowMain()
     {
+        if (GameflowState != 0)
+            return;
         Note(QuestFiberAttachFn, "GamePump", "Quest",
             "00CB7950 Main +41=0 vtbl+4");
         Note(FiberTickFn, "GamePump", "Quest", "00A44880");
@@ -11452,13 +11568,24 @@ public sealed class EngineLifecycle : IDisposable
             "008968C0 vtbl+1180 " + GameflowWaitCard + " ret 12");
         Note(QuestIsActiveFn, "GamePump", "Quest",
             "00893570 vtbl+100 " + GameflowWaitQuest + " 0");
-        Note(GameflowYieldThunk, "GamePump", "Quest",
-            "006E7410 vtbl+8 00A44840 009D8650");
-        Note(WatcherYieldVtbl8, "GamePump", "Quest", "00A44840 yield");
-        Note(FiberYieldFn, "GamePump", "Quest",
-            "009D8650 wait " + GameflowWaitQuest);
-        GameflowState = 0;
-        GameflowYieldQuest = GameflowWaitQuest;
+        // 00CE7957 vtbl+1180 is 008968C0. It constructs the named quest
+        // card, writes Q_NewOakValeIntro into its quest component, and gives
+        // it through 004B4AA0. That path reaches 004B4A10/004B4260 and
+        // activates the quest before the following vtbl+100 test.
+        Note(0x008969B1, "GamePump", "Quest",
+            "004B4AA0 card → 004B4A10 " + GameflowWaitQuest);
+        ActivateNamedQuest(GameflowWaitQuest, "GamePump");
+        var activated = _activatedQuests.Contains(GameflowWaitQuest);
+        GameflowState = activated ? 1 : 0;
+        GameflowYieldQuest = activated ? null : GameflowWaitQuest;
+        if (!activated)
+        {
+            Note(GameflowYieldThunk, "GamePump", "Quest",
+                "006E7410 vtbl+8 00A44840 009D8650");
+            Note(WatcherYieldVtbl8, "GamePump", "Quest", "00A44840 yield");
+            Note(FiberYieldFn, "GamePump", "Quest",
+                "009D8650 wait " + GameflowWaitQuest);
+        }
         QuestPumpWalked++;
     }
 
@@ -11486,10 +11613,19 @@ public sealed class EngineLifecycle : IDisposable
             "00A44660 009D87F0 resume");
         Note(QuestIsActiveFn, "GamePump", "Quest",
             "00893570 vtbl+100 " + GameflowWaitQuest + " 0");
-        Note(GameflowYieldThunk, "GamePump", "Quest",
-            "006E7410 vtbl+8 00A44840 009D8650");
-        Note(FiberYieldFn, "GamePump", "Quest",
-            "009D8650 wait " + GameflowWaitQuest);
+        if (_activatedQuests.Contains(GameflowWaitQuest))
+        {
+            GameflowYieldQuest = null;
+            Note(QuestIsActiveFn, "GamePump", "Quest",
+                "00893570 active continue " + GameflowWaitQuest);
+        }
+        else
+        {
+            Note(GameflowYieldThunk, "GamePump", "Quest",
+                "006E7410 vtbl+8 00A44840 009D8650");
+            Note(FiberYieldFn, "GamePump", "Quest",
+                "009D8650 wait " + GameflowWaitQuest);
+        }
         QuestPumpWalked++;
     }
 
@@ -11587,9 +11723,17 @@ public sealed class EngineLifecycle : IDisposable
             $"vtbl+1580 [+{ScriptManagerPlus44Offset}]={ScriptManagerPlus44FirstSeen}");
         Note(ScriptGuiGateFn, "GamePump", "Script",
             $"vtbl+1544 [0x{PlayerGuiInstanceVa:X}]+{GuiPlus246Offset}={GuiPlus246FirstSeen}");
+        var interpreterCount = Runtime?.Interpreters.Count ?? 0;
         Note(ScriptListIterFn, "GamePump", "Script",
-            "0059299D skip +60 empty");
-        ScriptPumpWalked = 0;
+            interpreterCount == 0
+                ? "0059299D skip +60 empty"
+                : $"0059299D +60 runtime={interpreterCount}");
+        ScriptPumpWalked = interpreterCount;
+        // 006E75C0 is the engine script-manager pump. The managed runtime is
+        // the implementation of those recovered fibers/interpreters, so it
+        // must advance here, once per game update, rather than in rendering.
+        Runtime?.Update((float)FrameDtNow);
+        WriteHeroFromRuntime();
         ScriptPumpRan = true;
     }
 
@@ -11973,6 +12117,71 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     /// <summary>
+    /// Completes the live-client dependency after the native dummy-region
+    /// pump. Persisted games use <c>00487C20</c>; a no-save game requests
+    /// native WLD slot 1 through <c>00500540</c> / <c>006C2170</c>.
+    ///
+    /// The indirect caller that reaches this dependency is still unread, so
+    /// this method deliberately does not claim to be <c>00501450</c>. Running
+    /// the full recovered catalogue walk here would load every region and
+    /// recreate the large allocation spike without selecting the playable
+    /// region.
+    /// </summary>
+    public bool EnsureFirstPlayableRegionLoaded()
+    {
+        if (FirstPlayableRegionLoadDone)
+            return CurrentRegion is not null;
+        if (Stage != EngineStage.Game || !GamePumpFirstDone || UseNamedStart)
+            return false;
+
+        if (!string.IsNullOrEmpty(PlayerRegionName))
+        {
+            LoadRegionByName(PlayerRegionName);
+            if (_loadQueue.Count > 0)
+                PumpLevelLoader();
+        }
+        else if (_activatedQuests.Contains("Gameflow") &&
+                 !_activatedQuests.Contains(RegionTravel.IntroQuest))
+        {
+            // Fresh Gameflow has not yet executed its state-0 quest-card
+            // give. Loading native slot 1 here races ahead of 00CE7957 and
+            // selects LookoutPoint before S_QNOVI can name StartOakVale.
+            return false;
+        }
+        else if (_activatedQuests.Contains(RegionTravel.IntroQuest) && World is { } world)
+        {
+            // S_QNOVI reaches 00DBDE40 immediately. Its first operation asks
+            // script-context slot +48 (0088E300) whether the current WLD
+            // region is StartOakVale. Select that recovered script target,
+            // rather than the unrelated first WLD record.
+            var nativeIndex = -1;
+            for (var i = 0; i < world.Regions.Count; i++)
+            {
+                if (!world.Regions[i].RegionName.Equals(
+                        "StartOakVale", StringComparison.OrdinalIgnoreCase))
+                    continue;
+                nativeIndex = i + RegionTableDummyCount;
+                break;
+            }
+            if (nativeIndex >= RegionTableDummyCount)
+            {
+                Note(RegionTravel.StartOakValeSetup, "GamePump", "Quest",
+                    "00DBDE40 vtbl+48 StartOakVale current-region wait");
+                RequestLoadRegion(nativeIndex, sync: true);
+            }
+        }
+        else if ((World?.Regions.Count ?? 0) > 0)
+        {
+            // RegionAtNativeIndex(1) is the first WLD record. Do not replace
+            // this with a map-name guess (LookoutPoint / StartOakVale).
+            RequestLoadRegion(RegionTableDummyCount, sync: true);
+        }
+
+        FirstPlayableRegionLoadDone = CurrentRegion is not null;
+        return FirstPlayableRegionLoadDone;
+    }
+
+    /// <summary>
     /// <c>00500540</c> then <c>006C27A0</c> /
     /// <c>006C2120</c>. Does not invent
     /// StartOakVale. <c>sync</c> is the third
@@ -12277,15 +12486,17 @@ public sealed class EngineLifecycle : IDisposable
                       ?? CurrentRegion.RegionName;
         Timing.Measure("STB/LEV open", () =>
         {
-            foreach (var map in WorldGeometry.StaticMapsAround(World, Install, primary))
+            var maps = WorldGeometry.StaticMapsAround(World, Install, primary).ToList();
+            foreach (var map in maps)
                 _openedStaticMaps.Add(map.ScriptName);
             CurrentStaticMapName = primary;
-            foreach (var name in _openedStaticMaps)
+            foreach (var map in maps)
             {
+                var name = map.ScriptName;
                 var neighbour = !name.Equals(primary, StringComparison.OrdinalIgnoreCase);
                 if (neighbour)
                     _neighbourStaticMaps.Add(name);
-                AttachStaticMap(name, neighbour);
+                AttachStaticMap(map, neighbour);
             }
             return _openedStaticMaps.Count;
         }, n => $"opened={n} primary={primary}");
@@ -12315,6 +12526,16 @@ public sealed class EngineLifecycle : IDisposable
             Note(AttachPatchFn, "StaticMap", "WLD", "00BDF010 " + name);
     }
 
+    private void AttachStaticMap(WorldMap map, bool neighbour)
+    {
+        Note(OpenStaticMapsAttach, "StaticMap", "WLD",
+            neighbour ? "00B41E50 neighbour " + map.ScriptName : "00B41E50 current " + map.ScriptName);
+        Note(CloseStaticMapFn, "StaticMap", "WLD", "00B3EF40");
+        OpenStaticMapBody(map, neighbour);
+        if (neighbour)
+            Note(AttachPatchFn, "StaticMap", "WLD", "00BDF010 " + map.ScriptName);
+    }
+
     /// <summary>
     /// <c>00B42530</c> miss-path open.
     /// STB-hit New Game uses
@@ -12334,6 +12555,21 @@ public sealed class EngineLifecycle : IDisposable
 
         EnsureLevels();
         var header = _levels?.PeekMapHeader(name);
+        OpenStaticMapBody(name, header, neighbour);
+    }
+
+    private void OpenStaticMapBody(WorldMap map, bool neighbour)
+    {
+        if (Install is null || World is null)
+            return;
+
+        EnsureLevels();
+        OpenStaticMapBody(map.ScriptName, _levels?.PeekMapHeader(map), neighbour);
+    }
+
+    private void OpenStaticMapBody(
+        string name, StaticMapHeader? header, bool neighbour)
+    {
         Note(ParseMapHeaderFn, "StaticMap", "WLD",
             header is null || header.Value.StbSize == 0
                 ? "009CCDC0 miss " + name
@@ -12421,6 +12657,17 @@ public sealed class EngineLifecycle : IDisposable
                     Note(PostLoadInitialiseFn, "LevelLoader", "Region",
                         "Region Level Files: Post Load Initialise 004FD020 " + map);
 
+                // 0051E2F0 follows the region's complete object-load pass.
+                // S_QNOVI registered NOVI_LiveFather in 00DABAC0 before its
+                // 00DBDE40 map wait; activating the authored TNG ScriptName
+                // here reaches 00DAC2C0 -> 00DB86B0 -> 00CBFB7D exactly when
+                // the thing becomes live.
+                if (Runtime is not null)
+                {
+                    Runtime.BindScene(_regionThings, Camera);
+                    Runtime.ActivateThings(_regionThings);
+                }
+
                 foreach (var map in region.ContainsMaps)
                 {
                     Note(LevelLoaderApply, "LevelLoader", "Region",
@@ -12473,8 +12720,7 @@ public sealed class EngineLifecycle : IDisposable
         }
 
         EnsureLevels();
-        var tng = _levels?.TryLoadThings(map.ScriptName)
-                  ?? _levels?.TryLoadThings(map.FileStem);
+        var tng = _levels?.TryLoadThings(map);
         if (tng is null)
         {
             Note(ThingManagerLoadFileFn, "LevelLoader", "Thing", "missing " + mapName);
@@ -12569,10 +12815,15 @@ public sealed class EngineLifecycle : IDisposable
                 t.DefinitionType, RegionTravel.PlayerStartType,
                 StringComparison.Ordinal))
             .ToList();
-        var start = starts.FirstOrDefault(t =>
-                        string.Equals(t.ScriptName, GuildArrivalHsp,
-                            StringComparison.OrdinalIgnoreCase))
-                    ?? starts.FirstOrDefault(t => t.PositionX is not null);
+        var isOakvaleIntro = CurrentRegion?.RegionName.Equals(
+            "StartOakVale", StringComparison.OrdinalIgnoreCase) == true &&
+            _activatedQuests.Contains(RegionTravel.IntroQuest);
+        var start = isOakvaleIntro
+            ? RegionTravel.FindPlayerStart(starts)
+            : starts.FirstOrDefault(t =>
+                  string.Equals(t.ScriptName, GuildArrivalHsp,
+                      StringComparison.OrdinalIgnoreCase))
+              ?? starts.FirstOrDefault(t => t.PositionX is not null);
         if (start is null)
         {
             Note(PlayerCreatureCreateFn, "LevelLoader", "Player",
@@ -12735,6 +12986,8 @@ public sealed class EngineLifecycle : IDisposable
     private void ActivateNamedQuest(string name, string phase)
     {
         if (name.Length == 0)
+            return;
+        if (_activatedQuests.Contains(name))
             return;
         var inTable = name.Equals("NULL", StringComparison.OrdinalIgnoreCase) ||
             _questManagerPlus44.Exists(n =>
@@ -13082,20 +13335,29 @@ public sealed class EngineLifecycle : IDisposable
     /// <summary>
     /// <c>0052CF40</c> walks the attached child vector and forwards the
     /// selected state through child <c>vtbl+188</c>. The duration selected
-    /// by the parent is passed to each child. This path is used for whole
-    /// menu entrance/retirement; hover continues to update only the authored
-    /// immediate visual subscribers.
+    /// by the parent is passed to each child, subject to the authored
+    /// StateChangeType branch and native type-8 exclusions.
     /// </summary>
     private void ForwardSelectTreeState(
         List<FrontendWidget> tree, int index, int state, float inheritedDuration)
     {
         if ((uint)index >= (uint)tree.Count)
             return;
-        var type = tree[index].Type;
+        var before = tree[index];
+        var type = before.Type;
+        var changeTypes = before.StyleChangeTypes;
+        var hasAuthoredStyle = changeTypes is not null &&
+            (uint)state < (uint)changeTypes.Count;
+        var changeType = hasAuthoredStyle ? changeTypes![state] : 0;
         ForwardSelectState(tree, index, state, inheritedDuration);
         // These overrides perform their own authored child selection.
         if (type == FrontendWidgetType.Swap ||
             (type == FrontendWidgetType.TextSlider && state == 5))
+            return;
+        // 0052CF40 jump table 0052D37C: authored StateChangeType 0, 2 and
+        // 4 forward to attached children. Types 1 and 3 only update the
+        // current widget and completion markers.
+        if (hasAuthoredStyle && changeType is 1 or 3)
             return;
         var duration = tree[index].ColourTransitionDuration > 0f
             ? tree[index].ColourTransitionDuration
@@ -13103,6 +13365,11 @@ public sealed class EngineLifecycle : IDisposable
         for (var child = 0; child < tree.Count; child++)
         {
             if (tree[child].ParentIndex != index)
+                continue;
+            // 0052D076/15A/246/2F6: type-8 list children do not receive
+            // the parent's selected state 1, 3 or 4.
+            if (tree[child].Type == FrontendWidgetType.List &&
+                state is 1 or 3 or 4)
                 continue;
             ForwardSelectTreeState(tree, child, state, duration);
         }
@@ -13129,14 +13396,48 @@ public sealed class EngineLifecycle : IDisposable
             $"widget {widget.Name} +332={state}");
         var haveStyle = widget.StyleColours is { } colours &&
             (uint)state < (uint)colours.Count;
+        var styleFlags = widget.StyleFlags is { } flags &&
+            (uint)state < (uint)flags.Count
+                ? flags[state]
+                : 0;
         var ownDuration = widget.StyleDurations is { } durations &&
             (uint)state < (uint)durations.Count
             ? durations[state]
             : -1f;
         var duration = inheritedDuration >= 0f ? inheritedDuration : ownDuration;
-        var targetColour = haveStyle
+        var changesColour = haveStyle &&
+            (styleFlags & FrontendWidgetType.StyleFlagsColour) != 0;
+        var targetColour = changesColour
             ? FrontendWidgetFactory.ColourAtStyle(widget, state)
             : widget.Colour;
+        if ((styleFlags & FrontendWidgetType.StyleFlagsForceOpaque) != 0)
+            targetColour = 0xFFFFFFFFu;
+        var positionsX = widget.StylePositionX;
+        var positionsY = widget.StylePositionY;
+        var changesPosition =
+            (styleFlags & FrontendWidgetType.StyleFlagsPosition) != 0 &&
+            positionsX is not null &&
+            positionsY is not null &&
+            (uint)state < (uint)positionsX.Count &&
+            (uint)state < (uint)positionsY.Count;
+        var targetX = changesPosition ? positionsX![state] : widget.PersistX;
+        var targetY = changesPosition ? positionsY![state] : widget.PersistY;
+        var zoomsX = widget.StyleZoomX;
+        var zoomsY = widget.StyleZoomY;
+        var changesScale =
+            (styleFlags & FrontendWidgetType.StyleFlagsScale) != 0 &&
+            zoomsX is not null &&
+            zoomsY is not null &&
+            (uint)state < (uint)zoomsX.Count &&
+            (uint)state < (uint)zoomsY.Count;
+        var targetScaleX = changesScale ? zoomsX![state] : widget.PersistScaleX;
+        var targetScaleY = changesScale ? zoomsY![state] : widget.PersistScaleY;
+        if ((styleFlags & FrontendWidgetType.StyleFlagsUnitScale) != 0)
+        {
+            targetScaleX = 1f;
+            targetScaleY = 1f;
+            changesScale = true;
+        }
         var graphicStyles = widget.StyleGraphicIds;
         var haveGraphicStyle = graphicStyles is not null &&
             (uint)state < (uint)graphicStyles.Count && graphicStyles[state] != 0;
@@ -13147,17 +13448,50 @@ public sealed class EngineLifecycle : IDisposable
             textureStyles[state] is { Length: > 0 } styleTexture
                 ? styleTexture
                 : widget.TextureName;
-        var transition = haveStyle && duration > 0f && targetColour != widget.Colour;
+        var colourTransition = changesColour && duration > 0f &&
+            targetColour != widget.Colour;
+        var positionTransition = changesPosition && duration > 0f &&
+            (targetX != widget.PersistX || targetY != widget.PersistY);
+        var scaleTransition = changesScale && duration > 0f &&
+            (targetScaleX != widget.PersistScaleX ||
+             targetScaleY != widget.PersistScaleY);
+        var anyTransition = colourTransition || positionTransition || scaleTransition;
+        var enabled = widget.Type == FrontendInputMap.TypeAccept
+            ? state switch
+            {
+                0 or 6 => false,
+                1 or 5 => true,
+                _ => widget.Enabled,
+            }
+            : widget.Enabled;
         tree[index] = widget with
         {
             State = state,
+            // Type-38 00558C70 unregisters its input object for states 0/6
+            // and registers it for states 1/5. States 2/3/4 do not alter
+            // registration.
+            Enabled = enabled,
             StyleIndex = haveStyle ? state : widget.StyleIndex,
-            Colour = transition ? widget.Colour : targetColour,
-            ColourTransitionFrom = transition ? widget.Colour : targetColour,
+            Colour = colourTransition ? widget.Colour : targetColour,
+            PersistX = positionTransition ? widget.PersistX : targetX,
+            PersistY = positionTransition ? widget.PersistY : targetY,
+            PersistScaleX = scaleTransition ? widget.PersistScaleX : targetScaleX,
+            PersistScaleY = scaleTransition ? widget.PersistScaleY : targetScaleY,
+            ColourTransitionFrom = colourTransition ? widget.Colour : targetColour,
             ColourTransitionTo = targetColour,
             ColourTransitionElapsed = 0f,
-            ColourTransitionDuration = transition ? duration : 0f,
-            ColourTransitionActive = transition,
+            ColourTransitionDuration = anyTransition ? duration : 0f,
+            ColourTransitionActive = colourTransition,
+            TransformFromX = widget.PersistX,
+            TransformFromY = widget.PersistY,
+            TransformToX = targetX,
+            TransformToY = targetY,
+            TransformFromScaleX = widget.PersistScaleX,
+            TransformFromScaleY = widget.PersistScaleY,
+            TransformToScaleX = targetScaleX,
+            TransformToScaleY = targetScaleY,
+            PositionTransitionActive = positionTransition,
+            ScaleTransitionActive = scaleTransition,
             GraphicId = targetGraphic,
             TextureName = targetTexture,
         };
@@ -13340,45 +13674,14 @@ public sealed class EngineLifecycle : IDisposable
                     Hovered = true,
                     ActiveChild = widget.State,
                 };
-                ForwardSelectState(tree, i, hoverState);
-                ApplyAuthoredHoverVisuals(tree, i, entering: true);
-                if (ReferenceEquals(tree, _frontendWidgets))
-                    PublishFrontendAudio("CS_GUI_1");
+                ForwardSelectTreeState(tree, i, hoverState, -1f);
             }
             else
             {
                 // 0055B9A0 restores the state saved in +348.
                 var restoreState = widget.ActiveChild;
                 tree[i] = widget with { Hovered = false };
-                ForwardSelectState(tree, i, restoreState);
-                ApplyAuthoredHoverVisuals(tree, i, entering: false);
-            }
-        }
-    }
-
-    private void ApplyAuthoredHoverVisuals(
-        List<FrontendWidget> tree, int button, bool entering)
-    {
-        // 0055AEB0/0055AEF0 publish actions 26/31/27/32 after the button
-        // transition. The authored immediate components subscribe to that
-        // pair and receive the button's selected state. Their colour/alpha
-        // then inherits through nested table cells. Broadcasting recursively
-        // rewrites every cloned table graphic and stalls Vulkan on Profile
-        // Name hover.
-        var selectedState = tree[button].State;
-        for (var child = 0; child < tree.Count; child++)
-        {
-            if (tree[child].ParentIndex != button)
-                continue;
-            var visual = tree[child];
-            if (entering)
-            {
-                tree[child] = visual with { ActiveChild = visual.State };
-                ForwardSelectState(tree, child, selectedState);
-            }
-            else
-            {
-                ForwardSelectState(tree, child, visual.ActiveChild);
+                ForwardSelectTreeState(tree, i, restoreState, -1f);
             }
         }
     }
@@ -13402,13 +13705,13 @@ public sealed class EngineLifecycle : IDisposable
     /// (<c>0055B8F0</c>). Not every
     /// visible button.
     /// </summary>
-    private void ArmType34Widgets()
+    private int? PressFrontendControl()
     {
         UnarmType34Widgets();
         var hit = FrontendHitTest.HitIndex(
             _frontendWidgets, FrontendPointerX, FrontendPointerY);
         if (hit is not int index)
-            return;
+            return null;
         var widget = _frontendWidgets[index];
         if (widget.Type == FrontendWidgetType.TextSlider)
         {
@@ -13418,7 +13721,9 @@ public sealed class EngineLifecycle : IDisposable
                 ? _frontendWidgets[visualIndex].ControlDirection
                 : 0;
             ApplyTextSliderHit(index, direction);
-            return;
+            return widget.ActionOnLeftClicked != 0
+                ? widget.ActionOnLeftClicked
+                : null;
         }
 
         if (widget.Type == 15)
@@ -13429,17 +13734,58 @@ public sealed class EngineLifecycle : IDisposable
                 ? _frontendWidgets[visualIndex].ControlDirection
                 : 0;
             ApplySliderHit(index, direction);
-            return;
+            return widget.ActionOnLeftClicked != 0
+                ? widget.ActionOnLeftClicked
+                : null;
         }
 
         if (widget.Type != FrontendInputMap.TypeButton &&
             widget.Type != FrontendInputMap.TypeAccept)
-            return;
+            return null;
         // 0055AD60: +352==0 skips vtbl+584
         // and does not write +364.
         if (!widget.Hovered)
-            return;
-        _frontendWidgets[index] = widget with { Armed = true };
+            return null;
+        _frontendWidgets[index] = widget with
+        {
+            Armed = true,
+            PressedRestoreState = widget.State,
+        };
+        ForwardSelectTreeState(
+            _frontendWidgets, index, widget.LeftClickedState, -1f);
+        return widget.ActionOnLeftClicked != 0
+            ? widget.ActionOnLeftClicked
+            : null;
+    }
+
+    /// <summary>
+    /// Type-11/38 <c>0055ACF0</c>: restore the state captured by
+    /// <c>0055AF60</c>, then post the parsed <c>ActionOnLeftUnclicked</c>
+    /// list at runtime +380.
+    /// </summary>
+    private int? ReleaseFrontendControl()
+    {
+        int? message = null;
+        for (var i = 0; i < _frontendWidgets.Count; i++)
+        {
+            var widget = _frontendWidgets[i];
+            if (!widget.Armed)
+                continue;
+            if (widget.Type == FrontendInputMap.TypeButton ||
+                widget.Type == FrontendInputMap.TypeAccept)
+            {
+                ForwardSelectTreeState(
+                    _frontendWidgets, i, widget.PressedRestoreState, -1f);
+            }
+            if (widget.ActionOnLeftUnclicked != 0)
+                message ??= widget.ActionOnLeftUnclicked;
+            _frontendWidgets[i] = _frontendWidgets[i] with
+            {
+                Armed = false,
+                PressedRestoreState = 0,
+            };
+        }
+        return message;
     }
 
     private void ApplyTextSliderHit(int index, int direction)
@@ -13679,20 +14025,25 @@ public sealed class EngineLifecycle : IDisposable
                 (table.ExpansionType & 1) != 0)
             {
                 var leftW = scratch.TableLeftWidths[widget.ParentIndex];
-                var middleW = scratch.TableMiddleWidths[widget.ParentIndex];
-                var middleCount = scratch.TableMiddleCounts[widget.ParentIndex];
-
+                var rightW = scratch.TableRightWidths[widget.ParentIndex];
+                var tableW = tableDest.ScaleX != 0f
+                    ? (tableDest.X1 - tableDest.X0) / tableDest.ScaleX
+                    : 0f;
+                var middleW = Math.Max(0f, tableW - leftW - rightW);
                 var rawX = widget.TableSpriteKey switch
                 {
                     0 => 0f,
-                    4 => leftW + widget.TableRepeatIndex * middleW,
-                    1 => leftW + middleCount * middleW,
+                    4 => leftW,
+                    1 => Math.Max(leftW, tableW - rightW),
                     _ => 0f,
                 };
+                var rawW = widget.TableSpriteKey == 4 ? middleW : leftoverW;
                 var x0 = tableDest.X0 + rawX * tableDest.ScaleX;
                 var y0 = tableDest.Y0;
-                var x1 = x0 + leftoverW * tableDest.ScaleX;
-                var y1 = y0 + leftoverH * tableDest.ScaleY;
+                var x1 = x0 + rawW * tableDest.ScaleX;
+                var y1 = tableDest.Y1 > tableDest.Y0
+                    ? tableDest.Y1
+                    : y0 + leftoverH * tableDest.ScaleY;
                 dest = new FrontendDest(
                     x0, y0,
                     tableDest.ScaleX, tableDest.ScaleY,
@@ -13726,13 +14077,27 @@ public sealed class EngineLifecycle : IDisposable
 
                     if (middleCount > 0)
                     {
-                        var expandedW = leftW + middleCount * middleW + rightW;
+                        // +204 is the authored middle budget.  00551EA0 adds
+                        // the two fixed sprite columns around that budget;
+                        // Width=400 therefore becomes 64+400+64=528, exactly
+                        // the retail main-menu selection strip.
+                        var expandedMiddleW = persistW > 0
+                            ? persistW
+                            : middleCount * middleW;
+                        var expandedW = leftW + expandedMiddleW + rightW;
                         dest = dest with
                         {
                             X1 = MathF.Round(dest.X0 + expandedW * dest.ScaleX),
                             Y1 = MathF.Round(dest.Y0 + maxH * dest.ScaleY),
                         };
                     }
+
+                    var rowHeight = FindOwningListRowHeight(widgets, i);
+                    if (rowHeight > 0f)
+                        dest = dest with
+                        {
+                            Y1 = MathF.Round(dest.Y0 + rowHeight * dest.ScaleY),
+                        };
                 }
             }
 
@@ -13761,6 +14126,21 @@ public sealed class EngineLifecycle : IDisposable
 
         ExpandTableDests(widgets);
         AssignHitRects(widgets);
+    }
+
+    private static float FindOwningListRowHeight(
+        IReadOnlyList<FrontendWidget> widgets, int index)
+    {
+        var parent = widgets[index].ParentIndex;
+        while ((uint)parent < (uint)widgets.Count)
+        {
+            var owner = widgets[parent];
+            if (owner.Type == FrontendWidgetType.List &&
+                owner.PositionOffsetY != 0f)
+                return MathF.Abs(owner.PositionOffsetY);
+            parent = owner.ParentIndex;
+        }
+        return 0f;
     }
 
     private (float W, float H) WidgetLeftover(FrontendWidget widget)
@@ -13836,76 +14216,55 @@ public sealed class EngineLifecycle : IDisposable
         {
             if (widgets[i].Type is not (FrontendInputMap.TypeButton or FrontendInputMap.TypeAccept))
                 continue;
-            var assigned = false;
-            for (var child = 0; child < widgets.Count; child++)
-            {
-                if (!widgets[child].Name.Contains("MOUSE_AREA", StringComparison.OrdinalIgnoreCase) ||
-                    !IsFrontendDescendant(widgets, child, i))
-                    continue;
-                var area = widgets[child];
-                if (area.DestX1 <= area.DestX0 || area.DestY1 <= area.DestY0)
-                    continue;
-                widgets[i] = widgets[i] with
-                {
-                    HitX0 = area.DestX0,
-                    HitY0 = area.DestY0,
-                    HitX1 = area.DestX1,
-                    HitY1 = area.DestY1,
-                };
-                assigned = true;
-                break;
-            }
-
-            if (assigned)
-                continue;
-
-            // Type-11 buttons do not necessarily author a separate MOUSE_AREA.
-            // 00551340/00551EA0 leave the button itself point-sized and obtain
-            // the selectable face from its table child. Prefer that parsed face
-            // over inventing a fixed rectangle (for example Profile Name uses
-            // UI_BUTTON_OPTIONS_LEFT while its edit-box table is a sibling).
-            for (var child = 0; child < widgets.Count; child++)
-            {
-                if (!widgets[child].Name.Contains("BUTTON_OPTIONS_LEFT", StringComparison.OrdinalIgnoreCase) ||
-                    !IsFrontendDescendant(widgets, child, i))
-                    continue;
-                var area = widgets[child];
-                if (area.DestX1 <= area.DestX0 || area.DestY1 <= area.DestY0)
-                    continue;
-                widgets[i] = widgets[i] with
-                {
-                    HitX0 = area.DestX0,
-                    HitY0 = area.DestY0,
-                    HitX1 = area.DestX1,
-                    HitY1 = area.DestY1,
-                };
-                assigned = true;
-                break;
-            }
-
-            if (assigned)
-                continue;
-
-            // Type-38 arrow buttons also have a point-sized parent and no
-            // MOUSE_AREA.  Their authored graphic child is the native AABB.
-            // Keep this generic fallback last so table-backed type-11 buttons
-            // continue to use their full selectable face.
+            // 0055B8F0 derives the interactive AABB from the attached face
+            // objects at runtime +176. Prefer the largest authored table
+            // face; type-38 controls without a table fall back to their
+            // largest drawable descendant. No definition-name matching is
+            // involved in the native path.
+            var best = -1;
+            var bestArea = 0f;
             for (var child = 0; child < widgets.Count; child++)
             {
                 var area = widgets[child];
-                if (!area.Name.Contains("GRAPHIC", StringComparison.OrdinalIgnoreCase) ||
+                if (area.Type != FrontendWidgetType.TableType ||
                     !IsFrontendDescendant(widgets, child, i) ||
                     area.DestX1 <= area.DestX0 || area.DestY1 <= area.DestY0)
                     continue;
-                widgets[i] = widgets[i] with
-                {
-                    HitX0 = area.DestX0,
-                    HitY0 = area.DestY0,
-                    HitX1 = area.DestX1,
-                    HitY1 = area.DestY1,
-                };
-                break;
+                var candidateArea =
+                    (area.DestX1 - area.DestX0) * (area.DestY1 - area.DestY0);
+                if (candidateArea <= bestArea)
+                    continue;
+                best = child;
+                bestArea = candidateArea;
             }
+
+            if (best < 0)
+            {
+                for (var child = 0; child < widgets.Count; child++)
+                {
+                    var area = widgets[child];
+                    if (!IsFrontendDescendant(widgets, child, i) ||
+                        area.DestX1 <= area.DestX0 || area.DestY1 <= area.DestY0)
+                        continue;
+                    var candidateArea =
+                        (area.DestX1 - area.DestX0) * (area.DestY1 - area.DestY0);
+                    if (candidateArea <= bestArea)
+                        continue;
+                    best = child;
+                    bestArea = candidateArea;
+                }
+            }
+
+            if (best < 0)
+                continue;
+            var face = widgets[best];
+            widgets[i] = widgets[i] with
+            {
+                HitX0 = face.DestX0,
+                HitY0 = face.DestY0,
+                HitX1 = face.DestX1,
+                HitY1 = face.DestY1,
+            };
         }
     }
 
@@ -14196,14 +14555,17 @@ public sealed class EngineLifecycle : IDisposable
         for (var i = 0; i < tree.Count; i++)
         {
             var widget = tree[i];
-            if (widget.TextureName is { } textureName &&
-                !textureIndex.ContainsKey(textureName) &&
-                _frontendSprites?.TryLoad(textureName) is { } sprite)
+            // Every authored style texture belongs to the resident control,
+            // not just the currently selected style. Keeping this list in
+            // authored order makes hover/state changes preserve texture ids
+            // and avoids Vulkan SetTextures -> DeviceWaitIdle + teardown.
+            if (widget.StyleTextureNames is { } styleTextures)
             {
-                var id = textures.Count;
-                textureIndex.Add(textureName, id);
-                textures.Add(new GpuTexture(id, sprite.Width, sprite.Height, sprite.Rgba));
+                for (var style = 0; style < styleTextures.Count; style++)
+                    AddResidentFrontendTexture(
+                        styleTextures[style], textures, textureIndex);
             }
+            AddResidentFrontendTexture(widget.TextureName, textures, textureIndex);
 
             if (widget.Type != FrontendWidgetType.Text ||
                 string.IsNullOrEmpty(widget.Text))
@@ -14221,6 +14583,20 @@ public sealed class EngineLifecycle : IDisposable
             textures.Add(new GpuTexture(
                 atlasId, face.UvWidth, face.UvHeight, face.Atlas));
         }
+    }
+
+    private void AddResidentFrontendTexture(
+        string? textureName,
+        List<GpuTexture> textures,
+        Dictionary<string, int> textureIndex)
+    {
+        if (string.IsNullOrEmpty(textureName) ||
+            textureIndex.ContainsKey(textureName) ||
+            _frontendSprites?.TryLoad(textureName) is not { } sprite)
+            return;
+        var id = textures.Count;
+        textureIndex.Add(textureName, id);
+        textures.Add(new GpuTexture(id, sprite.Width, sprite.Height, sprite.Rgba));
     }
 
     private int[] FrontendRecordOrder(List<FrontendWidget> tree)
@@ -14462,8 +14838,7 @@ public sealed class EngineLifecycle : IDisposable
     }
 
     private ThingFile? TryLoadMapTng(WorldMap map) =>
-        _levels?.TryLoadThings(map.ScriptName)
-        ?? _levels?.TryLoadThings(map.FileStem);
+        _levels?.TryLoadThings(map);
 
     /// <summary>
     /// <c>00509982</c> → <c>00506D40</c> with the

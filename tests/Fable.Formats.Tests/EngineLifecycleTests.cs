@@ -2995,7 +2995,7 @@ public sealed class EngineLifecycleTests
         Assert.True(sixtyFirst >= 0 && sixtySecond > sixtyFirst && defs > sixtySecond);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == "Q_NewOakValeIntro");
-        Assert.False(EngineLifecycle.ActivateQuestSatisfiesGameflowWait);
+        Assert.True(EngineLifecycle.ActivateQuestSatisfiesGameflowWait);
     }
 
     [Fact]
@@ -4062,8 +4062,8 @@ public sealed class EngineLifecycleTests
             fill > hasName && commit > fill && ret > commit && defs > ret);
         Assert.DoesNotContain(life.Trace.Events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == "Q_NewOakValeIntro");
-        Assert.True(EngineLifecycle.GameflowWaitsForeverOnNoSave);
-        Assert.False(EngineLifecycle.ActivateQuestSatisfiesGameflowWait);
+        Assert.False(EngineLifecycle.GameflowWaitsForeverOnNoSave);
+        Assert.True(EngineLifecycle.ActivateQuestSatisfiesGameflowWait);
     }
 
     [Fact]
@@ -4890,9 +4890,26 @@ public sealed class EngineLifecycleTests
         var newGameText = life.FrontendWidgets
             .Select((widget, index) => (widget, index))
             .Single(pair => pair.widget.Name == "UI_TEXT_NEW_GAME");
+        Assert.Equal("Default - New Game", newGameText.widget.Text);
         Assert.NotEqual(0u,
             FrontendWidgetFactory.EffectiveColour(
                 life.FrontendWidgets, newGameText.index) & 0xFF000000u);
+        var newGameButton = life.FrontendWidgets.Single(w =>
+            w.Name == "UI_FRONTEND_BUTTON_NEW_GAME");
+        Assert.Equal((96f, 309f, 941f, 357f),
+            (newGameButton.HitX0, newGameButton.HitY0,
+                newGameButton.HitX1, newGameButton.HitY1));
+        var bigButton = life.FrontendWidgets.Single(w => w.Name == "UI_BUTTON_BIG");
+        Assert.Equal((96f, 309f, 941f, 357f),
+            (bigButton.DestX0, bigButton.DestY0,
+                bigButton.DestX1, bigButton.DestY1));
+        Assert.Equal(3, life.FrontendWidgets.Count(w =>
+            w.ParentName == "UI_BUTTON_BIG" && w.TableSpriteKey >= 0));
+        life.SetFrontendPointer(550f, 338f);
+        life.QueueInput(EngineInput.TypeMouse, 0);
+        Assert.True(life.Pump());
+        Assert.True(life.FrontendWidgets.Single(w =>
+            w.Name == "UI_FRONTEND_BUTTON_NEW_GAME").Hovered);
         Assert.NotNull(life.FrontendBatch);
         Assert.False(life.FrontendBatch.Value.IsEmpty);
         WriteScreenDump(life, "main-menu");
@@ -6138,7 +6155,7 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
-    public void Type1_00CB8220_Gameflow_state0_yields_on_Q_NewOakValeIntro()
+    public void Type1_00CB8220_Gameflow_state0_gives_and_activates_Q_NewOakValeIntro()
     {
         var install = GameInstall.TryLocate();
         Assert.NotNull(install);
@@ -6156,8 +6173,8 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Pump(0.1f));
         Assert.True(life.QuestPumpRan);
         Assert.Equal(12, life.QuestPumpWalked);
-        Assert.Equal(10, life.EventPosts);
-        Assert.Equal(10, life.EventPumpWalked);
+        Assert.Equal(11, life.EventPosts);
+        Assert.Equal(11, life.EventPumpWalked);
         Assert.Equal(50, EngineLifecycle.EventPostDelay);
         Assert.Equal(55, EngineLifecycle.EventPostKind);
         Assert.Equal(0x37, EngineLifecycle.QuestConstructEventKind);
@@ -6168,8 +6185,8 @@ public sealed class EngineLifecycleTests
         Assert.Equal(1152, EngineLifecycle.QuestGiveVtbl);
         Assert.Equal(0x004B1D30u, EngineLifecycle.QuestGiveBody);
         Assert.Equal(0x00DBE295u, EngineLifecycle.QuestGiveAfterAttackOver);
-        Assert.True(EngineLifecycle.GameflowWaitsForeverOnNoSave);
-        Assert.False(EngineLifecycle.ActivateQuestSatisfiesGameflowWait);
+        Assert.False(EngineLifecycle.GameflowWaitsForeverOnNoSave);
+        Assert.True(EngineLifecycle.ActivateQuestSatisfiesGameflowWait);
         Assert.False(RegionTravel.FirstSeenAttackOverStoreRuns);
         Assert.False(RegionTravel.RaidAviIsBanditRaid);
         Assert.True(RegionTravel.AttackOverStoreAfterRaidAvi);
@@ -6246,12 +6263,12 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x0043A080u, EngineLifecycle.PlayerGuiTickFn);
         Assert.Equal(0x006B2260u, EngineLifecycle.AtmosTickFn);
         Assert.Equal(0x006E37D0u, EngineLifecycle.SpeechGainTickFn);
-        Assert.Equal(0, life.GameflowState);
-        Assert.Equal(EngineLifecycle.GameflowWaitQuest, life.GameflowYieldQuest);
+        Assert.Equal(1, life.GameflowState);
+        Assert.Null(life.GameflowYieldQuest);
         Assert.Contains(EngineLifecycle.WatcherCoreReminder, life.GameflowWatchers);
         Assert.Contains(EngineLifecycle.WatcherBarrowGuards, life.GameflowWatchers);
-        Assert.DoesNotContain(life.ActivatedQuests, q => q == EngineLifecycle.GameflowWaitQuest);
-        Assert.DoesNotContain(life.Runtime!.Quests, q => q.Name == EngineLifecycle.GameflowWaitQuest);
+        Assert.Contains(EngineLifecycle.GameflowWaitQuest, life.ActivatedQuests);
+        Assert.Contains(life.Runtime!.Quests, q => q.Name == EngineLifecycle.GameflowWaitQuest);
         Assert.DoesNotContain(life.ActivatedQuests, q => q == EngineLifecycle.TraderConflictEvil);
         Assert.DoesNotContain(life.ActivatedQuests, q => q == EngineLifecycle.TraderConflictGood);
         Assert.Contains(life.Trace.Events, e =>
@@ -6289,9 +6306,6 @@ public sealed class EngineLifecycleTests
             e.Va == EngineLifecycle.QuestIsActiveFn &&
             e.Action.Contains(EngineLifecycle.GameflowWaitQuest, StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e =>
-            e.Va == EngineLifecycle.FiberYieldFn &&
-            e.Action.Contains(EngineLifecycle.GameflowWaitQuest, StringComparison.Ordinal));
-        Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.QuestListWalkBFn &&
             e.Action.Contains("empty", StringComparison.Ordinal));
         Assert.DoesNotContain(life.Trace.Events, e =>
@@ -6309,7 +6323,7 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
-    public void Type1_resume_00CB8220_is_00A44880_then_00893570_yield()
+    public void Type1_00CB8220_does_not_resume_when_card_activation_satisfies_test()
     {
         var install = GameInstall.TryLocate();
         Assert.NotNull(install);
@@ -6321,35 +6335,29 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Pump());
         Assert.True(life.Pump());
         Assert.True(life.Pump(0.25f));
-        Assert.Equal(EngineLifecycle.GameflowWaitQuest, life.GameflowYieldQuest);
+        Assert.Null(life.GameflowYieldQuest);
         Assert.Equal(1, life.Trace.Events.Count(e =>
             e.Va == EngineLifecycle.GiveNamedObjectFn));
         Assert.True(life.Pump(0.25f));
         Assert.True(life.QuestPumpRan);
         Assert.True(life.QuestPumpWalked >= 1);
-        Assert.Contains(life.Trace.Events, e =>
+        Assert.DoesNotContain(life.Trace.Events, e =>
             e.Va == EngineLifecycle.QuestFiberAttachFn &&
             e.Action.Contains("resume", StringComparison.Ordinal));
-        Assert.Contains(life.Trace.Events, e =>
-            e.Va == EngineLifecycle.FiberTickFn &&
-            e.Action.Contains("00A44880", StringComparison.Ordinal));
-        Assert.Contains(life.Trace.Events, e =>
+        Assert.DoesNotContain(life.Trace.Events, e =>
             e.Va == EngineLifecycle.FiberResumeFn &&
             e.Action.Contains("009D87F0", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.QuestIsActiveFn &&
             e.Action.Contains(EngineLifecycle.GameflowWaitQuest, StringComparison.Ordinal));
-        Assert.Contains(life.Trace.Events, e =>
-            e.Va == EngineLifecycle.FiberYieldFn &&
-            e.Action.Contains(EngineLifecycle.GameflowWaitQuest, StringComparison.Ordinal));
         Assert.Equal(1, life.Trace.Events.Count(e =>
             e.Va == EngineLifecycle.GiveNamedObjectFn));
         Assert.Equal(1, life.GameflowWatchers.Count(w => w == EngineLifecycle.WatcherCoreReminder));
         Assert.Equal(1, life.GameflowWatchers.Count(w => w == EngineLifecycle.WatcherBarrowGuards));
-        Assert.DoesNotContain(life.ActivatedQuests, q => q == EngineLifecycle.GameflowWaitQuest);
-        Assert.DoesNotContain(life.Runtime!.Quests, q => q.Name == EngineLifecycle.GameflowWaitQuest);
-        Assert.Equal(EngineLifecycle.GameflowWaitQuest, life.GameflowYieldQuest);
-        Assert.Equal(0, life.GameflowState);
+        Assert.Contains(life.ActivatedQuests, q => q == EngineLifecycle.GameflowWaitQuest);
+        Assert.Contains(life.Runtime!.Quests, q => q.Name == EngineLifecycle.GameflowWaitQuest);
+        Assert.Null(life.GameflowYieldQuest);
+        Assert.Equal(1, life.GameflowState);
         Assert.Equal(0x00A44880u, EngineLifecycle.FiberTickFn);
         Assert.Equal(0x00A44660u, EngineLifecycle.FiberResumeFn);
         Assert.False(EngineLifecycle.SqnoviReentersRunAfterYield);
@@ -6371,7 +6379,7 @@ public sealed class EngineLifecycleTests
     }
 
     [Fact]
-    public void No_save_does_not_activate_Q_NewOakValeIntro()
+    public void No_save_gameflow_card_activates_Q_NewOakValeIntro()
     {
         var install = GameInstall.TryLocate();
         Assert.NotNull(install);
@@ -6385,15 +6393,14 @@ public sealed class EngineLifecycleTests
         Assert.True(life.Pump(0.25f));
         Assert.Contains(life.World!.InitialQuests, q => q == "Q_SunnyvaleMaster");
         Assert.DoesNotContain(life.WorldPlus172, q => q == "Q_NewOakValeIntro");
-        Assert.DoesNotContain(life.ActivatedQuests, q => q == "Q_NewOakValeIntro");
+        Assert.Contains("Q_NewOakValeIntro", life.ActivatedQuests);
         Assert.Contains(life.WorldPlus172, q => q == "Global_WatchForHeroDeath");
         Assert.DoesNotContain(life.World.InitialQuests, q =>
             q == EngineLifecycle.GameflowWaitQuest);
-        Assert.DoesNotContain(life.ActivatedQuests, q =>
-            q == EngineLifecycle.GameflowWaitQuest);
-        Assert.DoesNotContain(life.Runtime!.Quests, q =>
+        Assert.Contains(EngineLifecycle.GameflowWaitQuest, life.ActivatedQuests);
+        Assert.Contains(life.Runtime!.Quests, q =>
             q.Name == EngineLifecycle.GameflowWaitQuest);
-        Assert.Equal(EngineLifecycle.GameflowWaitQuest, life.GameflowYieldQuest);
+        Assert.Null(life.GameflowYieldQuest);
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.OakvaleBindSite &&
             e.Action.Contains("bind not 00CB5AD0", StringComparison.Ordinal));
@@ -6435,7 +6442,7 @@ public sealed class EngineLifecycleTests
         Assert.Equal(RegionTravel.IntroScriptName, oakvale.Value.ScriptName);
         Assert.Equal(RegionTravel.IntroQuestFactory, oakvale.Value.Factory);
         Assert.Equal(RegionTravel.IntroQuestRun, oakvale.Value.Run);
-        Assert.DoesNotContain(life.Runtime.Quests, q => q.Name == "Q_NewOakValeIntro");
+        Assert.Contains(life.Runtime.Quests, q => q.Name == "Q_NewOakValeIntro");
         Assert.True(string.IsNullOrEmpty(life.Runtime.LastMusic));
         Assert.False(EngineLifecycle.RequestNewGameStartsMusicSet);
         Assert.False(EngineLifecycle.InitSoundPlaysMusicSet);
@@ -7196,6 +7203,78 @@ public sealed class EngineLifecycleTests
             e.Action.Contains("0x64", StringComparison.Ordinal));
         Assert.DoesNotContain(events, e => e.Va == RegionTravel.StartOakValeSetup);
         Assert.DoesNotContain(events, e => e.Va == EngineLifecycle.NamedStartFn);
+    }
+
+    [Theory]
+    [InlineData(FrontendMessages.ChangeProfile, FrontendMessages.ProfilesSlot,
+        FrontendMessages.ProfilesMenu)]
+    [InlineData(FrontendMessages.Credits, FrontendMessages.CreditsSlot,
+        FrontendMessages.CreditsMenu)]
+    [InlineData(FrontendMessages.Options, FrontendMessages.OptionsSlot,
+        FrontendMessages.OptionsMenu)]
+    [InlineData(FrontendMessages.Quit, FrontendMessages.QuitSlot,
+        FrontendMessages.QuitMenu)]
+    [InlineData(FrontendMessages.About, FrontendMessages.AboutSlot,
+        FrontendMessages.AboutMenu)]
+    public void Frontend_0059A238_main_menu_actions_activate_authored_slots(
+        int message, int slot, string root)
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        using var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+
+        life.DispatchFrontendMessage(message);
+
+        Assert.Equal(root, life.FrontendMenuRoot);
+        Assert.Equal(slot, life.FrontendCurrentSlot);
+        Assert.Equal(root, life.FrontendWidgets[0].Name);
+        Assert.True(life.TryGetFrontendSlot(slot, out var widget));
+        Assert.Equal(root, widget.Name);
+    }
+
+    [Fact]
+    public void Live_client_after_New_Game_waits_for_Gameflow_and_loads_StartOakVale()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+
+        life.RequestNewGame();
+        Assert.True(life.Pump());
+        Assert.Equal(EngineStage.Game, life.Stage);
+        Assert.True(life.Pump());
+        Assert.True(life.GamePumpFirstDone);
+        Assert.Null(life.CurrentRegion);
+
+        Assert.False(life.EnsureFirstPlayableRegionLoaded());
+        Assert.True(life.Pump(0.1f));
+        Assert.Contains(RegionTravel.IntroQuest, life.ActivatedQuests);
+        Assert.True(life.EnsureFirstPlayableRegionLoaded());
+        Assert.True(life.FirstPlayableRegionLoadDone);
+        Assert.Equal(4, life.CurrentRegionIndex);
+        Assert.Equal("StartOakVale", life.CurrentRegion!.RegionName);
+        Assert.True(life.HeroSpawned);
+        Assert.NotNull(life.Runtime);
+        Assert.True(life.Runtime.HasStarted(RegionTravel.IntroCutscene));
+        Assert.Contains(life.Runtime.Interpreters, interpreter =>
+            interpreter.Name.Equals(
+                RegionTravel.IntroCutscene, StringComparison.OrdinalIgnoreCase));
+        Assert.False(life.FirstRealRegionLoadDone);
+        Assert.DoesNotContain(life.Trace.Events,
+            e => e.Va == EngineLifecycle.LoadFromFirstRealRegionFn);
+        Assert.Contains(life.Trace.Events,
+            e => e.Va == RegionTravel.StartOakValeSetup);
+
+        Assert.True(life.Pump());
+        Assert.True(life.WorldSubmitted);
+        Assert.NotNull(life.SubmittedMesh);
+        Assert.NotEmpty(life.SubmittedMesh!.Vertices);
     }
 
     [Fact]
@@ -8022,7 +8101,8 @@ public sealed class EngineLifecycleTests
         Assert.Equal(0x004FDBC0u, EngineLifecycle.LoadGlobalThingsPerMap);
         Assert.Equal(1, EngineLifecycle.LoadGlobalThingsEbxStart);
         Assert.Equal(203, EngineLifecycle.StartOakValeWestTngEbx);
-        Assert.True(EngineLifecycle.LoadGlobalThingsHostBreaksAfterFirstProx);
+        Assert.False(EngineLifecycle.LoadGlobalThingsHostBreaksAfterFirstProx);
+        Assert.True(EngineLifecycle.LoadGlobalThingsRetainsOnlyFirstParsedMap);
         Assert.Equal(0, EngineLifecycle.DefaultSingleGlobalThingsFlag);
         Assert.False(new EngineLifecycle().SingleGlobalThingsFile);
     }

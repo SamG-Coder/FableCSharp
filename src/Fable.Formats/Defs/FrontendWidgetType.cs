@@ -179,6 +179,9 @@ public static class FrontendWidgetType
     /// style-6 dword0 is UNREAD.
     /// </summary>
     public const uint StyleTickFn = 0x0052C7E0;
+    public const int StyleFlagsPosition = 0x01;
+    public const int StyleFlagsColour = 0x02;
+    public const int StyleFlagsScale = 0x04;
     public const int StyleFlagsForceOpaque = 0x10;
     public const int StyleFlagsZeroDest = 0x20;
     public const int StyleFlagsUnitScale = 0x40;

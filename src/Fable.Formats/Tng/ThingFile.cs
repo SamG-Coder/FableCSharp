@@ -101,6 +101,123 @@ public sealed class ThingFile
         };
     }
 
+    /// <summary>
+    /// Counts the structural records in an ASCII TNG without materialising
+    /// lines, property dictionaries, or <see cref="ThingInstance"/> objects.
+    /// This is used by the native <c>004FDBC0</c> proximity-file open walk,
+    /// where retaining every property from every map is not required merely
+    /// to reproduce the file traversal.
+    /// </summary>
+    public static ThingFileSummary Scan(ReadOnlySpan<byte> data)
+    {
+        var version = 0;
+        var sections = 0;
+        var things = 0;
+        var inThing = false;
+        var offset = 0;
+        while (offset < data.Length)
+        {
+            var end = data[offset..].IndexOf((byte)'\n');
+            if (end < 0)
+                end = data.Length - offset;
+            var line = TrimAscii(data.Slice(offset, end));
+            if (!line.IsEmpty && line[^1] == (byte)';')
+                line = TrimAscii(line[..^1]);
+
+            if (StartsWithAsciiToken(line, "Version"u8, out var rest))
+                version = ParsePositiveInt(rest);
+            else if (StartsWithAsciiToken(line, "XXXSectionStart"u8, out _))
+                sections++;
+            else if (StartsWithAsciiToken(line, "NewThing"u8, out _))
+                inThing = true;
+            else if (EqualsAscii(line, "EndThing"u8))
+            {
+                if (inThing)
+                    things++;
+                inThing = false;
+            }
+
+            offset += end + (offset + end < data.Length ? 1 : 0);
+        }
+
+        return new ThingFileSummary(version, sections, things, data.Length);
+    }
+
+    private static ReadOnlySpan<byte> TrimAscii(ReadOnlySpan<byte> value)
+    {
+        var start = 0;
+        while (start < value.Length && IsAsciiSpace(value[start]))
+            start++;
+        var end = value.Length;
+        while (end > start && IsAsciiSpace(value[end - 1]))
+            end--;
+        return value[start..end];
+    }
+
+    private static bool StartsWithAsciiToken(
+        ReadOnlySpan<byte> line, ReadOnlySpan<byte> token, out ReadOnlySpan<byte> rest)
+    {
+        if (line.Length < token.Length)
+        {
+            rest = [];
+            return false;
+        }
+        for (var i = 0; i < token.Length; i++)
+        {
+            var a = line[i];
+            var b = token[i];
+            if (a is >= (byte)'A' and <= (byte)'Z')
+                a += (byte)('a' - 'A');
+            if (b is >= (byte)'A' and <= (byte)'Z')
+                b += (byte)('a' - 'A');
+            if (a != b)
+            {
+                rest = [];
+                return false;
+            }
+        }
+        if (line.Length > token.Length && !IsAsciiSpace(line[token.Length]))
+        {
+            rest = [];
+            return false;
+        }
+        rest = TrimAscii(line[token.Length..]);
+        return true;
+    }
+
+    private static int ParsePositiveInt(ReadOnlySpan<byte> value)
+    {
+        var result = 0;
+        foreach (var b in value)
+        {
+            if (b is < (byte)'0' or > (byte)'9')
+                break;
+            result = checked(result * 10 + b - (byte)'0');
+        }
+        return result;
+    }
+
+    private static bool EqualsAscii(ReadOnlySpan<byte> value, ReadOnlySpan<byte> expected)
+    {
+        if (value.Length != expected.Length)
+            return false;
+        for (var i = 0; i < value.Length; i++)
+        {
+            var a = value[i];
+            var b = expected[i];
+            if (a is >= (byte)'A' and <= (byte)'Z')
+                a += (byte)('a' - 'A');
+            if (b is >= (byte)'A' and <= (byte)'Z')
+                b += (byte)('a' - 'A');
+            if (a != b)
+                return false;
+        }
+        return true;
+    }
+
+    private static bool IsAsciiSpace(byte value) =>
+        value is (byte)' ' or (byte)'\t' or (byte)'\r';
+
     private static bool StartsWithToken(string line, string token, out string rest)
     {
         if (line.StartsWith(token, StringComparison.OrdinalIgnoreCase) &&
@@ -174,6 +291,9 @@ public sealed class ThingFile
         }
     }
 }
+
+public readonly record struct ThingFileSummary(
+    int Version, int SectionCount, int ThingCount, int SourceBytes);
 
 public sealed class ThingSection
 {

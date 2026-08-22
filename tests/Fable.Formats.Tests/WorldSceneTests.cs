@@ -638,6 +638,9 @@ public sealed class WorldSceneTests
         Assert.Contains(qst.Quests, q => q.Name == "Q_NewOakValeIntro_PreAttack");
         Assert.Contains(qst.Quests, q => q.Name == "Q_GuildTraining");
         Assert.Contains(qst.Quests, q => q.Name == "Q_SunnyvaleMaster" && q.Persistent);
+        Assert.Contains(qst.TestQuests, q =>
+            q.Name == "Gameflow" && q.StartHolySite == "NOVStartHSP" &&
+            q.Kind == 2 && q.EndScript == "Gameflow.end");
 
         var oak = world.FindRegionContaining("StartOakValeWest");
         Assert.NotNull(oak);

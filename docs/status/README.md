@@ -58,9 +58,11 @@ open. dest `0044C72B` as `[01232C24+8]` is not
 rdata-locked. leave #42 open. New Profile dest/hit is
 host stand-in (`TryChromeHit` invents type-16/37 hit;
 GRAPHIC-name AABB is also host). `NativeDestTupleUnread`
-stays true. leave #48 open. First-proximity TNG is host OOM
-workaround, not locked `004FDBC0` NewMap 1. leave #50
-open. dest invented 512,384,512,384. leave #36 open.
+stays true. leave #48 open. `004FDBC0` now walks the exact
+151 proximity WLD slots and counts the retail 21,746 Things while
+retaining only the first parsed map; the `005223F0` construction
+destination/vector is still UNREAD, so leave #50 open for apply.
+dest invented 512,384,512,384. leave #36 open.
 Exclusive-walk leftover is STALE (tracker already done).
 Skip VAs `0052F180`/`0052F1D0` stay named constants
 (`SkipVtblsAreMethodCalls == false`); that is not
@@ -199,8 +201,9 @@ open. New Profile dest/hit is host stand-in
 (`TryChromeHit` invents type-16/37 hit; GRAPHIC-name
 AABB is also host). `NativeDestTupleUnread` stays true.
 leave #48 open.
-First-proximity TNG is host OOM workaround, not locked
-`004FDBC0` NewMap 1. leave #50 open. dest invented
+The `004FDBC0` open walk is now allocation-light and MATCH
+(151 exact WLD slots / 21,746 Things / first map retained).
+`005223F0` construction apply is still UNREAD; leave #50 open. dest invented
 512,384,512,384. leave #36 open. Exclusive-walk leftover
 is STALE (tracker already done). Skip VAs `0052F180` /
 `0052F1D0` stay named constants
@@ -232,6 +235,7 @@ widget +352, not MessageId. leave #14 and #20 open
 | `00501450` is only `00500540(1,0,0)` | DISPROVEN | loops all i; last `+156=141` `Filler_NorthernWastes_02`; restore `(0,0,1)` no pump |
 | `005198B0` releases the `0048D400` list | DISPROVEN | second collector: `+145` then `CTCActionUseScriptedHook` |
 | `00501450` E8/E9/imm/vtbl | UNREAD | 0 hits; not `004162B5` / `00418289` / `004189C2` (`0049D9E0` is `ret`) |
+| Live client dummy → first playable region | HOST BRIDGE | After the first dummy pump, `Program` calls `EnsureFirstPlayableRegionLoaded`: persist uses `00487C20`; no-save uses the proven first WLD slot through `00500540` / `006C2170`. This deliberately does **not** claim the unread native caller and does **not** run the 141-region `00501450` catalogue walk. It fixes the post-New-Game black frame without restoring the allocation spike. Locked by `Live_client_after_New_Game_loads_first_playable_region_without_catalogue_walk`. |
 | Host seeds type-1 tick on InitGame | DISPROVEN | first-seen `game+164` empty; `0041726D` skips |
 | Inner loop `009F8BA0` before `004162B5` | PROVEN | `[game+52]==0`; IAT `0x14404B4`; `+90556` |
 | `00416E78` skipped when `WorldFrame<=1` | DISPROVEN | prefix always runs; only `004457F0` is gated |
@@ -466,7 +470,7 @@ the no-save path.
 | Init Thing Components further Add Def Class | leftover Note-only | Thing Components now Notes Add Def Class for CHeroMorphDef then CHighlightItemDef / CSmokeGeneratorDef / CTimeAppearanceFadeDef / CCreatureNavigationDef / CInventoryItemDef / CLookDef / CReadableDef / CVillageDef / CVillageMemberDef / CBuyableHouseDef / CBuyHouseDef / CWifeDef / CDoorDef / CLightDef / CSpotLightDef / CClockDef / CHeroDef (`b7f4c34` / `acfe46f` / `100e5cf` / `1a4c51d` / `ee08490` / `3a7b594` / `b1d6877` / `113a514` / `a141c27` / `76edbbd` / `91564bd` / `f30c099` / `71ae66e` / `405b1e8` / `46663e3` / `db3899a` / `065eb28` / `6577614`). MATCH is Note-only + `*DefClassRegistered` flag, not live constructed. LoadDef field walk stays PARTIAL. Do not invent a live object. |
 | Lookout/GuildArrival vs Oakvale intro view (#4) | leftover #4 | No-save first region / first *rendered* scene is LookoutPoint (`RegionThings` + `006B3FF0` / GuildArrivalHSP). First-scene *intro view* is still `StartOakValeWest` / `HerosOldHouse` / `CAM_OVIF_SHOT2` (`FIRST_SCENE_*`). Do not collapse those ledgers. Do not fold first-proximity TNG (#50) into this leftover. Leave #4 open. |
 | New Profile dest/hit (#48) | leftover #48 | New Profile dest/hit is host stand-in (`TryChromeHit` invents type-16/37 hit; GRAPHIC-name AABB is also host). dest still not dest-locked (`b075dd3` … `4f1819d`). HEAD `FrontendLayoutTests` still `TryChromeHitIsNativeHit == false`, `PlaceTableCellCount3IsNative == false`. `NativeDestTupleUnread` stays true. Persist parse of type-12 `+326=30` / Sprites / `SpriteKeys == [0,1,4]` is real file recover. `PlaceTableCell` n==3 leftover fill still host. Persist-size skip is extra host heuristic on the same helper — #48 family, not a new leftover. leave #48 open. |
-| First-proximity TNG pump (#50) | leftover #50 | Host `LoadGlobalThingsFile` `break`s on the first `LoadedOnPlayerProximity` map and Notes `004FDBC0` / `004FBF60 LookoutPoint.tng` (`d628952`). Real reason is New Game pump OOM if every proximity `.tng` is parsed. Tests lock `GlobalThingMapsLoaded == 1` + LookoutPoint in the Note, no Bowerstone Note. Does **not** lock NewMap index, `ebx=1`, `004FBF60` callee, or `00501450`. First-proximity TNG is host OOM workaround, not a recovered `004FDBC0` NewMap-1 lock. Do not fold #50 into #4 (ledgers vs TNG pump). Leave #50 open. |
+| First-proximity TNG pump (#50) | leftover #50 apply | `LoadGlobalThingsFile` now follows the exact WLD map slots instead of re-resolving ambiguous script/file-stem aliases. It scans all 151 `LoadedOnPlayerProximity` TNGs, matches the retail census of 21,746 completed Things, and retains only LookoutPoint's parsed 288 records, avoiding the former OOM. Tests lock the census and exact-slot alias behavior. Native `[manager+128]==1` enters `005223F0`, but the `00521AE0` nine-dword mode/destination tuple and construction destination remain UNREAD. Do not insert all 21,746 into the first rendered region and do not fold #50 into #4. Leave #50 open for construction apply only. |
 | Exclusive-walk leftover | STALE | Exclusive-walk leftover is STALE (tracker already done). `DrawContainerWalk` foreach `ChildrenOf`, `IsPresented` parent-chain Visible/Clip, `ApplyFirstSeenState` Visible=true on every widget. Test `FrontendUiDefTests.Factory_builds_press_start_then_main_menu_from_the_same_walk` locks `ContainerDrawWalksEveryChild`, `ExclusiveWalkSelectsChild == false`, `Leftover46ExclusiveWalkIsStale`, type-18 FORREST_1 and FORREST_2 Visible, type-16 ARROWS/WASD and NORMAL/INVERTED Visible. Skip VAs `0052F180`/`0052F1D0` stay named constants (`SkipVtblsAreMethodCalls == false`); that is not exclusive-walk. Do not invent DrawContainerWalk calls of those VAs. Do not file a new leftover for that unread gap. |
 | Init Player Interface leftover `Register(ActionInputListener)` / `00488D20` notes | leftover | Not a function; factory is Create Players. Host ctor note of `0044A3B0` under Init Player Interface is DISPROVEN (moved to Init Player Manager, `4a03969`). Do not file a new issue. |
 

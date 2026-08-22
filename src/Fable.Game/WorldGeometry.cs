@@ -78,7 +78,7 @@ public sealed class WorldGeometry
             var dx = neighbour.X;
             var dy = neighbour.Y;
             if (expandGeometry)
-                AddTerrain(levels, map.ScriptName, dx, dy, triangles, landscapeEnums, landscapePlanes);
+                AddTerrain(levels, map, dx, dy, triangles, landscapeEnums, landscapePlanes);
 
             // First-seen 0x20 is primary Graphic only.
             // Neighbour TNG stays a handle until draw.
@@ -90,7 +90,7 @@ public sealed class WorldGeometry
                 else if (thingsByMap is not null)
                     mapThings = thingsByMap.TryGetValue(map.ScriptName, out var listed) ? listed : [];
                 else
-                    mapThings = levels.TryLoadThings(map.ScriptName)?.Things.ToList() ?? [];
+                    mapThings = levels.TryLoadThings(map)?.Things.ToList() ?? [];
                 AddInstances(
                     mapThings, map.ScriptName, dx, dy, defs, enums, meshes, triangles, instanceList,
                     ref instances, ref missing, missingDefs, expandGeometry);
@@ -343,12 +343,39 @@ public sealed class WorldGeometry
         HeaderEnums? landscapeEnums,
         LandscapeFrustum.Plane[]? landscapePlanes)
     {
+        AddTerrainCore(
+            levels, region, null, dx, dy, triangles, landscapeEnums, landscapePlanes);
+    }
+
+    private static void AddTerrain(
+        LevelLibrary levels,
+        WorldMap map,
+        float dx,
+        float dy,
+        List<MeshTriangle> triangles,
+        HeaderEnums? landscapeEnums,
+        LandscapeFrustum.Plane[]? landscapePlanes)
+    {
+        AddTerrainCore(
+            levels, map.ScriptName, map, dx, dy, triangles, landscapeEnums, landscapePlanes);
+    }
+
+    private static void AddTerrainCore(
+        LevelLibrary levels,
+        string region,
+        WorldMap? map,
+        float dx,
+        float dy,
+        List<MeshTriangle> triangles,
+        HeaderEnums? landscapeEnums,
+        LandscapeFrustum.Plane[]? landscapePlanes)
+    {
         // 00BDC2D0 / 00BF6F80: n-vertex AABB from
         // map size, before the cell walk. Do not
         // parse the STB height stream for a
         // rejected neighbour. The current map is
         // the 00B3E820 handle — keep it.
-        var header = levels.PeekMapHeader(region);
+        var header = map is null ? levels.PeekMapHeader(region) : levels.PeekMapHeader(map);
         var sizeX = header is { GridWidth: > 0 } ? header.Value.GridWidth : 128;
         var sizeY = header is { GridHeight: > 0 } ? header.Value.GridHeight : 128;
         var primary = dx == 0 && dy == 0;
@@ -359,11 +386,11 @@ public sealed class WorldGeometry
                 return;
         }
 
-        var height = levels.LoadHeightField(region);
+        var height = map is null ? levels.LoadHeightField(region) : levels.LoadHeightField(map);
         if (height is null)
             return;
 
-        var compiled = levels.LoadCompiledLev(region);
+        var compiled = map is null ? levels.LoadCompiledLev(region) : levels.LoadCompiledLev(map);
         var cells = compiled is null ? null : LevCellGrid.TryParse(compiled);
         IEnumerable<MeshTriangle> local;
         if (cells is not null && compiled is not null)

@@ -137,8 +137,11 @@ internal static partial class ScriptBehaviorExport
                 writer.WriteLine($"UNRESOLVED\tkind=quest_file_missing\tpath={Atom(path)}");
                 continue;
             }
-            foreach (var quest in QuestFile.Load(path).Quests)
+            var questFile = QuestFile.Load(path);
+            foreach (var quest in questFile.Quests)
                 writer.WriteLine($"QST\tfile={Atom(Path.GetFileName(path))}\tname={Atom(quest.Name)}\tpersistent={quest.Persistent}");
+            foreach (var quest in questFile.TestQuests)
+                writer.WriteLine($"QST_TEST\tfile={Atom(Path.GetFileName(path))}\tname={Atom(quest.Name)}\tstart_holy_site={Atom(quest.StartHolySite)}\tkind={quest.Kind}\tdescription={Atom(quest.Description)}\tini={Atom(quest.IniFile)}\tend_script={Atom(quest.EndScript)}\tquest_card={Atom(quest.QuestCard)}");
         }
     }
 

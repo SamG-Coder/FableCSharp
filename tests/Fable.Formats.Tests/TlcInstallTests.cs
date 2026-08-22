@@ -92,6 +92,28 @@ public sealed class TlcInstallTests
         Assert.Equal(49.669189f, thing.PositionX);
         Assert.Equal(76.648438f, thing.PositionY);
         Assert.Equal(35.252132f, thing.PositionZ);
+
+        var summary = ThingFile.Scan(System.Text.Encoding.ASCII.GetBytes(sample));
+        Assert.Equal(2, summary.Version);
+        Assert.Equal(1, summary.SectionCount);
+        Assert.Equal(1, summary.ThingCount);
+    }
+
+    [Fact]
+    public void Exact_world_map_slots_do_not_collapse_script_and_file_stem_aliases()
+    {
+        using var levels = new LevelLibrary(RequireInstall());
+        var eastSlot = Assert.Single(levels.World.Maps, map =>
+            map.ScriptName.Equals("OakValeWest_v2", StringComparison.OrdinalIgnoreCase));
+        var westSlot = Assert.Single(levels.World.Maps, map =>
+            map.FileStem.Equals("OakValeWest_v2", StringComparison.OrdinalIgnoreCase));
+
+        Assert.Equal("OakValeEast_v2", eastSlot.FileStem);
+        Assert.Equal("OakVale_Filler_01_v2", westSlot.ScriptName);
+        Assert.Equal(495, levels.TryLoadThings(eastSlot)!.Things.Count());
+        Assert.Equal(836, levels.TryLoadThings(westSlot)!.Things.Count());
+        Assert.Equal(495, levels.TryScanThings(eastSlot)!.Value.ThingCount);
+        Assert.Equal(836, levels.TryScanThings(westSlot)!.Value.ThingCount);
     }
 
     [Fact]

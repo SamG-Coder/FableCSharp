@@ -1,6 +1,7 @@
 using Fable.Core;
 using Fable.Formats.Defs;
 using Fable.Game;
+using Fable.Render;
 
 namespace Fable.Formats.Tests;
 
@@ -13,9 +14,19 @@ public sealed class FrontendInputTests
         Assert.Equal(0x126, FrontendMessages.AcceptNewProfile);
         Assert.Equal(0x124, FrontendMessages.MainMenu);
         Assert.Equal(15, FrontendMessages.NewGame);
+        Assert.Equal(16, FrontendMessages.ChangeProfile);
+        Assert.Equal(67, FrontendMessages.Credits);
+        Assert.Equal(297, FrontendMessages.Options);
+        Assert.Equal(314, FrontendMessages.Quit);
+        Assert.Equal(321, FrontendMessages.About);
         Assert.Equal(0x14, FrontendMessages.PressStartSlot);
         Assert.Equal(0x17, FrontendMessages.NewProfileSlot);
         Assert.Equal(0, FrontendMessages.MainMenuSlot);
+        Assert.Equal(0x07, FrontendMessages.ProfilesSlot);
+        Assert.Equal(0x09, FrontendMessages.CreditsSlot);
+        Assert.Equal(0x18, FrontendMessages.OptionsSlot);
+        Assert.Equal(0x1A, FrontendMessages.QuitSlot);
+        Assert.Equal(0x1C, FrontendMessages.AboutSlot);
         Assert.Equal("UI_FRONTEND_PRESS_START_MENU", FrontendMessages.PressStartMenu);
         Assert.Equal("UI_FRONTEND_NEW_PROFILE_SCREEN", FrontendMessages.NewProfileMenu);
         Assert.Equal("UI_NEW_PROFILE_EDIT_BOX", FrontendMessages.NewProfileEditBox);
@@ -402,6 +413,9 @@ public sealed class FrontendInputTests
             FrontendHitTest.TryDestPoint(life.FrontendWidgets, apply, out var ax, out var ay));
         var offIdle = life.FrontendWidgets.First(w => w.Name == "UI_SPRITE_ACCEPT_OFF");
         var onIdle = life.FrontendWidgets.First(w => w.Name == "UI_SPRITE_ACCEPT_ON");
+        var idleTextures = life.FrontendBatch is { } idleBatch
+            ? idleBatch.Textures.ToArray()
+            : [];
         var hoverAudioSerial = life.FrontendAudioSerial;
         Assert.Equal(255u, offIdle.Colour >> 24);
         Assert.Equal(0u, onIdle.Colour >> 24);
@@ -413,8 +427,12 @@ public sealed class FrontendInputTests
         var onHover = life.FrontendWidgets.First(w => w.Name == "UI_SPRITE_ACCEPT_ON");
         Assert.Equal(0u, offHover.Colour >> 24);
         Assert.Equal(255u, onHover.Colour >> 24);
-        Assert.True(life.FrontendAudioSerial > hoverAudioSerial);
-        Assert.Equal("CS_GUI_1", life.FrontendAudioCue);
+        Assert.NotNull(life.FrontendBatch);
+        Assert.True(VulkanLineRenderer.TextureSetsShareStorage(
+            idleTextures, life.FrontendBatch.Value.Textures));
+        // 0055BF10 changes widget state and publishes UI actions; it does not
+        // call the frontend sound bank. Do not synthesize a host-side cue.
+        Assert.Equal(hoverAudioSerial, life.FrontendAudioSerial);
         Assert.Equal(apply, FrontendHitTest.HitIndex(life.FrontendWidgets, ax, ay));
         Assert.Equal(0x0055BF10u, FrontendHitTest.HoverSelectFn);
         Assert.Equal(0x00530260u, FrontendWidgetType.ContainerDrawFn);
@@ -422,12 +440,12 @@ public sealed class FrontendInputTests
         var clickAudioSerial = life.FrontendAudioSerial;
         life.QueueInput(FrontendInputMap.Type6, 0);
         Assert.True(life.Pump());
-        Assert.True(life.FrontendAudioSerial > clickAudioSerial);
+        Assert.Equal(clickAudioSerial, life.FrontendAudioSerial);
         Assert.Equal(EngineLifecycle.FrontendMainMenuNoContinue, life.FrontendMenuRoot);
     }
 
     [Fact]
-    public void New_Profile_name_hover_updates_authored_components_without_replacing_nested_sprites()
+    public void New_Profile_name_hover_propagates_authored_state_through_nested_controls()
     {
         var life = ReachNewProfile();
         var button = IndexOf(life, "UI_NEW_PROFILE_BUTTON");
@@ -454,11 +472,11 @@ public sealed class FrontendInputTests
         var selectedState = life.FrontendWidgets[button].State;
         Assert.All(immediateChildren, child =>
             Assert.Equal(selectedState, life.FrontendWidgets[child].State));
-        Assert.All(nestedSprites, pair =>
+        Assert.Contains(nestedSprites, pair =>
         {
             var current = life.FrontendWidgets[pair.Key];
-            Assert.Equal(pair.Value.GraphicId, current.GraphicId);
-            Assert.Equal(pair.Value.TextureName, current.TextureName);
+            return current.GraphicId != pair.Value.GraphicId ||
+                   current.TextureName != pair.Value.TextureName;
         });
 
         var title = life.FrontendWidgets.First(w =>

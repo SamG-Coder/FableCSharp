@@ -100,14 +100,26 @@ public sealed class LevelLibrary : IDisposable
 
     public ThingFile? TryLoadThings(string region)
     {
-        if (_things.TryGetValue(region, out var cached))
-            return cached;
         var map = World.FindMap(region);
         if (map is null)
         {
             _things[region] = null;
             return null;
         }
+
+        return TryLoadThings(map);
+    }
+
+    /// <summary>
+    /// Loads the TNG belonging to an exact WLD map slot. Several retail WLD
+    /// slots share a script-name alias, so native slot walks must not resolve
+    /// the slot back through <see cref="WorldFile.FindMap(string)"/>.
+    /// </summary>
+    public ThingFile? TryLoadThings(WorldMap map)
+    {
+        var cacheKey = map.FileStem;
+        if (_things.TryGetValue(cacheKey, out var cached))
+            return cached;
 
         var stem = map.FileStem;
         ThingFile? file = null;
@@ -122,8 +134,39 @@ public sealed class LevelLibrary : IDisposable
                 file = ThingFile.Parse(Encoding.ASCII.GetString(_wad.Read(entry)));
         }
 
-        _things[region] = file;
+        _things[cacheKey] = file;
         return file;
+    }
+
+    /// <summary>
+    /// Opens and structurally scans a TNG without adding it to the parsed-map
+    /// cache. Native <c>004FDBC0</c> walks every proximity file; this keeps
+    /// that I/O width without retaining every authored property dictionary.
+    /// </summary>
+    public ThingFileSummary? TryScanThings(string region)
+    {
+        var map = World.FindMap(region);
+        if (map is null)
+            return null;
+        return TryScanThings(map);
+    }
+
+    /// <summary>Scans the TNG belonging to an exact WLD map slot.</summary>
+    public ThingFileSummary? TryScanThings(WorldMap map)
+    {
+        if (_things.TryGetValue(map.FileStem, out var cached) && cached is not null)
+            return new ThingFileSummary(
+                cached.Version, cached.Sections.Count, cached.Things.Count(), 0);
+
+        var stem = map.FileStem;
+        var loose = Path.Combine(Install.LooseLevelsDirectory, stem + ".tng");
+        if (File.Exists(loose))
+            return ThingFile.Scan(File.ReadAllBytes(loose));
+        if (_wad is null)
+            return null;
+        var entry = _wad.Find(stem + ".tng")
+                    ?? _wad.Find(map.LevelName.Replace(".lev", ".tng", StringComparison.OrdinalIgnoreCase));
+        return entry is null ? null : ThingFile.Scan(_wad.Read(entry));
     }
 
     private string LooseHint(string region)
@@ -143,6 +186,14 @@ public sealed class LevelLibrary : IDisposable
     public StaticMapHeader? PeekMapHeader(string region)
     {
         var map = World.FindMap(region);
+        return map is null ? PeekMapHeader(region, null) : PeekMapHeader(map);
+    }
+
+    public StaticMapHeader? PeekMapHeader(WorldMap map) =>
+        PeekMapHeader(map.FileStem, map);
+
+    private StaticMapHeader? PeekMapHeader(string region, WorldMap? map)
+    {
         var stem = map?.FileStem ?? region;
         BankEntry? lev = _wad?.Find(stem + ".lev")
                          ?? _wad?.Find(region + ".lev")
@@ -170,41 +221,60 @@ public sealed class LevelLibrary : IDisposable
 
     public LevFile? LoadCompiledLev(string region)
     {
-        if (_levs.TryGetValue(region, out var cached))
-            return cached;
         var map = World.FindMap(region);
+        return map is null ? LoadCompiledLev(region, null) : LoadCompiledLev(map);
+    }
+
+    public LevFile? LoadCompiledLev(WorldMap map) =>
+        LoadCompiledLev(map.FileStem, map);
+
+    private LevFile? LoadCompiledLev(string region, WorldMap? map)
+    {
+        var cacheKey = map?.FileStem ?? region;
+        if (_levs.TryGetValue(cacheKey, out var cached))
+            return cached;
         var stem = map?.FileStem ?? region;
         var entry = _wad?.Find(stem + ".lev")
                     ?? _wad?.Find(region + ".lev")
                     ?? (map is null ? null : _wad?.Find(map.LevelName));
         var parsed = entry is null ? null : LevFile.Parse(_wad!.Read(entry));
-        _levs[region] = parsed;
+        _levs[cacheKey] = parsed;
         return parsed;
     }
 
     public LevHeightField? LoadHeightField(string region)
     {
-        if (_heights.TryGetValue(region, out var cached))
+        var map = World.FindMap(region);
+        return map is null ? LoadHeightField(region, null) : LoadHeightField(map);
+    }
+
+    public LevHeightField? LoadHeightField(WorldMap map) =>
+        LoadHeightField(map.FileStem, map);
+
+    private LevHeightField? LoadHeightField(string region, WorldMap? map)
+    {
+        var cacheKey = map?.FileStem ?? region;
+        if (_heights.TryGetValue(cacheKey, out var cached))
             return cached;
         if (_stb is null)
         {
-            _heights[region] = null;
+            _heights[cacheKey] = null;
             return null;
         }
 
-        var entry = _stb.FindLev(region);
-        var map = World.FindMap(region);
+        var entry = _stb.FindLev(map?.FileStem ?? region)
+                    ?? (map is null ? null : _stb.FindLev(map.ScriptName));
         if (entry is null || map is null)
         {
-            _heights[region] = null;
+            _heights[cacheKey] = null;
             return null;
         }
 
-        var compiled = LoadCompiledLev(region);
+        var compiled = LoadCompiledLev(map);
         var width = compiled?.GridWidth ?? 128;
         var height = compiled?.GridHeight ?? 128;
         var field = LevHeightField.Parse(_stb.Read(entry), map.MapX, map.MapY, width, height);
-        _heights[region] = field;
+        _heights[cacheKey] = field;
         return field;
     }
 

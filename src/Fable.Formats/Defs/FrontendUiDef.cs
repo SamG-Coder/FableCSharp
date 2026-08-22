@@ -340,6 +340,10 @@ public sealed class FrontendUiDef
     public IReadOnlyList<float> StyleColourG { get; init; } = [];
     public IReadOnlyList<float> StyleColourB { get; init; } = [];
     public IReadOnlyList<float> StyleColourA { get; init; } = [];
+    public IReadOnlyList<float> StylePositionX { get; init; } = [];
+    public IReadOnlyList<float> StylePositionY { get; init; } = [];
+    public IReadOnlyList<float> StyleZoomX { get; init; } = [];
+    public IReadOnlyList<float> StyleZoomY { get; init; } = [];
     public IReadOnlyList<float> StyleDurations { get; init; } = [];
     /// <summary>GraphicIndex stored in each persist States record.</summary>
     public IReadOnlyList<int> StyleGraphicIds { get; init; } = [];
@@ -350,6 +354,9 @@ public sealed class FrontendUiDef
     /// <c>0x10/0x20/0x40</c>.
     /// </summary>
     public IReadOnlyList<int> StyleFlags { get; init; } = [];
+    public IReadOnlyList<int> StyleChangeTypes { get; init; } = [];
+    public IReadOnlyList<bool> StyleLinearChanges { get; init; } = [];
+    public IReadOnlyList<IReadOnlyList<int>> StyleChildrenNotAffected { get; init; } = [];
     public IReadOnlyList<int> SwappingStates { get; init; } = [];
     public IReadOnlyList<float> SwappingTimes { get; init; } = [];
     /// <summary>
@@ -424,8 +431,19 @@ public sealed class FrontendUiDef
     public int SliderLeft { get; init; }
     public int SliderRight { get; init; }
     public int Action { get; init; }
+    public int ActionOnBack { get; init; }
     public int ActionOnSelected { get; init; }
     public int ActionOnUnselected { get; init; }
+    public int ActionOnDestruction { get; init; }
+    public int ActionOnLeftHeld { get; init; }
+    public int ActionOnRightClicked { get; init; }
+    public int ActionOnDropped { get; init; }
+    public int ActionOnDroppedNowhere { get; init; }
+    public int PreAction { get; init; }
+    public int ActionOnDraggedUp { get; init; }
+    public int ActionOnDraggedDown { get; init; }
+    public int ActionOnLeftClickedAbove { get; init; }
+    public int ActionOnLeftClickedUnder { get; init; }
     public bool EditBoxParentIsButton { get; init; }
     public bool PasswordBox { get; init; }
     public int EditBoxCharLimit { get; init; }
@@ -482,9 +500,16 @@ public sealed class FrontendUiDef
         var styleColourG = new List<float>();
         var styleColourB = new List<float>();
         var styleColourA = new List<float>();
+        var stylePositionX = new List<float>();
+        var stylePositionY = new List<float>();
+        var styleZoomX = new List<float>();
+        var styleZoomY = new List<float>();
         var styleDurations = new List<float>();
         var styleGraphicIds = new List<int>();
         var styleFlags = new List<int>();
+        var styleChangeTypes = new List<int>();
+        var styleLinearChanges = new List<bool>();
+        var styleChildrenNotAffected = new List<IReadOnlyList<int>>();
         var readingStyles = false;
         var drawFromViewport = (byte)0;
         var bastardChild = (byte)0;
@@ -559,6 +584,8 @@ public sealed class FrontendUiDef
             if (crc == PositionXCrc && payload + 4 <= raw.Length)
             {
                 var value = BitConverter.ToSingle(raw, payload);
+                if (readingStyles)
+                    stylePositionX.Add(float.IsFinite(value) ? value : 0f);
                 if (float.IsFinite(value) && !havePx)
                 {
                     px = value;
@@ -572,6 +599,8 @@ public sealed class FrontendUiDef
             if (crc == PositionYCrc && payload + 4 <= raw.Length)
             {
                 var value = BitConverter.ToSingle(raw, payload);
+                if (readingStyles)
+                    stylePositionY.Add(float.IsFinite(value) ? value : 0f);
                 if (float.IsFinite(value) && !havePy)
                 {
                     py = value;
@@ -701,6 +730,8 @@ public sealed class FrontendUiDef
             if (crc == ZoomXCrc && payload + 4 <= raw.Length)
             {
                 var value = BitConverter.ToSingle(raw, payload);
+                if (readingStyles)
+                    styleZoomX.Add(float.IsFinite(value) ? value : 1f);
                 if (float.IsFinite(value) && !haveZoomX)
                 {
                     zoomX = value;
@@ -714,6 +745,8 @@ public sealed class FrontendUiDef
             if (crc == ZoomYCrc && payload + 4 <= raw.Length)
             {
                 var value = BitConverter.ToSingle(raw, payload);
+                if (readingStyles)
+                    styleZoomY.Add(float.IsFinite(value) ? value : 1f);
                 if (float.IsFinite(value) && !haveZoomY)
                 {
                     zoomY = value;
@@ -775,12 +808,14 @@ public sealed class FrontendUiDef
 
             if (crc == StateChangeTypeCrc && payload + 4 <= raw.Length)
             {
+                styleChangeTypes.Add(BitConverter.ToInt32(raw, payload));
                 cursor = payload + 4;
                 continue;
             }
 
             if (crc == LinearChangeCrc && payload < raw.Length)
             {
+                styleLinearChanges.Add(raw[payload] != 0);
                 cursor = payload + 1;
                 continue;
             }
@@ -808,8 +843,14 @@ public sealed class FrontendUiDef
             {
                 var n = BitConverter.ToInt32(raw, payload);
                 cursor = payload + 4;
-                if (n is >= 0 and <= 256)
+                var unaffected = new int[Math.Clamp(n, 0, 256)];
+                if (n is >= 0 and <= 256 && cursor + n * 4 <= raw.Length)
+                {
+                    for (var i = 0; i < n; i++)
+                        unaffected[i] = BitConverter.ToInt32(raw, cursor + i * 4);
                     cursor += n * 4;
+                }
+                styleChildrenNotAffected.Add(unaffected);
                 continue;
             }
 
@@ -865,8 +906,19 @@ public sealed class FrontendUiDef
         var sliderLeft = ReadPersistI32(raw, SliderLeftCrc);
         var sliderRight = ReadPersistI32(raw, SliderRightCrc);
         var action = ReadPersistI32(raw, ActionCrc);
+        var actionOnBack = ReadPersistI32(raw, FrontendUiSchema.ActionOnBackCrc);
         var actionOnSelected = ReadPersistI32(raw, ActionOnSelectedCrc);
         var actionOnUnselected = ReadPersistI32(raw, ActionOnUnselectedCrc);
+        var actionOnDestruction = ReadPersistI32(raw, FrontendUiSchema.ActionOnDestructionCrc);
+        var actionOnLeftHeld = ReadPersistI32(raw, FrontendUiSchema.ActionOnLeftHeldCrc);
+        var actionOnRightClicked = ReadPersistI32(raw, FrontendUiSchema.ActionOnRightClickedCrc);
+        var actionOnDropped = ReadPersistI32(raw, FrontendUiSchema.ActionOnDroppedCrc);
+        var actionOnDroppedNowhere = ReadPersistI32(raw, FrontendUiSchema.ActionOnDroppedNowhereCrc);
+        var preAction = ReadPersistI32(raw, FrontendUiSchema.PreActionCrc);
+        var actionOnDraggedUp = ReadPersistI32(raw, FrontendUiSchema.ActionOnDraggedUpCrc);
+        var actionOnDraggedDown = ReadPersistI32(raw, FrontendUiSchema.ActionOnDraggedDownCrc);
+        var actionOnLeftClickedAbove = ReadPersistI32(raw, FrontendUiSchema.ActionOnLeftClickedAboveCrc);
+        var actionOnLeftClickedUnder = ReadPersistI32(raw, FrontendUiSchema.ActionOnLeftClickedUnderCrc);
         var editBoxParentIsButton = ReadPersistU8(raw, EditBoxParentIsButtonCrc) != 0;
         var passwordBox = ReadPersistU8(raw, PasswordBoxCrc) != 0;
         var editBoxCharLimit = ReadPersistI32(raw, EditBoxCharLimitCrc);
@@ -947,9 +999,16 @@ public sealed class FrontendUiDef
             StyleColourG = styleColourG,
             StyleColourB = styleColourB,
             StyleColourA = styleColourA,
+            StylePositionX = stylePositionX,
+            StylePositionY = stylePositionY,
+            StyleZoomX = styleZoomX,
+            StyleZoomY = styleZoomY,
             StyleDurations = styleDurations,
             StyleGraphicIds = styleGraphicIds,
             StyleFlags = styleFlags,
+            StyleChangeTypes = styleChangeTypes,
+            StyleLinearChanges = styleLinearChanges,
+            StyleChildrenNotAffected = styleChildrenNotAffected,
             SwappingStates = swappingStates,
             SwappingTimes = swappingTimes,
             DrawFromViewport = drawFromViewport,
@@ -980,8 +1039,19 @@ public sealed class FrontendUiDef
             SliderLeft = sliderLeft,
             SliderRight = sliderRight,
             Action = action,
+            ActionOnBack = actionOnBack,
             ActionOnSelected = actionOnSelected,
             ActionOnUnselected = actionOnUnselected,
+            ActionOnDestruction = actionOnDestruction,
+            ActionOnLeftHeld = actionOnLeftHeld,
+            ActionOnRightClicked = actionOnRightClicked,
+            ActionOnDropped = actionOnDropped,
+            ActionOnDroppedNowhere = actionOnDroppedNowhere,
+            PreAction = preAction,
+            ActionOnDraggedUp = actionOnDraggedUp,
+            ActionOnDraggedDown = actionOnDraggedDown,
+            ActionOnLeftClickedAbove = actionOnLeftClickedAbove,
+            ActionOnLeftClickedUnder = actionOnLeftClickedUnder,
             EditBoxParentIsButton = editBoxParentIsButton,
             PasswordBox = passwordBox,
             EditBoxCharLimit = editBoxCharLimit,

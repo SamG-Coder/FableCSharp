@@ -6207,6 +6207,7 @@ public sealed class ScriptRuntimeArchitectureTests
         Assert.Equal("DEFAULT", state.ClipKey);
         Assert.Equal(6, state.RequestMode);
         Assert.True(state.Playing);
+        Assert.False(state.ChannelArmed);
         Assert.Equal(0f, state.PlayTime);
         Assert.Equal(1f, state.Duration);
         Assert.Equal(0x0070D580u, RegionTravel.AnimationPlayInner);

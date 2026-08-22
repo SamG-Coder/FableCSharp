@@ -314,6 +314,11 @@ public static class FrontendWidgetFactory
     {
         if (parent.Type != FrontendWidgetType.TableType || parent.SpriteDefIndices.Count == 0)
             return;
+        // 00551EA0 walks the persisted sprite map once.  The table's column
+        // widths are adjusted to consume +204/+208; it does not materialise
+        // one widget for every 8-pixel middle tile.  Vulkan stretches the
+        // single key-4 cell between the two caps, matching retail's three
+        // submissions and keeping hover state changes constant-time.
         for (var sprite = 0; sprite < parent.SpriteDefIndices.Count; sprite++)
         {
             var index = parent.SpriteDefIndices[sprite];
@@ -323,18 +328,8 @@ public static class FrontendWidgetFactory
             if (child is null || child.InstanceName == parentName)
                 continue;
             var key = sprite < parent.SpriteKeys.Count ? parent.SpriteKeys[sprite] : -1;
-            var repeat = 1;
-            if (key == 4 && (parent.ExpansionType & 1) != 0 && parent.Width > 0f)
-            {
-                var textureName = sprites?.NameForWidget(child.InstanceName, child.GraphicBankId);
-                var frameWidth = textureName is null ? 0 : sprites?.TryLoad(textureName)?.FrameWidth ?? 0;
-                if (frameWidth > 0)
-                    repeat = Math.Max(1, (int)MathF.Round(parent.Width / frameWidth));
-            }
-
-            for (var cell = 0; cell < repeat; cell++)
-                Add(widgets, child, child.InstanceName, parentName, parentIndex,
-                    sprites, lookupText, names, key, cell, repeat);
+            Add(widgets, child, child.InstanceName, parentName, parentIndex,
+                sprites, lookupText, names, key, 0, 1);
         }
     }
 
@@ -425,9 +420,17 @@ public static class FrontendWidgetFactory
             Flag302: PackFlag302(def),
             Alignement: def?.Alignement ?? 0,
             StyleColours: styleColours,
+            StylePositionX: def?.StylePositionX,
+            StylePositionY: def?.StylePositionY,
+            StyleZoomX: def?.StyleZoomX,
+            StyleZoomY: def?.StyleZoomY,
             StyleDurations: def?.StyleDurations,
             StyleGraphicIds: styleGraphicIds,
             StyleTextureNames: styleTextureNames,
+            StyleFlags: def?.StyleFlags,
+            StyleChangeTypes: def?.StyleChangeTypes,
+            StyleLinearChanges: def?.StyleLinearChanges,
+            StyleChildrenNotAffected: def?.StyleChildrenNotAffected,
             SwappingStates: def?.SwappingStates,
             SwappingTimes: def?.SwappingTimes,
             SwapCurrentState: def?.SwappingStates.FirstOrDefault() ?? int.MinValue,
@@ -442,8 +445,19 @@ public static class FrontendWidgetFactory
             SliderLeftDef: def?.SliderLeft ?? 0,
             SliderRightDef: def?.SliderRight ?? 0,
             Action: def?.Action ?? 0,
+            ActionOnBack: def?.ActionOnBack ?? 0,
             ActionOnSelected: def?.ActionOnSelected ?? 0,
             ActionOnUnselected: def?.ActionOnUnselected ?? 0,
+            ActionOnDestruction: def?.ActionOnDestruction ?? 0,
+            ActionOnLeftHeld: def?.ActionOnLeftHeld ?? 0,
+            ActionOnRightClicked: def?.ActionOnRightClicked ?? 0,
+            ActionOnDropped: def?.ActionOnDropped ?? 0,
+            ActionOnDroppedNowhere: def?.ActionOnDroppedNowhere ?? 0,
+            PreAction: def?.PreAction ?? 0,
+            ActionOnDraggedUp: def?.ActionOnDraggedUp ?? 0,
+            ActionOnDraggedDown: def?.ActionOnDraggedDown ?? 0,
+            ActionOnLeftClickedAbove: def?.ActionOnLeftClickedAbove ?? 0,
+            ActionOnLeftClickedUnder: def?.ActionOnLeftClickedUnder ?? 0,
             SliderValueX: def?.MinX ?? 0f,
             Sprite2DFlag: def?.Sprite2DFlag ?? 0,
             Angle: def?.Angle ?? 0f,

@@ -10,6 +10,7 @@ tools/_peek/
 tools/_probe/
 # Fable.exe string/disasm/pseudocode dumps — never commit
 tools/Fable.ExeIndex/out/
+tools/Fable.SceneSlice/out/
 /assembly/
 *.exe
 client-out.txt

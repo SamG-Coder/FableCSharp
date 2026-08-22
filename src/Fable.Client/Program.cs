@@ -28,7 +28,7 @@ var options = WindowOptions.DefaultVulkan with
     Title = life.WindowTitle,
     Size = new Vector2D<int>(life.BackBufferWidth, life.BackBufferHeight),
     WindowState = SilkHostWindow.DefaultState,
-    WindowBorder = WindowBorder.Fixed,
+    WindowBorder = WindowBorder.Fixed,    
     VSync = true,
 };
 
@@ -38,6 +38,7 @@ var host = new SilkEngineHost(
     height: life.BackBufferHeight,
     title: life.WindowTitle,
     quit: () => window.Close());
+
 life.AttachHost(host);
 
 IInputContext? input = null;
@@ -206,6 +207,8 @@ window.Update += dt =>
     host.Height = window.FramebufferSize.Y;
     if (!life.Pump((float)dt) || life.Stage == EngineStage.Shutdown)
         window.Close();
+    else if (life.Stage == EngineStage.Game)
+        life.EnsureFirstPlayableRegionLoaded();
     frontendAudio.Sync(
         life.Stage == EngineStage.Frontend,
         life.FrontendAudioCue,

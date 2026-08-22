@@ -16,6 +16,21 @@ if (args.Contains("--new-profile-frame"))
     return;
 }
 
+if (args.Contains("--main-menu-frame"))
+{
+    var frameInstall = GameInstall.TryLocate() ?? throw new InvalidOperationException("no install");
+    using var life = new EngineLifecycle();
+    life.Bootstrap(frameInstall);
+    while (life.Stage == EngineStage.StartupVideos)
+        life.FinishStartupVideo();
+    life.DispatchFrontendMessage(FrontendMessages.PressStart);
+    life.Pump();
+    life.DispatchFrontendMessage(FrontendMessages.AcceptNewProfile);
+    life.Pump();
+    Console.Write(FrontendFrameDump.FormatNewProfile(life.FrontendWidgets));
+    return;
+}
+
 if (args.Contains("--catalog"))
 {
     TransformDump.Run();

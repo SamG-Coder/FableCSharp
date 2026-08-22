@@ -680,7 +680,7 @@ public sealed class FrontendLayoutTests
     }
 
     [Fact]
-    public void New_Game_004FDBC0_opens_LookoutPoint_only()
+    public void New_Game_004FDBC0_opens_every_proximity_tng_without_retaining_all_properties()
     {
         var install = GameInstall.TryLocate();
         Assert.NotNull(install);
@@ -691,14 +691,14 @@ public sealed class FrontendLayoutTests
         life.RequestNewGame();
         life.EnterGame();
         Assert.Equal(EngineStage.Game, life.Stage);
-        Assert.Equal(1, life.GlobalThingMapsLoaded);
+        var proximityMaps = life.World!.Maps.Count(map => map.LoadedOnPlayerProximity);
+        Assert.Equal(proximityMaps, life.GlobalThingMapsLoaded);
+        Assert.Equal(21_746, life.GlobalThingCount);
+        Assert.True(life.GlobalThingCount > life.GlobalThings!.Things.Count());
         Assert.Contains(life.Trace.Events, e =>
             e.Va == EngineLifecycle.LoadGlobalThingsPerMap &&
             e.Action.Contains("LookoutPoint", StringComparison.Ordinal));
         Assert.Contains(life.Trace.Events, e =>
-            e.Va == EngineLifecycle.LoadGlobalThingsMapFile &&
-            e.Action.Contains("004FDC00 leftover host break", StringComparison.Ordinal));
-        Assert.DoesNotContain(life.Trace.Events, e =>
             e.Va == EngineLifecycle.LoadGlobalThingsPerMap &&
             e.Action.Contains("Bowerstone", StringComparison.Ordinal));
     }

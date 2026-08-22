@@ -931,25 +931,28 @@ public sealed class AnimationRuntime
     /// <c>0070C050</c> request then
     /// <c>0070D580</c> on the type-90 inner
     /// (<c>0070B460</c> <c>[comp+12]</c>).
-    /// Mode 6 is request class
+    /// Mode 6 is the request class
     /// <c>[inner+80]</c>, not the
     /// <c>0070D580</c> divisor (DEFAULT
-    /// arg1 is 1). Host still divides
-    /// Duration by mode (leftover).
+    /// passes divisor 1 separately).
     /// Clip seconds UNREAD. Do not
     /// invent Duration=1.
     /// </summary>
-    public void ApplyInner(AnimationState state, AnimationClipRecord clip, int mode)
+    public void ApplyInner(
+        AnimationState state, AnimationClipRecord clip, int requestMode, int playDivisor = 1)
     {
-        var playMode = mode <= 0 ? 1 : mode;
+        var mode = requestMode <= 0 ? 1 : requestMode;
+        var divisor = playDivisor <= 0 ? 1 : playDivisor;
         state.ClipKey = clip.Name;
-        state.RequestMode = playMode;
+        state.RequestMode = mode;
         state.Playing = true;
         state.InnerApplied = true;
-        state.ChannelArmed = true;
+        // First-present mixer channel count is zero. The request exists, but
+        // 0070D580 does not by itself prove insertion into the 00AA0090 walk.
+        state.ChannelArmed = false;
         state.PlayTime = 0f;
-        state.Duration = clip.Duration / playMode;
-        state.Step = 1f / playMode;
+        state.Duration = clip.Duration / divisor;
+        state.Step = 1f / divisor;
     }
 
     /// <summary>

@@ -64,6 +64,11 @@ public static class FrontendMessages
     /// recovered <c>0059A238</c> branch.
     /// </summary>
     public const int CancelNewProfile = 86;
+    public const int ChangeProfile = 16;
+    public const int Credits = 67;
+    public const int Options = 297;
+    public const int Quit = 314;
+    public const int About = 321;
 
     public const int PressStartSlot = 0x14;
     public const int NewProfileSlot = 0x17;
@@ -72,6 +77,11 @@ public static class FrontendMessages
     /// existing key <c>0</c>.
     /// </summary>
     public const int MainMenuSlot = 0;
+    public const int ProfilesSlot = 0x07;
+    public const int CreditsSlot = 0x09;
+    public const int OptionsSlot = 0x18;
+    public const int QuitSlot = 0x1A;
+    public const int AboutSlot = 0x1C;
     public const int UiArmedOffset = 160;
     public const int Ui100Offset = 100;
     public const int Ui96Offset = 96;
@@ -85,6 +95,11 @@ public static class FrontendMessages
     public const string MainMenuNoContinue =
         "UI_FRONTEND_MAIN_MENU_NO_LIVEAWARE_NO_CONTINUE";
     public const string MainMenuContinue = "UI_FRONTEND_MAIN_MENU_NO_LIVEAWARE";
+    public const string ProfilesMenu = "UI_FRONTEND_PROFILES_MENU";
+    public const string CreditsMenu = "UI_FRONTEND_CREDITS_MENU";
+    public const string OptionsMenu = "UI_FRONTEND_OPTIONS_SUB_MENU";
+    public const string QuitMenu = "UI_FRONTEND_QUIT_PROMPT";
+    public const string AboutMenu = "UI_FRONTEND_ABOUT_MENU";
     public const string ProfileDefaultFallback = "Default";
 
     public enum Screen
