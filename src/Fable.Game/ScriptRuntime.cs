@@ -16,6 +16,8 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
 {
     public ScriptBank? Bank { get; private set; }
     public float DtAtPlus8 { get; private set; }
+    private float _nativeClock;
+    private bool _nativeClockSet;
     public float FadeDuration { get; private set; }
     public float FadeParam { get; private set; }
     public float FadeElapsed { get; private set; }
@@ -527,11 +529,32 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     {
         if (dt < 0f)
             return;
+        UpdateCore(_nativeClock + dt, dt);
+    }
+
+    /// <summary>
+    /// Native <c>00A44880</c> input. <c>009E1BC0</c> returns seconds elapsed
+    /// from the timer baseline, not a frame delta. Fiber <c>+8</c> receives
+    /// that absolute clock; time-based subsystems receive only its difference
+    /// from the preceding pump.
+    /// </summary>
+    public void UpdateAtClock(float clock)
+    {
+        if (clock < 0f)
+            return;
+        var dt = _nativeClockSet ? Math.Max(0f, clock - _nativeClock) : 0f;
+        UpdateCore(clock, dt);
+    }
+
+    private void UpdateCore(float clock, float dt)
+    {
+        _nativeClock = clock;
+        _nativeClockSet = true;
         Frame++;
-        Time += dt;
-        DtAtPlus8 = dt;
+        Time = clock;
+        DtAtPlus8 = clock;
         foreach (var fiber in _fibers)
-            fiber.DtAtPlus8 = dt;
+            fiber.DtAtPlus8 = clock;
         // 006286F0 owns the pump until it
         // returns. 00A44880 is stuck in that
         // apply — no fade tick, no other resume.
@@ -547,28 +570,26 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
         Animation.Tick(dt, World);
         if (_fibers.Count == 0 && _interpreters.Count == 0)
             return;
-        if (Scheduler.Fibers.Count == 0)
+        // 00A44880 applies once to each fiber. The previous host callback
+        // resumed every interpreter from inside every fiber tick, producing
+        // an N-fibers × M-interpreters cross-product and advancing cutscenes
+        // several times during one rendered frame. Quest fibers and cutscene
+        // interpreters are not interchangeable; tick the registered fibers,
+        // then resume each yielded interpreter exactly once.
+        if (Scheduler.Fibers.Count > 0)
         {
-            foreach (var interpreter in _interpreters)
+            Scheduler.Pump(clock, fiber =>
             {
-                if (interpreter.Yielded && !interpreter.Blocked)
-                    interpreter.Resume(BindInterpreter(interpreter));
-            }
-
-            return;
+                fiber.State = FiberRunState.Running;
+                fiber.State = FiberRunState.Ready;
+            });
         }
 
-        Scheduler.Pump(dt, fiber =>
+        foreach (var interpreter in _interpreters)
         {
-            fiber.State = FiberRunState.Running;
-            foreach (var interpreter in _interpreters)
-            {
-                if (interpreter.Yielded && !interpreter.Blocked)
-                    interpreter.Resume(BindInterpreter(interpreter));
-            }
-
-            fiber.State = FiberRunState.Ready;
-        });
+            if (interpreter.Yielded && !interpreter.Blocked)
+                interpreter.Resume(BindInterpreter(interpreter));
+        }
     }
 
     /// <summary>

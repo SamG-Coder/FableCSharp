@@ -364,6 +364,9 @@ public sealed unsafe partial class VulkanLineRenderer : IDisposable
         _vk.UnmapMemory(_device, _objectMemory);
     }
 
+    /// <summary>Replace per-instance world matrices without touching the C3D vertex buffer.</summary>
+    public void SetObjectDraws(MeshDraw[] draws) => _objectDraws = draws;
+
     public bool ShowGizmos { get; set; }
 
     /// <summary>

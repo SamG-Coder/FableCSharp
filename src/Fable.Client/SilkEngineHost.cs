@@ -18,6 +18,7 @@ public sealed class SilkEngineHost : IEngineHost
     private WorldGeometry? _uploadedWorld;
     private MeshVertex[]? _uploadedVertices;
     private MeshVertex[]? _uploadedObjects;
+    private MeshDraw[]? _uploadedObjectDraws;
     private GpuTexture[]? _uploadedTextures;
 
     public SilkEngineHost(
@@ -122,9 +123,16 @@ public sealed class SilkEngineHost : IEngineHost
             var objectDraws = frame.ObjectDraws ?? [];
             var sameMesh = ReferenceEquals(_uploadedVertices, frame.Vertices) &&
                            ReferenceEquals(_uploadedObjects, frame.ObjectVertices);
+            var sameObjectDraws = ReferenceEquals(_uploadedObjectDraws, frame.ObjectDraws);
             var sameTex = ReferenceEquals(_uploadedTextures, frame.Textures);
-            if (sameMesh && (sameTex || frame.Textures is null || frame.Textures.Length == 0))
+            if (sameMesh && sameObjectDraws &&
+                (sameTex || frame.Textures is null || frame.Textures.Length == 0))
                 return;
+            if (sameMesh && !sameObjectDraws)
+            {
+                renderer?.SetObjectDraws(frame.ObjectDraws ?? []);
+                _uploadedObjectDraws = frame.ObjectDraws;
+            }
 
             if (frame.Textures is { Length: > 0 } engineTex && !sameTex)
             {
@@ -146,6 +154,7 @@ public sealed class SilkEngineHost : IEngineHost
                 renderer?.SetObjects(objects, objectDraws);
                 _uploadedVertices = frame.Vertices;
                 _uploadedObjects = frame.ObjectVertices;
+                _uploadedObjectDraws = frame.ObjectDraws;
                 MeshUploads++;
             }
 
@@ -175,6 +184,7 @@ public sealed class SilkEngineHost : IEngineHost
         _uploadedWorld = null;
         _uploadedVertices = null;
         _uploadedObjects = null;
+        _uploadedObjectDraws = null;
         _uploadedTextures = null;
     }
 

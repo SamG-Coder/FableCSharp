@@ -5935,6 +5935,8 @@ public sealed class EngineLifecycle : IDisposable
     private readonly List<uint> _submittedPalskin = [];
     private readonly List<string> _submittedTerrain = [];
     private readonly List<Fable.Render.GpuTexture> _submittedTextures = [];
+    private readonly List<SubmittedActorDrawBinding> _submittedActorDraws = [];
+    private Fable.Render.MeshDraw[]? _submittedCombinedDraws;
     private Fable.Render.GpuTexture[]? _submittedTextureArray;
     private readonly List<ThingInstance> _regionThings = [];
     private readonly Dictionary<string, List<ThingInstance>> _thingsByMap =
@@ -6250,6 +6252,7 @@ public sealed class EngineLifecycle : IDisposable
             () => MeshBatches.BuildCells(cells),
             m => $"verts={m.Vertices.Length} draws={m.Draws.Length}");
         var props = new List<(MeshFile Mesh, Matrix4x4 Transform)>();
+        var propActors = new List<string?>();
         var seen = new HashSet<uint>();
         _submittedPalskin.Clear();
         SubmittedHeroPalskin = false;
@@ -6264,6 +6267,11 @@ public sealed class EngineLifecycle : IDisposable
                     continue;
                 seen.Add(inst.MeshId);
                 props.Add((mesh, inst.Transform));
+                propActors.Add(inst.ScriptName is { Length: > 0 } scriptName
+                    ? scriptName.Equals(RegionTravel.LiveFatherScript, StringComparison.OrdinalIgnoreCase)
+                        ? RegionTravel.IntroFatherActor
+                        : scriptName
+                    : null);
                 if (mesh.BoneCount > 0)
                     _submittedPalskin.Add(inst.MeshId);
             }
@@ -6282,6 +6290,7 @@ public sealed class EngineLifecycle : IDisposable
             if (heroMesh is not null)
             {
                 props.Add((heroMesh, WorldGeometry.ObjectTransform(Hero)));
+                propActors.Add(RegionTravel.IntroHeroActor);
                 if (heroMesh.BoneCount > 0)
                     _submittedPalskin.Add((uint)HeroMeshId);
             }
@@ -6292,11 +6301,22 @@ public sealed class EngineLifecycle : IDisposable
         var objects = timing.Measure("BuildMeshes",
             () => MeshBatches.BuildMeshes(props),
             m => $"verts={m.Vertices.Length}");
+        _submittedActorDraws.Clear();
+        var objectDraw = 0;
+        for (var i = 0; i < props.Count; i++)
+        {
+            var count = MeshDrawCount(props[i].Mesh);
+            if (propActors[i] is { Length: > 0 } actor)
+                _submittedActorDraws.Add(new SubmittedActorDrawBinding(
+                    actor, objectDraw, count, props[i].Transform));
+            objectDraw += count;
+        }
         var sky = timing.Measure("Sky",
             () => MeshBatches.Build(SkyGeometry.Build(Install)),
             m => $"verts={m.Vertices.Length}");
         SubmittedLandscape = land;
         var combined = MeshBatches.Concat(objects, sky);
+        _submittedCombinedDraws = combined.Draws;
         SubmittedObjects = new TexturedMesh
         {
             Vertices = combined.Vertices,
@@ -6323,6 +6343,58 @@ public sealed class EngineLifecycle : IDisposable
             WorldSubmitted
                 ? $"primary {opened.Region} cells={cells.Count} meshes={seen.Count} palskin={_submittedPalskin.Count} hero={HeroMeshId} terrain={_submittedTerrain.Count} verts={SubmittedMesh.Vertices.Length} {SubmitElapsedMs:0}ms c3d={SubmitC3dParsed}"
                 : "submit miss");
+    }
+
+    private static int MeshDrawCount(MeshFile mesh)
+    {
+        var layer = mesh.BoneCount > 0 ? SceneLayer.Palskin : SceneLayer.Prop;
+        var count = 0;
+        foreach (var group in mesh.Triangles.GroupBy(tri => (
+                     tri.TextureId,
+                     tri.TextureId1 == 0 ? tri.TextureId : tri.TextureId1,
+                     tri.SrcAlphaBlend,
+                     tri.Layer,
+                     tri.Flag1)))
+            count += ScenePasses.DrawnPasses(layer, group.Key.Flag1).Count;
+        return count;
+    }
+
+    /// <summary>
+    /// Native C3D submission keeps file-local vertices resident and changes
+    /// wrapper+496 per draw. Only copy the small draw table when a scripted
+    /// actor moved; never rebuild or re-upload the scene vertex buffers.
+    /// </summary>
+    private void RefreshSubmittedActorTransforms()
+    {
+        if (Runtime is null || SubmittedObjects is null ||
+            _submittedCombinedDraws is null || _submittedActorDraws.Count == 0)
+            return;
+
+        Fable.Render.MeshDraw[]? updated = null;
+        foreach (var binding in _submittedActorDraws)
+        {
+            if (!Runtime.ActorPositions.TryGetValue(binding.Actor, out var position))
+                continue;
+            var current = _submittedCombinedDraws[binding.FirstDraw].WorldOrIdentity;
+            if (current.M41 == position.X && current.M42 == position.Y && current.M43 == position.Z)
+                continue;
+            updated ??= (Fable.Render.MeshDraw[])_submittedCombinedDraws.Clone();
+            var transform = binding.BaseTransform;
+            transform.M41 = position.X;
+            transform.M42 = position.Y;
+            transform.M43 = position.Z;
+            for (var i = 0; i < binding.DrawCount; i++)
+                updated[binding.FirstDraw + i] = updated[binding.FirstDraw + i] with { World = transform };
+        }
+
+        if (updated is null)
+            return;
+        _submittedCombinedDraws = updated;
+        SubmittedObjects = new TexturedMesh
+        {
+            Vertices = SubmittedObjects.Vertices,
+            Draws = MeshBatches.SortByPass(updated),
+        };
     }
 
     /// <summary>
@@ -11815,8 +11887,9 @@ public sealed class EngineLifecycle : IDisposable
         // 006E75C0 is the engine script-manager pump. The managed runtime is
         // the implementation of those recovered fibers/interpreters, so it
         // must advance here, once per game update, rather than in rendering.
-        Runtime?.Update((float)FrameDtNow);
+        Runtime?.UpdateAtClock((float)FrameDtNow);
         WriteHeroFromRuntime();
+        RefreshSubmittedActorTransforms();
         ScriptPumpRan = true;
     }
 
@@ -15230,3 +15303,9 @@ public readonly record struct InsertedThing(
     int? MeshId,
     string? TypeName,
     bool Drawable);
+
+internal readonly record struct SubmittedActorDrawBinding(
+    string Actor,
+    int FirstDraw,
+    int DrawCount,
+    Matrix4x4 BaseTransform);
