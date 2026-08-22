@@ -4979,6 +4979,76 @@ public sealed class EngineLifecycleTests
 
         Assert.False(life.Runtime.AviPlaying);
         Assert.Equal(0, life.Input.PendingCount);
+
+        var intro = life.Runtime.FindInterpreter(RegionTravel.IntroCutscene);
+        Assert.NotNull(intro);
+        for (var frame = 0; frame < 2_048 && !life.IntroFatherPostCutsceneApplied; frame++)
+            Assert.True(life.Pump(1f / 60f));
+
+        Assert.True(intro.Finished,
+            $"pc={intro.InstructionPointer}/{intro.Commands.Count} " +
+            $"command={(intro.InstructionPointer < intro.Commands.Count ? intro.Commands[intro.InstructionPointer] : "<end>")} " +
+            $"wait={intro.CurrentWaitKind} counter={intro.GamePauseCounter}/" +
+            $"{intro.GamePauseTarget} clock={life.FrameDtNow} display={life.DisplayTime} " +
+            $"bind={life.PlayerBindSlot0} world={life.WorldFrame} " +
+            $"gate={life.EngineUpdateAllowed}/{life.PlayerCatchupHit} blocked={intro.BlockReason}");
+        Assert.True(life.IntroFatherPostCutsceneApplied);
+        Assert.Equal(RegionTravel.IntroParentStateAfterCutscene,
+            life.IntroFatherParentState);
+        Assert.False(life.Runtime.Dialogue.HasActive);
+        Assert.False(life.Runtime.Camera!.ScriptCameraActive);
+        Assert.Equal(IntroFatherParentPhase.HighlightingInstruction,
+            life.IntroFatherPhase);
+        Assert.True(life.Runtime.QuestInstruction.Active);
+        Assert.Equal(RegionTravel.IntroParentHighlightingInstructionPc,
+            life.Runtime.QuestInstruction.Key);
+        Assert.Empty(life.Runtime.QuestHud.Items);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == RegionTravel.IntroParentClearPresentation);
+        Assert.Contains(life.Trace.Events, e =>
+            e.Va == RegionTravel.IntroParentFadeTail);
+
+        // This event is posted explicitly because the expression/AI producer
+        // is a separate native dependency. A keyboard event must never open
+        // this gate.
+        life.QueueInput(EngineInput.TypeKey, 0x12);
+        Assert.True(life.Pump(1f / 60f));
+        Assert.Equal(IntroFatherParentPhase.HighlightingInstruction,
+            life.IntroFatherPhase);
+        life.Runtime.WorldEvents.Post(
+            RegionTravel.IntroParentHighlightingEventType,
+            life.WorldFrame);
+        for (var frame = 0; frame < 8 &&
+             life.IntroFatherPhase == IntroFatherParentPhase.HighlightingInstruction;
+             frame++)
+            Assert.True(life.Pump(1f / 60f));
+        Assert.Equal(IntroFatherParentPhase.AcquireScriptedThingMode3,
+            life.IntroFatherPhase);
+        var hud = Assert.Single(life.Runtime.QuestHud.Items);
+        Assert.Equal(RegionTravel.IntroParentGoodDeedHudName, hud.Name);
+        Assert.True(hud.Enabled);
+
+        for (var frame = 0; frame < 8 &&
+             life.IntroFatherPhase == IntroFatherParentPhase.AcquireScriptedThingMode3;
+             frame++)
+            Assert.True(life.Pump(1f / 60f));
+        Assert.Equal(IntroFatherParentPhase.TestHeroScriptName,
+            life.IntroFatherPhase);
+        Assert.Equal(RegionTravel.IntroParentLeaseMode3,
+            life.Runtime.ScriptedThingLeases.Current?.Mode);
+        for (var frame = 0; frame < 8 &&
+             life.IntroFatherPhase == IntroFatherParentPhase.TestHeroScriptName;
+             frame++)
+            Assert.True(life.Pump(1f / 60f));
+        Assert.Equal(IntroFatherParentPhase.AcquireScriptedThingMode4,
+            life.IntroFatherPhase);
+        for (var frame = 0; frame < 8 &&
+             life.IntroFatherPhase == IntroFatherParentPhase.AcquireScriptedThingMode4;
+             frame++)
+            Assert.True(life.Pump(1f / 60f));
+        Assert.Equal(IntroFatherParentPhase.FatherGoodDeedLoop,
+            life.IntroFatherPhase);
+        Assert.Null(life.Runtime.ScriptedThingLeases.Current);
     }
 
     private static void ClickNamed(EngineLifecycle life, string name)

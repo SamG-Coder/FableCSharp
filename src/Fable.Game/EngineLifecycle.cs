@@ -5783,7 +5783,19 @@ public sealed class EngineLifecycle : IDisposable
     public int QuestVtbl24Calls { get; private set; }
     public bool ScriptPumpRan { get; private set; }
     public int ScriptPumpWalked { get; private set; }
+    /// <summary>
+    /// Compatibility flag for the proven <c>00DB88FD–00DB8946</c> child
+    /// cleanup. It does not mean the parent quest or player-control handoff
+    /// has completed.
+    /// </summary>
     public bool IntroFatherPostCutsceneApplied { get; private set; }
+    public IntroFatherParentPhase IntroFatherPhase { get; private set; }
+    public byte IntroFatherParentState { get; private set; }
+    public bool IntroFatherParentFadeTailActive { get; private set; }
+    public int IntroFatherParentFadeTailTargetFrame { get; private set; }
+    public int IntroFatherEventWindowStartFrame { get; private set; }
+    public int IntroFatherEventWindowEndFrame { get; private set; }
+    public int IntroFatherGoodDeedHudHandle { get; private set; }
     public bool EventPumpRan { get; private set; }
     public int EventPumpWalked { get; private set; }
     public int PlayerSlotTicks { get; private set; }
@@ -11912,26 +11924,155 @@ public sealed class EngineLifecycle : IDisposable
     /// <summary>
     /// <c>00DB88FD</c> onward in the native S_QNOVI watcher. The compiled
     /// CCutsceneDef is only the child; returning from it does not end the
-    /// quest fiber. The parent clears cutscene presentation state and resets
-    /// vtbl+1668/+1664 so the world camera and player-facing quest loop resume.
+    /// quest fiber. Each phase below corresponds to a native block; camera
+    /// release is not treated as the end of the parent or as player control.
     /// </summary>
     private void ApplyIntroFatherParentContinuation()
     {
-        if (IntroFatherPostCutsceneApplied || Runtime is null)
+        if (Runtime is null ||
+            IntroFatherPhase >= IntroFatherParentPhase.FatherGoodDeedLoop)
             return;
         var intro = Runtime.FindInterpreter(RegionTravel.IntroCutscene);
         if (intro is not { Finished: true })
             return;
 
-        Note(RegionTravel.IntroParentAfterCutscene, "GamePump", "Quest",
-            "S_QNOVI child returned; vtbl+1484(0), +2664(0), +82=1");
-        Runtime.Audio.Mute(false);
-        Runtime.CameraSys.Reset(Runtime.Camera);
-        Note(RegionTravel.IntroParentResetCameraStart, "GamePump", "Camera",
-            "vtbl+1668(0.0)");
-        Note(RegionTravel.IntroParentResetCameraEnd, "GamePump", "Camera",
-            "vtbl+1664 restore gameplay camera");
-        IntroFatherPostCutsceneApplied = true;
+        if (IntroFatherPhase == IntroFatherParentPhase.WaitingForChild)
+        {
+            Note(RegionTravel.IntroParentAfterCutscene, "GamePump", "Quest",
+                "S_QNOVI child returned; +82=1");
+            Note(RegionTravel.IntroParentClearPresentation, "GamePump", "Dialogue",
+                "vtbl+1484(0) clear child cutscene presentation");
+            Runtime.Dialogue.ClearCutscenePresentation();
+            Runtime.Audio.Mute(false);
+            IntroFatherParentState = RegionTravel.IntroParentStateAfterCutscene;
+            IntroFatherParentFadeTailActive = true;
+            IntroFatherPhase = IntroFatherParentPhase.FadeTail;
+            // vtbl+1504 is 0088E4F0 -> 006E71F0. Retail converts the
+            // argument to a WorldFrame target with [0x1375550] (15), then
+            // yields the current microthread until 0049D870 reaches it.
+            // This is not a wall-clock deadline and must not advance from
+            // render frames while the world/script pump is stopped.
+            IntroFatherParentFadeTailTargetFrame = WorldFrame +
+                RegionTravel.IntroParentFadeTailFrames;
+            Note(RegionTravel.IntroParentFadeTail, "GamePump", "Quest",
+                $"vtbl+1504(1.0) target WorldFrame={IntroFatherParentFadeTailTargetFrame}");
+            return;
+        }
+
+        if (IntroFatherPhase == IntroFatherParentPhase.FadeTail)
+        {
+            if (WorldFrame < IntroFatherParentFadeTailTargetFrame)
+                return;
+
+            Runtime.CameraSys.Reset(Runtime.Camera);
+            Note(RegionTravel.IntroParentResetCameraStart, "GamePump", "Camera",
+                "vtbl+1668(0.0)");
+            Note(RegionTravel.IntroParentResetCameraEnd, "GamePump", "Camera",
+                "vtbl+1664 release script camera; world camera owns next view");
+            IntroFatherParentFadeTailActive = false;
+            IntroFatherPostCutsceneApplied = true;
+
+            // PC retail takes the 00DB89D4 branch and submits the _PC text
+            // through vtbl+460 / 008929D0. This owner is separate from the
+            // dialogue session cleared above.
+            Runtime.QuestInstruction.Show(
+                RegionTravel.IntroParentHighlightingInstructionPc,
+                Runtime.LookupText(RegionTravel.IntroParentHighlightingInstructionPc));
+            Note(RegionTravel.IntroParentInstructionSubmit, "GamePump", "QuestInstruction",
+                $"vtbl+460 {RegionTravel.IntroParentHighlightingInstructionPc}");
+            IntroFatherEventWindowStartFrame = WorldFrame;
+            IntroFatherEventWindowEndFrame = WorldFrame;
+            IntroFatherPhase = IntroFatherParentPhase.HighlightingInstruction;
+            return;
+        }
+
+        if (IntroFatherPhase == IntroFatherParentPhase.HighlightingInstruction)
+        {
+            // 00894370 gets the fiber's +24/+28 time window through 006E7510 /
+            // 006E7530 and asks 008ABED0 for type 0x12. Retail registers that
+            // type as CHEERING; this is intentionally not wired to EngineInput.
+            IntroFatherEventWindowEndFrame = WorldFrame;
+            var highlighted = Runtime.WorldEvents.Contains(
+                RegionTravel.IntroParentHighlightingEventType,
+                IntroFatherEventWindowStartFrame,
+                IntroFatherEventWindowEndFrame);
+            Note(RegionTravel.IntroParentInstructionEventQuery, "GamePump", "WorldEvent",
+                $"008ABED0 type=0x{RegionTravel.IntroParentHighlightingEventType:X} " +
+                $"{RegionTravel.IntroParentHighlightingEventName} " +
+                $"window={IntroFatherEventWindowStartFrame}..{IntroFatherEventWindowEndFrame} " +
+                $"match={highlighted}");
+            if (!highlighted)
+            {
+                Note(RegionTravel.IntroParentInstructionYield, "GamePump", "Quest",
+                    "vtbl+28 yield; keep instruction owner and camera ownership unchanged");
+                IntroFatherEventWindowStartFrame = IntroFatherEventWindowEndFrame;
+                return;
+            }
+
+            IntroFatherGoodDeedHudHandle = Runtime.QuestHud.Create(
+                RegionTravel.IntroParentGoodDeedHudName,
+                RegionTravel.IntroParentGoodDeedHudValue);
+            Note(RegionTravel.IntroParentGoodDeedHudCreate, "GamePump", "HUD",
+                $"vtbl+1308 {RegionTravel.IntroParentGoodDeedHudName} " +
+                $"handle={IntroFatherGoodDeedHudHandle} quest+" +
+                RegionTravel.IntroParentGoodDeedHudHandleOffset);
+            Runtime.QuestHud.SetEnabled(IntroFatherGoodDeedHudHandle, true);
+            Note(RegionTravel.IntroParentGoodDeedHudEnable, "GamePump", "HUD",
+                "vtbl+1284(1)");
+            IntroFatherPhase = IntroFatherParentPhase.AcquireScriptedThingMode3;
+            return;
+        }
+
+        var heroActive = Runtime.FindThingByName(RegionTravel.IntroHeroActor) is not null ||
+            Runtime.ActorPositions.ContainsKey(RegionTravel.IntroHeroActor);
+        if (IntroFatherPhase == IntroFatherParentPhase.AcquireScriptedThingMode3)
+        {
+            var componentBusy = Runtime.ScriptedThingLeases.IsComponent31Busy(
+                RegionTravel.IntroHeroActor);
+            if (!Runtime.ScriptedThingLeases.TryAcquire(
+                    RegionTravel.IntroHeroActor,
+                    RegionTravel.IntroParentLeaseMode3,
+                    heroActive,
+                    componentBusy))
+                return;
+            Note(RegionTravel.IntroParentAcquireMode3, "GamePump", "ScriptedThingLease",
+                "0089B5B0 queued CScriptGameResourceObjectScriptedThing mode=3");
+            IntroFatherPhase = IntroFatherParentPhase.TestHeroScriptName;
+            return;
+        }
+
+        if (IntroFatherPhase == IntroFatherParentPhase.TestHeroScriptName)
+        {
+            Note(RegionTravel.IntroParentHeroNameTest, "GamePump", "ScriptedThingLease",
+                $"SCRIPT_NAME_HERO={heroActive}");
+            if (!heroActive)
+            {
+                Runtime.ScriptedThingLeases.Release();
+                IntroFatherPhase = IntroFatherParentPhase.AcquireScriptedThingMode3;
+                return;
+            }
+
+            IntroFatherPhase = IntroFatherParentPhase.AcquireScriptedThingMode4;
+            return;
+        }
+
+        if (IntroFatherPhase == IntroFatherParentPhase.AcquireScriptedThingMode4)
+        {
+            var componentBusy = Runtime.ScriptedThingLeases.IsComponent31Busy(
+                RegionTravel.IntroHeroActor);
+            if (!Runtime.ScriptedThingLeases.TryAcquire(
+                    RegionTravel.IntroHeroActor,
+                    RegionTravel.IntroParentLeaseMode4,
+                    heroActive,
+                    componentBusy))
+                return;
+            Note(RegionTravel.IntroParentAcquireMode4, "GamePump", "ScriptedThingLease",
+                "0089B5B0 queued CScriptGameResourceObjectScriptedThing mode=4");
+            Runtime.ScriptedThingLeases.Release();
+            Note(RegionTravel.IntroParentGoodDeedLoopStart, "GamePump", "Quest",
+                "entered recovered S_QNOVI father good-deed loop; player-control handoff remains separate/unread");
+            IntroFatherPhase = IntroFatherParentPhase.FatherGoodDeedLoop;
+        }
     }
 
     /// <summary>

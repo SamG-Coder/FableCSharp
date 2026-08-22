@@ -66,8 +66,6 @@ public sealed class ScriptedCamera
     /// </summary>
     public void Bind(string name, Vector3 position, Vector3 lookAt, Vector3 up, float fovDegrees)
     {
-        if (!_hasGameplay)
-            SnapshotGameplay();
         ActiveName = name;
         Position = position;
         LookAt = lookAt;
@@ -98,8 +96,10 @@ public sealed class ScriptedCamera
 
     /// <summary>
     /// <c>00CC9DF1</c>: <c>vtbl+1668(0.0)</c> then
-    /// <c>vtbl+1664</c>. No yield. Restores the
-    /// pre-script gameplay camera snapshot.
+    /// <c>vtbl+1664</c>. No yield. This releases script-camera ownership;
+    /// the ordinary <c>0049E080</c>/<c>006B42F0</c> world-camera pass writes
+    /// the next gameplay view. A snapshot is restored only when a caller
+    /// explicitly supplied one through <see cref="SnapshotGameplay"/>.
     /// </summary>
     public void Reset()
     {

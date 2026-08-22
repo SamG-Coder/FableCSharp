@@ -107,7 +107,8 @@ rg '^GLOBAL|^VCALL|^UNRESOLVED' tools/Fable.ExeIndex/out/engine-lifecycle-grep.t
 
 Generate separate grep-first retail evidence bibles for world/streaming,
 rendering, input/player, Things/components, animation, audio, persistence,
-camera, combat/inventory, AI/navigation, in-game HUD, and video/cutscenes:
+camera, combat/inventory, AI/navigation, in-game HUD, native quest/script
+lifecycle, and video/cutscenes:
 
 ```powershell
 dotnet run --project tools/Fable.ExeIndex -- export-systems `

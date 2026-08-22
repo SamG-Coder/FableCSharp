@@ -469,8 +469,9 @@ public sealed class CameraRuntime
 
     /// <summary>
     /// <c>00CC9DF1</c> <c>vtbl+1668(0)</c> +
-    /// <c>vtbl+1664</c>. Clears script camera and
-    /// restores the gameplay snapshot.
+    /// <c>vtbl+1664</c>. Clears script-camera ownership. The world camera
+    /// resumes through its normal frame update; this method does not create
+    /// a synthetic gameplay camera.
     /// </summary>
     public void Reset(ScriptedCamera? camera)
     {
@@ -791,6 +792,24 @@ public sealed class DialogueRuntime
             Session.Active = ActiveCount > 0;
         if (Session is { HasHandle: true } && ActiveCount == 0)
             Session.HasHandle = false;
+    }
+
+    /// <summary>
+    /// Native cutscene-parent <c>vtbl+1484(0)</c>. This is not the ordinary
+    /// per-handle dismiss path: the parent removes ownership of the complete
+    /// cutscene presentation when its child interpreter returns.
+    /// </summary>
+    public void ClearCutscenePresentation()
+    {
+        if (WaitOp is not null)
+            WaitOp.Complete = true;
+        WaitOp = null;
+        ActiveCount = 0;
+        if (Session is null)
+            return;
+        Session.Active = false;
+        Session.HasHandle = false;
+        Session.Hold = false;
     }
 
     public void BindRecord(Fable.Formats.Text.TextRecord? record)

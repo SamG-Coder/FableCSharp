@@ -84,6 +84,10 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     public CameraRuntime CameraSys { get; } = new();
     public AudioRuntime Audio { get; } = new();
     public DialogueRuntime Dialogue { get; } = new();
+    public WorldEventJournal WorldEvents { get; } = new();
+    public QuestInstructionRuntime QuestInstruction { get; } = new();
+    public QuestHudRuntime QuestHud { get; } = new();
+    public ScriptedThingLeaseRuntime ScriptedThingLeases { get; } = new();
     public AnimationRuntime Animation { get; } = new();
     public MovementRuntime Movement { get; } = new();
     public WorldRuntime World { get; } = new();

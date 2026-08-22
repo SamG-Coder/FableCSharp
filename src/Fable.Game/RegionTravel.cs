@@ -1275,8 +1275,44 @@ public static class RegionTravel
     /// quest-state +82=1 before entering the instruction loop.
     /// </summary>
     public const uint IntroParentAfterCutscene = 0x00DB88FD;
+    public const uint IntroParentClearPresentation = 0x00DB890C;
+    public const uint IntroParentFadeTail = 0x00DB8925;
+    public const float IntroParentFadeTailSeconds = 1f;
+    public const int IntroParentFadeTailTickRate = 15;
+    public const int IntroParentFadeTailFrames =
+        (int)(IntroParentFadeTailSeconds * IntroParentFadeTailTickRate);
     public const uint IntroParentResetCameraStart = 0x00DB8935;
     public const uint IntroParentResetCameraEnd = 0x00DB8946;
+    public const uint IntroParentInstructionStart = 0x00DB894C;
+    public const uint IntroParentInstructionSubmit = 0x00DB89F7;
+    public const uint IntroParentInstructionEventQuery = 0x00894370;
+    public const uint IntroParentInstructionYield = 0x00DB8A1A;
+    public const int IntroParentHighlightingEventType = 0x12;
+    public const string IntroParentHighlightingEventName = "CHEERING";
+    public const string IntroParentHighlightingInstruction =
+        "TEXT_QST_048_INSTRUCTION_HIGHLIGHTING";
+    public const string IntroParentHighlightingInstructionPc =
+        "TEXT_QST_048_INSTRUCTION_HIGHLIGHTING_PC";
+    public const uint IntroParentGoodDeedHudCreate = 0x00DB8A83;
+    public const uint IntroParentGoodDeedHudEnable = 0x00DB8AB8;
+    public const string IntroParentGoodDeedHudName = "HUD_DEED_GOOD_ICON";
+    public const float IntroParentGoodDeedHudValue = 1f;
+    public const int IntroParentGoodDeedHudHandleOffset = 92;
+    /// <summary>
+    /// Both sites call CGameScriptInterface vtable slot 8
+    /// (<c>0089B5B0</c>). RTTI proves its queued wrapper is
+    /// <c>CScriptGameResourceObjectScriptedThing</c>, vtable
+    /// <c>0x0128D86C</c>. Values 3/4 are wrapper acquisition modes, not
+    /// game states and not player-control flags.
+    /// </summary>
+    public const uint IntroParentAcquireMode3 = 0x00DB8B00;
+    public const uint IntroParentAcquireMode4 = 0x00DB8BBE;
+    public const uint ScriptedThingLeaseFn = 0x0089B5B0;
+    public const uint ScriptedThingLeaseVtbl = 0x0128D86C;
+    public const int IntroParentLeaseMode3 = 3;
+    public const int IntroParentLeaseMode4 = 4;
+    public const uint IntroParentHeroNameTest = 0x00DB8B6A;
+    public const uint IntroParentGoodDeedLoopStart = 0x00DB8C0C;
     public const int IntroParentStateOffset = 82;
     public const byte IntroParentStateAfterCutscene = 1;
     public const uint UseCameraActivate = 0x00CC9F3A;
