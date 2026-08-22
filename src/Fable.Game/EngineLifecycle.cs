@@ -6179,6 +6179,16 @@ public sealed class EngineLifecycle : IDisposable
 
         if (Stage == EngineStage.Game)
         {
+            if (Runtime is { AviPlaying: true } runtime)
+            {
+                runtime.PumpBlockingAvi(dt);
+                if (runtime.AviPlaying)
+                {
+                    PresentToHost();
+                    return true;
+                }
+            }
+
             if (GamePumpFirstDone)
                 FrameDtNow += dt;
             var presents = GamePresentCount;
@@ -13159,6 +13169,7 @@ public sealed class EngineLifecycle : IDisposable
         Note(InitQuestsFn, "Init Quests", "Quest",
             $"004B4260 [world+{WorldQuestListOffset}] QST TRUE count={names.Count} not WLD START_INITIAL_QUESTS");
         Runtime = ScriptRuntime.Detached();
+        Runtime.BindInput(Input);
         Runtime.BindScene(_regionThings, Camera);
         if (Install?.FindCompiledDef("script.bin") is not null)
             Runtime.Load(ScriptBank.Load(Install), Install);

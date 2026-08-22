@@ -96,6 +96,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
     private List<ThingInstance> _things = [];
     private ScriptedCamera? _camera;
     private GameInstall? _install;
+    private EngineInput? _input;
     private Dictionary<string, TextRecord>? _textLines;
     private WmvPlayer? _avi;
     private int _questId;
@@ -265,6 +266,8 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
         }
         _ = Bindings.DrainChanges();
     }
+
+    public void BindInput(EngineInput input) => _input = input;
 
     /// <summary>
     /// No-save Lookout is <c>CREATURE_HERO</c>
@@ -560,7 +563,7 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
         // apply — no fade tick, no other resume.
         if (AviPlaying)
         {
-            TickAvi(dt);
+            PumpBlockingAvi(dt);
             return;
         }
 
@@ -805,6 +808,23 @@ public sealed class ScriptRuntime : IScriptHost, IScriptTrace
         _avi?.Dispose();
         _avi = null;
         AviPlaying = false;
+    }
+
+    /// <summary>
+    /// One iteration of the blocking <c>006286F0</c>
+    /// PlayAVI apply. It owns the movie DIK scan and
+    /// sample advance; the outer game/script update
+    /// must not run until this apply returns.
+    /// </summary>
+    public bool PumpBlockingAvi(float dt)
+    {
+        if (!AviPlaying)
+            return false;
+        if (_input?.PollPlayAviSkipScan() == true)
+            SkipAvi();
+        else
+            TickAvi(dt);
+        return true;
     }
 
     /// <summary>

@@ -209,7 +209,9 @@ internal static class LineShaders
             float ndl = nlen < 1e-8 ? 0.0 : max(dot(normalize(n), ldir), 0.0);
             vec3 litAdd = pc.pass.yzw;
             vec3 c3 = vec3(0.0, 0.125, 0.0);
-            vec3 v0 = fragColor.rgb * (pc.lightColor.rgb * (ndl * ndl) + litAdd + c3);
+            // The recovered FG/static/PALSKIN vertex shaders write oD0.rgb
+            // directly from c20/c35/c3. Mesh D3DCOLOR is not an RGB factor.
+            vec3 v0 = pc.lightColor.rgb * (ndl * ndl) + litAdd + c3;
             vec3 lit;
             // STATIC/PALSKIN/BG: mov oD0.w, c0.y (first-seen 1).
             // FG: (dp3(r2,c42)+c42.w)*v3.x; first-seen c42=0 so 0.

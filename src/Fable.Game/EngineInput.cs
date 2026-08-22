@@ -141,6 +141,25 @@ public sealed class EngineInput
     public int PendingCount => _queue.Count;
 
     /// <summary>
+    /// The blocking <c>006286F0</c> PlayAVI loop scans
+    /// DIK 1 / 57 / 28 / 62 itself. It does not route
+    /// those keys through the frontend <c>0042E3EE</c>
+    /// action encoder or the game player interface.
+    /// </summary>
+    public bool PollPlayAviSkipScan()
+    {
+        var skip = false;
+        foreach (var (type, key) in _queue)
+        {
+            if (type == TypeKey && RegionTravel.IsPlayAviSkipScan(key))
+                skip = true;
+        }
+
+        _queue.Clear();
+        return skip;
+    }
+
+    /// <summary>
     /// <c>009F4ED0</c> / <c>009F4F10</c>
     /// one record for <c>00446330</c>.
     /// </summary>

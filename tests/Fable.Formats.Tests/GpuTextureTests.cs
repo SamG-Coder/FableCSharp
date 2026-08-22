@@ -42,6 +42,8 @@ public sealed class GpuTextureTests
         Assert.Contains("mode < 1.5 ? fragExtra.yz", LineShaders.MeshFragment, StringComparison.Ordinal);
         Assert.Contains("* 2.0", LineShaders.MeshFragment, StringComparison.Ordinal);
         Assert.Contains("mode > 1.5 && mode < 2.5", LineShaders.MeshFragment, StringComparison.Ordinal);
+        Assert.DoesNotContain("fragColor.rgb * (pc.lightColor.rgb", LineShaders.MeshFragment,
+            StringComparison.Ordinal);
         Assert.DoesNotContain("mix(t0.rgb, t1.rgb, t1.a)", LineShaders.MeshFragment, StringComparison.Ordinal);
     }
 

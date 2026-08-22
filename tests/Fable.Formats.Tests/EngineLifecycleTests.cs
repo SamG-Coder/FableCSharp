@@ -4949,6 +4949,38 @@ public sealed class EngineLifecycleTests
         Assert.NotEmpty(life.SubmittedMesh!.Vertices);
     }
 
+    [Fact]
+    public void Game_PlayAVI_006286F0_polls_the_retail_skip_scan()
+    {
+        var install = GameInstall.TryLocate();
+        Assert.NotNull(install);
+        var life = new EngineLifecycle();
+        life.Bootstrap(install);
+        while (life.Stage == EngineStage.StartupVideos)
+            life.FinishStartupVideo();
+        life.RequestNewGame();
+        life.EnterGame();
+
+        var loaded = false;
+        for (var frame = 0; frame < 16 && !loaded; frame++)
+        {
+            Assert.True(life.Pump(1f / 60f));
+            loaded = life.EnsureFirstPlayableRegionLoaded();
+        }
+
+        Assert.True(loaded);
+        Assert.NotNull(life.Runtime);
+        for (var frame = 0; frame < 16 && !life.Runtime.AviPlaying; frame++)
+            Assert.True(life.Pump(1f / 15f));
+
+        Assert.True(life.Runtime.AviPlaying, WmvPlayer.LastError ?? "PlayAVI open failed");
+        life.QueueInput(EngineInput.TypeKey, RegionTravel.PlayAviSkipEscape);
+        Assert.True(life.Pump(1f / 60f));
+
+        Assert.False(life.Runtime.AviPlaying);
+        Assert.Equal(0, life.Input.PendingCount);
+    }
+
     private static void ClickNamed(EngineLifecycle life, string name)
     {
         var index = -1;
